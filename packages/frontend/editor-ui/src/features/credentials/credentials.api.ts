@@ -1,6 +1,11 @@
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from './credentials.types';
+import type {
+	CredentialFetchScope,
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from './credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -9,7 +14,6 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 import axios from 'axios';
-import { sleep } from 'n8n-workflow';
 import type { CreateCredentialDto } from '@n8n/api-types';
 
 async function fetchCredentialTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
@@ -73,9 +77,9 @@ export async function getAllCredentials(
 	});
 }
 
-export async function getAllCredentialsForWorkflow(
+export async function getUsableCredentials(
 	context: IRestApiContext,
-	options: { workflowId: string } | { projectId: string },
+	options: CredentialFetchScope,
 ): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials/for-workflow', {
 		...options,
@@ -95,6 +99,10 @@ export async function deleteCredential(context: IRestApiContext, id: string): Pr
 
 export async function disconnectMyConnection(context: IRestApiContext, id: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/my-connection`);
+}
+
+export async function disconnectOauthToken(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/oauth-token`);
 }
 
 export async function updateCredential(
@@ -124,12 +132,10 @@ export async function oAuth1CredentialAuthorize(
 	context: IRestApiContext,
 	data: ICredentialsResponse,
 ): Promise<string> {
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		'/oauth1-credential/auth',
-		data as unknown as IDataObject,
-	);
+	// Only the credential id is needed: the backend re-fetches the stored credential by id.
+	// Sending the full object inflates the GET query string (homeProject, scopes, etc.) and
+	// can push the request past proxy header size limits (HTTP 431).
+	return await makeRestApiRequest(context, 'GET', '/oauth1-credential/auth', { id: data.id });
 }
 
 // Get OAuth2 Authorization URL using the stored credentials
@@ -137,12 +143,10 @@ export async function oAuth2CredentialAuthorize(
 	context: IRestApiContext,
 	data: ICredentialsResponse,
 ): Promise<string> {
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		'/oauth2-credential/auth',
-		data as unknown as IDataObject,
-	);
+	// Only the credential id is needed: the backend re-fetches the stored credential by id.
+	// Sending the full object inflates the GET query string (homeProject, scopes, etc.) and
+	// can push the request past proxy header size limits (HTTP 431).
+	return await makeRestApiRequest(context, 'GET', '/oauth2-credential/auth', { id: data.id });
 }
 
 export async function testCredential(
@@ -155,4 +159,16 @@ export async function testCredential(
 		'/credentials/test',
 		data as unknown as IDataObject,
 	);
+}
+
+/**
+ * Auth-probe a stored credential against the test URL persisted in the
+ * credential itself (Templated Custom Auth) — for types `/credentials/test`
+ * can't cover because they declare no test. Only the id travels.
+ */
+export async function probeCredential(
+	context: IRestApiContext,
+	credentialId: string,
+): Promise<INodeCredentialTestResult> {
+	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
 }

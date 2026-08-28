@@ -8,11 +8,11 @@ describe('TypeformTriggerHelpers', () => {
 	const testPayload = Buffer.from('{"event":"form_response"}');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getRequestObject: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getRequestObject: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 		};
 	});
 
@@ -21,7 +21,7 @@ describe('TypeformTriggerHelpers', () => {
 			// No secret configured
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -40,7 +40,7 @@ describe('TypeformTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'typeform-signature') return expectedSignature;
 					return null;
 				}),
@@ -60,7 +60,7 @@ describe('TypeformTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'typeform-signature') return wrongSignature;
 					return null;
 				}),

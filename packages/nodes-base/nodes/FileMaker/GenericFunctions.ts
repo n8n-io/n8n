@@ -6,7 +6,7 @@ import type {
 	JsonObject,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 interface ScriptsOptions {
 	script?: any;
@@ -80,7 +80,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions):
 		} else {
 			message = error.message;
 		}
-		throw new ApplicationError(message, { level: 'warning' });
+		throw new NodeOperationError(this.getNode(), message, { level: 'warning' });
 	}
 }
 

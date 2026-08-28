@@ -10,10 +10,18 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const isSelectionGroupableMock = vi.fn();
 const isSelectionExtractableMock = vi.fn();
 const expandSelectionWithSubNodesMock = vi.fn((nodeIds: string[]) => nodeIds);
+// Composes the two mocks above (like the real implementation does, minus id
+// resolution) so tests keep customizing those as knobs.
+const resolveGroupableNodeIdsMock = vi.fn((nodeIds: string[]) => {
+	if (nodeIds.length === 0) return null;
+	const expandedIds = expandSelectionWithSubNodesMock(nodeIds);
+	return isSelectionGroupableMock(expandedIds).valid ? expandedIds : null;
+});
 
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
@@ -30,6 +38,7 @@ vi.mock('@/app/composables/useSelectionValidation', () => ({
 		isSelectionGroupable: isSelectionGroupableMock,
 		isSelectionExtractable: isSelectionExtractableMock,
 		expandSelectionWithSubNodes: expandSelectionWithSubNodesMock,
+		resolveGroupableNodeIds: resolveGroupableNodeIdsMock,
 	}),
 }));
 
@@ -72,7 +81,7 @@ describe('CanvasSelectionToolbar', () => {
 		isSelectionGroupableMock.mockImplementation(getDefaultGroupableResult);
 		isSelectionExtractableMock.mockImplementation((nodeIds: string[]) =>
 			nodeIds.length < 2
-				? { valid: false, reason: 'too-few-nodes' }
+				? { valid: false, reason: 'invalid-subgraph' }
 				: { valid: true, subGraphData: { start: 'A', end: 'B' } },
 		);
 		expandSelectionWithSubNodesMock.mockImplementation((nodeIds: string[]) => nodeIds);
@@ -81,12 +90,14 @@ describe('CanvasSelectionToolbar', () => {
 	function render(
 		props: Partial<{
 			selectedNodes: GraphNode[];
+			selectionBounds: { x: number; y: number; width: number; height: number };
 			readOnly: boolean;
 		}> = {},
 	) {
 		return renderComponent(CanvasSelectionToolbar, {
 			props: {
 				selectedNodes: props.selectedNodes ?? [],
+				selectionBounds: props.selectionBounds,
 				readOnly: props.readOnly ?? false,
 			},
 		});
@@ -177,6 +188,15 @@ describe('CanvasSelectionToolbar', () => {
 		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
 	});
 
+	it('hides Extract when executeWorkflow is excluded', () => {
+		vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+
+		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
+
+		expect(wrapper.getByTestId('canvas-selection-toolbar-group')).toBeTruthy();
+		expect(wrapper.queryByTestId('canvas-selection-toolbar-extract')).toBeNull();
+	});
+
 	it('creates a group when Group is clicked', async () => {
 		const store = workflowDocumentStore;
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
@@ -246,6 +266,21 @@ describe('CanvasSelectionToolbar', () => {
 		const toolbar = wrapper.getByTestId('canvas-selection-toolbar') as HTMLElement;
 		const expectedLeft = rectX + rectWidth / 2;
 		const expectedTop = rectY - toolbarOffsetPx;
+		expect(toolbar.style.transform).toContain(`translate(${expectedLeft}px, ${expectedTop}px)`);
+	});
+
+	it('positions the toolbar above the full selection bounds when provided (group frames included)', () => {
+		const toolbarOffsetPx = 12;
+		// Nodes sit inside a group whose frame extends further up/left — the
+		// toolbar must clear the frame, not just the nodes.
+		const selectionBounds = { x: 50, y: 60, width: 500, height: 400 };
+		const wrapper = render({
+			selectedNodes: [makeNode('a', 100, 200), makeNode('b', 300, 200)],
+			selectionBounds,
+		});
+		const toolbar = wrapper.getByTestId('canvas-selection-toolbar') as HTMLElement;
+		const expectedLeft = selectionBounds.x + selectionBounds.width / 2;
+		const expectedTop = selectionBounds.y - toolbarOffsetPx;
 		expect(toolbar.style.transform).toContain(`translate(${expectedLeft}px, ${expectedTop}px)`);
 	});
 });

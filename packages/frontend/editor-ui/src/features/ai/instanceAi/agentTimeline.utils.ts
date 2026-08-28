@@ -1,10 +1,295 @@
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
+import { isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
 export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
+/** Render hints whose tool calls produce no output in the timeline — they are
+ *  represented elsewhere (child agent sections, artifact cards). */
+const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
+
+/** Streamed tail text up to this length is treated as thinking narration;
+ *  beyond it, it is likely the final answer and renders outside the block. */
+const TAIL_NARRATION_MAX_LENGTH = 200;
+
+/**
+ * How long the transcript must stay quiet before the activity indicator shows.
+ *
+ * Short silences are normal — the tail of a streamed answer, a run wrapping up
+ * after its last token — and calling those "Thinking" is noise on every reply.
+ * A real stall is an order of magnitude longer: a provider that buffers tool
+ * calls goes quiet for 10s on a 4.5KB write and ~53s on a 20KB one (INS-1224).
+ *
+ * A threshold rather than a signal, because the client cannot tell the two
+ * apart on its own; the server knowing it is mid-generation would replace this.
+ */
+export const ACTIVITY_INDICATOR_DELAY_MS = 5_000;
+
+type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
+
+/**
+ * The timeline reduced to renderable blocks.
+ *
+ * A `thinking` block is a maximal run of trace content — reasoning segments,
+ * generic tool calls, and the intermediate narration text the model emits
+ * between them — split only by user-facing content (answer text, plan
+ * reviews, answered questions, task checklists, child agents). Invisible
+ * entries (hidden tools, builder/planner hints, pending questions) are
+ * dropped without splitting a run.
+ */
+export type TimelineBlock =
+	| { type: 'thinking'; key: string; entries: InstanceAiTimelineEntry[]; active: boolean }
+	| { type: 'text'; key: string; entry: TextEntry }
+	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'child'; key: string; child: InstanceAiAgentNode }
+	| { type: 'activity'; key: string };
+
+type ToolCallKind =
+	| 'hidden'
+	| 'tasks'
+	| 'plan-review'
+	| 'mcp-connect'
+	| 'questions'
+	| 'questions-pending'
+	| 'trace';
+
+/**
+ * How a tool call renders in the timeline. `trace` rows join thinking blocks;
+ * `tasks`/`plan-review`/`mcp-connect`/`questions` render standalone UI; `hidden`
+ * calls are dropped without splitting a run.
+ *
+ * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
+ * child agent section represents them. In-thread builds (`build-workflow`)
+ * render as trace rows so the build step is visible inside the thinking block.
+ */
+function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
+	if (HIDDEN_TOOLS.has(tc.toolName)) return 'hidden';
+	if (tc.renderHint === 'tasks') return 'tasks';
+	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
+	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
+	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
+	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
+	if (tc.renderHint === 'planner') return 'hidden';
+	if (tc.confirmation?.inputType === 'questions') {
+		return tc.isLoading ? 'questions-pending' : 'questions';
+	}
+	return 'trace';
+}
+
+function hasBuilderChildInResponse(
+	responseId: string | undefined,
+	builderChildResponseIds: Set<string>,
+): boolean {
+	return responseId !== undefined && builderChildResponseIds.has(responseId);
+}
+
+export function buildTimelineBlocks(
+	entries: InstanceAiTimelineEntry[],
+	toolCallsById: Record<string, InstanceAiToolCallState>,
+	childrenById: Record<string, InstanceAiAgentNode>,
+	agentStatus: InstanceAiAgentNode['status'],
+): TimelineBlock[] {
+	// A text entry is intermediate narration (part of the thinking trace) when
+	// trace content from the SAME model response follows it — i.e. the model
+	// kept working after writing it. Trailing text of a response (and text
+	// without a responseId, from old snapshots) is user-facing.
+	const lastTraceIdxByResponse = new Map<string, number>();
+	// Index of the first trace entry anywhere in the run — tells the tail guard
+	// below that the model is already in a tool loop, whatever response it is on.
+	let firstTraceIdx: number | undefined;
+	const markTrace = (responseId: string, idx: number) => {
+		lastTraceIdxByResponse.set(responseId, idx);
+		firstTraceIdx ??= idx;
+	};
+	const builderChildResponseIds = new Set(
+		entries
+			.filter(
+				(entry): entry is Extract<InstanceAiTimelineEntry, { type: 'child' }> =>
+					entry.type === 'child' &&
+					entry.responseId !== undefined &&
+					!!childrenById[entry.agentId] &&
+					isBuilderAgent(childrenById[entry.agentId]),
+			)
+			.map((entry) => entry.responseId)
+			.filter((responseId): responseId is string => responseId !== undefined),
+	);
+
+	entries.forEach((entry, idx) => {
+		if (entry.responseId === undefined) return;
+		if (entry.type === 'reasoning') {
+			markTrace(entry.responseId, idx);
+		} else if (entry.type === 'tool-call') {
+			const tc = toolCallsById[entry.toolCallId];
+			if (
+				tc &&
+				classifyToolCall(tc) === 'trace' &&
+				!(
+					tc.toolName === 'build-agent' &&
+					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
+				)
+			) {
+				markTrace(entry.responseId, idx);
+			}
+		}
+	});
+
+	const isIntermediateText = (entry: TextEntry, idx: number): boolean => {
+		if (entry.responseId === undefined) return false;
+		const lastTraceIdx = lastTraceIdxByResponse.get(entry.responseId);
+		if (lastTraceIdx !== undefined && lastTraceIdx > idx) return true;
+		// Streaming tail text is ambiguous — narration before the next tool call
+		// and the final answer look identical until either a tool call follows
+		// or the run ends. Rendering it outside and folding it back in reads as
+		// an answer flashing and vanishing, so short tail text is optimistically
+		// kept INSIDE the block (its first sentence feeds the status line). It
+		// promotes out — an additive, non-jarring motion — once it grows
+		// answer-length or the run settles.
+		//
+		// The condition is run-scoped, not response-scoped: a step that emits no
+		// reasoning leads with its narration text, so keying on the current
+		// response would render it outside for the few hundred ms until that
+		// step's tool call lands. Trace content earlier in the run is enough to
+		// know the model is mid-tool-loop; a first answer with no trace at all
+		// still renders as text immediately.
+		return (
+			agentStatus === 'active' &&
+			idx === entries.length - 1 &&
+			firstTraceIdx !== undefined &&
+			firstTraceIdx < idx &&
+			entry.content.length <= TAIL_NARRATION_MAX_LENGTH
+		);
+	};
+
+	const blocks: TimelineBlock[] = [];
+	let run: Extract<TimelineBlock, { type: 'thinking' }> | null = null;
+
+	const pushStandalone = (block: TimelineBlock) => {
+		run = null;
+		blocks.push(block);
+	};
+
+	const pushTrace = (entry: InstanceAiTimelineEntry, idx: number) => {
+		if (!run) {
+			run = { type: 'thinking', key: `thinking-${idx}`, entries: [], active: false };
+			blocks.push(run);
+		}
+		run.entries.push(entry);
+	};
+
+	entries.forEach((entry, idx) => {
+		if (entry.type === 'reasoning') {
+			pushTrace(entry, idx);
+			return;
+		}
+
+		if (entry.type === 'text') {
+			if (isIntermediateText(entry, idx)) pushTrace(entry, idx);
+			else pushStandalone({ type: 'text', key: `text-${idx}`, entry });
+			return;
+		}
+
+		if (entry.type === 'child') {
+			const child = childrenById[entry.agentId];
+			// Running builder sub-agents are extracted and rendered at the bottom
+			// of the conversation by InstanceAiView; once a builder finishes it
+			// reappears here in its chronological slot.
+			if (child && !isActiveBuilderAgent(child)) {
+				pushStandalone({ type: 'child', key: `child-${idx}`, child });
+			}
+			return;
+		}
+
+		const tc = toolCallsById[entry.toolCallId];
+		if (!tc) return;
+		if (
+			tc.toolName === 'build-agent' &&
+			hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
+		) {
+			return;
+		}
+		switch (classifyToolCall(tc)) {
+			case 'tasks':
+				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });
+				return;
+			case 'plan-review':
+				pushStandalone({ type: 'plan-review', key: `plan-${idx}`, toolCall: tc });
+				return;
+			case 'mcp-connect':
+				pushStandalone({ type: 'mcp-connect', key: `mcp-connect-${idx}`, toolCall: tc });
+				return;
+			case 'questions':
+				pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });
+				return;
+			case 'trace':
+				pushTrace(entry, idx);
+				return;
+			// hidden and pending question forms drop without splitting the run
+			default:
+				return;
+		}
+	});
+
+	// While the agent streams, the trailing thinking block stays active as long
+	// as only (tentative) text follows it — tail text may still fold back into
+	// the block if same-response trace content arrives, so settling the block
+	// early would flicker "Thought for Xs" → "Thinking". Real interruptions
+	// (cards, questions, child agents) settle it immediately, and so does text
+	// that outgrew the narration cap: it is a committed answer, so keeping the
+	// block behind it "thinking" reads as lag.
+	if (agentStatus === 'active') {
+		let activated = false;
+		let settledByNarrationCap = false;
+		for (let i = blocks.length - 1; i >= 0; i--) {
+			const block = blocks[i];
+			if (block.type === 'thinking') {
+				block.active = true;
+				activated = true;
+				break;
+			}
+			if (block.type !== 'text') break;
+			if (block.entry.content.length > TAIL_NARRATION_MAX_LENGTH) {
+				settledByNarrationCap = true;
+				break;
+			}
+		}
+		// A committed answer settles the block behind it, but the run is still
+		// going — and with a provider that emits nothing while it generates a
+		// tool call, the next trace entry can be a minute away. Without this the
+		// transcript reads as finished while the composer still shows stop
+		// (INS-1224). Only the narration-cap exit gets an indicator: the other
+		// exits are cards, questions and child agents, which carry their own
+		// state or are waiting on the user.
+		if (!activated && settledByNarrationCap) {
+			blocks.push({ type: 'activity', key: 'activity' });
+		}
+	}
+
+	return blocks;
+}
+
+/**
+ * True while `entry` is the timeline entry still receiving stream deltas.
+ * The reducer only ever appends to an agent's LAST timeline entry, so any
+ * entry before the tail is settled — even while the agent itself is still
+ * active (e.g. text written before a tool call or an HITL pause). Used to
+ * scope the markdown decoration deferral to the one actively-growing block.
+ */
+export function isStreamingTimelineEntry(
+	agentNode: InstanceAiAgentNode,
+	entry: InstanceAiTimelineEntry,
+): boolean {
+	return agentNode.status === 'active' && entry === agentNode.timeline.at(-1);
+}
+
 export interface ArtifactInfo {
-	type: 'workflow' | 'data-table';
+	type: 'workflow' | 'data-table' | 'agent';
 	resourceId: string;
 	name: string;
 	projectId?: string;
@@ -12,24 +297,26 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** Extract all artifacts (workflows and data tables) from a node's tool calls. */
+/** Extract all artifacts (workflows, data tables, and agents) from a node's tool calls. */
 export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	if (node.status !== 'completed') return [];
 
 	const artifacts: ArtifactInfo[] = [];
 	const seenIds = new Set<string>();
 
-	// Check targetResource first (single-workflow agents)
+	// Check targetResource first (single-resource agents)
 	if (node.targetResource?.id && node.targetResource.type) {
 		const type = node.targetResource.type;
-		if (type === 'workflow' || type === 'data-table') {
+		if (type === 'workflow' || type === 'data-table' || type === 'agent') {
 			seenIds.add(node.targetResource.id);
-			artifacts.push({
+			const artifact: ArtifactInfo = {
 				type,
 				resourceId: node.targetResource.id,
 				name: node.targetResource.name ?? node.subtitle ?? 'Untitled',
 				completedAt: undefined,
-			});
+			};
+			if (node.targetResource.projectId) artifact.projectId = node.targetResource.projectId;
+			artifacts.push(artifact);
 		}
 	}
 

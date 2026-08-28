@@ -1,5 +1,6 @@
 import CredentialConfig from './CredentialConfig.vue';
 import { screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -19,6 +20,16 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 vi.mock('@n8n/i18n', async () => {
 	const actual = await vi.importActual('@n8n/i18n');
@@ -177,7 +188,34 @@ describe('CredentialConfig', () => {
 	});
 
 	describe('Dynamic Credentials Section', () => {
-		it('should not display dynamic credentials section when isDynamicCredentialsEnabled is false', async () => {
+		// Seeds the credentials store with a stored credential so the component can
+		// resolve its home project type (used for edit-mode cases).
+		const createPiniaWithStoredCredential = (projectType: 'personal' | 'team') =>
+			createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								sharing: false,
+								externalSecrets: false,
+							},
+						},
+					},
+					[STORES.CREDENTIALS]: {
+						state: {
+							credentialTypes: {},
+							credentials: {
+								'cred-1': {
+									id: 'cred-1',
+									homeProject: { id: 'project-1', type: projectType },
+								},
+							},
+						},
+					},
+				},
+			});
+
+		it('should not display dynamic credentials section when isPrivateCredentialsEnabled is false', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -185,7 +223,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: false,
+					isPrivateCredentialsEnabled: false,
 					isOAuthType: true,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -200,7 +238,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when isOAuthType is false', async () => {
@@ -211,7 +249,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: false,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -226,7 +264,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when user lacks create permission for new credential', async () => {
@@ -237,7 +275,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: true,
 					credentialPermissions: {
@@ -252,7 +290,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not display dynamic credentials section when user lacks update permission for existing credential', async () => {
@@ -263,7 +301,7 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,
 					credentialPermissions: {
@@ -278,7 +316,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
 		it('should display dynamic credentials section when all conditions are met for new credential', async () => {
@@ -289,12 +327,14 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: true,
 					isResolvable: false,
+					newCredentialProjectType: 'team',
 					credentialPermissions: {
 						create: true,
+						createEndUser: true,
 						update: false,
 						read: true,
 						delete: false,
@@ -305,24 +345,27 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-select')).toBeInTheDocument();
 		});
 
 		it('should display dynamic credentials section when all conditions are met for existing credential', async () => {
 			renderComponent({
+				pinia: createPiniaWithStoredCredential('team'),
 				props: {
 					isManaged: false,
 					mode: 'edit',
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
-					isDynamicCredentialsEnabled: true,
+					credentialId: 'cred-1',
+					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,
 					isResolvable: false,
 					credentialPermissions: {
 						create: false,
+						createEndUser: true,
 						update: true,
 						read: true,
 						delete: false,
@@ -333,12 +376,246 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
-			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-type-select')).toBeInTheDocument();
+		});
+
+		it('should keep the credential type selector enabled when the credential is already shared', async () => {
+			renderComponent({
+				pinia: createPiniaWithStoredCredential('team'),
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialId: 'cred-1',
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: true,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			const input = screen.getByTestId('credential-type-select').querySelector('input');
+			expect(input).not.toBeDisabled();
+		});
+
+		it('should hide the type selector when the user cannot manage end-user credentials', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					credentialPermissions: {
+						create: false,
+						createEndUser: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should hide the type selector on an end-user credential when the user cannot manage end-user credentials', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should show the type selector disabled when the user can manage end-user credentials but cannot edit', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			const input = screen.getByTestId('credential-type-select').querySelector('input');
+			expect(input).toBeDisabled();
+		});
+
+		it('should show the type selector for an end-user credential with the createEndUser permission', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+		});
+
+		it('should hide the type selector for a new credential in a personal project', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: true,
+					isResolvable: false,
+					newCredentialProjectType: 'personal',
+					credentialPermissions: {
+						create: true,
+						createEndUser: true,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should hide the type selector for an existing fixed credential in a personal project', async () => {
+			renderComponent({
+				pinia: createPiniaWithStoredCredential('personal'),
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialId: 'cred-1',
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should show the type selector for an existing end-user credential in a personal project', async () => {
+			renderComponent({
+				pinia: createPiniaWithStoredCredential('personal'),
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialId: 'cred-1',
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
 		});
 	});
 
-	describe('Disconnect button on success banner', () => {
+	describe('Connected state buttons on success banner', () => {
 		const writePermissions = {
 			create: true,
 			update: true,
@@ -347,6 +624,7 @@ describe('CredentialConfig', () => {
 			share: false,
 			list: true,
 			move: false,
+			connect: true,
 		};
 
 		const oAuthConnectedProps = {
@@ -361,63 +639,63 @@ describe('CredentialConfig', () => {
 			credentialPermissions: writePermissions,
 		};
 
-		it('renders Disconnect when resolvable, connectedByMe and dynamic credentials enabled', () => {
+		it('renders Disconnect and Switch account for a connected end-user credential', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isResolvable: true,
 					connectedByMe: true,
 				},
 			});
 
 			expect(screen.getByTestId('oauth-disconnect-button')).toBeInTheDocument();
+			expect(screen.getByTestId('oauth-switch-account-button')).toBeInTheDocument();
 		});
 
-		it('hides Disconnect when connectedByMe is false', () => {
+		it('renders Disconnect and Switch account for a connected fixed credential', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: true,
-					isResolvable: true,
+					isPrivateCredentialsEnabled: true,
+					isResolvable: false,
 					connectedByMe: false,
 				},
 			});
 
-			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+			expect(screen.getByTestId('oauth-disconnect-button')).toBeInTheDocument();
+			expect(screen.getByTestId('oauth-switch-account-button')).toBeInTheDocument();
 		});
 
-		it('hides Disconnect for static (non-resolvable) credentials', () => {
+		it('hides the connected buttons when the user cannot connect', () => {
 			renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: true,
-					isResolvable: false,
-					connectedByMe: true,
-				},
-			});
-
-			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
-		});
-
-		it('hides Disconnect when dynamic credentials are disabled', () => {
-			renderComponent({
-				props: {
-					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: false,
+					credentialPermissions: {
+						create: false,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+						connect: false,
+					},
+					isPrivateCredentialsEnabled: true,
 					isResolvable: true,
 					connectedByMe: true,
 				},
 			});
 
 			expect(screen.queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('oauth-switch-account-button')).not.toBeInTheDocument();
 		});
 
-		it('emits disconnect on click', async () => {
+		it('emits disconnect when clicking Disconnect', async () => {
 			const { emitted } = renderComponent({
 				props: {
 					...oAuthConnectedProps,
-					isDynamicCredentialsEnabled: true,
+					isPrivateCredentialsEnabled: true,
 					isResolvable: true,
 					connectedByMe: true,
 				},
@@ -425,6 +703,132 @@ describe('CredentialConfig', () => {
 
 			await screen.getByTestId('oauth-disconnect-button').click();
 			expect(emitted().disconnect).toBeTruthy();
+		});
+
+		it('emits oauth when clicking Switch account', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					isPrivateCredentialsEnabled: true,
+					isResolvable: true,
+					connectedByMe: true,
+				},
+			});
+
+			await screen.getByTestId('oauth-switch-account-button').click();
+			expect(emitted().oauth).toBeTruthy();
+		});
+
+		describe('connected account label', () => {
+			it('names the provider account an end-user credential is connected as', () => {
+				renderComponent({
+					props: {
+						...oAuthConnectedProps,
+						isPrivateCredentialsEnabled: true,
+						isResolvable: true,
+						connectedByMe: true,
+						connectedAccountIdentifier: 'jane@gmail.com',
+					},
+				});
+
+				expect(screen.getByTestId('oauth-connect-success-banner')).toHaveTextContent(
+					'Connected as jane@gmail.com',
+				);
+			});
+
+			it('stays generic rather than naming the n8n account when the provider tells us none', () => {
+				renderComponent({
+					pinia: createTestingPinia({
+						initialState: {
+							[STORES.USERS]: {
+								currentUserId: 'user-1',
+								usersById: { 'user-1': { id: 'user-1', email: 'signed-in@n8n.io' } },
+							},
+						},
+					}),
+					props: {
+						...oAuthConnectedProps,
+						isPrivateCredentialsEnabled: true,
+						isResolvable: true,
+						connectedByMe: true,
+					},
+				});
+
+				const banner = screen.getByTestId('oauth-connect-success-banner');
+				expect(banner).toHaveTextContent('Account connected');
+				expect(banner).not.toHaveTextContent('signed-in@n8n.io');
+			});
+
+			it('names the provider account a fixed credential is connected as', () => {
+				renderComponent({
+					props: {
+						...oAuthConnectedProps,
+						isResolvable: false,
+						credentialData: { accountIdentifier: 'octocat' } as ICredentialDataDecryptedObject,
+					},
+				});
+
+				expect(screen.getByTestId('oauth-connect-success-banner')).toHaveTextContent(
+					'Connected as octocat',
+				);
+			});
+		});
+
+		it('shows stale-connection actions and emits their events on auth error', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					authError: 'Token expired',
+				},
+			});
+
+			const switchAccount = screen.getByTestId('oauth-stale-switch-account-button');
+			const disconnect = screen.getByTestId('oauth-stale-disconnect-button');
+			expect(switchAccount).toBeInTheDocument();
+			expect(disconnect).toBeInTheDocument();
+
+			await switchAccount.click();
+			expect(emitted().oauth).toBeTruthy();
+
+			await disconnect.click();
+			expect(emitted().disconnect).toBeTruthy();
+		});
+	});
+
+	describe('Connect banner gating for private credentials', () => {
+		const notConnectedProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialType: mockCredentialType,
+			credentialProperties: [],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			isOAuthType: true,
+			isOAuthConnected: false,
+			requiredPropertiesFilled: true,
+			isPrivateCredentialsEnabled: true,
+			isResolvable: true,
+		};
+
+		it('shows the connect button when the user has the connect scope but cannot edit', () => {
+			renderComponent({
+				props: {
+					...notConnectedProps,
+					credentialPermissions: { read: true, connect: true },
+				},
+			});
+
+			expect(screen.getByTestId('quick-connect-button')).toBeInTheDocument();
+		});
+
+		it('hides the connect button when the user lacks the connect scope', () => {
+			renderComponent({
+				props: {
+					...notConnectedProps,
+					credentialPermissions: { read: true },
+				},
+			});
+
+			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
 		});
 	});
 
@@ -733,6 +1137,221 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.queryByText('Need help filling out these fields?')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Read-only access (view without edit)', () => {
+		const credentialTypeWithField: ICredentialType = {
+			name: 'testCredential',
+			displayName: 'Test Credential',
+			properties: [{ displayName: 'Key', name: 'key', type: 'string', default: '' }],
+		};
+
+		const readOnlyPermissions = {
+			create: false,
+			update: false,
+			read: true,
+			delete: false,
+			share: false,
+			list: true,
+			move: false,
+		};
+
+		it('does not render credential inputs for users without edit permission', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialId: 'existing-cred-123',
+					credentialType: credentialTypeWithField,
+					credentialProperties: credentialTypeWithField.properties,
+					credentialData: { key: 'secret' } as ICredentialDataDecryptedObject,
+					credentialPermissions: readOnlyPermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('credential-connection-parameter')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Connect banner gating', () => {
+		const oAuthNotConnectedProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialId: 'existing-cred-123',
+			credentialType: mockCredentialType,
+			credentialProperties: [],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			isOAuthType: true,
+			isOAuthConnected: false,
+			requiredPropertiesFilled: true,
+			isResolvable: true,
+		};
+
+		it('shows the connect button for a private credential when the user can connect', () => {
+			renderComponent({
+				props: {
+					...oAuthNotConnectedProps,
+					credentialPermissions: { read: true, connect: true },
+				},
+			});
+
+			expect(screen.getByTestId('quick-connect-button')).toBeInTheDocument();
+		});
+
+		it('hides the connect button for a private credential when the user cannot connect', () => {
+			renderComponent({
+				props: {
+					...oAuthNotConnectedProps,
+					credentialPermissions: { read: true, connect: false },
+				},
+			});
+
+			expect(screen.getByTestId('oauth-not-connected-banner')).toBeInTheDocument();
+			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
+		});
+
+		it('hides the connect banner while required properties are not filled', () => {
+			renderComponent({
+				props: {
+					...oAuthNotConnectedProps,
+					requiredPropertiesFilled: false,
+					credentialPermissions: { read: true, connect: true },
+				},
+			});
+
+			expect(screen.getByTestId('oauth-not-connected-banner')).not.toBeVisible();
+		});
+	});
+
+	describe('templated custom auth pane', () => {
+		const templatedProps = {
+			...defaultRenderOptions.props,
+			isManaged: false,
+			credentialId: 'cred-1',
+			credentialType: {
+				name: 'httpTemplatedCustomAuth',
+				displayName: 'Simplified Custom Auth',
+				properties: [],
+			},
+			credentialData: {
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+			} as unknown as ICredentialDataDecryptedObject,
+			credentialPermissions: {
+				...(defaultRenderOptions.props?.credentialPermissions ?? {}),
+				update: true,
+			},
+		};
+
+		it('defaults to the guided form and switches to edit setup in place', async () => {
+			renderComponent({ props: templatedProps });
+
+			expect(screen.getByTestId('templated-auth-simple-view')).toBeInTheDocument();
+			expect(screen.getByTestId('templated-auth-value-input')).toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('templated-auth-edit-setup'));
+
+			expect(screen.getByTestId('templated-auth-template-input')).toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-value-input')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('templated-auth-back'));
+
+			expect(screen.getByTestId('templated-auth-value-input')).toBeInTheDocument();
+		});
+
+		it('opens on edit setup when the template has no markers', () => {
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {
+						template: JSON.stringify({ headers: { Accept: 'application/json' } }),
+					} as unknown as ICredentialDataDecryptedObject,
+				},
+			});
+
+			expect(screen.getByTestId('templated-auth-template-input')).toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-value-input')).not.toBeInTheDocument();
+		});
+
+		it('switches to the guided form when the credential data loads with markers', async () => {
+			// the modal loads credential data asynchronously — the pane mounts with
+			// an empty template and must follow the data once it arrives
+			const { rerender } = renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {} as ICredentialDataDecryptedObject,
+				},
+			});
+
+			expect(screen.getByTestId('templated-auth-template-input')).toBeInTheDocument();
+
+			await rerender({ credentialData: templatedProps.credentialData });
+
+			expect(screen.getByTestId('templated-auth-value-input')).toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-template-input')).not.toBeInTheDocument();
+		});
+
+		it('stays on edit setup while the user is editing the template', async () => {
+			const { rerender } = renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {} as ICredentialDataDecryptedObject,
+				},
+			});
+
+			await userEvent.type(screen.getByTestId('templated-auth-template-input'), '{{');
+
+			// adding the first marker to the template must not eject the user from
+			// the editor mid-typing
+			await rerender({ credentialData: templatedProps.credentialData });
+
+			expect(screen.getByTestId('templated-auth-template-input')).toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-value-input')).not.toBeInTheDocument();
+		});
+
+		it('hands the AI help handler the guided-form labels and key page of a pre-filled credential', async () => {
+			const helpSpy = vi.fn().mockResolvedValue(false);
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {
+						...templatedProps.credentialData,
+						docsUrl: 'https://replicate.com/account/api-tokens',
+					} as unknown as ICredentialDataDecryptedObject,
+					credentialProperties: [
+						{ displayName: 'Template', name: 'template', type: 'json', default: '' },
+					],
+					instanceAiCredentialHelp: helpSpy,
+				},
+			});
+
+			const button = screen
+				.getByTestId('credential-edit-instance-ai-help-button')
+				.querySelector('button');
+			await userEvent.click(button!);
+
+			// no defs stored → the start-cased marker name stands in as the label; the
+			// recipe's key page rides along so the thread can link the exact URL
+			expect(helpSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentialType: 'httpTemplatedCustomAuth',
+					placeholderTitles: ['Api Key'],
+					docsUrl: 'https://replicate.com/account/api-tokens',
+				}),
+			);
+		});
+
+		it('renders the raw field set for other credential types', () => {
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialType: mockCredentialType,
+					credentialData: {} as ICredentialDataDecryptedObject,
+				},
+			});
+
+			expect(screen.queryByTestId('templated-auth-simple-view')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('templated-auth-edit-setup')).not.toBeInTheDocument();
 		});
 	});
 });

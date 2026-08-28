@@ -6,10 +6,10 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type {
 	ProjectListItem,
 	ProjectSharingData,
@@ -24,7 +24,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
-import { N8nActionBox, N8nInfoTip } from '@n8n/design-system';
+import { N8nEmptyState, N8nInfoTip } from '@n8n/design-system';
 type Props = {
 	credentialId: string;
 	credentialData: ICredentialDataDecryptedObject;
@@ -34,7 +34,10 @@ type Props = {
 	isSharedGlobally?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { credential: null, isSharedGlobally: false });
+const props = withDefaults(defineProps<Props>(), {
+	credential: null,
+	isSharedGlobally: false,
+});
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ProjectSharingData[]];
@@ -137,7 +140,7 @@ function goToUpgrade() {
 <template>
 	<div :class="$style.container">
 		<div v-if="!isSharingEnabled">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title)
 				"

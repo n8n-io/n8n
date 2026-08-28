@@ -2,13 +2,14 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { ApplicationError } from '@n8n/errors';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
+import { UnexpectedError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { isExpression } from './expressions/expression-helpers';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -28,10 +29,16 @@ import type {
 	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
-import { createResultError, createResultOk } from './result';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import { safeRegex } from './safe-regex';
 import { isResourceLocatorValue } from './type-guards';
-import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
+import {
+	containsUnsafeObjectPropertyToken,
+	deepCopy,
+	isObjectEmpty,
+	isSafeObjectProperty,
+} from './utils';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
@@ -51,6 +58,34 @@ const PAIRED_ITEM_METHOD = {
 } as const;
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
+
+/**
+ * Whether the runtime can compile expressions. The expression engine compiles
+ * expressions via `new Function`, which throws when the process is started with
+ * `--disallow-code-generation-from-strings` — as the secure-mode task runner is.
+ * This is a process-wide invariant, so we probe once and cache the result.
+ */
+let codeGenerationAllowed: boolean | undefined;
+// Reads a key from a placeholder source only when it is the source's own
+// property, so a lookup can never resolve to a value reached through the
+// prototype chain (e.g. `constructor` / `__proto__`).
+const readOwnKey = (source: unknown, key: string): unknown => {
+	if (source === null || typeof source !== 'object') return undefined;
+	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
+};
+
+const isCodeGenerationAllowed = (): boolean => {
+	if (codeGenerationAllowed === undefined) {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+			new Function('return 1');
+			codeGenerationAllowed = true;
+		} catch {
+			codeGenerationAllowed = false;
+		}
+	}
+	return codeGenerationAllowed;
+};
 
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
@@ -179,7 +214,32 @@ export class WorkflowDataProxy {
 				get(_, name) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
-					return that.selfData[name];
+					const value = that.selfData[name];
+
+					// A credential field saved in expression mode keeps n8n's leading "="
+					// marker in its stored value. Returning it verbatim leaks the marker
+					// (or an unevaluated `{{ }}` expression) into the consuming template —
+					// e.g. a `$self` reference embedded mid-URL in an OAuth2
+					// authUrl/accessTokenUrl. Resolve it here so callers receive the
+					// evaluated value.
+					if (isExpression(value)) {
+						return that.workflow.expression.getParameterValue(
+							value,
+							that.runExecutionData,
+							that.runIndex,
+							that.itemIndex,
+							that.activeNodeName,
+							that.connectionInputData,
+							that.mode,
+							that.additionalKeys,
+							that.executeData,
+							false,
+							{},
+							that.contextNodeName,
+						);
+					}
+
+					return value;
 				},
 			},
 		);
@@ -311,7 +371,7 @@ export class WorkflowDataProxy {
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
-						throw new ApplicationError('Could not find sibling parameter on node', {
+						throw new UnexpectedError('Could not find sibling parameter on node', {
 							extra: { nodeName, parameter: key },
 						});
 					}
@@ -330,8 +390,7 @@ export class WorkflowDataProxy {
 
 				if (isResourceLocatorValue(returnValue)) {
 					if (returnValue.__regex && typeof returnValue.value === 'string') {
-						const expr = new RegExp(returnValue.__regex);
-						const extracted = expr.exec(returnValue.value);
+						const extracted = safeRegex.exec(returnValue.__regex, returnValue.value);
 						if (extracted && extracted.length >= 2) {
 							returnValue = extracted[1];
 						} else {
@@ -1070,6 +1129,15 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
+			// Reserved keys resolve to inherited members (e.g. the object's
+			// constructor or prototype) rather than a placeholder value, so they
+			// are never valid placeholder names.
+			if (!isSafeObjectProperty(name)) {
+				throw new ExpressionError('Invalid parameter key', {
+					runIndex,
+					itemIndex,
+				});
+			}
 
 			const resultData =
 				that.runExecutionData?.resultData?.runData?.[that.activeNodeName]?.[runIndex];
@@ -1092,10 +1160,12 @@ export class WorkflowDataProxy {
 					type: 'no_execution_data',
 				});
 			}
+			// Resolve only own placeholder keys, never values reached through the
+			// prototype chain of the input data — including the `query` container
+			// itself, which is read as an own key for the same reason.
 			return (
-				// TS does not know that the key exists, we need to address this in refactor
-				(placeholdersDataInputData?.query as Record<string, unknown>)?.[name] ??
-				placeholdersDataInputData?.[name] ??
+				readOwnKey(readOwnKey(placeholdersDataInputData, 'query'), name) ??
+				readOwnKey(placeholdersDataInputData, name) ??
 				defaultValue
 			);
 		};
@@ -1496,6 +1566,15 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
+				if (!isCodeGenerationAllowed()) {
+					throw new ExpressionError(
+						"$evaluateExpression can't be used in the Code node while task runners run in secure mode",
+						{
+							description:
+								'Secure-mode task runners disable evaluating strings as code, which expressions rely on. Evaluate the expression in a node field instead, for example an Edit Fields (Set) node before the Code node.',
+						},
+					);
+				}
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
 					`=${expression}`,

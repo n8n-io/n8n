@@ -18,6 +18,9 @@
         "avalanche-2": {
             "type": "object",
             "properties": {
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -117,6 +120,18 @@
         "dogecoin": {
             "type": "object",
             "properties": {
+                "last_updated_at": {
+                    "type": "integer"
+                },
+                "mxn": {
+                    "type": "number"
+                },
+                "mxn_24h_change": {
+                    "type": "number"
+                },
+                "mxn_market_cap": {
+                    "type": "number"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -198,6 +213,9 @@
         "polkadot": {
             "type": "object",
             "properties": {
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -254,6 +272,18 @@
         "tron": {
             "type": "object",
             "properties": {
+                "krw": {
+                    "type": "number"
+                },
+                "krw_24h_change": {
+                    "type": "number"
+                },
+                "krw_market_cap": {
+                    "type": "number"
+                },
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -268,10 +298,16 @@
         "uniswap": {
             "type": "object",
             "properties": {
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "usd": {
                     "type": "number"
                 },
                 "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_24h_vol": {
                     "type": "number"
                 },
                 "usd_market_cap": {
@@ -294,5 +330,5 @@
             }
         }
     },
-    "version": 2
+    "version": 4
 }

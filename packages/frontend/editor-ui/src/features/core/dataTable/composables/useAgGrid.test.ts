@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref, type Ref } from 'vue';
 import { useAgGrid } from './useAgGrid';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import type {
 	GridApi,
 	GridReadyEvent,
@@ -15,7 +15,7 @@ import type {
 	IRowNode,
 } from 'ag-grid-community';
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: vi.fn((options) => {
 		return {
 			copy: vi.fn(async (text: string) => text),
@@ -312,7 +312,7 @@ describe('useAgGrid', () => {
 				copy: mockCopy,
 				onPaste: ref(null),
 				copied: computed(() => false),
-				isSupported: ref(true),
+				isSupported: computed(() => true),
 				text: computed(() => ''),
 			});
 
@@ -350,7 +350,7 @@ describe('useAgGrid', () => {
 				copy: mockCopy,
 				onPaste: ref(null),
 				copied: computed(() => false),
-				isSupported: ref(true),
+				isSupported: computed(() => true),
 				text: computed(() => ''),
 			});
 
@@ -388,7 +388,7 @@ describe('useAgGrid', () => {
 				copy: mockCopy,
 				onPaste: ref(null),
 				copied: computed(() => false),
-				isSupported: ref(true),
+				isSupported: computed(() => true),
 				text: computed(() => ''),
 			});
 
@@ -415,6 +415,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'name',
 				getColDef: () => ({ cellDataType: 'text' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -444,6 +445,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'age',
 				getColDef: () => ({ cellDataType: 'number' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -473,6 +475,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'age',
 				getColDef: () => ({ cellDataType: 'number' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -502,6 +505,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'createdAt',
 				getColDef: () => ({ cellDataType: 'date' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -531,6 +535,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'createdAt',
 				getColDef: () => ({ cellDataType: 'date' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -560,6 +565,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'active',
 				getColDef: () => ({ cellDataType: 'boolean' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -589,6 +595,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'active',
 				getColDef: () => ({ cellDataType: 'boolean' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -618,6 +625,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'active',
 				getColDef: () => ({ cellDataType: 'boolean' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -667,6 +675,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'name',
 				getColDef: () => ({ cellDataType: 'text' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -696,6 +705,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'name',
 				getColDef: () => ({ cellDataType: 'text' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			mockGridApi.getFocusedCell = vi.fn(() => ({
@@ -712,6 +722,34 @@ describe('useAgGrid', () => {
 			onPasteCallback?.('some data');
 
 			// No assertion needed, just ensuring no error is thrown
+		});
+
+		it('should not paste when cell is not editable (e.g. read-only grid)', () => {
+			const { onGridReady } = createComposable();
+			onGridReady({ api: mockGridApi as GridApi } as GridReadyEvent);
+
+			const mockColumn = {
+				getColId: () => 'name',
+				getColDef: () => ({ cellDataType: 'text' }),
+				isCellEditable: () => false,
+			} as unknown as Column;
+
+			const mockRow = { setDataValue: vi.fn() };
+
+			mockGridApi.getFocusedCell = vi.fn(() => ({
+				rowIndex: 0,
+				column: mockColumn,
+				rowPinned: null,
+			}));
+			mockGridApi.getEditingCells = vi.fn(() => []);
+			mockGridApi.getDisplayedRowAtIndex = vi.fn(() => mockRow as unknown as IRowNode);
+
+			const mockUseClipboard = vi.mocked(useClipboard);
+			const onPasteCallback =
+				mockUseClipboard.mock.calls[mockUseClipboard.mock.calls.length - 1]?.[0]?.onPaste;
+			onPasteCallback?.('some data');
+
+			expect(mockRow.setDataValue).not.toHaveBeenCalled();
 		});
 	});
 

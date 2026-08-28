@@ -1,4 +1,5 @@
-import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+import type { IPinData, IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
@@ -41,20 +42,20 @@ const customTelemetryTagSchema = z
 				.refine((key) => key.trim().length > 0, { message: 'Key must not be empty' }),
 			value: z.string({ invalid_type_error: 'Value must be a string' }),
 		},
-		{ invalid_type_error: 'Custom telemetry tag must be an object' },
+		{ invalid_type_error: 'Custom span attribute must be an object' },
 	)
-	.strict({ message: 'Custom telemetry tag must only include key and value' });
+	.strict({ message: 'Custom span attribute must only include key and value' });
 
 const customTelemetryTagsSchema = z
 	.array(customTelemetryTagSchema, {
-		invalid_type_error: 'Custom telemetry tags must be an array',
+		invalid_type_error: 'Custom span attributes must be an array',
 	})
 	.refine(
 		(tags) => {
 			const trimmedKeys = tags.map((tag) => tag.key.trim());
 			return trimmedKeys.length === new Set(trimmedKeys).size;
 		},
-		{ message: 'Duplicate keys are not allowed in customTelemetryTags' },
+		{ message: 'Duplicate keys are not allowed in custom span attributes' },
 	);
 
 export const workflowSettingsSchema: z.ZodType<IWorkflowSettings | null> = z
@@ -63,26 +64,6 @@ export const workflowSettingsSchema: z.ZodType<IWorkflowSettings | null> = z
 	})
 	.passthrough()
 	.nullable();
-
-export const workflowStaticDataSchema = z.preprocess(
-	(val) => {
-		// If it's a string, try to parse it as JSON
-		if (typeof val === 'string') {
-			try {
-				return JSON.parse(val);
-			} catch {
-				throw new Error('Static data string must be valid JSON');
-			}
-		}
-		return val;
-	},
-	z.custom<IDataObject | null>(
-		(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
-		{
-			message: 'Static data must be an object or null',
-		},
-	),
-);
 
 // Pin data is a record of node names to their pinned execution data
 export const workflowPinDataSchema = z.custom<IPinData | null>(
@@ -98,6 +79,12 @@ const workflowGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	nodeIds: z.array(z.string().min(1)),
+	description: z
+		.string()
+		.max(GROUP_DESCRIPTION_MAX_LENGTH, {
+			message: `Group description must be ${GROUP_DESCRIPTION_MAX_LENGTH} characters or less`,
+		})
+		.optional(),
 });
 
 export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);
@@ -114,15 +101,21 @@ export const baseWorkflowShape = {
 
 	// Optional workflow configuration
 	settings: workflowSettingsSchema.optional(),
-	staticData: workflowStaticDataSchema.optional(),
+	// `staticData` is deliberately absent: it is backend-owned state (poll cursors,
+	// third-party webhook registrations) written by the execution engine, so these DTOs
+	// drop it rather than let a client set it. The public API still accepts it as a
+	// documented field — see `workflowEntityWriteFields`.
 	meta: workflowMetaSchema.optional(),
 	pinData: workflowPinDataSchema.optional(),
 	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
 
-	// Folder organization
+	// Folder organization.
+	// `parentFolder` (the relation object) is intentionally NOT accepted as input: workflow
+	// placement is controlled solely via `parentFolderId`, which is validated against the target
+	// project. Any `parentFolder` a client sends is stripped by this schema and never
+	// mass-assigned — the workflow entity is built from an allowlist (workflow-entity-mapper.ts).
 	parentFolderId: z.string().optional(),
-	parentFolder: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 
 	// Tags
 	tags: z

@@ -107,6 +107,7 @@ test.describe(
 			expect(workflowId).toBeTruthy();
 
 			// Navigate to the workflow with ?new=true query parameter
+			// janitor-disable-next-line no-raw-editor-navigation -- test exercises ?new=true URL routing directly; loader awaited below
 			await n8n.page.goto(`/workflow/${workflowId}?new=true`);
 
 			// Wait for the canvas to load

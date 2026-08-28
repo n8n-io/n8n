@@ -1,8 +1,8 @@
+import { workflow, trigger, node } from '@n8n/workflow-sdk';
 import { expect } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { workflow, trigger, node } from '../../../../@n8n/workflow-sdk/src';
 import type { n8nPage } from '../../pages/n8nPage';
 import type { ApiHelpers } from '../../services/api-helper';
 import type { TestUser } from '../../services/user-api-helper';
@@ -88,7 +88,7 @@ export async function viewExecutionsListAsAdmin(
 		(r) => r.url().includes('/rest/executions') && r.status() === 200,
 		{ timeout: 120_000 },
 	);
-	await n8n.page.goto(`/projects/${ctx.project.id}/executions`, {
+	await n8n.navigate.toProjectExecutions(ctx.project.id, {
 		waitUntil: 'commit',
 		timeout: 120_000,
 	});

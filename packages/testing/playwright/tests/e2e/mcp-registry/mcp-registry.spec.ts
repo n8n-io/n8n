@@ -1,19 +1,12 @@
 import { AGENT_NODE_NAME } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 
-test.use({
-	capability: {
-		env: {
-			TEST_ISOLATION: 'mcp-registry',
-			N8N_ENABLED_MODULES: 'mcp-registry',
-		},
-	},
-});
+test.use({ capability: { env: { TEST_ISOLATION: 'mcp-registry' } } });
 
 test.describe(
 	'MCP Registry',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
 		test('exposes Notion MCP as a tool with hidden connection fields', async ({ n8n, api }) => {

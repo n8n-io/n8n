@@ -1,6 +1,14 @@
 {
     "type": "object",
     "properties": {
+        "address": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "type": "string"
+                }
+            }
+        },
         "balance": {
             "type": "integer"
         },
@@ -9,6 +17,9 @@
         },
         "delinquent": {
             "type": "boolean"
+        },
+        "discount": {
+            "type": "null"
         },
         "id": {
             "type": "string"
@@ -19,7 +30,13 @@
         "invoice_settings": {
             "type": "object",
             "properties": {
+                "custom_fields": {
+                    "type": "null"
+                },
                 "footer": {
+                    "type": "null"
+                },
+                "rendering_options": {
                     "type": "null"
                 }
             }
@@ -40,5 +57,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

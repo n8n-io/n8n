@@ -1,5 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
-
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -30,8 +28,10 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
+import { UnexpectedError } from './errors';
 import type { NodeApiError } from './errors/node-api.error';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
+import { isExpression } from './expressions/expression-helpers';
 import type {
 	IConnection,
 	IConnections,
@@ -277,7 +277,7 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		if (!url.hostname) throw new ApplicationError('Malformed URL');
+		if (!url.hostname) throw new UnexpectedError('Malformed URL');
 
 		return sanitizeRoute(url.pathname);
 	} catch {
@@ -591,6 +591,16 @@ export function generateNodesGraph(
 				enabledDefault) as boolean;
 		} else if (node.type === MCP_CLIENT_TOOL_NODE_TYPE || node.type === MCP_CLIENT_NODE_TYPE) {
 			nodeItem.mcp_client_auth_method = (node.parameters?.authentication ?? 'none') as string;
+
+			const mcpServerUrl = (node.parameters?.endpointUrl ??
+				node.parameters?.sseEndpoint ??
+				'') as string;
+			if (!isExpression(mcpServerUrl)) {
+				const mcpServerDomainBase = getDomainBase(mcpServerUrl);
+				if (mcpServerDomainBase) {
+					nodeItem.mcp_server_domain_base = mcpServerDomainBase;
+				}
+			}
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);

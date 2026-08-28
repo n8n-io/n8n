@@ -1,4 +1,8 @@
-import { CreateApiKeyRequestDto, PaginationDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import {
+	CreateApiKeyRequestDto,
+	ListApiKeysQueryDto,
+	UpdateApiKeyRequestDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -16,11 +20,11 @@ import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { isApiEnabled } from '@/public-api';
+import { isApiKeyAuthEnabled } from '@/public-api';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
-export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
-	if (isApiEnabled()) {
+export const isApiKeyAuthEnabledMiddleware: RequestHandler = (_, res, next) => {
+	if (isApiKeyAuthEnabled()) {
 		next();
 	} else {
 		res.status(404).end();
@@ -34,11 +38,8 @@ export class ApiKeysController {
 		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
-	/**
-	 * Create an API Key
-	 */
 	@GlobalScope('apiKey:create')
-	@Post('/', { middlewares: [isApiEnabledMiddleware] })
+	@Post('/', { middlewares: [isApiKeyAuthEnabledMiddleware] })
 	async createApiKey(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -60,40 +61,39 @@ export class ApiKeysController {
 		};
 	}
 
-	/**
-	 * Get API keys. The service returns every key on the instance for callers
-	 * with `apiKey:manage` (owners and admins) and the caller's own keys for
-	 * everyone else.
-	 */
-	@GlobalScope('apiKey:list')
-	@Get('/', { middlewares: [isApiEnabledMiddleware] })
-	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: PaginationDto) {
+	// Every authenticated user may list their own keys. The service only
+	// includes other users' keys for `apiKey:manage` callers; `ownership=mine`
+	// narrows back to own.
+	@Get('/', { middlewares: [isApiKeyAuthEnabledMiddleware] })
+	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
 		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
 			take: query.take,
 			skip: query.skip,
+			ownership: query.ownership,
+			label: query.label,
+			ownerIds: query.ownerIds,
+			sortBy: query.sortBy,
 		});
 	}
 
-	/**
-	 * Delete an API Key. Callers can always delete their own keys; admins
-	 * (holders of `apiKey:manage`) can also revoke other users' keys.
-	 */
-	@GlobalScope('apiKey:delete')
-	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
+	// No role scope required: own keys are always revocable. The service
+	// restricts deleting other users' keys to `apiKey:manage` holders.
+	@Delete('/:id', { middlewares: [isApiKeyAuthEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
-		await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
+		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
-		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
+		this.eventService.emit('public-api-key-deleted', {
+			user: req.user,
+			publicApi: false,
+			isOwn,
+		});
 
 		return { success: true };
 	}
 
-	/**
-	 * Patch an API Key. Owner-only — admins cannot edit another user's
-	 * label or scopes.
-	 */
+	// Owner-only — `apiKey:manage` doesn't extend to editing someone else's key.
 	@GlobalScope('apiKey:update')
-	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
+	@Patch('/:id', { middlewares: [isApiKeyAuthEnabledMiddleware] })
 	async updateApiKey(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -109,8 +109,25 @@ export class ApiKeysController {
 		return { success: true };
 	}
 
-	@GlobalScope('apiKey:list')
-	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
+	// Owner-only — re-issues the secret in place, keeping label, scopes and expiry.
+	@GlobalScope('apiKey:update')
+	@Post('/:id/rotate', { middlewares: [isApiKeyAuthEnabledMiddleware] })
+	async rotateApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
+		const rotatedApiKey = await this.publicApiKeyService.rotateApiKey(req.user, apiKeyId);
+
+		this.eventService.emit('public-api-key-rotated', { user: req.user, publicApi: false });
+
+		return {
+			...rotatedApiKey,
+			apiKey: this.publicApiKeyService.redactApiKey(rotatedApiKey.apiKey),
+			rawApiKey: rotatedApiKey.apiKey,
+			expiresAt: this.publicApiKeyService.getApiKeyExpiration(rotatedApiKey.apiKey),
+		};
+	}
+
+	// No role scope required: returns the scopes the caller's role can assign
+	// to a key — empty-ish for roles without apiKey grants.
+	@Get('/scopes', { middlewares: [isApiKeyAuthEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;

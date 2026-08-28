@@ -1,23 +1,24 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
 import { addLocationIdPreSendAction } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('addLocationIdPreSendAction', () => {
 	let mockThis: Partial<IExecuteSingleFunctions>;
 
 	beforeEach(() => {
 		mockThis = {
-			getNodeParameter: jest.fn(),
-			getCredentials: jest.fn(),
+			getNodeParameter: vi.fn(),
+			getCredentials: vi.fn(),
 		};
 	});
 
 	it('should add locationId to query parameters for contact getAll operation', async () => {
-		(mockThis.getNodeParameter as jest.Mock)
+		(mockThis.getNodeParameter as Mock)
 			.mockReturnValueOnce('contact')
 			.mockReturnValueOnce('getAll');
 
-		(mockThis.getCredentials as jest.Mock).mockResolvedValue({
+		(mockThis.getCredentials as Mock).mockResolvedValue({
 			oauthTokenData: { locationId: '123' },
 		});
 
@@ -35,11 +36,11 @@ describe('addLocationIdPreSendAction', () => {
 	});
 
 	it('should add locationId to the body for contact create operation', async () => {
-		(mockThis.getNodeParameter as jest.Mock)
+		(mockThis.getNodeParameter as Mock)
 			.mockReturnValueOnce('contact')
 			.mockReturnValueOnce('create');
 
-		(mockThis.getCredentials as jest.Mock).mockResolvedValue({
+		(mockThis.getCredentials as Mock).mockResolvedValue({
 			oauthTokenData: { locationId: '123' },
 		});
 
@@ -57,11 +58,11 @@ describe('addLocationIdPreSendAction', () => {
 	});
 
 	it('should add locationId to query parameters for opportunity getAll operation', async () => {
-		(mockThis.getNodeParameter as jest.Mock)
+		(mockThis.getNodeParameter as Mock)
 			.mockReturnValueOnce('opportunity')
 			.mockReturnValueOnce('getAll');
 
-		(mockThis.getCredentials as jest.Mock).mockResolvedValue({
+		(mockThis.getCredentials as Mock).mockResolvedValue({
 			oauthTokenData: { locationId: '123' },
 		});
 
@@ -79,11 +80,11 @@ describe('addLocationIdPreSendAction', () => {
 	});
 
 	it('should add locationId to the body for opportunity create operation', async () => {
-		(mockThis.getNodeParameter as jest.Mock)
+		(mockThis.getNodeParameter as Mock)
 			.mockReturnValueOnce('opportunity')
 			.mockReturnValueOnce('create');
 
-		(mockThis.getCredentials as jest.Mock).mockResolvedValue({
+		(mockThis.getCredentials as Mock).mockResolvedValue({
 			oauthTokenData: { locationId: '123' },
 		});
 
@@ -101,11 +102,11 @@ describe('addLocationIdPreSendAction', () => {
 	});
 
 	it('should not modify requestOptions if no resource or operation matches', async () => {
-		(mockThis.getNodeParameter as jest.Mock)
+		(mockThis.getNodeParameter as Mock)
 			.mockReturnValueOnce('unknown')
 			.mockReturnValueOnce('unknown');
 
-		(mockThis.getCredentials as jest.Mock).mockResolvedValue({
+		(mockThis.getCredentials as Mock).mockResolvedValue({
 			oauthTokenData: { locationId: '123' },
 		});
 

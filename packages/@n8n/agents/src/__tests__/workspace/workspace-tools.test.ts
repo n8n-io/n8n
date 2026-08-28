@@ -63,8 +63,8 @@ describe('createWorkspaceTools', () => {
 
 		expect(names).toEqual([
 			'workspace_read_file',
+			'workspace_read_tool_result',
 			'workspace_str_replace_file',
-			'workspace_batch_str_replace_file',
 			'workspace_write_file',
 			'workspace_list_files',
 			'workspace_file_stat',
@@ -100,8 +100,8 @@ describe('createWorkspaceTools', () => {
 		const names = tools.map((t) => t.name);
 
 		expect(names).toContain('workspace_read_file');
+		expect(names).toContain('workspace_read_tool_result');
 		expect(names).toContain('workspace_str_replace_file');
-		expect(names).toContain('workspace_batch_str_replace_file');
 		expect(names).toContain('workspace_execute_command');
 		expect(names).toHaveLength(13);
 	});
@@ -114,74 +114,153 @@ describe('createWorkspaceTools', () => {
 
 			const result = await readTool.handler!({ path: '/test.txt', encoding: 'utf-8' }, {} as never);
 
-			expect(fs.readFile).toHaveBeenCalledWith('/test.txt', { encoding: 'utf-8' });
+			expect(fs.readFile).toHaveBeenCalledWith('/test.txt', {
+				encoding: 'utf-8',
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ content: 'file content' });
+		});
+
+		it('read_tool_result describes and pages a nested result through escaped pointers', async () => {
+			const hash = 'a'.repeat(43);
+			const path = `tool-results/runs/${hash}/${hash}.result.json`;
+			const escapedKey = 'folder/name~version';
+			const largeString = '"\\\n'.repeat(12_000);
+			const storedResult = {
+				[escapedKey]: {
+					entries: [{ large: largeString }, { value: 42 }],
+					enabled: true,
+				},
+			};
+			const fs = makeFakeFilesystem({
+				readFile: vi.fn().mockResolvedValue(JSON.stringify(storedResult)),
+			});
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const readToolResult = tools.find((tool) => tool.name === 'workspace_read_tool_result')!;
+
+			await expect(
+				readToolResult.handler!({ path, view: 'describe' }, {} as never),
+			).resolves.toEqual({
+				view: 'describe',
+				pointer: '',
+				type: 'object',
+				childCount: 1,
+			});
+
+			const objectPage = (await readToolResult.handler!(
+				{ path, view: 'json', limit: 1 },
+				{} as never,
+			)) as {
+				children: Array<{ pointer: string; type: string }>;
+			};
+			expect(objectPage.children).toEqual([
+				{ pointer: '/folder~1name~0version', type: 'object', childCount: 2, key: escapedKey },
+			]);
+
+			const arrayPage = (await readToolResult.handler!(
+				{
+					path,
+					view: 'json',
+					pointer: '/folder~1name~0version/entries',
+					limit: 1,
+				},
+				{} as never,
+			)) as {
+				children: Array<{ pointer: string; type: string }>;
+				nextOffset: number | null;
+				hasMore: boolean;
+			};
+			expect(arrayPage.children).toEqual([
+				{
+					pointer: '/folder~1name~0version/entries/0',
+					type: 'object',
+					childCount: 1,
+					index: 0,
+				},
+			]);
+			expect(arrayPage).toMatchObject({ nextOffset: 1, hasMore: true });
+
+			let reconstructed = '';
+			let offset = 0;
+			do {
+				const page = (await readToolResult.handler!(
+					{
+						path,
+						view: 'json',
+						pointer: '/folder~1name~0version/entries/0/large',
+						offset,
+						maxChars: 20_000,
+					},
+					{} as never,
+				)) as {
+					content: string;
+					nextOffset: number | null;
+					hasMore: boolean;
+				};
+				expect(Buffer.byteLength(JSON.stringify(page), 'utf-8')).toBeLessThanOrEqual(40_000);
+				reconstructed += page.content;
+				if (page.nextOffset === null) break;
+				expect(page.nextOffset).toBeGreaterThan(offset);
+				offset = page.nextOffset;
+			} while (offset < largeString.length);
+
+			expect(reconstructed).toBe(largeString);
+		});
+
+		it.each([
+			{
+				name: 'an arbitrary workspace path',
+				path: '/tmp/result.json',
+				content: '{}',
+				pointer: undefined,
+				error: 'Path is not a stored tool result',
+			},
+			{
+				name: 'corrupt JSON',
+				path: `tool-results/runs/${'a'.repeat(43)}/${'b'.repeat(43)}.result.json`,
+				content: 'not-json',
+				pointer: undefined,
+				error: 'Stored tool result is not valid JSON',
+			},
+			{
+				name: 'a malformed pointer',
+				path: `tool-results/runs/${'a'.repeat(43)}/${'b'.repeat(43)}.result.json`,
+				content: '{}',
+				pointer: '/bad~2pointer',
+				error: 'Invalid JSON Pointer',
+			},
+			{
+				name: 'a missing pointer segment',
+				path: `tool-results/runs/${'a'.repeat(43)}/${'b'.repeat(43)}.result.json`,
+				content: '{}',
+				pointer: '/missing',
+				error: 'JSON Pointer does not reference a stored value',
+			},
+		])('read_tool_result rejects $name', async ({ path, content, pointer, error }) => {
+			const fs = makeFakeFilesystem({ readFile: vi.fn().mockResolvedValue(content) });
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const readToolResult = tools.find((tool) => tool.name === 'workspace_read_tool_result')!;
+
+			await expect(
+				readToolResult.handler!({ path, view: 'json', pointer }, {} as never),
+			).rejects.toThrow(error);
 		});
 
 		it('targeted edit input schemas serialize with a top-level object type', () => {
 			const tools = createWorkspaceTools({ filesystem: makeFakeFilesystem() });
 			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
-			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
 
 			expect(zodToJsonSchema(strReplaceTool.inputSchema)).toMatchObject({ type: 'object' });
-			expect(zodToJsonSchema(batchStrReplaceTool.inputSchema)).toMatchObject({
-				type: 'object',
-			});
 		});
 
-		it('str_replace_file handler reads then writes changed content', async () => {
-			const fs = makeFakeFilesystem({
-				readFile: vi.fn().mockResolvedValue('first\nsecond'),
-			});
-			const tools = createWorkspaceTools({ filesystem: fs });
-			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
-
-			const result = await strReplaceTool.handler!(
-				{
-					path: '/test.txt',
-					old_str: 'second',
-					new_str: 'changed',
-				},
-				{} as never,
-			);
-
-			expect(fs.writeFile).toHaveBeenCalledWith('/test.txt', 'first\nchanged', {
-				overwrite: true,
-			});
-			expect(result).toEqual({ success: true, result: 'Edit applied successfully.' });
-		});
-
-		it('str_replace_file handler returns errors without writing when replacement is not unique', async () => {
-			const fs = makeFakeFilesystem({
-				readFile: vi.fn().mockResolvedValue('same\nsame'),
-			});
-			const tools = createWorkspaceTools({ filesystem: fs });
-			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
-
-			const result = await strReplaceTool.handler!(
-				{
-					path: '/test.txt',
-					old_str: 'same',
-					new_str: 'changed',
-				},
-				{} as never,
-			);
-
-			expect(fs.writeFile).not.toHaveBeenCalled();
-			expect(result).toEqual({
-				success: false,
-				error: 'Found 2 matches. Please provide more context to make the replacement unique.',
-			});
-		});
-
-		it('batch_str_replace_file handler applies all replacements atomically', async () => {
+		it('str_replace_file handler applies replacements atomically', async () => {
 			const fs = makeFakeFilesystem({
 				readFile: vi.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
 			});
 			const tools = createWorkspaceTools({ filesystem: fs });
-			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
 
-			const result = await batchStrReplaceTool.handler!(
+			const result = await strReplaceTool.handler!(
 				{
 					path: '/test.ts',
 					replacements: [
@@ -194,6 +273,7 @@ describe('createWorkspaceTools', () => {
 
 			expect(fs.writeFile).toHaveBeenCalledWith('/test.ts', 'const a = 10;\nconst b = 20;', {
 				overwrite: true,
+				abortSignal: undefined,
 			});
 			expect(result).toEqual({
 				success: true,
@@ -201,14 +281,14 @@ describe('createWorkspaceTools', () => {
 			});
 		});
 
-		it('batch_str_replace_file handler does not write when any replacement fails', async () => {
+		it('str_replace_file handler does not write when any replacement fails', async () => {
 			const fs = makeFakeFilesystem({
 				readFile: vi.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
 			});
 			const tools = createWorkspaceTools({ filesystem: fs });
-			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
 
-			const result = await batchStrReplaceTool.handler!(
+			const result = await strReplaceTool.handler!(
 				{
 					path: '/test.ts',
 					replacements: [
@@ -222,7 +302,7 @@ describe('createWorkspaceTools', () => {
 			expect(fs.writeFile).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				success: false,
-				error: 'Batch replacement failed.',
+				error: 'String replacement failed.',
 				results: [
 					{ index: 0, old_str: 'const a = 1;', status: 'success' },
 					{
@@ -236,46 +316,43 @@ describe('createWorkspaceTools', () => {
 			});
 		});
 
+		it('str_replace_file handler rethrows abort errors instead of soft-failing', async () => {
+			const abortError = new Error('This operation was aborted');
+			abortError.name = 'AbortError';
+			const fs = makeFakeFilesystem({
+				readFile: vi.fn().mockRejectedValue(abortError),
+			});
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
+
+			await expect(
+				strReplaceTool.handler!(
+					{
+						path: '/test.txt',
+						replacements: [{ old_str: 'a', new_str: 'b' }],
+					},
+					{} as never,
+				),
+			).rejects.toMatchObject({ name: 'AbortError' });
+			expect(fs.writeFile).not.toHaveBeenCalled();
+		});
+
 		it('write_file handler calls filesystem.writeFile', async () => {
 			const fs = makeFakeFilesystem();
 			const tools = createWorkspaceTools({ filesystem: fs });
 			const writeTool = tools.find((t) => t.name === 'workspace_write_file')!;
+			const abortController = new AbortController();
 
 			const result = await writeTool.handler!(
 				{ path: '/out.txt', content: 'hello', recursive: true },
-				{} as never,
+				{ abortSignal: abortController.signal } as never,
 			);
 
-			expect(fs.writeFile).toHaveBeenCalledWith('/out.txt', 'hello', { recursive: true });
+			expect(fs.writeFile).toHaveBeenCalledWith('/out.txt', 'hello', {
+				recursive: true,
+				abortSignal: abortController.signal,
+			});
 			expect(result).toEqual({ success: true });
-		});
-
-		it('execute_command handler includes sandbox default command environment', async () => {
-			const executeCommand = vi.fn().mockResolvedValue({
-				success: true,
-				exitCode: 0,
-				stdout: 'ok',
-				stderr: '',
-				executionTimeMs: 5,
-			});
-			const sandbox = makeFakeSandbox({
-				executeCommand,
-				getDefaultCommandEnv: () => ({ CUSTOM_ENV: 'enabled' }),
-			});
-			const tools = createWorkspaceTools({ sandbox });
-			const commandTool = tools.find((t) => t.name === 'workspace_execute_command')!;
-
-			const result = await commandTool.handler!(
-				{ command: 'node script.mjs', cwd: '/home/daytona/workspace' },
-				{} as never,
-			);
-
-			expect(executeCommand).toHaveBeenCalledWith('node script.mjs', undefined, {
-				cwd: '/home/daytona/workspace',
-				env: { CUSTOM_ENV: 'enabled' },
-				timeout: undefined,
-			});
-			expect(result).toMatchObject({ success: true, stdout: 'ok' });
 		});
 
 		it('list_files handler calls filesystem.readdir', async () => {
@@ -285,7 +362,10 @@ describe('createWorkspaceTools', () => {
 
 			const result = await listTool.handler!({ path: '/', recursive: false }, {} as never);
 
-			expect(fs.readdir).toHaveBeenCalledWith('/', { recursive: false });
+			expect(fs.readdir).toHaveBeenCalledWith('/', {
+				recursive: false,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({
 				entries: [
 					{ name: 'file1.txt', type: 'file' },
@@ -301,7 +381,7 @@ describe('createWorkspaceTools', () => {
 
 			const result = await statTool.handler!({ path: '/test.txt' }, {} as never);
 
-			expect(fs.stat).toHaveBeenCalledWith('/test.txt');
+			expect(fs.stat).toHaveBeenCalledWith('/test.txt', { abortSignal: undefined });
 			expect(result).toEqual({
 				name: 'test.txt',
 				path: '/test.txt',
@@ -319,7 +399,10 @@ describe('createWorkspaceTools', () => {
 
 			const result = await mkdirTool.handler!({ path: '/new-dir', recursive: true }, {} as never);
 
-			expect(fs.mkdir).toHaveBeenCalledWith('/new-dir', { recursive: true });
+			expect(fs.mkdir).toHaveBeenCalledWith('/new-dir', {
+				recursive: true,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -333,7 +416,11 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.deleteFile).toHaveBeenCalledWith('/old.txt', { recursive: false, force: true });
+			expect(fs.deleteFile).toHaveBeenCalledWith('/old.txt', {
+				recursive: false,
+				force: true,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -347,7 +434,9 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.appendFile).toHaveBeenCalledWith('/log.txt', 'new line');
+			expect(fs.appendFile).toHaveBeenCalledWith('/log.txt', 'new line', {
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -361,7 +450,10 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.copyFile).toHaveBeenCalledWith('/a.txt', '/b.txt', { overwrite: true });
+			expect(fs.copyFile).toHaveBeenCalledWith('/a.txt', '/b.txt', {
+				overwrite: true,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -375,7 +467,10 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.moveFile).toHaveBeenCalledWith('/old.txt', '/new.txt', { overwrite: false });
+			expect(fs.moveFile).toHaveBeenCalledWith('/old.txt', '/new.txt', {
+				overwrite: false,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -389,7 +484,11 @@ describe('createWorkspaceTools', () => {
 				{} as never,
 			);
 
-			expect(fs.rmdir).toHaveBeenCalledWith('/old-dir', { recursive: true, force: false });
+			expect(fs.rmdir).toHaveBeenCalledWith('/old-dir', {
+				recursive: true,
+				force: false,
+				abortSignal: undefined,
+			});
 			expect(result).toEqual({ success: true });
 		});
 
@@ -406,6 +505,7 @@ describe('createWorkspaceTools', () => {
 			expect(sb.executeCommand).toHaveBeenCalledWith('echo hello', undefined, {
 				cwd: '/tmp',
 				timeout: 5000,
+				abortSignal: undefined,
 			});
 			expect(result).toEqual({
 				success: true,

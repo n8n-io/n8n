@@ -1,7 +1,8 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData, INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { RemoveDuplicatesV2 } from '../RemoveDuplicatesV2.node';
+import type { Mock } from 'vitest';
 
 describe('RemoveDuplicatesV2', () => {
 	let node: RemoveDuplicatesV2;
@@ -18,11 +19,11 @@ describe('RemoveDuplicatesV2', () => {
 		node = new RemoveDuplicatesV2(baseDescription);
 		executeFunctions = mock<IExecuteFunctions>();
 		executeFunctions.helpers = {
-			checkProcessedAndRecord: jest.fn(),
-			clearAllProcessedItems: jest.fn(),
+			checkProcessedAndRecord: vi.fn(),
+			clearAllProcessedItems: vi.fn(),
 		} as any;
-		executeFunctions.getInputData = jest.fn();
-		executeFunctions.getNodeParameter = jest.fn();
+		executeFunctions.getInputData = vi.fn();
+		executeFunctions.getNodeParameter = vi.fn();
 	});
 
 	it('should Remove items repeated within current input based on all fields', async () => {
@@ -32,14 +33,12 @@ describe('RemoveDuplicatesV2', () => {
 			{ json: { id: 1, name: 'John' } },
 		];
 
-		(executeFunctions.getInputData as jest.Mock<any>).mockReturnValue(items);
-		(executeFunctions.getNodeParameter as jest.Mock<any, any>).mockImplementation(
-			(paramName: string) => {
-				if (paramName === 'operation') return 'removeDuplicateInputItems';
-				if (paramName === 'compare') return 'allFields';
-				return undefined;
-			},
-		);
+		(executeFunctions.getInputData as Mock<any>).mockReturnValue(items);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			if (paramName === 'operation') return 'removeDuplicateInputItems';
+			if (paramName === 'compare') return 'allFields';
+			return undefined;
+		});
 
 		const result = await node.execute.call(executeFunctions);
 		expect(result).toHaveLength(1);
@@ -55,15 +54,13 @@ describe('RemoveDuplicatesV2', () => {
 			{ json: { id: 1, name: 'Doe' } },
 		];
 
-		(executeFunctions.getInputData as jest.Mock<any, any>).mockReturnValue(items);
-		(executeFunctions.getNodeParameter as jest.Mock<any, any>).mockImplementation(
-			(paramName: string) => {
-				if (paramName === 'operation') return 'removeDuplicateInputItems';
-				if (paramName === 'compare') return 'selectedFields';
-				if (paramName === 'fieldsToCompare') return 'id';
-				return undefined;
-			},
-		);
+		(executeFunctions.getInputData as Mock).mockReturnValue(items);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			if (paramName === 'operation') return 'removeDuplicateInputItems';
+			if (paramName === 'compare') return 'selectedFields';
+			if (paramName === 'fieldsToCompare') return 'id';
+			return undefined;
+		});
 
 		const result = await node.execute.call(executeFunctions);
 		expect(result).toHaveLength(1);
@@ -79,8 +76,8 @@ describe('RemoveDuplicatesV2', () => {
 			{ json: { id: 3, name: 'Doe' } },
 		];
 
-		(executeFunctions.getInputData as jest.Mock<any, any>).mockReturnValue(items);
-		(executeFunctions.getNodeParameter as jest.Mock<any, any>).mockImplementation(
+		(executeFunctions.getInputData as Mock).mockReturnValue(items);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation(
 			(paramName: string, itemIndex: number) => {
 				if (paramName === 'operation') return 'removeItemsSeenInPreviousExecutions';
 				if (paramName === 'logic') return 'removeItemsWithAlreadySeenKeyValues';
@@ -91,8 +88,8 @@ describe('RemoveDuplicatesV2', () => {
 				if (paramName === 'options.historySize') return 10;
 			},
 		);
-		executeFunctions.helpers.getProcessedDataCount = jest.fn().mockReturnValue(3);
-		(executeFunctions.helpers.checkProcessedAndRecord as jest.Mock).mockReturnValue({
+		executeFunctions.helpers.getProcessedDataCount = vi.fn().mockReturnValue(3);
+		(executeFunctions.helpers.checkProcessedAndRecord as Mock).mockReturnValue({
 			new: [1, 3],
 			processed: [2],
 		});
@@ -111,15 +108,13 @@ describe('RemoveDuplicatesV2', () => {
 			{ json: { id: 2, name: 'Jane' } },
 		];
 
-		(executeFunctions.getInputData as jest.Mock<any, any>).mockReturnValue(items);
-		(executeFunctions.getNodeParameter as jest.Mock<any, any>).mockImplementation(
-			(paramName: string) => {
-				if (paramName === 'operation') return 'clearDeduplicationHistory';
-				if (paramName === 'mode') return 'cleanDatabase';
-				if (paramName === 'options.scope') return 'node';
-				return undefined;
-			},
-		);
+		(executeFunctions.getInputData as Mock).mockReturnValue(items);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			if (paramName === 'operation') return 'clearDeduplicationHistory';
+			if (paramName === 'mode') return 'cleanDatabase';
+			if (paramName === 'options.scope') return 'node';
+			return undefined;
+		});
 
 		const result = await node.execute.call(executeFunctions);
 		expect(result).toHaveLength(1);

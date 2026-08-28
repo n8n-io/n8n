@@ -32,7 +32,12 @@ export async function formatInputMessages(
 			const role = message.role as ChatInputItem['role'];
 			let content: ChatContent = [];
 			if (message.type === 'text' || !message.type) {
-				content = [{ type: 'input_text', text: message.content as string }];
+				// The Responses API requires assistant content parts to be `output_text`;
+				// user/system/developer turns use `input_text`.
+				content =
+					role === 'assistant'
+						? [{ type: 'output_text', text: message.content as string, annotations: [] }]
+						: [{ type: 'input_text', text: message.content as string }];
 			} else if (message.type === 'image') {
 				const detail = (message.imageDetail as ResponseInputImage['detail']) || ('auto' as const);
 

@@ -7,6 +7,9 @@ import {
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowDependencies,
+	WorkflowDependencyRepository,
+	WebhookRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -43,6 +46,27 @@ export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb 
 	return workflowEntity;
 }
 
+async function populateWorkflowDependencies(workflow: IWorkflowDb) {
+	const dependencies = new WorkflowDependencies(workflow.id, workflow.versionCounter);
+
+	for (const node of workflow.nodes) {
+		if (node.type) {
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: node.type,
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+			});
+		}
+	}
+
+	if (dependencies.dependencies.length > 0) {
+		await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
+			workflow.id,
+			dependencies,
+		);
+	}
+}
+
 /**
  * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
  * @param attributes workflow attributes
@@ -76,6 +100,8 @@ export async function createWorkflow(
 			}),
 		);
 	}
+
+	await populateWorkflowDependencies(workflow);
 
 	return workflow;
 }
@@ -165,7 +191,13 @@ export async function createWorkflowWithTrigger(
 				},
 				{
 					id: 'uuid-2',
-					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					// Deliberately a schedule that cannot fire during a test run. Suites
+					// that don't mock `ActiveWorkflowManager` register this with the real
+					// `ScheduledTaskManager`, and an `everyMinute` tick starts a real
+					// execution that outlives the test that activated the workflow.
+					parameters: {
+						triggerTimes: { item: [{ mode: 'everyMonth', hour: 0, minute: 0, dayOfMonth: 1 }] },
+					},
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
 					typeVersion: 1,
@@ -320,4 +352,9 @@ export async function createActiveWorkflow(
 	workflow.activeVersionId = workflow.versionId;
 
 	return workflow;
+}
+
+export async function deleteWorkflowAndWebhooks(workflowId: string) {
+	await Container.get(WorkflowRepository).delete({ id: workflowId });
+	await Container.get(WebhookRepository).delete({ workflowId });
 }

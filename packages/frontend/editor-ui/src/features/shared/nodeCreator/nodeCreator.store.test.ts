@@ -1,7 +1,7 @@
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useViewStacks } from './composables/useViewStacks';
 import { prepareCommunityNodeDetailsViewStack } from './nodeCreator.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	AI_UNCATEGORIZED_CATEGORY,
 	CUSTOM_API_CALL_KEY,
@@ -19,6 +19,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
@@ -37,7 +39,7 @@ const node_version = 1;
 const input_node_type = 'input-node-type';
 const actions = ['action1'];
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -65,6 +67,15 @@ vi.mock('./nodeCreator.utils', async (importOriginal) => {
 vi.mock('@/app/utils/nodeIcon', () => {
 	return {
 		getNodeIconSource: vi.fn(),
+	};
+});
+
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
 	};
 });
 
@@ -128,6 +139,34 @@ describe('useNodeCreatorStore', () => {
 			source,
 			nodes_panel_session_id: getSessionId(now),
 			workflow_id,
+		});
+	});
+
+	describe('AI Gateway config warmup', () => {
+		it('fetches the gateway config when AI Gateway is enabled', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isAiGatewayEnabled = true;
+			const aiGatewayStore = mockedStore(useAiGatewayStore);
+			aiGatewayStore.fetchConfig = vi.fn();
+			aiGatewayStore.fetchWallet = vi.fn();
+
+			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
+
+			expect(aiGatewayStore.fetchConfig).toHaveBeenCalled();
+			expect(aiGatewayStore.fetchWallet).toHaveBeenCalled();
+		});
+
+		it('does not fetch the gateway config or wallet when AI Gateway is disabled', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isAiGatewayEnabled = false;
+			const aiGatewayStore = mockedStore(useAiGatewayStore);
+			aiGatewayStore.fetchConfig = vi.fn();
+			aiGatewayStore.fetchWallet = vi.fn();
+
+			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
+
+			expect(aiGatewayStore.fetchConfig).not.toHaveBeenCalled();
+			expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
 		});
 	});
 

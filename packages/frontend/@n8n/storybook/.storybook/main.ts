@@ -1,22 +1,18 @@
 import type { StorybookConfig } from '@storybook/vue3-vite';
-
 import { dirname } from 'path';
 import remarkGfm from 'remark-gfm';
-
 import { fileURLToPath } from 'url';
 
-/**
- * This function is used to resolve the absolute path of a package.
- * It is needed in projects that use Yarn PnP or are set up within a monorepo.
- */
-function getAbsolutePath(value: string): any {
+function getAbsolutePath(value: string): string {
 	return dirname(fileURLToPath(import.meta.resolve(`${value}/package.json`)));
 }
 const config: StorybookConfig = {
 	stories: [
+		/** Only design system stories allowed.
+		 * If a component needs Storybook documentation because it is shared across multiple surfaces, it should be transfered to the design-system.
+		 * This prevents sprawl, allows for better sharing, and makes it clear a component can be re-used elsewhere.
+		 */
 		'../../design-system/src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
-		'../../chat/src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
-		'../../../editor-ui/src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
 		'../../design-system/src/**/*.mdx',
 	],
 	addons: [
@@ -33,7 +29,6 @@ const config: StorybookConfig = {
 				},
 			},
 		},
-		getAbsolutePath('@storybook/addon-themes'),
 		getAbsolutePath('storybook-addon-vue-mdx'),
 	],
 	framework: getAbsolutePath('@storybook/vue3-vite'),

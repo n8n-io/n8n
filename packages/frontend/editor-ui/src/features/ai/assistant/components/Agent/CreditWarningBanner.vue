@@ -2,10 +2,16 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { round2 } from './creditFormatting';
 
 const props = defineProps<{
 	creditsRemaining?: number;
 	creditsQuota?: number;
+	// 'attached' fuses onto the chat input below (used in the assistant sidebar);
+	// 'standalone' is a self-contained card that sits above a detached input.
+	variant?: 'attached' | 'standalone';
+	amountsHidden?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -14,15 +20,31 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const cloudPlanStore = useCloudPlanStore();
 
 const bannerText = computed(() => {
-	return i18n.baseText('aiAssistant.builder.creditBanner.text', {
+	if (props.amountsHidden) {
+		return i18n.baseText('aiAssistant.builder.creditBanner.limitReachedText');
+	}
+
+	const key = cloudPlanStore.userIsTrialing
+		? 'aiAssistant.builder.creditBanner.trialText'
+		: 'aiAssistant.builder.creditBanner.text';
+	return i18n.baseText(key, {
 		interpolate: {
-			remaining: String(props.creditsRemaining ?? 0),
-			total: String(props.creditsQuota ?? 0),
+			remaining: String(round2(props.creditsRemaining ?? 0)),
+			total: String(round2(props.creditsQuota ?? 0)),
 		},
 	});
 });
+
+const ctaLabel = computed(() =>
+	i18n.baseText(
+		props.amountsHidden
+			? 'aiAssistant.builder.creditBanner.upgrade'
+			: 'aiAssistant.builder.creditBanner.getMore',
+	),
+);
 
 const getNextMonth = () => {
 	const now = new Date();
@@ -40,11 +62,28 @@ const tooltipContent = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.banner" data-test-id="credit-warning-banner">
+	<div
+		:class="[$style.banner, { [$style.standalone]: props.variant === 'standalone' }]"
+		data-test-id="credit-warning-banner"
+	>
 		<div :class="$style.content">
-			<span :class="$style.text">{{ bannerText }}</span>
-			<N8nTooltip :content="tooltipContent" placement="top" :show-after="300">
-				<N8nIcon icon="info" size="small" :class="$style.infoIcon" />
+			<!-- The numeric variants are a meter reading, so clipping them costs nothing. This one is
+			the only signal the capped cohort gets on landing, so it wraps rather than truncates. -->
+			<span :class="[$style.text, { [$style.wrapping]: props.amountsHidden }]">{{
+				bannerText
+			}}</span>
+			<N8nTooltip
+				v-if="!props.amountsHidden"
+				:content="tooltipContent"
+				placement="top"
+				:show-after="300"
+			>
+				<N8nIcon
+					icon="info"
+					size="small"
+					:class="$style.infoIcon"
+					data-test-id="credit-banner-renewal-info"
+				/>
 			</N8nTooltip>
 		</div>
 		<N8nButton
@@ -53,7 +92,7 @@ const tooltipContent = computed(() => {
 			data-test-id="credit-banner-get-more"
 			@click="emit('upgrade-click')"
 		>
-			{{ i18n.baseText('aiAssistant.builder.creditBanner.getMore') }}
+			{{ ctaLabel }}
 		</N8nButton>
 		<N8nIcon
 			icon="x"
@@ -79,6 +118,13 @@ const tooltipContent = computed(() => {
 	line-height: var(--line-height--xl);
 }
 
+.standalone {
+	// Full card so it reads as its own element above a detached, rounded input.
+	border-radius: var(--radius--lg);
+	border-bottom: var(--border);
+	margin: 0;
+}
+
 .content {
 	display: flex;
 	align-items: center;
@@ -93,6 +139,11 @@ const tooltipContent = computed(() => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.wrapping {
+	white-space: normal;
+	overflow: visible;
 }
 
 .infoIcon {

@@ -30,6 +30,41 @@ function last(value: unknown[]): unknown {
 	return value[value.length - 1];
 }
 
+function reverse(value: unknown[]): unknown[] {
+	return [...value].reverse();
+}
+
+// TODO(CAT-4266): reconsider this approach — copy-on-write proxy traps would
+// make these shims unnecessary.
+// Copy-first shims for native in-place mutators, like reverse(): the VM engine's
+// data proxies are read-only (the natives would throw), and mutations from
+// expressions must not leak into workflow data.
+function sort(value: unknown[], extraArgs: unknown[]): unknown[] {
+	const [comparator] = extraArgs as [((a: unknown, b: unknown) => number)?];
+	return value.slice().sort(comparator);
+}
+
+function splice(value: unknown[], extraArgs: unknown[]): unknown[] {
+	const copy = value.slice();
+	return copy.splice(...(extraArgs as [number, number, ...unknown[]]));
+}
+
+function fill(value: unknown[], extraArgs: unknown[]): unknown[] {
+	return value.slice().fill(...(extraArgs as [unknown, number?, number?]));
+}
+
+function copyWithin(value: unknown[], extraArgs: unknown[]): unknown[] {
+	return value.slice().copyWithin(...(extraArgs as [number, number, number?]));
+}
+
+function shift(value: unknown[]): unknown {
+	return value.slice().shift();
+}
+
+function unshift(value: unknown[], extraArgs: unknown[]): number {
+	return value.slice().unshift(...extraArgs);
+}
+
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionError('arguments must be passed to pluck');
@@ -264,6 +299,31 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	return merged;
 }
 
+function mergeIntoObject(value: unknown[], extraArgs: unknown[][]): unknown {
+	const [others] = extraArgs;
+
+	if (!Array.isArray(others)) {
+		throw new ExpressionExtensionError(
+			'mergeIntoObject(): expected array arg, e.g. .mergeIntoObject([{ id: 1, otherValue: 3 }])',
+		);
+	}
+	const listLength = value.length > others.length ? value.length : others.length;
+	let merged = {};
+	for (let i = 0; i < listLength; i++) {
+		const baseIsObject = value[i] !== null && typeof value[i] === 'object';
+		const otherIsObject = others[i] !== null && typeof others[i] === 'object';
+		if (baseIsObject) {
+			merged = Object.assign(
+				merged,
+				mergeObjects(value[i] as Record<string, unknown>, otherIsObject ? [others[i]] : []),
+			);
+		} else if (otherIsObject) {
+			merged = Object.assign(merged, others[i] as Record<string, unknown>);
+		}
+	}
+	return merged;
+}
+
 function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
@@ -492,6 +552,7 @@ merge.doc = {
 	name: 'merge',
 	description:
 		'Merges two Object-arrays into one object by merging the key-value pairs of each element.',
+	hidden: true,
 	examples: [
 		{
 			example:
@@ -509,6 +570,29 @@ merge.doc = {
 		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-merge',
+};
+
+mergeIntoObject.doc = {
+	name: 'mergeIntoObject',
+	description:
+		'Merges two Object-arrays into one object by merging the key-value pairs of each element. If the arrays have different lengths, elements from the longer array are kept.',
+	examples: [
+		{
+			example: "[{ name: 'Nathan' }, { age: 42 }].mergeIntoObject([{ city: 'Berlin' }])",
+			evaluated: "{ name: 'Nathan', age: 42, city: 'Berlin' }",
+		},
+	],
+	returnType: 'Object',
+	args: [
+		{
+			name: 'otherArray',
+			optional: false,
+			description: 'The array to merge into the base array',
+			type: 'Array',
+		},
+	],
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-mergeintoobject',
 };
 
 pluck.doc = {
@@ -686,6 +770,13 @@ export const arrayExtensions: ExtensionMap = {
 		unique,
 		first,
 		last,
+		reverse,
+		sort,
+		splice,
+		fill,
+		copyWithin,
+		shift,
+		unshift,
 		pluck,
 		randomItem,
 		sum,
@@ -699,6 +790,7 @@ export const arrayExtensions: ExtensionMap = {
 		chunk,
 		renameKeys,
 		merge,
+		mergeIntoObject,
 		union,
 		difference,
 		intersection,

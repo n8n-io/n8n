@@ -7,6 +7,7 @@ import { useCredentialTestInBackground } from '@/features/credentials/composable
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { WorkflowSetupApplyPayload, WorkflowSetupSection } from '../workflowSetup.types';
 import { getWorkflowSetupParameterIssues } from '../workflowSetupParameterIssues';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 
 export type CredentialSelectionsMap = Record<string, Record<string, string>>;
 type ParameterValuesMap = Record<string, INodeParameters>;
@@ -51,8 +52,10 @@ export function useWorkflowSetupInputs(deps: {
 			credId,
 		);
 
-		if (credId) {
+		if (credId && credId !== AI_GATEWAY_MANAGED_TAG) {
 			testCredential(credId, section.credentialType);
+			clearSectionSkipped(section);
+		} else if (credId === AI_GATEWAY_MANAGED_TAG) {
 			clearSectionSkipped(section);
 		}
 
@@ -124,6 +127,7 @@ export function useWorkflowSetupInputs(deps: {
 		if (!section.credentialType) return true;
 		const selectedCredentialId = getSelectedCredentialId(section);
 		if (!selectedCredentialId) return false;
+		if (selectedCredentialId === AI_GATEWAY_MANAGED_TAG) return true;
 		if (!isCredentialTypeTestable(section.credentialType)) return true;
 		return credentialsStore.isCredentialTestedOk(selectedCredentialId);
 	}
@@ -151,11 +155,27 @@ export function useWorkflowSetupInputs(deps: {
 
 		const nodeCredentials = buildNodeCredentials(includeCredential);
 		const nodeParameters = buildNodeParameters(includeParams);
+		const skippedNodes = buildSkippedNodeNames();
 
 		return {
 			...(Object.keys(nodeCredentials).length > 0 ? { nodeCredentials } : {}),
 			...(Object.keys(nodeParameters).length > 0 ? { nodeParameters } : {}),
+			...(skippedNodes.length > 0 ? { skippedNodes } : {}),
 		};
+	}
+
+	/**
+	 * Every node behind a skipped section — a credential section can cover several nodes, and
+	 * the backend keys the decision off node names.
+	 */
+	function buildSkippedNodeNames(): string[] {
+		const names = new Set<string>();
+		for (const section of deps.sections.value) {
+			if (!isSectionSkipped(section)) continue;
+			names.add(section.targetNodeName);
+			for (const target of section.credentialTargetNodes) names.add(target.name);
+		}
+		return [...names];
 	}
 
 	function buildNodeCredentials(
@@ -207,7 +227,9 @@ export function useWorkflowSetupInputs(deps: {
 				section.credentialType,
 				section.currentCredentialId,
 			);
-			credentialsToTest.push({ id: section.currentCredentialId, type: section.credentialType });
+			if (section.currentCredentialId !== AI_GATEWAY_MANAGED_TAG) {
+				credentialsToTest.push({ id: section.currentCredentialId, type: section.credentialType });
+			}
 		}
 
 		if (nextCredentialSelections) credentialSelections.value = nextCredentialSelections;

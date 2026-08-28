@@ -362,7 +362,7 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
 	const interact = record.build.interactivity;
 	const interactBits: string[] = [];
 	if (interact.askUserCount > 0) interactBits.push(`ask-user ×${interact.askUserCount}`);
-	if (interact.planToolCount > 0) interactBits.push(`plan ×${interact.planToolCount}`);
+	if (interact.planToolCount > 0) interactBits.push(`create-tasks ×${interact.planToolCount}`);
 	if (interact.autoApprovedSuspensions > 0)
 		interactBits.push(`suspend ×${interact.autoApprovedSuspensions}`);
 	if (interact.mockedCredentialTypes.length > 0)
@@ -476,7 +476,7 @@ function renderRun(run: Run, index: number): string {
 				? `<div class="run-interactivity">
           <strong>Interactivity:</strong>
           ask-user ×${s.interactivity.askUserCount} ·
-          plan ×${s.interactivity.planToolCount} ·
+          create-tasks ×${s.interactivity.planToolCount} ·
           suspend ×${s.interactivity.autoApprovedSuspensions} ·
           mocked creds: ${s.interactivity.mockedCredentialTypes.map(escapeHtml).join(', ') || 'none'}
         </div>`

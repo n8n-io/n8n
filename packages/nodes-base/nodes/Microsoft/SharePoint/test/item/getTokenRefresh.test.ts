@@ -3,6 +3,7 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
 import { credentials } from '../credentials';
+import type { MockInstance } from 'vitest';
 
 describe('Microsoft SharePoint Node - Token Refresh', () => {
 	const { baseUrl } = credentials.microsoftSharePointOAuth2Api;
@@ -10,14 +11,14 @@ describe('Microsoft SharePoint Node - Token Refresh', () => {
 	const itemPath =
 		'/sites/site1/lists/list1/items/item1?%24select=id%2CcreatedDateTime%2ClastModifiedDateTime%2CwebUrl&%24expand=fields%28select%3DTitle%29';
 
-	let updateCredentialsSpy: jest.SpyInstance;
+	let updateCredentialsSpy: MockInstance;
 
 	beforeEach(() => {
 		// Mock the credential helper to return oAuth2Api as parent type
-		jest.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
+		vi.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
 
 		// Spy on the updateCredentialsOauthTokenData to verify token refresh
-		updateCredentialsSpy = jest
+		updateCredentialsSpy = vi
 			.spyOn(CredentialsHelper.prototype, 'updateCredentialsOauthTokenData')
 			.mockResolvedValue();
 
@@ -69,7 +70,7 @@ describe('Microsoft SharePoint Node - Token Refresh', () => {
 	});
 
 	afterAll(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	// Use the harness's setupTests to automatically run the workflow

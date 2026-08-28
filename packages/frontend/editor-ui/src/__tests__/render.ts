@@ -1,4 +1,4 @@
-import type { Plugin } from 'vue';
+import { computed, type Plugin } from 'vue';
 import { render, type RenderOptions as TestingLibraryRenderOptions } from '@testing-library/vue';
 import { i18nInstance } from '@n8n/i18n';
 import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
@@ -9,6 +9,12 @@ import type { Telemetry } from '@/app/plugins/telemetry';
 import vueJsonPretty from 'vue-json-pretty';
 import merge from 'lodash/merge';
 import type { TestingPinia } from '@pinia/testing';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 export type RenderOptions<T> = Omit<TestingLibraryRenderOptions<T>, 'props'> & {
 	pinia?: TestingPinia | Pinia;
@@ -51,6 +57,17 @@ export function renderComponent<T>(component: T, options: RenderOptions<T> = {})
 				...(renderOptions.global?.plugins ?? []),
 				...(pinia ? [pinia] : []),
 			],
+			provide: {
+				// Mirror App.vue, which always provides the workflow document store.
+				// injectNDVStore()/injectWorkflowDocumentStore() resolve strictly from
+				// this key, so a default keeps components that don't set up their own
+				// scope working (replicates the former workflowId-based fallback).
+				// Tests override it by passing their own `global.provide`.
+				[WorkflowDocumentStoreKey as symbol]: computed(() =>
+					useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
+				),
+				...(renderOptions.global?.provide ?? {}),
+			},
 		},
 	} as TestingLibraryRenderOptions<T>);
 }

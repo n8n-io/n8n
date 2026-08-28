@@ -203,5 +203,47 @@ export class DynamicCredentialApiHelper {
 		return result.data ?? result; // The OAuth2 provider authorization URL
 	}
 
+	/**
+	 * GETs the n8n OAuth callback URL returned by the provider's authorization
+	 * flow, completing the connect: n8n exchanges the code and stores the user's
+	 * tokens for the resolver-keyed credential.
+	 *
+	 * The callback URL is absolute (the provider redirects to the instance host);
+	 * we GET its path+query via the api.request context so it targets this
+	 * context's baseURL (e.g. a specific main).
+	 */
+	async completeAuthorizationCallback(callbackUrl: string): Promise<void> {
+		const parsed = new URL(callbackUrl);
+		const response = await this.api.request.get(parsed.pathname + parsed.search);
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to complete authorization callback: ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
+	/**
+	 * Resolves the provider authorization URL from a gate-issued n8n authorize link
+	 * (`/rest/credentials/:id/authorize?token=…`).
+	 *
+	 * The link is bound to an n8n user, so it must be opened with that user's session:
+	 * we GET its path+query via the authenticated api.request context, which resolves the
+	 * intent and 302-redirects to the provider. `maxRedirects: 0` captures that redirect so
+	 * the caller can drive the provider flow directly.
+	 */
+	async resolveProviderUrlFromAuthorizeLink(authorizeUrl: string): Promise<string> {
+		const parsed = new URL(authorizeUrl);
+		const response = await this.api.request.get(parsed.pathname + parsed.search, {
+			maxRedirects: 0,
+		});
+		const location = response.headers().location;
+		if (!location) {
+			throw new TestError(
+				`Expected authorize link to redirect to the provider, got ${response.status()}: ${await response.text()}`,
+			);
+		}
+		return location;
+	}
+
 	// ===== Revoke =====
 }

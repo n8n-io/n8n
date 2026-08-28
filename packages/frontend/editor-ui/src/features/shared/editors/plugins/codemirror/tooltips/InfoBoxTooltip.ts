@@ -93,6 +93,29 @@ function findActiveArgIndex(node: SyntaxNode, index: number) {
 	return -1;
 }
 
+function isArgSlotEmpty(argList: SyntaxNode, pos: number): boolean {
+	const separators: SyntaxNode[] = [];
+	const expressions: SyntaxNode[] = [];
+	for (let child = argList.firstChild; child; child = child.nextSibling) {
+		if (child.name === '(' || child.name === ',' || child.name === ')') {
+			separators.push(child);
+		} else {
+			expressions.push(child);
+		}
+	}
+
+	// Resolve the slot bracketing the caret, delimited by the surrounding separators.
+	let slotStart = argList.from;
+	let slotEnd = argList.to;
+	for (const separator of separators) {
+		if (separator.to <= pos) slotStart = separator.to;
+		if (separator.from >= pos && slotEnd === argList.to) slotEnd = separator.from;
+	}
+
+	// The slot is empty when no argument expression overlaps it.
+	return !expressions.some((expression) => expression.from < slotEnd && expression.to > slotStart);
+}
+
 const createStateReader = (state: EditorState) => (node?: SyntaxNode | null) => {
 	return node ? state.sliceDoc(node.from, node.to) : '';
 };
@@ -191,6 +214,12 @@ function getTooltipContext(state: EditorState): TooltipContext | null {
 		return null;
 	}
 
+	// Only surface the cursor info-box while the active argument slot is still empty; hide it as
+	// soon as a value is being written. The hover-on-name path is unaffected (it doesn't call this).
+	if (!isArgSlotEmpty(argList, pos)) {
+		return null;
+	}
+
 	const callExpression = findNearestCallExpression(argList);
 	if (!callExpression) {
 		return null;
@@ -246,7 +275,7 @@ const cursorInfoBoxTooltip = StateField.define<{
 		const ctx = getTooltipContext(state);
 		return {
 			tooltip: null,
-			contextKey: ctx ? `${ctx.globalPosition}:${ctx.methodName}` : null,
+			contextKey: ctx ? `${ctx.globalPosition}:${ctx.methodName}:${ctx.argIndex}` : null,
 		};
 	},
 
@@ -273,7 +302,7 @@ const cursorInfoBoxTooltip = StateField.define<{
 		if (!tr.docChanged && !tr.selection) return value;
 
 		const ctx = getTooltipContext(tr.state);
-		const newContextKey = ctx ? `${ctx.globalPosition}:${ctx.methodName}` : null;
+		const newContextKey = ctx ? `${ctx.globalPosition}:${ctx.methodName}:${ctx.argIndex}` : null;
 
 		// Context changed - clear tooltip, ViewPlugin will load new one async
 		if (newContextKey !== value.contextKey) {
@@ -294,7 +323,7 @@ const asyncTooltipLoader = ViewPlugin.define((view) => {
 		const ctx = getTooltipContext(view.state);
 		if (!ctx) return;
 
-		const contextKey = `${ctx.globalPosition}:${ctx.methodName}`;
+		const contextKey = `${ctx.globalPosition}:${ctx.methodName}:${ctx.argIndex}`;
 		const currentField = view.state.field(cursorInfoBoxTooltip, false);
 
 		// If we already have a tooltip or context hasn't changed, skip

@@ -681,6 +681,36 @@ describe('New SDK API', () => {
 			// Process Item loops back to Split In Batches via nextBatch()
 			expect(json.connections['Process Item'].main[0]![0].node).toBe('Process Batches');
 		});
+
+		it('chains nodes after a bare splitInBatches builder from the loop output', () => {
+			const t = createTrigger('Start');
+			const defineScenarios = createNode('Define Scenarios');
+			const loop = splitInBatches({
+				version: 3,
+				config: {
+					name: 'Loop Each Item',
+					parameters: { batchSize: 1, options: {} },
+				},
+			});
+			const generatePrompt = createNode('Generate Prompt');
+			const extractPrompt = createNode('Extract Prompt');
+			const logResult = createNode('Log Result');
+
+			const wf = workflow('test', 'Agentic AI Image Generator')
+				.add(t)
+				.to(defineScenarios)
+				.to(loop)
+				.to(generatePrompt)
+				.to(extractPrompt)
+				.to(logResult)
+				.to(nextBatch(loop));
+
+			const json = wf.toJSON();
+
+			expect(json.connections['Loop Each Item'].main[0] ?? []).toEqual([]);
+			expect(json.connections['Loop Each Item'].main[1]![0].node).toBe('Generate Prompt');
+			expect(json.connections['Log Result'].main[0]![0].node).toBe('Loop Each Item');
+		});
 	});
 
 	describe('API Integration: Complete Workflow Examples', () => {

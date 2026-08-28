@@ -1,0 +1,61 @@
+@use 'sass:map';
+
+$input-sizes: (
+	'xlarge': (
+		height: var(--height--xl),
+		radius: var(--radius--2xs),
+		font-size: var(--font-size--md),
+		padding: var(--spacing--xs),
+	),
+	'large': (
+		height: var(--height--lg),
+		radius: var(--radius--2xs),
+		font-size: var(--font-size--sm),
+		padding: var(--spacing--xs),
+	),
+	'medium': (
+		height: var(--height--md),
+		radius: var(--radius--3xs),
+		font-size: var(--font-size--sm),
+		padding: var(--spacing--xs),
+	),
+	'small': (
+		height: var(--height--sm),
+		radius: var(--radius--3xs),
+		font-size: var(--font-size--xs),
+		padding: var(--spacing--2xs),
+	),
+	'mini': (
+		height: var(--height--xs),
+		radius: var(--radius--3xs),
+		font-size: var(--font-size--2xs),
+		padding: var(--spacing--2xs),
+	),
+);
+
+@mixin size-variables($size: 'large') {
+	$config: map.get($input-sizes, $size);
+
+	--input--height: #{map.get($config, height)};
+	--input--radius: #{map.get($config, radius)};
+	--input--font-size: #{map.get($config, font-size)};
+	--input--padding: #{map.get($config, padding)};
+}
+
+@mixin theme-variables($border-color: var(--border-color)) {
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	--input--color--background--disabled: var(--background--disabled);
+	--input--color--text: var(--color--text--shade-1);
+	--input--placeholder--color: var(--color--text--tint-1);
+	--input--color--disabled: var(--color--text--tint-1);
+	--input--placeholder--color--disabled: var(--input--color--disabled);
+	--input--shadow: 0 0 0 0 transparent;
+	--input--shadow--hover: 0 0 0 0 transparent;
+	--input--shadow--focus: 0 0 0 0 transparent;
+	--input--border-color: #{$border-color};
+	--input--border-color--hover: var(--border-color--strong);
+	--input--border-color--focus: var(--focus--border-color);
+	--input--border--shadow: 0 0 0 1px var(--input--border-color);
+	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
+	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+}

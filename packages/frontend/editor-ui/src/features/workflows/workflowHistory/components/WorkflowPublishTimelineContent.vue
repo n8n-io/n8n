@@ -319,9 +319,13 @@ onMounted(loadTimeline);
 
 <style module lang="scss">
 .content {
-	padding: var(--spacing--2xs);
-	overflow-y: auto;
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
 	height: 100%;
+	overflow-y: auto;
+	padding: var(--spacing--2xs);
 }
 
 .empty {

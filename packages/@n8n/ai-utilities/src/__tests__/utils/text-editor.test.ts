@@ -1,10 +1,16 @@
+import { describe, expect, it } from 'vitest';
+
 import {
+	FileNotFoundError,
+	InvalidLineNumberError,
+	InvalidPathError,
+	InvalidViewRangeError,
 	MultipleMatchesError,
 	NoMatchFoundError,
 	TextEditorDocument,
 	findDivergenceContext,
 	parseStrReplacements,
-} from '../../utils/text-editor';
+} from 'src/utils/text-editor';
 
 describe('TextEditorDocument', () => {
 	it('views text with line numbers', () => {
@@ -40,6 +46,20 @@ describe('TextEditorDocument', () => {
 		});
 
 		expect(editor.getText()).toBe('const value = "$& $1 $$";');
+	});
+
+	it('keeps master behavior for empty old_str', () => {
+		const editor = new TextEditorDocument({ initialText: 'hello\nworld' });
+
+		const result = editor.execute({
+			command: 'str_replace',
+			path: '/file.ts',
+			old_str: '',
+			new_str: 'REPLACED',
+		});
+
+		expect(result).toBe('Edit applied successfully.');
+		expect(editor.getText()).toBe('helloREPLACEDworld');
 	});
 
 	it('rejects missing and non-unique matches', () => {
@@ -88,16 +108,21 @@ describe('TextEditorDocument', () => {
 			{ old_str: 'const c = 3;', new_str: 'const c = 30;' },
 		]);
 
+		expect(result).not.toBe('All 3 replacements applied successfully.');
+		if (typeof result === 'string') {
+			throw new Error(`Expected batch result details, got: ${result}`);
+		}
 		expect(result).toEqual([
 			{ index: 0, old_str: 'const a = 1;', status: 'success' },
 			{
 				index: 1,
 				old_str: 'const missing = 0;',
 				status: 'failed',
-				error: expect.stringContaining('No exact match found'),
+				error: result[1]?.error,
 			},
 			{ index: 2, old_str: 'const c = 3;', status: 'not_attempted' },
 		]);
+		expect(result[1]?.error).toContain('No exact match found');
 		expect(editor.getText()).toBe(original);
 	});
 
@@ -110,6 +135,22 @@ describe('TextEditorDocument', () => {
 	});
 });
 
+describe('text editor errors', () => {
+	it('formats matching and line errors', () => {
+		expect(new NoMatchFoundError('search string').message).toContain('No exact match found');
+		expect(new MultipleMatchesError(3).message).toContain('Found 3 matches');
+		expect(new InvalidLineNumberError(10, 5).message).toContain('Invalid line number 10');
+		expect(new InvalidViewRangeError(4, 2, 10).message).toContain('end (2)');
+	});
+
+	it('formats path and missing-file errors without workflow-specific defaults', () => {
+		const pathError = new InvalidPathError('/bad/path.ts', '/file.ts');
+		expect(pathError.message).toContain('/bad/path.ts');
+		expect(pathError.message).toContain('/file.ts');
+		expect(new FileNotFoundError().message).toContain('No file content exists');
+	});
+});
+
 describe('text editor helpers', () => {
 	it('finds useful divergence context', () => {
 		const result = findDivergenceContext('line1\nline2\nline3', 'line1\nline2\nwrong');
@@ -118,11 +159,40 @@ describe('text editor helpers', () => {
 		expect(result).toContain('line3');
 	});
 
+	it('returns undefined when divergence prefix is too short', () => {
+		const result = findDivergenceContext('abcdefghij\nklmnop', 'xyz_completely_different');
+
+		expect(result).toBeUndefined();
+	});
+
+	it('escapes whitespace and includes match percentage', () => {
+		const result = findDivergenceContext('hello world\nfoo bar\n', 'hello world\nfoo baz\t');
+
+		expect(result).toContain('\\t');
+		expect(result).toMatch(/\d+%/);
+	});
+
+	it('shows nearby file lines around the divergence point', () => {
+		const code = '  function foo() {\n    return 1;\n  }\n  function bar() {\n    return 2;\n  }';
+		const searchStr =
+			'  function foo() {\n    return 1;\n  }\n  function bar() {\n    return WRONG;\n  }';
+
+		const result = findDivergenceContext(code, searchStr);
+
+		expect(result).toContain('return 2;');
+	});
+
 	it('parses replacements from arrays and JSON strings', () => {
 		const arrayResult = parseStrReplacements([{ old_str: 'old', new_str: 'new' }]);
 		const stringResult = parseStrReplacements('[{"old_str":"old","new_str":"new"}]');
 
 		expect(arrayResult).toEqual([{ old_str: 'old', new_str: 'new' }]);
 		expect(stringResult).toEqual([{ old_str: 'old', new_str: 'new' }]);
+	});
+
+	it('parses empty old_str to preserve master behavior', () => {
+		expect(parseStrReplacements([{ old_str: '', new_str: 'new' }])).toEqual([
+			{ old_str: '', new_str: 'new' },
+		]);
 	});
 });

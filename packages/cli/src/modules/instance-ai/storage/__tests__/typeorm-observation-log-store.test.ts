@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import type { InstanceAiObservation } from '../../entities/instance-ai-observation.entity';
@@ -53,7 +53,7 @@ describe('TypeORMObservationLogStore', () => {
 				marker: 'important',
 				text: 'User prefers Slack alerts',
 				parentId: null,
-				tokenCount: 8,
+				tokenCount: 4,
 				status: 'active',
 				supersededBy: null,
 				createdAt,
@@ -66,7 +66,7 @@ describe('TypeORMObservationLogStore', () => {
 				marker: 'important',
 				text: 'User prefers Slack alerts',
 				parentId: null,
-				tokenCount: 8,
+				tokenCount: 4,
 				status: 'active',
 				supersededBy: null,
 				createdAt,
@@ -93,6 +93,7 @@ describe('TypeORMObservationLogStore', () => {
 			}),
 		]);
 		expect(active).toEqual(inserted);
+		expect(observationRepo.create).toHaveBeenCalledWith(expect.objectContaining({ tokenCount: 4 }));
 	});
 
 	it('stores and reads observation cursors', async () => {

@@ -1,4 +1,5 @@
 name: 'Test: Instance AI Discovery Evals'
+run-name: "Test: Instance AI Discovery Evals (branch=${{ inputs.branch || 'master' }}, filter=${{ inputs.filter || 'all' }}, trials=${{ inputs.trials }})"
 
 on:
   workflow_call:
@@ -38,6 +39,8 @@ jobs:
     name: 'Run Discovery Evals'
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 15
+    env:
+      NODE_OPTIONS: '--max-old-space-size=7168'
     permissions:
       contents: read
       pull-requests: write

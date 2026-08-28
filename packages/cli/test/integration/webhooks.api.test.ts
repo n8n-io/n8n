@@ -1,5 +1,10 @@
-import { testDb, mockInstance, createActiveWorkflow } from '@n8n/backend-test-utils';
-import type { IWorkflowDb, User } from '@n8n/db';
+import {
+	testDb,
+	mockInstance,
+	createActiveWorkflow,
+	deleteWorkflowAndWebhooks,
+} from '@n8n/backend-test-utils';
+import { type IWorkflowDb, type User, type WorkflowEntity } from '@n8n/db';
 import { readFileSync } from 'fs';
 import {
 	type INode,
@@ -10,14 +15,14 @@ import {
 } from 'n8n-workflow';
 import { agent as testAgent } from 'supertest';
 
-import { NodeTypes } from '@/node-types';
-import { WebhookServer } from '@/webhooks/webhook-server';
-
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { initActiveWorkflowManager } from './shared/utils';
 
-jest.unmock('node:fs');
+import { NodeTypes } from '@/node-types';
+import { WebhookServer } from '@/webhooks/webhook-server';
+
+vi.unmock('node:fs');
 
 class WebhookTestingNode implements INodeType {
 	description: INodeTypeDescription = {
@@ -81,6 +86,8 @@ describe('Webhook API', () => {
 
 	let user: User;
 	let agent: SuperAgentTest;
+	let workflow: WorkflowEntity | undefined;
+	let activeWorkflowManager: Awaited<ReturnType<typeof initActiveWorkflowManager>> | undefined;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -93,8 +100,18 @@ describe('Webhook API', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity']);
-		await createActiveWorkflow(workflowData, user);
-		await initActiveWorkflowManager();
+		workflow = await createActiveWorkflow(workflowData, user);
+		activeWorkflowManager = await initActiveWorkflowManager();
+	});
+
+	afterEach(async () => {
+		// The manager is re-inited per test, so without this each run leaves its
+		// registrations live for the rest of the worker.
+		await activeWorkflowManager?.removeAll();
+		if (workflow) {
+			await deleteWorkflowAndWebhooks(workflow.id);
+		}
+		workflow = undefined;
 	});
 
 	afterAll(async () => {

@@ -4,7 +4,7 @@ import ExternalSecretsProviderImage from './ExternalSecretsProviderImage.ee.vue'
 import ExternalSecretsProviderConnectionSwitch from './ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useExternalSecretsProvider } from '@/features/integrations/externalSecrets.ee/composables/useExternalSecretsProvider';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/app/constants';
@@ -12,14 +12,7 @@ import { DateTime } from 'luxon';
 import { computed, nextTick, onMounted, toRef } from 'vue';
 import { isDateObject } from '@/app/utils/typeGuards';
 
-import {
-	N8nActionToggle,
-	N8nBadge,
-	N8nButton,
-	N8nCard,
-	N8nIcon,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nActionToggle, N8nButton, N8nCard, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	provider: ExternalSecretsProvider;
 }>();
@@ -142,12 +135,6 @@ async function onActionDropdownClick(id: string) {
 					</span>
 				</N8nText>
 			</div>
-			<div v-if="provider.name === 'infisical'" :class="$style.deprecationWarning">
-				<N8nIcon :class="$style['warningTriangle']" icon="triangle-alert" />
-				<N8nBadge class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
-					{{ i18n.baseText('settings.externalSecrets.card.deprecated') }}
-				</N8nBadge>
-			</div>
 			<div v-if="canConnect" :class="$style.cardActions">
 				<ExternalSecretsProviderConnectionSwitch
 					:provider="provider"
@@ -197,14 +184,5 @@ async function onActionDropdownClick(id: string) {
 	flex-direction: row;
 	align-items: center;
 	margin-left: var(--spacing--sm);
-}
-
-.deprecationWarning {
-	display: flex;
-}
-
-.warningTriangle {
-	color: var(--color--warning);
-	margin-right: var(--spacing--2xs);
 }
 </style>

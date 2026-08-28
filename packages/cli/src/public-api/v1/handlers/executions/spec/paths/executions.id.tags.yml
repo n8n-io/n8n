@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getExecutionTags
+  x-required-scope: executionTags:list
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution
@@ -20,6 +21,7 @@ get:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 put:
   x-eov-operation-id: updateExecutionTags
+  x-required-scope: executionTags:update
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution

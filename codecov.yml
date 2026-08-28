@@ -17,6 +17,8 @@ coverage:
     project:
       default:
         threshold: 0.5
+        flags:
+          - nightly-full
 
 github_checks:
   annotations: false
@@ -35,6 +37,10 @@ flags:
   frontend-e2e:
     carryforward: true
   python:
+    carryforward: true
+  nightly-full:
+    carryforward: true
+  nightly-python:
     carryforward: true
 
 component_management:

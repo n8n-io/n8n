@@ -1,8 +1,8 @@
 import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import type { ErrorReporter } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { NodeTypes } from '@/node-types';
@@ -47,7 +47,7 @@ describe('TaskRequester', () => {
 			['helpers.httpRequest', [{ url: 'http://localhost' }]],
 			['helpers.request', [{ url: 'http://localhost' }]],
 		])('should handle %s rpc call', async (methodName, args) => {
-			const executeFunctions = set({}, methodName.split('.'), jest.fn());
+			const executeFunctions = set({}, methodName.split('.'), vi.fn());
 
 			const mockTask = mock<Task>({
 				taskId: 'taskId',
@@ -72,7 +72,7 @@ describe('TaskRequester', () => {
 		});
 
 		it('converts any serialized buffer arguments into buffers', async () => {
-			const mockPrepareBinaryData = jest.fn().mockResolvedValue(undefined);
+			const mockPrepareBinaryData = vi.fn().mockResolvedValue(undefined);
 			const mockTask = mock<Task>({
 				taskId: 'taskId',
 				data: {
@@ -128,7 +128,7 @@ describe('TaskRequester', () => {
 					data: {
 						executeFunctions: {
 							helpers: {
-								assertBinaryData: jest.fn().mockRejectedValue(error),
+								assertBinaryData: vi.fn().mockRejectedValue(error),
 							},
 						},
 					},
@@ -161,7 +161,7 @@ describe('TaskRequester', () => {
 			let capturedRejection: unknown;
 			const pending = new Promise((_, reject) => {
 				instance.taskAcceptRejects.set(taskId, {
-					accept: jest.fn(),
+					accept: vi.fn(),
 					reject: (reason) => {
 						capturedRejection = reason;
 						reject(reason);

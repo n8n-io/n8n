@@ -28,7 +28,7 @@ test.describe(
 		});
 
 		test.describe('Entry Point: Imported Workflow', () => {
-			test('should import a webhook workflow', async ({ n8n }) => {
+			test('should import a webhook workflow', async ({ n8n, api }) => {
 				const workflowImportResult = await n8n.start.fromImportedWorkflow(
 					'simple-webhook-test.json',
 				);
@@ -39,7 +39,8 @@ test.describe(
 				await n8n.canvas.clickExecuteWorkflowButton();
 				await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
 
-				const webhookResponse = await n8n.page.request.post(`/webhook-test/${webhookPath}`, {
+				const webhookResponse = await api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
+					method: 'POST',
 					data: testPayload,
 				});
 

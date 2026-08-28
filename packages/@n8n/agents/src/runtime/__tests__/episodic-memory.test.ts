@@ -1,6 +1,7 @@
 import { embed, embedMany } from 'ai';
 
 import type {
+	BuiltTelemetry,
 	EpisodicMemoryEntry,
 	EpisodicMemoryExtractFn,
 	EpisodicMemoryReflectFn,
@@ -12,8 +13,8 @@ import {
 	getEpisodicMemoryScope,
 	rankEpisodicMemoryEntries,
 	runEpisodicMemoryIndexer,
-} from '../episodic-memory';
-import { InMemoryMemory } from '../memory-store';
+} from '../memory/episodic-memory';
+import { InMemoryMemory } from '../memory/memory-store';
 
 vi.mock('ai', () => ({
 	embed: vi.fn(),
@@ -238,6 +239,98 @@ describe('createRecallMemoryTool', () => {
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
+
+	it('does not call describe() on the memory backend when ctx.parentTelemetry is absent', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		const memory = new InMemoryMemory();
+		const describeSpy = vi.spyOn(memory, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		await expect(tool.handler({ query: 'what did we decide?' }, {})).resolves.toEqual({
+			entries: [],
+		});
+		expect(describeSpy).not.toHaveBeenCalled();
+	});
+
+	it('opens a query_memory span with resolved entry ids when ctx.parentTelemetry is provided', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		const memory = new InMemoryMemory();
+		const saved = await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'User chose Postgres for the memory store.',
+			embedding: [1, 0],
+		});
+		const span = {
+			end: vi.fn(),
+			recordException: vi.fn(),
+			setStatus: vi.fn(),
+			setAttributes: vi.fn(),
+		};
+		const tracer = {
+			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
+				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
+				return await spanFn(span);
+			}),
+		};
+		const parentTelemetry: BuiltTelemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			tracer,
+		};
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+			agentName: 'my-agent',
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		await tool.handler({ query: 'what did we decide?' }, { parentTelemetry });
+
+		expect(tracer.startActiveSpan).toHaveBeenCalledTimes(1);
+		const [name, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('query_memory');
+		expect((options as { attributes: Record<string, unknown> }).attributes).toMatchObject({
+			'gen_ai.operation.name': 'query_memory',
+			'gen_ai.agent.name': 'my-agent',
+			'gen_ai.memory.types': ['agent'],
+			'gen_ai.memory.owners': ['user-1'],
+			'gen_ai.memory.store.types': ['in_memory'],
+		});
+		expect(span.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'gen_ai.memory.ids': [saved.id],
+				'gen_ai.memory.operations': ['query_memory'],
+			}),
+		);
+	});
+
+	it('does not open a span when ctx.parentTelemetry is absent', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		const memory = new InMemoryMemory();
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		await expect(tool.handler({ query: 'what did we decide?' }, {})).resolves.toEqual({
+			entries: [],
+		});
+	});
 });
 
 describe('getEpisodicMemoryScope', () => {
@@ -363,6 +456,98 @@ describe('runEpisodicMemoryIndexer', () => {
 				threadId: 'thread-1',
 			}),
 		).resolves.toEqual({ status: 'skipped', reason: 'no-observations' });
+	});
+
+	it('does not call describe() on the memory backend when telemetry is undefined', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
+		const memory = new InMemoryMemory();
+		const describeSpy = vi.spyOn(memory, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User switched memory store to Postgres.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User switched memory store to Postgres.',
+						sources: [
+							{ observationId: observation.id, evidence: 'User switched memory store to Postgres' },
+						],
+					},
+				],
+			});
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 1 });
+		expect(describeSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not persist secret values in entry content or evidence', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'critical',
+				text: 'User provided the Slack bot token xoxb-1234567890-abcdefghij for the integration.',
+				createdAt: new Date('2026-05-12T10:00:00.000Z'),
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content:
+							'User provided the Slack bot token xoxb-1234567890-abcdefghij for the integration.',
+						sources: [
+							{
+								observationId: observation.id,
+								evidence: 'User provided the Slack bot token xoxb-1234567890-abcdefghij',
+							},
+						],
+					},
+				],
+			});
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+			now: new Date('2026-05-12T10:01:00.000Z'),
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 1 });
+		const [stored] = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'Slack bot token integration',
+			{ queryEmbedding: [1, 0] },
+		);
+		expect(stored.content).toContain('[REDACTED]');
+		expect(stored.content).not.toContain('xoxb-1234567890-abcdefghij');
+
+		const sources = Reflect.get(memory, 'episodicMemorySources') as Array<{
+			observationId: string;
+			evidenceText: string;
+		}>;
+		const source = sources.find((s) => s.observationId === observation.id);
+		expect(source?.evidenceText).toContain('[REDACTED]');
+		expect(source?.evidenceText).not.toContain('xoxb-1234567890-abcdefghij');
 	});
 
 	it('does not leave searchable entries behind when source persistence fails', async () => {
@@ -1032,5 +1217,181 @@ describe('runEpisodicMemoryIndexer', () => {
 				observationScopeId: 'thread-1',
 			}),
 		).resolves.toMatchObject({ lastIndexedObservationId: observation.id });
+	});
+
+	it('opens a save_memory span with created operations for the saved entry ids', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User switched memory store to Postgres.',
+				createdAt: new Date('2026-05-12T10:00:00.000Z'),
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User switched memory store to Postgres.',
+						sources: [
+							{ observationId: observation.id, evidence: 'User switched memory store to Postgres' },
+						],
+					},
+				],
+			});
+		const span = {
+			end: vi.fn(),
+			recordException: vi.fn(),
+			setStatus: vi.fn(),
+			setAttributes: vi.fn(),
+		};
+		const tracer = {
+			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
+				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
+				return await spanFn(span);
+			}),
+		};
+		const telemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			tracer,
+		} as never;
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+			now: new Date('2026-05-12T10:01:00.000Z'),
+			telemetry,
+			agentName: 'my-agent',
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 1 });
+		expect(tracer.startActiveSpan).toHaveBeenCalledTimes(1);
+		const [name, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('save_memory');
+		expect((options as { attributes: Record<string, unknown> }).attributes).toMatchObject({
+			'gen_ai.operation.name': 'save_memory',
+			'gen_ai.agent.name': 'my-agent',
+			'gen_ai.memory.types': ['agent'],
+			'gen_ai.memory.owners': ['user-1'],
+			'gen_ai.memory.store.types': ['in_memory'],
+		});
+		expect(span.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({ 'gen_ai.memory.operations': ['created'] }),
+		);
+	});
+
+	it('does not open a span when there are no candidates to save', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User investigated webhook retries.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'Webhook retries were caused by a bad API key.',
+						sources: [{ observationId: observation.id, evidence: 'bad API key' }],
+					},
+				],
+			});
+		const tracer = { startActiveSpan: vi.fn() };
+		const telemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			tracer,
+		} as never;
+
+		// This extraction is rejected by validateCandidates (evidence text isn't
+		// found verbatim in the source observation), so candidates.length === 0.
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+			telemetry,
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 0, observationsIndexed: 1 });
+		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
+	});
+
+	it('skips a candidate whose save resolves to null, without losing the others', async () => {
+		const memory = new InMemoryMemory();
+		const [dropped, kept] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User investigated a rare cache eviction bug.',
+			},
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User chose Redis for the session cache.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User investigated a rare cache eviction bug.',
+						sources: [
+							{
+								observationId: dropped.id,
+								evidence: 'User investigated a rare cache eviction bug',
+							},
+						],
+					},
+					{
+						content: 'User chose Redis for the session cache.',
+						sources: [
+							{ observationId: kept.id, evidence: 'User chose Redis for the session cache' },
+						],
+					},
+				],
+			});
+		mockedEmbedMany.mockResolvedValue({
+			embeddings: [
+				[1, 0],
+				[0, 1],
+			],
+			usage: { tokens: 2 },
+		} as never);
+		// Simulate a save that the backend legitimately declines (returns null)
+		// for the first candidate only, while the second candidate saves normally.
+		vi.spyOn(memory.episodic, 'saveEntryWithSources').mockResolvedValueOnce(null);
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 2 });
+		const stored = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'Redis session cache',
+			{
+				queryEmbedding: [0, 1],
+			},
+		);
+		expect(stored.map((entry) => entry.content)).toEqual([
+			'User chose Redis for the session cache.',
+		]);
 	});
 });

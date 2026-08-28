@@ -1,15 +1,13 @@
-import { inDevelopment, inProduction } from '@n8n/backend-common';
+import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { access as fsAccess } from 'fs/promises';
+import { access as fsAccess, readFile } from 'fs/promises';
 import helmet from 'helmet';
-import isEmpty from 'lodash/isEmpty';
-import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
@@ -23,11 +21,14 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
+import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
 import { PostHogClient } from '@/posthog';
-import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
+import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
+import { resolveContentSecurityPolicies } from '@/security/content-security-policy';
 import type { FrontendService } from '@/services/frontend.service';
+import { Telemetry } from '@/telemetry';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -35,7 +36,7 @@ import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
-import '@/controllers/dynamic-templates.controller';
+import '@/controllers/instance-ai-examples.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -66,13 +67,16 @@ import '@/evaluation.ee/insights/eval-insights.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/modules/workflow-index/workflow-dependency.controller';
+import '@/webhooks/test-webhooks.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from './services/auth-strategy.registry';
+import { SessionCookieAuthStrategy } from './services/session-cookie-auth.strategy';
 
 @Service()
 export class Server extends AbstractServer {
@@ -96,10 +100,10 @@ export class Server extends AbstractServer {
 
 	async start() {
 		if (!this.globalConfig.endpoints.disableUi) {
-			const { FrontendService } = await import('@/services/frontend.service');
+			const { FrontendService } = await import('@/services/frontend.service.js');
 			this.frontendService = Container.get(FrontendService);
-			await import('@/controllers/module-settings.controller');
-			await import('@/controllers/third-party-licenses.controller');
+			await import('@/controllers/module-settings.controller.js');
+			await import('@/controllers/third-party-licenses.controller.js');
 		}
 
 		this.presetCredentialsLoaded = false;
@@ -120,29 +124,29 @@ export class Server extends AbstractServer {
 
 	private async registerAdditionalControllers() {
 		if (!inProduction && this.instanceSettings.isMultiMain) {
-			await import('@/controllers/debug.controller');
+			await import('@/controllers/debug.controller.js');
 		}
 
 		if (inE2ETests) {
-			await import('@/controllers/e2e.controller');
+			await import('@/controllers/e2e.controller.js');
 		}
 
 		if (isMfaFeatureEnabled()) {
 			await Container.get(MfaService).init();
-			await import('@/controllers/mfa.controller');
+			await import('@/controllers/mfa.controller.js');
 		}
 
 		if (!this.globalConfig.endpoints.disableUi) {
-			await import('@/controllers/cta.controller');
+			await import('@/controllers/cta.controller.js');
 		}
 
 		if (!this.globalConfig.tags.disabled) {
-			await import('@/controllers/tags.controller');
+			await import('@/controllers/tags.controller.js');
 		}
 
 		if (this.globalConfig.diagnostics.enabled) {
-			await import('@/controllers/telemetry.controller');
-			await import('@/controllers/posthog.controller');
+			await import('@/controllers/telemetry.controller.js');
+			await import('@/controllers/posthog.controller.js');
 		}
 
 		// ----------------------------------------
@@ -150,7 +154,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		try {
-			await import('@/environments.ee/variables/variables.controller.ee');
+			await import('@/environments.ee/variables/variables.controller.ee.js');
 		} catch (error) {
 			this.logger.warn(`Variables initialization failed: ${(error as Error).message}`);
 		}
@@ -158,38 +162,39 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
-			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
-			await Container.get(PrometheusMetricsService).init(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
+			Container.get(PrometheusMetricsService).init(this.app);
 		}
 
 		const { frontendService } = this;
 		if (frontendService) {
-			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
+			const frontendSettings = await frontendService.getSettings();
+			await this.externalHooks.run('frontend.settings', [frontendSettings]);
+
+			if (this.globalConfig.deployment.type === 'cloud') {
+				Container.get(Telemetry).setUserCloudId(frontendSettings.n8nMetadata?.userId);
+			}
 		}
 
 		await this.postHogClient.init();
+		this.postHogClient.setupExpressSessionContext(this.app);
 
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
 		// API key auth is registered first so existing behavior is preserved.
+		// Session cookie auth is registered last: an explicit but wrong API
+		// key/bearer token fails fast rather than silently falling back to an
+		// ambient browser session cookie.
 		// Additional strategies (e.g. scoped JWT from the token-exchange module)
 		// can be appended later during their own module initialization.
 		const registry = Container.get(AuthStrategyRegistry);
 		registry.register(Container.get(ApiKeyAuthStrategy));
+		registry.register(Container.get(SessionCookieAuthStrategy));
 
-		// ----------------------------------------
-		// Public API
-		// ----------------------------------------
-
-		if (isApiEnabled()) {
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
-			this.app.use(...apiRouters);
-			if (frontendService) {
-				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
-			}
-		}
+		// Parse cookies for easier access
+		this.app.use(cookieParser());
 
 		// Extract BrowserId from headers
 		this.app.use((req: APIRequest, _, next) => {
@@ -197,8 +202,32 @@ export class Server extends AbstractServer {
 			next();
 		});
 
-		// Parse cookies for easier access
-		this.app.use(cookieParser());
+		// Installed here on purpose, and the order is the mechanism: `AbstractServer` has
+		// already registered the webhook and form routes, so they never reach this
+		// middleware. Those pages serve HTML that a workflow author wrote, which the
+		// instance policy must not constrain - including when the `sandbox` policy is
+		// switched off with `N8N_INSECURE_DISABLE_*_SANDBOX`, where they carry no policy
+		// at all. Moving this line above `AbstractServer` would silently change that.
+		const securityConfig = Container.get(SecurityConfig);
+		this.app.use(
+			createContentSecurityPolicyMiddleware(
+				resolveContentSecurityPolicies(
+					securityConfig.contentSecurityPolicy,
+					securityConfig.contentSecurityPolicyReportOnly,
+					this.logger,
+				),
+			),
+		);
+
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
+		this.app.use(...apiRouters);
+		if (frontendService) {
+			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
+		}
 
 		const { restEndpoint, app } = this;
 
@@ -206,7 +235,7 @@ export class Server extends AbstractServer {
 		push.setupPushHandler(restEndpoint, app);
 
 		if (push.isBidirectional) {
-			const { CollaborationService } = await import('@/collaboration/collaboration.service');
+			const { CollaborationService } = await import('@/collaboration/collaboration.service.js');
 
 			const collaborationService = Container.get(CollaborationService);
 			collaborationService.init();
@@ -217,7 +246,7 @@ export class Server extends AbstractServer {
 		}
 
 		if (this.globalConfig.executions.mode === 'queue') {
-			const { ScalingService } = await import('@/scaling/scaling.service');
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			await Container.get(ScalingService).setupQueue();
 		}
 
@@ -377,24 +406,11 @@ export class Server extends AbstractServer {
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
-			const cspDirectives = jsonParse<{ [key: string]: Iterable<string> }>(
-				Container.get(SecurityConfig).contentSecurityPolicy,
-				{
-					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
-				},
-			);
 			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
-			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
+			// `createContentSecurityPolicyMiddleware` serves the CSP instead: helmet cannot
+			// inject a per-request nonce.
 			const securityHeadersMiddleware = helmet({
-				contentSecurityPolicy: isEmpty(cspDirectives)
-					? false
-					: {
-							useDefaults: false,
-							reportOnly: cspReportOnly,
-							directives: {
-								...cspDirectives,
-							},
-						},
+				contentSecurityPolicy: false,
 				xFrameOptions:
 					isPreviewMode || inE2ETests || inDevelopment ? false : { action: 'sameorigin' },
 				dnsPrefetchControl: false,
@@ -427,25 +443,49 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
-				isApiEnabled() ? '' : publicApiEndpoint,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
-			const historyApiHandler: express.RequestHandler = (req, res, next) => {
+
+			// `index.html` does not change while n8n runs. Read it once and keep it split
+			// around the nonce placeholders, so serving a request is only a join.
+			let indexHtmlParts: string[] | undefined;
+			const indexHtmlTemplate = async () => {
+				indexHtmlParts ??= (await readFile(resolve(staticCacheDir, 'index.html'), 'utf8')).split(
+					HTML_NONCE_PLACEHOLDER,
+				);
+				return indexHtmlParts;
+			};
+
+			const historyApiHandler: express.RequestHandler = async (req, res, next) => {
 				const {
 					method,
 					headers: { accept },
 				} = req;
+				// A request with no `Accept` also gets the page. Only this handler fills in the
+				// nonce placeholders, so `express.static` would serve `index.html` with the
+				// placeholders intact, and no script on it could run under the CSP.
 				if (
 					method === 'GET' &&
-					accept &&
-					(accept.includes('text/html') || accept.includes('*/*')) &&
+					(!accept || req.accepts('html') || accept.includes('*/*')) &&
 					!req.path.endsWith('.wasm') &&
 					!nonUIRoutesRegex.test(req.path)
 				) {
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
+
+					let template: string[];
+					try {
+						template = await indexHtmlTemplate();
+					} catch (error) {
+						this.logger.error('Could not read index.html', { error });
+						res.sendStatus(500);
+						return;
+					}
+
+					// Only the placeholders the build wrote get the nonce. Markup that arrived
+					// any other way must not get one.
 					securityHeadersMiddleware(req, res, () => {
-						res.sendFile('index.html', { root: staticCacheDir, maxAge: 0, lastModified: false });
+						res.type('html').send(template.join(res.locals.cspNonce));
 					});
 				} else {
 					next();
@@ -469,8 +509,6 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
-
-		installGlobalProxyAgent();
 	}
 
 	private configureSettingsRoute() {
@@ -493,7 +531,7 @@ export class Server extends AbstractServer {
 
 	private async initializeWorkflowIndexing() {
 		const { WorkflowIndexService } = await import(
-			'@/modules/workflow-index/workflow-index.service'
+			'@/modules/workflow-index/workflow-index.service.js'
 		);
 		Container.get(WorkflowIndexService).init();
 	}
@@ -502,5 +540,8 @@ export class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
+		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
+			Container.get(BrowserUseServer).setup(server, app);
+		}
 	}
 }

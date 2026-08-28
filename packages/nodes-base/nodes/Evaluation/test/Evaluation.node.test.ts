@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	type IDataTableProjectService,
 	NodeOperationError,
@@ -10,28 +10,29 @@ import {
 
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 import { Evaluation } from '../Evaluation/Evaluation.node.ee';
+import type { Mock } from 'vitest';
 
 describe('Test Evaluation', () => {
 	const sheetName = 'Sheet5';
 	const spreadsheetId = '1oqFpPgEPTGDw7BPkp1SfPXq3Cb3Hyr1SROtf-Ec4zvA';
 
 	const mockDataTable = mock<IDataTableProjectService>({
-		getColumns: jest.fn(),
-		addColumn: jest.fn(),
-		updateRows: jest.fn(),
+		getColumns: vi.fn(),
+		addColumn: vi.fn(),
+		updateRows: vi.fn(),
 	});
 
 	const mockExecuteFunctions = mock<IExecuteFunctions>({
-		helpers: { getDataTableProxy: jest.fn().mockResolvedValue(mockDataTable) },
+		helpers: { getDataTableProxy: vi.fn().mockResolvedValue(mockDataTable) },
 	});
 
 	beforeEach(() => {
-		(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-		(mockExecuteFunctions.getNode as jest.Mock).mockReturnValue({ typeVersion: 4.6 });
-		(mockExecuteFunctions.getParentNodes as jest.Mock).mockReturnValue([
+		(mockExecuteFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(mockExecuteFunctions.getNode as Mock).mockReturnValue({ typeVersion: 4.6 });
+		(mockExecuteFunctions.getParentNodes as Mock).mockReturnValue([
 			{ type: 'n8n-nodes-base.evaluationTrigger', name: 'Evaluation' },
 		]);
-		(mockExecuteFunctions.evaluateExpression as jest.Mock).mockReturnValue({
+		(mockExecuteFunctions.evaluateExpression as Mock).mockReturnValue({
 			row_number: 23,
 			foo: 1,
 			bar: 2,
@@ -39,7 +40,7 @@ describe('Test Evaluation', () => {
 		});
 	});
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('Test Evaluation Node for Set Output', () => {
 		describe('Data tables', () => {
@@ -96,7 +97,7 @@ describe('Test Evaluation', () => {
 			});
 
 			test('should update rows and return input data with existing columns', async () => {
-				(mockExecuteFunctions.evaluateExpression as jest.Mock).mockReturnValue({
+				(mockExecuteFunctions.evaluateExpression as Mock).mockReturnValue({
 					row_id: 23,
 					row_number: 23,
 					foo: 1,
@@ -139,7 +140,7 @@ describe('Test Evaluation', () => {
 			});
 
 			test('should update rows and return input data with new columns', async () => {
-				(mockExecuteFunctions.evaluateExpression as jest.Mock).mockReturnValue({
+				(mockExecuteFunctions.evaluateExpression as Mock).mockReturnValue({
 					row_id: 23,
 					row_number: 23,
 					foo: 1,
@@ -190,15 +191,15 @@ describe('Test Evaluation', () => {
 
 		describe('Google Sheets', () => {
 			beforeEach(() => {
-				jest.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
+				vi.spyOn(GoogleSheet.prototype, 'spreadsheetGetSheet').mockImplementation(async () => {
 					return { sheetId: 1, title: sheetName };
 				});
 
-				jest.spyOn(GoogleSheet.prototype, 'updateRows').mockImplementation(async () => {
+				vi.spyOn(GoogleSheet.prototype, 'updateRows').mockImplementation(async () => {
 					return { sheetId: 1, title: sheetName };
 				});
 
-				jest.spyOn(GoogleSheet.prototype, 'batchUpdate').mockImplementation(async () => {
+				vi.spyOn(GoogleSheet.prototype, 'batchUpdate').mockImplementation(async () => {
 					return { sheetId: 1, title: sheetName };
 				});
 			});
@@ -348,9 +349,9 @@ describe('Test Evaluation', () => {
 
 		function getMockExecuteFunction(metrics: AssignmentCollectionValue['assignments']) {
 			return {
-				getInputData: jest.fn().mockReturnValue([{}]),
+				getInputData: vi.fn().mockReturnValue([{}]),
 
-				getNodeParameter: jest.fn((param: string, _: number) => {
+				getNodeParameter: vi.fn((param: string, _: number) => {
 					if (param === 'metrics') {
 						return { assignments: metrics };
 					}
@@ -363,7 +364,7 @@ describe('Test Evaluation', () => {
 					return param;
 				}),
 
-				getNode: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue({
 					typeVersion: 1,
 				}),
 			} as unknown as IExecuteFunctions;
@@ -385,7 +386,7 @@ describe('Test Evaluation', () => {
 				},
 			]);
 			nodeTypes.getByName.mockReturnValue(evaluationMetricsNode);
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('execute', () => {
@@ -458,8 +459,8 @@ describe('Test Evaluation', () => {
 
 	describe('Test Evaluation Node for Check If Evaluating', () => {
 		beforeEach(() => {
-			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-			(mockExecuteFunctions.getNode as jest.Mock).mockReturnValue({ typeVersion: 4.6 });
+			(mockExecuteFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(mockExecuteFunctions.getNode as Mock).mockReturnValue({ typeVersion: 4.6 });
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(key: string, _: number, fallbackValue?: string | number | boolean | object) => {
 					const mockParams: { [key: string]: unknown } = {
@@ -470,16 +471,16 @@ describe('Test Evaluation', () => {
 			);
 		});
 
-		afterEach(() => jest.clearAllMocks());
+		afterEach(() => vi.clearAllMocks());
 
 		test('should return output in normal branch if normal execution', async () => {
-			(mockExecuteFunctions.getParentNodes as jest.Mock).mockReturnValue([]);
+			(mockExecuteFunctions.getParentNodes as Mock).mockReturnValue([]);
 			const result = await new Evaluation().execute.call(mockExecuteFunctions);
 			expect(result).toEqual([[], [{ json: {} }]]);
 		});
 
 		test('should return output in evaluation branch if evaluation execution', async () => {
-			(mockExecuteFunctions.getParentNodes as jest.Mock).mockReturnValue([
+			(mockExecuteFunctions.getParentNodes as Mock).mockReturnValue([
 				{ type: 'n8n-nodes-base.evaluationTrigger', name: 'Evaluation' },
 			]);
 

@@ -1,9 +1,10 @@
 // cspell:ignore langchain oracledb ONNX
-import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type * as AiUtilitiesModule from '@n8n/ai-utilities';
+import { configureOracleDB } from 'n8n-nodes-base/dist/nodes/Oracle/Sql/transport';
+import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type oracledb from 'oracledb';
-import { configureOracleDB } from 'n8n-nodes-base/dist/nodes/Oracle/Sql/transport';
+import type { Mock, Mocked } from 'vitest';
 
 import { EmbeddingsOracleDb } from '../EmbeddingsOracleDB/EmbeddingsOracleDb.node';
 
@@ -13,7 +14,7 @@ const { mockGetConnection, mockEmbedQuery, mockEmbedDocuments } = vi.hoisted(() 
 	mockEmbedDocuments: vi.fn(),
 }));
 
-type MockConnection = oracledb.Connection & { close: jest.Mock };
+type MockConnection = oracledb.Connection & { close: Mock };
 
 vi.mock('@n8n/ai-utilities', async (importOriginal) => {
 	const actual = await importOriginal<typeof AiUtilitiesModule>();
@@ -41,7 +42,7 @@ const mockConfigureOracleDB = vi.mocked(configureOracleDB);
 
 describe('EmbeddingsOracleDb', () => {
 	let node: EmbeddingsOracleDb;
-	let context: jest.Mocked<ISupplyDataFunctions>;
+	let context: Mocked<ISupplyDataFunctions>;
 	let borrowedConnections: MockConnection[];
 
 	const baseNode: INode = {
@@ -61,7 +62,7 @@ describe('EmbeddingsOracleDb', () => {
 		} as unknown as oracledb.Pool);
 		mockGetConnection.mockImplementation(async () => {
 			const connection = {
-				close: jest.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
 			} as unknown as MockConnection;
 			borrowedConnections.push(connection);
 			return connection;
@@ -72,19 +73,19 @@ describe('EmbeddingsOracleDb', () => {
 		context = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			baseNode,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
-		context.getNodeParameter = jest.fn().mockImplementation((parameterName: string) => {
+		context.getNodeParameter = vi.fn().mockImplementation((parameterName: string) => {
 			if (parameterName === 'model') return 'ONNX_MODEL';
 			return undefined;
 		});
 
-		context.getCredentials = jest.fn().mockResolvedValue({ user: 'user', password: 'pw' });
+		context.getCredentials = vi.fn().mockResolvedValue({ user: 'user', password: 'pw' });
 		context.logger = {
-			debug: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
+			debug: vi.fn(),
+			error: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
 		};
 	});
 

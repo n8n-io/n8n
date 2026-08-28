@@ -231,6 +231,7 @@ export class BackgroundTaskManager {
 		const cancelled: ManagedBackgroundTask[] = [];
 		for (const [taskId, task] of this.tasks) {
 			task.abortController.abort();
+			task.status = 'cancelled';
 			cancelled.push(task);
 			this.tasks.delete(taskId);
 			this.releaseDedupeIndices(task);

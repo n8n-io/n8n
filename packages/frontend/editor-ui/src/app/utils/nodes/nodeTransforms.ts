@@ -12,10 +12,33 @@ import type {
 	FromAIArgument,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { isHitlToolType, NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
+import {
+	isHitlToolType,
+	NodeHelpers,
+	normalizeNodeShape,
+	traverseNodeParameters,
+} from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
-import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
+import {
+	getInactiveCredentials,
+	usesParameterSelectedCredentials,
+} from '@/app/utils/nodeTypesUtils';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+
+/**
+ * Assigns a freshly generated id to the given node and returns it.
+ *
+ * Pure with respect to application state: it touches only its argument — it
+ * must not access stores or `inject()`, because the workflow document store
+ * wires it into `useWorkflowDocumentNodes` and may itself be constructed
+ * outside component setup (e.g. from `useWorkflowDiff`'s watch effects).
+ */
+export function assignNodeId(node: INodeUi): string {
+	const id = window.crypto.randomUUID();
+	node.id = id;
+	return id;
+}
 
 /**
  * Returns the credentials that are displayable for the given node.
@@ -124,6 +147,8 @@ export function getParameterDisplayableOptions(
 
 	if (!nodeType || !Array.isArray(nodeType.properties)) return options;
 
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
+
 	const nodeParameters =
 		NodeHelpers.getNodeParameters(
 			nodeType.properties,
@@ -135,6 +160,11 @@ export function getParameterDisplayableOptions(
 		) ?? node.parameters;
 
 	return options.filter((option) => {
+		// Options gated behind an env feature flag are hidden until the flag is enabled.
+		if (option.envFeatureFlag && !envFeatureFlag.value(option.envFeatureFlag)) {
+			return false;
+		}
+
 		if (!option.displayOptions && !option.disabledOptions) return true;
 
 		return NodeHelpers.displayParameter(
@@ -154,6 +184,8 @@ export function getParameterDisplayableOptions(
  * credentials that are currently displayable.
  */
 export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi): INodeUi {
+	node = normalizeNodeShape(node);
+
 	const skipKeys = [
 		'color',
 		'continueOnFail',
@@ -166,14 +198,14 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		'status',
 	];
 
-	// @ts-ignore
+	// @ts-expect-error populated field-by-field below
 	const nodeData: INodeUi = {
 		parameters: {},
 	};
 
 	for (const key in node) {
 		if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1) {
-			// @ts-ignore
+			// @ts-expect-error dynamic key copy
 			nodeData[key] = node[key];
 		}
 	}
@@ -181,6 +213,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 	// Get the data of the node type that we can get the default values
 	// TODO: Later also has to care about the node-type-version as defaults could be different
 	const nodeType = nodeTypeProvider.getNodeType(node.type, node.typeVersion);
+	const nodeParametersInput = node.parameters ?? {};
 
 	if (nodeType !== null) {
 		const isCredentialOnly = isCredentialOnlyNodeType(nodeType.name);
@@ -193,7 +226,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		// Node-Type is known so we can save the parameters correctly
 		const nodeParameters = NodeHelpers.getNodeParameters(
 			nodeType.properties,
-			node.parameters,
+			nodeParametersInput,
 			isCredentialOnly,
 			false,
 			node,
@@ -202,17 +235,34 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
 		// Add the node credentials if there are some set and if they should be displayed
-		if (node.credentials !== undefined && nodeType.credentials !== undefined) {
+		if (
+			node.credentials !== undefined &&
+			node.credentials !== null &&
+			nodeType.credentials !== undefined
+		) {
 			const saveCredentials: INodeCredentials = {};
+			// Nodes that select their credential type through parameters (e.g. HTTP
+			// Request's nodeCredentialType / genericAuthType) don't declare those types
+			// in the node type description, so the display check below can't see them.
+			// Drop the ones the current configuration no longer uses instead, sharing the
+			// rule with the credential picker so both agree on what survives a save.
+			const parameterSelected = usesParameterSelectedCredentials(node);
+			const removableCredentialTypes = parameterSelected
+				? new Set(getInactiveCredentials(node, nodeType))
+				: new Set<string>();
 			for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-				if (hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
-					saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+				if (parameterSelected) {
+					if (!removableCredentialTypes.has(nodeCredentialTypeName)) {
+						saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+					}
 					continue;
 				}
 
 				const credentialTypeDescription = nodeType.credentials
 					// filter out credentials with same name in different node versions
-					.filter((c) => NodeHelpers.displayParameterPath(node.parameters, c, '', node, nodeType))
+					.filter((c) =>
+						NodeHelpers.displayParameterPath(nodeParametersInput, c, '', node, nodeType),
+					)
 					.find((c) => c.name === nodeCredentialTypeName);
 
 				if (credentialTypeDescription === undefined) {
@@ -222,7 +272,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 
 				if (
 					!NodeHelpers.displayParameterPath(
-						node.parameters,
+						nodeParametersInput,
 						credentialTypeDescription,
 						'',
 						node,
@@ -242,9 +292,11 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 			}
 		}
 	} else {
-		// Node-Type is not known so save the data as it is
-		nodeData.credentials = node.credentials;
-		nodeData.parameters = node.parameters;
+		// Node-Type is not known so save the data as it is (omit nulls)
+		if (node.credentials !== undefined && node.credentials !== null) {
+			nodeData.credentials = node.credentials;
+		}
+		nodeData.parameters = nodeParametersInput;
 		if (nodeData.color !== undefined) {
 			nodeData.color = node.color;
 		}
@@ -257,11 +309,11 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 	if (node.continueOnFail === true) {
 		nodeData.continueOnFail = true;
 	}
-	if (node.onError !== 'stopWorkflow') {
+	if (node.onError !== undefined && node.onError !== null && node.onError !== 'stopWorkflow') {
 		nodeData.onError = node.onError;
 	}
 	// Save the notes only if when they contain data
-	if (![undefined, ''].includes(node.notes)) {
+	if (node.notes !== undefined && node.notes !== null && node.notes !== '') {
 		nodeData.notes = node.notes;
 	}
 

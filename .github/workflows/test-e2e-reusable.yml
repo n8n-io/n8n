@@ -35,7 +35,7 @@ on:
       currents-project-id:
         description: 'Currents project ID for reporting'
         required: false
-        default: 'LRxcNt'
+        default: 'nHHLA5'
         type: string
       pre-generated-matrix:
         description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
@@ -43,7 +43,7 @@ on:
         default: '[{"shard":1,"images":""}]'
         type: string
       n8n-env:
-        description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"vm"}'
+        description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"legacy"}'
         required: false
         default: ''
         type: string
@@ -53,7 +53,7 @@ on:
         default: 'e2e'
         type: string
       build-variant:
-        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard or coverage).'
+        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard, coverage, or pc).'
         required: false
         default: 'standard'
         type: string
@@ -108,7 +108,7 @@ jobs:
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
-        run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
+        run: pnpm --filter n8n-containers exec tsx pull-test-images.ts ${{ matrix.images }} || true
 
       - name: Filter specs to previous-attempt failures
         if: github.run_attempt > 1 && matrix.specs != ''
@@ -121,17 +121,49 @@ jobs:
           FILTERED=$(echo "$CANDIDATES" | node packages/testing/janitor/dist/cli.js filter-shard | tr '\n' ' ' | sed 's/ *$//')
           echo "specs=$FILTERED" >> "$GITHUB_OUTPUT"
 
-      - name: Run Tests
+      - name: Resolve shard args
+        id: shard-args
+        env:
+          # On retry, prefer the filtered subset (failed specs from previous attempt)
+          RETRY_SPECS: ${{ steps.filter-shard.outputs.specs }}
+          MATRIX_SPECS: ${{ matrix.specs }}
+          # toJSON distinguishes an orchestrated-but-empty spec list ("") from a
+          # non-orchestrated matrix entry that never set `specs` (null). Only the
+          # latter may fall back to Playwright's own --shard splitting; an empty
+          # orchestrated list means "nothing to run", never "run everything".
+          MATRIX_SPECS_JSON: ${{ toJSON(matrix.specs) }}
+          SHARD: ${{ matrix.shard }}
+          JOB_TOTAL: ${{ strategy.job-total }}
         run: |
+          if [ -n "$RETRY_SPECS" ]; then
+            echo "args=$RETRY_SPECS" >> "$GITHUB_OUTPUT"
+          elif [ "$MATRIX_SPECS_JSON" = "null" ]; then
+            echo "args=--shard=$SHARD/$JOB_TOTAL" >> "$GITHUB_OUTPUT"
+          elif [ -z "$MATRIX_SPECS" ]; then
+            echo "This shard's spec list is empty — nothing to run, skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=$MATRIX_SPECS" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Tests
+        if: steps.shard-args.outputs.skip != 'true'
+        run: |
+          # --pass-with-no-tests makes Playwright exit 0 when the selected specs
+          # resolve to zero runnable tests. Covers the impact-map vs current-suite
+          # skew window: a spec the committed coverage map points at may have been
+          # quarantined (test.skip/fixme) since the map was built, or a capability
+          # --grep on the test-command may filter every test on a shard. The
+          # selector is doing the right thing; the run shouldn't treat "nothing
+          # to run" as failure.
           # shellcheck disable=SC2086
-          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS
+          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS --pass-with-no-tests
         env:
           # Protect args from template injections
           TEST_COMMAND: ${{ inputs.test-command }}
           # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
           WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
-          # On retry, prefer the filtered subset (failed specs from previous attempt)
-          SHARD_ARGS: ${{ steps.filter-shard.outputs.specs || matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+          SHARD_ARGS: ${{ steps.shard-args.outputs.args }}
           # Args for actual test command runner
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
@@ -149,9 +181,12 @@ jobs:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
+            packages/testing/playwright/test-results.json
             packages/testing/playwright/playwright-report/
             packages/testing/playwright/coverage/lcov.info
             packages/testing/playwright/coverage/by-spec/
+            packages/testing/playwright/coverage/index.html
+            packages/testing/playwright/coverage/assets/
           retention-days: 1
           if-no-files-found: ignore
 

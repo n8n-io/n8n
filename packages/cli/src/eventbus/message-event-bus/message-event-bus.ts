@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
@@ -20,6 +19,8 @@ import { EventMessageAudit } from '../event-message-classes/event-message-audit'
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
 import type { EventMessageExecutionOptions } from '../event-message-classes/event-message-execution';
 import { EventMessageExecution } from '../event-message-classes/event-message-execution';
+import type { EventMessageMcpOptions } from '../event-message-classes/event-message-mcp';
+import { EventMessageMcp } from '../event-message-classes/event-message-mcp';
 import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
 import { EventMessageNode } from '../event-message-classes/event-message-node';
 import type { EventMessageQueueOptions } from '../event-message-classes/event-message-queue';
@@ -273,6 +274,10 @@ export class MessageEventBus extends EventEmitter {
 
 	async sendQueueEvent(options: EventMessageQueueOptions) {
 		await this.send(new EventMessageQueue(options));
+	}
+
+	async sendMcpEvent(options: EventMessageMcpOptions) {
+		await this.send(new EventMessageMcp(options));
 	}
 
 	/**

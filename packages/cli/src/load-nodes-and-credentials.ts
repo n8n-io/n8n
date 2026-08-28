@@ -1,11 +1,11 @@
 import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
-import { isWindowsFilePath } from '@n8n/utils';
+import { isWindowsFilePath } from '@n8n/utils/files/is-windows-file-path';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
-import type { Class, Types } from 'n8n-core';
+import type { Class, OutputSchemaLookup, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	DirectoryLoader,
@@ -18,6 +18,9 @@ import {
 	UnrecognizedNodeTypeError,
 	ExecutionContextHookRegistry,
 	CUSTOM_NODES_PACKAGE_NAME,
+	resolveOutputSchemaPath,
+	loadOutputSchema,
+	OUTPUT_PARSER_SCHEMA_VARIANT,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -30,12 +33,8 @@ import type {
 	LoadedNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import {
-	ensureError,
-	injectDomainRestrictionFields,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -81,7 +80,7 @@ export class LoadNodesAndCredentials {
 			.filter(Boolean)
 			.join(delimiter);
 
-		// @ts-ignore
+		// @ts-expect-error Node internal _initPaths
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 
@@ -272,11 +271,34 @@ export class LoadNodesAndCredentials {
 			return undefined;
 		}
 
-		const nodeParentPath = path.dirname(nodePath);
-		const schemaPath = ['__schema__', `v${version}`, resource, operation].filter(Boolean).join('/');
-		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
+		return resolveOutputSchemaPath({
+			nodeDir: path.dirname(nodePath),
+			version,
+			resource,
+			operation,
+		});
+	}
 
-		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
+	/**
+	 * Schema lookup for mock/pin-data generation: parsed `__schema__` content
+	 * with version fallback (same major first, then older, then newer — see the
+	 * n8n-core resolver), resolved through `known.nodes` so it works for
+	 * community nodes and production installs alike.
+	 */
+	createOutputSchemaLookup(): OutputSchemaLookup {
+		return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
+			const nodePath = this.known.nodes[type]?.sourcePath;
+			if (!nodePath) return undefined;
+
+			return loadOutputSchema({
+				nodeDir: path.dirname(nodePath),
+				version: typeVersion,
+				resource,
+				operation,
+				versionFallback: true,
+				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
+			});
+		};
 	}
 
 	getCustomDirectories(): string[] {
@@ -329,12 +351,26 @@ export class LoadNodesAndCredentials {
 			}
 			if (credType.authenticate !== undefined) return true;
 
-			return (
-				Array.isArray(credType.extends) &&
-				credType.extends.some((parentType) =>
-					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-				)
-			);
+			return this.extendsProxyAuthBaseType(credType);
+		});
+	}
+
+	/**
+	 * Whether a credential type reaches one of the OAuth base types through its
+	 * `extends` chain. Walks the chain transitively (cycle-guarded), since OAuth
+	 * credentials often extend a vendor intermediate (e.g. `atlassianOAuth2Api`)
+	 * rather than a base type directly.
+	 */
+	private extendsProxyAuthBaseType(credType: ICredentialType, seen = new Set<string>()): boolean {
+		if (!Array.isArray(credType.extends)) return false;
+
+		return credType.extends.some((parentName) => {
+			if (['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentName)) return true;
+			if (seen.has(parentName)) return false;
+			seen.add(parentName);
+
+			const parent = this.types.credentials.find((t) => t.name === parentName);
+			return parent !== undefined && this.extendsProxyAuthBaseType(parent, seen);
 		});
 	}
 
@@ -459,7 +495,7 @@ export class LoadNodesAndCredentials {
 
 		// Create the main context establishment hooks property as a fixedCollection
 		const contextHooksProperty: INodeProperties = {
-			displayName: 'Identify user for dynamic credentials',
+			displayName: 'Identify user for end-user credentials',
 			name: 'contextEstablishmentHooks',
 			type: 'fixedCollection',
 			placeholder: 'Add User Identifier',
@@ -519,24 +555,24 @@ export class LoadNodesAndCredentials {
 	}
 
 	async postProcessLoaders() {
-		this.known = { nodes: {}, credentials: {} };
-		this.loaded = { nodes: {}, credentials: {} };
-		this.types = { nodes: [], credentials: [] };
+		const known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+		const loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
+		const types: Types = { nodes: [], credentials: [] };
 
 		for (const loader of Object.values(this.loaders)) {
 			// Reload types if they were released from memory
 			await loader.ensureTypesLoaded();
 
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, packageName } = loader;
-			this.types.nodes = this.types.nodes.concat(
-				types.nodes.map(({ name, ...rest }) => ({
+			const { known: loaderKnown, types: loaderTypes, packageName } = loader;
+			types.nodes = types.nodes.concat(
+				loaderTypes.nodes.map(({ name, ...rest }) => ({
 					...rest,
 					name: `${packageName}.${name}`,
 				})),
 			);
 
-			const processedCredentials = types.credentials.map((credential) => ({
+			const processedCredentials = loaderTypes.credentials.map((credential) => ({
 				...credential,
 				properties: injectDomainRestrictionFields(credential),
 				supportedNodes:
@@ -545,30 +581,30 @@ export class LoadNodesAndCredentials {
 						: undefined,
 			}));
 
-			this.types.credentials = this.types.credentials.concat(processedCredentials);
+			types.credentials = types.credentials.concat(processedCredentials);
 
 			// Add domain restriction fields to loaded credentials
-			for (const credentialTypeName in known.credentials) {
+			for (const credentialTypeName in loaderKnown.credentials) {
 				const credentialType = loader.getCredential(credentialTypeName);
 				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
 			}
 
-			for (const type in known.nodes) {
-				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[`${packageName}.${type}`] = {
+			for (const type in loaderKnown.nodes) {
+				const { className, sourcePath } = loaderKnown.nodes[type];
+				known.nodes[`${packageName}.${type}`] = {
 					className,
 					sourcePath: loader.resolveSourcePath(sourcePath),
 				};
 			}
 
-			for (const type in known.credentials) {
+			for (const type in loaderKnown.credentials) {
 				const {
 					className,
 					sourcePath,
 					supportedNodes,
 					extends: extendsArr,
-				} = known.credentials[type];
-				this.known.credentials[type] = {
+				} = loaderKnown.credentials[type];
+				known.credentials[type] = {
 					className,
 					sourcePath: loader.resolveSourcePath(sourcePath),
 					supportedNodes:
@@ -579,6 +615,12 @@ export class LoadNodesAndCredentials {
 				};
 			}
 		}
+
+		// Publish the rebuilt registry. Everything below runs synchronously until the
+		// post-processor loop, so no reader can observe a half-built registry.
+		this.known = known;
+		this.loaded = loaded;
+		this.types = types;
 
 		createAiTools(this.types, this.known);
 		createHitlTools(this.types, this.known);
@@ -634,11 +676,11 @@ export class LoadNodesAndCredentials {
 	}
 
 	async setupHotReload() {
-		const { default: debounce } = await import('lodash/debounce');
+		const { default: debounce } = await import('lodash/debounce.js');
 
 		const { subscribe } = await import('@parcel/watcher');
 
-		const { Push } = await import('@/push');
+		const { Push } = await import('@/push/index.js');
 		const push = Container.get(Push);
 
 		for (const loader of Object.values(this.loaders)) {

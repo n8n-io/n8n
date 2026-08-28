@@ -3,11 +3,18 @@ import { OperationalError } from 'n8n-workflow';
 export class TaskRequestTimeoutError extends OperationalError {
 	description: string;
 
-	constructor({ timeout, isSelfHosted }: { timeout: number; isSelfHosted: boolean }) {
-		super(`Task request timed out after ${timeout} ${timeout === 1 ? 'second' : 'seconds'}`);
+	constructor({
+		elapsedSeconds,
+		isSelfHosted,
+	}: {
+		elapsedSeconds: number;
+		isSelfHosted: boolean;
+	}) {
+		// Keep the message static so Sentry groups all occurrences as one issue.
+		super('Task request timed out', { extra: { elapsedSeconds } });
 
 		const description = [
-			'Your Code node task was not matched to a runner within the timeout period. This indicates that the task runner is currently down, or not ready, or at capacity, so it cannot service your task.',
+			`Your Code node task was not matched to a runner within the timeout period (waited ${elapsedSeconds} ${elapsedSeconds === 1 ? 'second' : 'seconds'}). This indicates that the task runner is currently down, or not ready, or at capacity, so it cannot service your task.`,
 			'If you are repeatedly executing Code nodes with long-running tasks across your instance, please space them apart to give the runner time to catch up. If this does not describe your use case, please open a GitHub issue or reach out to support.',
 		];
 

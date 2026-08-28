@@ -9,6 +9,8 @@ import {
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	PollerStateRepository,
+	ScheduledJobRepository,
 	SettingsRepository,
 	UserRepository,
 } from '@n8n/db';
@@ -16,6 +18,8 @@ import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import type nodeFs from 'node:fs';
+import type { Profiler } from 'node:inspector';
+import type * as nodeInspectorPromises from 'node:inspector/promises';
 import type nodePath from 'node:path';
 import type nodeV8 from 'node:v8';
 import { v4 as uuid } from 'uuid';
@@ -30,6 +34,7 @@ import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -44,6 +49,7 @@ const tablesToTruncate = [
 	'execution_entity',
 	'installed_nodes',
 	'installed_packages',
+	'poller_state',
 	'project',
 	'project_relation',
 	'role',
@@ -98,12 +104,16 @@ export class E2EController {
 		[LICENSE_FEATURES.LOG_STREAMING]: false,
 		[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
+		[LICENSE_FEATURES.GIT_CONNECTIONS]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
 		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
 		[LICENSE_FEATURES.SHOW_NON_PROD_BANNER]: false,
 		[LICENSE_FEATURES.DEBUG_IN_EDITOR]: false,
 		[LICENSE_FEATURES.BINARY_DATA_S3]: false,
+		[LICENSE_FEATURES.BINARY_DATA_AZURE]: false,
+		[LICENSE_FEATURES.EXECUTION_DATA_S3]: false,
+		[LICENSE_FEATURES.EXECUTION_DATA_AZURE]: false,
 		[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES]: false,
 		[LICENSE_FEATURES.WORKER_VIEW]: false,
 		[LICENSE_FEATURES.ADVANCED_PERMISSIONS]: false,
@@ -115,6 +125,7 @@ export class E2EController {
 		[LICENSE_FEATURES.ASK_AI]: false,
 		[LICENSE_FEATURES.AI_CREDITS]: false,
 		[LICENSE_FEATURES.AI_GATEWAY]: false,
+		[LICENSE_FEATURES.AI_GATEWAY_CLOUD_UBB]: false,
 		[LICENSE_FEATURES.FOLDERS]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD]: false,
@@ -129,7 +140,8 @@ export class E2EController {
 		[LICENSE_FEATURES.PERSONAL_SPACE_POLICY]: false,
 		[LICENSE_FEATURES.TOKEN_EXCHANGE]: false,
 		[LICENSE_FEATURES.DATA_REDACTION]: false,
-		[LICENSE_FEATURES.N8N_PACKAGES]: false,
+		[LICENSE_FEATURES.WORKFLOW_REVIEWS]: false,
+		[LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -188,6 +200,9 @@ export class E2EController {
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
+		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly pollerStateRepository: PollerStateRepository,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -239,6 +254,65 @@ export class E2EController {
 	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
 		this.executionsConfig.mode = req.body.enabled ? 'queue' : 'regular';
 		return { success: true, message: `Queue mode set to ${this.executionsConfig.mode}` };
+	}
+
+	/**
+	 * Number of scheduled-job rows for a trigger node, so a test can assert on
+	 * removal directly instead of waiting out a real tick to prove a job
+	 * stopped firing.
+	 */
+	@Get('/scheduled-jobs/count', { skipAuth: true })
+	async countScheduledJobs(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
+		const { workflowId, nodeId } = req.query;
+		const count = await this.scheduledJobRepository.countByWorkflowNode(workflowId, nodeId);
+		return { count };
+	}
+
+	/**
+	 * A poll node's stored cursor and failure counters, so a test can assert on them
+	 * directly instead of inferring them from execution behaviour.
+	 */
+	@Get('/poller-state', { skipAuth: true })
+	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
+		const { workflowId, nodeId } = req.query;
+		const state = await this.pollerStateRepository.findState(workflowId, nodeId);
+		return {
+			cursor: state?.cursor ?? null,
+			consecutiveErrors: state?.consecutiveErrors ?? 0,
+			backoffUntil: state?.backoffUntil ?? null,
+		};
+	}
+
+	/**
+	 * Wipes a workflow's static data, the store an unmigrated poll cursor lives in.
+	 * The workflow DTOs deliberately drop `staticData` writes, so a test has no way
+	 * to reset that state through the workflow API.
+	 */
+	@Post('/workflow-static-data/clear', { skipAuth: true })
+	async clearWorkflowStaticData(req: Request<{}, {}, { workflowId: string }>) {
+		await this.workflowStaticDataService.saveStaticDataById(req.body.workflowId, {});
+		return { success: true };
+	}
+
+	/** Lets a test observe a real scheduled dispatch without waiting out the job's cron interval. */
+	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
+	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
+		const { workflowId, nodeId } = req.body;
+		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, 0);
+		return { success: true };
+	}
+
+	/**
+	 * Backdates a job's `nextRunAt`, so the next materializer pass sees the same
+	 * overdue schedule it would after a real outage of that length.
+	 */
+	@Post('/scheduled-jobs/backdate', { skipAuth: true })
+	async backdateScheduledJob(
+		req: Request<{}, {}, { workflowId: string; nodeId: string; secondsAgo: number }>,
+	) {
+		const { workflowId, nodeId, secondsAgo } = req.body;
+		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
+		return { success: true };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })
@@ -355,6 +429,89 @@ export class E2EController {
 		}
 
 		return fs.createReadStream(filePath);
+	}
+
+	// --- Per-spec backend V8 coverage (DEVP-370) -----------------------------
+	// Lets the Playwright coverage fixture attribute this main process's V8
+	// coverage to the spec that produced it, so backend source files land in the
+	// E2E impact map (today the map is frontend-only). Test-only: the whole
+	// controller hard-exits outside E2E (see top of file).
+	//
+	// Uses `Profiler.getBestEffortCoverage` (NON-draining) + a server-side
+	// baseline/delta so it never resets the global V8 counters — the shard-level
+	// `NODE_V8_COVERAGE` exit dump (the Codecov report path) is left untouched.
+	//
+	// REQUIRES the coverage run to be single-worker (it is — coverage project
+	// runs `--workers=1`). Precise coverage is process-global, so the start→take
+	// window is only attributable to one spec when specs don't run concurrently.
+	private coverageSession?: nodeInspectorPromises.Session;
+
+	private coverageBaseline = new Map<string, number>();
+
+	private async ensureCoverageSession(): Promise<nodeInspectorPromises.Session> {
+		if (!this.coverageSession) {
+			const inspector = require('node:inspector/promises') as typeof nodeInspectorPromises;
+			this.coverageSession = new inspector.Session();
+			this.coverageSession.connect();
+			// `enable` only — NODE_V8_COVERAGE already turned precise coverage on at
+			// boot. We never call start/takePreciseCoverage (those reset the global
+			// counters and would empty the shard exit dump).
+			await this.coverageSession.post('Profiler.enable');
+		}
+		return this.coverageSession;
+	}
+
+	private static coverageKey(url: string, fn: Profiler.FunctionCoverage): string {
+		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
+	}
+
+	private static coverageCount(fn: Profiler.FunctionCoverage): number {
+		return fn.ranges.reduce((sum, range) => sum + range.count, 0);
+	}
+
+	private static indexCoverage(scripts: Profiler.ScriptCoverage[]): Map<string, number> {
+		const index = new Map<string, number>();
+		for (const script of scripts) {
+			for (const fn of script.functions) {
+				index.set(E2EController.coverageKey(script.url, fn), E2EController.coverageCount(fn));
+			}
+		}
+		return index;
+	}
+
+	/** Keep only functions whose hit count rose since the baseline (this spec). */
+	private static deltaCoverage(
+		scripts: Profiler.ScriptCoverage[],
+		baseline: Map<string, number>,
+	): Profiler.ScriptCoverage[] {
+		const delta: Profiler.ScriptCoverage[] = [];
+		for (const script of scripts) {
+			const functions = script.functions.filter(
+				(fn) =>
+					E2EController.coverageCount(fn) >
+					(baseline.get(E2EController.coverageKey(script.url, fn)) ?? 0),
+			);
+			if (functions.length) delta.push({ ...script, functions });
+		}
+		return delta;
+	}
+
+	/** Test-only: mark the start of a spec's backend-coverage window. */
+	@Post('/coverage/start', { skipAuth: true })
+	async startCoverage() {
+		const session = await this.ensureCoverageSession();
+		const { result } = await session.post('Profiler.getBestEffortCoverage');
+		this.coverageBaseline = E2EController.indexCoverage(result);
+		return { success: true };
+	}
+
+	/** Test-only: return the V8 coverage executed since `start` (this spec's
+	 * delta), as raw `ScriptCoverage[]` for the coverage emitter to resolve. */
+	@Post('/coverage/take', { skipAuth: true })
+	async takeCoverage() {
+		if (!this.coverageSession) return { success: false, result: [] };
+		const { result } = await this.coverageSession.post('Profiler.getBestEffortCoverage');
+		return { success: true, result: E2EController.deltaCoverage(result, this.coverageBaseline) };
 	}
 
 	/**

@@ -2,16 +2,25 @@
 // Event parsing: extract outcome and metrics from captured SSE events
 // ---------------------------------------------------------------------------
 
+import { isRecord } from '@n8n/utils/is-record';
+
+import {
+	DATA_TABLES_TOOL_ID,
+	DOMAIN_TOOL_IDS,
+	EVAL_CONFIG_TOOL_ID,
+} from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
+	ArtifactRef,
 	CapturedEvent,
 	CapturedToolCall,
 	ConversationMetrics,
 	EventOutcome,
 	InstanceAiMetrics,
+	TranscriptTurn,
 	TurnCounter,
 } from '../types';
-import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
+import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Tool names whose results contain resource IDs we need to track
@@ -19,8 +28,9 @@ import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe
 
 const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
 
-const EXECUTION_TOOL = 'run-workflow';
-const DATA_TABLE_TOOL = 'create-data-table';
+// Retired standalone tool names, kept so captures from older backends still parse.
+const EXECUTION_TOOL_LEGACY = 'run-workflow';
+const DATA_TABLE_TOOL_LEGACY = 'create-data-table';
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents
@@ -30,6 +40,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 	const workflowIds: string[] = [];
 	const executionIds: string[] = [];
 	const dataTableIds: string[] = [];
+	const artifactRefsByKey = new Map<string, ArtifactRef>();
 	const textChunks: string[] = [];
 	const toolCalls: CapturedToolCall[] = [];
 	const agentActivities: AgentActivity[] = [];
@@ -92,7 +103,9 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				toolCalls.push(toolCall);
 
 				// Extract resource IDs from tool results
-				extractResourceIds(toolName, result, workflowIds, executionIds, dataTableIds);
+				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
+				// Config-eval rides the same tool-result signal (eval-config create).
+				captureConfigEvalRef(toolName, args, result, artifactRefsByKey);
 				break;
 			}
 
@@ -142,6 +155,9 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				if (tools.length > 0) {
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
+
+				// The build-agent sub-agent announces the created agent via targetResource.
+				captureAgentRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
 
@@ -195,10 +211,47 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 		workflowIds: dedupe(workflowIds),
 		executionIds: dedupe(executionIds),
 		dataTableIds: dedupe(dataTableIds),
+		artifactRefs: [...artifactRefsByKey.values()],
 		finalText: textChunks.join(''),
 		toolCalls,
 		agentActivities,
 	};
+}
+
+/**
+ * Capture a config-eval ref from a tool result. The `eval-config` tool's `create` action
+ * returns `{ config }`; the ref id is the owning workflow id from the call args (config-evals
+ * are fetched per-workflow). Deduped by type+id.
+ *
+ * ('create' is the eval-config action literal — no exported constant.)
+ */
+function captureConfigEvalRef(
+	toolName: string,
+	args: Record<string, unknown>,
+	result: unknown,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (toolName !== EVAL_CONFIG_TOOL_ID || getString(args, 'action') !== 'create') return;
+	const record = toResultRecord(result);
+	const workflowId = getString(args, 'workflowId');
+	const created = record?.config !== undefined && record.config !== null;
+	if (workflowId && created) {
+		out.set(`config-eval:${workflowId}`, { type: 'config-eval', id: workflowId });
+	}
+}
+
+/**
+ * Capture an agent ref from an `agent-spawned` event's `targetResource`. The build-agent
+ * sub-agent announces itself with `targetResource: { type: 'agent', id }` — the only agent
+ * signal (its tool result carries no id). Deduped by type+id.
+ */
+function captureAgentRef(
+	targetResource: Record<string, unknown> | undefined,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (!targetResource || getString(targetResource, 'type') !== 'agent') return;
+	const id = getString(targetResource, 'id');
+	if (id) out.set(`agent:${id}`, { type: 'agent', id });
 }
 
 // ---------------------------------------------------------------------------
@@ -305,7 +358,7 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 // Per-turn conversation metrics
 // ---------------------------------------------------------------------------
 
-const PLAN_RECOVERY_TOOL_NAMES = new Set(['plan', 'planWithAgent', 'plan-with-agent']);
+const PLAN_RECOVERY_TOOL_NAMES = new Set(['create-tasks']);
 
 export function buildConversationMetrics(events: CapturedEvent[]): ConversationMetrics {
 	const turns = splitEventsIntoTurns(events);
@@ -399,6 +452,82 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 	};
 }
 
+/** Per-turn counters for the SEEDED prefix. Seeded turns emit no SSE events, so we
+ *  count tool calls + confirmations from step kinds (mirrors buildConversationMetrics).
+ *  Best-effort: replanAfterError / repeatQuestion / runFinishStatus aren't recoverable. */
+export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[] {
+	return seededTurns.map((turn, i) => {
+		const counter: TurnCounter = {
+			turn: i + 1,
+			toolCallCount: 0,
+			toolErrorCount: 0,
+			confirmationAskedTotal: 0,
+			confirmationAskedByKind: {},
+			replanAfterErrorCount: 0,
+			repeatQuestionCount: 0,
+		};
+		for (const step of turn.steps) {
+			// Every non-narration step is a tool call (+1); in a live run the HITL
+			// ones also emit a confirmation-request, counted below.
+			if (step.kind === 'agent-text') continue;
+			counter.toolCallCount++;
+			switch (step.kind) {
+				case 'tool-call':
+					if (step.error !== undefined) counter.toolErrorCount++;
+					break;
+				case 'ask-user':
+					counter.confirmationAskedTotal++;
+					counter.confirmationAskedByKind.questions =
+						(counter.confirmationAskedByKind.questions ?? 0) + 1;
+					break;
+				case 'setup-card':
+					counter.confirmationAskedTotal++;
+					counter.confirmationAskedByKind.setup = (counter.confirmationAskedByKind.setup ?? 0) + 1;
+					break;
+				case 'confirmation': {
+					counter.confirmationAskedTotal++;
+					const kind = step.resumeReason;
+					counter.confirmationAskedByKind[kind] = (counter.confirmationAskedByKind[kind] ?? 0) + 1;
+					break;
+				}
+				default:
+					break; // plan, setup-wizard — tool call only
+			}
+		}
+		return counter;
+	});
+}
+
+/** Prepend the seeded prefix's counters to live metrics so a seeded case's
+ *  metrics span the whole conversation (matching the unified transcript). Live
+ *  `reachedRunFinishCleanly` is preserved (it describes the evaluated run); an
+ *  empty prefix returns metrics deep-equal to the live ones. */
+export function mergeSeededConversationMetrics(
+	seededTurns: TranscriptTurn[],
+	liveMetrics: ConversationMetrics,
+): ConversationMetrics {
+	const seededPerTurn = seededTurnCounters(seededTurns);
+	const perTurn = [...seededPerTurn, ...liveMetrics.perTurn].map((counter, i) => ({
+		...counter,
+		turn: i + 1,
+	}));
+	const confirmationAskedByKind = { ...liveMetrics.confirmationAskedByKind };
+	let confirmationAskedTotal = liveMetrics.confirmationAskedTotal;
+	for (const counter of seededPerTurn) {
+		confirmationAskedTotal += counter.confirmationAskedTotal;
+		for (const [kind, count] of Object.entries(counter.confirmationAskedByKind)) {
+			confirmationAskedByKind[kind] = (confirmationAskedByKind[kind] ?? 0) + count;
+		}
+	}
+	return {
+		turnCount: seededPerTurn.length + liveMetrics.turnCount,
+		perTurn,
+		confirmationAskedTotal,
+		confirmationAskedByKind,
+		reachedRunFinishCleanly: liveMetrics.reachedRunFinishCleanly,
+	};
+}
+
 /** Split events into turns. Each turn begins at a `run-start` event; events
  *  before the first `run-start` form a leading pseudo-turn (unusual but handled). */
 export function splitEventsIntoTurns(events: CapturedEvent[]): CapturedEvent[][] {
@@ -430,6 +559,7 @@ function countEvents(events: CapturedEvent[], type: string): number {
 
 function extractResourceIds(
 	toolName: string,
+	args: Record<string, unknown>,
 	result: unknown,
 	workflowIds: string[],
 	executionIds: string[],
@@ -440,33 +570,48 @@ function extractResourceIds(
 		if (id) workflowIds.push(id);
 	}
 
-	if (toolName === EXECUTION_TOOL) {
+	const action = getString(args, 'action');
+
+	if (
+		toolName === EXECUTION_TOOL_LEGACY ||
+		(toolName === DOMAIN_TOOL_IDS.EXECUTIONS && action === 'run')
+	) {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
 	}
 
-	if (toolName === DATA_TABLE_TOOL) {
+	if (toolName === DATA_TABLE_TOOL_LEGACY) {
 		const id = extractIdFromResult(result, 'dataTableId', 'id');
+		if (id) dataTableIds.push(id);
+	}
+
+	// create-only: other actions (e.g. schema) return ids of EXISTING tables,
+	// and tracking those would let cleanup delete tables the agent only inspected.
+	if (toolName === DATA_TABLES_TOOL_ID && action === 'create') {
+		const record = toResultRecord(result);
+		const table = record ? getRecord(record, 'table') : undefined;
+		const id = table ? extractIdFromRecord(table, ['id']) : undefined;
 		if (id) dataTableIds.push(id);
 	}
 }
 
-function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {
-	if (!isRecord(result)) {
-		// Result might be a stringified JSON
-		if (typeof result === 'string') {
-			try {
-				const parsed: unknown = JSON.parse(result);
-				if (isRecord(parsed)) {
-					return extractIdFromRecord(parsed, keys);
-				}
-			} catch {
-				return undefined;
-			}
+/** Normalize a tool result (object or stringified JSON) to a record. */
+function toResultRecord(result: unknown): Record<string, unknown> | undefined {
+	if (isRecord(result)) return result;
+	if (typeof result === 'string') {
+		try {
+			const parsed: unknown = JSON.parse(result);
+			if (isRecord(parsed)) return parsed;
+		} catch {
+			return undefined;
 		}
-		return undefined;
 	}
-	return extractIdFromRecord(result, keys);
+	return undefined;
+}
+
+function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {
+	const record = toResultRecord(result);
+	return record ? extractIdFromRecord(record, keys) : undefined;
 }
 
 function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): string | undefined {
@@ -481,6 +626,38 @@ function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): s
 		}
 	}
 	return undefined;
+}
+
+/**
+ * The workflow id of the MOST RECENT build that actually SAVED, or undefined if
+ * this run has saved none.
+ *
+ * Deliberately narrower than `extractOutcomeFromEvents().workflowIds`, which
+ * includes ids from FAILED builds on purpose: a save that parsed but didn't
+ * persist still returns `{ success: false, workflowId }`, and discovery wants
+ * those so cleanup can claim and delete whatever the run touched.
+ *
+ * That's the wrong set for any caller that MUTATES a workflow. A failed build
+ * against an attached or pre-existing workflow would otherwise look like a
+ * build this run performed, and the caller would act on state it never created.
+ * Requires `success === true` rather than `!== false`, so a result shape
+ * without the flag is treated as not-saved — the safe direction when the
+ * consequence is writing to someone else's workflow.
+ *
+ * Returns the last id directly rather than a deduped list for the caller to
+ * index. Dedupe keeps FIRST-seen order, so a run that saved A, then B, then A
+ * again yields [A, B] and the last element is B — while the workflow most
+ * recently written is A. Anything mutating "the workflow under discussion" has
+ * to follow save order, not first-appearance order.
+ */
+export function lastSavedWorkflowIdFromEvents(events: CapturedEvent[]): string | undefined {
+	const saved = extractOutcomeFromEvents(events)
+		.toolCalls.filter((call) => WORKFLOW_TOOLS.has(call.toolName))
+		.filter((call) => toResultRecord(call.result)?.success === true)
+		.map((call) => extractIdFromResult(call.result, 'workflowId', 'id'))
+		.filter((id): id is string => id !== undefined);
+
+	return saved.at(-1);
 }
 
 function dedupe(arr: string[]): string[] {

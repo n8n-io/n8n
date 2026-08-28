@@ -1,6 +1,6 @@
 import { RESOURCE_CENTER_EXPERIMENT, VIEWS } from '@/app/constants';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';

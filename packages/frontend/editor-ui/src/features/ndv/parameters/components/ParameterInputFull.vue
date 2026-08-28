@@ -9,7 +9,7 @@ import FromAiOverrideButton from './ParameterInputOverrides/FromAiOverrideButton
 import FromAiOverrideField from './ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from './ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getMappedResult } from '@/app/utils/mappingUtils';
 import {
@@ -26,12 +26,13 @@ import {
 } from 'n8n-workflow';
 import {
 	buildValueFromOverride,
+	canBeContentOverride,
 	type FromAIOverride,
 	isFromAIOverrideValue,
 	makeOverrideValue,
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverride.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { inject } from 'vue';
 import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
@@ -57,6 +58,8 @@ type Props = {
 	showDelete?: boolean;
 	onDelete?: () => void;
 	optionsOverrides?: ParameterOptionsOverrides;
+	externalIssues?: string[];
+	disableFromAi?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -69,6 +72,8 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 	showDelete: false,
 	onDelete: undefined,
+	externalIssues: () => [],
+	disableFromAi: false,
 });
 const emit = defineEmits<{
 	blur: [];
@@ -104,15 +109,15 @@ const activeNode = computed(() => {
 });
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
-const canBeContentOverride = computed(() => {
+const canCreateContentOverride = computed(() => {
 	// The resourceLocator handles overrides separately
-	if (!activeNode.value || isResourceLocator.value) return false;
+	if (props.disableFromAi || !activeNode.value || isResourceLocator.value) return false;
 
-	return fromAIOverride.value !== null;
+	return canBeContentOverride(props, activeNode.value);
 });
 
 const isContentOverride = computed(
-	() => canBeContentOverride.value && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
+	() => fromAIOverride.value !== null && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
 );
 
 const hint = computed(() =>
@@ -120,7 +125,10 @@ const hint = computed(() =>
 );
 
 const isResourceLocator = computed(
-	() => props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector',
+	() =>
+		props.parameter.type === 'resourceLocator' ||
+		props.parameter.type === 'workflowSelector' ||
+		props.parameter.type === 'agentSelector',
 );
 const isDropDisabled = computed(
 	() =>
@@ -287,7 +295,7 @@ function onDrop(newParamValue: string) {
 }
 
 const showOverrideButton = computed(
-	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
+	() => canCreateContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
 
 // When switching to read-only mode, reset the value to the default value
@@ -377,6 +385,7 @@ function removeOverride(clearField = false) {
 					:active-drop="activeDrop"
 					:force-show-expression="forceShowExpression"
 					:hide-issues="hideIssues"
+					:external-issues="externalIssues"
 					:label="label"
 					:event-bus="eventBus"
 					input-size="small"
@@ -474,7 +483,8 @@ function removeOverride(clearField = false) {
 				<FromAiOverrideField
 					v-if="fromAIOverride && isContentOverride"
 					:is-read-only="isReadOnly"
-					@close="removeOverride"
+					:issues="externalIssues"
+					@close="removeOverride(!canCreateContentOverride)"
 				/>
 				<div v-else>
 					<ParameterInputWrapper
@@ -491,9 +501,10 @@ function removeOverride(clearField = false) {
 						:hint="hint"
 						:hide-hint="hideHint"
 						:hide-issues="hideIssues"
+						:external-issues="externalIssues"
 						:label="label"
 						:event-bus="eventBus"
-						:can-be-overridden="canBeContentOverride"
+						:can-be-overridden="canCreateContentOverride"
 						:hide-label="hideLabel"
 						input-size="small"
 						@update="valueChanged"
@@ -552,7 +563,7 @@ function removeOverride(clearField = false) {
 			/>
 		</div>
 		<ParameterOverrideSelectableList
-			v-if="isContentOverride && fromAIOverride"
+			v-if="canCreateContentOverride && isContentOverride && fromAIOverride"
 			v-model="fromAIOverride"
 			:parameter="parameter"
 			:path="path"

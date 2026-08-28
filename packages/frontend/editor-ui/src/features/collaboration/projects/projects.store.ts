@@ -11,12 +11,12 @@ import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
 import { getProjectSecretProviderConnectionsByProjectId } from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import { ProjectTypes } from './projects.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { STORES } from '@n8n/stores';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto, SecretProviderConnection } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -254,8 +254,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 		// Handle team projects
 		projectNavActiveId.value = workflowHomeProject?.id ?? null;
-		if (workflowHomeProject?.id && !currentProjectId.value) {
-			await getProject(workflowHomeProject?.id);
+		// Compare against the loaded project, not currentProjectId: a `?projectId=` query param
+		// makes currentProjectId truthy without currentProject ever being fetched
+		if (workflowHomeProject?.id && currentProject.value?.id !== workflowHomeProject.id) {
+			await getProject(workflowHomeProject.id);
 		}
 	};
 
@@ -320,8 +322,13 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				setCurrentProject(null);
 			}
 
-			if (newRoute?.path?.includes('instance-ai')) {
+			if (newRoute?.path?.includes('assistant')) {
 				projectNavActiveId.value = 'instance-ai';
+				setCurrentProject(null);
+			}
+
+			if (newRoute?.path?.includes('/reviews')) {
+				projectNavActiveId.value = 'workflow-reviews';
 				setCurrentProject(null);
 			}
 

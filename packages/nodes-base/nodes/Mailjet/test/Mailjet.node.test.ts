@@ -1,27 +1,28 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { Mailjet } from '../Mailjet.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { Mocked, MockInstance } from 'vitest';
 
 describe('Mailjet Node', () => {
 	let mailjetNode: Mailjet;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mailjetApiRequestSpy: jest.SpyInstance;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mailjetApiRequestSpy: MockInstance;
 
 	beforeEach(() => {
-		mailjetApiRequestSpy = jest.spyOn(GenericFunctions, 'mailjetApiRequest');
+		mailjetApiRequestSpy = vi.spyOn(GenericFunctions, 'mailjetApiRequest');
 		mailjetNode = new Mailjet();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>({
 			helpers: {
-				constructExecutionMetaData: jest.fn().mockImplementation((data) => data),
-				returnJsonArray: jest
+				constructExecutionMetaData: vi.fn().mockImplementation((data) => data),
+				returnJsonArray: vi
 					.fn()
 					.mockImplementation((data) =>
 						Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
 					),
 			},
 		});
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunctions.getNode.mockReturnValue(
@@ -38,7 +39,7 @@ describe('Mailjet Node', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Email Resource - Send Operation', () => {

@@ -10,7 +10,7 @@ export class InstalledNodes extends BaseEntity {
 	@PrimaryColumn()
 	type: string;
 
-	@Column()
+	@Column({ type: 'double precision' })
 	latestVersion: number;
 
 	@ManyToOne('InstalledPackages', 'installedNodes')

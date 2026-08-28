@@ -7,7 +7,7 @@ import { ImportService } from '@/services/import.service';
 
 import { ImportWorkflowsCommand } from '../workflow';
 
-jest.mock('@/services/import.service');
+vi.mock('@/services/import.service');
 
 describe('ImportWorkflowsCommand', () => {
 	mockInstance(ImportService);
@@ -23,8 +23,8 @@ describe('ImportWorkflowsCommand', () => {
 		const command = new ImportWorkflowsCommand();
 		// @ts-expect-error Protected property
 		command.logger = {
-			info: jest.fn(),
-			error: jest.fn(),
+			info: vi.fn(),
+			error: vi.fn(),
 		};
 		return command;
 	};
@@ -72,6 +72,73 @@ describe('ImportWorkflowsCommand', () => {
 			};
 
 			await expect(command.run()).resolves.toBeUndefined();
+		});
+	});
+
+	test('needs the expression engine', () => {
+		expect(new ImportWorkflowsCommand().needsExpressionEngine).toBe(true);
+	});
+
+	describe('logContentImportViolations', () => {
+		const buildCommandWithLoggerSpy = () => {
+			const command = new ImportWorkflowsCommand();
+			const logger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
+			// @ts-expect-error Protected property
+			command.logger = logger;
+			return { command, logger };
+		};
+
+		it('logs a warning per workflow with violations', () => {
+			const { command, logger } = buildCommandWithLoggerSpy();
+			const violation = { kind: 'node-type-unavailable', checkId: 'test.check', message: 'nope' };
+
+			// @ts-expect-error Private method
+			command.logContentImportViolations([
+				{
+					workflowId: '1',
+					name: 'Flagged',
+					contentImportPolicy: { violations: [violation], checkErrors: [] },
+				},
+			]);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Workflow "Flagged" has 1 content-import policy violation(s)',
+				{ violations: [violation] },
+			);
+		});
+
+		it('logs a warning per workflow with a check that failed to run', () => {
+			const { command, logger } = buildCommandWithLoggerSpy();
+			const checkFailure = { checkId: 'test.check', correlationId: 'corr-1' };
+
+			// @ts-expect-error Private method
+			command.logContentImportViolations([
+				{
+					workflowId: '1',
+					name: 'Flaky',
+					contentImportPolicy: { violations: [], checkErrors: [checkFailure] },
+				},
+			]);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Workflow "Flaky" has 1 content-import policy check(s) that failed to run',
+				{ checkErrors: [checkFailure] },
+			);
+		});
+
+		it('does not log when there are no violations or check errors', () => {
+			const { command, logger } = buildCommandWithLoggerSpy();
+
+			// @ts-expect-error Private method
+			command.logContentImportViolations([
+				{
+					workflowId: '1',
+					name: 'Clean',
+					contentImportPolicy: { violations: [], checkErrors: [] },
+				},
+			]);
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 });

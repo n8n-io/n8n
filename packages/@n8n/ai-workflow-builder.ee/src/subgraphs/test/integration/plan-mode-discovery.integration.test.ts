@@ -114,7 +114,6 @@ describe('Plan Mode Discovery - Integration Tests', () => {
 			parsedNodeTypes,
 			llm,
 			plannerLLM: llm,
-			featureFlags: { planMode: true },
 			checkpointer: new MemorySaver(),
 		});
 	}
@@ -317,7 +316,6 @@ describe('Plan Mode Discovery - Integration Tests', () => {
 				parsedNodeTypes,
 				llm,
 				plannerLLM: llm,
-				featureFlags: { planMode: true },
 			});
 
 			console.log('Invoking in build mode...');

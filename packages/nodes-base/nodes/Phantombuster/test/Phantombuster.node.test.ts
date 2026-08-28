@@ -92,4 +92,38 @@ describe('Phantombuster Node', () => {
 			workflowFiles: ['launch-with-json-arguments.workflow.json'],
 		});
 	});
+
+	describe('Launch Sync Agent', () => {
+		beforeAll(() => {
+			const ndjson =
+				'{"type":"start","data":{"containerId":"container-456"}}\n' +
+				'{"type":"summary","data":{"containerId":"container-456","executionTime":1234,"exitCode":0,"resultObject":{"foo":"bar"},"output":"agent finished"}}\n';
+
+			nock('https://api.phantombuster.com')
+				.post('/api/v2/agents/launch-sync', (body) => body.id === 'test-agent-123')
+				.reply(200, ndjson, { 'Content-Type': 'application/x-ndjson' });
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['launch-sync-success.workflow.json'],
+		});
+	});
+
+	describe('Launch Sync Agent Reports Server Error', () => {
+		beforeAll(() => {
+			const ndjson =
+				'{"type":"start","data":{"containerId":"container-456"}}\n' +
+				'{"type":"error","data":"agent script crashed"}\n';
+
+			nock('https://api.phantombuster.com')
+				.post('/api/v2/agents/launch-sync', (body) => body.id === 'test-agent-123')
+				.reply(200, ndjson, { 'Content-Type': 'application/x-ndjson' });
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['launch-sync-server-error.workflow.json'],
+		});
+	});
 });

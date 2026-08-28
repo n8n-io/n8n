@@ -1,9 +1,11 @@
 <script lang="ts" setup>
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { computed } from 'vue';
 
 import type { IUser, UserStackGroups } from '../../types';
 import N8nAvatar from '../N8nAvatar';
+import { AVATAR_SIZES, type AvatarSize } from '../N8nAvatar/avatarSizes';
+import N8nHoverCard from '../N8nHoverCard';
+import N8nScrollArea from '../N8nScrollArea';
 import N8nUserInfo from '../N8nUserInfo';
 
 const props = withDefaults(
@@ -11,14 +13,17 @@ const props = withDefaults(
 		users: UserStackGroups;
 		currentUserEmail?: string | null;
 		maxAvatars?: number;
-		dropdownTrigger?: 'hover' | 'click';
+		size?: AvatarSize;
 	}>(),
 	{
 		currentUserEmail: '',
 		maxAvatars: 2,
-		dropdownTrigger: 'hover',
+		size: 'small',
 	},
 );
+
+// Keep the overflow badge the same diameter as the avatars.
+const badgeSize = computed(() => `${AVATAR_SIZES[props.size]}px`);
 
 const nonEmptyGroups = computed(() => {
 	const users: UserStackGroups = {};
@@ -63,32 +68,38 @@ const menuHeight = computed(() => {
 
 <template>
 	<div class="user-stack" data-test-id="user-stack-container">
-		<ElDropdown
-			:trigger="$props.dropdownTrigger"
-			:max-height="menuHeight"
-			popper-class="user-stack-popper"
-		>
-			<div :class="$style.avatars" data-test-id="user-stack-avatars">
-				<N8nAvatar
-					v-for="user in flatUserList.slice(0, visibleAvatarCount)"
-					:key="user.id"
-					:first-name="user.firstName"
-					:last-name="user.lastName"
-					:class="$style.avatar"
-					:data-test-id="`user-stack-avatar-${user.id}`"
-					size="small"
-				/>
-				<div v-if="hiddenUsersCount > 0" :class="$style.hiddenBadge">+{{ hiddenUsersCount }}</div>
-			</div>
-			<template #dropdown>
-				<ElDropdownMenu class="user-stack-list" data-test-id="user-stack-list">
-					<div v-for="(groupUsers, index) in nonEmptyGroups" :key="index">
-						<div :class="$style.groupContainer">
-							<ElDropdownItem>
-								<header v-if="groupCount > 1" :class="$style.groupName">{{ index }}</header>
-							</ElDropdownItem>
-							<div :class="$style.groupUsers">
-								<ElDropdownItem
+		<N8nHoverCard :open-delay="150" :close-delay="150" :side-offset="8" show-arrow>
+			<template #trigger>
+				<div :class="$style.avatars" data-test-id="user-stack-avatars">
+					<N8nAvatar
+						v-for="user in flatUserList.slice(0, visibleAvatarCount)"
+						:key="user.id"
+						:first-name="user.firstName"
+						:last-name="user.lastName"
+						:class="$style.avatar"
+						:data-test-id="`user-stack-avatar-${user.id}`"
+						:size="size"
+					/>
+					<div
+						v-if="hiddenUsersCount > 0"
+						:class="$style.hiddenBadge"
+						:style="{ width: badgeSize, height: badgeSize }"
+					>
+						+{{ hiddenUsersCount }}
+					</div>
+				</div>
+			</template>
+			<template #content>
+				<N8nScrollArea type="auto" :max-height="`${menuHeight}px`">
+					<div :class="$style.userList" data-test-id="user-stack-list">
+						<div
+							v-for="(groupUsers, groupName) in nonEmptyGroups"
+							:key="groupName"
+							:class="$style.groupContainer"
+						>
+							<span v-if="groupCount > 1" :class="$style.groupName">{{ groupName }}</span>
+							<ul :class="$style.groupUsers">
+								<li
 									v-for="user in groupUsers"
 									:key="user.id"
 									:data-test-id="`user-stack-info-${user.id}`"
@@ -98,20 +109,20 @@ const menuHeight = computed(() => {
 										v-bind="user"
 										:is-current-user="user.email === props.currentUserEmail"
 									/>
-								</ElDropdownItem>
-							</div>
+								</li>
+							</ul>
 						</div>
 					</div>
-				</ElDropdownMenu>
+				</N8nScrollArea>
 			</template>
-		</ElDropdown>
+		</N8nHoverCard>
 	</div>
 </template>
 
 <style lang="scss" module>
 .avatars {
-	display: flex;
-	cursor: pointer;
+	// Shrink-wrap so the hover card anchors to the stack, not the full row.
+	display: inline-flex;
 }
 .avatar {
 	margin-right: calc(-1 * var(--spacing--3xs));
@@ -121,8 +132,6 @@ const menuHeight = computed(() => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	width: 28px;
-	height: 28px;
 	color: var(--color--text);
 	background-color: var(--color--background--light-3);
 	font-weight: var(--font-weight--bold);
@@ -131,13 +140,16 @@ const menuHeight = computed(() => {
 	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
 	border-radius: 50%;
 }
+.userList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--sm);
+}
 .groupContainer {
 	display: flex;
 	flex-direction: column;
-
-	& + & {
-		margin-top: var(--spacing--3xs);
-	}
+	gap: var(--spacing--4xs);
 }
 
 .groupName {
@@ -145,43 +157,17 @@ const menuHeight = computed(() => {
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	font-weight: var(--font-weight--bold);
-	margin-bottom: var(--spacing--4xs);
 }
 .groupUsers {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 
 .userInfoContainer {
 	display: flex;
-	padding-top: var(--spacing--5xs);
-	padding-bottom: var(--spacing--5xs);
-}
-</style>
-
-<style lang="scss">
-ul.user-stack-list {
-	border: none;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding-bottom: var(--spacing--2xs);
-
-	.el-dropdown-menu__item {
-		line-height: var(--line-height--md);
-	}
-
-	li:hover {
-		color: currentColor !important;
-	}
-}
-
-.user-stack-popper {
-	border: 1px solid var(--border-color--light);
-	border-radius: var(--radius);
-	padding: var(--spacing--5xs) 0;
-	box-shadow: var(--shadow--card-hover);
-	background-color: var(--color--background--light-3);
 }
 </style>

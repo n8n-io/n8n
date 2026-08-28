@@ -35,7 +35,8 @@ export class McpRegistryClientTool implements INodeType {
 		name: 'mcpRegistryClientTool',
 		hidden: true,
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Runtime backing for MCP registry-derived nodes',
 		defaults: {
 			name: 'MCP Registry Client',
@@ -166,7 +167,10 @@ export class McpRegistryClientTool implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return await executeMcpTool(this, (itemIndex) => resolveConfig(this, itemIndex));
+		return await executeMcpTool(this, (itemIndex) => resolveConfig(this, itemIndex), {
+			// v1.1+ reuses one MCP session across tool calls within an execution.
+			enableSessionCache: this.getNode().typeVersion >= 1.1,
+		});
 	}
 }
 

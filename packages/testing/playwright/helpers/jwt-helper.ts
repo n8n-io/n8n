@@ -37,6 +37,7 @@ interface ExternalJwtClaims {
 	exp: number;
 	jti: string;
 	email: string;
+	email_verified: boolean;
 	given_name: string;
 	family_name: string;
 	role: string;
@@ -55,6 +56,7 @@ export function mintExternalJwt(overrides: Partial<ExternalJwtClaims> = {}): str
 			exp: now + 300,
 			jti: randomUUID(),
 			email: `e2e-${id}@test.example`,
+			email_verified: true,
 			given_name: 'E2E',
 			family_name: `User-${id}`,
 			role: 'global:member',
@@ -81,6 +83,7 @@ export function mintExternalJwtWithKey(
 			exp: now + 300,
 			jti: randomUUID(),
 			email: `e2e-${id}@test.example`,
+			email_verified: true,
 			given_name: 'E2E',
 			family_name: `User-${id}`,
 			role: 'global:member',

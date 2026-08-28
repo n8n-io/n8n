@@ -1,4 +1,4 @@
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { isEnterpriseFeatureEnabled } from '@/app/utils/rbac/checks/isEnterpriseFeatureEnabled';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { createPinia, setActivePinia } from 'pinia';

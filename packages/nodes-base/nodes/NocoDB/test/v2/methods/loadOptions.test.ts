@@ -2,11 +2,13 @@ import { getDownloadFields } from '../../../v2/methods/loadOptions';
 
 // Mock ColumnsFetcher globally
 const mockColumnsFetcher = {
-	fetchFromDefinedParam: jest.fn(),
+	fetchFromDefinedParam: vi.fn(),
 };
 
-jest.mock('../../../v2/helpers/columns-fetcher', () => ({
-	ColumnsFetcher: jest.fn(() => mockColumnsFetcher),
+vi.mock('../../../v2/helpers/columns-fetcher', () => ({
+	ColumnsFetcher: vi.fn(function () {
+		return mockColumnsFetcher;
+	}),
 }));
 
 describe('NocoDB Load Options', () => {

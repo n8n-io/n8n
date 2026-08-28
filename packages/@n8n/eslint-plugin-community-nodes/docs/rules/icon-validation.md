@@ -1,4 +1,4 @@
-# Validate node and credential icon files exist, are SVG format, and light/dark icons are different (`@n8n/community-nodes/icon-validation`)
+# Validate node and credential icon files exist, use the file: protocol, and that light/dark icons are different (`@n8n/community-nodes/icon-validation`)
 
 💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
@@ -8,7 +8,9 @@
 
 ## Rule Details
 
-Validates that your node and credential icon files exist, are in SVG format, and use the correct `file:` protocol. Icons must be different files when providing light/dark theme variants.
+Validates that your node and credential icon files exist and use the correct `file:` protocol. Icons must be different files when providing light/dark theme variants.
+
+Both SVG and PNG icons are accepted. SVG is recommended (it scales cleanly and supports theming), but PNG is allowed — see the `icon-prefer-themed-variants` rule for the related light/dark nudge.
 
 ## Examples
 
@@ -19,7 +21,7 @@ export class MyNode implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'My Node',
     name: 'myNode',
-    icon: 'icons/my-icon.png', // Missing 'file:' prefix, wrong format
+    icon: 'icons/my-icon.svg', // Missing 'file:' prefix
     // ...
   };
 }

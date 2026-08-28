@@ -1,16 +1,16 @@
-import type { ApiKeyRepository, UserRepository, User, TokenGrant } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import type { ApiKeyRepository, User, TokenGrant } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { JwtService } from '@/services/jwt.service';
 
-import type { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 
 const makeUser = (id: string): User => ({ ...mock<User>(), id });
 
 describe('McpServerApiKeyService', () => {
-	let authStrategyRegistry: jest.Mocked<AuthStrategyRegistry>;
+	let authStrategyRegistry: Mocked<AuthStrategyRegistry>;
 	let service: McpServerApiKeyService;
 
 	beforeEach(() => {
@@ -18,8 +18,6 @@ describe('McpServerApiKeyService', () => {
 		service = new McpServerApiKeyService(
 			mock<ApiKeyRepository>(),
 			mock<JwtService>(),
-			mock<UserRepository>(),
-			mock<AccessTokenRepository>(),
 			authStrategyRegistry,
 		);
 	});
@@ -54,6 +52,23 @@ describe('McpServerApiKeyService', () => {
 
 			expect(result.user).toBe(actor);
 			expect(result.actor).toBe(actor);
+		});
+
+		it('reports `api_key` for a delegated token-exchange grant, not a distinct type', async () => {
+			// Deliberate: `api_key` covers every non-OAuth bearer token the strategy
+			// chain admits, scoped JWTs included, matching what the MCP connection
+			// telemetry has reported for them since they were accepted here.
+			const subject = makeUser('subject-1');
+			const actor = makeUser('actor-1');
+			authStrategyRegistry.buildContextFromToken.mockResolvedValue({
+				subject,
+				actor,
+				scopes: [],
+			} satisfies TokenGrant);
+
+			const result = await service.verifyApiKey('scoped-jwt');
+
+			expect(result.caller).toEqual({ authType: 'api_key' });
 		});
 
 		it('returns a rejection context when the registry returns null', async () => {

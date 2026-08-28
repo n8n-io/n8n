@@ -1,7 +1,7 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
-import { prepareMultiPartForm } from '../utils';
+import { getAuditLogReasonHeaders, prepareMultiPartForm } from '../utils';
 
 describe('Discord V2 Utils', () => {
 	describe('prepareMultiPartForm', () => {
@@ -12,7 +12,7 @@ describe('Discord V2 Utils', () => {
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should create multipart form with single file', async () => {
@@ -27,11 +27,11 @@ describe('Discord V2 Utils', () => {
 				fileExtension: 'png',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(binaryData);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi.fn().mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValue(Buffer.from('test file content'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -64,15 +64,15 @@ describe('Discord V2 Utils', () => {
 				fileExtension: 'jpg',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi
 				.fn()
 				.mockReturnValueOnce(binaryData1)
 				.mockReturnValueOnce(binaryData2);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValueOnce(Buffer.from('test file content 1'))
 				.mockResolvedValueOnce(Buffer.from('test file content 2'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -98,11 +98,11 @@ describe('Discord V2 Utils', () => {
 				fileExtension: 'png',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(binaryData);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi.fn().mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValue(Buffer.from('test file content'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -125,11 +125,11 @@ describe('Discord V2 Utils', () => {
 				fileName: 'testfile',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(binaryData);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi.fn().mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValue(Buffer.from('test file content'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -146,8 +146,8 @@ describe('Discord V2 Utils', () => {
 			const jsonPayload: IDataObject = { content: 'Test message' };
 			const itemIndex = 0;
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(null);
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.helpers.assertBinaryData = vi.fn().mockReturnValue(null);
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			await expect(
 				prepareMultiPartForm.call(mockExecuteFunctions, files, jsonPayload, itemIndex),
@@ -170,11 +170,11 @@ describe('Discord V2 Utils', () => {
 				fileExtension: 'pdf',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(binaryData);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi.fn().mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValue(Buffer.from('pdf content'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -203,15 +203,15 @@ describe('Discord V2 Utils', () => {
 				fileName: 'text.txt',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi
 				.fn()
 				.mockReturnValueOnce(binaryData1)
 				.mockReturnValueOnce(binaryData2);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValueOnce(Buffer.from('image content'))
 				.mockResolvedValueOnce(Buffer.from('text content'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -264,11 +264,11 @@ describe('Discord V2 Utils', () => {
 				fileExtension: 'pdf',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(binaryData);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi.fn().mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValue(Buffer.from('pdf content'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -293,7 +293,7 @@ describe('Discord V2 Utils', () => {
 			const jsonPayload: IDataObject = { content: 'Test message no files' };
 			const itemIndex = 0;
 
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -316,11 +316,11 @@ describe('Discord V2 Utils', () => {
 				fileName: 'data',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(binaryData);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi.fn().mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValue(Buffer.from('json content'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -343,11 +343,11 @@ describe('Discord V2 Utils', () => {
 				fileName: 'test.png',
 			};
 
-			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(binaryData);
-			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+			mockExecuteFunctions.helpers.assertBinaryData = vi.fn().mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = vi
 				.fn()
 				.mockResolvedValue(Buffer.from('test file content'));
-			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
 
 			const result = await prepareMultiPartForm.call(
 				mockExecuteFunctions,
@@ -359,6 +359,55 @@ describe('Discord V2 Utils', () => {
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(2, 'file1');
 			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(2, 'file1');
 			expect(result).toBeDefined();
+		});
+	});
+
+	describe('getAuditLogReasonHeaders', () => {
+		let mockExecuteFunctions: IExecuteFunctions;
+
+		// Returns getNodeParameter values keyed by parameter name for a single item.
+		const mockParams = (params: Record<string, string>) => {
+			mockExecuteFunctions.getNodeParameter = vi
+				.fn()
+				.mockImplementation((name: string, _i: number, fallback: string) =>
+					name in params ? params[name] : fallback,
+				);
+		};
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('maps a preset reason to its label and URL-encodes it', () => {
+			mockParams({ reason: 'suspicious_spam' });
+
+			const headers = getAuditLogReasonHeaders.call(mockExecuteFunctions, 0);
+
+			expect(headers).toEqual({ 'X-Audit-Log-Reason': 'Suspicious%20or%20spam%20account' });
+		});
+
+		it('uses the custom text when the reason is "other"', () => {
+			mockParams({ reason: 'other', reasonCustom: 'Posting phishing links' });
+
+			const headers = getAuditLogReasonHeaders.call(mockExecuteFunctions, 0);
+
+			expect(headers).toEqual({ 'X-Audit-Log-Reason': 'Posting%20phishing%20links' });
+		});
+
+		it('returns no header when the reason is "other" but the custom text is empty', () => {
+			mockParams({ reason: 'other', reasonCustom: '' });
+
+			expect(getAuditLogReasonHeaders.call(mockExecuteFunctions, 0)).toEqual({});
+		});
+
+		it('returns no header when no reason is set', () => {
+			mockParams({});
+
+			expect(getAuditLogReasonHeaders.call(mockExecuteFunctions, 0)).toEqual({});
 		});
 	});
 });

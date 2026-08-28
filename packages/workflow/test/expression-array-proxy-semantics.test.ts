@@ -64,4 +64,77 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 	it('implicit string coercion uses Array.prototype.toString', () => {
 		expect(evaluate('={{ "items: " + $json.arr }}', { arr: [1, 2, 3] })).toBe('items: 1,2,3');
 	});
+
+	it('reverse returns a reversed copy without mutating a subsequent sibling read', () => {
+		expect(evaluate('={{ [$json.arr.reverse(), $json.arr] }}', { arr: [1, 2, 3] })).toEqual([
+			[3, 2, 1],
+			[1, 2, 3],
+		]);
+	});
+
+	it('reverse does not mutate a preceding sibling read', () => {
+		expect(evaluate('={{ [$json.arr, $json.arr.reverse()] }}', { arr: [1, 2, 3] })).toEqual([
+			[1, 2, 3],
+			[3, 2, 1],
+		]);
+	});
+
+	describe('mutating array methods return a mutated copy', () => {
+		it('sort() returns the sorted array', () => {
+			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
+			expect(evaluate('={{ $json.arr.sort() }}', json)).toEqual([
+				'Apple',
+				'Kiwi',
+				'Mango',
+				'Orange',
+			]);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
+		});
+
+		it('sort() forwards the comparator', () => {
+			const json = { arr: [3, 1, 10, 2] };
+			expect(evaluate('={{ $json.arr.sort((a, b) => b - a) }}', json)).toEqual([10, 3, 2, 1]);
+			expect(json.arr).toEqual([3, 1, 10, 2]);
+		});
+
+		it('splice() returns the removed elements', () => {
+			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
+			expect(evaluate('={{ $json.arr.splice(0, 2) }}', json)).toEqual(['Mango', 'Apple']);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
+		});
+
+		it('fill() returns the filled array', () => {
+			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
+			expect(evaluate('={{ $json.arr.fill("X", 0, 2) }}', json)).toEqual([
+				'X',
+				'X',
+				'Kiwi',
+				'Orange',
+			]);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
+		});
+
+		it('shift() returns the removed first element', () => {
+			const json = { arr: ['Mango', 'Apple', 'Kiwi'] };
+			expect(evaluate('={{ $json.arr.shift() }}', json)).toBe('Mango');
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi']);
+		});
+
+		it('unshift() returns the new length', () => {
+			const json = { arr: ['Mango', 'Apple', 'Kiwi'] };
+			expect(evaluate('={{ $json.arr.unshift("Peach", "Grape") }}', json)).toBe(5);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi']);
+		});
+
+		it('copyWithin() returns the copied-within array', () => {
+			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
+			expect(evaluate('={{ $json.arr.copyWithin(0, 2, 4) }}', json)).toEqual([
+				'Kiwi',
+				'Orange',
+				'Kiwi',
+				'Orange',
+			]);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
+		});
+	});
 });

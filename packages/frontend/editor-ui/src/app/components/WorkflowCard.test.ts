@@ -12,12 +12,12 @@ import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
@@ -38,7 +38,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
 	const showToast = vi.fn();
@@ -1094,25 +1094,25 @@ describe('WorkflowCard', () => {
 		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
 	});
 
-	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
+	it('should show private credential indicator when workflow has resolvable credentials', () => {
 		const data = createWorkflow({
 			hasResolvableCredentials: true,
 		});
 
 		const { getByTestId } = renderComponent({ props: { data } });
 
-		const indicator = getByTestId('workflow-card-dynamic-credentials');
+		const indicator = getByTestId('workflow-card-private-credential');
 		expect(indicator).toBeVisible();
 	});
 
-	it('should hide dynamic credentials indicator when workflow has no resolvable credentials', () => {
+	it('should hide private credential indicator when workflow has no resolvable credentials', () => {
 		const data = createWorkflow({
 			hasResolvableCredentials: false,
 		});
 
 		const { queryByTestId } = renderComponent({ props: { data } });
 
-		const indicator = queryByTestId('workflow-card-dynamic-credentials');
+		const indicator = queryByTestId('workflow-card-private-credential');
 		expect(indicator).toBeNull();
 	});
 
@@ -1362,6 +1362,48 @@ describe('WorkflowCard', () => {
 				expect(emitted()['workflow:unpublished']).toBeTruthy();
 				expect(emitted()['workflow:unpublished'][0]).toEqual([{ id: '1' }]);
 			});
+		});
+	});
+
+	describe('metadata divider spacing (ADO-5569)', () => {
+		// The metadata row (`.cardDescription`) lays its items out with
+		// `display: flex; gap`. The flex `gap` only produces even spacing on both
+		// sides of a "|" divider when the "|" is its OWN direct flex child. When a
+		// "|" is baked into the "Last updated ..." / "Created ..." text spans it
+		// gets a plain text space on one side and the flex `gap` on the other,
+		// which makes the spacing around the divider visually uneven.
+		it('should render each "|" divider as its own flex item so spacing is even on both sides', () => {
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				settings: {
+					availableInMCP: true,
+				},
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					data,
+					isMcpEnabled: true,
+					isMcpModuleActive: true,
+					canManageInstanceMcp: true,
+					isWorkflowCardMcpToggleEnabled: false,
+				},
+			});
+
+			// The MCP indicator is a direct child of the metadata flex row.
+			const metadataRow = getByTestId('workflow-card-mcp').parentElement;
+			expect(metadataRow).not.toBeNull();
+
+			// Sanity check: the row actually renders divider characters.
+			expect(metadataRow!.textContent).toContain('|');
+
+			// No content span may embed a "|"; every divider must be a dedicated
+			// direct child of the flex row so the `gap` applies symmetrically.
+			const embedsDivider = Array.from(metadataRow!.children).some((el) => {
+				const text = el.textContent ?? '';
+				return text.includes('|') && text.trim() !== '|';
+			});
+			expect(embedsDivider).toBe(false);
 		});
 	});
 });

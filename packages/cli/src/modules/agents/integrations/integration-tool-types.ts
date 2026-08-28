@@ -1,0 +1,178 @@
+import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { z } from 'zod';
+
+import type { IntegrationErrorCode } from './integration-error-codes';
+
+export type IntegrationMessageTarget =
+	| {
+			type: 'thread';
+			threadId: string;
+			channelId?: string;
+			userId?: string;
+	  }
+	| {
+			type: 'channel';
+			channelId: string;
+			threadId?: string;
+	  }
+	| {
+			type: 'dm';
+			userId: string;
+			threadId?: string;
+	  };
+
+/**
+ * Whether the latest inbound message expects a reply. Only when 'optional'
+ * may the agent end the turn silently via the `do_not_respond` action.
+ * Each platform decides which messages are 'optional' (see
+ * `AgentChatIntegration.getReplyExpectation`).
+ */
+export type ReplyExpectation = 'required' | 'optional';
+
+export interface IntegrationMessageContext {
+	integrationConnectionId: string;
+	platform: string;
+	target: IntegrationMessageTarget;
+	messageId?: string;
+	interactingUserId?: string;
+	agentUserId?: string;
+	subject?: IntegrationMessageSubject;
+	replyExpectation?: ReplyExpectation;
+	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
+	replyTarget?: IntegrationMessageTarget;
+	replyMessageId?: string;
+	updatedAt: string;
+}
+
+export interface IntegrationMessageSubject {
+	type: string;
+	id: string;
+	title?: string;
+	description?: string;
+	url?: string;
+	status?: string;
+	labels?: string[];
+	assignee?: IntegrationSubjectPerson;
+	author?: IntegrationSubjectPerson;
+}
+
+export interface IntegrationSubjectPerson {
+	id: string;
+	name: string;
+}
+
+/**
+ * Source of a tool connection: a persisted credential integration, or the
+ * implicit credential-less in-app chat channel (injected per-run, never
+ * stored on the agent).
+ */
+export type IntegrationToolConnectionSource =
+	| AgentIntegrationConfig
+	| { type: typeof N8N_CHAT_INTEGRATION_TYPE; credentialId?: undefined };
+
+export type IntegrationContextQuery =
+	| 'get_current_message_context'
+	| 'get_current_subject'
+	| 'get_current_user'
+	| 'get_current_channel_info'
+	| 'get_user'
+	| 'get_channel_info'
+	| 'search_users'
+	| 'search_channels'
+	| 'get_team'
+	| 'search_teams'
+	| 'get_project'
+	| 'search_projects'
+	| 'search_labels'
+	| 'search_issue_states'
+	| 'get_issue'
+	| 'search_issues';
+
+export type IntegrationAction =
+	| 'respond'
+	| 'do_not_respond'
+	| 'send_dm'
+	| 'send_channel_message'
+	| 'edit_message'
+	| 'add_reaction'
+	| 'create_issue'
+	| 'update_issue'
+	| 'create_comment';
+
+export interface IntegrationToolOperationDefinition<Name extends string = string> {
+	name: Name;
+	inputSchema: z.ZodType;
+	description: string;
+}
+
+export type IntegrationContextQueryDefinition =
+	IntegrationToolOperationDefinition<IntegrationContextQuery>;
+
+export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction>;
+
+export interface IntegrationToolConnectionDescriptor {
+	agentId?: string;
+	integration: IntegrationToolConnectionSource;
+	integrationConnectionId: string;
+	contextToolName: string;
+	actionToolName: string;
+	contextQueries: IntegrationContextQuery[];
+	actions: IntegrationAction[];
+	contextToolDefinitions: IntegrationContextQueryDefinition[];
+	actionToolDefinitions: IntegrationActionDefinition[];
+	contextToolGuidance?: string[];
+	actionToolGuidance?: string[];
+}
+
+export interface IntegrationMessageContextStore {
+	getLatest(threadId: string): Promise<IntegrationMessageContext | null>;
+	setLatest(
+		threadId: string,
+		resourceId: string,
+		context: IntegrationMessageContext,
+	): Promise<void>;
+	bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void>;
+	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
+	unbindSession(derivedThreadId: string): Promise<void>;
+	clearSessionBindings(originThreadId: string): Promise<void>;
+}
+
+export interface SessionBinding {
+	threadId: string;
+	resourceId: string;
+}
+
+export interface IntegrationContextQueryExecutor {
+	execute(params: {
+		descriptor: IntegrationToolConnectionDescriptor;
+		query: IntegrationContextQuery;
+		input: Record<string, unknown>;
+		persistence?: { threadId: string; resourceId: string };
+	}): Promise<unknown>;
+}
+
+export interface IntegrationActionExecutor {
+	execute(params: {
+		descriptor: IntegrationToolConnectionDescriptor;
+		action: IntegrationAction;
+		input: Record<string, unknown>;
+		awaitResponse: boolean;
+		runId?: string;
+		toolCallId?: string;
+		currentMessageContext?: IntegrationMessageContext;
+	}): Promise<IntegrationActionResult>;
+}
+
+export type IntegrationActionResult =
+	| {
+			ok: true;
+			messageContext?: IntegrationMessageContext;
+			[key: string]: unknown;
+	  }
+	| {
+			ok: false;
+			error: {
+				code: IntegrationErrorCode;
+				message: string;
+			};
+	  };

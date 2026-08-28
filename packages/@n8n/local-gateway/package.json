@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@n8n/computer-use": "workspace:*",
+    "electron": "catalog:",
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
@@ -34,9 +35,10 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^8.2.0",
-    "electron": "^41.3.0",
     "electron-builder": "^26.9.0",
     "rimraf": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

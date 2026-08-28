@@ -1,3 +1,4 @@
+import type { Result } from '@n8n/utils/result';
 import get from 'lodash/get';
 import type {
 	Workflow,
@@ -15,25 +16,37 @@ import type {
 	ExecuteWorkflowData,
 	ExecuteAgentInfo,
 	ExecuteAgentData,
+	ExecuteAgentSource,
 	ITaskMetadata,
 	ContextType,
 	IContextObject,
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	ChunkType,
 	NodeConnectionType,
-	Result,
 	IExecuteFunctions,
+	ExecuteAgentWorkflowContext,
+	IDataObject,
+	StructuredChunk,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
 	createEnvProviderState,
+	applyDynamicCredentialsUsage,
+	takeAttachedDynamicCredentialsUsage,
+	shouldRedactConsoleOutput,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
+
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
 
@@ -69,15 +82,25 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		this.abortSignal?.addEventListener('abort', fn);
 	}
 
+	onExecutionFinish(handler: () => unknown) {
+		this.additionalData.hooks?.addHandler('workflowExecuteAfter', async (fullRunData) => {
+			if (fullRunData.status === 'waiting') return;
+			try {
+				await handler();
+			} catch (error) {
+				this.logger.warn(`Execution-finish handler of node "${this.node.name}" failed`, {
+					error,
+				});
+			}
+		});
+	}
+
 	getExecuteData() {
 		return this.executeData;
 	}
 
 	setMetadata(metadata: ITaskMetadata): void {
-		this.executeData.metadata = {
-			...(this.executeData.metadata ?? {}),
-			...metadata,
-		};
+		this.executeData.metadata = deepMerge(this.executeData.metadata ?? {}, metadata);
 	}
 
 	getContext(type: ContextType): IContextObject {
@@ -126,26 +149,42 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		},
 	): Promise<ExecuteWorkflowData> {
 		if (options?.parentExecution) {
-			// We inject the execution context of the current execution
-			// to the sub-workflow so that it can be accessed there
-			// this should only happen for the direct parent execution
-			// if a workflow starts a sub-workflow for a workflow that is not itself
-			// then the context should not be passed down
+			// Inject the current execution context into the direct parent's
+			// sub-workflow only. Normalize against the placeholder id: during a
+			// trigger's webhook phase (e.g. an MCP Trigger tool call) no execution id
+			// exists yet, so `getExecutionId()` is `undefined` while the proxied
+			// `parentExecution.executionId` is `PLACEHOLDER_EMPTY_EXECUTION_ID`.
 			if (
 				!options.parentExecution.executionContext &&
-				options.parentExecution.executionId === this.getExecutionId()
+				options.parentExecution.executionId ===
+					(this.getExecutionId() ?? PLACEHOLDER_EMPTY_EXECUTION_ID)
 			) {
 				options.parentExecution.executionContext = this.getExecutionContext();
 			}
 		}
-		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
-			...options,
-			parentWorkflowId: this.workflow.id,
-			inputData,
-			parentWorkflowSettings: this.workflow.settings,
-			node: this.node,
-			parentCallbackManager,
-		});
+		let result: ExecuteWorkflowData;
+		try {
+			result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
+				...options,
+				parentWorkflowId: this.workflow.id,
+				inputData,
+				parentWorkflowSettings: this.workflow.settings,
+				node: this.node,
+				parentCallbackManager,
+			});
+		} catch (error) {
+			// A failed sub-workflow may still have attempted or resolved private credentials
+			// before failing; the usage rides on the error so a continue-on-fail parent task
+			// still inherits the flags.
+			const usage = takeAttachedDynamicCredentialsUsage(error);
+			if (usage) applyDynamicCredentialsUsage(this.additionalData, usage);
+			throw error;
+		}
+
+		// The sub-workflow resolved its credentials under its own context; forward the reported
+		// usage onto this parent node so its task inherits the flag and redaction covers the
+		// embedded output.
+		applyDynamicCredentialsUsage(this.additionalData, result);
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
@@ -167,16 +206,102 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			throw new OperationalError('Agent execution is not available in this context');
 		}
 
-		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
+		let source: ExecuteAgentSource;
+		if (agentInfo.inlineAgent) {
+			source = { inlineAgent: agentInfo.inlineAgent };
+		} else if (agentInfo.agentId) {
+			source = { agentId: agentInfo.agentId };
+		} else {
+			throw new OperationalError('Either an agent id or an inline agent definition is required');
+		}
+
+		const callerSessionId = agentInfo.sessionId?.trim();
+		const threadId = callerSessionId || randomUUID();
+
+		const inputDataScope = agentInfo.inputDataScope ?? 'item';
+		const mainBranches = this.inputData?.main ?? [];
+		const primaryBranch = mainBranches[0] ?? [];
+		// 'all' exposes every input item across all main branches; otherwise scope
+		// to the current item from the primary branch (empty when itemIndex is out
+		// of range — defensive).
+		const scopedInput =
+			inputDataScope === 'all'
+				? mainBranches.flatMap((branch) => branch ?? [])
+				: itemIndex < primaryBranch.length
+					? [primaryBranch[itemIndex]]
+					: [];
+
+		const workflowContext: ExecuteAgentWorkflowContext = {
+			workflowId: this.workflow.id,
+			workflowName: this.workflow.name,
+			callingNodeName: this.node.name,
+			callingNodeId: this.node.id,
+			inputData: scopedInput,
+			inputDataScope,
+			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
+			hasCallerSessionId: Boolean(callerSessionId),
+			nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
+			runExecutionData: this.runExecutionData,
+		};
+
+		const sendResponseChunk =
+			agentInfo.enableStreaming !== false &&
+			agentInfo.outputSchema === undefined &&
+			this.isStreaming()
+				? async (type: 'begin' | 'item' | 'end' | 'error', content?: string) =>
+						await this.sendChunk(type, itemIndex, content)
+				: undefined;
 
 		return await this.additionalData.executeAgent(
-			agentInfo.agentId,
+			source,
 			message,
 			executionId,
 			threadId,
 			this.additionalData,
 			this.additionalData.rootExecutionMode ?? this.getMode(),
+			agentInfo.outputSchema,
+			workflowContext,
+			{
+				nodeId: this.node.id,
+				nodeName: this.node.name,
+				runIndex: this.runIndex,
+				itemIndex,
+				...(sendResponseChunk ? { sendResponseChunk } : {}),
+			},
 		);
+	}
+
+	isStreaming(): boolean {
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
+
+		return hasHandlers && executionModeSupportsStreaming.includes(this.mode) && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
+		const metadata = {
+			nodeId: this.node.id,
+			nodeName: this.node.name,
+			itemIndex,
+			runIndex: this.runIndex,
+			timestamp: Date.now(),
+		};
+
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+		const message: StructuredChunk = {
+			type,
+			content: parsedContent,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
@@ -186,14 +311,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {
 		const inputData = this.inputData[connectionType];
 		if (inputData.length < inputIndex) {
-			throw new ApplicationError('Could not get input with given index', {
+			throw new UnexpectedError('Could not get input with given index', {
 				extra: { inputIndex, connectionType },
 			});
 		}
 
 		const allItems = inputData[inputIndex] as INodeExecutionData[] | null | undefined;
 		if (allItems === null) {
-			throw new ApplicationError('Input index was not set', {
+			throw new UnexpectedError('Input index was not set', {
 				extra: { inputIndex, connectionType },
 			});
 		}
@@ -204,7 +329,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionTypes.Main): ISourceData {
 		if (this.executeData?.source === null) {
 			// Should never happen as n8n sets it automatically
-			throw new ApplicationError('Source data is missing');
+			throw new UnexpectedError('Source data is missing');
 		}
 		return this.executeData.source[connectionType][inputIndex]!;
 	}
@@ -224,10 +349,39 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		).getDataProxy();
 	}
 
+	/**
+	 * Console output never passes through the execution-data redaction pipeline,
+	 * so the push/stdout sinks gate on this before emitting. Fails closed: an
+	 * error while resolving the policy redacts rather than emits.
+	 */
+	isConsoleOutputRedacted(): boolean {
+		try {
+			return shouldRedactConsoleOutput(
+				this.runExecutionData.executionData?.runtimeData?.redaction,
+				this.workflow.settings,
+				this.mode,
+			);
+		} catch {
+			return true;
+		}
+	}
+
+	/**
+	 * `args` unchanged, or just the redaction marker when console output is
+	 * redacted for this run. Shared by the stdout branch of `logNodeOutput` in
+	 * `ExecuteContext` and `SupplyDataContext`.
+	 */
+	protected redactedConsoleArgs(args: unknown[]): unknown[] {
+		return this.isConsoleOutputRedacted() ? [CONSOLE_OUTPUT_REDACTED_MESSAGE] : args;
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	sendMessageToUI(...args: any[]): void {
 		if (this.mode !== 'manual') {
 			return;
+		}
+		if (this.isConsoleOutputRedacted()) {
+			args = [CONSOLE_OUTPUT_REDACTED_MESSAGE];
 		}
 		try {
 			if (this.additionalData.sendDataToUI) {

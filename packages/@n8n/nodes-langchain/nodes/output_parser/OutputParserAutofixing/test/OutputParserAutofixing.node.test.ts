@@ -8,7 +8,7 @@ import type {
 	IWorkflowDataProxyData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
@@ -41,14 +41,14 @@ describe('OutputParserAutofixing', () => {
 			if (type === NodeConnectionTypes.AiLanguageModel) return mockModel;
 			if (type === NodeConnectionTypes.AiOutputParser) return mockStructuredOutputParser;
 
-			throw new ApplicationError('Unexpected connection type');
+			throw new UnexpectedError('Unexpected connection type');
 		});
 		thisArg.getNodeParameter.mockReset();
 		thisArg.getNodeParameter.mockImplementation((parameterName) => {
 			if (parameterName === 'options.prompt') {
 				return NAIVE_FIX_PROMPT;
 			}
-			throw new ApplicationError('Not implemented');
+			throw new UnexpectedError('Not implemented');
 		});
 	});
 
@@ -70,7 +70,7 @@ describe('OutputParserAutofixing', () => {
 				if (parameterName === 'options.prompt') {
 					return 'Invalid prompt without error placeholder';
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toBeInstanceOf(
@@ -86,7 +86,7 @@ describe('OutputParserAutofixing', () => {
 				if (parameterName === 'options.prompt') {
 					return '';
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const execution = outputParser.supplyData.call(thisArg, 0);
@@ -102,7 +102,7 @@ describe('OutputParserAutofixing', () => {
 				if (parameterName === 'options.prompt') {
 					return NAIVE_FIX_PROMPT;
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {

@@ -8,6 +8,13 @@ type WithPrivates = {
 };
 
 describe('Agent.configuration()', () => {
+	it('does not expose an agent-wide tool approval setting', () => {
+		const agent = new Agent('test');
+
+		expect('requireToolApproval' in agent).toBe(false);
+		expect(agent.snapshot).not.toHaveProperty('requireToolApproval');
+	});
+
 	it('is chainable', () => {
 		const agent = new Agent('test');
 		expect(agent.configuration({ maxIterations: 5 })).toBe(agent);

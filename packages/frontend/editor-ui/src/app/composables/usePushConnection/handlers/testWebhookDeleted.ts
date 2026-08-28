@@ -1,22 +1,18 @@
 import type { TestWebhookDeleted } from '@n8n/api-types/push/webhook';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import type { PushHandlerOptions } from './types';
 
 /**
  * Handles the 'testWebhookDeleted' push message, which is sent when a test webhook is deleted.
  */
 export async function testWebhookDeleted(
 	{ data }: TestWebhookDeleted,
-	options: { workflowState: WorkflowState },
+	{ documentId }: PushHandlerOptions,
 ) {
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
-	if (data.workflowId === workflowsStore.workflowId) {
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setExecutionWaitingForWebhook(false);
-		options.workflowState.setActiveExecutionId(undefined);
+	if (data.workflowId === workflowExecutionStateStore.workflowId) {
+		workflowExecutionStateStore.setExecutionWaitingForWebhook(false);
+		workflowExecutionStateStore.setActiveExecutionId(undefined);
 	}
 }

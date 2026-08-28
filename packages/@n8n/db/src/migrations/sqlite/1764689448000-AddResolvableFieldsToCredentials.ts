@@ -8,11 +8,15 @@ export class AddResolvableFieldsToCredentials1764689448000 implements Reversible
 	withFKsDisabled = true as const;
 
 	async up({ schemaBuilder: { addColumns, addForeignKey, column } }: MigrationContext) {
-		await addColumns(credentialsTableName, [
-			column('isResolvable').bool.notNull.default(false),
-			column('resolvableAllowFallback').bool.notNull.default(false),
-			column('resolverId').varchar(16),
-		]);
+		await addColumns(
+			credentialsTableName,
+			[
+				column('isResolvable').bool.notNull.default(false),
+				column('resolvableAllowFallback').bool.notNull.default(false),
+				column('resolverId').varchar(16),
+			],
+			{ recreatesOnSqlite: true },
+		);
 
 		await addForeignKey(
 			credentialsTableName,
@@ -24,10 +28,10 @@ export class AddResolvableFieldsToCredentials1764689448000 implements Reversible
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(credentialsTableName, [
-			'isResolvable',
-			'resolvableAllowFallback',
-			'resolverId',
-		]);
+		await dropColumns(
+			credentialsTableName,
+			['isResolvable', 'resolvableAllowFallback', 'resolverId'],
+			{ recreatesOnSqlite: true },
+		);
 	}
 }

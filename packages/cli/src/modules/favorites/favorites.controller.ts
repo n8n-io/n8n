@@ -1,11 +1,11 @@
+import { FAVORITE_RESOURCE_TYPES, type FavoriteResourceType } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
-import { FAVORITE_RESOURCE_TYPES, type FavoriteResourceType } from '@n8n/api-types';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { FavoritesService } from './favorites.service';
 import { AddFavoriteDto } from './dto/add-favorite.dto';
+import { FavoritesService } from './favorites.service';
 
 function isFavoriteResourceType(value: string): value is FavoriteResourceType {
 	return (FAVORITE_RESOURCE_TYPES as readonly string[]).includes(value);

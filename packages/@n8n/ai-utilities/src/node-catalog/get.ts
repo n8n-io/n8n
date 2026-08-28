@@ -180,6 +180,25 @@ export function parseNodeId(nodeId: string): { packageName: string; nodeName: st
 }
 
 /**
+ * Turn a `v{digits}` directory name into a comparable numeric version.
+ *
+ * Version dirs drop the dot (2.2 -> v22, 3.1 -> v31, 3 -> v3), so a naive
+ * `parseInt` reads v22 as 22 and ranks it above v3. A two-digit suffix is a
+ * major.minor pair; anything else is the number as-is.
+ *
+ * The encoding stays ambiguous for a two-digit major (a future `v10` reads as
+ * 1.0), but no node is anywhere near that, and this matches the `parseRequestedVersion`
+ * convention used elsewhere. Fixing it properly means an unambiguous dir name at generation time.
+ */
+export function versionDirToNumber(versionDir: string): number {
+	const digits = versionDir.slice(1);
+	if (/^\d{2}$/.test(digits)) {
+		return Number(`${digits[0]}.${digits[1]}`);
+	}
+	return Number.parseFloat(digits);
+}
+
+/**
  * Get available versions for a node
  * Returns array of version strings like ['v34', 'v2'] sorted by version descending
  */
@@ -220,11 +239,7 @@ function getNodeVersions(nodeId: string, nodeDefinitionDirs?: string[]): string[
 		}
 
 		// Sort by numeric version descending
-		versions.sort((a, b) => {
-			const aNum = parseInt(a.slice(1), 10);
-			const bNum = parseInt(b.slice(1), 10);
-			return bNum - aNum;
-		});
+		versions.sort((a, b) => versionDirToNumber(b) - versionDirToNumber(a));
 
 		return versions;
 	} catch {
@@ -238,6 +253,8 @@ interface PathResolutionResult {
 	error?: string;
 	requiresDiscriminators?: boolean;
 	availableDiscriminators?: { resources?: string[]; modes?: string[] };
+	/** All mode variants, returned when a mode-split node is requested without a mode. */
+	modeVariants?: Array<{ mode: string; filePath: string }>;
 }
 
 /**
@@ -251,8 +268,21 @@ function resolveResourceOperationPath(
 	discriminators?: { resource?: string; operation?: string },
 ): PathResolutionResult {
 	if (!discriminators?.resource || !discriminators?.operation) {
+		// Full resource-to-operations map so the retry succeeds in one shot.
+		const index = (available.resources ?? [])
+			.map((resource) => {
+				try {
+					const ops = readdirSync(join(nodeDir, targetVersion, `resource_${toSnakeCase(resource)}`))
+						.filter((f) => f.startsWith('operation_') && f.endsWith('.ts'))
+						.map((f) => f.replace('operation_', '').replace('.ts', ''));
+					return `${resource} (${ops.join(', ')})`;
+				} catch {
+					return resource;
+				}
+			})
+			.join('; ');
 		return {
-			error: `Error: Node '${nodeId}' requires resource and operation discriminators. Available resources: ${available.resources?.join(', ')}. Use search_nodes to see all options.`,
+			error: `Error: Node '${nodeId}' requires resource and operation discriminators. Available resource (operations): ${index}.`,
 			requiresDiscriminators: true,
 			availableDiscriminators: available,
 		};
@@ -319,8 +349,21 @@ function resolveModePath(
 	mode?: string,
 ): PathResolutionResult {
 	if (!mode) {
+		// All variants instead of an error: mode-split nodes have few, small variants.
+		const variants = (available.modes ?? [])
+			.filter((m) => isValidPathComponent(m))
+			.sort()
+			.map((m) => ({
+				mode: m,
+				filePath: join(nodeDir, targetVersion, `mode_${toSnakeCase(m)}.ts`),
+			}))
+			.filter(
+				(variant) =>
+					validatePathWithinBase(variant.filePath, nodeDir) && existsSync(variant.filePath),
+			);
+		if (variants.length > 0) return { modeVariants: variants };
 		return {
-			error: `Error: Node '${nodeId}' requires mode discriminator. Available modes: ${available.modes?.join(', ')}. Use search_nodes to see all options.`,
+			error: `Error: Node '${nodeId}' requires mode discriminator. Available modes: ${available.modes?.join(', ')}.`,
 			requiresDiscriminators: true,
 			availableDiscriminators: available,
 		};
@@ -458,7 +501,7 @@ function getNodeFilePath(
 /**
  * Get the type definition for a single node ID, optionally for a specific version and discriminators
  */
-function getNodeTypeDefinition(
+export function getNodeTypeDefinition(
 	nodeId: string,
 	version?: string,
 	nodeDefinitionDirs?: string[],
@@ -495,6 +538,24 @@ function getNodeTypeDefinition(
 			availableVersions: availableVersions.length > 0 ? availableVersions : undefined,
 			error: pathResult.error,
 		};
+	}
+
+	if (pathResult.modeVariants) {
+		try {
+			const sections = pathResult.modeVariants.map(
+				(variant) => `// ── mode: ${variant.mode} ──\n${readFileSync(variant.filePath, 'utf-8')}`,
+			);
+			const header = `// No mode discriminator was given — definitions for all ${String(pathResult.modeVariants.length)} modes of '${nodeId}' follow (pass \`mode\` to fetch a single one).`;
+			const actualVersion = pathResult.modeVariants[0].filePath.match(/\/(v\d+)(?:\/|\.ts)/)?.[1];
+			return { nodeId, version: actualVersion, content: [header, ...sections].join('\n\n') };
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			return {
+				nodeId,
+				content: '',
+				error: `Error reading node definition for '${nodeId}': ${errorMessage}`,
+			};
+		}
 	}
 
 	if (!pathResult.filePath) {

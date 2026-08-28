@@ -4,14 +4,19 @@ import {
 	TechniqueDescription,
 	WorkflowTechnique,
 } from '@n8n/workflow-sdk/prompts/best-practices';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetWorkflowBestPracticesTool } from '../tools/workflow-builder/get-workflow-best-practices.tool';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+// v2 SDK types structuredContent as an arbitrary JSON value; narrow for assertions.
+const structuredOf = (result: { structuredContent?: unknown }) =>
+	result.structuredContent as Record<string, unknown> | undefined;
+
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL: {
 		toolName: 'get_workflow_best_practices',
 		displayTitle: 'Getting workflow best practices',
@@ -20,14 +25,18 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 
 describe('get-workflow-best-practices MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let telemetry: jest.Mocked<Telemetry>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		telemetry = mock<Telemetry>();
 	});
 
-	const createTool = () => createGetWorkflowBestPracticesTool(user, telemetry);
+	const createTool = (canvasGroupsEnabled = false) =>
+		createGetWorkflowBestPracticesTool(user, telemetry, { canvasGroupsEnabled });
+
+	const textOf = (result: { content: Array<{ type: string; text?: string }> }) =>
+		result.content.map((c) => c.text ?? '').join('\n');
 
 	test('exposes the expected tool name and read-only annotations', () => {
 		const tool = createTool();
@@ -43,8 +52,8 @@ describe('get-workflow-best-practices MCP tool', () => {
 		const tool = createTool();
 		const result = await tool.handler({ technique: 'list' }, {} as never);
 
-		expect(result.structuredContent?.technique).toBe('list');
-		const available = result.structuredContent?.availableTechniques as Array<{
+		expect(structuredOf(result)?.technique).toBe('list');
+		const available = structuredOf(result)?.availableTechniques as Array<{
 			technique: string;
 			description: string;
 			hasDocumentation: boolean;
@@ -76,8 +85,8 @@ describe('get-workflow-best-practices MCP tool', () => {
 
 		const expectedDoc = bestPracticesRegistry[WorkflowTechnique.CHATBOT]!.getDocumentation();
 
-		expect(result.structuredContent?.technique).toBe(WorkflowTechnique.CHATBOT);
-		expect(result.structuredContent?.documentation).toBe(expectedDoc);
+		expect(structuredOf(result)?.technique).toBe(WorkflowTechnique.CHATBOT);
+		expect(structuredOf(result)?.documentation).toBe(expectedDoc);
 		expect(result.content).toEqual([{ type: 'text', text: expectedDoc }]);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			USER_CALLED_MCP_TOOL_EVENT,
@@ -94,8 +103,36 @@ describe('get-workflow-best-practices MCP tool', () => {
 		const tool = createTool();
 		const result = await tool.handler({ technique: WorkflowTechnique.MONITORING }, {} as never);
 
-		expect(result.structuredContent?.technique).toBe(WorkflowTechnique.MONITORING);
-		expect(result.structuredContent?.documentation).toBeUndefined();
-		expect(result.structuredContent?.message).toContain('does not have detailed best-practices');
+		expect(structuredOf(result)?.technique).toBe(WorkflowTechnique.MONITORING);
+		expect(structuredOf(result)?.documentation).toBeUndefined();
+		expect(structuredOf(result)?.message).toContain('does not have detailed best-practices');
+	});
+
+	describe('node grouping guidance', () => {
+		const listText = async (canvasGroupsEnabled: boolean) => {
+			const result = await createTool(canvasGroupsEnabled).handler(
+				{ technique: 'list' },
+				{} as never,
+			);
+			return textOf(result);
+		};
+
+		describe('when canvasGroupsEnabled is true', () => {
+			test('appends a grouping guidance section to the technique list', async () => {
+				const text = await listText(true);
+
+				expect(text).toContain('## Grouping');
+				expect(text).toMatch(/sub-workflow/i); // groups vs sub-workflows
+				expect(text).toMatch(/collapsed/i); // created collapsed by default
+			});
+		});
+
+		describe('when canvasGroupsEnabled is false', () => {
+			test('does not mention grouping in the technique list', async () => {
+				const text = await listText(false);
+
+				expect(text).not.toContain('## Grouping');
+			});
+		});
 	});
 });

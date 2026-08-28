@@ -58,6 +58,7 @@ export type OracleDBNodeOptions = {
 	keepInStmtCache?: boolean;
 	maxRows?: number;
 	prefetchRows?: number;
+	stringOutBindMaxSize?: number;
 
 	// n8n options
 	largeNumbersOutputAsString?: boolean; // bigInt

@@ -9,12 +9,12 @@ describe('N8nTrigger', () => {
 
 		// Mock trigger functions
 		mockTriggerFunctions = {
-			emit: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getActivationMode: jest.fn(),
-			getWorkflow: jest.fn(() => ({ id: 'test-workflow-id' })),
+			emit: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getActivationMode: vi.fn(),
+			getWorkflow: vi.fn(() => ({ id: 'test-workflow-id' })),
 			helpers: {
-				returnJsonArray: jest.fn((data) => data),
+				returnJsonArray: vi.fn((data) => data),
 			},
 		};
 	});

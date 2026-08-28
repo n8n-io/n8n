@@ -6,7 +6,6 @@ import { render } from '@testing-library/vue';
 
 import { useWorkflowInitialization } from './useWorkflowInitialization';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
 
 const mockSetDocumentTitle = vi.hoisted(() => vi.fn());
@@ -59,7 +58,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
@@ -83,7 +82,7 @@ vi.mock('@/features/core/folders/composables/useParentFolder', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: vi.fn(),
 	})),
@@ -108,6 +107,7 @@ const mockWorkflowDocumentStore = vi.hoisted(() => ({
 	setHomeProject: vi.fn(),
 	setScopes: vi.fn(),
 	setParentFolder: vi.fn(),
+	setHydrated: vi.fn(),
 	onNameChange: vi.fn(),
 }));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -139,7 +139,7 @@ function renderWithComposable(
 ) {
 	const TestComponent = defineComponent({
 		setup() {
-			const init = useWorkflowInitialization({} as unknown as WorkflowState);
+			const init = useWorkflowInitialization();
 			callback(init);
 			return () => h('div');
 		},
@@ -200,6 +200,17 @@ describe('useWorkflowInitialization', () => {
 			await initializeWorkspaceForNewWorkflow();
 
 			expect(mockSetDocumentTitle).toHaveBeenCalledWith('New Workflow', 'IDLE');
+		});
+
+		it('marks a fresh workflow document hydrated after initialization', async () => {
+			let initializeWorkspaceForNewWorkflow!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeWorkspaceForNewWorkflow = init.initializeWorkspaceForNewWorkflow;
+			});
+
+			await initializeWorkspaceForNewWorkflow();
+
+			expect(mockWorkflowDocumentStore.setHydrated).toHaveBeenCalledWith(true);
 		});
 	});
 });

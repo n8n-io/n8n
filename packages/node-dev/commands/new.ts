@@ -29,7 +29,8 @@ export class New extends Command {
 				choices: ['Credentials', 'Node'],
 			};
 
-			const typeAnswers = await inquirer.prompt(typeQuestion);
+			type TypesAnswer = { type: 'Credentials' | 'Node' };
+			const typeAnswers = await inquirer.prompt<TypesAnswer>(typeQuestion);
 
 			let sourceFolder = '';
 			const sourceFileName = 'simple.ts';
@@ -49,7 +50,8 @@ export class New extends Command {
 					choices: ['Execute', 'Trigger', 'Webhook'],
 				};
 
-				const nodeTypeAnswers = await inquirer.prompt(nodeTypeQuestion);
+				type NodeTypeAnswer = { nodeType: 'Trigger' | 'Webhook' };
+				const nodeTypeAnswers = await inquirer.prompt<NodeTypeAnswer>(nodeTypeQuestion);
 
 				// Choose a the template-source-file depending on user input.
 				sourceFolder = 'execute';
@@ -89,7 +91,8 @@ export class New extends Command {
 				});
 			}
 
-			const additionalAnswers = await inquirer.prompt(
+			type AdditionalAnswer = { name: string; description: string };
+			const additionalAnswers = await inquirer.prompt<AdditionalAnswer>(
 				additionalQuestions as inquirer.QuestionCollection,
 			);
 
@@ -99,7 +102,6 @@ export class New extends Command {
 			// node file
 			const destinationFilePath = join(
 				process.cwd(),
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				`${changeCase.pascalCase(nodeName)}.${typeAnswers.type.toLowerCase()}.ts`,
 			);
 
@@ -120,9 +122,10 @@ export class New extends Command {
 					},
 				];
 
-				const overwriteAnswers = await inquirer.prompt(overwriteQuestion);
+				type OverwriteAnswer = { overwrite: boolean };
+				const overwriteAnswers = await inquirer.prompt<OverwriteAnswer>(overwriteQuestion);
 
-				if (overwriteAnswers.overwrite === false) {
+				if (!overwriteAnswers.overwrite) {
 					this.log('\nNode creation got canceled!');
 					return;
 				}

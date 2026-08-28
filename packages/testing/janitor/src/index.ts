@@ -206,9 +206,11 @@ import { DeduplicationRule } from './rules/deduplication.rule.js';
 import { DuplicateLogicRule } from './rules/duplicate-logic.rule.js';
 import { NoDirectPageInstantiationRule } from './rules/no-direct-page-instantiation.rule.js';
 import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
+import { NoRawEditorNavigationRule } from './rules/no-raw-editor-navigation.rule.js';
 import { ScopeLockdownRule } from './rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from './rules/selector-purity.rule.js';
 import { TestDataHygieneRule } from './rules/test-data-hygiene.rule.js';
+import { ValidOwnerAnnotationRule } from './rules/valid-owner-annotation.rule.js';
 import type { JanitorReport, RunOptions } from './types.js';
 
 export function createDefaultRunner(): RuleRunner {
@@ -223,6 +225,8 @@ export function createDefaultRunner(): RuleRunner {
 	runner.registerRule(new TestDataHygieneRule());
 	runner.registerRule(new DuplicateLogicRule());
 	runner.registerRule(new NoDirectPageInstantiationRule());
+	runner.registerRule(new NoRawEditorNavigationRule());
+	runner.registerRule(new ValidOwnerAnnotationRule());
 	return runner;
 }
 

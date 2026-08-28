@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule, useTemplateRef } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
+import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -24,16 +25,16 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { IWorkflowToShare, IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
 import router from '@/app/router';
-import { sanitizeFilename } from '@n8n/utils';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
@@ -52,6 +53,8 @@ const props = defineProps<{
 }>();
 
 const importFileRef = ref<HTMLInputElement | undefined>();
+const productionChecklistRef =
+	useTemplateRef<InstanceType<typeof WorkflowProductionChecklist>>('productionChecklist');
 const toast = useToast();
 const locale = useI18n();
 const route = useRoute();
@@ -70,10 +73,6 @@ const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-
-const onWorkflowPage = computed(() => {
-	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
-});
 
 const onExecutionsTab = computed(() => {
 	return [
@@ -116,99 +115,127 @@ function handleFileImport() {
 }
 
 const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
-	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
-		{
-			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
-			label: locale.baseText('menuActions.download'),
-			disabled: !onWorkflowPage.value,
-		},
-	];
+	const canEdit =
+		(props.workflowPermissions.update === true &&
+			!collaborationReadOnly.value &&
+			!props.isArchived &&
+			!sourceControlStore.preferences.branchReadOnly) ||
+		props.isNewWorkflow;
 
-	if (isSharingEnabled.value && props.workflowPermissions.share) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.SHARE,
-			label: locale.baseText('workflowDetails.share'),
-			disabled: !onWorkflowPage.value,
-		});
-	}
-
-	if (props.workflowPermissions.move && projectsStore.isTeamProjectFeatureEnabled) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.CHANGE_OWNER,
-			label: locale.baseText('workflows.item.changeOwner'),
-			disabled: props.isNewWorkflow,
-		});
-	}
+	const nameAndMetadata: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [];
 
 	if (
 		!collaborationReadOnly.value &&
 		!props.isArchived &&
 		!sourceControlStore.preferences.branchReadOnly
 	) {
-		actions.push({
+		nameAndMetadata.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
-			disabled: !onWorkflowPage.value || props.workflowPermissions.update !== true,
+			disabled: props.workflowPermissions.update !== true,
 		});
 	}
 
-	actions.push({
+	if (canEdit) {
+		nameAndMetadata.push({
+			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
+			label: locale.baseText('menuActions.editDescriptionAndTags'),
+			disabled: !props.id,
+		});
+	}
+
+	nameAndMetadata.push({
 		id: WORKFLOW_MENU_ACTIONS.FAVORITE,
 		label: favoritesStore.isFavorite(props.id, 'workflow')
 			? locale.baseText('favorites.remove')
 			: locale.baseText('favorites.add'),
-		disabled: !onWorkflowPage.value || props.isNewWorkflow,
+		disabled: props.isNewWorkflow,
 	});
 
-	if (
-		(props.workflowPermissions.update === true &&
-			!collaborationReadOnly.value &&
-			!props.isArchived &&
-			!sourceControlStore.preferences.branchReadOnly) ||
-		props.isNewWorkflow
-	) {
-		actions.unshift({
+	const organization: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [];
+
+	if (props.workflowPermissions.move && projectsStore.isTeamProjectFeatureEnabled) {
+		organization.push({
+			id: WORKFLOW_MENU_ACTIONS.CHANGE_OWNER,
+			label: locale.baseText('workflows.item.changeOwner'),
+			disabled: props.isNewWorkflow,
+		});
+	}
+
+	if (canEdit) {
+		organization.push({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
-			disabled: !onWorkflowPage.value || !props.id,
+			disabled: !props.id,
 		});
-		actions.unshift({
-			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
-			label: locale.baseText('menuActions.editDescription'),
-			disabled: !onWorkflowPage.value || !props.id,
-		});
+	}
 
-		actions.push(
-			{
-				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-				label: locale.baseText('menuActions.importFromUrl'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
-			},
-			{
-				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-				label: locale.baseText('menuActions.importFromFile'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
-			},
-		);
+	if (isSharingEnabled.value && props.workflowPermissions.share) {
+		organization.push({
+			id: WORKFLOW_MENU_ACTIONS.SHARE,
+			label: locale.baseText('workflowDetails.share'),
+		});
+	}
+
+	const importExport: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
+		{
+			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
+			label: locale.baseText('menuActions.exportJson'),
+		},
+	];
+
+	if (canEdit) {
+		importExport.push({
+			id: WORKFLOW_MENU_ACTIONS.IMPORT,
+			label: locale.baseText('menuActions.import'),
+			disabled: onExecutionsTab.value,
+			children: [
+				{
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
+					label: locale.baseText('menuActions.importFromUrl'),
+					disabled: onExecutionsTab.value,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
+					label: locale.baseText('menuActions.importFromFile'),
+					disabled: onExecutionsTab.value,
+				},
+			],
+		});
 	}
 
 	if (hasPermission(['rbac'], { rbac: { scope: 'sourceControl:push' } })) {
-		actions.push({
+		importExport.push({
 			id: WORKFLOW_MENU_ACTIONS.PUSH,
 			label: locale.baseText('menuActions.push'),
 			disabled:
 				!sourceControlStore.isEnterpriseSourceControlEnabled ||
-				!onWorkflowPage.value ||
 				onExecutionsTab.value ||
 				sourceControlStore.preferences.branchReadOnly,
 		});
 	}
 
-	actions.push({
-		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
-		label: locale.baseText('generic.settings'),
-		disabled: !onWorkflowPage.value || props.isNewWorkflow,
-	});
+	const workflowTools: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
+		{
+			id: WORKFLOW_MENU_ACTIONS.VERSION_HISTORY,
+			label: locale.baseText('menuActions.versionHistory'),
+			disabled: props.isNewWorkflow,
+		},
+		{
+			id: WORKFLOW_MENU_ACTIONS.SETTINGS,
+			label: locale.baseText('generic.settings'),
+			disabled: props.isNewWorkflow,
+		},
+	];
+
+	if (!props.isNewWorkflow && productionChecklistRef.value?.hasActions) {
+		workflowTools.push({
+			id: WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST,
+			label: locale.baseText('menuActions.productionChecklist'),
+		});
+	}
+
+	const lifecycle: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [];
 
 	if (
 		(props.workflowPermissions.delete === true &&
@@ -217,48 +244,60 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		props.isNewWorkflow
 	) {
 		if (props.isArchived) {
-			actions.push({
+			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
 				label: locale.baseText('menuActions.unarchive'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 			});
-			actions.push({
+			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.DELETE,
 				label: locale.baseText('menuActions.delete'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 				customClass: $style.deleteItem,
-				divided: true,
 			});
 		} else {
-			actions.push({
+			lifecycle.push({
 				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
 				label: locale.baseText('menuActions.archive'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 				customClass: $style.deleteItem,
-				divided: true,
 			});
 		}
 	}
 
-	return actions;
+	const groups = [nameAndMetadata, organization, importExport, workflowTools, lifecycle].filter(
+		(group) => group.length > 0,
+	);
+
+	// A separator above the first item of every group but the first.
+	return groups.flatMap((group, index) =>
+		index === 0 ? group : group.map((item, i) => (i === 0 ? { ...item, divided: true } : item)),
+	);
 });
+
+function openDescriptionAndTagsModal(): void {
+	const workflowId = getWorkflowId(props.id, route.params.workflowId);
+	if (!workflowId) return;
+
+	const workflowDescription =
+		workflowDocumentStore?.value?.description ??
+		workflowsListStore.getWorkflowById(workflowId)?.description;
+	uiStore.openModalWithData({
+		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+		data: {
+			workflowId,
+			workflowName: props.name,
+			workflowDescription,
+			workflowTags: [...props.tags],
+			isNewWorkflow: props.isNewWorkflow,
+		},
+	});
+}
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
-			const workflowId = getWorkflowId(props.id, route.params.workflowId);
-			if (!workflowId) return;
-
-			const workflowDescription =
-				workflowDocumentStore?.value?.description ??
-				workflowsListStore.getWorkflowById(workflowId).description;
-			uiStore.openModalWithData({
-				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
-				data: {
-					workflowId,
-					workflowDescription,
-				},
-			});
+			openDescriptionAndTagsModal();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -275,6 +314,20 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.RENAME: {
 			nodeViewEventBus.emit('renameWorkflow');
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST: {
+			// Defer until the dropdown has closed and restored focus to its trigger;
+			// opening in the same tick lets that focus restore land "outside" the
+			// popover, which would immediately dismiss it.
+			setTimeout(() => productionChecklistRef.value?.open(), 0);
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.VERSION_HISTORY: {
+			void router.push({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: { workflowId: props.id },
+			});
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
@@ -414,6 +467,14 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 	}
 }
 
+onMounted(() => {
+	nodeViewEventBus.on('addTag', openDescriptionAndTagsModal);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('addTag', openDescriptionAndTagsModal);
+});
+
 defineExpose({
 	importFileRef,
 });
@@ -427,9 +488,17 @@ defineExpose({
 			data-test-id="workflow-import-input"
 			@change="handleFileImport()"
 		/>
+		<!-- The zero-size anchor pins the checklist popover (start-aligned, no offset)
+		 to the canvas top-left corner, 16px in from the header's bottom-left edge. -->
+		<span :class="$style.checklistAnchor">
+			<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
+		</span>
 		<N8nActionDropdown
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
+			placement="bottom-start"
+			activator-icon-size="large"
+			max-height="var(--reka-dropdown-menu-content-available-height)"
 			@select="onWorkflowMenuSelect"
 		/>
 	</div>
@@ -440,7 +509,11 @@ defineExpose({
 }
 .group {
 	display: flex;
-	gap: var(--spacing--xs);
+}
+.checklistAnchor {
+	position: absolute;
+	top: calc(100% + var(--spacing--sm));
+	left: var(--spacing--sm);
 }
 .hiddenInput {
 	display: none;

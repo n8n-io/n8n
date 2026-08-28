@@ -38,6 +38,41 @@
                     "id": {
                         "type": "string"
                     },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "assignee": {
+                                    "type": "null"
+                                },
+                                "date_created": {
+                                    "type": "string"
+                                },
+                                "due_date": {
+                                    "type": "null"
+                                },
+                                "group_assignee": {
+                                    "type": "null"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "parent": {
+                                    "type": "null"
+                                },
+                                "resolved": {
+                                    "type": "boolean"
+                                },
+                                "start_date": {
+                                    "type": "null"
+                                }
+                            }
+                        }
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -87,12 +122,21 @@
                     "name": {
                         "type": "string"
                     },
+                    "required": {
+                        "type": "boolean"
+                    },
                     "type": {
                         "type": "string"
                     },
                     "type_config": {
                         "type": "object",
                         "properties": {
+                            "new_drop_down": {
+                                "type": "boolean"
+                            },
+                            "number_format": {
+                                "type": "string"
+                            },
                             "options": {
                                 "type": "array",
                                 "items": {
@@ -132,6 +176,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "chain_id": {
+                        "type": "string"
+                    },
                     "date_created": {
                         "type": "string"
                     },
@@ -153,6 +200,9 @@
                 }
             }
         },
+        "description": {
+            "type": "string"
+        },
         "folder": {
             "type": "object",
             "properties": {
@@ -167,6 +217,29 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "group_assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -232,6 +305,9 @@
         },
         "permission_level": {
             "type": "string"
+        },
+        "points": {
+            "type": "null"
         },
         "project": {
             "type": "object",
@@ -324,6 +400,9 @@
         "team_id": {
             "type": "string"
         },
+        "text_content": {
+            "type": "string"
+        },
         "url": {
             "type": "string"
         },
@@ -348,5 +427,5 @@
             }
         }
     },
-    "version": 1
+    "version": 3
 }

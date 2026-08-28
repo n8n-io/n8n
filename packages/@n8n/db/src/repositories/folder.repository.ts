@@ -1,15 +1,42 @@
 import { Service } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
 import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../entities/types-db';
+import { chunkIds } from '../utils/chunk-ids';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 @Service()
 export class FolderRepository extends Repository<Folder> {
 	constructor(dataSource: DataSource) {
 		super(Folder, dataSource.manager);
+	}
+
+	async findExistingIds(folderIds: string[]): Promise<Set<string>> {
+		const ids = new Set<string>();
+
+		for (const chunk of chunkIds(folderIds)) {
+			const found = await this.find({ select: { id: true }, where: { id: In(chunk) } });
+			for (const { id } of found) ids.add(id);
+		}
+
+		return ids;
+	}
+
+	async findManyByIds(folderIds: string[]): Promise<Folder[]> {
+		const folders = new Map<string, Folder>();
+
+		for (const chunk of chunkIds(folderIds)) {
+			const found = await this.find({
+				where: { id: In(chunk) },
+				relations: { homeProject: true },
+			});
+			for (const folder of found) folders.set(folder.id, folder);
+		}
+
+		return [...folders.values()];
 	}
 
 	async getManyAndCount(options: ListQuery.Options = {}) {
@@ -228,13 +255,8 @@ export class FolderRepository extends Repository<Folder> {
 			return;
 		}
 
-		const [field, order] = this.parseSortingParams(sortBy);
-		this.applySortingByField(query, field, order);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'DESC' | 'ASC'] {
-		const [field, order] = sortBy.split(':');
-		return [field, order?.toLowerCase() === 'desc' ? 'DESC' : 'ASC'];
+		const { column, direction } = parseListQuerySortBy(sortBy);
+		this.applySortingByField(query, column, direction);
 	}
 
 	private applySortingByField(
@@ -384,6 +406,46 @@ export class FolderRepository extends Repository<Folder> {
 		// Execute the query and extract IDs
 		const result = await query.getRawMany<{ id: string }>();
 		return result.map((row) => row.id);
+	}
+
+	/**
+	 * Batched form of {@link getAllFolderIdsInHierarchy}: resolves the descendants
+	 * of several parent folders in a single recursive query rather than one query
+	 * per parent. Returns descendant ids only (the parents themselves are not
+	 * included), deduplicated across all subtrees.
+	 */
+	async getAllFolderIdsInSubtrees(parentFolderIds: string[]): Promise<string[]> {
+		if (parentFolderIds.length === 0) return [];
+
+		// Subtrees are independent, so each chunk resolves in its own recursive
+		// query and the ids are merged — a folder reachable from two chunks lands once.
+		const ids = new Set<string>();
+
+		for (const chunk of chunkIds(parentFolderIds)) {
+			// Base case: the direct children of any requested parent.
+			const baseQuery = this.createQueryBuilder('f')
+				.select('f.id', 'id')
+				.where('f.parentFolderId IN (:...parentFolderIds)', { parentFolderIds: chunk });
+
+			// Recursive case: descendants of folders already in the tree.
+			const recursiveQuery = this.createQueryBuilder('child')
+				.select('child.id', 'id')
+				.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+
+			const query = this.createQueryBuilder()
+				.addCommonTableExpression(
+					`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+					'folder_tree',
+					{ recursive: true },
+				)
+				.select('DISTINCT tree.id', 'id')
+				.from('folder_tree', 'tree')
+				.setParameters(baseQuery.getParameters());
+
+			for (const row of await query.getRawMany<{ id: string }>()) ids.add(row.id);
+		}
+
+		return [...ids];
 	}
 
 	async getFolderPathsToRoot(folderIds: string[]): Promise<Map<string, string[]>> {

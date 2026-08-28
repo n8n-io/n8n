@@ -1,4 +1,4 @@
-import { createI18n } from 'vue-i18n';
+import { createI18n, useI18n as useVueI18n } from 'vue-i18n';
 
 import en from '../locales/en.json';
 
@@ -24,6 +24,10 @@ export const i18n = createI18n<MessageSchema, SupportedLocale, false>({
 	messages: { en },
 	warnHtmlMessage: false,
 });
+
+export function useI18n() {
+	return useVueI18n<{ message: MessageSchema }>({ useScope: 'global' });
+}
 
 /**
  * Resolve an MCP host BCP 47 locale (e.g. `de-DE`, `en-GB`) to a locale we

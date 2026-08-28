@@ -168,10 +168,9 @@ export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDat
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<WorkflowInputsData> {
-	const nodeLoadContext = await this.getWorkflowNodeContext(
-		EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-		true,
-	);
+	// Use the draft subworkflow so the parent editor reflects unsaved/unpublished
+	// trigger input changes (manual runs already resolve against draft).
+	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
 	let dataMode: string = PASSTHROUGH;
 	let subworkflowInfo: { workflowId?: string; triggerId?: string } | undefined;

@@ -69,28 +69,45 @@ export const AgentTelegramSettingsSchema = z
 
 export type AgentTelegramIntegrationSettings = z.infer<typeof AgentTelegramSettingsSchema>;
 
-export const AgentIntegrationSettingsSchema = z.union([AgentTelegramSettingsSchema, z.undefined()]);
-export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
+export const SLACK_MESSAGING_EXPERIENCES = ['assistant', 'agent'] as const;
 
-/** Supported chat integration types; keep in sync with `credentialIntegrations` below. */
-export const SUPPORTED_AGENT_INTEGRATION_TYPES = ['telegram', 'slack', 'linear'] as const;
-export type SupportedAgentIntegrationType = (typeof SUPPORTED_AGENT_INTEGRATION_TYPES)[number];
+export const AgentSlackSettingsSchema = z
+	.object({
+		messagingExperience: z.enum(SLACK_MESSAGING_EXPERIENCES),
+	})
+	.strict();
+
+export type AgentSlackIntegrationSettings = z.infer<typeof AgentSlackSettingsSchema>;
+
+export const AgentIntegrationSettingsSchema = z.union([
+	AgentTelegramSettingsSchema,
+	AgentSlackSettingsSchema,
+	z.undefined(),
+]);
+export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
 
 const credentialIntegrations = [
 	createCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
 		// keep optional for older agents
 		settings: AgentTelegramSettingsSchema.optional(),
 	}),
-	createSimpleIntegrationSchema('slack'),
+	createCredIntegrationSchema('slack', AgentSlackSettingsSchema).extend({
+		// Existing Slack integrations use the legacy Assistant messaging experience.
+		settings: AgentSlackSettingsSchema.optional(),
+	}),
 	createSimpleIntegrationSchema('linear'),
+	createSimpleIntegrationSchema('discord'),
 ] as const;
 
 const draftCredentialIntegrations = [
 	createDraftCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
 		settings: AgentTelegramSettingsSchema.optional(),
 	}),
-	createDraftSimpleIntegrationSchema('slack'),
+	createDraftCredIntegrationSchema('slack', AgentSlackSettingsSchema).extend({
+		settings: AgentSlackSettingsSchema.optional(),
+	}),
 	createDraftSimpleIntegrationSchema('linear'),
+	createDraftSimpleIntegrationSchema('discord'),
 ] as const;
 
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);

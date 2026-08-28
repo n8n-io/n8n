@@ -9,4 +9,7 @@ export { TerminalOutcomeStorage } from './terminal-outcome-storage';
 export type { TerminalOutcome } from './terminal-outcome-storage';
 export type { PatchableThreadMemory, ThreadPatch } from './thread-patch';
 export { WorkflowLoopStorage } from './workflow-loop-storage';
-export type { WorkflowLoopWorkItemRecord } from './workflow-loop-storage';
+export type {
+	WorkflowLoopWorkItemRecord,
+	WorkflowSetupRoutingClaim,
+} from './workflow-loop-storage';

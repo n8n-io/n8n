@@ -2,11 +2,11 @@ import type { ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import { ProjectService } from '@/services/project.service.ee';
 
 import { DataTableRepository } from './data-table.repository';
-import { hasGlobalScope } from '@n8n/permissions';
 
 @Service()
 export class DataTableAggregateService {

@@ -130,7 +130,7 @@ describe('concurrent tool execution integration', () => {
 				}),
 			]),
 		);
-		expect(agent.getState().messageList.messages).toEqual(
+		expect(resumed.getState().messageList.messages).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					content: expect.arrayContaining([

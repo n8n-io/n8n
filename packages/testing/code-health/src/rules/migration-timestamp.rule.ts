@@ -37,7 +37,7 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 	readonly severity = 'error' as const;
 
 	async analyze(context: CodeHealthContext): Promise<Violation[]> {
-		const { rootDir, changedFiles } = context;
+		const { rootDir, addedFiles } = context;
 		const options = this.getOptions();
 
 		const globs = Array.isArray(options.migrationGlobs)
@@ -66,17 +66,17 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 			});
 		}
 
-		// changedFilesSet is the universe of migrations that should be
-		// subject to the ordering check. When CI passes the set of files
-		// touched in this PR, we scope ordering to migrations within that
-		// set; historical migrations don't get flagged for "being below the
-		// current max." When the set is absent (local dev, or workflows
-		// that don't supply it), we don't run the ordering check at all —
-		// the future-jump check still applies globally and is the primary
-		// backstop.
-		const changedFilesSet =
-			changedFiles && changedFiles.length > 0
-				? new Set(changedFiles.map((p) => path.normalize(p)))
+		// The ordering check applies ONLY to migrations *added* in this PR.
+		// A migration that merely had an unrelated edit — e.g. an import path
+		// rewritten by a repo-wide refactor — keeps its historical timestamp
+		// and must not be re-judged against the current head. CI supplies
+		// `addedFiles` (git diff --diff-filter=A); when it's absent or empty
+		// (nothing added, or local dev) there are no new migrations to order,
+		// so we skip the check — the future-jump check still applies globally
+		// and is the primary backstop.
+		const addedFilesSet =
+			addedFiles && addedFiles.length > 0
+				? new Set(addedFiles.map((p) => path.normalize(p)))
 				: undefined;
 
 		// Dedupe to ordering slots: a `common/<ts>-<name>.ts` paired with a
@@ -106,9 +106,9 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 			const floor = isHeadSlot ? secondMax : globalMax;
 			const ceiling = Math.max(now, floor + ceilingBuffer);
 
-			const isChanged = changedFilesSet?.has(path.normalize(relativePath)) ?? false;
+			const isAdded = addedFilesSet?.has(path.normalize(relativePath)) ?? false;
 
-			if (changedFilesSet && isChanged && timestamp <= floor) {
+			if (addedFilesSet && isAdded && timestamp <= floor) {
 				violations.push(
 					this.createViolation(
 						filePath,

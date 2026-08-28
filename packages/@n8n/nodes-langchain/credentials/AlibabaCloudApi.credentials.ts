@@ -13,7 +13,7 @@ import {
 export class AlibabaCloudApi implements ICredentialType {
 	name = 'alibabaCloudApi';
 
-	displayName = 'Alibaba Cloud';
+	displayName = 'Qwen Cloud';
 
 	documentationUrl = 'alibaba';
 
@@ -53,7 +53,8 @@ export class AlibabaCloudApi implements ICredentialType {
 					value: 'eu-central-1',
 				},
 			],
-			description: 'The region for the Alibaba Cloud Model Studio API endpoint',
+			description:
+				'The region for the Qwen Cloud API endpoint. Currently only Singapore is supported - other regions are only available through Alibaba Cloud Model Studio.',
 		},
 		{
 			displayName: 'Workspace ID',
@@ -67,7 +68,7 @@ export class AlibabaCloudApi implements ICredentialType {
 				},
 			},
 			description:
-				'The Workspace ID required for the Germany (Frankfurt) region. Find it in the Model Studio console under the Germany region settings.',
+				'The Workspace ID required for the Germany (Frankfurt) region. Not yet supported for Qwen Cloud. Find it in the Alibaba Cloud Model Studio console under the Germany region settings.',
 		},
 		{
 			displayName: 'Base URL',

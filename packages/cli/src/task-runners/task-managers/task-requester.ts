@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
 import { isSerializedBuffer, toBuffer, ErrorReporter } from 'n8n-core';
-import { createResultOk, createResultError } from 'n8n-workflow';
+import { createResultOk, createResultError, type Result } from '@n8n/utils/result';
 import type {
 	EnvProviderState,
 	IExecuteFunctions,
@@ -17,7 +17,6 @@ import type {
 	IExecuteData,
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
-	Result,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -56,7 +55,10 @@ export type RunnerStatus = { available: true } | { available: false; reason?: st
 
 @Service()
 export abstract class TaskRequester {
-	requestAcceptRejects: Map<string, { accept: RequestAccept; reject: RequestReject }> = new Map();
+	requestAcceptRejects: Map<
+		string,
+		{ accept: RequestAccept; reject: RequestReject; requestedAt: number }
+	> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
 
@@ -137,6 +139,7 @@ export abstract class TaskRequester {
 			this.requestAcceptRejects.set(request.requestId, {
 				accept: resolve,
 				reject,
+				requestedAt: Date.now(),
 			});
 		});
 
@@ -302,14 +305,17 @@ export abstract class TaskRequester {
 		const acceptReject = this.requestAcceptRejects.get(requestId);
 		if (!acceptReject) return;
 
+		const elapsedSeconds = Math.round((Date.now() - acceptReject.requestedAt) / 1000);
+
 		const error = new TaskRequestTimeoutError({
-			timeout: this.taskRunnersConfig.taskRequestTimeout,
+			elapsedSeconds,
 			isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
 		});
 
 		this.errorReporter.error('Task request timed out', {
 			extra: {
 				requestId,
+				elapsedSeconds,
 				timeout: this.taskRunnersConfig.taskRequestTimeout,
 				deploymentType: this.globalConfig.deployment.type,
 			},

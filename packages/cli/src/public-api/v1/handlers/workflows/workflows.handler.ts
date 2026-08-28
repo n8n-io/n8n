@@ -1,33 +1,30 @@
-import { GlobalConfig } from '@n8n/config';
-import { WorkflowEntity, TagRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { FindOptionsWhere } from '@n8n/typeorm';
-import { z } from 'zod';
+import { PROJECT_ROOT } from 'n8n-workflow';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
 import type { WorkflowRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import {
-	publicApiScope,
-	projectScope,
-	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { publicApiScope, projectScope } from '../../shared/middlewares/global.middleware';
 
 const handleError = (error: unknown) => {
+	if (error instanceof FolderNotFoundError) {
+		throw new NotFoundError(error.message);
+	}
 	if (error instanceof ResponseError) {
+		throw error;
+	}
+	// Carries its own 403 and the structured violations, neither of which survives being
+	// rewrapped as a bad request.
+	if (error instanceof PolicyViolationError) {
 		throw error;
 	}
 	if (error instanceof Error) {
@@ -37,46 +34,12 @@ const handleError = (error: unknown) => {
 };
 
 type WorkflowHandlers = {
-	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
-	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
-	getWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
-	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
-	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
-	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
-	getWorkflowTags: PublicAPIEndpoint<WorkflowRequest.GetTags>;
-	updateWorkflowTags: PublicAPIEndpoint<WorkflowRequest.UpdateTags>;
-	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
-	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 };
 
 const workflowHandlers: WorkflowHandlers = {
-	createWorkflow: [
-		publicApiScope('workflow:create'),
-		async (req, res) => {
-			const createdWorkflow = await createWorkflow(req.user, req.body);
-			return res.json(createdWorkflow);
-		},
-	],
-	transferWorkflow: [
-		publicApiScope('workflow:move'),
-		projectScope('workflow:move', 'workflow'),
-		async (req, res) => {
-			const { id: workflowId } = req.params;
-
-			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
-
-			await Container.get(EnterpriseWorkflowService).transferWorkflow(
-				req.user,
-				workflowId,
-				body.destinationProjectId,
-			);
-
-			return res.status(204).send();
-		},
-	],
 	deleteWorkflow: [
 		publicApiScope('workflow:delete'),
 		projectScope('workflow:delete', 'workflow'),
@@ -89,42 +52,6 @@ const workflowHandlers: WorkflowHandlers = {
 				// or workflow does not exist
 				throw new NotFoundError('Not Found');
 			}
-
-			return res.json(workflow);
-		},
-	],
-	getWorkflow: [
-		publicApiScope('workflow:read'),
-		projectScope('workflow:read', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const { excludePinnedData = false } = req.query;
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:read'],
-				{
-					includeTags: !Container.get(GlobalConfig).tags.disabled,
-					includeActiveVersion: true,
-				},
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow they do not own
-				// and was not shared to them
-				// Or does not exist.
-				throw new NotFoundError('Not Found');
-			}
-
-			if (excludePinnedData) {
-				delete workflow.pinData;
-			}
-
-			Container.get(EventService).emit('user-retrieved-workflow', {
-				userId: req.user.id,
-				publicApi: true,
-			});
 
 			return res.json(workflow);
 		},
@@ -156,301 +83,49 @@ const workflowHandlers: WorkflowHandlers = {
 			}
 		},
 	],
-	getWorkflows: [
-		publicApiScope('workflow:list'),
-		validCursor,
-		async (req, res) => {
-			const {
-				offset = 0,
-				limit = 100,
-				excludePinnedData = false,
-				active,
-				tags,
-				name,
-				projectId,
-			} = req.query;
-
-			const where: FindOptionsWhere<WorkflowEntity> = {
-				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
-			};
-
-			// Filter by active status based on activeVersionId
-			if (active !== undefined) {
-				if (active) {
-					where.activeVersionId = Not(IsNull());
-				} else {
-					where.activeVersionId = IsNull();
-				}
-			}
-
-			if (['global:owner', 'global:admin'].includes(req.user.role.slug)) {
-				if (tags) {
-					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
-						parseTagNames(tags),
-					);
-					where.id = In(workflowIds);
-				}
-
-				if (projectId) {
-					const workflowIds = await Container.get(WorkflowFinderService).findAllWorkflowIdsForUser(
-						req.user,
-						['workflow:read'],
-						undefined,
-						projectId,
-					);
-
-					if (workflowIds.length === 0) {
-						return res.status(200).json({
-							data: [],
-							nextCursor: null,
-						});
-					}
-
-					where.id = In(workflowIds);
-				}
-			} else {
-				const options: { workflowIds?: string[] } = {};
-
-				if (tags) {
-					options.workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
-						parseTagNames(tags),
-					);
-				}
-
-				let workflowIds = await Container.get(WorkflowFinderService).findAllWorkflowIdsForUser(
-					req.user,
-					['workflow:read'],
-					undefined,
-					projectId,
-				);
-
-				if (options.workflowIds) {
-					workflowIds = options.workflowIds.filter((id) => workflowIds.includes(id));
-				}
-
-				if (!workflowIds.length) {
-					return res.status(200).json({
-						data: [],
-						nextCursor: null,
-					});
-				}
-
-				where.id = In(workflowIds);
-			}
-
-			const selectFields: Array<keyof WorkflowEntity> = [
-				'id',
-				'name',
-				'active',
-				'activeVersionId',
-				'createdAt',
-				'updatedAt',
-				'isArchived',
-				'nodes',
-				'connections',
-				'settings',
-				'staticData',
-				'meta',
-				'versionId',
-				'triggerCount',
-				'shared',
-			];
-
-			if (!excludePinnedData) {
-				selectFields.push('pinData');
-			}
-
-			const relations = ['shared', 'activeVersion'];
-			if (!Container.get(GlobalConfig).tags.disabled) {
-				relations.push('tags');
-			}
-			const [workflows, count] = await Container.get(WorkflowRepository).findAndCount({
-				skip: offset,
-				take: limit,
-				select: selectFields,
-				relations,
-				where,
-			});
-
-			if (excludePinnedData) {
-				workflows.forEach((workflow) => {
-					delete workflow.pinData;
-				});
-			}
-
-			Container.get(EventService).emit('user-retrieved-all-workflows', {
-				userId: req.user.id,
-				publicApi: true,
-			});
-
-			return res.json({
-				data: workflows,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
-		},
-	],
 	updateWorkflow: [
 		publicApiScope('workflow:update'),
 		projectScope('workflow:update', 'workflow'),
 		async (req, res) => {
 			const { id } = req.params;
+			const { parentFolderId, ...rest } = req.body;
 			const updateData = new WorkflowEntity();
-			Object.assign(updateData, req.body);
+			Object.assign(updateData, rest);
+
+			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
+			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
+
+			// Defaults to true so existing integrations keep publishing on save; callers that want
+			// to stage a change on an already-published workflow can opt out explicitly.
+			const { publishIfActive = true } = req.query;
+
+			// binaryMode and credentialResolverId are derived, internal settings
+			// rather than something users are expected to control programmatically;
+			// strip them so the settings merge in WorkflowService.update preserves
+			// whatever is already stored.
+			if (updateData.settings?.binaryMode !== undefined) {
+				delete updateData.settings.binaryMode;
+			}
+			if (updateData.settings?.credentialResolverId !== undefined) {
+				delete updateData.settings.credentialResolverId;
+			}
 
 			try {
+				// Credential tamper protection is enforced centrally in WorkflowService.update
 				const updatedWorkflow = await Container.get(WorkflowService).update(
 					req.user,
 					updateData,
 					id,
 					{
+						parentFolderId: resolvedParentFolderId,
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
-						publishIfActive: true,
+						publishIfActive,
 						source: 'api',
 					},
 				);
 
 				return res.json(updatedWorkflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	activateWorkflow: [
-		publicApiScope('workflow:activate'),
-		projectScope('workflow:publish', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const { versionId, name, description } = req.body;
-
-			try {
-				const workflow = await Container.get(WorkflowService).activateWorkflow(req.user, id, {
-					versionId,
-					name,
-					description,
-					source: 'api',
-				});
-
-				return res.json(workflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	deactivateWorkflow: [
-		publicApiScope('workflow:deactivate'),
-		projectScope('workflow:unpublish', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-
-			try {
-				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
-					source: 'api',
-				});
-
-				return res.json(workflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	getWorkflowTags: [
-		publicApiScope('workflowTags:list'),
-		projectScope('workflow:read', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-
-			if (Container.get(GlobalConfig).tags.disabled) {
-				throw new BadRequestError('Workflow Tags Disabled');
-			}
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:read'],
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow he does not own
-				// or workflow does not exist
-				throw new NotFoundError('Not Found');
-			}
-
-			const tags = await getWorkflowTags(id);
-
-			return res.json(tags);
-		},
-	],
-	updateWorkflowTags: [
-		publicApiScope('workflowTags:update'),
-		projectScope('workflow:update', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			const newTags = req.body.map((newTag) => newTag.id);
-
-			if (Container.get(GlobalConfig).tags.disabled) {
-				throw new BadRequestError('Workflow Tags Disabled');
-			}
-
-			const sharedWorkflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:update'],
-			);
-
-			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
-				// or workflow does not exist
-				throw new NotFoundError('Not Found');
-			}
-
-			let tags;
-			try {
-				await updateTags(id, newTags);
-				tags = await getWorkflowTags(id);
-			} catch (error) {
-				// TODO: add a `ConstraintFailureError` in typeorm to handle when tags are missing here
-				if (error instanceof QueryFailedError) {
-					throw new NotFoundError('Some tags not found');
-				}
-
-				return handleError(error);
-			}
-
-			return res.json(tags);
-		},
-	],
-	archiveWorkflow: [
-		publicApiScope('workflow:delete'),
-		projectScope('workflow:delete', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			try {
-				const workflow = await Container.get(WorkflowService).archiveForPublicApi(req.user, id);
-				if (!workflow) {
-					throw new NotFoundError('Workflow not found');
-				}
-				return res.json(workflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	unarchiveWorkflow: [
-		publicApiScope('workflow:delete'),
-		projectScope('workflow:delete', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			try {
-				const workflow = await Container.get(WorkflowService).unarchiveForPublicApi(req.user, id);
-				if (!workflow) {
-					throw new NotFoundError('Workflow not found');
-				}
-				return res.json(workflow);
 			} catch (error) {
 				return handleError(error);
 			}

@@ -1,13 +1,14 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { OdooV2 } from '../../../../v2/OdooV2.node';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import * as transport from '../../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../../v2/transport', () => ({
-	odooApiRequest: jest.fn(),
+vi.mock('../../../../v2/transport', () => ({
+	odooApiRequest: vi.fn(),
 }));
 
 const MOCK_ACTIVITY_ID = 5;
@@ -21,15 +22,15 @@ describe('OdooV2 — activity:create', () => {
 		node = new OdooV2(versionDescription);
 		exec = mock<IExecuteFunctions>();
 		exec.helpers = {
-			constructExecutionMetaData: jest.fn((data) => data),
-			returnJsonArray: jest.fn((data) =>
+			constructExecutionMetaData: vi.fn((data) => data),
+			returnJsonArray: vi.fn((data) =>
 				(Array.isArray(data) ? data : [data]).map((j) => ({ json: j })),
 			),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const setupParams = (overrides: Record<string, unknown> = {}) => {
@@ -51,7 +52,7 @@ describe('OdooV2 — activity:create', () => {
 
 	it('looks up ir.model ID and creates an activity with res_model_id', async () => {
 		setupParams();
-		(transport.odooApiRequest as jest.Mock)
+		(transport.odooApiRequest as Mock)
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce([MOCK_ACTIVITY_ID]);
 
@@ -73,7 +74,7 @@ describe('OdooV2 — activity:create', () => {
 		setupParams({
 			'additionalFields.value': { summary: 'Follow up', date_deadline: '2025-06-01' },
 		});
-		(transport.odooApiRequest as jest.Mock)
+		(transport.odooApiRequest as Mock)
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce([MOCK_ACTIVITY_ID]);
 
@@ -96,7 +97,7 @@ describe('OdooV2 — activity:create', () => {
 		setupParams({
 			'additionalFields.value': { activity_type_id: 99 },
 		});
-		(transport.odooApiRequest as jest.Mock)
+		(transport.odooApiRequest as Mock)
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce([MOCK_ACTIVITY_ID]);
 
@@ -111,7 +112,7 @@ describe('OdooV2 — activity:create', () => {
 	it('uses item json when mappingMode is autoMapInputData', async () => {
 		setupParams({ 'additionalFields.mappingMode': 'autoMapInputData' });
 		exec.getInputData.mockReturnValue([{ json: { summary: 'Auto', note: 'Test' } }]);
-		(transport.odooApiRequest as jest.Mock)
+		(transport.odooApiRequest as Mock)
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce([MOCK_ACTIVITY_ID]);
 
@@ -124,7 +125,7 @@ describe('OdooV2 — activity:create', () => {
 
 	it('extracts scalar id when Odoo returns a plain number', async () => {
 		setupParams();
-		(transport.odooApiRequest as jest.Mock)
+		(transport.odooApiRequest as Mock)
 			.mockResolvedValueOnce(MOCK_MODEL_RECORD)
 			.mockResolvedValueOnce(MOCK_ACTIVITY_ID);
 
@@ -136,7 +137,7 @@ describe('OdooV2 — activity:create', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as jest.Mock).mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
 
 		const result = await node.execute.call(exec);
 
@@ -146,7 +147,7 @@ describe('OdooV2 — activity:create', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as jest.Mock).mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Odoo error');
 	});

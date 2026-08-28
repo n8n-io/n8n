@@ -1,19 +1,21 @@
 {
   "name": "@n8n/typescript-config",
-  "version": "1.4.0",
+  "version": "1.10.0",
   "type": "module",
   "files": [
     "tsconfig.backend.json",
     "tsconfig.build.json",
     "tsconfig.common.json",
-    "tsconfig.frontend.json"
+    "tsconfig.frontend.json",
+    "tsconfig.frontend-module.json"
   ],
   "exports": {
     "./tsconfig.backend.json": "./tsconfig.backend.json",
     "./tsconfig.build.json": "./tsconfig.build.json",
     "./tsconfig.common.json": "./tsconfig.common.json",
     "./tsconfig.frontend.json": "./tsconfig.frontend.json",
+    "./tsconfig.frontend-module.json": "./tsconfig.frontend-module.json",
     "./*": "./*"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

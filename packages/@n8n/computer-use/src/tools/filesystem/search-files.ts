@@ -1,6 +1,5 @@
 import fastGlob from 'fast-glob';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
@@ -62,7 +61,7 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 		const resolvedDir = await resolveReadablePath(dir, '.');
 		const limit = maxResults ?? 50;
 
-		const files = await fastGlob(name, {
+		const globbed = await fastGlob(name, {
 			cwd: resolvedDir,
 			ignore: IGNORE_PATTERNS,
 			onlyFiles: true,
@@ -70,60 +69,74 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 			suppressErrors: true,
 		});
 
+		// The literal-pattern check above cannot see paths produced by glob expansion,
+		// so re-resolve every match through the shared resolver, which re-checks
+		// containment (following symlinks safely) and drops anything outside the base.
+		const resolved = await Promise.all(
+			globbed.map(async (path) => {
+				const absolutePath = await resolveReadablePath(dir, path).catch(() => null);
+				return absolutePath ? { path, absolutePath } : null;
+			}),
+		);
+		const files = resolved.filter((file): file is ResolvedFile => file !== null);
+
 		if (!query) {
-			const matches = files.slice(0, limit).map((p) => ({ path: p }));
 			return formatCallToolResult({
 				name,
-				matches,
+				matches: files.slice(0, limit).map(({ path }) => ({ path })),
 				truncated: files.length > limit,
 				totalMatches: files.length,
 			});
 		}
 
-		const regex = new RegExp(escapeRegex(query), ignoreCase ? 'gi' : 'g');
-		const matches: Array<{ path: string; lineNumber: number; line: string }> = [];
-		let totalMatches = 0;
-
-		for (const fp of files) {
-			if (matches.length >= limit) break;
-
-			try {
-				const fullPath = path.join(resolvedDir, fp);
-				const stat = await fs.stat(fullPath);
-				if (stat.size > MAX_FILE_SIZE) continue;
-
-				const fileContent = await fs.readFile(fullPath);
-				const buffer = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
-				if (isLikelyBinaryContent(buffer)) continue;
-
-				const lines = buffer.toString('utf-8').split('\n');
-				for (let i = 0; i < lines.length; i++) {
-					if (regex.test(lines[i])) {
-						totalMatches++;
-						if (matches.length < limit) {
-							matches.push({ path: fp, lineNumber: i + 1, line: lines[i].substring(0, 200) });
-						}
-					}
-					regex.lastIndex = 0;
-				}
-			} catch {
-				// Skip unreadable files
-			}
-		}
+		const regex = new RegExp(escapeRegex(query), ignoreCase ? 'i' : '');
+		const matches = await Promise.all(files.map(async (file) => await grepFile(file, regex))).then(
+			(results) => results.flat(),
+		);
 
 		return formatCallToolResult({
 			name,
 			query,
-			matches,
-			truncated: totalMatches > limit,
-			totalMatches,
+			matches: matches.slice(0, limit),
+			truncated: matches.length > limit,
+			totalMatches: matches.length,
 		});
 	},
 };
 
+interface ResolvedFile {
+	path: string;
+	absolutePath: string;
+}
+
 function assertPatternStaysInside(pattern: string): void {
 	if (pattern.startsWith('/') || pattern.split('/').includes('..')) {
 		throw new Error(`Pattern "${pattern}" escapes the base directory`);
+	}
+}
+
+async function grepFile(
+	file: ResolvedFile,
+	regex: RegExp,
+): Promise<Array<{ path: string; lineNumber: number; line: string }>> {
+	try {
+		const stat = await fs.stat(file.absolutePath);
+		if (stat.size > MAX_FILE_SIZE) return [];
+
+		const buffer = await fs.readFile(file.absolutePath);
+		if (isLikelyBinaryContent(buffer)) return [];
+
+		const lines = buffer.toString('utf-8').split('\n');
+		const hits: Array<{ path: string; lineNumber: number; line: string }> = [];
+		for (let i = 0; i < lines.length; i++) {
+			if (regex.test(lines[i])) {
+				hits.push({ path: file.path, lineNumber: i + 1, line: lines[i].substring(0, 200) });
+			}
+		}
+		return hits;
+	} catch {
+		// Unreadable file
+		return [];
 	}
 }
 

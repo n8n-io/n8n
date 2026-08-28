@@ -6,6 +6,7 @@ import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { getSendAndWaitConfig } from '../../../../utils/sendAndWait/utils';
 import { capitalize, createUtmCampaignLink } from '../../../../utils/utilities';
+import { moderationReasonLabels } from '../actions/common.description';
 import { discordApiMultiPartRequest, discordApiRequest } from '../transport';
 
 export const createSimplifyFunction =
@@ -91,6 +92,22 @@ export function prepareErrorData(this: IExecuteFunctions, error: any, i: number)
 	);
 }
 
+// Builds the headers carrying Discord's audit-log reason from the node's
+// reason/reasonCustom parameters. Empty object when no reason is set.
+export function getAuditLogReasonHeaders(this: IExecuteFunctions, itemIndex: number): IDataObject {
+	const reason = this.getNodeParameter('reason', itemIndex, '') as string;
+
+	const text =
+		reason === 'other'
+			? (this.getNodeParameter('reasonCustom', itemIndex, '') as string)
+			: moderationReasonLabels[reason];
+
+	if (!text) return {};
+
+	// Discord requires the header value to be URL-encoded (it accepts non-ASCII reasons)
+	return { 'X-Audit-Log-Reason': encodeURIComponent(text) };
+}
+
 export function prepareOptions(options: IDataObject, guildId?: string) {
 	if (options.flags) {
 		if ((options.flags as string[]).length === 2) {
@@ -136,7 +153,7 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 				}
 			}
 
-			if (embedReturnData.author) {
+			if (embedReturnData.author && typeof embedReturnData.author === 'string') {
 				embedReturnData.author = {
 					name: embedReturnData.author,
 				};

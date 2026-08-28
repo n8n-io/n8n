@@ -1,3 +1,4 @@
+import { assertOoxmlWithinBounds } from './ooxml-guard';
 import {
 	MAX_DECODED_SIZE_BYTES,
 	formatSizeLimitMessage,
@@ -23,8 +24,9 @@ export async function extractXlsxAsRows(
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
 		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
+	assertOoxmlWithinBounds(decoded, attachment.fileName);
 
-	const XLSX = await import('xlsx');
+	const XLSX = await import('@e965/xlsx');
 
 	let workbook: ReturnType<typeof XLSX.read>;
 	try {

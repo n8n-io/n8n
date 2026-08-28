@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
+	APPROVAL_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
+	WAIT_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -11,63 +11,11 @@ import {
 	applyOpenSuspensions,
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
-	isGroupable,
-	type ChatMessage,
-} from '../composables/agentChatMessages';
+} from '@/features/ai/shared/agentsChat/messageMappers';
+import { buildDisplayGroups, isGroupable } from '@/features/ai/shared/agentsChat/displayGroups';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 describe('rebuildInteractiveFromHistory', () => {
-	it('rebuilds an OPEN ask_llm card when output is missing', () => {
-		const result = rebuildInteractiveFromHistory({
-			tool: ASK_LLM_TOOL_NAME,
-			toolCallId: 'call-1',
-			input: { purpose: 'pick a model' },
-			state: 'suspended',
-		});
-
-		expect(result).toBeTruthy();
-		expect(result?.toolName).toBe(ASK_LLM_TOOL_NAME);
-		expect(result?.resolvedAt).toBeUndefined();
-		expect(result?.resolvedValue).toBeUndefined();
-		// runId is the sidecar's responsibility — raw history doesn't carry it.
-		expect(result?.runId).toBeUndefined();
-	});
-
-	it('rebuilds a RESOLVED ask_llm card when output is present', () => {
-		const result = rebuildInteractiveFromHistory({
-			tool: ASK_LLM_TOOL_NAME,
-			toolCallId: 'call-1',
-			input: { purpose: 'pick a model' },
-			output: {
-				provider: 'anthropic',
-				model: 'claude-sonnet-4',
-				credentialId: 'cred-1',
-				credentialName: 'My Anthropic',
-			},
-			state: 'done',
-		});
-
-		expect(result?.resolvedAt).toBeGreaterThan(0);
-		expect(result?.resolvedValue).toEqual({
-			provider: 'anthropic',
-			model: 'claude-sonnet-4',
-			credentialId: 'cred-1',
-			credentialName: 'My Anthropic',
-		});
-	});
-
-	it('rebuilds an ask_credential card with skipped resolved value', () => {
-		const result = rebuildInteractiveFromHistory({
-			tool: ASK_CREDENTIAL_TOOL_NAME,
-			toolCallId: 'call-2',
-			input: { purpose: 'slack', credentialType: 'slackApi' },
-			output: { skipped: true },
-			state: 'done',
-		});
-
-		expect(result?.toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
-		expect(result?.resolvedValue).toEqual({ skipped: true });
-	});
-
 	it('returns undefined for non-interactive tool names', () => {
 		const result = rebuildInteractiveFromHistory({
 			tool: 'write_config',
@@ -77,42 +25,205 @@ describe('rebuildInteractiveFromHistory', () => {
 		});
 		expect(result).toBeUndefined();
 	});
+
+	it('rebuilds an OPEN approval card from an approval suspend payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'calculator',
+			toolCallId: 'call-approval-1',
+			input: {
+				type: 'approval',
+				toolName: 'calculator',
+				displayName: 'Calculator',
+				args: { input: '2 + 2' },
+			},
+			state: 'suspended',
+		});
+
+		expect(result).toBeTruthy();
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.input).toEqual({
+			type: 'approval',
+			toolName: 'calculator',
+			displayName: 'Calculator',
+			args: { input: '2 + 2' },
+		});
+		expect(result?.resolvedAt).toBeUndefined();
+		expect(result?.resolvedValue).toBeUndefined();
+	});
+
+	it('restores preview-only tool details from a persisted suspension payload', () => {
+		const details = {
+			toolName: 'check_ledger',
+			kind: 'node',
+			input: {},
+			node: { parameters: { resource: 'row', operation: 'get', returnAll: true } },
+		};
+		const [message] = convertDbMessages([
+			{
+				id: 'assistant-approval',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'check_ledger',
+						toolCallId: 'call-approval-details',
+						input: {},
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'check_ledger',
+							args: {},
+							details,
+						},
+					},
+				],
+			},
+		]);
+
+		expect(message.interactive?.input).toMatchObject({ details });
+	});
+
+	it('rebuilds a rejected approval card from a declined tool result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'calculator',
+			toolCallId: 'call-approval-2',
+			input: {
+				type: 'approval',
+				toolName: 'calculator',
+				args: { input: '2 + 2' },
+			},
+			output: { declined: true, message: 'Tool "calculator" was not approved' },
+			state: 'done',
+		});
+
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.resolvedAt).toBeDefined();
+		expect(result?.resolvedValue).toEqual({ approved: false });
+	});
+
+	// The workflow tool's name is per-workflow, so the payload's own marker is
+	// what makes the card renderable here as well as on the chat platforms.
+	it('rebuilds an OPEN waiting card from a Wait-node suspend payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'approval_workflow',
+			toolCallId: 'call-wait-1',
+			input: { input: 'go' },
+			suspendPayload: {
+				type: 'workflow_wait',
+				title: 'Waiting on "Approval workflow"',
+				components: [
+					{ type: 'section', text: 'The "Approval workflow" workflow is paused.' },
+					{ type: 'button', label: 'Check for the result', value: 'continue', style: 'primary' },
+					{ type: 'button', label: 'Stop waiting', value: 'cancel', style: 'danger' },
+				],
+			},
+			state: 'suspended',
+		});
+
+		expect(result?.toolName).toBe(WAIT_TOOL_NAME);
+		expect(result?.input).toEqual({
+			card: {
+				title: 'Waiting on "Approval workflow"',
+				components: [
+					{ type: 'section', text: 'The "Approval workflow" workflow is paused.' },
+					{ type: 'button', label: 'Check for the result', value: 'continue', style: 'primary' },
+					{ type: 'button', label: 'Stop waiting', value: 'cancel', style: 'danger' },
+				],
+			},
+		});
+		expect(result?.resolvedAt).toBeUndefined();
+	});
+
+	it('resolves the waiting card with the button the user clicked', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'approval_workflow',
+			toolCallId: 'call-wait-1',
+			suspendPayload: {
+				type: 'workflow_wait',
+				title: 'Waiting on "Approval workflow"',
+				components: [{ type: 'button', value: 'cancel' }],
+			},
+			output: { type: 'button', value: 'cancel' },
+			state: 'done',
+		});
+
+		expect(result?.resolvedAt).toBe(1);
+		expect(result?.resolvedValue).toEqual({ type: 'button', value: 'cancel' });
+	});
+
+	it('does not show a declined nested approval as approved from the delegate result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'delegate_subagent',
+			toolCallId: 'call-delegate-1',
+			input: { subAgentId: 'inline', taskName: 'Research API' },
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+			},
+			output: { status: 'completed', answer: 'The request was declined.' },
+			state: 'done',
+		});
+
+		expect(result?.resolvedValue).toBeUndefined();
+	});
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
-	it('reconstructs an OPEN interactive card when tool-call block has state:pending', () => {
-		const dbMessages: AgentPersistedMessageDto[] = [
+	it('restores reasoning segments and their timing from history', () => {
+		const [assistant] = convertDbMessages([
 			{
-				id: 'm1',
-				role: 'user',
-				content: [{ type: 'text', text: 'Build me an agent' }],
-			},
-			{
-				id: 'm2',
+				id: 'assistant-1',
 				role: 'assistant',
 				content: [
-					{
-						type: 'tool-call',
-						toolName: ASK_LLM_TOOL_NAME,
-						toolCallId: 'call-llm-1',
-						input: { purpose: 'main' },
-						state: 'pending',
-					},
+					{ type: 'reasoning', text: 'Inspect the inputs.', startTime: 1_000, endTime: 2_000 },
+					{ type: 'reasoning', text: 'Form the answer.', startTime: 3_000, endTime: 5_000 },
+					{ type: 'text', text: 'Done' },
 				],
 			},
-		];
+		]);
 
-		const chat = convertDbMessages(dbMessages);
-		expect(chat).toHaveLength(2);
-		const assistant = chat[1];
-		expect(assistant.role).toBe('assistant');
-		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.interactive?.toolName).toBe(ASK_LLM_TOOL_NAME);
-		expect(assistant.interactive?.resolvedAt).toBeUndefined();
-		expect(assistant.toolCalls?.[0].state).toBe('suspended');
+		expect(assistant.thinkingSegments).toEqual([
+			{
+				id: 'assistant-1:reasoning:0',
+				content: 'Inspect the inputs.',
+				startTime: 1_000,
+				endTime: 2_000,
+			},
+			{
+				id: 'assistant-1:reasoning:1',
+				content: 'Form the answer.',
+				startTime: 3_000,
+				endTime: 5_000,
+			},
+		]);
 	});
 
-	it('reconstructs a RESOLVED interactive card when tool-call block has state:resolved', () => {
+	it('uses executionId from the persisted message dto', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'exec-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi' }],
+				executionId: 'exec-1',
+			},
+		]);
+
+		expect(chat[0].executionId).toBe('exec-1');
+	});
+
+	it('does not invent executionId from the message id when the dto omits it', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'exec-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi' }],
+			},
+		]);
+
+		expect(chat[0].executionId).toBeUndefined();
+	});
+
+	it('preserves multiple resolved n8n chat cards from one persisted assistant message', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
 				id: 'm1',
@@ -120,30 +231,93 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: ASK_QUESTION_TOOL_NAME,
-						toolCallId: 'q-1',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
 						input: {
-							question: 'Where to post?',
-							options: [
-								{ label: 'Slack', value: 'slack' },
-								{ label: 'Discord', value: 'discord' },
-							],
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'First card',
+										components: [{ type: 'fields', fields: [{ label: 'Status', value: 'Ready' }] }],
+									},
+								},
+							},
 						},
 						state: 'resolved',
-						output: { values: ['slack'] },
+						output: { ok: true },
+					},
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-2',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'Second card',
+										components: [{ type: 'fields', fields: [{ label: 'Owner', value: 'Sales' }] }],
+									},
+								},
+							},
+						},
+						state: 'resolved',
+						output: { ok: true },
 					},
 				],
 			},
 		];
 
 		const chat = convertDbMessages(dbMessages);
-		expect(chat).toHaveLength(1);
 		const assistant = chat[0];
-		expect(assistant.toolCalls?.[0].state).toBe('done');
-		expect(assistant.toolCalls?.[0].output).toEqual({ values: ['slack'] });
-		expect(assistant.interactive?.toolName).toBe(ASK_QUESTION_TOOL_NAME);
-		expect(assistant.interactive?.resolvedAt).toBeDefined();
-		expect(assistant.interactive?.resolvedValue).toEqual({ values: ['slack'] });
+
+		expect(assistant.toolCalls).toHaveLength(2);
+		expect(assistant.interactives).toHaveLength(2);
+		expect(assistant.interactives?.map((payload) => payload.toolCallId)).toEqual([
+			'card-1',
+			'card-2',
+		]);
+	});
+
+	it('preserves text and n8n chat card render order from persisted content', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'Before the card.' },
+					{
+						type: 'tool-call',
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: {
+							action: 'respond',
+							input: {
+								message: {
+									card: {
+										title: 'Account snapshot',
+										components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+									},
+								},
+							},
+						},
+						state: 'resolved',
+						output: { ok: true },
+					},
+					{ type: 'text', text: 'After the card.' },
+				],
+			},
+		];
+
+		const [assistant] = convertDbMessages(dbMessages);
+
+		expect(assistant.content).toBe('Before the card.After the card.');
+		expect(assistant.renderParts).toEqual([
+			{ type: 'text', text: 'Before the card.' },
+			{ type: 'interactive', toolCallId: 'card-1' },
+			{ type: 'text', text: 'After the card.' },
+		]);
 	});
 
 	it('sets state:error when tool-call block is rejected', () => {
@@ -169,6 +343,35 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('error');
 		expect(tc?.output).toBe('Error: permission denied');
+	});
+
+	it('marks unfinished tool calls from failed executions as errors', () => {
+		const [assistant] = applyOpenSuspensions(
+			convertDbMessages([
+				{
+					id: 'm-error',
+					role: 'assistant',
+					executionStatus: 'error',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'calculator',
+							toolCallId: 'tc-error',
+							input: {
+								type: 'approval',
+								toolName: 'calculator',
+								args: { input: '2 + 2' },
+							},
+						},
+					],
+				},
+			]),
+			[],
+		);
+
+		expect(assistant.toolCalls?.[0].state).toBe('error');
+		expect(assistant.status).toBe('error');
+		expect(assistant.interactive).toBeUndefined();
 	});
 
 	it('treats state:resolved non-interactive tool call as done with output', () => {
@@ -269,6 +472,65 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
 	});
+
+	it('hydrates childProgress from a persisted childTrace', () => {
+		const childTrace = {
+			text: 'Looking things up',
+			reasoningSegments: [{ id: 'r-1', content: 'Checking schemas.' }],
+			steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+		};
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d-trace',
+						input: { subAgentId: 'inline' },
+						state: 'resolved',
+						output: { status: 'completed', answer: 'all good' },
+						childTrace,
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat[0].toolCalls?.[0].childProgress).toEqual(childTrace);
+	});
+
+	it('leaves delegate difficulty summary for render-time i18n on reload', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d3',
+						input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+						state: 'resolved',
+						output: {
+							status: 'completed',
+							answer: 'all good',
+							model: 'anthropic/claude-haiku-4-5',
+						},
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat[0].toolCalls?.[0].displaySummary).toBeUndefined();
+		expect(chat[0].toolCalls?.[0].input).toEqual({
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			difficulty: 'high',
+		});
+	});
 });
 
 describe('isGroupable', () => {
@@ -277,11 +539,11 @@ describe('isGroupable', () => {
 			id: 'm1',
 			role: 'assistant',
 			content: '',
-			toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c1', state: 'suspended' }],
+			toolCalls: [{ tool: 'calculator', toolCallId: 'c1', state: 'suspended' }],
 			interactive: {
-				toolName: ASK_LLM_TOOL_NAME,
+				toolName: APPROVAL_TOOL_NAME,
 				toolCallId: 'c1',
-				input: {},
+				input: { type: 'approval', toolName: 'calculator', args: {} },
 			},
 			status: 'awaitingUser',
 		});
@@ -301,26 +563,20 @@ describe('isGroupable', () => {
 });
 
 describe('buildDisplayGroups — interactive payloads', () => {
-	it('collects interactive payloads from each grouped message into the toolRun group', async () => {
-		const { buildDisplayGroups } = await import('../composables/agentChatMessages');
+	it('collects interactive payloads from each grouped message into the toolRun group', () => {
 		const groups = buildDisplayGroups([
-			// First grouped turn: a resolved ask_llm card
+			// First grouped turn: a resolved approval card
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c1', state: 'done' }],
+				toolCalls: [{ tool: 'tool_a', toolCallId: 'c1', state: 'done' }],
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c1',
-					input: {},
+					input: { type: 'approval', toolName: 'tool_a', args: {} },
 					resolvedAt: 1,
-					resolvedValue: {
-						provider: 'a',
-						model: 'b',
-						credentialId: 'x',
-						credentialName: 'y',
-					},
+					resolvedValue: { approved: true },
 				},
 				status: 'success',
 			},
@@ -332,18 +588,57 @@ describe('buildDisplayGroups — interactive payloads', () => {
 				toolCalls: [{ tool: 'search_nodes', toolCallId: 'c2', state: 'done' }],
 				status: 'success',
 			},
-			// Third grouped turn: an open ask_credential card
+			// Third grouped turn: an open approval card
 			{
 				id: 'm3',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_CREDENTIAL_TOOL_NAME, toolCallId: 'c3', state: 'suspended' }],
+				toolCalls: [{ tool: 'tool_b', toolCallId: 'c3', state: 'suspended' }],
 				interactive: {
-					toolName: ASK_CREDENTIAL_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c3',
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
+					input: { type: 'approval', toolName: 'tool_b', args: {} },
 				},
 				status: 'awaitingUser',
+			},
+		]);
+		expect(groups).toHaveLength(1);
+		const grouped = groups[0];
+		expect(grouped.kind).toBe('toolRun');
+		if (grouped.kind !== 'toolRun') return;
+		expect(grouped.toolCalls).toHaveLength(3);
+		expect(grouped.interactives).toHaveLength(2);
+		expect(grouped.interactives[0].input).toMatchObject({ toolName: 'tool_a' });
+		expect(grouped.interactives[0].resolvedAt).toBeDefined();
+		expect(grouped.interactives[1].input).toMatchObject({ toolName: 'tool_b' });
+		expect(grouped.interactives[1].resolvedAt).toBeUndefined();
+	});
+
+	it('collects multiple interactive payloads from one grouped message', () => {
+		const groups = buildDisplayGroups([
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-1', state: 'done' },
+					{ tool: N8N_CHAT_ACTION_TOOL_NAME, toolCallId: 'card-2', state: 'done' },
+				],
+				interactives: [
+					{
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-1',
+						input: { card: { title: 'First card', components: [] } },
+						resolvedAt: 1,
+					},
+					{
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'card-2',
+						input: { card: { title: 'Second card', components: [] } },
+						resolvedAt: 1,
+					},
+				],
+				status: 'success',
 			},
 		]);
 
@@ -351,74 +646,219 @@ describe('buildDisplayGroups — interactive payloads', () => {
 		const grouped = groups[0];
 		expect(grouped.kind).toBe('toolRun');
 		if (grouped.kind !== 'toolRun') return;
-		expect(grouped.toolCalls).toHaveLength(3);
-		expect(grouped.interactives).toHaveLength(2);
-		expect(grouped.interactives[0].toolName).toBe(ASK_LLM_TOOL_NAME);
-		expect(grouped.interactives[0].resolvedAt).toBeDefined();
-		expect(grouped.interactives[1].toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
-		expect(grouped.interactives[1].resolvedAt).toBeUndefined();
+		expect(grouped.interactives.map((payload) => payload.toolCallId)).toEqual(['card-1', 'card-2']);
+	});
+
+	it('merges duplicate persisted tool calls by id and keeps the resolved one', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'user-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'Can you fetch this page?' }],
+			},
+			{
+				id: 'assistant-pending',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						input: { id: 'https://app.notion.com/p/example' },
+						startTime: 1_000,
+					},
+				],
+			},
+			{
+				id: 'assistant-resolved',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						state: 'resolved',
+						output: { content: [{ type: 'text', text: 'Page contents' }] },
+						startTime: 2_000,
+						endTime: 2_000,
+					},
+					{ type: 'text', text: 'Here is the page I fetched.' },
+				],
+			},
+		]);
+
+		const groups = buildDisplayGroups(chat);
+
+		expect(groups).toHaveLength(2);
+		const toolRun = groups[1];
+		expect(toolRun.kind).toBe('toolRun');
+		if (toolRun.kind !== 'toolRun') return;
+		expect(toolRun.toolCalls).toHaveLength(1);
+		expect(toolRun.toolCalls[0]).toEqual(
+			expect.objectContaining({
+				tool: 'notion_notion-fetch',
+				toolCallId: 'toolu_1',
+				state: 'done',
+				input: { id: 'https://app.notion.com/p/example' },
+				output: { content: [{ type: 'text', text: 'Page contents' }] },
+				startTime: 1_000,
+				endTime: 2_000,
+			}),
+		);
+		expect(toolRun.finalMessage?.content).toBe('Here is the page I fetched.');
 	});
 });
 
 describe('applyOpenSuspensions', () => {
-	it('stamps the runId onto a matching open interactive card', () => {
+	it('preserves persisted preview details when the checkpoint payload is applied', () => {
+		const details = { node: { parameters: { operation: 'get', returnAll: true } } };
 		const chat: ChatMessage[] = [
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_CREDENTIAL_TOOL_NAME, toolCallId: 'c-open', state: 'suspended' }],
-				interactive: {
-					toolName: ASK_CREDENTIAL_TOOL_NAME,
-					toolCallId: 'c-open',
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
-				},
-				status: 'awaitingUser',
+				toolCalls: [
+					{
+						tool: 'check_ledger',
+						toolCallId: 'call-1',
+						state: 'running',
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'check_ledger',
+							args: {},
+							details,
+						},
+					},
+				],
+			},
+		];
+
+		const result = applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'call-1',
+				runId: 'run-1',
+				suspendPayload: { type: 'approval', toolName: 'check_ledger', args: {} },
+			},
+		]);
+
+		expect(result[0].interactive?.input).toMatchObject({ details });
+	});
+
+	it('rebuilds a nested approval and leaves resolved cards closed', () => {
+		const delegateInput = {
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			goal: 'Research the requested API',
+			context: 'Use the configured research agent',
+		};
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com/data' },
+		};
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'delegate_subagent',
+						toolCallId: 'parent-tool-call-1',
+						input: delegateInput,
+						state: 'running',
+					},
+				],
 			},
 			{
 				id: 'm2',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c-resolved', state: 'done' }],
+				toolCalls: [{ tool: 'tool_b', toolCallId: 'c-resolved', state: 'done' }],
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c-resolved',
-					input: { purpose: 'main' },
+					input: { type: 'approval', toolName: 'tool_b', args: {} },
 					resolvedAt: 1,
-					resolvedValue: {
-						provider: 'a',
-						model: 'b',
-						credentialId: 'x',
-						credentialName: 'y',
-					},
+					resolvedValue: { approved: true },
 				},
 				status: 'success',
 			},
 		];
 
-		const result = applyOpenSuspensions(chat, [{ toolCallId: 'c-open', runId: 'run-42' }]);
+		const result = applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'parent-tool-call-1',
+				runId: 'parent-run-1',
+				suspendPayload,
+			},
+		]);
 
-		expect(result[0].interactive?.runId).toBe('run-42');
-		// Resolved card not in the suspension list — runId stays undefined.
+		expect(result[0].toolCalls?.[0]).toMatchObject({
+			input: delegateInput,
+			suspendPayload,
+			state: 'suspended',
+			runId: 'parent-run-1',
+		});
+		expect(result[0].interactive).toMatchObject({
+			toolName: APPROVAL_TOOL_NAME,
+			input: suspendPayload,
+			runId: 'parent-run-1',
+		});
+		expect(result[0].status).toBe('awaitingUser');
 		expect(result[1].interactive?.runId).toBeUndefined();
 	});
 
-	it('returns chat unchanged when the suspension list is empty', () => {
+	it('retires unmatched unresolved interactive cards when no suspension is open', () => {
 		const chat: ChatMessage[] = [
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
+				toolCalls: [{ tool: 'tool_a', toolCallId: 'c1', state: 'suspended' }],
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c1',
-					input: { purpose: 'main' },
+					input: { type: 'approval', toolName: 'tool_a', args: {} },
 				},
+				status: 'awaitingUser',
 			},
 		];
 		const result = applyOpenSuspensions(chat, []);
 		expect(result).toBe(chat);
-		expect(result[0].interactive?.runId).toBeUndefined();
+		expect(result[0].interactive).toBeUndefined();
+		expect(result[0].toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
+		expect(result[0].status).toBe('success');
+	});
+
+	it('retires unfinished non-interactive tools when no suspension is open', () => {
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'external_action', toolCallId: 'c1', state: 'running' }],
+			},
+		];
+
+		applyOpenSuspensions(chat, []);
+
+		expect(chat[0].toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
+	});
+
+	it('attaches the run id to an open non-interactive suspension', () => {
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'external_action', toolCallId: 'c1', state: 'running' }],
+			},
+		];
+
+		applyOpenSuspensions(chat, [{ toolCallId: 'c1', runId: 'run-1' }]);
+
+		expect(chat[0].toolCalls?.[0]).toMatchObject({ state: 'suspended', runId: 'run-1' });
 	});
 
 	it('ignores suspensions that do not match any interactive card', () => {
@@ -428,13 +868,13 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
-					toolName: ASK_LLM_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c1',
-					input: { purpose: 'main' },
+					input: { type: 'approval', toolName: 'tool_a', args: {} },
 				},
 			},
 		];
 		applyOpenSuspensions(chat, [{ toolCallId: 'unknown', runId: 'run-x' }]);
-		expect(chat[0].interactive?.runId).toBeUndefined();
+		expect(chat[0].interactive).toBeUndefined();
 	});
 });

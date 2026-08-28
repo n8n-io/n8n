@@ -1,16 +1,17 @@
 import type { WorkerStatus } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 describe('WorkerStatusService', () => {
 	let workerStatusService: WorkerStatusService;
-	let mockPush: jest.Mocked<Push>;
+	let mockPush: Mocked<Push>;
 
 	beforeEach(() => {
 		mockPush = {
-			sendToUsers: jest.fn(),
+			sendToUsers: vi.fn(),
 		} as any;
 
 		workerStatusService = new WorkerStatusService(
@@ -22,7 +23,7 @@ describe('WorkerStatusService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('handleWorkerStatusResponse', () => {

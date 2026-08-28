@@ -1,19 +1,18 @@
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
-	ensureError,
 	mapConnectionsByDestination,
 	validateNodeCredentials,
 	isNodeConnected,
 	isTriggerLikeNode,
-	toExecutionContextEstablishmentHookParameter,
-	CHAT_TRIGGER_NODE_TYPE,
+	isTriggerNode,
+	classifyTriggerIdentity,
 } from 'n8n-workflow';
-import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import type {
 	INode,
 	INodes,
@@ -24,6 +23,7 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -45,6 +45,11 @@ export interface WorkflowStatus {
 	exists: boolean;
 	isPublished: boolean;
 	name?: string;
+}
+
+/** Formats credential names as a quoted, comma-separated list for error messages. */
+function formatCredentialNames(credentials: Array<{ name: string }>): string {
+	return credentials.map((c) => `"${c.name}"`).join(', ');
 }
 
 @Service()
@@ -225,6 +230,53 @@ export class WorkflowValidationService {
 	}
 
 	/**
+	 * Rejects trigger nodes whose ids do not uniquely identify them.
+	 *
+	 * Publication records one `workflow_publication_trigger_status` row per
+	 * enabled trigger node, keyed by the composite primary key
+	 * `(workflowId, nodeId)`. A shared or absent id therefore collapses two
+	 * triggers onto one key: the diff in `computeTriggerDiff` loses one of them,
+	 * and the row insert fails on the constraint. Catching it here turns a
+	 * constraint violation raised mid-publication into a message naming the
+	 * offending nodes.
+	 *
+	 * An absent id is the same defect as a shared one — `undefined` is just an id
+	 * that every id-less node has in common — so both are reported together.
+	 */
+	validateTriggerNodeIds(triggerNodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+		const namesById = new Map<string, string[]>();
+
+		for (const node of triggerNodes) {
+			if (!node.id) {
+				violations.push(`trigger "${node.name}" has no node ID`);
+				continue;
+			}
+
+			const names = namesById.get(node.id);
+			if (names) {
+				names.push(node.name);
+			} else {
+				namesById.set(node.id, [node.name]);
+			}
+		}
+
+		for (const [nodeId, names] of namesById) {
+			if (names.length < 2) continue;
+
+			const nameList = names.map((name) => `"${name}"`).join(', ');
+			violations.push(`triggers ${nameList} share the node ID "${nodeId}"`);
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot publish workflow: ${violations.join('; ')}. Remove and re-add the affected nodes to give them new IDs.`,
+		};
+	}
+
+	/**
 	 * Returns the credential types that are actively in use on a node — the
 	 * subset of `node.credentials` keys we should validate against.
 	 *
@@ -289,88 +341,158 @@ export class WorkflowValidationService {
 	}
 
 	/**
-	 * Validates that workflows using dynamic (resolvable) credentials have:
-	 * 1. A resolver configured on each dynamic credential.
-	 * 2. At least one trigger node with context establishment hooks configured.
-	 * These hooks extract identity from trigger data (e.g., bearer tokens from HTTP headers)
-	 * and are required for dynamic credential resolution.
+	 * Validates that a workflow using dynamic (resolvable) credentials has a
+	 * resolver configured and a trigger that provides the identity it needs.
+	 *
+	 * The resolver is workflow-level (`settings.credentialResolverId` override or
+	 * the seeded system resolver):
+	 * - A custom resolver (OAuth, Slack, …) keys on an external identity extracted
+	 *   from trigger data, so it needs a trigger with a context establishment hook.
+	 * - The default/system resolver keys on the n8n user identity, so it needs a
+	 *   trigger that establishes it (manual, sub-workflow, Chat Hub chat, MCP, form, or webhook with n8n user auth).
 	 */
 	async validateDynamicCredentials(
 		nodes: INode[],
 		nodeTypes: NodeTypes,
 		workflowSettings?: IWorkflowSettings,
 	): Promise<WorkflowValidationResult> {
-		const credentialIds = new Set<string>();
-		for (const node of nodes) {
-			if (node.disabled) continue;
-			for (const credName of Object.keys(node.credentials ?? {})) {
-				const credData = node.credentials?.[credName];
-				if (credData?.id) {
-					credentialIds.add(credData.id);
-				}
-			}
-		}
-
+		const credentialIds = this.collectCredentialIds(nodes);
 		if (credentialIds.size === 0) {
 			return { isValid: true };
 		}
 
 		const resolvableCredentials = await this.credentialsRepository.find({
-			where: { id: In([...credentialIds]), isResolvable: true },
-			select: ['id', 'name', 'resolverId'],
+			where: { id: In([...credentialIds]), isResolvable: true, usageScope: 'project' },
+			select: ['id', 'name'],
 		});
 
 		if (resolvableCredentials.length === 0) {
 			return { isValid: true };
 		}
 
-		const errors: string[] = [];
+		const credNames = formatCredentialNames(resolvableCredentials);
 
-		// A credential is covered if it has its own resolver OR the workflow has a defined resolver
-		// (workflow override, or the seeded system resolver looked up via the proxy).
+		// Workflow override if present, otherwise the seeded system resolver (null when neither).
 		const workflowResolverId =
 			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
+		const triggers = this.classifyTriggerIdentities(nodes, nodeTypes);
+
+		const error = this.getDynamicCredentialsError(workflowResolverId, credNames, triggers);
+
+		return error
+			? { isValid: false, error: `Cannot publish workflow: ${error}` }
+			: { isValid: true };
+	}
+
+	/**
+	 * Returns the publish error for the workflow's resolvable credentials, or
+	 * `undefined` when they are valid.
+	 */
+	private getDynamicCredentialsError(
+		workflowResolverId: string | null,
+		credNames: string,
+		triggers: {
+			allTriggersProvideExternalIdentity: boolean;
+			allTriggersProvideN8nIdentity: boolean;
+		},
+	): string | undefined {
 		if (!workflowResolverId) {
-			const credentialsWithoutResolver = resolvableCredentials.filter((c) => !c.resolverId);
-			if (credentialsWithoutResolver.length > 0) {
-				const credNames = credentialsWithoutResolver.map((c) => `"${c.name}"`).join(', ');
-				errors.push(`dynamic credentials (${credNames}) require a resolver to be configured.`);
-			}
+			return `end-user credentials (${credNames}) require a resolver to be configured.`;
 		}
 
-		const hasExtractorHook = nodes.some((node) => {
-			if (node.disabled) return false;
+		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
+
+		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
+			// System resolver: every trigger must establish the n8n user identity. Chat and MCP only
+			// qualify in their identity-carrying configurations.
+			if (allTriggersProvideN8nIdentity) return undefined;
+
+			const triggersList = this.getN8nUserAuthTriggersList();
+			return `end-user credentials (${credNames}) are only supported with ${triggersList}. To use another trigger, switch the credential to Fixed.`;
+		}
+
+		// Custom resolver: every trigger must provide an external identity.
+		if (allTriggersProvideExternalIdentity) return undefined;
+		return `end-user credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+	}
+
+	/**
+	 * Describes which trigger configurations the system resolver currently accepts,
+	 * for the publish-error copy. Chat qualifies when available in Chat Hub, or with
+	 * `n8nUserAuth` in hosted-chat mode specifically — embedded/webhook-mode chat has
+	 * no page to run the OAuth2 handshake on, so it establishes no identity regardless
+	 * of the chat OAuth2 flag; MCP only with n8n user auth (OAuth2). Mirrors
+	 * `classifyTriggerIdentity`.
+	 */
+	private getN8nUserAuthTriggersList(): string {
+		return 'manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication';
+	}
+
+	/** Collects the ids of all credentials referenced by enabled nodes. */
+	private collectCredentialIds(nodes: INode[]): Set<string> {
+		const credentialIds = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled) continue;
+			for (const credName of Object.keys(node.credentials ?? {})) {
+				const credId = node.credentials?.[credName]?.id;
+				if (credId) {
+					credentialIds.add(credId);
+				}
+			}
+		}
+		return credentialIds;
+	}
+
+	/**
+	 * Classifies a workflow's triggers by the identity every one of them can provide:
+	 * - `allTriggersProvideExternalIdentity`: every enabled trigger provides an external
+	 *   identity (context hook, Chat Hub, sub-workflow).
+	 * - `allTriggersProvideN8nIdentity`: every enabled trigger provides the n8n user
+	 *   identity (manual, Chat Hub, MCP with n8n OAuth2, sub-workflow).
+	 *
+	 * A single unsupported trigger disqualifies the whole workflow, so a manual trigger
+	 * cannot mask another trigger that can't establish identity. A workflow with no
+	 * triggers provides neither.
+	 *
+	 * The per-trigger classification lives in `classifyTriggerIdentity` (n8n-workflow)
+	 * so the editor's trigger-compatibility warning can reuse the exact same rules.
+	 */
+	private classifyTriggerIdentities(
+		nodes: INode[],
+		nodeTypes: NodeTypes,
+	): {
+		allTriggersProvideExternalIdentity: boolean;
+		allTriggersProvideN8nIdentity: boolean;
+	} {
+		let allTriggersProvideExternalIdentity = true;
+		let allTriggersProvideN8nIdentity = true;
+		let hasTrigger = false;
+
+		for (const node of nodes) {
+			if (node.disabled) continue;
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			if (!nodeType || !isTriggerLikeNode(nodeType)) return false;
+			// Only real workflow entry-points count. `isTriggerLikeNode` keys on a `webhook`/
+			// `poll`/`trigger` method, which also matches "Send and Wait for Response" action
+			// nodes (and their AI-tool variants) — those carry a HITL webhook but are not
+			// triggers, and would wrongly poison the identity check. `isTriggerNode` keys on
+			// the node group, which only true triggers declare.
+			if (!nodeType?.description || !isTriggerNode(nodeType.description)) continue;
 
-			// Chat Trigger nodes with availableInChat have identity injected at runtime by Chat Hub
-			if (node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters.availableInChat === true) {
-				return true;
-			}
-
-			const hookParams = toExecutionContextEstablishmentHookParameter(node.parameters);
-			return (
-				hookParams !== null &&
-				hookParams.success &&
-				hookParams.data.contextEstablishmentHooks.hooks.length > 0
+			hasTrigger = true;
+			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
+				node.type,
+				node.parameters,
+				{ isChatOAuth2Enabled: isChatOAuth2Enabled() },
 			);
-		});
-
-		if (!hasExtractorHook) {
-			const credNames = resolvableCredentials.map((c) => `"${c.name}"`).join(', ');
-			errors.push(
-				`dynamic credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`,
-			);
+			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
+			allTriggersProvideN8nIdentity &&= providesN8nIdentity;
 		}
 
-		if (errors.length > 0) {
-			return {
-				isValid: false,
-				error: `Cannot publish workflow: ${errors.join(' ')}`,
-			};
+		if (!hasTrigger) {
+			return { allTriggersProvideExternalIdentity: false, allTriggersProvideN8nIdentity: false };
 		}
 
-		return { isValid: true };
+		return { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity };
 	}
 
 	/**

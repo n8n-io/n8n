@@ -183,18 +183,6 @@ export interface NodeConfigurationEntry {
 export type NodeConfigurationsMap = Record<string, NodeConfigurationEntry[]>;
 
 /**
- * Output type for get workflow examples tool
- */
-export interface GetWorkflowExamplesOutput {
-	examples: Array<{
-		name: string;
-		description?: string;
-		workflow: string;
-	}>;
-	totalResults: number;
-}
-
-/**
  * Output type for get node configuration examples tool
  */
 export interface GetNodeConfigurationExamplesOutput {

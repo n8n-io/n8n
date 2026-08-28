@@ -38,26 +38,34 @@ export class CreateChatHubAgentTable1760020000000 implements ReversibleMigration
 			}).withTimestamps;
 
 		// Add agentId and agentName to chat_hub_sessions
-		await addColumns(table.sessions, [
-			column('agentId')
-				.varchar(36)
-				.comment('ID of the custom agent (if provider is "custom-agent")'),
-			column('agentName')
-				.varchar(128)
-				.comment('Cached name of the custom agent (if provider is "custom-agent")'),
-		]);
+		await addColumns(
+			table.sessions,
+			[
+				column('agentId')
+					.varchar(36)
+					.comment('ID of the custom agent (if provider is "custom-agent")'),
+				column('agentName')
+					.varchar(128)
+					.comment('Cached name of the custom agent (if provider is "custom-agent")'),
+			],
+			{ recreatesOnSqlite: true },
+		);
 
 		// Add agentId to chat_hub_messages
-		await addColumns(table.messages, [
-			column('agentId')
-				.varchar(36)
-				.comment('ID of the custom agent (if provider is "custom-agent")'),
-		]);
+		await addColumns(
+			table.messages,
+			[
+				column('agentId')
+					.varchar(36)
+					.comment('ID of the custom agent (if provider is "custom-agent")'),
+			],
+			{ recreatesOnSqlite: true },
+		);
 	}
 
 	async down({ schemaBuilder: { dropTable, dropColumns } }: MigrationContext) {
-		await dropColumns(table.messages, ['agentId']);
-		await dropColumns(table.sessions, ['agentId', 'agentName']);
+		await dropColumns(table.messages, ['agentId'], { recreatesOnSqlite: true });
+		await dropColumns(table.sessions, ['agentId', 'agentName'], { recreatesOnSqlite: true });
 		await dropTable(table.agents);
 	}
 }

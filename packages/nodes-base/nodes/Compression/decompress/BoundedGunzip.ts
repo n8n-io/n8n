@@ -1,9 +1,9 @@
 import * as fflate from 'fflate';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
 import { feedInChunks } from './FeedInChunks';
-import { GunzipOutputAccumulator } from './GunzipOutputAccumulator';
+import { BoundedOutputAccumulator } from './BoundedOutputAccumulator';
 
 /**
  * Decompress gzip data with an upper bound on total output size.
@@ -11,7 +11,7 @@ import { GunzipOutputAccumulator } from './GunzipOutputAccumulator';
  */
 export async function boundedGunzip(data: Buffer, maxOutputSize: number): Promise<Buffer> {
 	return await new Promise<Buffer>((resolve, reject) => {
-		const outputAccumulator = new GunzipOutputAccumulator(maxOutputSize);
+		const outputAccumulator = new BoundedOutputAccumulator(maxOutputSize);
 		let settled = false;
 
 		const decompressor = new fflate.AsyncGunzip((error, chunk, final) => {

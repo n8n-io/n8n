@@ -2,15 +2,15 @@ import { LicenseState } from '@n8n/backend-common';
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { IConnections, INode } from 'n8n-workflow';
+
+import { ProjectService } from '@/services/project.service.ee';
 import { createOwner, createUser } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history';
-import type { IConnections, INode } from 'n8n-workflow';
 
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-
-import { ProjectService } from '@/services/project.service.ee';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

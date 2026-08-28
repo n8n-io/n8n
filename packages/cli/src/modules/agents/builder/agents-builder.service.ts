@@ -1,37 +1,87 @@
 import type {
+	BuiltTelemetry,
 	CredentialProvider,
+	MemoryTaskUsageReport,
+	ModelConfig,
+	ScopedMemoryTaskEvent,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
+	Telemetry,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, UserError } from 'n8n-workflow';
+import {
+	REPORT_REQUIRED_ARTIFACT_TOOL_NAME,
+	reportRequiredArtifactInputSchema,
+	resolveAIAPromptCaching,
+	resolveAIAReasoning,
+	tokenUsageToBuilderUsageItems,
+	type BuilderRequiredArtifact,
+	type InstanceAiCredentialService,
+	type InstanceAiToolRegistry,
+	type ReportRequiredArtifactInput,
+} from '@n8n/instance-ai';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
 
+import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
 import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
+import { buildBuilderPrompt } from './agents-builder-prompts';
+import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { BuilderCheckpointUnavailableError } from './errors';
+import {
+	BUILDER_PLANNER_TODOS_DESCRIPTION,
+	BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+} from './prompts/planner-todos.prompt';
+import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '@n8n/api-types';
-import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
-import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
-import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
-import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
-import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
-import { getBuilderRuntimeSkills } from './skills';
+import { streamAgentChunks } from '../utils/agent-stream';
 
-/** Derive a stable thread ID for the builder chat of a given agent. */
-function builderThreadId(agentId: string): string {
-	return `${AGENT_THREAD_PREFIX.BUILDER}${agentId}`;
+/**
+ * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
+ * only ever streams for Instance AI's build-agent tool, so every field the
+ * host has already resolved (model, billing identity, telemetry) is required
+ * rather than falling back to the builder's own settings/tracing chains.
+ */
+export interface InstanceAiBuilderSessionOptions {
+	/** Persistence thread id for this builder session (e.g. `ia-builder:<instanceThreadId>:<agentId>`). */
+	threadId: string;
+	/** The visible Instance AI thread this build turn belongs to — builder OM usage is billed against this thread. */
+	hostThreadId: string;
+	/** The Instance AI run id this build turn belongs to — used for OM billing dedupe. */
+	runId: string;
+	/** Extra text appended to the builder prompt (e.g. instance-AI sub-agent rules). */
+	instructionsAddendum?: string;
+	/** Host-resolved model for the builder run — Instance AI's orchestrator model. */
+	modelConfig: ModelConfig;
+	/**
+	 * Host-provided telemetry for this session (e.g. instance AI's parent-trace
+	 * telemetry). When set, it replaces the builder's own LangSmith wiring so
+	 * sub-agent spans join the host trace.
+	 */
+	telemetry?: Telemetry | BuiltTelemetry;
+	/**
+	 * Host's memory-task lease hook (`InstanceAiTraceContext.onMemoryTaskEvent`).
+	 * When set, registered on the builder agent via `Agent.memoryTaskObserver()`
+	 * so the builder's own observational-memory task events retain/release the
+	 * host trace's telemetry provider, keeping its memory LLM spans exportable
+	 * after the host trace's root finalizes.
+	 */
+	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
+	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only the host's consumption of it. */
+	abortSignal: AbortSignal;
+	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
+	mcpTools?: InstanceAiToolRegistry;
+	/** Reports host-owned artifacts requested by the embedded builder. Omitted in the standalone builder. */
+	onRequiredArtifact?: (artifact: BuilderRequiredArtifact) => void;
 }
 
 @Service()
@@ -42,33 +92,10 @@ export class AgentsBuilderService {
 		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
-		private readonly builderSettings: AgentsBuilderSettingsService,
+		private readonly instanceAiCreditService: InstanceAiCreditService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
-		private readonly agentCheckpointRepository: AgentCheckpointRepository,
-		private readonly agentsConfig: AgentsConfig,
 	) {}
 
-	// ---------------------------------------------------------------------------
-	// Public — message storage
-	// ---------------------------------------------------------------------------
-
-	/**
-	 * Return persisted builder chat messages for an agent.
-	 */
-	async getBuilderMessages(agentId: string) {
-		const threadId = builderThreadId(agentId);
-		return await this.n8nMemory.getImplementation(agentId).getMessages(threadId);
-	}
-
-	/**
-	 * Clear persisted builder chat messages for an agent.
-	 */
-	async clearBuilderMessages(agentId: string) {
-		const threadId = builderThreadId(agentId);
-		const memory = this.n8nMemory.getImplementation(agentId);
-		await memory.deleteMessagesByThread(threadId);
-		await memory.deleteThread(threadId);
-	}
 	// ---------------------------------------------------------------------------
 	// Public — streaming
 	// ---------------------------------------------------------------------------
@@ -78,15 +105,27 @@ export class AgentsBuilderService {
 		projectId: string,
 		message: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
+		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
+		const builder = await this.createBuilderAgent(
+			agentId,
+			projectId,
+			credentialProvider,
+			credentialService,
+			user,
+			session,
+		);
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
 		const resourceId = user.id;
 		const resultStream = await builder.stream(message, {
-			persistence: { threadId: builderThreadId(agentId), resourceId },
+			persistence: { threadId: session.threadId, resourceId },
+			abortSignal: session.abortSignal,
+			// Keep billing a stopped builder turn for the tokens it already spent.
+			recoverUsageOnAbort: true,
 		});
 
 		yield* this.streamFromAgent(resultStream);
@@ -95,12 +134,13 @@ export class AgentsBuilderService {
 	/**
 	 * Resume a suspended builder tool call and yield the resulting stream chunks.
 	 *
-	 * The `runId` is supplied by the caller — it originates either from the
-	 * `tool-call-suspended` chunk the FE just received (live) or from the
-	 * `openSuspensions` sidecar returned by `GET /build/messages` (history
-	 * reload). A fresh builder agent is reconstructed every time; the SDK's
-	 * `agent.resume(...)` rehydrates the suspended state from the persisted
-	 * checkpoint, so the new instance picks up where the old one left off.
+	 * The `runId` is supplied by the caller — it originates from the live
+	 * `tool-call-suspended` chunk, from the `openSuspensions` sidecar returned
+	 * by the chat controller's messages endpoints (history reload), or from
+	 * the instance-AI delegate's `findOpenSuspensions`. A fresh builder agent
+	 * is reconstructed every time; the SDK's `agent.resume(...)` rehydrates
+	 * the suspended state from the persisted checkpoint, so the new instance
+	 * picks up where the old one left off.
 	 */
 	async *resumeBuild(
 		agentId: string,
@@ -109,26 +149,51 @@ export class AgentsBuilderService {
 		toolCallId: string,
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
+		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
-			throw new UserError(`Builder checkpoint ${runId} has expired and cannot be resumed`);
+			this.logger.debug('Builder checkpoint unavailable', {
+				runId,
+				status: checkpointStatus.status,
+			});
+			throw new BuilderCheckpointUnavailableError('expired');
 		}
 		if (checkpointStatus.status === 'not-found') {
-			throw new UserError(`Builder checkpoint ${runId} not found`);
+			this.logger.debug('Builder checkpoint unavailable', {
+				runId,
+				status: checkpointStatus.status,
+			});
+			throw new BuilderCheckpointUnavailableError('not-found');
 		}
 
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
+		const builder = await this.createBuilderAgent(
+			agentId,
+			projectId,
+			credentialProvider,
+			credentialService,
+			user,
+			session,
+		);
 
 		this.logger.debug('Resuming builder agent', { agentId, runId, toolCallId });
 
 		const resultStream = await builder.resume('stream', resumeData, {
 			runId,
 			toolCallId,
+			abortSignal: session.abortSignal,
+			// Keep billing a stopped builder turn for the tokens it already spent.
+			recoverUsageOnAbort: true,
 		});
 
 		yield* this.streamFromAgent(resultStream);
+	}
+
+	/** Expire a suspended builder checkpoint (e.g. when a host cannot render its question), scoped to the agent that owns it. */
+	async cancelCheckpoint(agentId: string, runId: string): Promise<void> {
+		await this.n8nCheckpointStorage.delete(runId, agentId);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -148,7 +213,9 @@ export class AgentsBuilderService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
+		session: InstanceAiBuilderSessionOptions,
 	): Promise<RuntimeAgent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
@@ -164,65 +231,117 @@ export class AgentsBuilderService {
 			});
 		});
 
-		// Resolve the model the builder should run on. Throws
-		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
-		// env-var fallback is available.
-		const { config: modelConfig } = await this.builderSettings.resolveModelConfig(user);
+		// Instance AI already resolved the run's model upstream; the builder
+		// always runs on it directly.
+		const modelConfig = session.modelConfig;
 
-		const currentConfig = composeJsonConfig(agent) as unknown as AgentJsonConfig | null;
-		const currentToolsMap = agent.tools ?? {};
-		const toolList =
-			Object.entries(currentToolsMap)
-				.map(([id, t]) => `- ${id}: ${t.descriptor.name} -- ${t.descriptor.description}`)
-				.join('\n') || '(none)';
-
-		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
 		const modelRecommendationsSection = await getModelRecommendationsSection();
-		const enabledModules = this.agentsConfig.modules;
 		const instructions = buildBuilderPrompt({
-			configJson,
-			configHash: getAgentConfigHash(currentConfig),
-			configUpdatedAt: agent.updatedAt.toISOString(),
-			toolList,
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
-			enabledModules,
 		});
+		const finalInstructions = session.instructionsAddendum
+			? `${instructions}\n\n${session.instructionsAddendum}`
+			: instructions;
 		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
+			{ threadId: session.hostThreadId, runId: session.runId },
 		);
 
-		const { Agent, Memory } = await import('@n8n/agents');
+		const { Agent, Memory, Tool, createPlannerTodosTool } = await import('@n8n/agents');
+
+		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
+			try {
+				const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
+				if (items.length === 0) return;
+				await this.instanceAiCreditService.claimRunUsage(
+					user,
+					session.hostThreadId,
+					`${session.runId}:agent-builder:${agentId}:memory:${report.task}:${report.reportId}`,
+					items,
+					'completed',
+				);
+			} catch (error) {
+				this.logger.warn('Failed to claim agent-builder observational-memory usage', {
+					agentId,
+					hostThreadId: session.hostThreadId,
+					runId: session.runId,
+					task: report.task,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
 
 		const builderMemory = new Memory()
 			.storage(this.n8nMemory.getImplementation(agentId))
-			.observationalMemory();
+			.observationalMemory({
+				observe: createObservationLogObserveFn(modelConfig, { onUsage: onMemoryUsage }),
+				reflect: createObservationLogReflectFn(modelConfig, { onUsage: onMemoryUsage }),
+			});
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
-			.instructions(instructions)
+			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
 			.configuration({ maxIterations: 30 });
+		const promptCaching = resolveAIAPromptCaching(modelConfig);
+		if (promptCaching) {
+			builder.promptCaching(promptCaching);
+		}
 
-		const telemetry = await buildBuilderTelemetry({
-			agentId,
-			projectId,
-			userId: user.id,
-			threadId: builderThreadId(agentId),
-			model: modelConfig,
+		if (session.telemetry) builder.telemetry(session.telemetry);
+		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
+
+		const plannerTodosTool = createPlannerTodosTool({
+			description: BUILDER_PLANNER_TODOS_DESCRIPTION,
+			systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
 		});
-		if (telemetry) builder.telemetry(telemetry);
+		const reportRequiredArtifactTool = session.onRequiredArtifact
+			? new Tool(REPORT_REQUIRED_ARTIFACT_TOOL_NAME)
+					.description(
+						'Report a workflow or data table that Instance AI must create outside the target Agent. ' +
+							'Use relationship "agent-entrypoint" for a channel bridge that invokes the Agent; it will not be attached as an Agent tool.',
+					)
+					.input(reportRequiredArtifactInputSchema)
+					.handler(async (input: ReportRequiredArtifactInput) => {
+						session.onRequiredArtifact?.(input.artifact);
+						return { ok: true };
+					})
+					.build()
+			: undefined;
+		const builderTools = [
+			...tools.json,
+			...tools.shared,
+			plannerTodosTool,
+			...(reportRequiredArtifactTool ? [reportRequiredArtifactTool] : []),
+		];
+		const claimedToolNames = new Set(builderTools.map((tool) => tool.name));
 
-		for (const tool of [...tools.json, ...tools.shared]) {
+		for (const tool of builderTools) {
 			builder.tool(tool);
 		}
+
+		for (const [toolName, tool] of session.mcpTools ?? []) {
+			if (claimedToolNames.has(toolName)) {
+				this.logger.warn('Skipped MCP tool that conflicts with an agent builder tool', {
+					toolName,
+					agentId,
+				});
+				continue;
+			}
+			claimedToolNames.add(toolName);
+			builder.tool(tool);
+		}
+
+		builder.reasoning(resolveAIAReasoning(modelConfig));
 
 		return builder;
 	}
@@ -233,15 +352,8 @@ export class AgentsBuilderService {
 	 * plain reader→generator adapter.
 	 */
 	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			yield value;
 		}
 	}
 
@@ -250,29 +362,13 @@ export class AgentsBuilderService {
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Return the parsed state of the most recent non-expired suspended
-	 * checkpoint for this agent, or `null` if there isn't one. Each pending
-	 * tool call inside the state already carries its own `runId`, so callers
-	 * don't need a separate runId from this helper.
+	 * Find the latest open checkpoint for a chat thread so its interactive
+	 * cards can be rebuilt after a page refresh.
 	 */
-	async findOpenCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
-		const rows = await this.agentCheckpointRepository.find({
-			where: { agentId, expired: false },
-			order: { updatedAt: 'DESC' },
-			take: 5,
-		});
-		for (const row of rows) {
-			if (!row.state) continue;
-			let parsed: SerializableAgentState;
-			try {
-				parsed = jsonParse<SerializableAgentState>(row.state);
-			} catch {
-				continue;
-			}
-			if (parsed.status === 'suspended') {
-				return parsed;
-			}
-		}
-		return null;
+	async findOpenCheckpointForThread(
+		agentId: string,
+		threadId: string,
+	): Promise<SerializableAgentState | null> {
+		return await this.n8nCheckpointStorage.findSuspendedForThread(agentId, threadId);
 	}
 }

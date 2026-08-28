@@ -32,6 +32,7 @@ import difference from 'lodash/difference';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import {
+	extractAiGatewaySection,
 	finalizeItems,
 	flattenCreateElements,
 	groupItemsInSections,
@@ -39,6 +40,7 @@ import {
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
 	searchNodes,
+	showsAiGatewaySection,
 	sortNodeCreateElements,
 	subcategorizeItems,
 	transformNodeType,
@@ -52,7 +54,7 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export type CommunityNodeDetails = {
 	key: string;
@@ -92,7 +94,7 @@ export interface ViewStack {
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
-	mode?: 'actions' | 'nodes' | 'community-node';
+	mode?: 'actions' | 'nodes' | 'community-node' | 'agents';
 	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
@@ -154,6 +156,15 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
 
 			return groupedNodes;
+		}
+
+		// Surface n8n Connect-powered nodes in a dedicated section at the top,
+		// extracted before grouping so they don't also land in the AI sections
+		if (showsAiGatewaySection(stack)) {
+			const extracted = extractAiGatewaySection(stack.baselineItems);
+			if (extracted) {
+				return finalizeItems([extracted.section, ...groupIfAiNodes(extracted.rest, stack, true)]);
+			}
 		}
 		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack, true));
 	});

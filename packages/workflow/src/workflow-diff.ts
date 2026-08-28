@@ -6,6 +6,7 @@ import type {
 	INode,
 	INodeParameters,
 	IWorkflowBase,
+	IWorkflowGroup,
 	NodeParameterValueType,
 } from '.';
 import { compareConnections, type ConnectionsDiff } from './connections-diff';
@@ -21,6 +22,7 @@ export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 	connections: IConnections;
 	createdAt: Date;
 	authors?: string;
+	nodeGroups?: IWorkflowGroup[];
 };
 
 export const enum NodeDiffStatus {
@@ -35,13 +37,33 @@ export type NodeDiff<T> = {
 	node: T;
 };
 
-export type WorkflowDiff<T> = Map<string, NodeDiff<T>>;
+export type WorkflowDiff<T> = Map<INode['id'], NodeDiff<T>>;
 
 export function compareNodes<T extends DiffableNode>(
 	base: T | undefined,
 	target: T | undefined,
 ): boolean {
-	const propsToCompare = ['name', 'type', 'typeVersion', 'webhookId', 'credentials', 'parameters'];
+	// All persisted node fields except `position` — moving a node on the canvas
+	// is not a content change. Kept as an allowlist because callers pass UI node
+	// objects that carry ephemeral fields (e.g. `issues`).
+	const propsToCompare = [
+		'name',
+		'type',
+		'typeVersion',
+		'webhookId',
+		'credentials',
+		'parameters',
+		'disabled',
+		'notes',
+		'notesInFlow',
+		'onError',
+		'continueOnFail',
+		'retryOnFail',
+		'maxTries',
+		'waitBetweenTries',
+		'alwaysOutputData',
+		'executeOnce',
+	];
 
 	const baseNode = pick(base, propsToCompare);
 	const targetNode = pick(target, propsToCompare);
@@ -171,8 +193,37 @@ function nodeIsSuperset<T extends DiffableNode>(prevNode: T, nextNode: T) {
 	return parametersAreSuperset(prevParams, nextParams);
 }
 
+/**
+ * Group changes are additive if they only add groups or group members,
+ * i.e. no existing group, group name or group member may be removed.
+ */
+function nodeGroupChangesAreAdditive<N extends DiffableNode>(
+	prev: DiffableWorkflow<N>,
+	next: DiffableWorkflow<N>,
+): boolean {
+	const nextGroupsById = new Map((next.nodeGroups ?? []).map((group) => [group.id, group]));
+
+	for (const prevGroup of prev.nodeGroups ?? []) {
+		const nextGroup = nextGroupsById.get(prevGroup.id);
+		if (
+			!nextGroup ||
+			nextGroup.name !== prevGroup.name ||
+			nextGroup.description !== prevGroup.description
+		) {
+			return false;
+		}
+
+		const nextNodeIds = new Set(nextGroup.nodeIds);
+		if (!prevGroup.nodeIds.every((id) => nextNodeIds.has(id))) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
-	_prev: DiffableWorkflow<N>,
+	prev: DiffableWorkflow<N>,
 	next: DiffableWorkflow<N>,
 	diff: WorkflowChangeSet<N>,
 ) {
@@ -185,6 +236,8 @@ function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 	}
 
 	if (Object.keys(diff.connections.removed).length > 0) return false;
+
+	if (!nodeGroupChangesAreAdditive(prev, next)) return false;
 
 	return true;
 }

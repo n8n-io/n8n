@@ -1,0 +1,24 @@
+diff --git a/dist/converters/completions.cjs b/dist/converters/completions.cjs
+index 791756ca4ec9fed98ecb44b90e090ad8d00db40a..f1fd00d4c699a34b342443bed84f2b4aeb6de021 100644
+--- a/dist/converters/completions.cjs
++++ b/dist/converters/completions.cjs
+@@ -586,6 +586,7 @@ const convertMessagesToCompletionsMessageParams = ({ messages, model }) => {
+ 			if (message.additional_kwargs.tool_calls != null) completionParam.tool_calls = message.additional_kwargs.tool_calls;
+ 			if (_langchain_core_messages.ToolMessage.isInstance(message) && message.tool_call_id != null) completionParam.tool_call_id = message.tool_call_id;
+ 		}
++		if (role === "assistant" && message.additional_kwargs.reasoning_content != null && typeof model === "string" && model.toLowerCase().includes("deepseek") && _langchain_core_messages.AIMessage.isInstance(message) && !!message.tool_calls?.length) completionParam.reasoning_content = message.additional_kwargs.reasoning_content;
+ 		if (message.additional_kwargs.audio && typeof message.additional_kwargs.audio === "object" && "id" in message.additional_kwargs.audio) return [completionParam, {
+ 			role: "assistant",
+ 			audio: { id: message.additional_kwargs.audio.id }
+diff --git a/dist/converters/completions.js b/dist/converters/completions.js
+index 434066251ce2b1a0a8fb48198576d4ba65e7738f..6f44ca91aea969bb9bd6e154683f3f3d05c708b7 100644
+--- a/dist/converters/completions.js
++++ b/dist/converters/completions.js
+@@ -586,6 +586,7 @@ const convertMessagesToCompletionsMessageParams = ({ messages, model }) => {
+ 			if (message.additional_kwargs.tool_calls != null) completionParam.tool_calls = message.additional_kwargs.tool_calls;
+ 			if (ToolMessage.isInstance(message) && message.tool_call_id != null) completionParam.tool_call_id = message.tool_call_id;
+ 		}
++		if (role === "assistant" && message.additional_kwargs.reasoning_content != null && typeof model === "string" && model.toLowerCase().includes("deepseek") && AIMessage.isInstance(message) && !!message.tool_calls?.length) completionParam.reasoning_content = message.additional_kwargs.reasoning_content;
+ 		if (message.additional_kwargs.audio && typeof message.additional_kwargs.audio === "object" && "id" in message.additional_kwargs.audio) return [completionParam, {
+ 			role: "assistant",
+ 			audio: { id: message.additional_kwargs.audio.id }

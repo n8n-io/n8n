@@ -187,6 +187,7 @@ export function startEvalSetupAgentTask(
 					eventBus: context.eventBus,
 					logger: context.logger,
 					threadId: context.threadId,
+					outputRedaction: context.outputRedaction,
 					abortSignal: signal,
 					waitForConfirmation: context.waitForConfirmation,
 					drainCorrections,

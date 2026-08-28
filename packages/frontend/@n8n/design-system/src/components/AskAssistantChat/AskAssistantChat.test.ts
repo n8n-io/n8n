@@ -24,7 +24,6 @@ vi.mock('./messages/helpers', () => ({
 
 // Mock isToolMessage type guard
 vi.mock('../../types/assistant', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const original = await importOriginal<typeof import('../../types/assistant')>();
 	return {
 		...original,

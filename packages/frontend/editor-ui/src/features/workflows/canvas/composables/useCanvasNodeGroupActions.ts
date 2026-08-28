@@ -6,6 +6,16 @@ import { computed, toValue } from 'vue';
 
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useHistoryStore } from '@/app/stores/history.store';
+import { AddNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
+import {
+	isCanvasGroupNode,
+	parseCanvasGroupNodeId,
+} from '@/features/workflows/canvas/canvas.types';
+import {
+	deleteGroupWithHistory,
+	snapshotGroup,
+} from '@/features/workflows/canvas/nodeGroups.utils';
 
 export function useCanvasNodeGroupActions(
 	selectedNodes: MaybeRefOrGetter<GraphNode[]>,
@@ -13,55 +23,107 @@ export function useCanvasNodeGroupActions(
 ) {
 	const i18n = useI18n();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const { isSelectionGroupable, expandSelectionWithSubNodes } = useSelectionValidation();
+	const historyStore = useHistoryStore();
+	const { resolveGroupableNodeIds } = useSelectionValidation();
 
 	const isReadOnly = computed(() => toValue(options?.readOnly) ?? false);
 
-	const expandedSelectionIds = computed(() => {
-		const nodes = toValue(selectedNodes);
-		if (isReadOnly.value || nodes.length < 2) return [];
-		return expandSelectionWithSubNodes(nodes.map((n) => n.id));
-	});
+	const selectedNodeIdsWithoutGroups = computed(() =>
+		toValue(selectedNodes)
+			.filter((n) => !isCanvasGroupNode(n))
+			.map((n) => n.id),
+	);
 
 	const canGroup = computed(() => {
 		if (isReadOnly.value) return false;
-		return isSelectionGroupable(expandedSelectionIds.value).valid;
+		return resolveGroupableNodeIds(selectedNodeIdsWithoutGroups.value) !== null;
 	});
 
 	const selectedGroupIds = computed(() => {
 		if (isReadOnly.value) return [];
 		const ids = new Set<string>();
 		for (const node of toValue(selectedNodes)) {
+			// Selected title bar: its id carries the group id
+			const directGroupId = parseCanvasGroupNodeId(node.id);
+			if (directGroupId) {
+				ids.add(directGroupId);
+				continue;
+			}
+			// Partial selection inside an expanded group: map a selected member back to it
 			const group = workflowDocumentStore.value.getGroupForNode(node.id);
-			if (group) ids.add(group.id);
+			if (group) {
+				ids.add(group.id);
+			}
 		}
 		return Array.from(ids);
 	});
 
 	const canUngroup = computed(() => selectedGroupIds.value.length > 0);
 
-	function groupSelection(): IWorkflowGroup | null {
-		if (!canGroup.value) return null;
+	/**
+	 * Groups the given nodes (plus their attached AI sub-nodes) if they form a
+	 * valid groupable subgraph. Unlike `groupSelection`, this works on explicit
+	 * ids, so callers like the context menu can group nodes that aren't part of
+	 * the current canvas selection. The group is created from exactly the ids
+	 * that passed validation.
+	 */
+	function groupNodes(nodeIds: string[]): IWorkflowGroup | null {
+		if (isReadOnly.value) return null;
+		const memberIds = resolveGroupableNodeIds(nodeIds);
+		if (!memberIds) return null;
 		const name = workflowDocumentStore.value.getNextDefaultName(
 			i18n.baseText('canvas.nodeGroup.defaultTitle'),
 		);
-		return workflowDocumentStore.value.createGroup(expandedSelectionIds.value, name);
+		const group = workflowDocumentStore.value.createGroup(memberIds, name);
+		historyStore.pushCommandToUndo(new AddNodeGroupCommand(group, Date.now()));
+		return group;
 	}
 
-	function ungroupSelection(): string[] {
-		const ids = selectedGroupIds.value;
-		for (const id of ids) {
-			workflowDocumentStore.value.deleteGroup(id);
-		}
-		return ids;
+	function groupSelection(): IWorkflowGroup | null {
+		return groupNodes(selectedNodeIdsWithoutGroups.value);
+	}
+
+	function renameGroup(id: string, name: string) {
+		if (isReadOnly.value) return;
+		const before = workflowDocumentStore.value.getGroupById(id);
+		if (!before) return;
+		const beforeSnapshot = snapshotGroup(before);
+		workflowDocumentStore.value.updateName(id, name);
+		const after = workflowDocumentStore.value.getGroupById(id);
+		if (!after || after.name === beforeSnapshot.name) return;
+		historyStore.pushCommandToUndo(
+			new UpdateNodeGroupCommand(beforeSnapshot, snapshotGroup(after), Date.now()),
+		);
+	}
+
+	function updateGroupDescription(id: string, description: string) {
+		if (isReadOnly.value) return;
+		const before = workflowDocumentStore.value.getGroupById(id);
+		if (!before) return;
+		const beforeSnapshot = snapshotGroup(before);
+		workflowDocumentStore.value.updateDescription(id, description);
+		const after = workflowDocumentStore.value.getGroupById(id);
+		if (!after || after.description === beforeSnapshot.description) return;
+		historyStore.pushCommandToUndo(
+			new UpdateNodeGroupCommand(beforeSnapshot, snapshotGroup(after), Date.now()),
+		);
+	}
+
+	function ungroup(id: string) {
+		if (isReadOnly.value) return;
+		const group = workflowDocumentStore.value.getGroupById(id);
+		if (!group) return;
+		deleteGroupWithHistory(group, workflowDocumentStore.value, historyStore);
 	}
 
 	return {
 		canGroup,
 		canUngroup,
-		expandedSelectionIds,
 		selectedGroupIds,
+		groupNodes,
 		groupSelection,
-		ungroupSelection,
+		renameGroup,
+		updateGroupDescription,
+		ungroup,
 	};
 }

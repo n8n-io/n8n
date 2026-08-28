@@ -1,9 +1,15 @@
 import {
 	createPage,
+	createShellPage,
+	escapeForHtmlAttribute,
+	escapeForScriptContext,
 	getSanitizedCustomCss,
 	getSanitizedInitialMessages,
 	getSanitizedI18nConfig,
 } from '../templates';
+
+const LINE_SEPARATOR = String.fromCharCode(0x2028);
+const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
 
 describe('ChatTrigger Templates Security', () => {
 	const defaultParams = {
@@ -289,6 +295,121 @@ describe('ChatTrigger Templates Security', () => {
 		});
 	});
 
+	describe('webhookUrl rendering', () => {
+		it('should encode single quotes and adjacent characters in the value', () => {
+			const input = "https://test.com/webhook/abc', extra: fetch('https://other.test/x'), tail: '";
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: input,
+			});
+
+			expect(result).toContain(`webhookUrl: ${escapeForScriptContext(input)},`);
+			expect(result).not.toContain(`webhookUrl: '${input}'`);
+		});
+
+		it('should encode angle brackets in the value', () => {
+			const input = '</script><script>console.log(1)</script>';
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: input,
+			});
+
+			// The rendered HTML must contain exactly one closing </script> tag
+			const scriptCloses = (result.match(/<\/script>/gi) ?? []).length;
+			expect(scriptCloses).toBe(1);
+		});
+
+		it('should encode backslash sequences in the value', () => {
+			const input = "https://test.com/\\', extra: 1, tail: '";
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: input,
+			});
+
+			expect(result).toContain(`webhookUrl: ${escapeForScriptContext(input)},`);
+		});
+
+		it('should encode U+2028 and U+2029 line separators in the value', () => {
+			// JSON.stringify alone does not escape U+2028/U+2029; the helper must.
+			const input = `https://test.com/${LINE_SEPARATOR}extra = 1`;
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: input,
+			});
+
+			expect(result.includes(LINE_SEPARATOR)).toBe(false);
+			expect(result).toContain('\\u2028');
+		});
+
+		it('should preserve a typical webhook URL', () => {
+			const url = 'https://example.com/webhook/0123abcd-ef45-6789-abcd-ef0123456789/chat';
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: url,
+			});
+
+			expect(result).toContain(url);
+		});
+
+		it('should render an empty string when webhookUrl is undefined', () => {
+			// getNodeWebhookUrl can return undefined; the rendered JS must still be parseable
+			// and the chat client must receive a string value, not the literal `undefined`.
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: undefined,
+			});
+
+			expect(result).toContain('webhookUrl: "",');
+			expect(result).not.toContain('webhookUrl: undefined');
+			expect(result).not.toContain("webhookUrl: 'undefined'");
+		});
+	});
+
+	describe('escapeForScriptContext function', () => {
+		it('should produce a JSON string literal for simple input', () => {
+			expect(escapeForScriptContext('hello')).toBe('"hello"');
+		});
+
+		it('should escape angle brackets', () => {
+			expect(escapeForScriptContext('</script>')).toBe('"\\u003c/script\\u003e"');
+		});
+
+		it('should escape ampersands', () => {
+			expect(escapeForScriptContext('a&b')).toBe('"a\\u0026b"');
+		});
+
+		it('should escape U+2028 and U+2029 line separators', () => {
+			expect(escapeForScriptContext(`a${LINE_SEPARATOR}b`)).toBe('"a\\u2028b"');
+			expect(escapeForScriptContext(`a${PARAGRAPH_SEPARATOR}b`)).toBe('"a\\u2029b"');
+		});
+
+		it('should escape double quotes and backslashes', () => {
+			expect(escapeForScriptContext('a"b')).toBe('"a\\"b"');
+			expect(escapeForScriptContext('a\\b')).toBe('"a\\\\b"');
+		});
+
+		it('should round-trip via JSON.parse to the original value', () => {
+			const inputs = [
+				'simple',
+				'with "double" quotes',
+				"with 'single' quotes",
+				'with </script> and <img onerror=x>',
+				'with & ampersand',
+				`with ${LINE_SEPARATOR} and ${PARAGRAPH_SEPARATOR} separators`,
+				'with \\ backslash and \\n literal',
+				'',
+			];
+			inputs.forEach((input) => {
+				expect(JSON.parse(escapeForScriptContext(input))).toBe(input);
+			});
+		});
+	});
+
 	describe('XSS Prevention in allowedFilesMimeTypes', () => {
 		it('should prevent script injection through allowedFilesMimeTypes', () => {
 			const maliciousInput = '</script><script>alert(document.cookie)</script>';
@@ -488,5 +609,144 @@ describe('ChatTrigger Templates Security', () => {
 			expect(result.enabled).toBe('');
 			expect(result.obj).toBe('');
 		});
+	});
+});
+
+describe('escapeForHtmlAttribute', () => {
+	it('escapes what would break out of a double-quoted attribute', () => {
+		expect(escapeForHtmlAttribute('/chat?a="><script>&\'')).toBe(
+			'/chat?a=&quot;&gt;&lt;script&gt;&amp;&#39;',
+		);
+	});
+});
+
+describe('createShellPage', () => {
+	const shell = createShellPage({ iframeSrc: '/webhook/abc/chat?n8nShellInner=1' });
+
+	it('renders nothing but the frame the chat lives in', () => {
+		expect(shell).toContain('<iframe');
+		expect(shell).toContain('data-src="/webhook/abc/chat?n8nShellInner=1"');
+		// The widget, its stylesheet and the author's CSS all belong to the frame.
+		expect(shell).not.toContain('cdn.jsdelivr.net');
+		expect(shell).not.toContain('createChat');
+	});
+
+	it('gives the frame no origin of its own', () => {
+		expect(shell).toContain('sandbox="allow-scripts allow-forms allow-modals allow-popups"');
+		expect(shell).not.toContain('allow-same-origin');
+	});
+
+	// Links in bot replies are `target="_blank"`, so the frame needs `allow-popups`
+	// to open them at all — but not `allow-popups-to-escape-sandbox`, which would let
+	// author script put a real-origin document in front of the visitor.
+	it('lets the frame open popups without letting them escape the sandbox', () => {
+		expect(shell).toContain('allow-popups');
+		expect(shell).not.toContain('allow-popups-to-escape-sandbox');
+	});
+
+	// The src comes from the request URL, so it must not be able to close the
+	// attribute and add markup of its own.
+	it('escapes the frame src', () => {
+		const escaped = createShellPage({ iframeSrc: '/chat?x="><img src=x onerror=alert(1)>' });
+
+		expect(escaped).not.toContain('<img');
+		expect(escaped).toContain('&quot;&gt;&lt;img');
+	});
+
+	it('owns the session id so a frame reload continues the conversation', () => {
+		expect(shell).toContain("'n8n-chat-shell/sessionId' + window.location.pathname");
+		expect(shell).toContain("'#sessionId=' + encodeURIComponent(sessionId)");
+	});
+});
+
+describe('createPage inside the shell frame', () => {
+	const params = {
+		instanceId: 'test-instance',
+		webhookUrl: 'http://test.com/webhook',
+		showWelcomeScreen: false,
+		loadPreviousSession: 'notSupported' as const,
+		i18n: { en: {} },
+		mode: 'production' as const,
+		authentication: 'n8nUserAuth' as const,
+		allowFileUploads: false,
+		allowedFilesMimeTypes: '',
+		customCss: '.chat-message { color: red; }',
+		enableStreaming: false,
+		initialMessages: '',
+	};
+	const visitor = {
+		id: 'user-1',
+		email: 'visitor@example.com',
+		firstName: 'Vi',
+		lastName: 'Sitor',
+	};
+
+	const inner = createPage({
+		...params,
+		frameIdentity: { visitor, authToken: 'signed.jwt.token' },
+	});
+
+	it('stands in for localStorage before the widget loads', () => {
+		expect(inner).toContain("Object.defineProperty(window, 'localStorage'");
+		// A classic inline script runs before the deferred module script, so the shim
+		// is in place by the time the widget touches storage.
+		expect(inner.indexOf("Object.defineProperty(window, 'localStorage'")).toBeLessThan(
+			inner.indexOf('<script type="module">'),
+		);
+	});
+
+	it('takes the conversation session id from the shell', () => {
+		expect(inner).toContain('window.location.hash.slice(1)');
+		expect(inner).toContain('"n8n-chat/sessionId"');
+		expect(inner).toContain('sessionId: window.__n8nChatSessionId || undefined,');
+	});
+
+	it('authenticates messages by request header', () => {
+		expect(inner).toContain('\'x-auth-token\': "signed.jwt.token",');
+	});
+
+	// Not merely skipped at runtime: the bootstrap is never emitted, so there is no
+	// path from this document to a login endpoint it couldn't reach or a sign-in page it
+	// couldn't render.
+	it('takes the visitor from the server instead of fetching the login endpoint', () => {
+		expect(inner).toContain('const metadata = { user: {"id":"user-1"');
+		expect(inner).not.toContain("fetch('/rest/login'");
+		expect(inner).not.toContain("'/signin?redirect='");
+	});
+
+	it('still renders the author own styling', () => {
+		expect(inner).toContain('.chat-message { color: red; }');
+	});
+
+	describe('outside the shell', () => {
+		const plain = createPage(params);
+
+		it('is unchanged: no shim, no session handover, no token header', () => {
+			expect(plain).not.toContain("Object.defineProperty(window, 'localStorage'");
+			expect(plain).not.toContain('window.__n8nChatSessionId');
+			expect(plain).not.toContain('x-auth-token');
+			expect(plain).toContain('const injectedVisitor = null;');
+		});
+
+		// The client-side bootstrap is what the flag-off n8nUserAuth render still relies on.
+		it('keeps the login bootstrap the flag-off render depends on', () => {
+			expect(plain).toContain("fetch('/rest/login'");
+			expect(plain).toContain("'/signin?redirect='");
+		});
+	});
+
+	// A frame render holding half an identity would silently serve an anonymous chat where
+	// the single-document path redirects to sign-in, and the frame can resolve neither half
+	// for itself. Both fields are required together, so that state can't be expressed —
+	// this fails the build rather than the run if the shape ever loosens.
+	it('cannot represent a frame render missing half its identity', () => {
+		type FrameIdentity = Parameters<typeof createPage>[0]['frameIdentity'];
+
+		// @ts-expect-error the visitor and their token only ever travel together
+		const withoutVisitor: FrameIdentity = { authToken: 'signed.jwt.token' };
+		// @ts-expect-error ...in both directions
+		const withoutToken: FrameIdentity = { visitor };
+
+		expect([withoutVisitor, withoutToken]).toHaveLength(2);
 	});
 });

@@ -1,6 +1,6 @@
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useInstanceRegistryStore } from '@n8n/frontend-module-instance-registry';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import type { WorkflowSettings } from 'n8n-workflow';
 
@@ -35,7 +35,7 @@ type DebugInfo = {
 		error: WorkflowSettings.SaveDataExecution;
 		progress: boolean;
 		manual: boolean;
-		binaryMode: 'memory' | 'filesystem' | 's3' | 'database';
+		binaryMode: 'memory' | 'filesystem' | 's3' | 'azure' | 'database';
 	};
 	pruning:
 		| {

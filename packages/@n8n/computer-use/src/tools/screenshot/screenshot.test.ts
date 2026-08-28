@@ -1,6 +1,7 @@
 import { Monitor } from 'node-screenshots';
 import type { Mock, MockedClass } from 'vitest';
 
+import type { ModuleContext } from '../types';
 import { ScreenshotModule } from './index';
 import { screenshotTool, screenshotRegionTool } from './screenshot';
 
@@ -20,6 +21,7 @@ vi.mock('@napi-rs/image', () => ({
 const MockMonitor = Monitor as MockedClass<typeof Monitor>;
 
 const DUMMY_CONTEXT = { dir: '/test/base' };
+const MODULE_CTX = {} as ModuleContext;
 
 interface MockImage {
 	width: number;
@@ -260,7 +262,7 @@ describe('screen_screenshot_region tool', () => {
 	});
 });
 
-describe('ScreenshotModule.isSupported', () => {
+describe('ScreenshotModule.activate', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -268,15 +270,17 @@ describe('ScreenshotModule.isSupported', () => {
 	it.each([
 		['has monitors', [{}], true],
 		['returns empty array', [], false],
-	])('returns %s -> %s', async (_label, monitorList, expected) => {
+	])('%s -> supported %s', async (_label, monitorList, expected) => {
 		(MockMonitor.all as Mock).mockReturnValue(monitorList);
-		await expect(ScreenshotModule.isSupported()).resolves.toBe(expected);
+		const result = await ScreenshotModule.activate(MODULE_CTX);
+		expect(result.supported).toBe(expected);
 	});
 
-	it('returns false when Monitor.all() throws', async () => {
+	it('is unsupported when Monitor.all() throws', async () => {
 		(MockMonitor.all as Mock).mockImplementation(() => {
 			throw new Error('Display server unavailable');
 		});
-		await expect(ScreenshotModule.isSupported()).resolves.toBe(false);
+		const result = await ScreenshotModule.activate(MODULE_CTX);
+		expect(result.supported).toBe(false);
 	});
 });

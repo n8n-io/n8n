@@ -2,28 +2,29 @@ import type { IExecuteFunctions, IBinaryData, INodeExecutionData } from 'n8n-wor
 
 import { Twist } from '../Twist.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('../GenericFunctions');
+vi.mock('../GenericFunctions');
 
 describe('Twist Node - prepareBinariesDataList usage', () => {
 	let twist: Twist;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
 		twist = new Twist();
 		mockExecuteFunctions = {
-			getInputData: jest.fn(),
-			getNodeParameter: jest.fn(),
+			getInputData: vi.fn(),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				assertBinaryData: jest.fn(),
-				getBinaryDataBuffer: jest.fn(),
-				returnJsonArray: jest.fn(),
+				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
+				returnJsonArray: vi.fn(),
 			},
-		} as unknown as jest.Mocked<IExecuteFunctions>;
-		jest.clearAllMocks();
+		} as unknown as Mocked<IExecuteFunctions>;
+		vi.clearAllMocks();
 
 		// Mock the twistApiRequest to return successful responses
-		(GenericFunctions.twistApiRequest as jest.Mock).mockResolvedValue({
+		(GenericFunctions.twistApiRequest as Mock).mockResolvedValue({
 			id: 'test-id',
 		});
 	});
@@ -49,7 +50,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('comment')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('thread123')
@@ -58,21 +59,19 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: 'file1, file2',
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 
@@ -97,7 +96,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('comment')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('thread123')
@@ -106,21 +105,19 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: 'singleFile',
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 
@@ -156,7 +153,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('comment')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('thread123')
@@ -165,21 +162,19 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: ['doc1', 'doc2', 'doc3'],
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 
@@ -207,7 +202,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('comment')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('thread123')
@@ -216,17 +211,15 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: binaryData,
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(binaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(binaryData);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 
@@ -259,7 +252,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('comment')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('thread123')
@@ -268,22 +261,20 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: binaryDataArray,
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(_: number, data: any) => {
 					if (typeof data === 'object') return data;
 					return binaryDataArray[0];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 
@@ -308,7 +299,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('messageConversation')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('workspace123')
@@ -318,21 +309,19 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: 'attachment',
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 
@@ -362,7 +351,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('messageConversation')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('workspace123')
@@ -372,22 +361,20 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: binaryDataArray,
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(_: number, data: any) => {
 					if (typeof data === 'object') return data;
 					return binaryDataArray[0];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 
@@ -417,7 +404,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('thread')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('channel123')
@@ -427,21 +414,19 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: 'doc1, doc2',
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockImplementation(
 				(itemIndex: number, propertyName: string) => {
 					return items[itemIndex].binary![propertyName];
 				},
 			);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 
@@ -466,7 +451,7 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 			];
 
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			(mockExecuteFunctions.getNodeParameter as jest.Mock)
+			(mockExecuteFunctions.getNodeParameter as Mock)
 				.mockReturnValueOnce('thread')
 				.mockReturnValueOnce('create')
 				.mockReturnValueOnce('channel123')
@@ -476,17 +461,15 @@ describe('Twist Node - prepareBinariesDataList usage', () => {
 					binaryProperties: binaryData,
 				});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(binaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(binaryData);
 
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(
 				Buffer.from('test data'),
 			);
 
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }];
+			});
 
 			const result = await twist.execute.call(mockExecuteFunctions);
 

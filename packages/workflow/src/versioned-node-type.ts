@@ -1,3 +1,4 @@
+import { NodeVersionNotFoundError } from './errors';
 import type { INodeTypeBaseDescription, IVersionedNodeType, INodeType } from './interfaces';
 
 export class VersionedNodeType implements IVersionedNodeType {
@@ -21,10 +22,15 @@ export class VersionedNodeType implements IVersionedNodeType {
 	}
 
 	getNodeType(version?: number): INodeType {
-		if (version) {
-			return this.nodeVersions[version];
-		} else {
-			return this.nodeVersions[this.currentVersion];
+		const resolvedVersion = version ? version : this.currentVersion;
+		const nodeType = this.nodeVersions[resolvedVersion];
+		if (nodeType === undefined) {
+			throw new NodeVersionNotFoundError(
+				this.description.name,
+				resolvedVersion,
+				Object.keys(this.nodeVersions).map(Number),
+			);
 		}
+		return nodeType;
 	}
 }

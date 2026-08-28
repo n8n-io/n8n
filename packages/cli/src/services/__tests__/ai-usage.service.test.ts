@@ -6,9 +6,7 @@ import config from '@/config';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { CacheService } from '@/services/cache/cache.service';
 
-jest.mock('@/config', () => ({
-	set: jest.fn(),
-}));
+vi.mock('@/config', () => ({ default: { set: vi.fn() } }));
 
 describe('AiUsageService', () => {
 	const settingsRepository = mockInstance(SettingsRepository);
@@ -17,7 +15,7 @@ describe('AiUsageService', () => {
 	const aiUsageService = new AiUsageService(settingsRepository, cacheService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getAiUsageSettings()', () => {

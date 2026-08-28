@@ -1,4 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,6 +7,7 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
 export async function mailCheckApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -45,7 +45,7 @@ export async function mailCheckApiRequest(
 	} catch (error) {
 		if (error.response?.body?.message) {
 			// Try to return the error prettier
-			throw new ApplicationError(
+			throw new OperationalError(
 				`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`,
 				{ level: 'warning' },
 			);

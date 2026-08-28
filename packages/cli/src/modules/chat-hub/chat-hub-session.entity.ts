@@ -12,8 +12,8 @@ import {
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
 
-import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
+import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubTool } from './chat-hub-tool.entity';
 
 export interface IChatHubSession {

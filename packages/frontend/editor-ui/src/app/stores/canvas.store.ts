@@ -14,13 +14,22 @@ export const useCanvasStore = defineStore('canvas', () => {
 		hasRangeSelection.value = value;
 	}
 
+	// Selected collapsed canvas group, so non-canvas surfaces (e.g. the logs panel) can sync to it
+	const selectedGroupId = ref<string | null>(null);
+
+	function setSelectedGroupId(value: string | null) {
+		selectedGroupId.value = value;
+	}
+
 	return {
 		newNodeInsertPosition,
 		isLoading: loadingService.isLoading,
 		hasRangeSelection: computed(() => hasRangeSelection.value),
+		selectedGroupId: computed(() => selectedGroupId.value),
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,
 		setHasRangeSelection,
+		setSelectedGroupId,
 	};
 });

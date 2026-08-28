@@ -1,9 +1,10 @@
 import type { RawAxiosRequestHeaders } from 'axios';
-import type { INode, INodeCredentialsDetails } from 'n8n-workflow';
+import type { IDataObject, INode, INodeCredentialsDetails } from 'n8n-workflow';
 
 import type { VersionNode } from './versions';
 import type { WorkflowData } from './workflows';
-import { get } from '../utils';
+import type { IRestApiContext } from '../types';
+import { get, makeRestApiRequest } from '../utils';
 
 export interface IWorkflowTemplateNode
 	extends Pick<
@@ -209,4 +210,40 @@ export async function getWorkflowTemplate(
 	headers?: RawAxiosRequestHeaders,
 ): Promise<IWorkflowTemplate> {
 	return await get(apiEndpoint, `/workflows/templates/${templateId}`, undefined, headers);
+}
+
+export interface IInstanceAiExamplesQuery {
+	category?: string;
+	subcategory?: string;
+	page?: number;
+	limit?: number;
+}
+
+export interface IInstanceAiExampleWorkflow {
+	id: number;
+	name: string;
+	category: string;
+	subcategory?: string;
+	relevanceScore?: number;
+	prompt?: string;
+	nodes: Array<{
+		name: string;
+		displayName?: string;
+		icon?: string;
+		iconData?: { type: string; fileBuffer: string };
+	}>;
+}
+
+export interface IInstanceAiExamplesResponse {
+	categories: string[];
+	subcategories: Record<string, string[]>;
+	totalWorkflows: number;
+	workflows: IInstanceAiExampleWorkflow[];
+}
+
+export async function getInstanceAiExamples(
+	context: IRestApiContext,
+	query: IInstanceAiExamplesQuery,
+): Promise<IInstanceAiExamplesResponse> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai-examples', query as IDataObject);
 }

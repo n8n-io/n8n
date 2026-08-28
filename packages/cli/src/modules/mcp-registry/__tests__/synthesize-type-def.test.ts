@@ -2,7 +2,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { serverToNodeDescription } from '../node-description-transform';
 import { notionMockServer, linearMockServer } from '../registry/mock-servers';
-import { synthesizeMcpRegistryTypeDef } from '../synthesize-type-def';
+import { synthesizeNodeTypeDef } from '../synthesize-type-def';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client Tool',
@@ -43,12 +43,19 @@ const baseDescription: INodeTypeDescription = {
 	],
 };
 
-describe('synthesizeMcpRegistryTypeDef', () => {
+// oauth2 servers never consult the predicate; this stub keeps those calls type-correct.
+const isKnownCredentialType = () => true;
+
+describe('synthesizeNodeTypeDef', () => {
 	it('produces TypeScript content for the Notion registry node', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 		expect(description).not.toBeNull();
 
-		const content = synthesizeMcpRegistryTypeDef(description!);
+		const content = synthesizeNodeTypeDef(description!);
 
 		expect(content).toContain('notionMcpOAuth2Api');
 		expect(content).toContain('export');
@@ -58,12 +65,59 @@ describe('synthesizeMcpRegistryTypeDef', () => {
 	});
 
 	it('produces TypeScript content for the Linear registry node', () => {
-		const description = serverToNodeDescription(linearMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			linearMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 		expect(description).not.toBeNull();
 
-		const content = synthesizeMcpRegistryTypeDef(description!);
+		const content = synthesizeNodeTypeDef(description!);
 
 		expect(content).toContain('linearMcpOAuth2Api');
 		expect(content).toContain('export');
+	});
+
+	describe('expression (dynamic) connections', () => {
+		it('synthesizes a community node with constant expression connections', () => {
+			const description: INodeTypeDescription = {
+				...baseDescription,
+				name: 'n8n-nodes-firecrawl.firecrawl',
+				displayName: 'Firecrawl',
+				inputs: '={{["main"]}}',
+				outputs: '={{["main"]}}',
+				properties: [{ displayName: 'URL', name: 'url', type: 'string', default: '' }],
+			};
+
+			const content = synthesizeNodeTypeDef(description);
+
+			expect(content).toContain('export');
+			expect(content).toContain('url');
+		});
+
+		it('synthesizes a node with parameter-dependent expression inputs', () => {
+			const description: INodeTypeDescription = {
+				...baseDescription,
+				name: 'n8n-nodes-custom.customAgent',
+				displayName: 'Custom Agent',
+				inputs: '={{ [{ type: "main" }, { type: "ai_languageModel", required: true }] }}',
+				outputs: ['main'],
+				properties: [{ displayName: 'Prompt', name: 'prompt', type: 'string', default: '' }],
+			};
+
+			const content = synthesizeNodeTypeDef(description);
+
+			expect(content).toContain('export');
+			expect(content).toContain('prompt');
+		});
+
+		it('throws for a malformed description', () => {
+			const description = {
+				...baseDescription,
+				group: 'transform',
+			} as unknown as INodeTypeDescription;
+
+			expect(() => synthesizeNodeTypeDef(description)).toThrow('Cannot synthesize type definition');
+		});
 	});
 });

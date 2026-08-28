@@ -117,6 +117,7 @@ function makeOptions(
 		fetchTimeoutMs: 1_000,
 		// Keep retry tests fast; production default is much higher.
 		retryBackoffBaseMs: 1,
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 		...overrides,
 	};
 }
@@ -598,6 +599,7 @@ describe('BuilderTemplatesService', () => {
 
 describe('builderTemplatesOptionsFromEnv', () => {
 	const ORIGINAL_ENV = { ...process.env };
+	const envLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
 
 	afterEach(() => {
 		process.env = { ...ORIGINAL_ENV };
@@ -612,7 +614,7 @@ describe('builderTemplatesOptionsFromEnv', () => {
 	it('parses a valid refresh hours value', () => {
 		clearEnv();
 		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '6';
-		const opts = builderTemplatesOptionsFromEnv();
+		const opts = builderTemplatesOptionsFromEnv({ logger: envLogger });
 		expect(opts.refreshIntervalMs).toBe(6 * 60 * 60 * 1000);
 	});
 
@@ -631,17 +633,17 @@ describe('builderTemplatesOptionsFromEnv', () => {
 	it('omits refreshIntervalMs when refresh hours is zero or negative', () => {
 		clearEnv();
 		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '0';
-		expect(builderTemplatesOptionsFromEnv().refreshIntervalMs).toBeUndefined();
+		expect(builderTemplatesOptionsFromEnv({ logger: envLogger }).refreshIntervalMs).toBeUndefined();
 
 		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '-4';
-		expect(builderTemplatesOptionsFromEnv().refreshIntervalMs).toBeUndefined();
+		expect(builderTemplatesOptionsFromEnv({ logger: envLogger }).refreshIntervalMs).toBeUndefined();
 	});
 
 	it('honours the disabled flag and base URL', () => {
 		clearEnv();
 		process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED = 'true';
 		process.env.N8N_INSTANCE_AI_TEMPLATES_URL = 'https://example.com/v2';
-		const opts = builderTemplatesOptionsFromEnv();
+		const opts = builderTemplatesOptionsFromEnv({ logger: envLogger });
 		expect(opts.disabled).toBe(true);
 		expect(opts.cdnBaseUrl).toBe('https://example.com/v2');
 	});

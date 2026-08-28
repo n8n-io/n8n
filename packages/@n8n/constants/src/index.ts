@@ -1,9 +1,12 @@
 export * from './api';
 export * from './browser';
 export * from './community-nodes';
+export * from './csp';
 export * from './instance';
 export * from './execution';
 export * from './logstreaming';
+export * from './nodes';
+export * from './scheduler';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
@@ -15,11 +18,15 @@ export const LICENSE_FEATURES = {
 	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
 	VARIABLES: 'feat:variables',
 	SOURCE_CONTROL: 'feat:sourceControl',
+	GIT_CONNECTIONS: 'feat:gitConnections',
 	API_DISABLED: 'feat:apiDisabled',
 	EXTERNAL_SECRETS: 'feat:externalSecrets',
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
+	BINARY_DATA_AZURE: 'feat:binaryDataAz',
+	EXECUTION_DATA_S3: 'feat:executionDataS3',
+	EXECUTION_DATA_AZURE: 'feat:executionDataAz',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
 	WORKER_VIEW: 'feat:workerView',
 	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
@@ -31,6 +38,7 @@ export const LICENSE_FEATURES = {
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
 	AI_GATEWAY: 'feat:aiGateway',
+	AI_GATEWAY_CLOUD_UBB: 'feat:aiGatewayCloudUbb',
 	FOLDERS: 'feat:folders',
 	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
 	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
@@ -44,7 +52,8 @@ export const LICENSE_FEATURES = {
 	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
 	DATA_REDACTION: 'feat:dataRedaction',
-	N8N_PACKAGES: 'feat:n8nPackages',
+	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
+	WORKFLOW_REVIEWS: 'feat:workflowReviews',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -130,8 +139,14 @@ export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
 
+/** Largest value a signed 32-bit integer can hold. */
+export const MAX_INTEGER_32BITS_SIGNED = 2 ** 31 - 1;
+
 /**
  * Character set used for generating nanoid IDs across n8n.
  * Includes digits (0-9), uppercase letters (A-Z), and lowercase letters (a-z).
  */
 export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+/** Protected-resource id of the instance MCP server, shared by the mcp and oauth-server modules. */
+export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';

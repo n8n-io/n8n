@@ -5,19 +5,10 @@ import * as workflowHelpers from './useWorkflowHelpers';
 import { renderComponent } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { injectWorkflowState, useWorkflowState, type WorkflowState } from './useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
 
 async function renderTestComponent(...options: Parameters<typeof useResolvedExpression>) {
 	let resolvedExpression!: ReturnType<typeof useResolvedExpression>;
@@ -44,15 +35,10 @@ const mockResolveExpression = () => {
 	return mock;
 };
 
-let workflowState: WorkflowState;
-
 describe('useResolvedExpression', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.useFakeTimers();
-
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 	});
 
 	afterEach(() => {
@@ -97,6 +83,34 @@ describe('useResolvedExpression', () => {
 		expect(toValue(isExpression)).toBe(true);
 		expect(toValue(resolvedExpression)).toBe(null);
 		expect(toValue(resolvedExpressionString)).toBe('[ERROR: Test error]');
+	});
+
+	it('should defer transformed credential secret previews until execution', async () => {
+		mockResolveExpression().mockResolvedValue(undefined);
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: "={{ JSON.parse($secrets.aws['preview-test']).password }}",
+			isForCredential: true,
+			additionalData: {
+				$secrets: { aws: { 'preview-test': '*********' } },
+			},
+		});
+
+		await nextTick();
+		expect(toValue(resolvedExpressionString)).toBe('[evaluated during execution]');
+	});
+
+	it('should not defer credential secret previews with an unknown secret reference', async () => {
+		mockResolveExpression().mockResolvedValue(undefined);
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: "={{ JSON.parse($secrets.aws['name-with-typo']).password }}",
+			isForCredential: true,
+			additionalData: {
+				$secrets: { aws: { 'preview-test': '*********' } },
+			},
+		});
+
+		await nextTick();
+		expect(toValue(resolvedExpressionString)).toBe('[secret not found]');
 	});
 
 	it('should debounce updates', async () => {

@@ -256,7 +256,18 @@ export function getProjects(): Project[] {
 			testDir: './tests/e2e',
 			timeout: 60000,
 			fullyParallel: true,
-			use: { containerConfig: {} },
+			use: {
+				containerConfig: {},
+				// workers:1 + V8 collection makes cold boot slow enough to blow the 10s
+				// global; a retry gets a fresh container, so one slow boot burns all 3.
+				navigationTimeout: 30_000,
+				// Capture only on failure (global default is `on`). The shard artifact
+				// is downloaded and aggregated each run, so keep it to coverage data
+				// plus failure diagnostics, not full traces/videos for every test.
+				trace: 'retain-on-failure',
+				video: 'retain-on-failure',
+				screenshot: 'only-on-failure',
+			},
 		});
 
 		projects.push({
@@ -296,6 +307,13 @@ export function getProjects(): Project[] {
 		use: {
 			// Default container config for performance tests, equivalent to @cloud:starter
 			containerConfig: { resourceQuota: { memory: 0.75, cpu: 0.5 }, env: { E2E_TESTS: 'true' } },
+			// The browser runs at Chromium's default launch — no V8 heap flag, memory
+			// pressure enabled — so the canvas numbers stay representative of a real
+			// user's browser. The reported `jsHeapSizeLimit` is ~4 GB (V8's
+			// pointer-compression cage); a prior `--max-old-space-size=8192` flag
+			// couldn't raise it past that cage, so it was a no-op for the ceiling and
+			// only suppressed memory-pressure GC. canvas-execution.spec.ts logs the
+			// actual limit, so any future flag or Chromium change is visible.
 		},
 	});
 

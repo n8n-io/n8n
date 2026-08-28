@@ -12,6 +12,7 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
@@ -19,6 +20,8 @@ import {
 	isLicensed,
 } from '../../shared/middlewares/global.middleware';
 import { assertProjectScope } from '../../shared/services/utils.service';
+
+const PERSONAL_PROJECT_ALIAS = 'personal';
 
 const handleError = (error: unknown) => {
 	if (error instanceof FolderNotFoundError) {
@@ -44,7 +47,15 @@ const folderHandlers: FolderHandlers = {
 		isLicensed('feat:folders'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'folder:create' }),
 		async (req, res) => {
-			const { projectId } = req.params;
+			let { projectId } = req.params;
+			if (projectId === PERSONAL_PROJECT_ALIAS) {
+				const personalProject = await Container.get(ProjectService).getPersonalProject(req.user);
+				if (!personalProject) {
+					throw new NotFoundError('Could not find a personal project for this user');
+				}
+				projectId = personalProject.id;
+			}
+
 			await assertProjectScope(req.user, projectId, ['folder:create']);
 
 			const payload = CreateFolderDto.safeParse(req.body);

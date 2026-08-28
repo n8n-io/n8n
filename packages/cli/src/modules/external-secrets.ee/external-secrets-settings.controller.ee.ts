@@ -1,15 +1,15 @@
 import { UpdateExternalSecretsSettingsDto } from '@n8n/api-types';
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { Body, GlobalScope, Middleware, Post, RestController } from '@n8n/decorators';
 import type { AuthenticatedRequest } from '@n8n/db';
+import { Body, GlobalScope, Middleware, Post, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { sendErrorResponse } from '@/response-helper';
 
-import { ExternalSecretsConfig } from './external-secrets.config';
 import { ExternalSecretsSettingsService } from './external-secrets-settings.service.ee';
+import { ExternalSecretsConfig } from './external-secrets.config';
 
 @RestController('/external-secrets/settings')
 export class ExternalSecretsSettingsController {

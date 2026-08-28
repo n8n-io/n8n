@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
+	CredentialInformation,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	ICredentialsExpressionResolveValues,
@@ -35,18 +34,25 @@ import {
 	NodeHelpers,
 	Workflow,
 	UnexpectedError,
+	UserError,
 	isExpression,
+	jsonParse,
 } from 'n8n-workflow';
+
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import {
+	DCR_MANAGED_CREDENTIAL_FIELDS,
+	MANAGED_OAUTH_PINNED_FIELDS,
+} from '@/oauth/dcr-managed-fields';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
-
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { AiGatewayService } from '@/services/ai-gateway.service';
 
 const mockNode = {
 	name: '',
@@ -82,6 +88,8 @@ const mockNodeTypes: INodeTypes = {
 	},
 };
 
+const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
+
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
 	constructor(
@@ -93,6 +101,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly licenseState: LicenseState,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {
 		super();
 	}
@@ -104,8 +113,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		incomingRequestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
-		workflow: Workflow,
-		node: INode,
+		workflow?: Workflow,
+		node?: INode,
 	): Promise<IHttpRequestOptions> {
 		const requestOptions = incomingRequestOptions;
 		const credentialType = this.credentialTypes.getByName(typeName);
@@ -121,6 +130,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			}
 
 			if (typeof credentialType.authenticate === 'object') {
+				if (!workflow || !node) {
+					throw new UnexpectedError(
+						'Workflow and node are required for declarative credential authentication',
+					);
+				}
 				// Predefined authentication method
 
 				let keyResolved: string;
@@ -142,12 +156,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 								node,
 							);
 
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							if (!requestOptions[outerKey]) {
-								// @ts-ignore
+								// @ts-expect-error dynamic key on request options
 								requestOptions[outerKey] = {};
 							}
-							// @ts-ignore
+							// @ts-expect-error dynamic key on request options
 							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
 					});
@@ -200,11 +214,21 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}
 
 					if (node.credentials) {
-						await this.updateCredentials(
-							node.credentials[credentialType.name],
-							credentialType.name,
-							Object.assign(credentials, output),
-						);
+						const nodeCredentials = node.credentials[credentialType.name];
+						// Cache the freshly-fetched token onto the raw stored credentials, but
+						// never overwrite a field the user stored as an expression with the value
+						// it resolved to this run — otherwise later runs reuse a stale static value.
+						const storedData = await (
+							await this.getCredentials(nodeCredentials, credentialType.name)
+						).getData();
+						const dataToPersist: ICredentialDataDecryptedObject = { ...storedData };
+						for (const [key, value] of Object.entries(output as ICredentialDataDecryptedObject)) {
+							if (key === expirableProperty.name || !isExpression(storedData[key])) {
+								dataToPersist[key] = value;
+							}
+						}
+
+						await this.updateCredentials(nodeCredentials, credentialType.name, dataToPersist);
 						return Object.assign(credentials, output);
 					}
 				}
@@ -310,6 +334,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw error;
 		}
 
+		// Keep non-project credentials blocked even if an earlier access check is bypassed.
+		if (credential.usageScope !== 'project') {
+			throw new UserError('This credential cannot be used in workflows');
+		}
+
 		return credential;
 	}
 
@@ -370,6 +399,112 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return combineProperties;
 	}
 
+	private resolveCredentialExpressions(
+		workflow: Workflow,
+		credentialsProperties: INodeProperties[],
+		decryptedData: ICredentialDataDecryptedObject,
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	): ICredentialDataDecryptedObject {
+		try {
+			return workflow.expression.getComplexParameterValue(
+				mockNode,
+				decryptedData as INodeParameters,
+				mode,
+				additionalKeys,
+				undefined,
+				undefined,
+				decryptedData,
+			) as ICredentialDataDecryptedObject;
+		} catch (error) {
+			// Non-execution contexts may not have runtime data for optional credential fields.
+			// Resolve per field so opted-in fields can be omitted without losing required data.
+			return this.resolveCredentialExpressionsByProperty(
+				workflow,
+				credentialsProperties,
+				decryptedData,
+				mode,
+				additionalKeys,
+				error,
+			);
+		}
+	}
+
+	private resolveCredentialExpressionsByProperty(
+		workflow: Workflow,
+		credentialsProperties: INodeProperties[],
+		decryptedData: ICredentialDataDecryptedObject,
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		originalError: unknown,
+	): ICredentialDataDecryptedObject {
+		const propertiesByName = new Map(
+			credentialsProperties.map((property) => [property.name, property]),
+		);
+		const resolvedData: ICredentialDataDecryptedObject = {};
+
+		for (const [propertyName, propertyValue] of Object.entries(decryptedData)) {
+			try {
+				const resolvedProperty = workflow.expression.getComplexParameterValue(
+					mockNode,
+					{ [propertyName]: propertyValue } as INodeParameters,
+					mode,
+					additionalKeys,
+					undefined,
+					undefined,
+					decryptedData,
+				) as ICredentialDataDecryptedObject;
+
+				if (Object.prototype.hasOwnProperty.call(resolvedProperty, propertyName)) {
+					resolvedData[propertyName] = resolvedProperty[propertyName];
+				}
+			} catch {
+				const credentialProperty = propertiesByName.get(propertyName);
+				if (credentialProperty?.typeOptions?.ignoreCredentialExpressionResolveError === true) {
+					continue;
+				}
+
+				throw originalError;
+			}
+		}
+
+		return resolvedData;
+	}
+
+	private parseJsonLeafExpressionFields(
+		credentialsProperties: INodeProperties[],
+		decryptedData: ICredentialDataDecryptedObject,
+	): Map<string, string> {
+		const parsedFields = new Map<string, string>();
+
+		for (const property of credentialsProperties) {
+			if (!property.typeOptions?.resolveCredentialJsonLeaves) continue;
+
+			const value = decryptedData[property.name];
+			if (typeof value !== 'string' || value === '') continue;
+
+			const parsed = jsonParse<CredentialInformation | typeof INVALID_JSON_VALUE>(value, {
+				fallbackValue: INVALID_JSON_VALUE,
+			});
+			if (parsed === INVALID_JSON_VALUE) continue;
+
+			parsedFields.set(property.name, value);
+			decryptedData[property.name] = parsed;
+		}
+
+		return parsedFields;
+	}
+
+	private stringifyJsonLeafExpressionFields(
+		decryptedData: ICredentialDataDecryptedObject,
+		parsedFields: Map<string, string>,
+	) {
+		for (const [propertyName, originalValue] of parsedFields) {
+			const serializedValue = JSON.stringify(decryptedData[propertyName]);
+			decryptedData[propertyName] = serializedValue ?? originalValue;
+		}
+	}
+
 	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 */
@@ -394,6 +529,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		// Validate against the executing project's policy before any decryption happens.
+		await this.policyEnforcementService.enforceCredentialDecrypt({
+			credentialType: type,
+			credentialId: credentialsEntity.id,
+			consumer: executeData ? { nodeType: executeData.node.type } : null,
+			projectId: additionalData.projectId ?? null,
+		});
+
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },
 			credentialsEntity.type,
@@ -413,6 +557,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const effectiveMode = additionalData.rootExecutionMode ?? mode;
 		const skipDynamicResolution = effectiveMode === 'manual' || effectiveMode === 'internal';
 		if (additionalData.executionContext?.credentials !== undefined || !skipDynamicResolution) {
+			// Mark that this execution attempted to run with a private credential before
+			// resolution is attempted, so the flag survives even when resolution throws
+			// (e.g. the running user has not connected the credential). Telemetry-only;
+			// the redaction layer relies on `currentNodeUsedDynamicCredentials` instead.
+			if (credentialsEntity.isResolvable) {
+				additionalData.currentNodeAttemptedDynamicCredentials = true;
+			}
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
@@ -425,6 +576,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				decryptedDataOriginal,
 				additionalData.executionContext,
 				additionalData.workflowSettings,
+				additionalData.executionId,
 			);
 			decryptedDataOriginal = resolveResult.data;
 			if (resolveResult.isDynamic) {
@@ -510,19 +662,35 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
 		}
 
-		// When using dynamic client registration, fields
-		// for client ID, secret, auth URL, access token URL, grant type and authentication
+		// When using dynamic client registration, OAuth fields negotiated at runtime
 		// are not shown in the UI, so we need to copy them from the original data.
 		if (decryptedData.useDynamicClientRegistration) {
-			decryptedData.clientId = decryptedDataOriginal.clientId;
-			decryptedData.clientSecret = decryptedDataOriginal.clientSecret;
-			decryptedData.authUrl = decryptedDataOriginal.authUrl;
-			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
-			decryptedData.grantType = decryptedDataOriginal.grantType;
-			decryptedData.authentication = decryptedDataOriginal.authentication;
+			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+				decryptedData[field] = decryptedDataOriginal[field];
+			}
+		} else if (this.credentialsOverwrites.usesManagedAuth(type, decryptedDataOriginal)) {
+			// For managed credentials the instance owns the OAuth endpoints. Honor an
+			// admin-configured overwrite for the field, otherwise pin the credential
+			// type default. The user's stored value is never used.
+			const overwrites = this.credentialsOverwrites.getOverwrites(type) ?? {};
+			for (const field of MANAGED_OAUTH_PINNED_FIELDS) {
+				const property = credentialsProperties.find((p) => p.name === field && p.type === 'hidden');
+				// Pinned endpoint/flow fields always default to a string; anything else is skipped.
+				if (typeof property?.default !== 'string') continue;
+				const overwritten = overwrites[field];
+				decryptedData[field] =
+					typeof overwritten === 'string' && overwritten !== '' ? overwritten : property.default;
+			}
 		}
 
-		const additionalKeys = getAdditionalKeys(additionalData, mode, null);
+		const parsedJsonLeafExpressionFields = this.parseJsonLeafExpressionFields(
+			credentialsProperties,
+			decryptedData,
+		);
+
+		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
+			isCredential: true,
+		});
 
 		if (expressionResolveValues) {
 			try {
@@ -554,19 +722,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// Resolve expressions if any are set
 			await workflow.expression.acquireIsolate();
 			try {
-				decryptedData = workflow.expression.getComplexParameterValue(
-					mockNode,
-					decryptedData as INodeParameters,
+				decryptedData = this.resolveCredentialExpressions(
+					workflow,
+					credentialsProperties,
+					decryptedData,
 					mode,
 					additionalKeys,
-					undefined,
-					undefined,
-					decryptedData,
-				) as ICredentialDataDecryptedObject;
+				);
 			} finally {
 				await workflow.expression.releaseIsolate();
 			}
 		}
+
+		this.stringifyJsonLeafExpressionFields(decryptedData, parsedJsonLeafExpressionFields);
 
 		return decryptedData;
 	}
@@ -631,6 +799,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				additionalData.executionContext,
 				staticData,
 				additionalData.workflowSettings,
+				additionalData.executionId,
 			);
 			return;
 		}

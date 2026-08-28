@@ -1,16 +1,18 @@
-jest.mock('@/modules/community-packages/npm-utils', () => ({
-	...jest.requireActual('@/modules/community-packages/npm-utils'),
-	executeNpmCommand: jest.fn(),
-	verifyIntegrity: jest.fn(),
+vi.mock('@/modules/community-packages/npm-utils', async () => ({
+	...(await vi.importActual<typeof import('@/modules/community-packages/npm-utils')>(
+		'@/modules/community-packages/npm-utils',
+	)),
+	executeNpmCommand: vi.fn(),
+	verifyIntegrity: vi.fn(),
 }));
 
-import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { CommunityNodeType } from '@n8n/api-types';
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import path from 'node:path';
+import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
@@ -29,12 +31,9 @@ const COMMUNITY_PACKAGE_API_SCOPES: ApiKeyScope[] = [
 	'communityPackage:uninstall',
 ];
 
-const communityPackagesService = mockInstance(CommunityPackagesService, {
-	missingPackages: [],
-	hasMissingPackages: false,
-});
+const communityPackagesService = mockInstance(CommunityPackagesService);
 const communityNodeTypesService = mockInstance(CommunityNodeTypesService);
-const mockedExecuteNpmCommand = jest.mocked(executeNpmCommand);
+const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
 
 const mockedVettedPackage = mock<CommunityNodeType>({
@@ -61,7 +60,8 @@ describe('Community packages (Public API)', () => {
 	});
 
 	beforeEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
 		const ownerUser = await createOwner();
@@ -172,8 +172,8 @@ describe('Community packages (Public API)', () => {
 		});
 
 		it('should return 400 when package is already installed and loaded', async () => {
-			communityPackagesService.isPackageInstalled.mockResolvedValue(true);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
+			communityPackagesService.isPackageLoaded.mockReturnValue(true);
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 			const response = await testServer
@@ -188,8 +188,7 @@ describe('Community packages (Public API)', () => {
 		it('should return 200 when package is installed successfully', async () => {
 			const pkg = mockPackage();
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 			communityPackagesService.installPackage.mockResolvedValue(pkg);
 
@@ -223,8 +222,7 @@ describe('Community packages (Public API)', () => {
 		it('should return 400 when package is banned', async () => {
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'Banned' });
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 
 			const response = await testServer
 				.publicApiAgentFor(owner)

@@ -1,12 +1,15 @@
+import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from '@n8n/utils/client-assertion';
+
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './client-oauth2';
 import { DEFAULT_HEADERS } from './constants';
-import { auth, getRequestOptions } from './utils';
+import { auth, expects, getRequestOptions } from './utils';
 
 export interface ClientOAuth2TokenData extends Record<string, string | undefined> {
 	token_type?: string | undefined;
 	access_token: string;
 	refresh_token: string;
 	expires_in?: string;
+	n8n_expires_at?: string;
 	scope?: string | undefined;
 }
 
@@ -83,10 +86,19 @@ export class ClientOAuth2Token {
 		const body: Record<string, string> = {
 			refresh_token: this.refreshToken,
 			grant_type: 'refresh_token',
+			...(options.resource ? { resource: options.resource } : {}),
 		};
 
-		// Handle different authentication methods
-		if (clientSecret) {
+		if (options.clientCredentialType === 'certificate') {
+			expects(options, 'clientCertificate');
+			body.client_id = clientId;
+			body.client_assertion_type = CLIENT_ASSERTION_TYPE;
+			body.client_assertion = buildClientAssertion({
+				clientId,
+				accessTokenUri: options.accessTokenUri,
+				...options.clientCertificate,
+			});
+		} else if (clientSecret) {
 			// Confidential client (traditional OAuth2 or PKCE with client secret)
 			if (options.authentication === 'body') {
 				body.client_id = clientId;

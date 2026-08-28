@@ -4,10 +4,8 @@ import type { ApiKeyScope, Scope, ScopeInformation } from './types.ee';
 function buildResourceScopes() {
 	const resourceScopes = Object.entries(RESOURCES).flatMap(([resource, operations]) => [
 		...operations.map((op) => `${resource}:${op}` as const),
-		`${resource}:*` as const,
 	]) as Scope[];
 
-	resourceScopes.push('*' as const); // Global wildcard
 	return resourceScopes;
 }
 
@@ -88,12 +86,83 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Import Workflow',
 		description: 'Allows importing workflows from a portable package into the project.',
 	},
+	'project:export': {
+		displayName: 'Export Project',
+		description: 'Allows including projects in a portable package export.',
+	},
+	'project:manageMembers': {
+		displayName: 'Manage Project Members',
+		description:
+			"Allows adding members to a project, changing a member's project role, and removing members.",
+	},
 	'credential:unshare': {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',
 	},
+	'credential:connect': {
+		displayName: 'Connect End-User Credential',
+		description: 'Allows connecting an own account to an end-user credential.',
+	},
+	'credential:createEndUser': {
+		displayName: 'Manage End-User Credential',
+		description:
+			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
+	},
+	'credential:manageInstance': {
+		displayName: 'Manage provider connections',
+		description:
+			'Allows creating, updating, and deleting provider connections used by instance-level features. These connections are not available in workflows.',
+	},
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
+	},
+	'testRun:read': {
+		displayName: 'Read Test Run',
+		description: 'Allows reading evaluation test runs and their per-case results.',
+	},
+	'testRun:list': {
+		displayName: 'List Test Runs',
+		description: 'Allows listing evaluation test runs for a workflow.',
+	},
+	'workflow:execute-chat': {
+		displayName: 'Execute Workflow in Chat',
+		description: 'Allows executing workflows in chat.',
+	},
+	'role:manageProject': {
+		displayName: 'Manage project roles',
+		description: 'Allows creating, editing, and deleting project role definitions.',
+	},
+	'gitConnection:create': {
+		displayName: 'Create Git Connection',
+		description: 'Allows creating Git connections and their authentication material.',
+	},
+	'gitConnection:read': {
+		displayName: 'Read Git Connection',
+		description: 'Allows reading Git connection configuration. Secrets are never returned.',
+	},
+	'gitConnection:update': {
+		displayName: 'Update Git Connection',
+		description: 'Allows updating Git connections, including their authentication material.',
+	},
+	'gitConnection:delete': {
+		displayName: 'Delete Git Connection',
+		description: 'Allows deleting Git connections and their local files.',
+	},
+	'gitConnection:list': {
+		displayName: 'List Git Connections',
+		description: 'Allows listing Git connections.',
+	},
+	'gitConnection:clone': {
+		displayName: 'Clone Git Connection',
+		description: 'Allows cloning and removing the local working copy of a Git connection.',
+	},
+	'gitConnection:push': {
+		displayName: 'Push Git Connection',
+		description: 'Allows pushing all projects linked to a Git connection to its remote repository.',
+	},
+	'gitConnection:manageProjects': {
+		displayName: 'Manage Git Connection Projects',
+		description: 'Allows adding projects to and removing projects from a Git connection.',
 	},
 };

@@ -1,9 +1,11 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
+import type { ContentImportPolicyResult } from '@n8n/api-types';
 import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
 	SharedWorkflow,
+	SharedWorkflowRepository,
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
@@ -11,17 +13,12 @@ import {
 	WorkflowHistory,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
-import {
-	ensureError,
-	type INode,
-	type INodeCredentialsDetails,
-	type IWorkflowBase,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -34,12 +31,25 @@ import {
 	toTableName,
 } from '@/modules/data-table/utils/sql-utils';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { evaluateContentImportSafely } from '@/policy/evaluate-content-import-safely';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
-import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
+import {
+	replaceInvalidCredentials,
+	validateWorkflowStructure,
+	sanitizeNodeGroupDescriptions,
+} from '@/workflow-helpers';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+
+/** Advisory content-import policy result for one imported workflow, never blocking the import. */
+export interface WorkflowImportViolations {
+	workflowId: string | null;
+	name: string;
+	contentImportPolicy: ContentImportPolicyResult;
+}
 
 @Service()
 export class ImportService {
@@ -74,10 +84,14 @@ export class ImportService {
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly userRepository: UserRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	async initRecords() {
-		this.dbCredentials = await this.credentialsRepository.find();
+		this.dbCredentials = await this.credentialsRepository.find({
+			where: { usageScope: 'project' },
+		});
 		this.dbTags = await this.tagRepository.find();
 	}
 
@@ -86,7 +100,7 @@ export class ImportService {
 		projectId: string,
 		userId: string,
 		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' },
-	) {
+	): Promise<{ violations: WorkflowImportViolations[] }> {
 		await this.initRecords();
 
 		const user = await this.userRepository.findOneOrFail({
@@ -101,6 +115,8 @@ export class ImportService {
 		const existingWorkflowIds = new Set<string>();
 		const activeVersionIdByWorkflow = new Map<string, string>();
 
+		let existingOwnerProjects = new Map<string, Project>();
+
 		if (workflowIds.length > 0) {
 			const existingWorkflows = await dbManager.find(WorkflowEntity, {
 				where: { id: In(workflowIds) },
@@ -113,7 +129,18 @@ export class ImportService {
 					activeVersionIdByWorkflow.set(id, activeVersionId);
 				}
 			}
+
+			// An existing workflow's policy scope is its own project, not `projectId` — that
+			// param is where a brand-new workflow lands, and re-importing never moves ownership.
+			// Skipped when nothing would read it — a feature that is merely absent must not cost
+			// an extra query.
+			if (this.policyEnforcementService.hasChecksFor('contentImport')) {
+				existingOwnerProjects =
+					await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+			}
 		}
+
+		const violations: WorkflowImportViolations[] = [];
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -126,6 +153,31 @@ export class ImportService {
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 			validateWorkflowStructure(workflow);
+
+			for (const warning of sanitizeNodeGroupDescriptions(workflow)) {
+				this.logger.warn(`Workflow "${workflow.name}": ${warning}`);
+			}
+
+			// Advisory only — never blocks the import, per contentImport being `evaluate`, not `enforce`.
+			// Use the workflow's own project when it already has one — re-importing never moves it.
+			const evaluationProjectId = workflow.id
+				? (existingOwnerProjects.get(workflow.id)?.id ?? projectId)
+				: projectId;
+			const contentImportPolicy = await evaluateContentImportSafely(
+				this.policyEnforcementService,
+				{
+					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+					projectId: evaluationProjectId,
+				},
+				this.logger,
+			);
+			if (contentImportPolicy.violations.length || contentImportPolicy.checkErrors.length) {
+				violations.push({
+					workflowId: workflow.id ?? null,
+					name: workflow.name,
+					contentImportPolicy,
+				});
+			}
 
 			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
 			// Only applies to workflows that are currently active in the database.
@@ -221,6 +273,8 @@ export class ImportService {
 		for (const workflow of insertedWorkflows) {
 			await this.workflowIndexService.updateIndexForDraft(workflow);
 		}
+
+		return { violations };
 	}
 
 	/**
@@ -472,7 +526,7 @@ export class ImportService {
 		customEncryptionKey?: string,
 	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
-		const entities: Record<string, unknown>[] = [];
+		const entities: Array<Record<string, unknown>> = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {

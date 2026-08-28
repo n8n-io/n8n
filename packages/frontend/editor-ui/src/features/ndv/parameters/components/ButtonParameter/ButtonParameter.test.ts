@@ -7,7 +7,7 @@ import { useNDVStore, injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
 
 vi.mock('@/features/ndv/shared/ndv.store');
@@ -39,7 +39,22 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		}),
 	}),
 }));
-vi.mock('@/app/composables/useToast');
+vi.mock('@n8n/composables/useToast');
+vi.mock('@/app/composables/useEditorContext', () => ({
+	useEditorContext: () => ({
+		aiAssistant: { value: true },
+		aiBuilder: { value: true },
+		askAi: { value: true },
+		readOnly: { value: false },
+	}),
+}));
+vi.mock('../../utils/buttonParameter.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../../utils/buttonParameter.utils')>()),
+	generateCodeForAiTransform: vi.fn().mockResolvedValue({
+		name: 'testPath.targetParam',
+		value: 'generated code',
+	}),
+}));
 
 describe('ButtonParameter', () => {
 	const defaultProps: Props = {

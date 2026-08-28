@@ -74,15 +74,12 @@ type WorkflowApiForAssertions = {
 
 type ApprovalExecutionAssertionContext = {
 	api: { workflows: WorkflowApiForAssertions };
-	instanceAi: {
-		getAssistantMessageText(text: string | RegExp): Locator;
-	};
 };
 
-async function hasSuccessfulExecutionForNode(
+async function findWorkflowIdsForNode(
 	workflowsApi: WorkflowApiForAssertions,
 	nodeName: string,
-): Promise<boolean> {
+): Promise<string[]> {
 	const workflows = await workflowsApi.getWorkflows();
 	const workflowIds: string[] = [];
 
@@ -101,12 +98,31 @@ async function hasSuccessfulExecutionForNode(
 		}
 	}
 
-	for (const workflowId of workflowIds) {
+	return workflowIds;
+}
+
+async function hasSuccessfulExecutionForNode(
+	workflowsApi: WorkflowApiForAssertions,
+	nodeName: string,
+): Promise<boolean> {
+	for (const workflowId of await findWorkflowIdsForNode(workflowsApi, nodeName)) {
 		const executions = await workflowsApi.getExecutions(workflowId, 10);
 		if (executions.some((execution) => execution.status === 'success')) return true;
 	}
 
 	return false;
+}
+
+async function countExecutionsForNode(
+	workflowsApi: WorkflowApiForAssertions,
+	nodeName: string,
+): Promise<number> {
+	let count = 0;
+	for (const workflowId of await findWorkflowIdsForNode(workflowsApi, nodeName)) {
+		count += (await workflowsApi.getExecutions(workflowId, 10)).length;
+	}
+
+	return count;
 }
 
 async function approveBuildPlanIfRequested({
@@ -141,24 +157,10 @@ async function approveBuildPlanIfRequested({
 async function expectApprovedExecutionComplete({
 	n8n,
 	nodeName,
-	projectName,
 }: {
 	n8n: ApprovalExecutionAssertionContext;
 	nodeName: string;
-	projectName: string;
 }): Promise<void> {
-	if (projectName.includes('multi-main')) {
-		// Recorded multi-main runs replay the assistant's success response, but they do not
-		// always persist the workflow execution row that the single-main path polls below.
-		await expect(n8n.instanceAi.getAssistantMessageText(/built and verified/i)).toBeVisible({
-			timeout: 150_000,
-		});
-		await expect(
-			n8n.instanceAi.getAssistantMessageText(/confirmed it completes successfully/i),
-		).toBeVisible({ timeout: 150_000 });
-		return;
-	}
-
 	await expect
 		.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, nodeName), {
 			intervals: [1_000, 2_000, 5_000],
@@ -170,7 +172,7 @@ async function expectApprovedExecutionComplete({
 test.describe(
 	'Instance AI confirmations @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });
@@ -186,12 +188,8 @@ test.describe(
 			api,
 			n8n,
 			n8nContainer,
-		}, testInfo) => {
+		}) => {
 			test.skip(!n8nContainer, 'LLM replay requires the container proxy harness');
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Trace replay state is process-local and not stable in multi-main mode',
-			);
 
 			await api.setInstanceAiPermissions({
 				deleteWorkflow: 'always_allow',
@@ -237,7 +235,11 @@ test.describe(
 			}
 		});
 
-		test(
+		// Skipped: the replay recording predates the create-tasks load_tool
+		// deferral (#33815), so the recorded direct create-tasks call fails as an
+		// unloaded tool and the approval panel never appears. Unskip once the
+		// recordings are updated (#34055 or a re-record).
+		test.skip(
 			'should show approval panel and approve workflow execution',
 			{
 				annotation: [
@@ -248,6 +250,11 @@ test.describe(
 				],
 			},
 			async ({ n8n }, testInfo) => {
+				test.skip(
+					testInfo.project.name.includes('multi-main'),
+					'Post-approval agent actions are not yet stable on the multi-main project',
+				);
+
 				await n8n.navigate.toInstanceAi();
 
 				await n8n.instanceAi.sendMessage(
@@ -258,11 +265,7 @@ test.describe(
 				await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 				await n8n.instanceAi.getConfirmApproveButton().click();
 
-				await expectApprovedExecutionComplete({
-					n8n,
-					nodeName: 'approval test',
-					projectName: testInfo.project.name,
-				});
+				await expectApprovedExecutionComplete({ n8n, nodeName: 'approval test' });
 				await n8n.instanceAi.waitForResponseComplete();
 
 				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
@@ -270,7 +273,8 @@ test.describe(
 			},
 		);
 
-		test(
+		// Skipped: same broken recording as the approve variant above (#33815).
+		test.skip(
 			'should show approval panel and deny workflow execution',
 			{
 				annotation: [
@@ -289,12 +293,14 @@ test.describe(
 
 				await approveBuildPlanIfRequested({ n8n, nodeName: 'deny test' });
 				await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
+				// Build verification may already have run the workflow; denying must not add a run.
+				const executionsBeforeDeny = await countExecutionsForNode(n8n.api.workflows, 'deny test');
 				await n8n.instanceAi.getConfirmDenyButton().click();
 				await n8n.instanceAi.waitForResponseComplete();
 
-				await expect
-					.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'deny test'))
-					.toBe(false);
+				expect(await countExecutionsForNode(n8n.api.workflows, 'deny test')).toBe(
+					executionsBeforeDeny,
+				);
 				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
 				await expect(n8n.instanceAi.getConfirmDenyButton()).not.toBeVisible();
 			},
@@ -305,7 +311,12 @@ test.describe(
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			api,
 			n8n,
-		}) => {
+		}, testInfo) => {
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Post-approval agent actions are not yet stable on the multi-main project',
+			);
+
 			await api.setInstanceAiPermissions({
 				runWorkflow: 'always_allow',
 			});

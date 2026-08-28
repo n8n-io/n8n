@@ -1,20 +1,47 @@
-import { toCredentialResolutionFailedError } from './credential-resolution-error';
-import type { CredentialMissingModeContext, CredentialResolution } from './credential.types';
+import type { CredentialResolution, CredentialResolutionFailure } from './credential.types';
+import type { CredentialMissingMode } from '../../n8n-packages.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
-export abstract class CredentialMissingModeHandler {
-	abstract handle(
-		result: CredentialResolution,
-		context: CredentialMissingModeContext,
-	): Promise<CredentialResolution>;
+export function canStubNotFoundFailure(failure: CredentialResolutionFailure): boolean {
+	return failure.kind === 'not_found' && failure.targetId === undefined;
 }
 
-export class MustPreexistCredentialMissingModeHandler extends CredentialMissingModeHandler {
-	// eslint-disable-next-line @typescript-eslint/require-await -- async contract shared with the create-stubs handler, which performs DB writes
-	async handle(result: CredentialResolution): Promise<CredentialResolution> {
-		if (result.failures.length === 0) {
-			return result;
-		}
+/**
+ * Classifies which unresolved credential references block the import, per missing-mode
+ * policy. Read-only — never writes.
+ */
+/* eslint-disable @typescript-eslint/naming-convention -- API credential missing mode keys */
+const BLOCKING_FAILURES: Record<
+	CredentialMissingMode,
+	(resolution: CredentialResolution) => CredentialResolutionFailure[]
+> = {
+	'must-preexist': (resolution) => resolution.failures,
+	'create-stub': (resolution) =>
+		resolution.failures.filter((failure) => !canStubNotFoundFailure(failure)),
+};
+/* eslint-enable @typescript-eslint/naming-convention */
 
-		throw toCredentialResolutionFailedError(result.failures);
+export function credentialBlockingFailures(
+	mode: CredentialMissingMode,
+	resolution: CredentialResolution,
+): CredentialResolutionFailure[] {
+	return BLOCKING_FAILURES[mode](resolution);
+}
+
+/** Package workflow ids that should not be published because they use stubbed credentials. */
+export function workflowsBlockedFromPublish(
+	requirements: PackageCredentialRequirement[] | undefined,
+	stubbedSourceIds: ReadonlySet<string>,
+): Set<string> {
+	const blocked = new Set<string>();
+
+	for (const requirement of requirements ?? []) {
+		if (!stubbedSourceIds.has(requirement.id)) continue;
+
+		for (const sourceWorkflowId of requirement.usedByWorkflows) {
+			blocked.add(sourceWorkflowId);
+		}
 	}
+
+	return blocked;
 }

@@ -2,9 +2,9 @@
 
 This directory contains shared Claude Code configuration for the n8n team.
 
-All skills, agents, and commands live under the `n8n` plugin at
-`.claude/plugins/n8n/` for `n8n:` namespacing. See
-[plugin README](plugins/n8n/README.md) for full details.
+Agents and commands live under the `n8n` plugin at `.claude/plugins/n8n/` for
+`n8n:` namespacing. Shared skills are sourced from `.agents/skills/` and linked
+into the plugin. See [plugin README](plugins/n8n/README.md) for full details.
 
 ## Setup
 

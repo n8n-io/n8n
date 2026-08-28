@@ -1,16 +1,17 @@
-import type { AxiosRequestConfig } from 'axios';
-import axios from 'axios';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
-
-import { formatPrivateKey } from '@utils/utilities';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
+
+import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
 export class SalesforceJwtApi implements ICredentialType {
 	name = 'salesforceJwtApi';
@@ -20,6 +21,21 @@ export class SalesforceJwtApi implements ICredentialType {
 	documentationUrl = 'salesforce';
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Access Token',
+			name: 'accessToken',
+			type: 'hidden',
+			typeOptions: {
+				expirable: true,
+			},
+			default: '',
+		},
+		{
+			displayName: 'Instance URL',
+			name: 'instanceUrl',
+			type: 'hidden',
+			default: '',
+		},
 		{
 			displayName: 'Environment Type',
 			name: 'environment',
@@ -75,13 +91,14 @@ export class SalesforceJwtApi implements ICredentialType {
 		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
+	// Only called when "accessToken" (the expirable property) is empty or expired.
+	// Exchanges the signed JWT for an access token once and caches it (together with
+	// the instance URL) so chained Salesforce actions reuse the same session instead
+	// of logging in on every request.
+	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const now = moment().unix();
 		const authUrl = resolveAuthUrl(credentials);
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const signature = jwt.sign(
 			{
 				iss: credentials.clientId as string,
@@ -98,28 +115,49 @@ export class SalesforceJwtApi implements ICredentialType {
 			},
 		);
 
-		const axiosRequestConfig: AxiosRequestConfig = {
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
+		// `myDomainUrl` is a free-form credential string, so gate the token POST on SSRF protection.
+		const http = getTokenRequestClient('user-controlled');
+
+		const response = (await http.request({
+			url: `${authUrl}/services/oauth2/token`,
 			method: 'POST',
-			data: new URLSearchParams({
+			body: new URLSearchParams({
 				grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 				assertion: signature,
 			}).toString(),
-			url: `${authUrl}/services/oauth2/token`,
-			responseType: 'json',
-		};
-		const result = await axios(axiosRequestConfig);
-		const { access_token } = result.data as { access_token: string };
-
-		return {
-			...requestOptions,
 			headers: {
-				...requestOptions.headers,
-				Authorization: `Bearer ${access_token}`,
+				'Content-Type': 'application/x-www-form-urlencoded',
 			},
+			json: true,
+			timeout: TOKEN_REQUEST_TIMEOUT,
+		})) as { access_token?: string; instance_url?: string };
+
+		if (!response.access_token || !response.instance_url) {
+			throw new OperationalError(
+				'Salesforce JWT authentication did not return an access token and instance URL',
+			);
+		}
+
+		return { accessToken: response.access_token, instanceUrl: response.instance_url };
+	}
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		requestOptions.headers = {
+			...requestOptions.headers,
+			Authorization: `Bearer ${credentials.accessToken as string}`,
 		};
+
+		// Node requests pass a relative URL and rely on the cached instance URL as base.
+		// The credential test supplies its own baseURL (the login/My Domain URL), which
+		// must be left untouched.
+		if (!requestOptions.baseURL && credentials.instanceUrl) {
+			requestOptions.baseURL = credentials.instanceUrl as string;
+		}
+
+		return requestOptions;
 	}
 
 	test: ICredentialTestRequest = {

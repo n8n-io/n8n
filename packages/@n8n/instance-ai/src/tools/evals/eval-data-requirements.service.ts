@@ -1,10 +1,10 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
 import {
 	extractJsonColumnRefs,
 	extractNamedRefMatches,
-	isRecord,
 	nodeHasName,
 	nodeTypeEndsWith,
 	unique,

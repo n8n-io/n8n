@@ -59,8 +59,8 @@ let member3Agent: SuperAgentTest;
 describe('Cross-Project Access Control Tests', () => {
 	beforeAll(async () => {
 		mockInstance(UserManagementMailer, {
-			invite: jest.fn(),
-			passwordReset: jest.fn(),
+			invite: vi.fn(),
+			passwordReset: vi.fn(),
 		});
 
 		await utils.initCredentialsTypes();

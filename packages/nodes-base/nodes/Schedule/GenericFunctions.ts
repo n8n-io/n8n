@@ -1,8 +1,55 @@
 import { createHash } from 'crypto';
 import moment from 'moment-timezone';
-import { type CronExpression, type INode, NodeOperationError } from 'n8n-workflow';
+import { type CronExpression, type CronSource, type INode, NodeOperationError } from 'n8n-workflow';
 
-import type { IRecurrenceRule, ScheduleInterval } from './SchedulerInterface';
+import type { IRecurrenceRule, RawScheduleInterval, ScheduleInterval } from './SchedulerInterface';
+
+const SCHEDULE_FIELDS = [
+	'seconds',
+	'minutes',
+	'hours',
+	'days',
+	'weeks',
+	'months',
+	'cronExpression',
+] as const;
+
+const isScheduleField = (value: unknown): value is ScheduleInterval['field'] =>
+	SCHEDULE_FIELDS.some((field) => field === value);
+
+export function withIntervalDefaults(interval: RawScheduleInterval): ScheduleInterval {
+	const { triggerAtHour, triggerAtMinute, triggerAtDayOfMonth } = interval;
+	const field = isScheduleField(interval.field) ? interval.field : 'days';
+
+	switch (field) {
+		case 'cronExpression':
+			return { field, expression: interval.expression ?? ('' as CronExpression) };
+		case 'seconds':
+			return { field, secondsInterval: interval.secondsInterval ?? 30 };
+		case 'minutes':
+			return { field, minutesInterval: interval.minutesInterval ?? 5 };
+		case 'hours':
+			return { field, hoursInterval: interval.hoursInterval ?? 1, triggerAtMinute };
+		case 'days':
+			return { field, daysInterval: interval.daysInterval ?? 1, triggerAtHour, triggerAtMinute };
+		case 'weeks':
+			return {
+				field,
+				weeksInterval: interval.weeksInterval ?? 1,
+				triggerAtDay: interval.triggerAtDay ?? [0],
+				triggerAtHour,
+				triggerAtMinute,
+			};
+		case 'months':
+			return {
+				field,
+				monthsInterval: interval.monthsInterval ?? 1,
+				triggerAtDayOfMonth,
+				triggerAtHour,
+				triggerAtMinute,
+			};
+	}
+}
 
 export function validateInterval(node: INode, itemIndex: number, interval: ScheduleInterval): void {
 	let errorMessage = '';
@@ -39,7 +86,7 @@ export function validateInterval(node: INode, itemIndex: number, interval: Sched
 
 export function recurrenceCheck(
 	recurrence: IRecurrenceRule,
-	recurrenceRules: number[],
+	recurrenceRules: Array<number | undefined | null>,
 	timezone: string,
 ): boolean {
 	if (!recurrence.activated) return true;
@@ -49,10 +96,20 @@ export function recurrenceCheck(
 
 	const index = recurrence.index;
 	const typeInterval = recurrence.typeInterval;
-	const lastExecution = recurrenceRules[index];
+	// A reset slot reads back as null once persisted (JSON turns undefined into null);
+	// treat both as "no prior run".
+	const lastExecution = recurrenceRules[index] ?? undefined;
 
 	const momentTz = moment.tz(timezone);
-	if (typeInterval === 'hours') {
+	if (typeInterval === 'minutes') {
+		// Absolute minute count (not the 0-59 wall-clock value) so a gap longer
+		// than the hour wrap can't delay the next fire by another interval.
+		const absoluteMinute = Math.floor(momentTz.valueOf() / 60_000);
+		if (lastExecution === undefined || absoluteMinute - lastExecution >= intervalSize) {
+			recurrenceRules[index] = absoluteMinute;
+			return true;
+		}
+	} else if (typeInterval === 'hours') {
 		const hour = momentTz.hour();
 		if (lastExecution === undefined || (hour - lastExecution + 24) % 24 >= intervalSize) {
 			recurrenceRules[index] = hour;
@@ -75,9 +132,11 @@ export function recurrenceCheck(
 			return true;
 		}
 	} else if (typeInterval === 'months') {
-		const month = momentTz.month();
-		if (lastExecution === undefined || (month - lastExecution + 12) % 12 >= intervalSize) {
-			recurrenceRules[index] = month;
+		// Absolute month count (not the 0-11 index other branches use) so it stays
+		// monotonic and `intervalSize >= 12` works, which `% 12` could never reach.
+		const absoluteMonth = momentTz.year() * 12 + momentTz.month();
+		if (lastExecution === undefined || absoluteMonth - lastExecution >= intervalSize) {
+			recurrenceRules[index] = absoluteMonth;
 			return true;
 		}
 	}
@@ -112,7 +171,13 @@ export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): C
 	if (interval.field === 'seconds') return `*/${interval.secondsInterval} * * * * *`;
 
 	const second = stableInt(nodeKey, 'second', 0, 60);
-	if (interval.field === 'minutes') return `${second} */${interval.minutesInterval} * * * *`;
+	if (interval.field === 'minutes') {
+		const minutes = interval.minutesInterval;
+		if (60 % minutes === 0) return `${second} */${minutes} * * * *`;
+		// Non-dividing `*/n` fires unevenly (e.g. */50 at :00 and :50); fire every
+		// minute instead and let recurrenceCheck enforce elapsed time.
+		return `${second} * * * * *`;
+	}
 
 	const minute = interval.triggerAtMinute ?? stableInt(nodeKey, 'minute', 0, 60);
 	if (interval.field === 'hours') {
@@ -136,11 +201,52 @@ export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): C
 	// Cap at 29 (exclusive) so jitter yields 1-28: any higher day would silently
 	// skip months that don't contain it (e.g. day 30 skips February every year).
 	const dayOfMonth = interval.triggerAtDayOfMonth ?? stableInt(nodeKey, 'dayOfMonth', 1, 29);
-	return `${second} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
+	const months = interval.monthsInterval;
+	if (12 % months === 0) return `${second} ${minute} ${hour} ${dayOfMonth} */${months} *`;
+	// `*/${months}` only spaces evenly when months divides 12; otherwise fire every month
+	// and let recurrenceCheck enforce the gap (mirrors the hours handling above).
+	return `${second} ${minute} ${hour} ${dayOfMonth} * *`;
+};
+
+/**
+ * Records which Schedule Trigger field the rule came from, plus its interval
+ * size. The cron string alone can't tell "every 30 seconds" apart from a raw
+ * cron of the same shape, so downstream code keeps this to recover which one
+ * the user actually picked.
+ */
+export const toCronSource = (interval: ScheduleInterval): CronSource => {
+	switch (interval.field) {
+		case 'seconds':
+			return { field: 'seconds', size: interval.secondsInterval };
+		case 'minutes':
+			return { field: 'minutes', size: interval.minutesInterval };
+		case 'hours':
+			return { field: 'hours', size: interval.hoursInterval };
+		case 'days':
+			return { field: 'days', size: interval.daysInterval };
+		case 'weeks':
+			return { field: 'weeks', size: interval.weeksInterval };
+		case 'months':
+			return { field: 'months', size: interval.monthsInterval };
+		case 'cronExpression':
+			return { field: 'cronExpression' };
+	}
 };
 
 export function intervalToRecurrence(interval: ScheduleInterval, index: number) {
 	let recurrence: IRecurrenceRule = { activated: false };
+
+	if (interval.field === 'minutes') {
+		const { minutesInterval } = interval;
+		if (minutesInterval > 0 && 60 % minutesInterval !== 0) {
+			recurrence = {
+				activated: true,
+				index,
+				intervalSize: minutesInterval,
+				typeInterval: 'minutes',
+			};
+		}
+	}
 
 	if (interval.field === 'hours') {
 		const { hoursInterval } = interval;
@@ -191,4 +297,74 @@ export function intervalToRecurrence(interval: ScheduleInterval, index: number) 
 	}
 
 	return recurrence;
+}
+
+/**
+ * Whether a stored last-execution value can still be read meaningfully under
+ * the current interval type. `recurrenceCheck`'s `(now - last + base) % base`
+ * always converges for an in-range value, so only out-of-range values block the
+ * trigger forever. `months` switched to an absolute count this release, so any
+ * pre-signature value is the old 0-11 encoding and must be discarded.
+ */
+function isRecurrenceValueValidForType(
+	typeInterval: 'minutes' | 'hours' | 'days' | 'weeks' | 'months',
+	value: number,
+): boolean {
+	switch (typeInterval) {
+		case 'minutes':
+			// Minutes recurrence is newer than signatures, so a signature-less value
+			// was never written by a minutes rule — it belongs to some earlier config.
+			return false;
+		case 'hours':
+			return value >= 0 && value <= 23;
+		case 'days':
+			return value >= 1 && value <= 366;
+		case 'weeks':
+			return value >= 1 && value <= 53;
+		case 'months':
+			return false;
+	}
+}
+
+/**
+ * Clears stored recurrence state when a schedule is edited, keyed by a per-index
+ * `type:size` signature. A stale or wrong-unit value from a previous config would
+ * otherwise permanently block the trigger.
+ *
+ * A missing signature means pre-upgrade state: the schedule config itself hasn't
+ * changed, so a value still in range for its type is healthy and kept (only the
+ * signature is backfilled) to avoid an off-cadence fire on upgrade. Only an
+ * out-of-range value — the case that actually blocks the trigger — is cleared.
+ */
+export function resetStaleRecurrence(
+	staticData: {
+		recurrenceRules: Array<number | undefined>;
+		recurrenceRuleSignatures: Array<string | undefined>;
+	},
+	rules: Array<{ recurrence: IRecurrenceRule }>,
+): void {
+	rules.forEach(({ recurrence }, index) => {
+		const signature = recurrence.activated
+			? `${recurrence.typeInterval}:${recurrence.intervalSize}`
+			: undefined;
+		const storedSignature = staticData.recurrenceRuleSignatures[index];
+
+		if (storedSignature === signature) return;
+
+		const storedValue = staticData.recurrenceRules[index];
+		// On upgrade (no signature yet) keep a value that's still valid for its
+		// type; an explicit config change (signature present but different) always clears.
+		const keepValue =
+			storedSignature === undefined &&
+			recurrence.activated &&
+			typeof storedValue === 'number' &&
+			isRecurrenceValueValidForType(recurrence.typeInterval, storedValue);
+
+		if (!keepValue) staticData.recurrenceRules[index] = undefined;
+		staticData.recurrenceRuleSignatures[index] = signature;
+	});
+
+	// Drop entries left by a previous config with more intervals.
+	staticData.recurrenceRules.length = rules.length;
+	staticData.recurrenceRuleSignatures.length = rules.length;
 }

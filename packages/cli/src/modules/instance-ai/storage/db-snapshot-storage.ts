@@ -158,8 +158,8 @@ export class DbSnapshotStorage {
 	 * terminal after the in-memory event bus is gone — e.g. handling a
 	 * confirmation orphaned by a restart — because rebuilding the tree from
 	 * an empty bus would clobber the saved plan / ask card with an empty
-	 * cancelled tree. Keeps the planner output, tool calls, and confirmation
-	 * payload intact so the user can still see what was being planned, just
+	 * cancelled tree. Keeps the tool calls and confirmation payload intact
+	 * so the user can still see what was being planned, just
 	 * without interactive buttons.
 	 */
 	async markRunCancelled(threadId: string, runId: string): Promise<void> {
@@ -172,11 +172,21 @@ export class DbSnapshotStorage {
 		await this.repo.update(key, { tree: JSON.stringify(tree) });
 	}
 
-	async getAll(threadId: string): Promise<AgentTreeSnapshot[]> {
-		const rows = await this.repo.find({
-			where: { threadId },
-			order: { createdAt: 'ASC' },
-		});
+	/**
+	 * Snapshots written inside the half-open window `[since, before)`, oldest
+	 * first. The window is the span of the message page being rendered: a
+	 * snapshot outside it has no message to pair with, and `parseStoredMessages`
+	 * would surface it as a message of its own. Passing `{}` reads the whole
+	 * thread.
+	 *
+	 * `(threadId, createdAt)` is indexed, so the bounded read is a range scan
+	 * and the `tree` column is only parsed for the rows the page needs.
+	 */
+	async getForWindow(
+		threadId: string,
+		window: { since?: Date; before?: Date } = {},
+	): Promise<AgentTreeSnapshot[]> {
+		const rows = await this.repo.findInWindow(threadId, window);
 		return rows.map((r) => ({
 			tree: jsonParse<InstanceAiAgentNode>(r.tree),
 			runId: r.runId,

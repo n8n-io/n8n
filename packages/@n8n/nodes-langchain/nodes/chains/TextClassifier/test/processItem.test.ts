@@ -72,7 +72,9 @@ describe('processItem', () => {
 
 		const mockPipe = vi.fn().mockReturnValue({
 			pipe: vi.fn().mockReturnValue({
-				withConfig: vi.fn().mockReturnValue(mockChain),
+				pipe: vi.fn().mockReturnValue({
+					withConfig: vi.fn().mockReturnValue(mockChain),
+				}),
 			}),
 		});
 
@@ -122,7 +124,9 @@ describe('processItem', () => {
 
 		const mockPipe = vi.fn().mockReturnValue({
 			pipe: vi.fn().mockReturnValue({
-				withConfig: vi.fn().mockReturnValue(mockChain),
+				pipe: vi.fn().mockReturnValue({
+					withConfig: vi.fn().mockReturnValue(mockChain),
+				}),
 			}),
 		});
 
@@ -158,7 +162,9 @@ describe('processItem', () => {
 
 		const mockPipe = vi.fn().mockReturnValue({
 			pipe: vi.fn().mockReturnValue({
-				withConfig: vi.fn().mockReturnValue(mockChain),
+				pipe: vi.fn().mockReturnValue({
+					withConfig: vi.fn().mockReturnValue(mockChain),
+				}),
 			}),
 		});
 

@@ -1,11 +1,12 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
 import * as Helpers from './helpers';
-import { ensureError } from '../src/errors/ensure-error';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ExpressionError } from '../src/errors/expression.error';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
+	type IDataObject,
 	type IExecuteData,
 	type INode,
 	type IPinData,
@@ -1051,6 +1052,84 @@ describe('WorkflowDataProxy', () => {
 
 			expect(() => proxy.$fromAI('some_key')).toThrow(ExpressionError);
 		});
+
+		describe('key resolution is limited to own placeholder keys', () => {
+			const buildProxy = (json: unknown) => {
+				const workflow = new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: [
+						{
+							id: 'aiNode',
+							name: 'AI Node',
+							type: 'n8n-nodes-base.aiAgent',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				});
+				const connectionInputData = [{ json: json as IDataObject, pairedItem: { item: 0 } }];
+				const dataProxy = new WorkflowDataProxy(
+					workflow,
+					null,
+					0,
+					0,
+					'AI Node',
+					connectionInputData,
+					{},
+					'manual',
+					{},
+					undefined,
+				);
+				return dataProxy.getDataProxy();
+			};
+
+			test('rejects reserved object keys (__proto__, constructor, prototype)', () => {
+				const proxy = buildProxy({ safe: 'ok' });
+				expect(proxy.$fromAI('safe')).toBe('ok');
+				expect(() => proxy.$fromAI('__proto__')).toThrow(ExpressionError);
+				expect(() => proxy.$fromAI('constructor')).toThrow(ExpressionError);
+				expect(() => proxy.$fromAI('prototype')).toThrow(ExpressionError);
+			});
+
+			test('ignores inherited (non-own) keys and returns the default', () => {
+				const proxy = buildProxy({ safe: 'ok' });
+				expect(proxy.$fromAI('toString', '', 'string', 'fallback')).toBe('fallback');
+				expect(proxy.$fromAI('hasOwnProperty', '', 'string', 'fallback')).toBe('fallback');
+				expect(proxy.$fromAI('valueOf', '', 'string', 'fallback')).toBe('fallback');
+			});
+
+			test('rejects a reserved key even when present as an own key from parsed JSON', () => {
+				const json = JSON.parse('{"__proto__": {"polluted": true}, "safe": "ok"}');
+				const proxy = buildProxy(json);
+				expect(() => proxy.$fromAI('__proto__')).toThrow(ExpressionError);
+				expect(proxy.$fromAI('safe')).toBe('ok');
+			});
+
+			test('returns the default when input json is a bare primitive', () => {
+				const proxy = buildProxy(1);
+				expect(() => proxy.$fromAI('constructor')).toThrow(ExpressionError);
+				expect(() => proxy.$fromAI('__proto__')).toThrow(ExpressionError);
+				expect(proxy.$fromAI('any_key', '', 'string', 'fallback')).toBe('fallback');
+			});
+
+			test('resolves a placeholder from an own query container', () => {
+				const proxy = buildProxy({ query: { full_name: 'Alice' } });
+				expect(proxy.$fromAI('full_name')).toBe('Alice');
+			});
+
+			test('does not read the query container through the prototype chain', () => {
+				const json = Object.create({ query: { evil: 'from-prototype' } });
+				json.safe = 'ok';
+				const proxy = buildProxy(json);
+				expect(proxy.$fromAI('safe')).toBe('ok');
+				expect(proxy.$fromAI('evil', '', 'string', 'fallback')).toBe('fallback');
+			});
+		});
 	});
 
 	describe('$tool', () => {
@@ -1162,6 +1241,27 @@ describe('WorkflowDataProxy', () => {
 
 		test('returns raw parameter value for resource locator values', () => {
 			expect(proxy.$rawParameter.workflowId).toEqual('={{ $json.foo }}');
+		});
+
+		test('extracts resource locator parameter values with regex metadata', () => {
+			const workflow = structuredClone(fixture.workflow);
+			const node = workflow.nodes.find((workflowNode) => workflowNode.name === 'Execute Workflow');
+			if (!node) throw new Error('Missing Execute Workflow node');
+
+			node.parameters.workflowId = {
+				__rl: true,
+				value: 'workflow-id:123',
+				mode: 'url',
+				__regex: 'workflow-id:(\\d+)',
+			};
+
+			const regexProxy = getProxyFromFixture(workflow, fixture.run, 'Execute Workflow', 'manual', {
+				connectionType: NodeConnectionTypes.Main,
+				throwOnMissingExecutionData: false,
+				runIndex: 0,
+			});
+
+			expect(regexProxy.$parameter.workflowId).toBe('123');
 		});
 
 		test('returns raw parameter value when there is no run data', () => {
@@ -2076,6 +2176,91 @@ describe('WorkflowDataProxy', () => {
 			// data in runData. The fix falls back to reading from runData directly.
 			const proxy = getProxyFromFixture(workflowData, run, 'Edit Fields', 'manual');
 			expect(proxy.$('Edit').item.json.test).toBe('1111');
+		});
+	});
+
+	describe('$self', () => {
+		const node: INode = {
+			id: 'uuid-1',
+			name: 'Test Node',
+			type: 'test.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const createTestWorkflow = () =>
+			new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes: Helpers.NodeTypes(),
+			});
+
+		const readSelf = async (selfData: IDataObject, field: string) => {
+			const workflow = createTestWorkflow();
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				createEmptyRunExecutionData(),
+				0,
+				0,
+				node.name,
+				[],
+				{},
+				'integrated',
+				{},
+				undefined,
+				-1,
+				selfData,
+			);
+			const proxy = dataProxy.getDataProxy({ throwOnMissingExecutionData: false });
+
+			await workflow.expression.acquireIsolate();
+			try {
+				return proxy.$self[field];
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		};
+
+		test('returns plain (fixed-mode) values verbatim', async () => {
+			expect(await readSelf({ tenantId: 'myTenant' }, 'tenantId')).toBe('myTenant');
+		});
+
+		test('strips the leading "=" from a literal expression-mode value', async () => {
+			expect(await readSelf({ tenantId: '=myTenant' }, 'tenantId')).toBe('myTenant');
+		});
+
+		test('resolves an expression-mode value containing a template', async () => {
+			expect(await readSelf({ tenantId: '={{ "myTenant".toUpperCase() }}' }, 'tenantId')).toBe(
+				'MYTENANT',
+			);
+		});
+
+		test('does not leak the "=" marker into a mid-string URL template', async () => {
+			const workflow = createTestWorkflow();
+			const selfData = { tenantId: '=myTenant' };
+			const accessTokenUrl =
+				'=https://login.microsoftonline.com/{{ $self["tenantId"] }}/oauth2/v2.0/token';
+
+			await workflow.expression.acquireIsolate();
+			try {
+				const resolved = workflow.expression.getComplexParameterValue(
+					node,
+					accessTokenUrl,
+					'integrated',
+					{},
+					undefined,
+					undefined,
+					selfData,
+				);
+
+				expect(resolved).toBe('https://login.microsoftonline.com/myTenant/oauth2/v2.0/token');
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
 		});
 	});
 });

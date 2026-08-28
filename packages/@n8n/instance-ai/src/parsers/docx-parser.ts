@@ -1,3 +1,4 @@
+import { assertOoxmlWithinBounds } from './ooxml-guard';
 import {
 	MAX_DECODED_SIZE_BYTES,
 	MAX_RESULT_CHARS,
@@ -18,6 +19,7 @@ export async function extractDocxText(attachment: AttachmentInfo): Promise<DocxE
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
 		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
+	assertOoxmlWithinBounds(decoded, attachment.fileName);
 
 	const mammoth = await import('mammoth');
 	const extractRawText = mammoth.extractRawText ?? mammoth.default?.extractRawText;

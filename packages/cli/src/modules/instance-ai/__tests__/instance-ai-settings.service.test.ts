@@ -1,15 +1,37 @@
+import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
-import type { SettingsRepository, User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type {
+	CredentialsEntity,
+	DbLockService,
+	SettingsRepository,
+	User,
+	UserRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
 import type { AiService } from '@/services/ai.service';
+import {
+	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+	type SandboxSettingsService,
+} from '@/services/sandbox-settings.service';
 import type { UserService } from '@/services/user.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 
-import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import {
+	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+	InstanceAiSettingsService,
+} from '../instance-ai-settings.service';
+
+type CredentialOperationContext = NonNullable<
+	Parameters<InstanceCredentialBroker['clearForUse']>[1]
+>;
 
 describe('InstanceAiSettingsService', () => {
 	const globalConfig = mock<{
@@ -22,94 +44,1116 @@ describe('InstanceAiSettingsService', () => {
 			modelApiKey: '',
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
-			subAgentMaxSteps: 10,
 			mcpServers: '',
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: '',
 			sandboxTimeout: 60,
-			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			localGatewayDisabled: false,
 		} as unknown as InstanceAiConfig,
 		deployment: { type: 'default' },
 	});
+	const operationContext: CredentialOperationContext = {};
+	const dbLockService = mock<DbLockService>();
 	const settingsRepository = mock<SettingsRepository>();
 	const userRepository = mock<UserRepository>();
 	const userService = mock<UserService>();
 	const aiService = mock<AiService>();
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
+	const sandboxSettingsService = mock<SandboxSettingsService>();
 	const eventService = mock<EventService>();
+	const logger = mock<Logger>();
 
 	let service: InstanceAiSettingsService;
-
-	beforeEach(() => {
-		jest.clearAllMocks();
-		Object.assign(globalConfig.instanceAi, {
-			sandboxEnabled: false,
-			sandboxProvider: 'n8n-sandbox',
-			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
-			n8nSandboxServiceApiKey: '',
-			mcpServers: '',
-			browserMcp: false,
-		});
-		globalConfig.deployment.type = 'default';
-		service = new InstanceAiSettingsService(
+	let persistedSettingsValue: string | undefined;
+	const createService = () =>
+		new InstanceAiSettingsService(
 			globalConfig as never,
+			dbLockService,
 			settingsRepository,
 			userRepository,
 			userService,
 			aiService,
 			credentialsService,
 			credentialsFinderService,
+			instanceCredentialBroker,
+			sandboxSettingsService,
 			eventService,
 		);
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		vi.stubEnv('N8N_INSTANCE_AI_MODEL', '');
+		vi.stubEnv('OPENAI_API_KEY', '');
+		vi.stubEnv('ANTHROPIC_API_KEY', '');
+		vi.stubEnv('GOOGLE_VERTEX_PROJECT', '');
+		vi.stubEnv('GOOGLE_VERTEX_LOCATION', '');
+		persistedSettingsValue = undefined;
+		logger.scoped.mockReturnValue(logger);
+		Container.set(Logger, logger);
+		Object.assign(globalConfig.instanceAi, {
+			model: 'openai/gpt-4',
+			modelApiKey: '',
+			modelUrl: '',
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			n8nSandboxServiceUrl: '',
+			n8nSandboxServiceApiKey: '',
+			mcpServers: '',
+			browserMcp: false,
+			braveSearchApiKey: '',
+			searxngUrl: '',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
+			vertexProjectId: '',
+			vertexLocation: '',
+			vertexServiceAccountJson: '',
+		});
+		globalConfig.deployment.type = 'default';
+		instanceCredentialBroker.listForUse.mockResolvedValue([]);
+		instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
+		sandboxSettingsService.getProvider.mockImplementation(() =>
+			globalConfig.instanceAi.sandboxProvider === 'daytona' ? 'daytona' : 'n8n-sandbox',
+		);
+		credentialsService.getCredentialTypeProperties.mockReturnValue([]);
+		credentialsService.unredact.mockImplementation((data) => data);
+		credentialsService.runInstanceCredentialHooks.mockImplementation(async (_event, credential) => {
+			return {
+				id: credential.id ?? '',
+				name: credential.name,
+				type: credential.type,
+				data: 'encrypted',
+			} as never;
+		});
+		settingsRepository.findByKey.mockImplementation(async () =>
+			persistedSettingsValue === undefined
+				? null
+				: ({
+						key: 'instanceAi.settings',
+						value: persistedSettingsValue,
+						loadOnStartup: true,
+					} as never),
+		);
+		settingsRepository.findByKeyInContext.mockImplementation(
+			async (key) => await settingsRepository.findByKey(key),
+		);
+		settingsRepository.upsertByKey.mockImplementation(async (key, value, loadOnStartup) => {
+			await settingsRepository.upsert({ key, value, loadOnStartup }, ['key']);
+			persistedSettingsValue = value;
+		});
+		dbLockService.withLockContext.mockImplementation(async (_lockId, fn) => {
+			return await fn(operationContext);
+		});
+		service = createService();
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
 	});
 
 	describe('updateAdminSettings', () => {
-		it('should reject with 422 when proxy is enabled and request contains proxy-managed admin fields', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+		it('should reject with 422 when the request contains env-managed admin fields', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(
 				service.updateAdminSettings({
-					sandboxEnabled: true,
+					sandboxImage: 'custom-image',
 				}),
 			).rejects.toThrow(UnprocessableRequestError);
 		});
 
 		it('should include offending field names in the error message', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(
 				service.updateAdminSettings({
-					sandboxEnabled: true,
-					daytonaCredentialId: 'cred-1',
+					sandboxImage: 'custom-image',
+					mcpServers: '[]',
 				}),
-			).rejects.toThrow(/sandboxEnabled.*daytonaCredentialId|daytonaCredentialId.*sandboxEnabled/);
+			).rejects.toThrow(/sandboxImage.*mcpServers|mcpServers.*sandboxImage/);
 		});
 
-		it('should allow non-proxy-managed fields when proxy is enabled', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
-
-			await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).resolves.toBeDefined();
-		});
-
-		it('should allow proxy-managed fields when proxy is disabled', async () => {
+		it('should reject environment-managed fields on self-hosted', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
+			await expect(service.updateAdminSettings({ sandboxImage: 'custom-image' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+			await service.updateAdminSettings({
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			});
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
 		});
 
-		it('should require a service URL when enabling n8n sandbox', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+		it('rejects model connection fields managed by the environment', async () => {
+			globalConfig.instanceAi.modelApiKey = 'environment-key';
 
-			await expect(service.updateAdminSettings({ sandboxEnabled: true })).rejects.toThrow(
-				/N8N_SANDBOX_SERVICE_URL/,
+			await expect(
+				service.updateAdminSettings({
+					modelConnection: { type: 'openAiApi', data: { apiKey: 'database-key' } },
+					modelName: 'gpt-5',
+				}),
+			).rejects.toThrow('Cannot update environment-managed fields: modelConnection');
+			await expect(service.updateAdminSettings({ modelName: 'gpt-5' })).resolves.toBeDefined();
+
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'openai/gpt-5');
+			await expect(service.updateAdminSettings({ modelName: 'gpt-4' })).rejects.toThrow(
+				'Cannot update environment-managed fields: modelName',
 			);
+		});
+
+		it('rejects sandbox connection fields managed by the environment', async () => {
+			Object.assign(globalConfig.instanceAi, {
+				sandboxProvider: 'daytona',
+				daytonaApiKey: 'environment-key',
+			});
+			service = createService();
+
+			await expect(
+				service.updateAdminSettings({
+					sandboxConnection: {
+						type: 'daytonaApi',
+						data: { apiUrl: 'https://daytona.example.com', apiKey: 'database-key' },
+					},
+				}),
+			).rejects.toThrow('Cannot update environment-managed fields: sandboxConnection');
+			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
+		});
+
+		it('rejects search decisions managed by the environment', async () => {
+			globalConfig.instanceAi.braveSearchApiKey = 'environment-key';
+
+			await expect(service.updateAdminSettings({ searchDisabled: true })).rejects.toThrow(
+				'Cannot update environment-managed fields: searchDisabled',
+			);
+			await expect(
+				service.updateAdminSettings({
+					searchConnection: { type: 'braveSearchApi', data: { apiKey: 'database-key' } },
+				}),
+			).rejects.toThrow('Cannot update environment-managed fields: searchConnection');
+		});
+
+		it('persists an explicit decision to disable web search and clears its assignment', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			const result = await service.updateAdminSettings({ searchDisabled: true });
+
+			expect(result.searchDisabled).toBe(true);
+			expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+				INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+				operationContext,
+			);
+			expect(persistedSettingsValue).toContain('"searchDisabled":true');
+		});
+
+		it('rejects disabling web search while configuring a search connection', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			await expect(
+				service.updateAdminSettings({
+					searchDisabled: true,
+					searchConnection: { type: 'braveSearchApi', data: { apiKey: 'key' } },
+				}),
+			).rejects.toThrow('Cannot disable web search while configuring a search connection');
+		});
+
+		it('should store service credential selections as broker assignments', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			await service.updateAdminSettings({
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			});
+
+			await service.updateAdminSettings({
+				daytonaCredentialId: 'daytona-cred',
+				n8nSandboxCredentialId: 'sandbox-cred',
+				searchCredentialId: 'search-cred',
+			});
+
+			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:sandbox:daytona' }),
+				'daytona-cred',
+				operationContext,
+			);
+			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
+				'sandbox-cred',
+				operationContext,
+			);
+			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:search' }),
+				'search-cred',
+				operationContext,
+			);
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ value: expect.not.stringContaining('CredentialId') }),
+				['key'],
+			);
+		});
+
+		it('should persist settings through the transaction context', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+				'instanceAi.settings',
+				expect.any(String),
+				true,
+				operationContext,
+			);
+		});
+
+		it('should reject an n8n sandbox credential whose header name is not x-api-key', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			await service.updateAdminSettings({
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'sandbox-cred',
+				name: 'Sandbox header',
+				type: 'httpHeaderAuth',
+				data: { name: 'Authorization', value: 'secret' },
+			});
+
+			await expect(
+				service.updateAdminSettings({ n8nSandboxCredentialId: 'sandbox-cred' }),
+			).rejects.toThrow(/x-api-key/);
+		});
+
+		it('should accept an n8n sandbox credential with the x-api-key header', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			await service.updateAdminSettings({
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			});
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'sandbox-cred',
+				name: 'Sandbox header',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Api-Key', value: 'secret' },
+			});
+
+			await expect(
+				service.updateAdminSettings({ n8nSandboxCredentialId: 'sandbox-cred' }),
+			).resolves.toBeDefined();
+		});
+
+		describe('connection payloads', () => {
+			const adminUser = mock<User>({
+				role: { scopes: [{ slug: 'credential:manageInstance' }] },
+			});
+			const memberUser = mock<User>({ role: { scopes: [] } });
+
+			beforeEach(() => {
+				aiService.isProxyEnabled.mockReturnValue(false);
+				settingsRepository.upsert.mockResolvedValue(undefined as never);
+			});
+
+			it('should create and assign a credential for a new connection', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+
+				await service.updateAdminSettings(
+					{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
+					adminUser,
+				);
+
+				expect(credentialsService.createInstanceCredential).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'openAiApi',
+						usageScope: 'instance',
+						name: 'AI Assistant model',
+					}),
+					adminUser,
+					operationContext,
+					{
+						skipExternalHooks: true,
+						encryptedData: expect.objectContaining({ data: 'encrypted', type: 'openAiApi' }),
+					},
+				);
+				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:model' }),
+					'new-cred',
+					operationContext,
+				);
+			});
+
+			it('should run external credential hooks before the locked transaction starts', async () => {
+				const order: string[] = [];
+				credentialsService.runInstanceCredentialHooks.mockImplementation(async () => {
+					order.push('hooks');
+					return {
+						id: '',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: 'encrypted',
+					} as never;
+				});
+				dbLockService.withLockContext.mockImplementation(async (_lockId, fn) => {
+					order.push('transaction');
+					return await fn(operationContext);
+				});
+				instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+
+				await service.updateAdminSettings(
+					{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
+					adminUser,
+				);
+
+				expect(order.slice(0, 2)).toEqual(['hooks', 'transaction']);
+				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith('create', {
+					id: null,
+					name: 'AI Assistant model',
+					type: 'openAiApi',
+					data: { apiKey: 'k' },
+				});
+			});
+
+			it('should run the update hook when the connection targets the current credential', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'cred-1',
+					name: 'AI Assistant model',
+					type: 'openAiApi',
+					data: { apiKey: 'k2' },
+				});
+
+				await service.updateAdminSettings(
+					{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k2' } }, modelName: 'gpt-5' },
+					adminUser,
+				);
+
+				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith('update', {
+					id: 'cred-1',
+					name: 'AI Assistant model',
+					type: 'openAiApi',
+					data: { apiKey: 'k2' },
+				});
+			});
+
+			it('should unredact updates before running credential hooks', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'cred-1',
+					name: 'AI Assistant model',
+					type: 'openAiApi',
+					data: { apiKey: 'saved-key' },
+				});
+				credentialsService.unredact.mockReturnValue({ apiKey: 'saved-key' });
+
+				await service.updateAdminSettings(
+					{
+						modelConnection: { type: 'openAiApi', data: { apiKey: '__redacted__' } },
+						modelName: 'gpt-5',
+					},
+					adminUser,
+				);
+
+				expect(credentialsService.unredact).toHaveBeenCalledWith(
+					{ apiKey: '__redacted__' },
+					{ apiKey: 'saved-key' },
+					expect.any(Array),
+				);
+				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith(
+					'update',
+					expect.objectContaining({ data: { apiKey: 'saved-key' } }),
+				);
+			});
+
+			it('should reject when the assigned connection changes while its hook runs', async () => {
+				instanceCredentialBroker.resolveForUse
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'k1' },
+					})
+					.mockResolvedValueOnce({
+						id: 'cred-2',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'k2' },
+					});
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k3' } }, modelName: 'gpt-5' },
+						adminUser,
+					),
+				).rejects.toThrow('Provider connection changed; retry');
+				expect(credentialsService.updateInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should reject when the assigned connection is renamed while its hook runs', async () => {
+				instanceCredentialBroker.resolveForUse
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'saved-key' },
+					})
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'Renamed model',
+						type: 'openAiApi',
+						data: { apiKey: 'saved-key' },
+					});
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: 'next-key' } },
+							modelName: 'gpt-5',
+						},
+						adminUser,
+					),
+				).rejects.toThrow('Provider connection changed; retry');
+				expect(credentialsService.updateInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should reject when the assigned connection data changes while its hook runs', async () => {
+				instanceCredentialBroker.resolveForUse
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'old-key' },
+					})
+					.mockResolvedValueOnce({
+						id: 'cred-1',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'new-key' },
+					});
+				credentialsService.unredact.mockReturnValue({ apiKey: 'old-key' });
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: '__redacted__' } },
+							modelName: 'gpt-5',
+						},
+						adminUser,
+					),
+				).rejects.toThrow('Provider connection changed; retry');
+				expect(credentialsService.updateInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should reject without starting a transaction when its external hook fails', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+				credentialsService.runInstanceCredentialHooks.mockRejectedValue(new Error('hook failed'));
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
+						adminUser,
+					),
+				).rejects.toThrow('hook failed');
+				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+			});
+
+			it('should update the existing credential in place when the type is unchanged', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'cred-1',
+					name: 'AI Assistant model',
+					type: 'openAiApi',
+					data: { apiKey: 'k2' },
+				});
+				await service.updateAdminSettings(
+					{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k2' } }, modelName: 'gpt-5' },
+					adminUser,
+				);
+
+				expect(credentialsService.updateInstanceCredential).toHaveBeenCalledWith(
+					adminUser,
+					'cred-1',
+					{
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'k2' },
+					},
+					operationContext,
+					{
+						skipExternalHooks: true,
+						encryptedData: expect.objectContaining({ data: 'encrypted', type: 'openAiApi' }),
+					},
+				);
+				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
+				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:model' }),
+					'cred-1',
+					operationContext,
+				);
+			});
+
+			it('should replace the assignment without deleting the reusable old credential', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'old-cred',
+					name: 'AI Assistant model',
+					type: 'openAiApi',
+					data: { apiKey: 'k' },
+				});
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+
+				await service.updateAdminSettings(
+					{
+						modelConnection: { type: 'anthropicApi', data: { apiKey: 'k' } },
+						modelName: 'claude-sonnet-5',
+					},
+					adminUser,
+				);
+
+				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:model' }),
+					'new-cred',
+					operationContext,
+				);
+			});
+
+			it('should switch the sandbox provider and clear the other slot', async () => {
+				instanceCredentialBroker.resolveForUse.mockImplementation(async (policy) =>
+					policy.id === 'instance-ai:sandbox:n8n'
+						? { id: 'old-n8n', name: 'AI Assistant sandbox', type: 'httpHeaderAuth', data: {} }
+						: null,
+				);
+				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+					policy.id === 'instance-ai:sandbox:n8n' ? 'old-n8n' : null,
+				);
+				credentialsService.createInstanceCredential.mockResolvedValue({
+					id: 'new-daytona',
+				} as never);
+
+				const result = await service.updateAdminSettings(
+					{
+						sandboxConnection: {
+							type: 'daytonaApi',
+							data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
+						},
+					},
+					adminUser,
+				);
+
+				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:daytona' }),
+					'new-daytona',
+					operationContext,
+				);
+				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
+					operationContext,
+				);
+				expect(result).toMatchObject({ sandboxEnabled: true, sandboxProvider: 'daytona' });
+				expect(persistedSettingsValue).toContain('"sandboxEnabled":true');
+			});
+
+			it('should restore the environment sandbox provider when the connection is cleared', async () => {
+				credentialsService.createInstanceCredential.mockResolvedValue({
+					id: 'daytona-cred',
+				} as never);
+				await service.updateAdminSettings({
+					n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+				});
+
+				await service.updateAdminSettings(
+					{
+						sandboxConnection: {
+							type: 'daytonaApi',
+							data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
+						},
+					},
+					adminUser,
+				);
+				const result = await service.updateAdminSettings({ sandboxConnection: null }, adminUser);
+
+				expect(result.sandboxProvider).toBe('n8n-sandbox');
+				expect(settingsRepository.upsert).toHaveBeenLastCalledWith(
+					expect.objectContaining({ value: expect.not.stringContaining('sandboxProvider') }),
+					['key'],
+				);
+			});
+
+			it('should clear the provider override when the remaining sandbox slot is cleared', async () => {
+				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+					policy.id === 'instance-ai:sandbox:daytona' ? 'daytona-cred' : null,
+				);
+				await service.updateAdminSettings({ sandboxProvider: 'daytona' });
+
+				await service.updateAdminSettings({ daytonaCredentialId: null });
+
+				expect(settingsRepository.upsert).toHaveBeenLastCalledWith(
+					expect.objectContaining({ value: expect.not.stringContaining('sandboxProvider') }),
+					['key'],
+				);
+			});
+
+			it('should reject an n8n sandbox connection with a wrong header name', async () => {
+				await expect(
+					service.updateAdminSettings(
+						{
+							sandboxConnection: {
+								type: 'httpHeaderAuth',
+								data: { name: 'Authorization', value: 'k' },
+							},
+						},
+						adminUser,
+					),
+				).rejects.toThrow(/x-api-key/);
+				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should clear a connection without resolving or deleting the released credential', async () => {
+				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+					policy.id === 'instance-ai:search' ? 'old-search' : null,
+				);
+
+				await service.updateAdminSettings({ searchConnection: null }, adminUser);
+
+				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:search' }),
+					operationContext,
+				);
+				// The clear path never decrypts the outgoing credential.
+				expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			});
+
+			it('should clear a connection even when the current assignment cannot be resolved', async () => {
+				instanceCredentialBroker.resolveForUse.mockRejectedValue(
+					new UnprocessableRequestError('not valid for instance credential use'),
+				);
+				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+					policy.id === 'instance-ai:model' ? 'legacy-model-cred' : null,
+				);
+
+				await expect(
+					service.updateAdminSettings({ modelConnection: null }, adminUser),
+				).resolves.toBeDefined();
+				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:model' }),
+					operationContext,
+				);
+			});
+
+			it('should replace an unresolvable legacy assignment with a new credential', async () => {
+				instanceCredentialBroker.resolveForUse
+					.mockRejectedValueOnce(new UnprocessableRequestError('not valid'))
+					.mockRejectedValueOnce(new UnprocessableRequestError('not valid'))
+					.mockResolvedValue({
+						id: 'new-cred',
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'k' },
+					});
+				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+					policy.id === 'instance-ai:model' ? 'legacy-model-cred' : null,
+				);
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
+						adminUser,
+					),
+				).resolves.toBeDefined();
+				expect(credentialsService.createInstanceCredential).toHaveBeenCalled();
+				expect(credentialsService.updateInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should clear both sandbox slots when the sandbox connection is cleared', async () => {
+				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
+					policy.id === 'instance-ai:sandbox:daytona'
+						? 'old-daytona'
+						: policy.id === 'instance-ai:sandbox:n8n'
+							? 'old-n8n'
+							: null,
+				);
+
+				await service.updateAdminSettings({ sandboxConnection: null }, adminUser);
+
+				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:daytona' }),
+					operationContext,
+				);
+				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
+					operationContext,
+				);
+				expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			});
+
+			it('should reject an inline model connection whose saved data fails validation', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValueOnce(null).mockResolvedValue({
+					id: 'new-cred',
+					name: 'AI Assistant model',
+					type: 'anthropicApi',
+					data: {},
+				});
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'anthropicApi', data: {} }, modelName: 'claude-x' },
+						adminUser,
+					),
+				).rejects.toThrow('The field "apiKey" or "url" is required');
+				expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should reject an inline model connection without a model name before writing', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } } },
+						adminUser,
+					),
+				).rejects.toThrow('modelName must be set together with modelCredentialId');
+				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
+				expect(instanceCredentialBroker.assignForUse).not.toHaveBeenCalled();
+				expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should reject clearing the model name before running connection hooks', async () => {
+				await service.updateAdminSettings({ modelCredentialId: 'cred-1', modelName: 'gpt-5' });
+				credentialsService.runInstanceCredentialHooks.mockClear();
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+							modelName: null,
+						},
+						adminUser,
+					),
+				).rejects.toThrow('modelName must be set together with modelCredentialId');
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should validate sandbox settings before running connection hooks', async () => {
+				globalConfig.instanceAi.sandboxEnabled = true;
+				globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+				service = createService();
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+							modelName: 'gpt-5',
+							sandboxProvider: 'n8n-sandbox',
+						},
+						adminUser,
+					),
+				).rejects.toThrow(/N8N_SANDBOX_SERVICE_URL/);
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should allow selecting existing credential ids without the manage scope', async () => {
+				await expect(
+					service.updateAdminSettings({ searchCredentialId: 'search-cred' }, memberUser),
+				).resolves.toBeDefined();
+				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:search' }),
+					'search-cred',
+					operationContext,
+				);
+			});
+
+			it('should reject connection payloads without the provider connection scope', async () => {
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
+						memberUser,
+					),
+				).rejects.toThrow('You do not have permission to manage provider connections');
+			});
+
+			it('should reject connection payloads on cloud deployments', async () => {
+				globalConfig.deployment.type = 'cloud';
+
+				for (const update of [
+					{
+						modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+						modelName: 'gpt-5',
+					},
+					{
+						sandboxConnection: {
+							type: 'daytonaApi',
+							data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
+						},
+					},
+					{ searchConnection: { type: 'braveSearchApi', data: { apiKey: 'k' } } },
+				] as const) {
+					await expect(service.updateAdminSettings(update, adminUser)).rejects.toThrow(
+						UnprocessableRequestError,
+					);
+				}
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should keep model, Daytona, and search connections proxy-managed', async () => {
+				aiService.isProxyEnabled.mockReturnValue(true);
+
+				for (const update of [
+					{
+						modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+						modelName: 'gpt-5',
+					},
+					{ daytonaCredentialId: 'daytona-cred' },
+					{
+						sandboxConnection: {
+							type: 'daytonaApi',
+							data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
+						},
+					},
+					{ searchConnection: { type: 'braveSearchApi', data: { apiKey: 'k' } } },
+				] as const) {
+					await expect(service.updateAdminSettings(update, adminUser)).rejects.toThrow(
+						UnprocessableRequestError,
+					);
+				}
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should clear the inactive Daytona slot when selecting n8n Sandbox behind the proxy', async () => {
+				aiService.isProxyEnabled.mockReturnValue(true);
+				globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
+				service = createService();
+
+				await expect(
+					service.updateAdminSettings({
+						daytonaCredentialId: null,
+						n8nSandboxCredentialId: 'sandbox-cred',
+						sandboxProvider: 'n8n-sandbox',
+					}),
+				).resolves.toMatchObject({
+					daytonaCredentialId: null,
+					n8nSandboxCredentialId: 'sandbox-cred',
+					sandboxProvider: 'n8n-sandbox',
+				});
+				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:daytona' }),
+					operationContext,
+				);
+				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
+					'sandbox-cred',
+					operationContext,
+				);
+			});
+
+			it('should accept n8n Sandbox connections on proxy deployments', async () => {
+				aiService.isProxyEnabled.mockReturnValue(true);
+				globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
+				service = createService();
+				credentialsService.createInstanceCredential.mockResolvedValue({
+					id: 'sandbox-cred',
+				} as never);
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							sandboxConnection: {
+								type: 'httpHeaderAuth',
+								data: { name: 'x-api-key', value: 'k' },
+							},
+						},
+						adminUser,
+					),
+				).resolves.toMatchObject({ sandboxProvider: 'n8n-sandbox' });
+			});
+
+			it('should reject a connection payload combined with a credential id', async () => {
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+							modelCredentialId: 'cred-1',
+							modelName: 'gpt-5',
+						},
+						adminUser,
+					),
+				).rejects.toThrow(/Cannot combine/);
+			});
+
+			it('should reject an unsupported connection type', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'slackApi', data: {} }, modelName: 'gpt-5' },
+						adminUser,
+					),
+				).rejects.toThrow(/not supported/);
+			});
+
+			it('should stop when the current connection cannot be resolved', async () => {
+				instanceCredentialBroker.resolveForUse.mockRejectedValue(new Error('database unavailable'));
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
+						adminUser,
+					),
+				).rejects.toThrow('database unavailable');
+				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should reject incomplete Daytona credentials', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'daytona-cred',
+					name: 'AI Assistant sandbox',
+					type: 'daytonaApi',
+					data: { apiUrl: 'https://daytona.example.com', apiKey: ' ' },
+				});
+
+				await expect(
+					service.updateAdminSettings({
+						daytonaCredentialId: 'daytona-cred',
+						sandboxProvider: 'daytona',
+					}),
+				).rejects.toThrow(/apiKey/);
+			});
+
+			it('should reject invalid SearXNG URLs', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'search-cred',
+					name: 'AI Assistant web search',
+					type: 'searXngApi',
+					data: { apiUrl: 'not-a-url' },
+				});
+
+				await expect(
+					service.updateAdminSettings({ searchCredentialId: 'search-cred' }),
+				).rejects.toThrow(/valid HTTP URL/);
+			});
+		});
+
+		it('should reject n8n sandbox selection without a service URL', async () => {
+			globalConfig.instanceAi.sandboxEnabled = true;
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+			service = createService();
+
+			await expect(
+				service.updateAdminSettings({
+					n8nSandboxCredentialId: 'sandbox-cred',
+					sandboxProvider: 'n8n-sandbox',
+				}),
+			).rejects.toThrow(/N8N_SANDBOX_SERVICE_URL/);
+		});
+
+		it('should not offer Ollama credentials to the unsupported runtime', () => {
+			expect(INSTANCE_AI_MODEL_CREDENTIAL_POLICY.credentialTypes).not.toContain('ollamaApi');
+		});
+
+		it.each([
+			['model', INSTANCE_AI_MODEL_CREDENTIAL_POLICY, { type: 'openAiApi', data: {} }, /apiKey/],
+			[
+				'Daytona',
+				INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+				{ type: 'daytonaApi', data: { apiUrl: 'https://daytona.example.com' } },
+				/apiKey/,
+			],
+			[
+				'n8n Sandbox',
+				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+				{ type: 'httpHeaderAuth', data: { name: 'Authorization', value: 'k' } },
+				/x-api-key/,
+			],
+			[
+				'search',
+				INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+				{ type: 'braveSearchApi', data: {} },
+				/apiKey/,
+			],
+		] as const)(
+			'should expose PATCH validation for %s connections',
+			(_name, policy, credential, error) => {
+				expect(() => policy.validate?.(credential)).toThrow(error);
+			},
+		);
+
+		it('should clear a service credential assignment', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			await service.updateAdminSettings({ searchCredentialId: null });
+
+			expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:search' }),
+				operationContext,
+			);
+		});
+
+		it('should reject env-managed fields even when proxy is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+
+			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+		});
+
+		it('should allow sandbox provider updates when proxy routing is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+
+			await expect(
+				service.updateAdminSettings({ sandboxProvider: 'daytona' }),
+			).resolves.toMatchObject({ sandboxProvider: 'daytona' });
+		});
+
+		it('should honor persisted sandbox providers when proxy routing is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			settingsRepository.findByKey.mockResolvedValueOnce({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ sandboxProvider: 'n8n-sandbox' }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				sandboxProvider: 'n8n-sandbox',
+			});
+		});
+
+		it('should keep the selected sandbox provider when proxy routing activates', () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			expect(service.getSandboxStatus().provider).toBe('n8n-sandbox');
+
+			aiService.isProxyEnabled.mockReturnValue(true);
+			expect(service.getSandboxStatus().provider).toBe('n8n-sandbox');
+		});
+
+		it('should persist a sandbox provider override on self-hosted', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
+
+			await expect(
+				service.updateAdminSettings({ sandboxProvider: 'daytona' }),
+			).resolves.toMatchObject({ sandboxProvider: 'daytona' });
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ value: expect.stringContaining('"sandboxProvider":"daytona"') }),
+				['key'],
+			);
+		});
+
+		it('should allow the enable toggle and permissions', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+
+			await expect(service.updateAdminSettings({ enabled: true })).resolves.toBeDefined();
+			await expect(
+				service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } }),
+			).resolves.toBeDefined();
 		});
 
 		it('should allow unrelated admin updates when existing n8n sandbox URL is missing', async () => {
@@ -124,29 +1168,6 @@ describe('InstanceAiSettingsService', () => {
 			).resolves.toMatchObject({
 				localGatewayDisabled: true,
 			});
-		});
-
-		it('should allow disabling n8n sandbox when the service URL is missing', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
-			globalConfig.instanceAi.sandboxEnabled = true;
-			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
-			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
-
-			await expect(service.updateAdminSettings({ sandboxEnabled: false })).resolves.toMatchObject({
-				sandboxEnabled: false,
-			});
-		});
-
-		it('should reject switching an enabled sandbox to n8n-sandbox without a service URL', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			globalConfig.instanceAi.sandboxEnabled = true;
-			globalConfig.instanceAi.sandboxProvider = 'daytona';
-			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
-
-			await expect(service.updateAdminSettings({ sandboxProvider: 'n8n-sandbox' })).rejects.toThrow(
-				/N8N_SANDBOX_SERVICE_URL/,
-			);
 		});
 
 		it('should expose workflow builder as unavailable when n8n sandbox URL is missing', () => {
@@ -164,15 +1185,1057 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('mcpAccessEnabled', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('defaults to true', async () => {
+			expect((await service.getAdminSettings()).mcpAccessEnabled).toBe(true);
+			expect(service.isMcpAccessEnabled()).toBe(true);
+		});
+
+		it('isMcpAccessEnabled reflects an update', async () => {
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(service.isMcpAccessEnabled()).toBe(false);
+		});
+
+		it('applies a persisted value when loading from the database', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ mcpAccessEnabled: false }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+
+			expect(service.isMcpAccessEnabled()).toBe(false);
+		});
+
+		it('round-trips an update through getAdminSettings and persists it', async () => {
+			const result = await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(result.mcpAccessEnabled).toBe(false);
+			expect((await service.getAdminSettings()).mcpAccessEnabled).toBe(false);
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"mcpAccessEnabled":false'),
+				}),
+				['key'],
+			);
+		});
+
+		it('merges an update with the latest persisted settings', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ mcpAccessEnabled: false }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } });
+
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"mcpAccessEnabled":false'),
+				}),
+				['key'],
+			);
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"createWorkflow":"always_allow"'),
+				}),
+				['key'],
+			);
+		});
+
+		it('does not apply an update when persistence fails', async () => {
+			settingsRepository.upsert.mockRejectedValue(new Error('write failed'));
+
+			await expect(service.updateAdminSettings({ mcpAccessEnabled: false })).rejects.toThrow(
+				'write failed',
+			);
+
+			expect((await service.getAdminSettings()).mcpAccessEnabled).toBe(true);
+		});
+
+		it('returns a committed update without re-reading admin settings', async () => {
+			const getAdminSettings = vi
+				.spyOn(service, 'getAdminSettings')
+				.mockRejectedValue(new Error('read failed'));
+
+			await expect(service.updateAdminSettings({ mcpAccessEnabled: false })).resolves.toMatchObject(
+				{
+					mcpAccessEnabled: false,
+				},
+			);
+			expect(getAdminSettings).not.toHaveBeenCalled();
+			getAdminSettings.mockRestore();
+		});
+	});
+
+	describe('instance model credential', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('delegates model credential validation to the broker', async () => {
+			instanceCredentialBroker.assignForUse.mockRejectedValue(
+				new UnprocessableRequestError('Invalid instance credential'),
+			);
+			await expect(
+				service.updateAdminSettings({ modelCredentialId: 'cred-1', modelName: 'gpt-4' }),
+			).rejects.toThrow('Invalid instance credential');
+			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:model' }),
+				'cred-1',
+				operationContext,
+			);
+		});
+
+		it('requires the model name when changing credentials', async () => {
+			await expect(service.updateAdminSettings({ modelCredentialId: 'cred-1' })).rejects.toThrow(
+				'modelName must be set together with modelCredentialId',
+			);
+			expect(instanceCredentialBroker.assignForUse).not.toHaveBeenCalled();
+		});
+
+		it('rejects a null model name when assigning a credential', async () => {
+			await expect(
+				service.updateAdminSettings({ modelCredentialId: 'cred-1', modelName: null }),
+			).rejects.toThrow('modelName must be set together with modelCredentialId');
+			expect(instanceCredentialBroker.assignForUse).not.toHaveBeenCalled();
+		});
+
+		it('rejects clearing the model name while a credential stays assigned', async () => {
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('cred-1');
+
+			await expect(service.updateAdminSettings({ modelName: null })).rejects.toThrow(
+				'modelName must be set together with modelCredentialId',
+			);
+			expect(instanceCredentialBroker.clearForUse).not.toHaveBeenCalled();
+		});
+
+		it('rejects a model name without an admin credential', async () => {
+			await expect(service.updateAdminSettings({ modelName: 'gpt-4' })).rejects.toThrow(
+				'modelName requires modelCredentialId',
+			);
+		});
+
+		it('does not block unrelated updates on a legacy half pair', async () => {
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('cred-1');
+
+			await expect(service.updateAdminSettings({ mcpAccessEnabled: false })).resolves.toMatchObject(
+				{ mcpAccessEnabled: false },
+			);
+		});
+
+		it('clears the model name when clearing the credential', async () => {
+			instanceCredentialBroker.getAssignedCredentialId
+				.mockResolvedValueOnce('cred-1')
+				.mockResolvedValue(null);
+			settingsRepository.findByKey.mockResolvedValueOnce({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ modelName: 'gpt-4' }),
+				loadOnStartup: true,
+			} as never);
+
+			const result = await service.updateAdminSettings({ modelCredentialId: null });
+
+			expect(result).toMatchObject({ modelCredentialId: null, modelName: null });
+			expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:model' }),
+				operationContext,
+			);
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.not.stringContaining('modelCredentialId'),
+				}),
+				['key'],
+			);
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"modelName":null'),
+				}),
+				['key'],
+			);
+		});
+
+		it('uses the admin credential before per-user credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Admin model',
+				type: 'openAiApi',
+				usageScope: 'instance',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: {
+					apiKey: 'admin-key',
+					organizationId: 'org-1',
+					header: true,
+					headerName: 'x-proxy-key',
+					headerValue: 'proxy-key',
+				},
+			});
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+			});
+
+			await service.updateAdminSettings({
+				modelCredentialId: credential.id,
+				modelName: 'gpt-4.1',
+			});
+			const result = await service.resolveModelConfig(
+				mock<User>({
+					settings: {
+						instanceAi: { credentialId: 'user-credential', modelName: 'gpt-4.1' },
+					},
+				}),
+			);
+
+			expect(result).toEqual({
+				id: 'openai/gpt-4.1',
+				url: '',
+				apiKey: 'admin-key',
+				headers: { 'OpenAI-Organization': 'org-1', 'x-proxy-key': 'proxy-key' },
+			});
+			expect(instanceCredentialBroker.resolveForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:model' }),
+				operationContext,
+			);
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ value: expect.not.stringContaining('modelCredentialId') }),
+				['key'],
+			);
+		});
+
+		it('uses the environment model connection without resolving stored credentials', async () => {
+			Object.assign(globalConfig.instanceAi, {
+				model: 'openai/gpt-5',
+				modelApiKey: 'environment-key',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'stored-model',
+				name: 'Stored model',
+				type: 'openAiApi',
+				data: { apiKey: 'database-key' },
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'openai/gpt-5',
+				url: '',
+				apiKey: 'environment-key',
+			});
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+		});
+
+		it('reads the admin model name and same-id credential update in one locked snapshot', async () => {
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'credential-a',
+				name: 'Admin model',
+				type: 'openAiApi',
+				data: { apiKey: 'key-a' },
+			});
+			await service.updateAdminSettings({
+				modelCredentialId: 'credential-a',
+				modelName: 'model-x',
+			});
+			persistedSettingsValue = JSON.stringify({ modelName: 'model-y' });
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'credential-a',
+				name: 'Admin model',
+				type: 'openAiApi',
+				data: { apiKey: 'updated-key' },
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'openai/model-y',
+				url: '',
+				apiKey: 'updated-key',
+			});
+			expect(instanceCredentialBroker.resolveForUse).toHaveBeenLastCalledWith(
+				expect.objectContaining({ id: 'instance-ai:model' }),
+				operationContext,
+			);
+		});
+
+		it('keeps the user model paired with the user credential on fallback', async () => {
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
+				id: 'admin-credential',
+				name: 'Admin model',
+				type: 'openAiApi',
+			});
+			await service.updateAdminSettings({
+				modelCredentialId: 'admin-credential',
+				modelName: 'gpt-admin',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'user-credential', type: 'openAiApi' }),
+			);
+			credentialsService.decrypt.mockResolvedValue({ apiKey: 'user-key' });
+
+			await expect(
+				service.resolveModelConfig(
+					mock<User>({
+						settings: {
+							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
+						},
+					}),
+				),
+			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+		});
+
+		it('falls back to the user credential when the admin credential data is incomplete', async () => {
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
+				id: 'admin-credential',
+				name: 'Admin model',
+				type: 'openAiApi',
+			});
+			await service.updateAdminSettings({
+				modelCredentialId: 'admin-credential',
+				modelName: 'gpt-admin',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'admin-credential',
+				name: 'Admin model',
+				type: 'openAiApi',
+				data: {},
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'user-credential', type: 'openAiApi' }),
+			);
+			credentialsService.decrypt.mockResolvedValue({ apiKey: 'user-key' });
+
+			await expect(
+				service.resolveModelConfig(
+					mock<User>({
+						settings: {
+							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
+						},
+					}),
+				),
+			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not resolve the configured model credential; using environment fallback',
+				{
+					credentialUseId: 'instance-ai:model',
+					error: 'Credential data is incomplete',
+				},
+			);
+		});
+
+		it('falls back to the full user pair when the instance credential fails to resolve', async () => {
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
+				id: 'admin-credential',
+				name: 'Admin model',
+				type: 'openAiApi',
+			});
+			await service.updateAdminSettings({
+				modelCredentialId: 'admin-credential',
+				modelName: 'gpt-admin',
+			});
+			instanceCredentialBroker.resolveForUse.mockRejectedValue(new Error('gone'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'user-credential', type: 'openAiApi' }),
+			);
+			credentialsService.decrypt.mockResolvedValue({ apiKey: 'user-key' });
+
+			await expect(
+				service.resolveModelConfig(
+					mock<User>({
+						settings: {
+							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
+						},
+					}),
+				),
+			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not resolve the configured model credential; using environment fallback',
+				{ credentialUseId: 'instance-ai:model', error: 'gone' },
+			);
+		});
+
+		it('skips an instance credential assignment without an instance model', async () => {
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'admin-credential',
+				name: 'Admin model',
+				type: 'openAiApi',
+				data: { apiKey: 'admin-key' },
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'user-credential', type: 'openAiApi' }),
+			);
+			credentialsService.decrypt.mockResolvedValue({ apiKey: 'user-key' });
+
+			await expect(
+				service.resolveModelConfig(
+					mock<User>({
+						settings: {
+							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
+						},
+					}),
+				),
+			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+		});
+		it('reads the configured model credential from the broker', async () => {
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('cred-1');
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ modelName: 'gpt-4' }),
+				loadOnStartup: true,
+			} as never);
+			await service.loadFromDb();
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				modelCredentialId: 'cred-1',
+				modelName: 'gpt-4',
+			});
+		});
+
+		it('exposes a dangling assignment so it can be cleared', async () => {
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('cred-1');
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				modelCredentialId: 'cred-1',
+				modelName: null,
+			});
+		});
+
+		it('rejects assigning a model credential with incomplete data', async () => {
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'cred-1',
+				name: 'Admin model',
+				type: 'anthropicApi',
+				data: {},
+			});
+
+			await expect(
+				service.updateAdminSettings({ modelCredentialId: 'cred-1', modelName: 'claude-x' }),
+			).rejects.toThrow(
+				'The field "apiKey" or "url" is required for provider connection type "anthropicApi"',
+			);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
+		it('accepts a model credential that only provides a base url', async () => {
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'cred-1',
+				name: 'Admin model',
+				type: 'anthropicApi',
+				data: { url: 'http://localhost:1234/v1' },
+			});
+
+			await expect(
+				service.updateAdminSettings({ modelCredentialId: 'cred-1', modelName: 'claude-x' }),
+			).resolves.toBeDefined();
+		});
+
+		it('ignores a configured admin credential on cloud', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Admin model',
+				type: 'openAiApi',
+				usageScope: 'instance',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: { apiKey: 'admin-key' },
+			});
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+			});
+			await service.updateAdminSettings({
+				modelCredentialId: credential.id,
+				modelName: 'gpt-4',
+			});
+			vi.clearAllMocks();
+			globalConfig.deployment.type = 'cloud';
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			await expect(service.listInstanceModelCredentials()).resolves.toEqual([]);
+		});
+
+		it('ignores a persisted admin model when the proxy is enabled', async () => {
+			const logger = mock<Logger>();
+			logger.scoped.mockReturnValue(logger);
+			Container.set(Logger, logger);
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ modelCredentialId: 'cred-1', modelName: 'admin-model' }),
+				loadOnStartup: true,
+			} as never);
+			await service.loadFromDb();
+			aiService.isProxyEnabled.mockReturnValue(true);
+
+			expect(
+				service.resolveModelName(
+					mock<User>({ settings: { instanceAi: { modelName: 'user-model' } } }),
+				),
+			).toBe('user-model');
+		});
+	});
+
+	describe('search credential', () => {
+		it('uses environment search settings without resolving the stored credential', async () => {
+			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
+			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'search-credential',
+				name: 'Search',
+				type: 'braveSearchApi',
+				data: { apiKey: 'credential-key' },
+			});
+
+			await expect(service.resolveSearchConfig()).resolves.toEqual({
+				braveApiKey: 'env-key',
+				searxngUrl: 'https://search.example.com',
+			});
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('does not resolve an unavailable stored credential when search is environment-managed', async () => {
+			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
+			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
+			instanceCredentialBroker.resolveForUse.mockRejectedValue(new Error('not found'));
+
+			await expect(service.resolveSearchConfig()).resolves.toEqual({
+				braveApiKey: 'env-key',
+				searxngUrl: 'https://search.example.com',
+			});
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('does not inspect incomplete stored credential data when search is environment-managed', async () => {
+			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
+			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'search-credential',
+				name: 'Search',
+				type: 'braveSearchApi',
+				data: {},
+			});
+
+			await expect(service.resolveSearchConfig()).resolves.toEqual({
+				braveApiKey: 'env-key',
+				searxngUrl: 'https://search.example.com',
+			});
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('n8n sandbox credential', () => {
+		it('uses environment settings without resolving the stored credential', async () => {
+			Object.assign(globalConfig.instanceAi, {
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+				n8nSandboxServiceApiKey: 'environment-key',
+			});
+			service = createService();
+
+			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
+				serviceUrl: 'http://sandbox-api:8080',
+				apiKey: 'environment-key',
+			});
+			expect(sandboxSettingsService.resolveN8nSandboxConfig).not.toHaveBeenCalled();
+		});
+
+		it('uses the resolved api key when the assistant proxy is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			sandboxSettingsService.resolveN8nSandboxConfig.mockResolvedValue({
+				serviceUrl: 'http://sandbox-api:8080',
+				apiKey: 'credential-key',
+			});
+
+			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
+				serviceUrl: 'http://sandbox-api:8080',
+				apiKey: 'credential-key',
+			});
+		});
+	});
+
+	describe('getAdminSettings env-configured flags', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			vi.stubEnv('OPENAI_API_KEY', '');
+			vi.stubEnv('ANTHROPIC_API_KEY', '');
+			Object.assign(globalConfig.instanceAi, {
+				model: 'openai/gpt-4',
+				modelApiKey: '',
+				modelUrl: '',
+				n8nSandboxServiceUrl: '',
+			});
+			service = createService();
+		});
+
+		it('reports the model as env-configured when a custom or provider key is set', async () => {
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(false);
+
+			globalConfig.instanceAi.modelApiKey = 'env-key';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
+
+			globalConfig.instanceAi.modelApiKey = '';
+			globalConfig.instanceAi.modelUrl = 'http://localhost:1234/v1';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
+
+			globalConfig.instanceAi.modelUrl = '   ';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(false);
+
+			globalConfig.instanceAi.model = 'anthropic/claude-sonnet-4-6';
+			vi.stubEnv('ANTHROPIC_API_KEY', 'provider-key');
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
+		});
+
+		it('reports Vertex as env-configured only when a project id is resolvable', async () => {
+			globalConfig.instanceAi.model = 'google-vertex-anthropic/claude-opus-4-8';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(false);
+
+			globalConfig.instanceAi.vertexServiceAccountJson =
+				'{"client_email":"svc@example.com","private_key":"k"}';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(false);
+
+			globalConfig.instanceAi.vertexServiceAccountJson =
+				'{"project_id":"from-json","client_email":"svc@example.com","private_key":"k"}';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
+
+			globalConfig.instanceAi.vertexServiceAccountJson = '';
+			globalConfig.instanceAi.vertexProjectId = 'from-env';
+			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
+		});
+
+		it('reports environment configuration for the selected sandbox provider', async () => {
+			globalConfig.instanceAi.sandboxProvider = 'daytona';
+			globalConfig.instanceAi.daytonaApiKey = 'dtn-key';
+			service = createService();
+			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(true);
+
+			globalConfig.instanceAi.daytonaApiKey = '';
+			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(false);
+
+			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
+			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
+			service = createService();
+			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(true);
+
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+			service = createService();
+			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(false);
+		});
+
+		it('reports search as env-configured for brave or searxng', async () => {
+			expect((await service.getAdminSettings()).searchEnvConfigured).toBe(false);
+
+			globalConfig.instanceAi.braveSearchApiKey = 'brave-key';
+			expect((await service.getAdminSettings()).searchEnvConfigured).toBe(true);
+
+			globalConfig.instanceAi.braveSearchApiKey = '';
+			globalConfig.instanceAi.searxngUrl = 'http://searxng:8080';
+			expect((await service.getAdminSettings()).searchEnvConfigured).toBe(true);
+		});
+
+		it('only exposes env-management booleans for server-managed values', async () => {
+			globalConfig.instanceAi.modelApiKey = 'model-secret';
+			globalConfig.instanceAi.braveSearchApiKey = 'search-secret';
+
+			const settings = await service.getAdminSettings();
+			const serialized = JSON.stringify(settings);
+
+			expect(settings.envManaged.model.apiKey).toBe(true);
+			expect(settings.envManaged.search.apiKey).toBe(true);
+			expect(serialized).not.toContain('model-secret');
+			expect(serialized).not.toContain('search-secret');
+		});
+	});
+
+	describe('verification connection resolution', () => {
+		beforeEach(() => {
+			credentialsService.unredact.mockImplementation((_data, currentData) => currentData);
+			instanceCredentialBroker.resolveForUse.mockImplementation(async (policy) => {
+				if (policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id) {
+					return {
+						id: 'model-credential',
+						name: 'Model',
+						type: 'openAiApi',
+						data: { apiKey: 'saved-model-key' },
+					} as never;
+				}
+				if (policy.id === INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id) {
+					return {
+						id: 'sandbox-credential',
+						name: 'Sandbox',
+						type: 'httpHeaderAuth',
+						data: { name: 'x-api-key', value: 'saved-sandbox-key' },
+					} as never;
+				}
+				return {
+					id: 'search-credential',
+					name: 'Search',
+					type: 'braveSearchApi',
+					data: { apiKey: 'saved-search-key' },
+				} as never;
+			});
+		});
+
+		it('restores redacted model, sandbox, and search fields on the server', async () => {
+			await expect(
+				service.resolveModelConnectionForVerification({
+					type: 'openAiApi',
+					data: { apiKey: '__redacted__' },
+				}),
+			).resolves.toEqual({ type: 'openAiApi', data: { apiKey: 'saved-model-key' } });
+			await expect(
+				service.resolveSandboxConnectionForVerification({
+					type: 'httpHeaderAuth',
+					data: { name: 'x-api-key', value: '__redacted__' },
+				}),
+			).resolves.toEqual({
+				type: 'httpHeaderAuth',
+				data: { name: 'x-api-key', value: 'saved-sandbox-key' },
+			});
+			await expect(
+				service.resolveSearchConnectionForVerification({
+					type: 'braveSearchApi',
+					data: { apiKey: '__redacted__' },
+				}),
+			).resolves.toEqual({ type: 'braveSearchApi', data: { apiKey: 'saved-search-key' } });
+		});
+
+		it('rejects a missing prepared connection', async () => {
+			await expect(
+				service.resolveModelConnectionForVerification(undefined as never),
+			).rejects.toThrow('Prepared provider connection is missing');
+		});
+	});
+
+	describe('model verification config', () => {
+		it.each([
+			['openai/original', 'replacement', 'openai/replacement'],
+			['original', 'replacement', 'custom/replacement'],
+			[
+				{ id: 'anthropic/original', url: '', apiKey: 'key' },
+				'replacement',
+				{ id: 'anthropic/replacement', url: '', apiKey: 'key' },
+			],
+			[
+				{ id: 'original', url: '', apiKey: 'key' },
+				'replacement',
+				{ id: 'custom/replacement', url: '', apiKey: 'key' },
+			],
+		] as const)(
+			'replaces the selected model while keeping its provider',
+			async (config, model, expected) => {
+				vi.spyOn(service, 'resolveModelConfig').mockResolvedValue(config as never);
+
+				await expect(
+					service.resolveModelConfigForVerification(mock<User>(), model),
+				).resolves.toEqual(expected);
+			},
+		);
+
+		it('keeps the resolved config when no model is selected or the config is opaque', async () => {
+			const opaqueConfig = { provider: 'custom' };
+			const resolveModelConfig = vi
+				.spyOn(service, 'resolveModelConfig')
+				.mockResolvedValueOnce('openai/original')
+				.mockResolvedValueOnce(opaqueConfig as never);
+
+			await expect(service.resolveModelConfigForVerification(mock<User>())).resolves.toBe(
+				'openai/original',
+			);
+			await expect(
+				service.resolveModelConfigForVerification(mock<User>(), 'replacement'),
+			).resolves.toBe(opaqueConfig);
+			expect(resolveModelConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('builds and validates a model config from a draft connection', () => {
+			expect(
+				service.buildModelConfigForConnection(
+					{ type: 'openAiApi', data: { apiKey: 'key' } },
+					'gpt-5.4',
+				),
+			).toEqual({ id: 'openai/gpt-5.4', url: '', apiKey: 'key' });
+
+			expect(() =>
+				service.buildModelConfigForConnection(
+					{ type: 'braveSearchApi', data: { apiKey: 'key' } },
+					'gpt-5.4',
+				),
+			).toThrow('is not supported for the model');
+			expect(() =>
+				service.buildModelConfigForConnection({ type: 'openAiApi', data: {} }, 'gpt-5.4'),
+			).toThrow('The field "apiKey" or "url" is required');
+		});
+
+		it('builds model configs from environment URL and API key combinations', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			Object.assign(globalConfig.instanceAi, {
+				model: 'openai/gpt-4',
+				modelUrl: 'https://model.example.com/v1',
+				modelApiKey: 'model-key',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'openai/gpt-4',
+				url: 'https://model.example.com/v1',
+				apiKey: 'model-key',
+			});
+
+			globalConfig.instanceAi.modelUrl = '';
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'openai/gpt-4',
+				url: '',
+				apiKey: 'model-key',
+			});
+
+			globalConfig.instanceAi.modelApiKey = '';
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
+		});
+
+		it('builds google-vertex-anthropic configs from Vertex environment variables', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'google-vertex-anthropic/claude-opus-4-8');
+			Object.assign(globalConfig.instanceAi, {
+				model: 'google-vertex-anthropic/claude-opus-4-8',
+				modelUrl: '',
+				modelApiKey: '',
+				vertexProjectId: 'instance-ai-494613',
+				vertexLocation: 'global',
+				vertexServiceAccountJson: '{"client_email":"svc@example.com","private_key":"k"}',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'instance-ai-494613',
+				location: 'global',
+				googleCredentials: '{"client_email":"svc@example.com","private_key":"k"}',
+			});
+		});
+
+		it('derives the Vertex project from service-account JSON when env project is unset', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'google-vertex-anthropic/claude-opus-4-8');
+			Object.assign(globalConfig.instanceAi, {
+				model: 'google-vertex-anthropic/claude-opus-4-8',
+				modelUrl: '',
+				modelApiKey: '',
+				vertexProjectId: '',
+				vertexLocation: '',
+				vertexServiceAccountJson:
+					'{"project_id":"from-json","client_email":"svc@example.com","private_key":"k"}',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'from-json',
+				location: 'global',
+				googleCredentials:
+					'{"project_id":"from-json","client_email":"svc@example.com","private_key":"k"}',
+			});
+		});
+
+		it('falls back to GOOGLE_VERTEX_LOCATION when the n8n Vertex location env is empty', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'google-vertex-anthropic/claude-opus-4-8');
+			vi.stubEnv('GOOGLE_VERTEX_LOCATION', 'us-east5');
+			Object.assign(globalConfig.instanceAi, {
+				model: 'google-vertex-anthropic/claude-opus-4-8',
+				modelUrl: '',
+				modelApiKey: '',
+				vertexProjectId: 'instance-ai-494613',
+				vertexLocation: '',
+				vertexServiceAccountJson: '{"client_email":"svc@example.com","private_key":"k"}',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toMatchObject({
+				location: 'us-east5',
+			});
+		});
+	});
+
+	describe('isSetupCompleted', () => {
+		it('is complete on managed deployments', async () => {
+			globalConfig.deployment.type = 'cloud';
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+
+			globalConfig.deployment.type = 'default';
+			aiService.isProxyEnabled.mockReturnValue(true);
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+			expect(instanceCredentialBroker.getAssignedCredentialId).not.toHaveBeenCalled();
+		});
+
+		it('accepts a setup fully configured through environment variables', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			Object.assign(globalConfig.instanceAi, {
+				modelApiKey: 'model-key',
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+				daytonaApiKey: 'sandbox-key',
+				braveSearchApiKey: 'search-key',
+			});
+			service = createService();
+
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+		});
+
+		it('accepts Daytona and search credential assignments', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			persistedSettingsValue = JSON.stringify({
+				modelName: 'gpt-5.4',
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+			});
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) => {
+				if (policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id) return 'model-credential';
+				if (policy.id === INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id) return 'sandbox-credential';
+				if (policy.id === INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id) return 'search-credential';
+				return null;
+			});
+			await service.reloadFromDb();
+
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+		});
+
+		it('requires an explicit web-search decision after model and sandbox are configured', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			persistedSettingsValue = JSON.stringify({
+				modelName: 'gpt-5.4',
+				sandboxEnabled: true,
+				sandboxProvider: 'n8n-sandbox',
+			});
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) => {
+				if (policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id) return 'model-credential';
+				if (policy.id === INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id) {
+					return 'sandbox-credential';
+				}
+				return null;
+			});
+
+			await expect(service.isSetupCompleted()).resolves.toBe(false);
+
+			persistedSettingsValue = JSON.stringify({
+				modelName: 'gpt-5.4',
+				sandboxEnabled: true,
+				sandboxProvider: 'n8n-sandbox',
+				searchDisabled: true,
+			});
+			await service.reloadFromDb();
+
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+		});
+	});
+
+	describe('service credential assignments', () => {
+		it('reads service credential selections from broker assignments', async () => {
+			const assignments: Record<string, string> = {
+				'instance-ai:sandbox:daytona': 'daytona-cred',
+				'instance-ai:sandbox:n8n': 'sandbox-cred',
+				'instance-ai:search': 'search-cred',
+			};
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (credentialUse) => {
+				return assignments[credentialUse.id] ?? null;
+			});
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				daytonaCredentialId: 'daytona-cred',
+				n8nSandboxCredentialId: 'sandbox-cred',
+				searchCredentialId: 'search-cred',
+			});
+		});
+
+		it('hides stored assignments when environment connections are active', async () => {
+			Object.assign(globalConfig.instanceAi, {
+				modelApiKey: 'model-environment-key',
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+				braveSearchApiKey: 'search-environment-key',
+			});
+			service = createService();
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (credentialUse) => {
+				return `${credentialUse.id}-credential`;
+			});
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				modelCredentialId: null,
+				daytonaCredentialId: null,
+				n8nSandboxCredentialId: null,
+				searchCredentialId: null,
+			});
+		});
+
+		it('exposes n8n Sandbox assignments when the assistant proxy is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('sandbox-cred');
+			instanceCredentialBroker.listForUse.mockResolvedValue([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			] as never);
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				daytonaCredentialId: null,
+				n8nSandboxCredentialId: 'sandbox-cred',
+				searchCredentialId: null,
+			});
+			await expect(service.listInstanceServiceCredentials()).resolves.toEqual([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			]);
+			expect(instanceCredentialBroker.listForUse).toHaveBeenCalledOnce();
+			expect(instanceCredentialBroker.listForUse).toHaveBeenCalledWith(
+				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+			);
+		});
+	});
+
+	describe('executeMcpTool permission', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('defaults to require_approval', async () => {
+			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe(
+				'require_approval',
+			);
+		});
+
+		it('persists and reflects an update', async () => {
+			const result = await service.updateAdminSettings({
+				permissions: { executeMcpTool: 'always_allow' },
+			});
+
+			expect(result.permissions.executeMcpTool).toBe('always_allow');
+			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe('always_allow');
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"executeMcpTool":"always_allow"'),
+				}),
+				['key'],
+			);
+		});
+	});
+
 	describe('instance-ai-settings-updated event', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
-			globalConfig.instanceAi.mcpServers = '';
 		});
 
 		it('emits on every successful update', async () => {
-			await service.updateAdminSettings({ subAgentMaxSteps: 50 });
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'instance-ai-settings-updated',
@@ -180,29 +2243,41 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
-		it('flags mcpSettingsChanged when mcpServers changes', async () => {
-			await service.updateAdminSettings({ mcpServers: '[{"name":"a","url":"https://a/"}]' });
-
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: true,
-			});
-		});
-
 		it('does not flag mcpSettingsChanged for unrelated field changes', async () => {
-			await service.updateAdminSettings({ subAgentMaxSteps: 50 });
+			await service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } });
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: false,
-			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: false }),
+			);
 		});
 
-		it('does not flag mcpSettingsChanged when mcpServers is set to the same value', async () => {
-			globalConfig.instanceAi.mcpServers = '[{"name":"a","url":"https://a/"}]';
+		it('flags mcpSettingsChanged when mcpAccessEnabled changes', async () => {
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
 
-			await service.updateAdminSettings({ mcpServers: '[{"name":"a","url":"https://a/"}]' });
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: true }),
+			);
+		});
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: false,
+		it('does not flag mcpSettingsChanged when mcpAccessEnabled is set to the same value', async () => {
+			await service.updateAdminSettings({ mcpAccessEnabled: true });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: false }),
+			);
+		});
+
+		it('does not fail a committed update when a local event listener throws', async () => {
+			eventService.emit.mockImplementationOnce(() => {
+				throw new Error('listener failed');
+			});
+
+			await expect(service.updateAdminSettings({ mcpAccessEnabled: false })).resolves.toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith('Failed to apply local settings event', {
+				error: 'listener failed',
 			});
 		});
 	});
@@ -210,16 +2285,19 @@ describe('InstanceAiSettingsService', () => {
 	describe('updateUserPreferences', () => {
 		const user = mock<User>({ id: 'user-1' });
 
-		it('should reject with 422 when proxy is enabled and request contains proxy-managed preference fields', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+		it('should reject env-managed preference fields on self-hosted', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(service.updateUserPreferences(user, { credentialId: 'cred-1' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+			await expect(service.updateUserPreferences(user, { modelName: 'gpt-4' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
 		});
 
 		it('should include offending field names in the error message', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(
 				service.updateUserPreferences(user, {
@@ -229,8 +2307,8 @@ describe('InstanceAiSettingsService', () => {
 			).rejects.toThrow(/credentialId.*modelName|modelName.*credentialId/);
 		});
 
-		it('should allow non-proxy-managed fields when proxy is enabled', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
+		it('should allow localGatewayDisabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(
 				service.updateUserPreferences(user, { localGatewayDisabled: true }),
@@ -241,17 +2319,17 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
-		it('should merge new fields with existing instanceAi settings on update', async () => {
+		it('should merge new preference fields with existing instanceAi settings on update', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			const existingUser = mock<User>({
 				id: 'user-2',
 				settings: { instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5' } },
 			});
 
-			await service.updateUserPreferences(existingUser, { modelName: 'gpt-4' });
+			await service.updateUserPreferences(existingUser, { localGatewayDisabled: true });
 
 			expect(userService.updateSettings).toHaveBeenCalledWith('user-2', {
-				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-4' },
+				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5', localGatewayDisabled: true },
 			});
 		});
 	});
@@ -266,8 +2344,20 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		describe('updateAdminSettings', () => {
+			it('should reject model credentials on cloud', async () => {
+				await expect(service.updateAdminSettings({ modelCredentialId: 'cred-1' })).rejects.toThrow(
+					UnprocessableRequestError,
+				);
+			});
+
+			it('should reject service credential assignments on cloud', async () => {
+				await expect(service.updateAdminSettings({ searchCredentialId: 'cred-1' })).rejects.toThrow(
+					UnprocessableRequestError,
+				);
+			});
+
 			it('should reject advanced fields on cloud', async () => {
-				await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
+				await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 					UnprocessableRequestError,
 				);
 			});
@@ -276,10 +2366,13 @@ describe('InstanceAiSettingsService', () => {
 				await expect(service.updateAdminSettings({ sandboxEnabled: true })).rejects.toThrow(
 					UnprocessableRequestError,
 				);
+				await expect(service.updateAdminSettings({ sandboxProvider: 'daytona' })).rejects.toThrow(
+					UnprocessableRequestError,
+				);
 			});
 
 			it('should include cloud-managed label in error message', async () => {
-				await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
+				await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 					/cloud-managed/,
 				);
 			});
@@ -333,6 +2426,27 @@ describe('InstanceAiSettingsService', () => {
 					instanceAi: { localGatewayDisabled: true },
 				});
 			});
+		});
+	});
+
+	describe('setup telemetry event payload', () => {
+		it('carries the previous and next credential selections on the settings-updated event', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+
+			await service.updateAdminSettings({ modelCredentialId: 'model-cred', modelName: 'gpt-4' });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({
+					credentialSelections: {
+						previous: expect.objectContaining({ modelCredentialId: null, modelName: null }),
+						next: expect.objectContaining({ modelCredentialId: 'model-cred', modelName: 'gpt-4' }),
+						// No connection payload in this save — a raw credential-id assignment
+						connectionsUpdated: { model: false, sandbox: false, search: false },
+					},
+				}),
+			);
 		});
 	});
 });
