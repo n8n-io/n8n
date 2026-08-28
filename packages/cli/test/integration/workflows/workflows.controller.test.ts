@@ -42,11 +42,13 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import { saveCredential } from '../shared/db/credentials';
+import { getAllExecutions } from '../shared/db/executions';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import {
@@ -4967,6 +4969,97 @@ describe('POST /workflows/:workflowId/run', () => {
 		expect(response.body.message).toBe(
 			'To run the workflow manually, specify either a trigger to start from or a destination node.',
 		);
+	});
+
+	describe('with engineType v2', () => {
+		const TRIGGER_NAME = 'When clicking Execute';
+		const SET_NAME = 'Edit Fields';
+
+		const startExecution = vi.fn();
+		const getExecution = vi.fn();
+
+		beforeAll(() => {
+			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+		});
+
+		beforeEach(() => {
+			startExecution.mockResolvedValue({ executionId: 'a3c1e0f2-0000-4000-8000-000000000001' });
+		});
+
+		const createV2Workflow = async () =>
+			await createWorkflow(
+				{
+					nodes: [
+						{
+							id: uuid(),
+							name: TRIGGER_NAME,
+							type: 'n8n-nodes-base.manualTrigger',
+							parameters: {},
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: uuid(),
+							name: SET_NAME,
+							type: 'n8n-nodes-base.set',
+							parameters: {},
+							typeVersion: 3.4,
+							position: [200, 0],
+						},
+					],
+					connections: {
+						[TRIGGER_NAME]: { main: [[{ node: SET_NAME, type: 'main', index: 0 }]] },
+					},
+					settings: { engineType: 'v2' },
+				},
+				owner,
+			);
+
+		test('should run on the data plane and persist no execution', async () => {
+			const dbWorkflow = await createV2Workflow();
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${dbWorkflow.id}/run`)
+				.send({ triggerToStartFrom: { name: TRIGGER_NAME } });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.executionId).toBe('a3c1e0f2-0000-4000-8000-000000000001');
+			expect(startExecution).toHaveBeenCalledWith(
+				objectContaining({
+					workflowId: dbWorkflow.id,
+					mode: 'manual',
+					triggerOutputs: [[{ json: {} }]],
+				}),
+			);
+
+			const executions = await getAllExecutions();
+			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
+		});
+
+		test('should return 400 for a partial execution', async () => {
+			const dbWorkflow = await createV2Workflow();
+
+			const response = await authOwnerAgent.post(`/workflows/${dbWorkflow.id}/run`).send({
+				destinationNode: { nodeName: SET_NAME, mode: 'inclusive' },
+				runData: {
+					[TRIGGER_NAME]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							source: [],
+							data: { main: [[{ json: {} }]] },
+						},
+					],
+				},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(
+				'Engine 2.0 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+			);
+			expect(startExecution).not.toHaveBeenCalled();
+		});
 	});
 });
 

@@ -19,7 +19,6 @@ import type {
 	INodeInputConfiguration,
 	INodeExecutionData,
 	ITaskDataConnections,
-	IRunData,
 	IBinaryKeyData,
 	INode,
 	INodeCredentialsDetails,
@@ -48,11 +47,11 @@ import { EnableNodeToggleCommand } from '@/app/models/history';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -71,10 +70,10 @@ export function useNodeHelpers() {
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
-	const { check: isEnvFeatureEnabled } = useEnvFeatureFlag();
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
@@ -428,10 +427,7 @@ export function useNodeHelpers() {
 	//
 	// A workflow with no triggers is left un-warned: it's a transient state while
 	// building. The backend still catches it at publish time.
-	function getBlockingTrigger(): {
-		isSystemResolver: boolean;
-		formOAuth2Enabled: boolean;
-	} | null {
+	function getBlockingTrigger(): { isSystemResolver: boolean } | null {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
 			(trigger) => !trigger.disabled,
 		);
@@ -439,18 +435,17 @@ export function useNodeHelpers() {
 
 		const resolverId = workflowDocumentStore.value.settings?.credentialResolverId;
 		const isSystemResolver = !resolverId || resolverId === SYSTEM_RESOLVER_ID;
-		const formOAuth2Enabled = isEnvFeatureEnabled.value('FORM_TRIGGER_OAUTH2');
 
 		const hasBlockingTrigger = triggers.some((trigger) => {
 			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
 				trigger.type,
 				trigger.parameters,
-				{ isFormOAuth2Enabled: formOAuth2Enabled },
+				{ isChatOAuth2Enabled: envFeatureFlag.value('CHAT_TRIGGER_OAUTH2') },
 			);
 			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
 		});
 
-		return hasBlockingTrigger ? { isSystemResolver, formOAuth2Enabled } : null;
+		return hasBlockingTrigger ? { isSystemResolver } : null;
 	}
 
 	function collectPrivateCredentialIssues(
@@ -473,18 +468,11 @@ export function useNodeHelpers() {
 			// merely-not-yet-connected credential is surfaced via the callout/banner.
 			// The message depends on the resolver: the system resolver needs a trigger
 			// that establishes the n8n user identity, a custom resolver needs one that
-			// extracts an external identity. Form is only listed as supported while its
-			// OAuth2 flag is on — without it the form establishes no identity, so listing
-			// it would advertise a fix that doesn't work.
+			// extracts an external identity.
 			if (blockingTrigger) {
-				let messageKey: BaseTextKey =
-					'nodeIssues.credentials.privateRequiresIdentityTriggerWithWebhook';
-
-				if (!blockingTrigger.isSystemResolver) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityExtractor';
-				} else if (blockingTrigger.formOAuth2Enabled) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook';
-				}
+				const messageKey: BaseTextKey = blockingTrigger.isSystemResolver
+					? 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook'
+					: 'nodeIssues.credentials.privateRequiresIdentityExtractor';
 				foundIssues[credTypeName] = [i18n.baseText(messageKey)];
 			}
 		}
@@ -758,19 +746,10 @@ export function useNodeHelpers() {
 	}
 
 	function getBinaryData(
-		workflowRunData: IRunData | null,
-		node: string | null,
-		runIndex: number,
+		runDataOfNode: ITaskDataConnections | undefined,
 		outputIndex: number,
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): IBinaryKeyData[] {
-		if (node === null) {
-			return [];
-		}
-
-		const runData: IRunData | null = workflowRunData;
-
-		const runDataOfNode = runData?.[node]?.[runIndex]?.data;
 		if (!runDataOfNode) {
 			return [];
 		}

@@ -140,6 +140,24 @@ describe('WebhookContext', () => {
 
 			expect(credentials).toEqual({ secret: 'token' });
 		});
+
+		it('should surface the node to the credentials helper', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await webhookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+			);
+		});
 	});
 
 	describe('getBodyData', () => {

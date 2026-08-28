@@ -26,6 +26,7 @@ import type { TimelineItem } from '../session-timeline.types';
 import {
 	executionErrorLabel,
 	executionErrorMessage,
+	hitlRequestLabelKey,
 	hitlTimelineName,
 	isErroredToolCallTimelineItem,
 	isSubAgentTimelineItem,
@@ -182,7 +183,7 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'suspension') {
 		return item.hitlRequestType === 'approval'
 			? hitlTimelineName(item, i18n)
-			: i18n.baseText('agentSessions.timeline.hitlRequested');
+			: i18n.baseText(hitlRequestLabelKey(item.hitlRequestType));
 	}
 	return item.hitlRequestType === 'approval'
 		? hitlTimelineName(item, i18n)
