@@ -7,7 +7,6 @@ import {
 	AI_UNCATEGORIZED_CATEGORY,
 	DEBOUNCE_TIME,
 	HUMAN_IN_THE_LOOP_CATEGORY,
-	AI_CATEGORY_MCP_NODES,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
@@ -52,7 +51,6 @@ const nodeCreatorStore = useNodeCreatorStore();
 const { isAdminOrOwner } = useUsersStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
-const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
 
 const communityNodeDetails = computed(() => activeViewStack.value.communityNodeDetails);
 
@@ -314,7 +312,7 @@ function onBackButton() {
 			<CommunityNodeDetails v-if="communityNodeDetails" />
 			<CommunityNodeInfo v-if="communityNodeDetails && !isActionsMode" />
 
-			<div :class="[$style.renderedItems, { [$style.hasSuggestionFooter]: isMcpCategory }]">
+			<div :class="$style.renderedItems">
 				<N8nNotice
 					v-if="activeViewStack.info && !activeViewStack.search"
 					:class="$style.info"
@@ -390,11 +388,6 @@ function onBackButton() {
 	flex-direction: column;
 	scrollbar-width: none; /* Firefox 64 */
 	padding-bottom: var(--spacing--xl);
-
-	&.hasSuggestionFooter {
-		padding-bottom: 0;
-		justify-content: space-between;
-	}
 
 	&::-webkit-scrollbar {
 		display: none;

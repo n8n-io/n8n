@@ -355,7 +355,6 @@ registerKeyHook('MainViewArrowLeft', {
 	<span
 		:class="{
 			[$style.withSuggestionFooter]: showSuggestionFooter,
-			[$style.offsetPanelPadding]: isSearchResultEmpty && !isMcpCategory,
 		}"
 	>
 		<!-- Global Callouts-->
@@ -431,9 +430,6 @@ registerKeyHook('MainViewArrowLeft', {
 	flex: 1;
 	flex-direction: column;
 	min-height: 0;
-}
-
-.offsetPanelPadding {
 	margin-bottom: calc(-1 * var(--spacing--xl));
 }
 
