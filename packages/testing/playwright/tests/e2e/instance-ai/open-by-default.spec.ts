@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 
-import type { TestRequirements } from '../../../Types';
 import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from './fixtures';
+import type { TestRequirements } from '../../../Types';
 
 const requirements: TestRequirements = {
 	storage: {
