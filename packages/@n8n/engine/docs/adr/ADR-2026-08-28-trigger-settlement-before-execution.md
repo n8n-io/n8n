@@ -11,8 +11,8 @@ start with the trigger output, and execution flows onwards along the workflow
 graph. Triggers can be executed both manually by a user, or on the background
 for production executions.
 
-The v1 engine runs manual executions as part of the graph traversal, and
-production executions before the graph traversal starts.
+The v1 engine runs triggers during manual executions as part of the graph
+traversal, and production executions before the graph traversal starts.
 
 In this ADR, a settled trigger means that the caller has received the emission
 that starts the execution. It does not mean that the engine has already created
