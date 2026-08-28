@@ -20,7 +20,7 @@
 	],
 	"datasets": ["ai-gateway"],
 	"processExpectations": [
-		"The agent did not ask the user to provide an API key or set up a credential for the web-search or cloud-browser tools, and did not route them to credential setup — Gateway credits covers those service nodes on this instance, so it treated them as connected.",
+		"The agent did not ask the user to provide an API key or set up a credential for the web-search or cloud-browser tools, and did not route them to credential setup — Gateway credits cover those service nodes on this instance, so it treated them as connected.",
 		"The agent did not just take the first suggested or top-ranked service node for web search / cloud browser; when the user had no stored credential for a comparable tool, it preferred the Gateway-credits-covered node over an alternative that would require the user's own API key."
 	],
 	"outcomeExpectations": [

@@ -358,7 +358,7 @@ async function computeAiGatewayIssues(
 		const typeVersion = node.typeVersion ?? 1;
 		if (typeVersion < gatewayMeta.minVersion) {
 			(issues.belowMinVersion ??= []).push(
-				`Gateway credits requires typeVersion >= ${gatewayMeta.minVersion} for this node; current version is ${typeVersion}.`,
+				`Gateway credits require typeVersion >= ${gatewayMeta.minVersion} for this node; current version is ${typeVersion}.`,
 			);
 		}
 	}

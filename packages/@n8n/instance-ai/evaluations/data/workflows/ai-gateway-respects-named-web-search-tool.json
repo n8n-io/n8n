@@ -19,7 +19,7 @@
 	],
 	"datasets": ["ai-gateway"],
 	"processExpectations": [
-		"The agent did not substitute the user's explicitly named SerpApi for a different web-search node or for a Gateway-credits-covered alternative, even though Gateway credits is available on the instance — it honoured the named tool."
+		"The agent did not substitute the user's explicitly named SerpApi for a different web-search node or for a Gateway-credits-covered alternative, even though Gateway credits are available on the instance — it honoured the named tool."
 	],
 	"outcomeExpectations": [
 		"Web search is performed via SerpApi — the tool the user explicitly named (a SerpApi node or an HTTP Request to the SerpApi API) — and the build did not substitute a different provider or a Gateway-credits-covered node.",
