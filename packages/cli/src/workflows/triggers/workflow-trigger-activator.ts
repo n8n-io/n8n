@@ -691,24 +691,28 @@ export class WorkflowTriggerActivator {
 
 		await workflow.expression.acquireIsolate();
 		try {
-			let webhooks: IWebhookData[];
-			try {
-				webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
-			} catch (discoveryError) {
-				// Rare by construction: discovery re-evaluates the same expressions
-				// registration already evaluated, so it only fails when the expression
-				// context drifted since publish (e.g. a deleted variable). A missing
-				// node type is NOT reachable here — `createWorkflow` above resolves
-				// every node's type first, so that case fails before any row was
-				// deleted; the `queryNodes` below is therefore safe to resolve types
-				// again. The rows are already deleted at this point, so this follows
-				// the same rule as an unreachable third party: external cleanup is
-				// impossible, surface it per webhook-capable node and move on.
-				// Throwing instead would wedge retries — fatally on the publish path,
-				// where the old version's routing is already gone.
-				const error = ensureError(discoveryError);
-				for (const targetNode of workflow.queryNodes((nodeType) => !!nodeType.webhook)) {
-					if (!nodeIds.has(targetNode.id)) continue;
+			// Discovery re-evaluates each node's webhook expressions, which can
+			// throw when the expression context drifted since publish (rare by
+			// construction — registration evaluated the same expressions; e.g. a
+			// deleted variable). It runs per node so one node's failure cannot lose
+			// its siblings' external cleanup. A failing node's rows are already
+			// deleted above, so it follows the same rule as an unreachable third
+			// party: external cleanup is impossible, surface it and move on.
+			// Throwing instead would wedge retries — fatally on the publish path,
+			// where the old version's routing is already gone.
+			const webhooks: IWebhookData[] = [];
+			for (const targetNode of Object.values(workflow.nodes)) {
+				if (!nodeIds.has(targetNode.id)) continue;
+				try {
+					webhooks.push(
+						...this.webhookTriggerRegistrar.getNodeWebhookTriggers(
+							workflow,
+							targetNode,
+							additionalData,
+						),
+					);
+				} catch (discoveryError) {
+					const error = ensureError(discoveryError);
 					this.logger.warn('Abandoned external webhook cleanup after failed discovery', {
 						workflowId: workflow.id,
 						nodeName: targetNode.name,
@@ -716,7 +720,6 @@ export class WorkflowTriggerActivator {
 					});
 					failuresByNode.set(targetNode.name, { nodeName: targetNode.name, error });
 				}
-				return [...failuresByNode.values()];
 			}
 
 			const deregistrationResults = await Promise.allSettled(

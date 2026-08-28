@@ -419,7 +419,9 @@ describe('WorkflowTriggerActivator', () => {
 		const deregisterB = createDeferredPromise();
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
-		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
+		webhookTriggerRegistrar.getNodeWebhookTriggers.mockImplementation((_workflow, node) =>
+			node.name === 'Webhook' ? [webhookData] : [],
+		);
 		webhookTriggerRegistrar.deregister.mockImplementation(async () => {
 			callOrder.push('deregister-webhooks');
 			return 'Webhook';
@@ -535,7 +537,7 @@ describe('WorkflowTriggerActivator', () => {
 			const callOrder: string[] = [];
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 			const webhookData = mock<IWebhookData>({ node: 'Webhook' });
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockReturnValue([webhookData]);
 			webhookTriggerRegistrar.clearWorkflowWebhooksForNodes.mockImplementation(async () => {
 				callOrder.push('clear-webhook-rows');
 			});
@@ -571,7 +573,7 @@ describe('WorkflowTriggerActivator', () => {
 			);
 
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockImplementation(() => {
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockImplementation(() => {
 				throw new Error('discovery failed');
 			});
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
@@ -597,14 +599,57 @@ describe('WorkflowTriggerActivator', () => {
 			]);
 		});
 
-		test('a discovery failure names only the webhook-capable nodes', async () => {
+		test('a discovery failure on one node still deregisters the other nodes externally', async () => {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				mock<IWorkflowExecuteAdditionalData>(),
 			);
 
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockImplementation(() => {
-				throw new Error('discovery failed');
+			const webhookOk = mock<IWebhookData>({ node: 'Webhook OK' });
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockImplementation((_workflow, node) => {
+				if (node.name === 'Webhook Broken') throw new Error('discovery failed');
+				return [webhookOk];
+			});
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+			const { externalTeardownFailures } = await activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{
+					nodes: [
+						node('ok-node', 'webhook', { name: 'Webhook OK' }),
+						node('broken-node', 'webhook', { name: 'Webhook Broken' }),
+					],
+					connections: {},
+				},
+				new Set(['ok-node', 'broken-node']),
+				abort,
+			);
+
+			// The healthy node's external subscription is still cleaned up; only
+			// the node whose discovery failed is abandoned.
+			expect(webhookTriggerRegistrar.deregister).toHaveBeenCalledWith(
+				expect.objectContaining({ webhookData: webhookOk }),
+			);
+			expect(externalTeardownFailures).toEqual([
+				{
+					nodeName: 'Webhook Broken',
+					error: expect.objectContaining({ message: 'discovery failed' }),
+				},
+			]);
+		});
+
+		test('a discovery failure names only the failing node', async () => {
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockImplementation((_workflow, node) => {
+				if (node.name === 'Webhook') throw new Error('discovery failed');
+				return [];
 			});
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['trigger-node']);
@@ -644,7 +689,9 @@ describe('WorkflowTriggerActivator', () => {
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 			const webhookOk = mock<IWebhookData>({ node: 'Webhook OK' });
 			const webhookBroken = mock<IWebhookData>({ node: 'Webhook Broken' });
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookOk, webhookBroken]);
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockImplementation((_workflow, node) =>
+				node.name === 'Webhook OK' ? [webhookOk] : [webhookBroken],
+			);
 			webhookTriggerRegistrar.deregister.mockImplementation(async ({ webhookData }) => {
 				if (webhookData.node === 'Webhook Broken') throw deregisterError;
 				return webhookData.node;
@@ -738,7 +785,7 @@ describe('WorkflowTriggerActivator', () => {
 
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 			const webhookData = mock<IWebhookData>({ node: 'Webhook' });
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockReturnValue([webhookData]);
 			let attempt = 0;
 			webhookTriggerRegistrar.deregister.mockImplementation(
 				async () => await deregisterImpl(attempt++),
@@ -779,7 +826,7 @@ describe('WorkflowTriggerActivator', () => {
 			);
 
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockReturnValue([
 				mock<IWebhookData>({ node: 'Webhook', path: 'one' }),
 				mock<IWebhookData>({ node: 'Webhook', path: 'two' }),
 			]);
@@ -828,7 +875,7 @@ describe('WorkflowTriggerActivator', () => {
 			);
 
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockReturnValue([]);
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t']);
 			nonWebhookTriggerRegistrar.deregister.mockRejectedValue(
@@ -1375,7 +1422,7 @@ describe('WorkflowTriggerActivator', () => {
 				mock<IWorkflowExecuteAdditionalData>(),
 			);
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockReturnValue([]);
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['trigger-a']);
 
@@ -1447,7 +1494,7 @@ describe('WorkflowTriggerActivator', () => {
 
 		test('a deactivation whose teardown hangs rejects with the abort reason once the signal fires', async () => {
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockReturnValue([]);
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['stuck']);
 			nonWebhookTriggerRegistrar.deregister.mockImplementation(
@@ -1479,7 +1526,9 @@ describe('WorkflowTriggerActivator', () => {
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 			const webhookBroken = mock<IWebhookData>({ node: 'Webhook Broken', path: 'broken' });
 			const webhookStuck = mock<IWebhookData>({ node: 'Webhook Stuck', path: 'hang' });
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookBroken, webhookStuck]);
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockImplementation((_workflow, node) =>
+				node.name === 'Webhook Broken' ? [webhookBroken] : [webhookStuck],
+			);
 			webhookTriggerRegistrar.deregister.mockImplementation(async ({ webhookData }) => {
 				if (webhookData.path === 'hang') await new Promise(() => {});
 				throw new UserError('Credential with ID "c-1" does not exist for type "trelloApi".');
@@ -1512,7 +1561,9 @@ describe('WorkflowTriggerActivator', () => {
 			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
 			const webhookOk = mock<IWebhookData>({ node: 'Webhook OK', path: 'ok' });
 			const webhookStuck = mock<IWebhookData>({ node: 'Webhook Stuck', path: 'hang' });
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookOk, webhookStuck]);
+			webhookTriggerRegistrar.getNodeWebhookTriggers.mockImplementation((_workflow, node) =>
+				node.name === 'Webhook OK' ? [webhookOk] : [webhookStuck],
+			);
 			webhookTriggerRegistrar.deregister.mockImplementation(async ({ webhookData }) => {
 				if (webhookData.path === 'hang') await new Promise(() => {});
 				return webhookData.node;
