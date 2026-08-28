@@ -176,10 +176,10 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, ctx, ownCredentials);
 
 			expect(json.nodes[0].credentials).toEqual({
-				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(result.resolvedCredentialsByNode).toEqual({
-				Slack: [{ type: 'slackApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				Slack: [{ type: 'slackApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true }],
 			});
 			// n8n credits is connected — the own credential was not auto-attached over it.
 			expect(result.mockedCredentialsByNode).toEqual({});

@@ -4029,7 +4029,7 @@ function normalizeManagedCredentialForSave(value: unknown): unknown {
 	const name = Reflect.get(value, 'name');
 	return {
 		id: null,
-		name: typeof name === 'string' && name !== '' ? name : 'n8n credits',
+		name: typeof name === 'string' && name !== '' ? name : 'Gateway credits',
 		__aiGatewayManaged: true,
 	};
 }
