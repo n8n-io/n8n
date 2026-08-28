@@ -75,6 +75,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override seedsInstanceIdentity = true;
 
+	override readonly isMainServer = true;
+
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
 	/**
