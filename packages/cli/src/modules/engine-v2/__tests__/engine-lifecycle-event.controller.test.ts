@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import type { LifecycleEvent } from '@n8n/engine';
 import type { Request, Response } from 'express';
 import type { Mocked } from 'vitest';
@@ -6,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
 
 const events: LifecycleEvent[] = [
@@ -29,8 +29,7 @@ const events: LifecycleEvent[] = [
 ];
 
 describe('EngineLifecycleEventController', () => {
-	// The controller scopes its logger, so assert on the scoped one.
-	let logger: Logger;
+	let pushRelay: EngineLifecycleEventPushRelay;
 	let controller: EngineLifecycleEventController;
 
 	const newResponse = () => {
@@ -47,10 +46,8 @@ describe('EngineLifecycleEventController', () => {
 	const newRequest = (body: unknown = { events }) => ({ body }) as unknown as Request;
 
 	beforeEach(() => {
-		logger = mock<Logger>();
-		controller = new EngineLifecycleEventController(
-			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
-		);
+		pushRelay = mock<EngineLifecycleEventPushRelay>();
+		controller = new EngineLifecycleEventController(pushRelay);
 	});
 
 	describe('receiveLifecycleEvents', () => {
@@ -63,35 +60,10 @@ describe('EngineLifecycleEventController', () => {
 			expect(res.end).toHaveBeenCalled();
 		});
 
-		it('logs every event in the batch, not just a count', async () => {
+		it('hands the whole batch to the push relay, in order', async () => {
 			await controller.receiveLifecycleEvents(newRequest(), newResponse());
 
-			expect(logger.debug).toHaveBeenCalledTimes(2);
-			expect(logger.debug).toHaveBeenNthCalledWith(
-				1,
-				'Engine lifecycle event: execution:started',
-				events[0],
-			);
-		});
-
-		it('logs a completed step by its output slot count, never its contents', async () => {
-			// A log must not become a copy of a user's execution data.
-			await controller.receiveLifecycleEvents(newRequest(), newResponse());
-
-			const [message, metadata] = vi.mocked(logger.debug).mock.calls[1];
-
-			expect(message).toBe('Engine lifecycle event: step:completed');
-			expect(metadata).toEqual({
-				type: 'step:completed',
-				executionId: 'exec-1',
-				stepId: 'step-1',
-				nodeId: 'node-a',
-				nodeName: 'Edit Fields',
-				iteration: 0,
-				at: '2026-08-24T10:00:01.000Z',
-				outputSlots: 1,
-			});
-			expect(JSON.stringify(metadata)).not.toContain('greeting');
+			expect(pushRelay.relay).toHaveBeenCalledExactlyOnceWith(events);
 		});
 
 		it.each([
@@ -105,6 +77,8 @@ describe('EngineLifecycleEventController', () => {
 				BadRequestError,
 			);
 			expect(res.status).not.toHaveBeenCalled();
+			// Unvalidated input must never reach the relay.
+			expect(pushRelay.relay).not.toHaveBeenCalled();
 		});
 	});
 });

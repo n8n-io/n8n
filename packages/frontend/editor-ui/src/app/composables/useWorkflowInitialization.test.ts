@@ -6,6 +6,9 @@ import { render } from '@testing-library/vue';
 
 import { useWorkflowInitialization } from './useWorkflowInitialization';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
+import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 
 const mockSetDocumentTitle = vi.hoisted(() => vi.fn());
@@ -211,6 +214,44 @@ describe('useWorkflowInitialization', () => {
 			await initializeWorkspaceForNewWorkflow();
 
 			expect(mockWorkflowDocumentStore.setHydrated).toHaveBeenCalledWith(true);
+		});
+	});
+
+	describe('new workflow home project', () => {
+		function initializeNewWorkflow() {
+			let initializeWorkspaceForNewWorkflow!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeWorkspaceForNewWorkflow = init.initializeWorkspaceForNewWorkflow;
+			});
+			return initializeWorkspaceForNewWorkflow();
+		}
+
+		it('uses the project that refreshCurrentProject resolves', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = { id: 'personal-project-id' } as Project;
+			// A `?projectId=` deep link only lands in the store when this call resolves.
+			projectsStore.currentProject = null;
+			projectsStore.refreshCurrentProject.mockImplementation(async () => {
+				projectsStore.currentProject = { id: 'team-project-id' } as Project;
+			});
+
+			await initializeNewWorkflow();
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'team-project-id' }),
+			);
+		});
+
+		it('falls back to the personal project when no project is current', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = { id: 'personal-project-id' } as Project;
+			projectsStore.currentProject = null;
+
+			await initializeNewWorkflow();
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'personal-project-id' }),
+			);
 		});
 	});
 });
