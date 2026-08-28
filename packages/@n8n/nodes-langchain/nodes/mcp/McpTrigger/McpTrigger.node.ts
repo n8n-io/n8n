@@ -112,13 +112,18 @@ export class McpTrigger extends Node {
 		outputs: [],
 		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		triggerIdentity: {
-			establishes: true,
+			establishes: (node) => node.parameters?.authentication === 'n8nOAuth2',
 			mergeStrategy: 'index-merge',
 			// Calls context.checkTriggerCredentialStatus() itself, from
 			// getConnectedToolsRespectingCredentialGate — it needs the gate
 			// result mid-flow, to decide whether to expose a placeholder
 			// "connect credentials" tool instead of the real tool list.
 			gate: 'manual',
+		},
+		// Needed regardless of auth mode: getConnectedTools() connects MCP Client
+		// sub-nodes eagerly, which requires execution data to exist up front.
+		triggerExecutionSeeding: {
+			mergeStrategy: 'index-merge',
 		},
 		credentials: [
 			{

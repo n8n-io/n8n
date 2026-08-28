@@ -629,17 +629,15 @@ describe('prepareExecutionData', () => {
 			mock<INodeType>({
 				description: {
 					triggerIdentity:
-						type === WEBHOOK_NODE_TYPE
+						type === WEBHOOK_NODE_TYPE || type === MCP_TRIGGER_NODE_TYPE
 							? {
 									establishes: (node: INode) => node.parameters?.authentication === 'n8nOAuth2',
-									mergeStrategy: 'replace',
-									gate: 'reactive',
+									mergeStrategy: type === WEBHOOK_NODE_TYPE ? 'replace' : 'index-merge',
+									gate: type === WEBHOOK_NODE_TYPE ? 'reactive' : 'manual',
 								}
-							: type === MCP_TRIGGER_NODE_TYPE
-								? { establishes: true, mergeStrategy: 'index-merge', gate: 'manual' }
-								: undefined,
+							: undefined,
 					triggerExecutionSeeding:
-						type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE
+						type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE || type === MCP_TRIGGER_NODE_TYPE
 							? { mergeStrategy: 'index-merge' }
 							: undefined,
 				},
