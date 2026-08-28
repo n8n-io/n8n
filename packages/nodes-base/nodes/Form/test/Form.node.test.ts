@@ -358,6 +358,9 @@ describe('Form Node', () => {
 
 				expect(result).toEqual({ noWebhookResponse: true });
 				expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
+					// The attribution footer is on for every case here, so it always
+					// carries the link it points at.
+					n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 					...expected,
 				});
 			}
@@ -1093,6 +1096,7 @@ describe('Form Node', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
 				appendAttribution: 'test',
+				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 				formTitle: 'test',
 				message: 'Test Message',
 				redirectUrl: 'https://n8n.io',

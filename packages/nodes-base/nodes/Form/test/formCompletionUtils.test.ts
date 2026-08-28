@@ -180,6 +180,35 @@ describe('formCompletionUtils', () => {
 			);
 		});
 
+		it('should let the completion page turn the attribution footer off on its own', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title', appendAttribution: false },
+				};
+				return params[parameterName];
+			});
+			// The trigger keeps the footer on, so only the node's own option can
+			// account for it being dropped here.
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+				expression ===
+				`{{ $(${JSON.stringify(trigger.name)}).params.options?.appendAttribution === false ? false : true }}`
+					? true
+					: '',
+			);
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					appendAttribution: false,
+					n8nWebsiteLink: undefined,
+				}),
+			);
+		});
+
 		it('should render completionTitle and completionMessage as-is without re-evaluating them', async () => {
 			// `getNodeParameter` already resolves expressions, so the values it
 			// returns must be rendered verbatim. Resolving them a second time
