@@ -23,6 +23,7 @@ import {
 	type McpAuthenticationOption,
 	type McpServerTransport,
 } from '../shared/types';
+import { resolveRegistryEndpointUrl } from '../shared/utils';
 
 /**
  * Nodes from the MCP registry are saved as `@n8n/mcp-registry.<slug>`
@@ -152,10 +153,15 @@ export class McpRegistryClientTool implements INodeType {
 		loadOptions: {
 			async getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const authentication = getCredentialType(this);
+				const endpointUrl = await resolveRegistryEndpointUrl(
+					this,
+					authentication,
+					() => this.getNodeParameter('endpointUrl') as string,
+				);
 				return await loadMcpToolOptions(this, {
 					authentication,
 					transport: this.getNodeParameter('serverTransport') as McpServerTransport,
-					endpointUrl: this.getNodeParameter('endpointUrl') as string,
+					endpointUrl,
 					timeout: this.getNodeParameter('options.timeout', 60000) as number,
 				});
 			},
@@ -163,26 +169,31 @@ export class McpRegistryClientTool implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		return await buildMcpToolkit(this, itemIndex, resolveConfig(this, itemIndex));
+		return await buildMcpToolkit(this, itemIndex, await resolveConfig(this, itemIndex));
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return await executeMcpTool(this, (itemIndex) => resolveConfig(this, itemIndex), {
+		return await executeMcpTool(this, async (itemIndex) => await resolveConfig(this, itemIndex), {
 			// v1.1+ reuses one MCP session across tool calls within an execution.
 			enableSessionCache: this.getNode().typeVersion >= 1.1,
 		});
 	}
 }
 
-function resolveConfig(
+async function resolveConfig(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	itemIndex: number,
-): ResolvedMcpConfig {
+): Promise<ResolvedMcpConfig> {
 	const authentication = getCredentialType(ctx);
+	const endpointUrl = await resolveRegistryEndpointUrl(
+		ctx,
+		authentication,
+		() => ctx.getNodeParameter('endpointUrl', itemIndex) as string,
+	);
 	return {
 		authentication,
 		transport: ctx.getNodeParameter('serverTransport', itemIndex) as McpServerTransport,
-		endpointUrl: ctx.getNodeParameter('endpointUrl', itemIndex) as string,
+		endpointUrl,
 		timeout: ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number,
 		toolFilter: {
 			mode: ctx.getNodeParameter('include', itemIndex) as McpToolIncludeMode,

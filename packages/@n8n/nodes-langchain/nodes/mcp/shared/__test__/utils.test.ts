@@ -14,6 +14,7 @@ import {
 	connectMcpClientForCredential,
 	getAuthHeaders,
 	mapToNodeOperationError,
+	resolveRegistryEndpointUrl,
 	tryRefreshOAuth2Token,
 } from '../utils';
 
@@ -842,6 +843,69 @@ describe('utils', () => {
 				expect(egressFilter.validateUrl).toHaveBeenCalledWith('https://mcp.example.com/');
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('resolveRegistryEndpointUrl', () => {
+		it('prefers the credential-resolved serverUrl for an MCP OAuth2 credential', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({
+				serverUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
+			});
+			const fallback = vi.fn(() => 'ignored');
+
+			const result = await resolveRegistryEndpointUrl(ctx, 'databricksMcpOAuth2Api', fallback);
+
+			expect(result).toBe('https://acme.cloud.databricks.com/api/2.0/mcp/genie');
+			expect(fallback).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the node parameter when the credential has no serverUrl', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({});
+			const fallback = vi.fn(() => 'https://mcp.example.com/mcp');
+
+			const result = await resolveRegistryEndpointUrl(ctx, 'databricksMcpOAuth2Api', fallback);
+
+			expect(result).toBe('https://mcp.example.com/mcp');
+			expect(fallback).toHaveBeenCalledTimes(1);
+		});
+
+		it('falls back when getCredentials rejects', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockRejectedValue(new Error('not found'));
+			const fallback = vi.fn(() => 'https://mcp.example.com/mcp');
+
+			const result = await resolveRegistryEndpointUrl(ctx, 'databricksMcpOAuth2Api', fallback);
+
+			expect(result).toBe('https://mcp.example.com/mcp');
+		});
+
+		it('never reads credentials for a non-MCP-OAuth2 authentication option, and falls back', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const fallback = vi.fn(() => 'https://mcp.example.com/mcp');
+
+			const result = await resolveRegistryEndpointUrl(ctx, 'headerAuth', fallback);
+
+			expect(result).toBe('https://mcp.example.com/mcp');
+			expect(ctx.getCredentials).not.toHaveBeenCalled();
+		});
+
+		it('does not call the fallback thunk when a resolved serverUrl is available', async () => {
+			// Regression guard: for a templated registry row the node's own
+			// endpointUrl parameter holds a raw, unresolved `$self` expression
+			// string, evaluating it would be wrong even if its return value is
+			// discarded, so the thunk must stay unevaluated whenever a resolved
+			// serverUrl exists.
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({ serverUrl: 'https://acme.databricks.com/mcp' });
+			const fallback = vi.fn(() => {
+				throw new Error('fallback should not be evaluated');
+			});
+
+			await expect(
+				resolveRegistryEndpointUrl(ctx, 'databricksMcpOAuth2Api', fallback),
+			).resolves.toBe('https://acme.databricks.com/mcp');
 		});
 	});
 

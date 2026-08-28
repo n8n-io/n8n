@@ -40,6 +40,7 @@ function createLoadOptionsCtx(params: ParamMap, nodeOverrides?: ParamMap) {
 	ctx.getNodeParameter.mockImplementation((key: string, defaultValue?: unknown) => {
 		return (key in params ? params[key] : defaultValue) as never;
 	});
+	ctx.getCredentials.mockResolvedValue({});
 	return ctx;
 }
 
@@ -58,6 +59,7 @@ function createSupplyDataCtx(params: ParamMap, nodeOverrides?: ParamMap) {
 			return (key in params ? params[key] : defaultValue) as never;
 		},
 	);
+	ctx.getCredentials.mockResolvedValue({});
 	return ctx;
 }
 
@@ -76,6 +78,7 @@ function createExecuteCtx(params: ParamMap, nodeOverrides?: ParamMap) {
 			return (key in params ? params[key] : defaultValue) as never;
 		},
 	);
+	ctx.getCredentials.mockResolvedValue({});
 	return ctx;
 }
 
@@ -137,6 +140,28 @@ describe('McpRegistryClientTool', () => {
 			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(
 				ctx,
 				expect.objectContaining({ timeout: 60000 }),
+			);
+		});
+
+		it('prefers the credential-resolved serverUrl over the endpointUrl parameter', async () => {
+			const ctx = createLoadOptionsCtx({
+				serverTransport: 'httpStreamable',
+				endpointUrl: '={{$self["host"]}}/api/2.0/mcp/genie',
+				'options.timeout': 30000,
+			});
+			ctx.getCredentials.mockResolvedValue({
+				serverUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
+			});
+			loadMcpToolOptionsMock.mockResolvedValue([]);
+
+			const node = new McpRegistryClientTool();
+			await node.methods.loadOptions.getTools.call(ctx);
+
+			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(
+				ctx,
+				expect.objectContaining({
+					endpointUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
+				}),
 			);
 		});
 	});
@@ -211,6 +236,29 @@ describe('McpRegistryClientTool', () => {
 				'No MCP OAuth2 credential type found',
 			);
 		});
+
+		it('prefers the credential-resolved serverUrl over the endpointUrl parameter', async () => {
+			const ctx = createSupplyDataCtx({
+				serverTransport: 'httpStreamable',
+				endpointUrl: '={{$self["host"]}}/api/2.0/mcp/genie',
+				include: 'all',
+			});
+			ctx.getCredentials.mockResolvedValue({
+				serverUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
+			});
+			buildMcpToolkitMock.mockResolvedValue({ response: {} } as never);
+
+			const node = new McpRegistryClientTool();
+			await node.supplyData.call(ctx, 0);
+
+			expect(buildMcpToolkitMock).toHaveBeenCalledWith(
+				ctx,
+				0,
+				expect.objectContaining({
+					endpointUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
+				}),
+			);
+		});
 	});
 
 	describe('execute', () => {
@@ -238,7 +286,7 @@ describe('McpRegistryClientTool', () => {
 			);
 
 			const resolve = executeMcpToolMock.mock.calls[0][1];
-			expect(resolve(0)).toEqual({
+			await expect(resolve(0)).resolves.toEqual({
 				authentication: 'someServiceMcpOAuth2Api',
 				transport: 'httpStreamable',
 				endpointUrl: 'https://mcp.notion.com/mcp',
@@ -289,6 +337,33 @@ describe('McpRegistryClientTool', () => {
 			const node = new McpRegistryClientTool();
 
 			await expect(node.execute.call(ctx)).rejects.toThrow('No MCP OAuth2 credential type found');
+		});
+
+		it('prefers the credential-resolved serverUrl over the endpointUrl parameter', async () => {
+			const ctx = createExecuteCtx(
+				{
+					serverTransport: 'httpStreamable',
+					endpointUrl: '={{$self["host"]}}/api/2.0/mcp/genie',
+					'options.timeout': 60000,
+					include: 'all',
+					includeTools: [],
+					excludeTools: [],
+				},
+				{ typeVersion: 1.1 },
+			);
+			ctx.getCredentials.mockResolvedValue({
+				serverUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
+			});
+			executeMcpToolMock.mockResolvedValue([[]]);
+
+			await new McpRegistryClientTool().execute.call(ctx);
+
+			const resolve = executeMcpToolMock.mock.calls[0][1];
+			await expect(resolve(0)).resolves.toEqual(
+				expect.objectContaining({
+					endpointUrl: 'https://acme.cloud.databricks.com/api/2.0/mcp/genie',
+				}),
+			);
 		});
 	});
 });

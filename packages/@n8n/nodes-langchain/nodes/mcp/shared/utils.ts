@@ -78,6 +78,7 @@ const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
 
 type McpOAuth2Credentials = ICredentialDataDecryptedObject & {
 	oauthTokenData?: ClientOAuth2TokenData;
+	serverUrl?: string;
 };
 
 type ConnectMcpClientError =
@@ -526,6 +527,35 @@ export async function connectMcpClientForCredential(
 		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
 		signal: config.signal,
 	});
+}
+
+/**
+ * Registry-derived credentials (see the mcp-registry module) resolve their MCP
+ * endpoint from a synthetic, per-credential `serverUrl` default instead of the
+ * node's `endpointUrl` parameter, so a per-customer host can be filled in via
+ * the credential's own `$self` expression. Only call this from
+ * McpRegistryClientTool: the generic mcpOAuth2Api credential also has a
+ * `serverUrl` field (inherited from oAuth2Api), but it means the unrelated DCR
+ * issuer URL there, not the tool's endpoint.
+ *
+ * `getFallbackEndpointUrl` is a thunk, not a value: for a templated row the
+ * node's own `endpointUrl` parameter holds the raw, unresolved template
+ * (there is no `$self` in node-parameter expressions), so it must never be
+ * evaluated when a resolved `serverUrl` is already available.
+ */
+export async function resolveRegistryEndpointUrl(
+	ctx: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
+	authentication: McpAuthenticationOption,
+	getFallbackEndpointUrl: () => string,
+): Promise<string> {
+	if (isMcpOAuth2Authentication(authentication)) {
+		const credentials = await ctx
+			.getCredentials<McpOAuth2Credentials>(authentication)
+			.catch(() => null);
+		const serverUrl = credentials?.serverUrl;
+		if (typeof serverUrl === 'string' && serverUrl.length > 0) return serverUrl;
+	}
+	return getFallbackEndpointUrl();
 }
 
 export function isStructuredContent(value: unknown): value is Record<string, unknown> {
