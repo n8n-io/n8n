@@ -696,9 +696,12 @@ export class WorkflowTriggerActivator {
 				webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
 			} catch (discoveryError) {
 				// Rare by construction: discovery re-evaluates the same expressions
-				// registration already evaluated, so it only fails when the evaluation
-				// context drifted since publish (a deleted variable, an uninstalled
-				// community node). The rows are already deleted above, so this follows
+				// registration already evaluated, so it only fails when the expression
+				// context drifted since publish (e.g. a deleted variable). A missing
+				// node type is NOT reachable here — `createWorkflow` above resolves
+				// every node's type first, so that case fails before any row was
+				// deleted; the `queryNodes` below is therefore safe to resolve types
+				// again. The rows are already deleted at this point, so this follows
 				// the same rule as an unreachable third party: external cleanup is
 				// impossible, surface it per webhook-capable node and move on.
 				// Throwing instead would wedge retries — fatally on the publish path,
