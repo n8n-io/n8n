@@ -104,7 +104,15 @@ export function defineRenderer(extension: RendererExtension = {}): Renderer {
 			renderComponent(
 				component,
 				rendererOptions.merge
-					? merge(defaultOptions, options)
+					? // KNOWN DEFECT, carried over from the shell verbatim: `merge` writes into its
+						// first argument, so each `{ merge: true }` call leaks its props, stubs and
+						// provides into the renderer's defaults, and every later render inherits them.
+						//
+						// `merge({}, defaultOptions, options)` is the fix. It is not applied here yet:
+						// three editor-ui suites only pass because of the leak, and two of their tests
+						// already fail in isolation on `master`. Correcting the helper and those tests
+						// is one scoped change that this package should not smuggle in.
+						merge(defaultOptions, options)
 					: ({
 							...defaultOptions,
 							...options,

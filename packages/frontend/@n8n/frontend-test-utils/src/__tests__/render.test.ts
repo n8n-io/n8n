@@ -71,6 +71,24 @@ describe('the shared renderer', () => {
 	});
 });
 
+const Labelled = defineComponent({
+	props: { label: { type: String, default: '' }, hint: { type: String, default: '' } },
+	template: '<span data-test-id="labelled">{{ label }}|{{ hint }}</span>',
+});
+
+describe('the { merge: true } option', () => {
+	// No test pins the "defaults stay clean" property yet: `merge` mutates them, and three
+	// editor-ui suites depend on that. See the comment on the `merge` call in `render.ts`.
+
+	it('still merges the call options over the defaults', () => {
+		const render = createComponentRenderer(Labelled, { props: { label: 'default' } });
+
+		const { getByTestId } = render({ props: { hint: 'from the call' } }, { merge: true });
+
+		expect(getByTestId('labelled').textContent).toBe('default|from the call');
+	});
+});
+
 describe('defineRenderer', () => {
 	const ProvideKey = Symbol('provided');
 

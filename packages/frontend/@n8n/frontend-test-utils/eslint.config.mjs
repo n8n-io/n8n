@@ -14,13 +14,16 @@ export default defineConfig(frontendConfig, {
 			{
 				patterns: [
 					{
+						// `**`, not `*`: minimatch's `*` never crosses a `/`, so `'@/*'` would miss
+						// `@/app/...` — the shape a stray shell import actually takes.
 						group: [
 							'@n8n/stores',
-							'@n8n/stores/*',
+							'@n8n/stores/**',
 							'@n8n/composables',
-							'@n8n/composables/*',
+							'@n8n/composables/**',
 							'@n8n/frontend-module-*',
-							'@/*',
+							'@n8n/frontend-module-*/**',
+							'@/**',
 						],
 						message:
 							'@n8n/frontend-test-utils is L1. It may import @n8n/api-types, @n8n/i18n and @n8n/design-system only. See the comment in eslint.config.mjs.',

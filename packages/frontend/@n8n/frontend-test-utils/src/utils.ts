@@ -1,26 +1,38 @@
 /**
  * Retries the given assertion until it passes or the timeout is reached
  *
+ * The assertion may be async. `try/catch` around a bare call sees a synchronous throw only, so a
+ * rejected promise has to be awaited before the retry decides — otherwise the first failure ends
+ * the whole call.
+ *
  * @example
  * await retry(
  *   () => expect(screen.getByText('Hello')).toBeInTheDocument()
  * );
  */
-export const retry = async (assertion: () => void, { interval = 20, timeout = 1000 } = {}) => {
+export const retry = async (
+	// `unknown`, not `Promise<void> | void`: a caller writes
+	// `() => expect(x).toBeInTheDocument()`, and that matcher returns an element. The old `() => void`
+	// accepted it through TypeScript's void-return allowance, which a union does not extend.
+	assertion: () => unknown,
+	{ interval = 20, timeout = 1000 } = {},
+) => {
 	return await new Promise((resolve, reject) => {
 		const startTime = Date.now();
 
 		const tryAgain = () => {
 			setTimeout(() => {
-				try {
-					resolve(assertion());
-				} catch (error) {
-					if (Date.now() - startTime > timeout) {
-						reject(error instanceof Error ? error : new Error(String(error)));
-					} else {
-						tryAgain();
+				void (async () => {
+					try {
+						resolve(await assertion());
+					} catch (error) {
+						if (Date.now() - startTime > timeout) {
+							reject(error instanceof Error ? error : new Error(String(error)));
+						} else {
+							tryAgain();
+						}
 					}
-				}
+				})();
 			}, interval);
 		};
 
