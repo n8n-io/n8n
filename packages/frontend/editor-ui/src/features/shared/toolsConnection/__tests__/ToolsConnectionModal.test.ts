@@ -1,5 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { nextTick } from 'vue';
 import { createComponentRenderer, renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -39,7 +40,7 @@ vi.mock('@n8n/design-system', async () => {
 			scrollTo: scrollToMock,
 		},
 		template: `
-			<div>
+			<div class="recycle-scroller-wrapper">
 				<div v-for="item in items" :key="item[itemKey]">
 					<slot :item="item" :update-item-size="() => {}" />
 				</div>
@@ -105,6 +106,21 @@ function renderWith(
 		},
 		pinia: createTestingPinia(),
 	});
+}
+
+function setScrollerDimensions(
+	container: Element,
+	{ scrollHeight, clientHeight }: { scrollHeight: number; clientHeight: number },
+) {
+	const scroller = container.querySelector<HTMLElement>('.recycle-scroller-wrapper');
+	if (!scroller) throw new Error('Expected recycle scroller');
+
+	Object.defineProperties(scroller, {
+		scrollHeight: { configurable: true, value: scrollHeight },
+		clientHeight: { configurable: true, value: clientHeight },
+		scrollTop: { configurable: true, writable: true, value: 0 },
+	});
+	return scroller;
 }
 
 function renderWithMcpSettingsSlot(detailItem: ToolConnectionItem) {
@@ -225,6 +241,38 @@ describe('ToolsConnectionModal', () => {
 	it('shows the empty state when items is empty', () => {
 		const { getByTestId } = renderWith({ items: [] });
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
+	});
+
+	it('only shows the suggestion footer when the list is at the bottom', async () => {
+		const { queryByTestId, container } = renderWith({
+			items: makeLargeMcpList(20),
+			categories: ['mcp'],
+		});
+		const scroller = setScrollerDimensions(container, { scrollHeight: 1000, clientHeight: 400 });
+
+		await nextTick();
+		await nextTick();
+		expect(queryByTestId('suggest-tool-footer')).toBeNull();
+
+		scroller.scrollTop = 600;
+		await fireEvent.scroll(scroller);
+		expect(queryByTestId('suggest-tool-footer')).toBeTruthy();
+
+		scroller.scrollTop = 598;
+		await fireEvent.scroll(scroller);
+		expect(queryByTestId('suggest-tool-footer')).toBeNull();
+	});
+
+	it('shows the suggestion footer immediately when a non-empty list fits', async () => {
+		const { getAllByTestId, getByTestId, container } = renderWith({
+			items: makeLargeMcpList(2),
+			categories: ['mcp'],
+		});
+		setScrollerDimensions(container, { scrollHeight: 116, clientHeight: 400 });
+
+		await waitFor(() => expect(getByTestId('suggest-tool-footer')).toBeTruthy());
+		expect(getAllByTestId('tools-connection-row')).toHaveLength(2);
 	});
 
 	it('offers workflow creation when the workflows category is empty', async () => {

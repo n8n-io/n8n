@@ -4,7 +4,13 @@ import { createPinia, setActivePinia } from 'pinia';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
-import { MESSAGE_AN_AGENT_NODE_TYPE, REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
+import {
+	AI_CATEGORY_MCP_NODES,
+	AI_MCP_TOOL_NODE_TYPE,
+	AI_OTHERS_NODE_CREATOR_VIEW,
+	MESSAGE_AN_AGENT_NODE_TYPE,
+	REGULAR_NODE_CREATOR_VIEW,
+} from '@/app/constants';
 import type { NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -43,6 +49,19 @@ function messageAnAgentElement(): NodeCreateElement {
 		properties: mockSimplifiedNodeType({
 			name: MESSAGE_AN_AGENT_NODE_TYPE,
 			displayName: 'AI Agent V2',
+			group: ['transform'],
+		}),
+	};
+}
+
+function mcpClientElement(): NodeCreateElement {
+	return {
+		key: AI_MCP_TOOL_NODE_TYPE,
+		type: 'node',
+		subcategory: AI_CATEGORY_MCP_NODES,
+		properties: mockSimplifiedNodeType({
+			name: AI_MCP_TOOL_NODE_TYPE,
+			displayName: 'MCP Client Tool',
 			group: ['transform'],
 		}),
 	};
@@ -106,5 +125,39 @@ describe('NodesMode', () => {
 		await userEvent.click(screen.getByText('Edit Fields'));
 
 		expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.set' }]]]);
+	});
+
+	it('keeps the MCP client pinned once and shows the MCP empty state for no results', async () => {
+		const mcpClient = mcpClientElement();
+		const viewStacks = useViewStacks();
+		viewStacks.pushViewStack({
+			title: 'MCP Servers',
+			mode: 'nodes',
+			rootView: AI_OTHERS_NODE_CREATOR_VIEW,
+			subcategory: AI_CATEGORY_MCP_NODES,
+			search: 'MCP Client',
+			items: [
+				{
+					key: AI_MCP_TOOL_NODE_TYPE,
+					type: 'section',
+					title: '',
+					children: [mcpClient],
+					showSeparator: true,
+					hideHeader: true,
+				},
+			],
+		});
+
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getAllByText('MCP Client Tool')).toHaveLength(1);
+
+		viewStacks.updateCurrentViewStack({ search: 'missing server' });
+		await nextTick();
+
+		expect(screen.getByText('MCP Client Tool')).toBeInTheDocument();
+		expect(screen.getByText('No results for "missing server"')).toBeInTheDocument();
+		expect(screen.queryByText("We didn't make that... yet")).not.toBeInTheDocument();
 	});
 });

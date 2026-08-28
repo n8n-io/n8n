@@ -15,8 +15,10 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_MCP_TOOL_NODE_TYPE,
 	HITL_SUBCATEGORY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	AI_CATEGORY_MCP_NODES,
 } from '@/app/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
@@ -38,6 +40,7 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nText } from '@n8n/design-system';
 
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 
@@ -67,6 +70,7 @@ const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
+const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
 
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -86,8 +90,11 @@ const moreFromCommunity = computed(() => {
 });
 
 const isSearchResultEmpty = computed(() => {
+	const hasNodeResults = (activeViewStack.value.items ?? []).some(
+		(item) => !isMcpCategory.value || item.key !== AI_MCP_TOOL_NODE_TYPE,
+	);
 	return (
-		(activeViewStack.value.items || []).length === 0 &&
+		!hasNodeResults &&
 		globalCallouts.value.length +
 			globalSearchItemsDiff.value.length +
 			moreFromCommunity.value.length ===
@@ -343,9 +350,14 @@ registerKeyHook('MainViewArrowLeft', {
 </script>
 
 <template>
-	<span>
+	<span :class="{ [$style.mcpEmptyState]: isMcpCategory && isSearchResultEmpty }">
 		<!-- Global Callouts-->
-		<ItemsRenderer :elements="globalCallouts" :class="$style.items" @selected="onSelected" />
+		<ItemsRenderer
+			v-if="globalCallouts.length > 0"
+			:elements="globalCallouts"
+			:class="$style.items"
+			@selected="onSelected"
+		/>
 
 		<!-- Main Node Items -->
 		<ItemsRenderer
@@ -356,6 +368,7 @@ registerKeyHook('MainViewArrowLeft', {
 		>
 			<template v-if="isSearchResultEmpty" #empty>
 				<NoResults
+					v-if="!isMcpCategory"
 					:root-view="activeViewStack.rootView"
 					show-icon
 					show-request
@@ -364,6 +377,15 @@ registerKeyHook('MainViewArrowLeft', {
 				/>
 			</template>
 		</ItemsRenderer>
+		<div v-if="isMcpCategory && isSearchResultEmpty" :class="$style.mcpNoResults">
+			<N8nText color="text-light">
+				{{
+					i18n.baseText('nodeCreator.noResults.noMatchingMcpServers', {
+						interpolate: { query: activeViewStack.search ?? '' },
+					})
+				}}
+			</N8nText>
+		</div>
 
 		<!-- Results in other categories -->
 		<CategorizedItemsRenderer
@@ -390,5 +412,18 @@ registerKeyHook('MainViewArrowLeft', {
 <style lang="scss" module>
 .items {
 	margin-bottom: var(--spacing--sm);
+}
+
+.mcpEmptyState {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+}
+
+.mcpNoResults {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
 }
 </style>
