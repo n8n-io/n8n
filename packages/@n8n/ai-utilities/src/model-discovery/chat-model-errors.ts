@@ -13,6 +13,31 @@ export type ChatModelFailureKind =
 	| 'unsupported_parameter'
 	| 'capability_mismatch';
 
+/**
+ * A model term, its optional identifier, and an optional linking verb — the
+ * most a real provider puts between "model" and the reason it rejected one
+ * (`models/gemini-3.6-flash is not found`, `The model "gpt-6" was not found`).
+ *
+ * Keeping this gap narrow is the whole point. An unbounded gap matches any
+ * message that merely mentions a model somewhere before an unrelated
+ * not-found detail — and n8n node errors routinely do, because chat-model
+ * nodes are named "... Chat Model" ("Problem in node 'Google Gemini Chat
+ * Model': the Notion page does not exist"). Callers act on `invalid_model` by
+ * telling the user to replace the model, so a false positive sends them after
+ * a model that was never broken instead of the failing tool or resource.
+ */
+const QUOTE = '[\'"\\x60]';
+
+const MODEL_SUBJECT =
+	'\\b(?:models?|deployment|engine)\\b' +
+	// its identifier, optionally quoted: /gemini-3.6-flash, "gpt-6"
+	`(?:\\s*${QUOTE}?[\\w./:@-]+${QUOTE}?)?` +
+	'(?:\\s+(?:is|was|are|were|has been|had been))?' +
+	'[\\s,:;\'"\\x60-]*';
+
+const MODEL_REJECTED =
+	'(?:not found|does not exist|not available|no longer exists|invalid|unknown)';
+
 const CHAT_MODEL_ERROR_PATTERNS: Array<{
 	kind: ChatModelFailureKind;
 	pattern: RegExp;
@@ -24,8 +49,12 @@ const CHAT_MODEL_ERROR_PATTERNS: Array<{
 	},
 	{
 		kind: 'invalid_model',
-		pattern:
-			/\b(?:model_not_found|not_found_error|invalid_model_id|invalid_model|unknown_model)\b|(?:(?:model|models\/|deployment|engine)[\s\S]*?(?:not found|does not exist|is not found|was not found|invalid|unknown|not available)|(?:resource ['"]?models\/[^\s'"]+['"]? was not found))/i,
+		// Unambiguous provider error codes, or a model the provider says it cannot serve.
+		pattern: new RegExp(
+			'\\b(?:model_not_found|not_found_error|invalid_model_id|invalid_model|unknown_model)\\b' +
+				`|${MODEL_SUBJECT}${MODEL_REJECTED}`,
+			'i',
+		),
 	},
 	{
 		kind: 'capability_mismatch',

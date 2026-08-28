@@ -45,4 +45,15 @@ describe('describeCallAgentFailure', () => {
 		expect(result.code).toBe('execution_failed');
 		expect(result.message).toMatch(/if this came from the model provider/i);
 	});
+
+	// `call_agent` runs the agent's tools too, so a tool's 404 often arrives in a
+	// message that also names the chat model. Blaming the model there would send
+	// the user after a model that works.
+	it.each([
+		["Problem in node 'Google Gemini Chat Model': the Notion page does not exist"],
+		['Model gemini-3.7-flash ran, but workflow tool "Lookup" failed: record does not exist'],
+		['The model returned a tool call to get_user, but the user was not found'],
+	])('does not code %j as invalid_model', (message) => {
+		expect(describeCallAgentFailure(message).code).toBe('execution_failed');
+	});
 });
