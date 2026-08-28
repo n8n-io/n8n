@@ -93,7 +93,7 @@ function validateCompiledWorkflow(
 	warnings.push(...detectArrayInputCollapse(json));
 	warnings.push(...detectWrongKindLocatorValues(json, context.nodeTypesProvider));
 	warnings.push(...detectUnparseableOpenAiSchema(json));
-	warnings.push(...detectPythonCodeConstraints(json, context.pythonImportPolicy));
+	warnings.push(...detectPythonCodeConstraints(json));
 	return warnings;
 }
 

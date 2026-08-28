@@ -424,8 +424,6 @@ describe('GlobalConfig', () => {
 			heartbeatInterval: 30,
 			grantTokenTtl: 30,
 			insecureMode: false,
-			stdlibAllow: '',
-			externalAllow: '',
 		},
 		sentry: {
 			backendDsn: '',

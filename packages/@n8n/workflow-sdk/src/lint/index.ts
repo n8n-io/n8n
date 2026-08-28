@@ -15,7 +15,7 @@ export {
 	lintWorkflowSdkAst,
 } from './sdk/workflow-sdk-lint';
 export { lintJsCode, hasNestedTemplateLiterals } from './code-node/js';
-export { lintPythonCode, type PythonImportPolicy } from './code-node/python';
+export { lintPythonCode } from './code-node/python';
 export {
 	extractEmbeddedCodeSnippets,
 	extractEmbeddedCodeSnippetsFromSource,

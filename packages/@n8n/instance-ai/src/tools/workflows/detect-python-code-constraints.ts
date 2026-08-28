@@ -1,10 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import {
-	lintPythonCode,
-	type CodeExecutionMode,
-	type PythonImportPolicy,
-	type WorkflowJSON,
-} from '@n8n/workflow-sdk';
+import { lintPythonCode, type CodeExecutionMode, type WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
 
@@ -27,22 +22,16 @@ function runsPython(params: Record<string, unknown>): boolean {
 }
 
 /**
- * Re-runs the Code-node Python rules on the host, where the instance's real import
- * allowlist is known.
+ * Runs the Code-node Python rules over a compiled workflow at build time, so a node
+ * the runner will reject is reported before the user ever executes it (INS-1222).
  *
- * The same rules run in the sandbox via `workflow-sdk validate`, but that process
- * cannot see `N8N_RUNNERS_STDLIB_ALLOW` / `N8N_RUNNERS_EXTERNAL_ALLOW` and so has to
- * assume the conservative default. Here we pass the effective policy, so an instance
- * that allowlisted a module is not nagged about importing it, and an instance that
- * allowlisted nothing gets a message naming that fact (INS-1222).
+ * The same rules also run in the sandbox via `workflow-sdk validate`; this is the
+ * host-side pass, which sees the workflow after it compiles.
  *
  * Informational: a disallowed import is a run-time failure, not a malformed
  * workflow, so it should reach the agent without blocking the save.
  */
-export function detectPythonCodeConstraints(
-	json: WorkflowJSON,
-	policy: PythonImportPolicy | undefined,
-): ValidationWarning[] {
+export function detectPythonCodeConstraints(json: WorkflowJSON): ValidationWarning[] {
 	const warnings: ValidationWarning[] = [];
 
 	for (const node of json.nodes ?? []) {
@@ -57,11 +46,6 @@ export function detectPythonCodeConstraints(
 		const issues = lintPythonCode(params.pythonCode, {
 			mode: executionMode(params),
 			nodeName,
-			// A non-authoritative policy must never silence a warning: in external runner
-			// mode the runner is configured separately and may be stricter than n8n thinks
-			// (the official runners image forces both allowlists empty). Withholding it
-			// falls back to assuming nothing is importable, which is the safe reading.
-			importPolicy: policy?.authoritative ? policy : undefined,
 		});
 
 		for (const issue of issues) {

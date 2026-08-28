@@ -206,7 +206,6 @@ export async function createInstanceAgent(
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
 		projectId: context.projectId,
-		pythonImportPolicy: context.pythonImportPolicy,
 		workspaceRoot:
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot

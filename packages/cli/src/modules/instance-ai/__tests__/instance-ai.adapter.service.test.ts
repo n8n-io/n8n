@@ -101,7 +101,6 @@ function globalConfigStub(
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
 		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
-		taskRunners: { stdlibAllow: '', externalAllow: '', mode: 'internal' },
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
 }
 

@@ -79,7 +79,7 @@ import {
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
-import type { PythonImportPolicy, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
 	type ICredentialsDecrypted,
@@ -159,7 +159,6 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
-import { buildPythonImportPolicy } from './python-import-policy';
 import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
@@ -264,10 +263,6 @@ export class InstanceAiAdapterService {
 
 	private readonly allowSendingParameterValues: boolean;
 
-	/** What a Python Code node may import here, so the builder is told this
-	 *  instance's real policy rather than the conservative default. */
-	private readonly pythonImportPolicy: PythonImportPolicy;
-
 	/**
 	 * Service-level cache for node type descriptions. Reads from the static JSON
 	 * file that FrontendService writes at startup, avoiding the expensive
@@ -342,11 +337,6 @@ export class InstanceAiAdapterService {
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
-		this.pythonImportPolicy = buildPythonImportPolicy({
-			stdlibAllow: globalConfig.taskRunners.stdlibAllow,
-			externalAllow: globalConfig.taskRunners.externalAllow,
-			mode: globalConfig.taskRunners.mode,
-		});
 		this.loadNodesAndCredentials.addPostProcessor?.(async () => {
 			this.nodesCache = null;
 		});
@@ -426,7 +416,6 @@ export class InstanceAiAdapterService {
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
-			pythonImportPolicy: this.pythonImportPolicy,
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			// Optional call for the same reason as addPostProcessor?.() above:

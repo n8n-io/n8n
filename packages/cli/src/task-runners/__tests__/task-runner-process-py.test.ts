@@ -45,6 +45,8 @@ describe('PyTaskRunnerProcess', () => {
 
 		test.each([
 			'PATH',
+			'N8N_RUNNERS_STDLIB_ALLOW',
+			'N8N_RUNNERS_EXTERNAL_ALLOW',
 			'N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS',
 			'N8N_RUNNERS_BUILTINS_DENY',
 			'N8N_BLOCK_RUNNER_ENV_ACCESS',
@@ -59,24 +61,6 @@ describe('PyTaskRunnerProcess', () => {
 					[envVar]: 'custom value',
 				}),
 			);
-		});
-
-		// Read through config rather than process.env so the allowlist n8n reports to
-		// the workflow builder is the same one the spawned runner enforces.
-		test.each([
-			['N8N_RUNNERS_STDLIB_ALLOW', 'stdlibAllow'],
-			['N8N_RUNNERS_EXTERNAL_ALLOW', 'externalAllow'],
-		] as const)('should propagate %s from config', async (envVar, configKey) => {
-			runnerConfig[configKey] = 're,json';
-
-			try {
-				await taskRunnerProcess.start();
-
-				const options = spawnMock.mock.calls[0][2] as SpawnOptions;
-				expect(options.env).toEqual(expect.objectContaining({ [envVar]: 're,json' }));
-			} finally {
-				runnerConfig[configKey] = '';
-			}
 		});
 
 		it('should pass the runner ID it was assigned', async () => {

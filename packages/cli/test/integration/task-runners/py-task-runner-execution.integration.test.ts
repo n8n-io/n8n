@@ -24,14 +24,13 @@ import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
 /**
- * End-to-end cover for the seam between n8n's import allowlist config and the
- * Python runner that enforces it: `N8N_RUNNERS_STDLIB_ALLOW` -> TaskRunnersConfig ->
- * spawned runner env -> the runner actually permitting (or rejecting) the import.
+ * End-to-end cover for the premise the Code-node Python guidance rests on: that the
+ * runner really does reject an import the deployment has not allowlisted. The hints
+ * and the build-time check all assert this, and nothing else proves it — the runner's
+ * own suite drives the runner directly, never through n8n (INS-1222).
  *
- * The runner's own suite tests enforcement, and n8n's unit tests cover the config and
- * the messaging, but nothing joined the two — so a rename or a semantics change on
- * either side could pass both suites while leaving the builder describing a policy
- * that is not applied (INS-1222).
+ * Covers `N8N_RUNNERS_STDLIB_ALLOW` -> spawned runner env -> the runner permitting or
+ * rejecting the import, so a change to the forwarding cannot pass unnoticed.
  *
  * Needs the runner's virtualenv (`uv sync` in packages/@n8n/task-runner-python).
  * Skipped rather than failed where it is absent, which is most Node CI lanes today.
@@ -42,9 +41,10 @@ describe.skipIf(!venvPresent)('Python TaskRunner execution on internal mode', ()
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
 	runnerConfig.port = 45679;
-	// The whole point of the test: the runner must enforce exactly this.
-	runnerConfig.stdlibAllow = 'json';
-	runnerConfig.externalAllow = '';
+	// n8n forwards these to the runner as it spawns. The whole point of the test is
+	// that the runner then enforces exactly this.
+	process.env.N8N_RUNNERS_STDLIB_ALLOW = 'json';
+	process.env.N8N_RUNNERS_EXTERNAL_ALLOW = '';
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
 	const taskRequester = Container.get(LocalTaskRequester);

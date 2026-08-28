@@ -180,7 +180,7 @@ export {
 // reaches `lint-workflow-source` and `code-node/js`, which pull acorn and the SDK
 // AST interpreter into the root entry that every consumer of this package loads.
 // `code-node/python` needs only `lint/types`.
-export { lintPythonCode, type PythonImportPolicy } from './lint/code-node/python';
+export { lintPythonCode } from './lint/code-node/python';
 export type { SourceLintIssue } from './lint/types';
 export type { CodeExecutionMode } from './lint/code-node/extract-snippets';
 

@@ -1,4 +1,4 @@
-import type { PythonImportPolicy, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { detectPythonCodeConstraints } from '../detect-python-code-constraints';
 
@@ -23,32 +23,17 @@ function workflow(
 	};
 }
 
-const NOTHING_ALLOWED: PythonImportPolicy = { stdlib: [], external: [], authoritative: true };
-
 describe('detectPythonCodeConstraints', () => {
 	it('flags an import when the instance allowlists nothing', () => {
-		const warnings = detectPythonCodeConstraints(workflow('import re\nreturn []'), NOTHING_ALLOWED);
+		const warnings = detectPythonCodeConstraints(workflow('import re\nreturn []'));
 
 		expect(warnings.map((w) => w.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
 		expect(warnings[0].nodeName).toBe('Parse');
 		expect(warnings[0].severity).toBe('informational');
 	});
 
-	it('stays silent when the instance allowlists the module', () => {
-		const policy: PythonImportPolicy = { stdlib: ['re'], external: [], authoritative: true };
-
-		expect(detectPythonCodeConstraints(workflow('import re\nreturn []'), policy)).toEqual([]);
-	});
-
-	it('assumes nothing is importable when the policy is unknown', () => {
-		expect(
-			detectPythonCodeConstraints(workflow('import re\nreturn []'), undefined).map((w) => w.code),
-		).toEqual(['CODE_NODE_PYTHON_IMPORT']);
-	});
-
 	it('flags an undefined global regardless of the import policy', () => {
-		const policy: PythonImportPolicy = { stdlib: ['*'], external: ['*'], authoritative: true };
-		const warnings = detectPythonCodeConstraints(workflow('return _input.all()'), policy);
+		const warnings = detectPythonCodeConstraints(workflow('return _input.all()'));
 
 		expect(warnings.map((w) => w.code)).toEqual(['CODE_NODE_PYTHON_UNSUPPORTED_GLOBAL']);
 	});
@@ -56,10 +41,17 @@ describe('detectPythonCodeConstraints', () => {
 	it('reads the node mode so the wrong accessor is caught', () => {
 		const warnings = detectPythonCodeConstraints(
 			workflow('return _items[0]', { mode: 'runOnceForEachItem' }),
-			NOTHING_ALLOWED,
 		);
 
 		expect(warnings.map((w) => w.code)).toEqual(['CODE_MODE_API_MISUSE']);
+	});
+
+	// The agent may repeat this to a user with no way to change the allowlist, which
+	// on a managed deployment is everyone.
+	it('never names an environment variable', () => {
+		const warnings = detectPythonCodeConstraints(workflow('import re\nreturn []'));
+
+		expect(warnings[0].message).not.toMatch(/N8N_RUNNERS_/);
 	});
 
 	it('ignores a JavaScript Code node', () => {
@@ -79,47 +71,18 @@ describe('detectPythonCodeConstraints', () => {
 			connections: {},
 		};
 
-		expect(detectPythonCodeConstraints(js, NOTHING_ALLOWED)).toEqual([]);
+		expect(detectPythonCodeConstraints(js)).toEqual([]);
 	});
 
 	it('ignores a node with no Python body', () => {
-		expect(detectPythonCodeConstraints(workflow(''), NOTHING_ALLOWED)).toEqual([]);
+		expect(detectPythonCodeConstraints(workflow(''))).toEqual([]);
 	});
 
 	// A node keeps its last `pythonCode` after switching to JavaScript, and the body is
 	// then dead — linting it would report failures for code that never runs.
 	it('ignores a stale Python body on a node switched to JavaScript', () => {
 		expect(
-			detectPythonCodeConstraints(
-				workflow('import re\nreturn []', { language: 'javaScript' }),
-				NOTHING_ALLOWED,
-			),
+			detectPythonCodeConstraints(workflow('import re\nreturn []', { language: 'javaScript' })),
 		).toEqual([]);
-	});
-
-	// n8n's allowlist can be wrong in the permissive direction in external runner mode
-	// — the official runners image forces both lists empty — so it must not silence a
-	// warning there.
-	it('still flags an import that a non-authoritative policy claims is allowed', () => {
-		const policy: PythonImportPolicy = { stdlib: ['re'], external: [], authoritative: false };
-		const warnings = detectPythonCodeConstraints(workflow('import re\nreturn []'), policy);
-
-		expect(warnings.map((w) => w.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
-		expect(warnings[0].message).toMatch(/cannot see the allowlist in force/i);
-		// The agent may repeat this to a user who cannot change the setting.
-		expect(warnings[0].message).not.toMatch(/N8N_RUNNERS_/);
-	});
-
-	it('flags every import when the configured allowlist is one the runner rejects', () => {
-		const policy: PythonImportPolicy = {
-			stdlib: [],
-			external: [],
-			authoritative: true,
-			misconfigured: true,
-		};
-
-		expect(
-			detectPythonCodeConstraints(workflow('import re\nreturn []'), policy).map((w) => w.code),
-		).toEqual(['CODE_NODE_PYTHON_IMPORT']);
 	});
 });
