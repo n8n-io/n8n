@@ -218,7 +218,9 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     env:
-      NODE_OPTIONS: --max-old-space-size=7168
+      # Inherited by every worker turbo spawns, so the real budget is
+      # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
@@ -227,7 +229,9 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm typecheck
+          # turbo directly, not the root `typecheck` script, to keep the
+          # concurrency bound CI-only.
+          build-command: pnpm turbo typecheck --concurrency=2
 
   lint:
     name: Lint

@@ -1087,7 +1087,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				threadId: 'configured-child-thread',
 				resumeContext: {
 					agentId: 'configured-agent',
-					versionId: 'configured-version',
 				},
 			}),
 			inline: delegatedPending('inline', {
@@ -1096,6 +1095,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				taskPath: '/root/inline_1',
 				subAgentId: 'inline',
 				childCount: 1,
+				resumeContext: {
+					agentId,
+				},
 			}),
 		});
 		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
