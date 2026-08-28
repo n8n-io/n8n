@@ -7,7 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
+import {
+	CONFLUENCE_CREDENTIAL_NAME,
+	confluenceApiRequest,
+	getConfluenceCloudId,
+} from '../transport';
 
 /** The v2 list endpoints' documented max page size, and the max IDs per batched `/pages` request */
 export const PAGE_LIMIT = 250;
@@ -313,10 +317,11 @@ export async function resolveSpaceKey(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	spaceId: string,
 ): Promise<string | undefined> {
-	// Space IDs are only unique per site, so the cache is keyed per credential
+	// Space IDs are only unique per site, and one credential can reach several
 	const rawCredentialId = this.getNode().credentials?.[CONFLUENCE_CREDENTIAL_NAME]?.id;
 	const credentialId = typeof rawCredentialId === 'string' ? rawCredentialId : '';
-	const cacheKey = `${credentialId}:${spaceId}`;
+	const cloudId = await getConfluenceCloudId.call(this);
+	const cacheKey = `${credentialId}:${cloudId}:${spaceId}`;
 
 	const cached = spaceKeyCache.get(cacheKey);
 	if (cached !== undefined) return cached;

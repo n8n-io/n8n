@@ -75,6 +75,7 @@ describe('getAtlassianCloudId', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
+			credentials: { [credentialType]: { id: 'cred-1', name: 'account' } },
 		};
 		ctx.getNode.mockReturnValue(mockNode);
 	});
@@ -152,6 +153,29 @@ describe('getAtlassianCloudId', () => {
 
 		expect(first).toBe('cloud-1');
 		expect(second).toBe('cloud-1');
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+	});
+
+	it('should refetch once when the cached list has no match, so a newly granted site resolves', async () => {
+		mockHttpRequestWithAuthentication.mockResolvedValueOnce([accessibleResources[0]]);
+		await getAtlassianCloudId.call(ctx, credentialType, 'example.atlassian.net', 'confluence');
+
+		const result = await getAtlassianCloudId.call(
+			ctx,
+			credentialType,
+			'other.atlassian.net',
+			'confluence',
+		);
+
+		expect(result).toBe('cloud-2');
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('should not refetch when the list it just fetched has no match', async () => {
+		await expect(
+			getAtlassianCloudId.call(ctx, credentialType, 'missing.atlassian.net', 'confluence'),
+		).rejects.toThrow('No Confluence site matched');
+
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 
@@ -313,6 +337,7 @@ describe('fetchAtlassianAccessibleResources', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
+			credentials: { [credentialType]: { id: 'cred-1', name: 'account' } },
 		});
 	});
 
@@ -362,6 +387,22 @@ describe('fetchAtlassianAccessibleResources', () => {
 			fetchAtlassianAccessibleResources.call(ctx, credentialType),
 		).rejects.toBeInstanceOf(NodeApiError);
 	});
+
+	it('should skip the cache entirely when the node carries no credential ID', async () => {
+		ctx.getNode.mockReturnValue({
+			id: 'test-node',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		});
+
+		await fetchAtlassianAccessibleResources.call(ctx, credentialType);
+		await fetchAtlassianAccessibleResources.call(ctx, credentialType);
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
 });
 
 describe('resolveAtlassianCloudId', () => {
@@ -393,6 +434,7 @@ describe('resolveAtlassianCloudId', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
+			credentials: { [credentialType]: { id: 'cred-1', name: 'account' } },
 		});
 	});
 
@@ -482,11 +524,39 @@ describe('resolveAtlassianCloudId', () => {
 	});
 
 	it('should name the product when the connection reaches no sites', async () => {
-		mockHttpRequestWithAuthentication.mockResolvedValueOnce([]);
+		mockHttpRequestWithAuthentication.mockResolvedValue([]);
 
 		await expect(
 			resolveAtlassianCloudId.call(ctx, credentialType, rlc('list', ''), 'confluence'),
 		).rejects.toThrow('This connection cannot access any Confluence sites');
+	});
+
+	it('should ignore sites the API returned without an ID', async () => {
+		mockHttpRequestWithAuthentication.mockResolvedValue([
+			{ id: '', url: 'https://broken.atlassian.net' },
+			accessibleResources[1],
+		]);
+
+		await expect(
+			resolveAtlassianCloudId.call(ctx, credentialType, rlc('list', ''), 'confluence'),
+		).resolves.toBe('cloud-2');
+	});
+
+	it('should refetch once when the cached list came back empty', async () => {
+		mockHttpRequestWithAuthentication.mockResolvedValueOnce([]);
+		await expect(
+			resolveAtlassianCloudId.call(ctx, credentialType, rlc('list', ''), 'confluence'),
+		).rejects.toThrow('cannot access any Confluence sites');
+
+		mockHttpRequestWithAuthentication.mockResolvedValueOnce([accessibleResources[0]]);
+		const result = await resolveAtlassianCloudId.call(
+			ctx,
+			credentialType,
+			rlc('list', ''),
+			'confluence',
+		);
+
+		expect(result).toBe('cloud-1');
 	});
 
 	it('should trim the selected value before deciding between selection and auto-resolve', async () => {

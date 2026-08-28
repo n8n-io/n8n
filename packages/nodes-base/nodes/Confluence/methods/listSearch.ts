@@ -68,18 +68,19 @@ async function searchByName(
 
 /**
  * Lists the sites the OAuth2 connection can reach; the item value is the
- * cloudId itself, so the selection needs no resolution at execute time. Always
- * fetched fresh (cache updated) so a site granted after a reconnect shows up
- * without a restart.
+ * cloudId itself, so the selection needs no resolution at execute time.
  */
 export async function getSites(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const resources = await fetchAtlassianAccessibleResources.call(this, CONFLUENCE_CREDENTIAL_NAME, {
-		bypassCache: true,
-	});
 	const filterLower = (filter ?? '').trim().toLowerCase();
+
+	// Filtering is local and the first load sends none, so refreshing only then
+	// picks up newly granted sites without a request per keystroke
+	const resources = await fetchAtlassianAccessibleResources.call(this, CONFLUENCE_CREDENTIAL_NAME, {
+		bypassCache: filterLower === '',
+	});
 
 	const results = resources
 		.filter((site) => typeof site?.id === 'string' && site.id !== '')

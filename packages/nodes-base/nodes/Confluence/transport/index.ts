@@ -92,22 +92,17 @@ function toConfluenceApiError(
 function getSiteParameter(
 	ctx: IExecuteFunctions | ILoadOptionsFunctions,
 ): INodeParameterResourceLocator | undefined {
-	let raw: unknown;
-	if ('getCurrentNodeParameter' in ctx) {
-		try {
-			raw = ctx.getCurrentNodeParameter('site');
-		} catch {
-			raw = undefined;
-		}
-	} else {
-		raw = ctx.getNodeParameter('site', 0, null);
-	}
+	const raw =
+		'getCurrentNodeParameter' in ctx
+			? ctx.getCurrentNodeParameter('site')
+			: ctx.getNodeParameter('site', 0, null);
+
 	return typeof raw === 'object' && raw !== null && 'value' in raw
 		? (raw as INodeParameterResourceLocator)
 		: undefined;
 }
 
-async function getConfluenceCloudId(
+export async function getConfluenceCloudId(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<string> {
 	return await resolveAtlassianCloudId.call(

@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import type { IExecuteFunctions, INode, JsonObject } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, INode, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
@@ -74,6 +74,7 @@ describe('confluenceApiRequest', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
+			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
 		};
 		ctx.getNode.mockReturnValue(mockNode);
 		ctx.getNodeParameter.mockReturnValue(siteByUrl('https://example.atlassian.net/wiki') as never);
@@ -278,6 +279,25 @@ describe('confluenceApiRequest', () => {
 			"This connection can access: https://example.atlassian.net, https://Other.Atlassian.NET — pick a site in the 'Site' parameter.",
 		);
 	});
+
+	it('reads the Site parameter through getCurrentNodeParameter in a load-options context', async () => {
+		const loadOptionsCtx = mockDeep<ILoadOptionsFunctions>({
+			getNode: vi.fn(() => mockNode),
+			getCurrentNodeParameter: vi.fn(() => siteByUrl('https://other.atlassian.net')),
+			helpers: { httpRequestWithAuthentication: mockHttpRequestWithAuthentication },
+		});
+
+		await confluenceApiRequest.call(loadOptionsCtx, 'GET', '/wiki/api/v2/spaces');
+
+		expect(loadOptionsCtx.getCurrentNodeParameter).toHaveBeenCalledWith('site');
+		expect(loadOptionsCtx.getNodeParameter).not.toHaveBeenCalled();
+		expect(mockHttpRequestWithAuthentication).toHaveBeenLastCalledWith(
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({
+				url: 'https://api.atlassian.com/ex/confluence/cloud-2/wiki/api/v2/spaces',
+			}),
+		);
+	});
 });
 
 describe('confluenceApiRequestBinary', () => {
@@ -297,6 +317,7 @@ describe('confluenceApiRequestBinary', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
+			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
 		});
 		ctx.getNodeParameter.mockReturnValue(siteByUrl('https://example.atlassian.net/wiki') as never);
 	});
@@ -417,6 +438,7 @@ describe('confluenceApiRequestUpload', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
+			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
 		});
 		ctx.getNodeParameter.mockReturnValue(siteByUrl('https://example.atlassian.net/wiki') as never);
 	});

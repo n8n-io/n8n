@@ -12,14 +12,16 @@ import {
 	searchSpaces,
 	searchSpacesWithAll,
 } from '../../methods/listSearch';
-import { confluenceApiRequest } from '../../transport';
+import { confluenceApiRequest, getConfluenceCloudId } from '../../transport';
 
 vi.mock('../../transport', () => ({
 	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
 	confluenceApiRequest: vi.fn(),
+	getConfluenceCloudId: vi.fn(),
 }));
 
 const apiRequest = vi.mocked(confluenceApiRequest);
+const cloudId = vi.mocked(getConfluenceCloudId);
 
 describe('Confluence listSearch.getPages', () => {
 	let ctx: ILoadOptionsFunctions;
@@ -27,6 +29,7 @@ describe('Confluence listSearch.getPages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		clearSpaceKeyCache();
+		cloudId.mockResolvedValue('cloud-1');
 		ctx = mockDeep<ILoadOptionsFunctions>();
 		vi.mocked(ctx.getNode).mockReturnValue({
 			id: 'test-node',
@@ -137,6 +140,31 @@ describe('Confluence listSearch.getPages', () => {
 			([, endpoint]) => endpoint === '/wiki/api/v2/spaces/999',
 		);
 		expect(spaceLookups).toHaveLength(2);
+	});
+
+	it('does not reuse cached space keys across sites of one credential', async () => {
+		let currentSite = 'cloud-1';
+		const keyPerSite: Record<string, string> = { 'cloud-1': 'DOCS', 'cloud-2': 'ENG' };
+		const cqls: string[] = [];
+		cloudId.mockImplementation(async () => currentSite);
+		apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+			if (endpoint === '/wiki/api/v2/spaces/999') return { id: 999, key: keyPerSite[currentSite] };
+			if (endpoint === '/wiki/rest/api/search') {
+				cqls.push((qs as { cql: string }).cql);
+				return { results: [] };
+			}
+			throw new Error(`unexpected endpoint ${endpoint}`);
+		});
+		vi.mocked(ctx.getCurrentNodeParameter).mockReturnValue('999');
+
+		await getPages.call(ctx);
+		currentSite = 'cloud-2';
+		await getPages.call(ctx);
+
+		expect(cqls).toEqual([
+			'type=page AND space = "DOCS" ORDER BY lastmodified DESC',
+			'type=page AND space = "ENG" ORDER BY lastmodified DESC',
+		]);
 	});
 
 	it('advances the offset even when a page comes back empty with a next link', async () => {
@@ -511,10 +539,19 @@ describe('Confluence listSearch.getSites', () => {
 		expect(byUrl.results.map((r) => r.value)).toEqual(['cloud-2']);
 	});
 
-	it('bypasses the accessible-resources cache so newly granted sites appear', async () => {
+	it('refreshes on an unfiltered load so newly granted sites appear', async () => {
 		await getSites.call(ctx);
 		await getSites.call(ctx);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('serves filtered loads from the cache, so typing costs no requests', async () => {
+		await getSites.call(ctx);
+		await getSites.call(ctx, 'a');
+		await getSites.call(ctx, 'al');
+		await getSites.call(ctx, 'alp');
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });
