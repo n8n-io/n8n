@@ -77,7 +77,8 @@ put:
         `workflowReviewRequestId` is present too), `insufficient_api_key_scope`
         when the API key lacks `workflow:activate`, and
         `insufficient_permissions` when the caller lacks `workflow:publish` on
-        the project. A webhook path conflict carries a message only.
+        the project. Both permission reasons carry `versionId`, the draft that
+        was saved. A webhook path conflict carries a message only.
       content:
         application/json:
           schema:

@@ -143,6 +143,7 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 		expect(response.statusCode).toBe(409);
 		expect(response.body.reason).toBe('insufficient_api_key_scope');
 		expect(response.body.message).toContain('saved as a draft');
+		expect(response.body.versionId).toBe(stored?.versionId);
 		expect(stored?.versionId).not.toBe(workflow.versionId);
 		expect(stored?.activeVersionId).toBe(workflow.versionId);
 	});
@@ -172,6 +173,7 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 		expect(response.statusCode).toBe(409);
 		expect(response.body.reason).toBe('insufficient_permissions');
 		expect(response.body.message).toContain('saved as a draft');
+		expect(response.body.versionId).toBe(stored?.versionId);
 		expect(stored?.versionId).not.toBe(workflow.versionId);
 		expect(stored?.activeVersionId).toBe(workflow.versionId);
 	});

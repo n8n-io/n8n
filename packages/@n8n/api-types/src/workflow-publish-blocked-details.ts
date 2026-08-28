@@ -6,6 +6,8 @@ export const workflowPublishBlockedDetailsSchema = z
 	.object({
 		reason: z.enum([...REVIEW_REASONS, 'insufficient_api_key_scope', 'insufficient_permissions']),
 		workflowReviewRequestId: z.string().min(1).optional(),
+		/** The version that was saved as a draft but not published, when the caller wrote one. */
+		versionId: z.string().min(1).optional(),
 	})
 	.strict();
 

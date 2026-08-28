@@ -667,7 +667,13 @@ export class WorkflowService {
 			// the conflict tells them it did not go live. Re-applying the version that is already live
 			// publishes nothing new, so it stays a plain update.
 			if (versionIdToPublish !== workflow.activeVersionId) {
-				await this.assertMayPublishOnSave(user, workflowId, ownerProject.id, apiKeyScopes);
+				await this.assertMayPublishOnSave(
+					user,
+					workflowId,
+					ownerProject.id,
+					apiKeyScopes,
+					versionIdToPublish,
+				);
 			}
 
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
@@ -689,16 +695,21 @@ export class WorkflowService {
 	/**
 	 * Both bars a save-triggered publication has to clear: the API key's own publish scope (a key can
 	 * be scoped more narrowly than its owner) and the caller's publish permission on the project.
-	 * Raised as a conflict rather than a plain rejection because the draft is already saved.
+	 * Raised as a conflict rather than a plain rejection because the draft is already saved, and it
+	 * carries that draft's version so the caller does not have to read it back.
 	 */
 	private async assertMayPublishOnSave(
 		user: User,
 		workflowId: string,
 		projectId: string,
 		apiKeyScopes: readonly string[] | undefined,
+		savedVersionId: string,
 	): Promise<void> {
 		if (apiKeyScopes && !apiKeyScopes.includes(PUBLISH_API_KEY_SCOPE)) {
-			throw new WorkflowPublishBlockedError({ reason: 'insufficient_api_key_scope' });
+			throw new WorkflowPublishBlockedError({
+				reason: 'insufficient_api_key_scope',
+				versionId: savedVersionId,
+			});
 		}
 
 		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { projectId });
@@ -708,7 +719,10 @@ export class WorkflowService {
 				workflowId,
 				userId: user.id,
 			});
-			throw new WorkflowPublishBlockedError({ reason: 'insufficient_permissions' });
+			throw new WorkflowPublishBlockedError({
+				reason: 'insufficient_permissions',
+				versionId: savedVersionId,
+			});
 		}
 	}
 

@@ -48,6 +48,9 @@ describe('workflow publication blocker in OpenAPI', () => {
 				workflowReviewRequestId: {
 					type: 'string',
 				},
+				versionId: {
+					type: 'string',
+				},
 			},
 		});
 	});
