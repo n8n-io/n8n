@@ -1417,6 +1417,12 @@ export interface IPollFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
+	/**
+	 * Milliseconds this poll may spend before the engine abandons the tick.
+	 * A node draining a large backlog should stop fetching before the budget
+	 * runs out, return what it has, and leave the rest to the next poll.
+	 */
+	getPollBudgetMs(): number;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -1578,6 +1584,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	/** Whether this request arrived on the editor's session-scoped canvas chat test route. */
+	isChatSessionTest(): boolean;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
@@ -3062,6 +3070,13 @@ export interface IWebhookData {
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
 	isTest?: boolean;
+	/**
+	 * Set when this test webhook was registered for the editor's canvas chat session
+	 * (path rewritten to `{workflowId}/{chatSessionId}`). Lets the Chat Trigger skip
+	 * webhook auth for that trusted, session-scoped route only — every other test
+	 * request still enforces the configured authentication.
+	 */
+	isChatSessionTest?: boolean;
 	userId?: string;
 	staticData?: Workflow['staticData'];
 }

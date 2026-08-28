@@ -182,6 +182,7 @@ describe('validateAuth', () => {
 
 			beforeEach(() => {
 				mockContext.getWebhookName.mockReturnValue('default');
+				mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('hostedChat');
 				mockContext.getWebhookResourceUrl.mockReturnValue(resourceUrl);
 				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 			});
@@ -241,6 +242,40 @@ describe('validateAuth', () => {
 					message: 'User not authenticated!',
 				});
 				expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			});
+
+			// Embedded (`webhook`) mode has no page to mint or carry this token, so a
+			// call to it must keep working the same way it always has (the plain
+			// session-cookie check) even if a hostedChat-minted token is replayed —
+			// e.g. after switching a node's mode from hostedChat to webhook.
+			it('falls back to the cookie check when mode is webhook, even with a valid token', async () => {
+				mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('webhook');
+				mockContext.getHeaderData.mockReturnValue({
+					'x-auth-token': 'as-token',
+				});
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					message: 'User not authenticated!',
+				});
+				expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			});
+
+			it('still passes via the cookie check in webhook mode when a valid token is also present', async () => {
+				mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('webhook');
+				mockContext.getHeaderData.mockReturnValue({
+					'x-auth-token': 'as-token',
+					cookie: 'n8n-auth=valid.jwt.token',
+				});
+				mockContext.validateCookieAuth.mockResolvedValue({
+					id: 'user-1',
+					email: 'user@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+				});
+
+				await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+				expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 			});
 		});
 	});

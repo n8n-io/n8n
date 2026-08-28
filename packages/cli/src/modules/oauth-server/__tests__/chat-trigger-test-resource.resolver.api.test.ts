@@ -1,4 +1,9 @@
-import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflowWithHistory,
+	setActiveVersion,
+	shareWorkflowWithUsers,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
@@ -43,6 +48,7 @@ const chatTriggerNode = ({
 	mode = 'hostedChat',
 	authentication = 'n8nUserAuth',
 	disabled = false,
+	requireExecuteAccess,
 }: {
 	name?: string;
 	// `null` drops the key entirely, so the "parameter stripped at its default" shape the
@@ -51,6 +57,7 @@ const chatTriggerNode = ({
 	mode?: string | null;
 	authentication?: string | null;
 	disabled?: boolean;
+	requireExecuteAccess?: boolean;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -63,6 +70,7 @@ const chatTriggerNode = ({
 		...(isPublic === null ? {} : { public: isPublic }),
 		...(mode === null ? {} : { mode }),
 		...(authentication === null ? {} : { authentication }),
+		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
 	},
 });
 
@@ -246,17 +254,83 @@ describe('protected resource metadata for test chat triggers', () => {
 	});
 });
 
-describe('authorize gate', () => {
-	test('authorizes any authenticated user — there is no execute gate yet', async () => {
+describe('authorize gate (workflow:execute)', () => {
+	const registerWithWorkflow = async (node: INode) => {
 		const path = chatPath();
-		const node = chatTriggerNode();
 		const workflow = await createWorkflowWithHistory({ active: false, nodes: [node] }, owner);
 		await registerTestWebhook(path, node, { workflowId: workflow.id });
+		return { path, workflow };
+	};
+
+	test('authorizes the owner but denies a visitor without execute access', async () => {
+		const { path } = await registerWithWorkflow(chatTriggerNode({ requireExecuteAccess: true }));
 
 		const resource = await resolveResource(path);
 
 		await expect(resource?.authorize(owner)).resolves.toBe(true);
+		await expect(resource?.authorize(member)).resolves.toBe(false);
+	});
+
+	test('authorizes a visitor granted execute via a project role', async () => {
+		const { path, workflow } = await registerWithWorkflow(
+			chatTriggerNode({ requireExecuteAccess: true }),
+		);
+		await shareWorkflowWithUsers(workflow, [member]);
+
+		const resource = await resolveResource(path);
+
 		await expect(resource?.authorize(member)).resolves.toBe(true);
+	});
+
+	test('authorizes any authenticated visitor when require-execute is turned off', async () => {
+		const { path } = await registerWithWorkflow(chatTriggerNode({ requireExecuteAccess: false }));
+
+		const resource = await resolveResource(path);
+
+		await expect(resource?.authorize(member)).resolves.toBe(true);
+	});
+
+	test('authorizes any authenticated visitor when the parameter is absent', async () => {
+		const node = chatTriggerNode();
+		expect(node.parameters.requireExecuteAccess).toBeUndefined();
+		const { path } = await registerWithWorkflow(node);
+
+		const resource = await resolveResource(path);
+
+		await expect(resource?.authorize(member)).resolves.toBe(true);
+	});
+});
+
+describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () => {
+	const mintAccessToken = async (userId: string, resourceUrl: string) => {
+		const tokenService = Container.get(OAuthTokenService);
+		const clientId = `client-${randomUUID()}`;
+		await Container.get(OAuthClientRepository).save({
+			id: clientId,
+			name: 'Chat test resolver tests',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+		const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
+		await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+		return pair.accessToken;
+	};
+
+	test('refuses a visitor without execute access on the workflow', async () => {
+		const path = chatPath();
+		const node = chatTriggerNode({ requireExecuteAccess: true });
+		const workflow = await createWorkflowWithHistory({ active: false, nodes: [node] }, owner);
+		await registerTestWebhook(path, node, { workflowId: workflow.id });
+		const token = await mintAccessToken(member.id, testResourceUrlFor(path));
+
+		const result = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
+			token,
+			testResourceUrlFor(path),
+		);
+
+		expect(result.user).toBeNull();
+		expect(result.context?.reason).toBe('insufficient_scope');
 	});
 });
 
