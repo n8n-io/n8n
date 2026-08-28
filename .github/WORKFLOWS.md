@@ -432,6 +432,7 @@ Push to master/1.x
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
+| 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
 
 ---
 
@@ -553,6 +554,7 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Branch Replay Scripts
