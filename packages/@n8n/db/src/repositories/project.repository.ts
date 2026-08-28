@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Not, Repository } from '@n8n/typeorm';
 
 import { Project } from '../entities';
 
@@ -41,6 +41,10 @@ export class ProjectRepository extends Repository<Project> {
 				},
 			},
 		});
+	}
+
+	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {
+		return await this.findBy({ type: 'team', id: Not(In(excludedProjectIds)) });
 	}
 
 	async getAccessibleProjectsByExactName(
