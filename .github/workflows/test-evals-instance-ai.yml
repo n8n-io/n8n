@@ -159,15 +159,15 @@ jobs:
     # 8vcpu/32GB: full-suite N=10 baselines need ~150 min of eval time and
     # did not fit the 4vcpu tier at any timeout.
     runs-on: blacksmith-8vcpu-ubuntu-2204
-    # Long ceiling for high-N baselines (240) and for Baseten (600: auto
-    # 1 lane / c=2 is ~16× slower than the Anthropic default, so a ~18 min
-    # full suite becomes ~5 h; +2 h buffer for provider backoff). Plain
-    # comparison (not fromJSON): coerces the string input to a number;
-    # malformed NaN falls back to the 90-minute guard instead of erroring.
-    # Branch note: threshold lowered 5 → 3 because progressive-building mode
-    # (this branch's eval default) lengthens conversations by design — the
-    # 3-iteration full suite reached ~54% at the old 90-minute cap.
-    timeout-minutes: ${{ (inputs['model-key'] || '') == 'baseten' && 600 || ((inputs.iterations || '3') >= 3 && 240 || 90) }}
+    # Long ceiling for Baseten (600: auto 1 lane / c=2 is ~16× slower than
+    # the Anthropic default, so a ~18 min full suite becomes ~5 h; +2 h buffer
+    # for provider backoff). Branch note: keyed on TIER, not iterations — the
+    # duration driver is how many cases run, and progressive-building mode
+    # (this branch's eval default) lengthens conversations on top: the
+    # 3-iteration full suite blew both the 90- and 240-minute caps (~54% and
+    # ~35% scored respectively). PR tier keeps a tight runaway guard; every
+    # other tier gets the ceiling.
+    timeout-minutes: ${{ (inputs['model-key'] || '') == 'baseten' && 600 || (inputs.tier == 'pr' && 90 || 300) }}
     env:
       # Contiguous ports from 5678; 5678..5688 avoids Node fetch()'s blocked-
       # port list (max 11 lanes). Defaults: 10 lanes / c=32 for Anthropic;
