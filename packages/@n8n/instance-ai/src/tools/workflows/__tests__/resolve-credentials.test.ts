@@ -185,6 +185,32 @@ describe('resolveCredentials', () => {
 			expect(result.mockedCredentialsByNode).toEqual({});
 		});
 
+		it('does not attach an unusable managed credential when the tag is written for an unsupported type', async () => {
+			// The tag is written for a type the gateway can't serve and there's no
+			// supported sibling: don't persist an unusable n8n credits credential —
+			// fall through to normal resolution (here: mock / route to setup).
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						credentials: { slackApi: { id: '__AI_GATEWAY_MANAGED__', name: 'n8n credits' } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(false);
+
+			const result = await resolveCredentials(json, undefined, ctx, makeCredentialMap([]));
+
+			// Not attached as n8n credits; routed to setup instead.
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+		});
+
 		it('switches the node auth to the attached n8n credits credential type', async () => {
 			// The LLM wrote the API-key credential slot but left auth at the OAuth2
 			// default; attaching n8n credits must switch auth so the slot is active.

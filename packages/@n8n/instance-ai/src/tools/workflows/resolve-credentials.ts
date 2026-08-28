@@ -459,21 +459,23 @@ export async function resolveCredentials(
 				}
 				// n8n credits: the builder copied the managed tag as the credential id
 				// from the credentials list, exactly as it copies a stored credential's
-				// id. Attach n8n credits and keep it — ahead of the user's own credential
-				// (the mirror of keeping a stored id) — so an explicit "use n8n credits"
-				// lands even when a stored credential of the same type exists. Fall back
-				// to a supported sibling when the shown type isn't gateway-served.
+				// id. Attach n8n credits and keep it, ahead of the user's own credential
+				// (the mirror of keeping a stored id), so an explicit "use n8n credits"
+				// lands even when a stored credential of the same type exists. Only when
+				// the gateway can actually serve the type (or a supported sibling); if it
+				// can't, fall through to normal resolution (own credential / mock / setup)
+				// rather than persisting an unusable managed credential.
 				if (getCredentialId(value) === AI_GATEWAY_MANAGED_TAG && !wantsNewCredential) {
-					if (!(await isGatewayCredentialType(key))) {
-						const managedSibling = await resolveSupportedSiblingType(node, key);
-						if (managedSibling) {
-							delete creds[key];
-							await attachGatewayCredential(managedSibling);
-							continue;
-						}
+					if (await isGatewayCredentialType(key)) {
+						await attachGatewayCredential();
+						continue;
 					}
-					await attachGatewayCredential();
-					continue;
+					const managedSibling = await resolveSupportedSiblingType(node, key);
+					if (managedSibling) {
+						delete creds[key];
+						await attachGatewayCredential(managedSibling);
+						continue;
+					}
 				}
 				if (isKnownCredentialForType(value, key, availableCredentials)) {
 					cleanupMockPinData(json, node.name);

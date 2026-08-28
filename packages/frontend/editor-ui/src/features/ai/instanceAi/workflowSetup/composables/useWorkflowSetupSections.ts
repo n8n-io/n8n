@@ -43,8 +43,11 @@ export function useWorkflowSetupSections(
 				),
 			};
 			const existingCred = credentialType ? req.node.credentials?.[credentialType] : undefined;
+			// An explicit "create/pick a new credential" request opens the card
+			// unselected, so don't seed the credential already on the node — otherwise
+			// the step reads as complete and Apply resubmits the one being replaced.
 			const currentCredentialId =
-				credentialType === undefined
+				credentialType === undefined || req.preferNewCredential === true
 					? null
 					: existingCred !== undefined && '__aiGatewayManaged' in existingCred
 						? AI_GATEWAY_MANAGED_TAG
