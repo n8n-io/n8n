@@ -2598,6 +2598,7 @@
 	"openWorkflowInAssistant.setting.description": "How workflows open from the workflow list.",
 	"openWorkflowInAssistant.setting.assistant": "AI Assistant",
 	"openWorkflowInAssistant.setting.manual": "Manual editor",
+	"openWorkflowInAssistant.setting.saveError": "Failed to save default editor preference",
 	"oauth.consentView.title": "OAuth access consent",
 	"oauth.consentView.heading": "{clientName} wants access to your n8n instance",
 	"oauth.consentView.headingWithWorkflow": "{clientName} requests access to workflow {resourceName}",

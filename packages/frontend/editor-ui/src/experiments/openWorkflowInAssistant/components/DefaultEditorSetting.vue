@@ -9,6 +9,7 @@ import {
 	N8nSettingsSection,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 
 import {
 	useOpenWorkflowInAssistantStore,
@@ -19,6 +20,7 @@ const store = useOpenWorkflowInAssistantStore();
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 
 const rootEl = ref<HTMLElement | null>(null);
 const highlighted = ref(false);
@@ -26,7 +28,9 @@ const highlighted = ref(false);
 const selected = computed<DefaultEditor>({
 	get: () => store.resolvedDefaultEditor,
 	set: (value) => {
-		void store.saveDefaultEditor(value);
+		store.saveDefaultEditor(value).catch((error: unknown) => {
+			toast.showError(error, i18n.baseText('openWorkflowInAssistant.setting.saveError'));
+		});
 	},
 });
 
