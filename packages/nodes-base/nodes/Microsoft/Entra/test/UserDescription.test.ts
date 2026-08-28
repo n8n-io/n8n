@@ -1246,6 +1246,34 @@ describe('Microsoft Entra Node', () => {
 				},
 			},
 			{
+				description: 'should add a user addressed by UPN to a group',
+				input: {
+					workflowData: entraWorkflow({
+						resource: 'user',
+						operation: 'addGroup',
+						group: { __rl: true, mode: 'id', value: groupGuid },
+						user: { __rl: true, mode: 'id', value: 'jane@contoso.com' },
+					}),
+				},
+				output: {
+					nodeData: { 'Microsoft Entra ID': [microsoftEntraNodeResponse.addUserToGroup] },
+				},
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'post',
+							path: `/groups/${groupGuid}/members/$ref`,
+							statusCode: 204,
+							requestBody: {
+								'@odata.id': 'https://graph.microsoft.com/v1.0/directoryObjects/jane%40contoso.com',
+							},
+							responseBody: {},
+						},
+					],
+				},
+			},
+			{
 				// `update` sends a second, programmatic PATCH for the fields Graph only accepts on
 				// their own, so the ID reaches a Graph path twice.
 				description: 'should update a guest user on both of its requests',

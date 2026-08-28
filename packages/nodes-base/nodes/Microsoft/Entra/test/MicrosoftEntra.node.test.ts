@@ -9,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { MockInstance } from 'vitest';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
@@ -115,30 +117,36 @@ describe('Microsoft Entra Node', () => {
 		const { properties } = new MicrosoftEntra().description;
 		const resourceLocators = properties.filter((property) => property.type === 'resourceLocator');
 
+		const routingUrls = properties
+			.flatMap((property) => property.options ?? [])
+			.flatMap((option) =>
+				'routing' in option && typeof option.routing?.request?.url === 'string'
+					? [option.routing.request.url]
+					: [],
+			);
+
 		// Derived from the sinks rather than hardcoded, so a new ID in a URL template fails here
 		// until it is guarded too.
 		const interpolatedIds = new Set(
-			properties
-				.flatMap((property) => property.options ?? [])
-				.flatMap((option) =>
-					'routing' in option && typeof option.routing?.request?.url === 'string'
-						? [option.routing.request.url]
-						: [],
-				)
-				.flatMap((url) => [...url.matchAll(/\$parameter\["([^"]+)"\]/g)].map(([, name]) => name)),
+			routingUrls.flatMap((url) =>
+				[...url.matchAll(/\$parameter\["([^"]+)"\]/g)].map(([, name]) => name),
+			),
+		);
+
+		const descriptionSources = ['UserDescription.ts', 'GroupDescription.ts'].map((file) =>
+			readFileSync(join(__dirname, '..', 'descriptions', file), 'utf-8'),
 		);
 
 		it('interpolates only the user and group IDs into request URLs', () => {
 			expect([...interpolatedIds].sort()).toEqual(['group', 'user']);
 		});
 
-		it('guards every parameter interpolated into a request URL', () => {
+		it('has a resource locator for every parameter interpolated into a request URL', () => {
 			for (const name of interpolatedIds) {
-				const matching = resourceLocators.filter((property) => property.name === name);
-				expect(matching.length, name).toBeGreaterThan(0);
-				for (const property of matching) {
-					expect(property.routing?.send?.preSend, property.displayName).toHaveLength(1);
-				}
+				expect(
+					resourceLocators.filter((property) => property.name === name).length,
+					name,
+				).toBeGreaterThan(0);
 			}
 		});
 
@@ -148,8 +156,35 @@ describe('Microsoft Entra Node', () => {
 			}
 		});
 
-		it('has ten resource locators', () => {
-			expect(resourceLocators).toHaveLength(10);
+		it('encodes every parameter interpolated into a request URL', () => {
+			for (const url of routingUrls) {
+				const unwrapped = url.replace(/encodeURIComponent\(\$parameter\["[^"]+"\]\)/g, '');
+				expect(unwrapped, url).not.toContain('$parameter[');
+			}
+		});
+
+		// The programmatic follow-up requests build their path with a template literal, which the
+		// description object above cannot see.
+		it('encodes every ID interpolated into a follow-up request path', () => {
+			for (const source of descriptionSources) {
+				for (const [line] of source.matchAll(/`\/(?:users|groups)\/\$\{[^}]*\}`/g)) {
+					expect(line).toContain('encodeURIComponent(');
+				}
+			}
+		});
+
+		// The guard reads the ID with `extractValue`, while the URL template reads it through
+		// `$parameter`, which additionally applies a stored `__regex`. Declaring `extractValue` on a
+		// mode would split the two readings apart.
+		it('declares no extractValue on any resource locator mode', () => {
+			for (const property of resourceLocators) {
+				for (const mode of property.modes ?? []) {
+					expect(
+						mode.extractValue,
+						`${property.displayName} / ${mode.displayName}`,
+					).toBeUndefined();
+				}
+			}
 		});
 
 		it('still composes the @odata.id body when adding a user to a group', () => {
@@ -160,7 +195,9 @@ describe('Microsoft Entra Node', () => {
 			);
 
 			expect(addGroupUser?.routing?.send?.property).toBe('@odata.id');
-			expect(addGroupUser?.routing?.send?.value).toContain('directoryObjects');
+			expect(addGroupUser?.routing?.send?.value).toBe(
+				'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0/directoryObjects/{{ encodeURIComponent($value) }}',
+			);
 			expect(addGroupUser?.routing?.send?.preSend).toHaveLength(1);
 		});
 	});
