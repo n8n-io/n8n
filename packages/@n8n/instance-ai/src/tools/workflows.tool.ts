@@ -774,9 +774,17 @@ function preferNewCredentialOptions(
 }
 
 /** Ids this resume applied — the analysis treats a slot bound to one as settled
- *  even when its credential list view lags the just-created credential. */
-function appliedCredentialIdList(applied: SetupResumeData['credentials']): string[] {
-	return Object.values(applied ?? {}).flatMap((byType) => Object.values(byType));
+ *  even when its credential list view lags the just-created credential. Only
+ *  nodes the apply reported as successful vouch for their ids: a failed
+ *  application must not settle a stale binding elsewhere. */
+function appliedCredentialIdList(
+	applied: SetupResumeData['credentials'],
+	appliedNodeNames: readonly string[],
+): string[] {
+	const appliedNodes = new Set(appliedNodeNames);
+	return Object.entries(applied ?? {})
+		.filter(([nodeName]) => appliedNodes.has(nodeName))
+		.flatMap(([, byType]) => Object.values(byType));
 }
 
 /** Setup state 3: persist setup, run the trigger, and re-suspend with the refreshed requests. */
@@ -814,7 +822,7 @@ async function handleSetupTestTrigger(
 		{ [testTriggerNode]: triggerTestResult },
 		{
 			...preferNewCredentialOptions(input, resumeData.credentials),
-			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials),
+			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, preTestApply.applied),
 		},
 	);
 	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
@@ -922,7 +930,7 @@ async function handleSetupApply(
 		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
 			includeSettled: true,
 			...preferNewCredentialOptions(input, resumeData.credentials),
-			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials),
+			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
 		});
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,

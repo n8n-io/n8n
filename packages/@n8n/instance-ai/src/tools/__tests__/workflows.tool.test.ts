@@ -2828,6 +2828,30 @@ describe('workflows tool', () => {
 					{ appliedCredentialIds: ['cred-new'] },
 				);
 			});
+
+			it('does not vouch for a credential id whose application failed', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([]);
+				(applyNodeChanges as Mock).mockResolvedValue({
+					applied: [],
+					failed: [{ nodeName: 'Call Replicate', error: 'Credential not found: cred-gone' }],
+				});
+				(buildCompletedReport as Mock).mockReturnValue([]);
+				const context = createMockContext();
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						credentials: { 'Call Replicate': { httpBearerAuth: 'cred-gone' } },
+					},
+				} as never);
+
+				expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+					includeSettled: true,
+					appliedCredentialIds: [],
+				});
+			});
 		});
 	});
 
