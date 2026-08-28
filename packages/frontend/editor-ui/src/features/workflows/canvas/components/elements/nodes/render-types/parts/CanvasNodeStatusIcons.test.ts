@@ -8,6 +8,7 @@ import { VIEWS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
+import { computed, type ComputedRef } from 'vue';
 import type { IPinData } from 'n8n-workflow';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
@@ -22,7 +23,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 const pinnedDataByNodeName: IPinData = {};
-const executionPinDataByNodeName: IPinData = {};
+const executionPinDataByNodeId = new Map<string, ComputedRef<IPinData[string] | undefined>>();
 let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
@@ -32,7 +33,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 		injectCanvasRenderData: vi.fn(() => ({
 			value: actual.createEmptyCanvasRenderData({
 				pinnedDataByNodeName,
-				executionPinDataByNodeName,
+				executionPinDataByNodeId,
 				isExecutionDataDisplayed,
 			}),
 		})),
@@ -54,9 +55,7 @@ describe('CanvasNodeStatusIcons', () => {
 		for (const key of Object.keys(pinnedDataByNodeName)) {
 			delete pinnedDataByNodeName[key];
 		}
-		for (const key of Object.keys(executionPinDataByNodeName)) {
-			delete executionPinDataByNodeName[key];
-		}
+		executionPinDataByNodeId.clear();
 		isExecutionDataDisplayed = false;
 	});
 
@@ -93,7 +92,10 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	it('should render the pinned icon for a node with execution pin data', () => {
-		executionPinDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+		executionPinDataByNodeId.set(
+			'node',
+			computed(() => [{ json: { key: 'value' } }]),
+		);
 		isExecutionDataDisplayed = true;
 
 		const { getByTestId } = renderComponent({
@@ -114,7 +116,10 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	it('should not render the pinned icon for execution pin data outside execution preview mode', () => {
-		executionPinDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+		executionPinDataByNodeId.set(
+			'node',
+			computed(() => [{ json: { key: 'value' } }]),
+		);
 
 		const { queryByTestId, getByTestId } = renderComponent({
 			global: {
@@ -157,7 +162,10 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	it('should use the pinned icon when both workflow and execution pin data are present', () => {
-		executionPinDataByNodeName['Test Node'] = [{ json: { source: 'execution' } }];
+		executionPinDataByNodeId.set(
+			'node',
+			computed(() => [{ json: { source: 'execution' } }]),
+		);
 		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
 
 		const { getByTestId } = renderComponent({
@@ -173,7 +181,10 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	it('should keep validation issues ahead of execution pin data', () => {
-		executionPinDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+		executionPinDataByNodeId.set(
+			'node',
+			computed(() => [{ json: { key: 'value' } }]),
+		);
 
 		const { getByTestId, queryByTestId } = renderComponent({
 			global: {

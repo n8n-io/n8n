@@ -41,6 +41,11 @@ export const MCP_DISCOVER_METHOD = 'server/discover';
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
 export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
+/** Telemetry-only: the handshake reached the SDK but it answered with an error. */
+export const HANDSHAKE_FAILED_ERROR_MESSAGE = 'MCP handshake failed';
+/** Telemetry-only: a `server/discover` with no protocol version to negotiate on. */
+export const MISSING_PROTOCOL_VERSION_ERROR_MESSAGE =
+	'MCP handshake failed: no protocol version declared';
 
 /**
  * Tool name constants
