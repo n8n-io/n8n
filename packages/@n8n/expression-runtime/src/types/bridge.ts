@@ -71,7 +71,9 @@ export interface BridgeConfig {
 	memoryLimit?: number;
 
 	/**
-	 * Timeout in milliseconds for expression execution.
+	 * Timeout in milliseconds for one expression evaluation. A chain of nested
+	 * evaluations (`$evaluateExpression`) shares this limit; a nested call does
+	 * not get a new one.
 	 * Default: 5000ms
 	 */
 	timeout?: number;

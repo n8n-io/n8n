@@ -52,6 +52,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	 * An expression can evaluate another one (`$evaluateExpression`), which
 	 * re-enters `evaluate()` through a synchronous host callback; the whole
 	 * chain runs on the time budget the outermost call started with.
+	 *
+	 * This is correct only while the whole path stays synchronous. Both fields
+	 * belong to the instance, so two chains that overlap would corrupt them. If
+	 * a host callback or `bridge.execute()` becomes async, pass the budget in
+	 * the call arguments instead.
 	 */
 	private chainDepth = 0;
 
