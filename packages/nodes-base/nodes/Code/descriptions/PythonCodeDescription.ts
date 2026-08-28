@@ -14,7 +14,7 @@ const commonDescription: INodeProperties = {
 	noDataExpression: true,
 	builderHint: {
 		propertyHint:
-			'Locked-down sandbox. NO imports — even `import re` fails at runtime, so write import-free Python with builtins, or use javaScript when the task needs a library; never tell the user to change the allowlist. NO network — use an HTTP Request node and process its output here. The only globals are _items (runOnceForAllItems), _item (runOnceForEachItem) and print(); the other mode\'s accessor, _("Node Name"), _input, _json and $-prefixed helpers are all undefined.',
+			'Locked-down sandbox. Imports are off unless the deployment allowlists them, so assume none are available — even `import re` fails on a stock instance. Write import-free Python with builtins, or use javaScript when the task needs a library; never tell the user to change the allowlist. NO network — use an HTTP Request node and process its output here. The only globals are _items (runOnceForAllItems), _item (runOnceForEachItem) and print(); the other mode\'s accessor, _("Node Name"), _input, _json and $-prefixed helpers are all undefined.',
 	},
 };
 
