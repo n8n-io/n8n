@@ -132,7 +132,11 @@ export function renderObserverTranscript(
 	const lines: string[] = [];
 	for (const message of messages) {
 		if (!isLlmMessage(message)) continue;
-		const timestamp = message.createdAt.toISOString();
+		// Store adapters are an open interface: a JSON-backed one hands back
+		// createdAt as an ISO string, so coerce before rendering.
+		const createdAt =
+			message.createdAt instanceof Date ? message.createdAt : new Date(message.createdAt);
+		const timestamp = createdAt.toISOString();
 		const text = message.content
 			.filter((content): content is { type: 'text'; text: string } => content.type === 'text')
 			.map((content) => content.text)

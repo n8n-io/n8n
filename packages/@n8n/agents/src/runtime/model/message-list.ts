@@ -412,10 +412,13 @@ export class AgentMessageList {
 		const inputIdSet = new Set(data.inputIds);
 		const responseIdSet = new Set(data.responseIds);
 		for (const m of data.messages) {
-			list.all.push(m);
-			if (historyIdSet.has(m.id)) list.historySet.add(m);
-			if (inputIdSet.has(m.id)) list.inputSet.add(m);
-			if (responseIdSet.has(m.id)) list.responseSet.add(m);
+			// createdAt is an ISO string after the checkpoint JSON round-trip —
+			// rehydrate so downstream consumers can rely on the declared Date type.
+			const msg = m.createdAt instanceof Date ? m : { ...m, createdAt: new Date(m.createdAt) };
+			list.all.push(msg);
+			if (historyIdSet.has(msg.id)) list.historySet.add(msg);
+			if (inputIdSet.has(msg.id)) list.inputSet.add(msg);
+			if (responseIdSet.has(msg.id)) list.responseSet.add(msg);
 		}
 		list.sortAllByCreatedAt();
 		return list;

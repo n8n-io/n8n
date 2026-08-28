@@ -122,6 +122,34 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(list.forLlm('base').messages).toHaveLength(1);
 	});
 
+	it('observes a window restored from a serialized checkpoint', async () => {
+		const store = new InMemoryMemory();
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 10,
+			observe: async () => await Promise.resolve('* CRITICAL (14:30) Restored-window observation.'),
+			observationLogTailLimit: 20,
+		});
+		const source = new AgentMessageList();
+		source.addInput([userMsg('a user message crossing the threshold')]);
+		source.addResponse([assistantMsg('an assistant reply with more work')]);
+		// The checkpoint JSON round-trip turns every createdAt into an ISO string.
+		const serialized = source.serialize();
+		const list = AgentMessageList.deserialize({
+			...serialized,
+			messages: serialized.messages.map((m) => ({
+				...m,
+				createdAt: m.createdAt.toISOString() as unknown as Date,
+			})),
+		});
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
+		expect(list.forLlm('base').messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+	});
+
 	it('contains orchestration failures instead of failing the run', async () => {
 		const store = new InMemoryMemory();
 		const { orchestrator } = buildOrchestrator(
