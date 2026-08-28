@@ -473,10 +473,6 @@ export class WorkflowExecutionService {
 				? await this.executionContextService.buildManualExecutionCredentials(n8nAuthCookie)
 				: undefined;
 
-			const offloadingManualExecutionsInQueueMode =
-				this.globalConfig.executions.mode === 'queue' &&
-				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
-
 			/**
 			 * Historically, manual executions in scaling mode ran in the main process,
 			 * so some execution details were never persisted in the database.
@@ -484,7 +480,7 @@ export class WorkflowExecutionService {
 			 * Currently, manual executions in scaling mode are offloaded to workers,
 			 * so we persist all details to give workers full access to them.
 			 */
-			if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
+			if (data.executionMode === 'manual' && this.globalConfig.executions.mode === 'queue') {
 				data.executionData = createRunExecutionData({
 					startData: {
 						startNodes: data.startNodes,
