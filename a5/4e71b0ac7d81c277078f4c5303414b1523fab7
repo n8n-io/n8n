@@ -1,0 +1,174 @@
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.api.ts
+  s_8eaa7371fd4b6c::t_4ae5bacb949af8 1-14,17-19,25,27-32,34-36,38-42,44-47,49-54,56-59,61-68
+  s_8eaa7371fd4b6c::t_e3bf07de866eb6 15-16,20-24,26,33,37,43,48,55,60
+docs/generated/sqlite-schema/git_connection_project.md
+  ai_agent 66
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_8eaa7371fd4b6c::t_a038bc560b8963 210-211,216-222,224-233
+  s_8eaa7371fd4b6c::t_5450b09dbd9c3a 213
+  s_8eaa7371fd4b6c::t_0dffad266cfc7a 223
+  s_8eaa7371fd4b6c::t_1c5f14215ef6be 202-209,212,214-215
+docs/generated/sqlite-schema/git_connection.md
+  ai_agent 9,30,37-40,70
+packages/cli/src/public-api/v1/shared/spec/schemas/gitConnectionPublicDto.generated.yml
+  ai_agent 29-30,46
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_101f7a45efba1a::t_f841a3fe88908d 76-84,86-89,91,93-94,96-97
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 75,85,90,92,95
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_8eaa7371fd4b6c::t_3400df7bdba8fa 123-129
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_101f7a45efba1a::t_62628e2dec5d8f 250,252,254-259
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 59,154,168,251,253
+  s_101f7a45efba1a::t_c943ceaa97df5c 155-167,169-174
+packages/frontend/@n8n/rest-api-client/src/types.ts
+  s_8eaa7371fd4b6c::t_f193362153356d 5-8
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.utils.ts
+  s_101f7a45efba1a::t_d97261b960e21d 73-74
+  s_8eaa7371fd4b6c::t_fdc1e25c2f27b2 1-17,19-25,27-70,75-86
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 18,26,71-72
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/createGitConnection.generated.yml
+  ai_agent 44-45
+packages/frontend/@n8n/stores/src/useRootStore.ts
+  s_8eaa7371fd4b6c::t_e15e77ea7448ce 1,133
+docs/generated/postgres-schema/public.git_connection_project.md
+  ai_agent 58
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/components/GitConnectionDialog.vue
+  s_8eaa7371fd4b6c::t_b53fafde2b309f 263,512-516,518-524,526-528
+  s_8eaa7371fd4b6c::t_3eda5c7bd66aa7 124-133,139,457
+  s_d8c2d163d3a1a0::t_887b28462c48f0 468-469,471-472
+  s_8eaa7371fd4b6c::t_c362418c2e53a7 118-123
+  s_d8c2d163d3a1a0::t_4d295c43b5f265 461
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 61,162,463-464,466,470
+  s_8eaa7371fd4b6c::t_d993635d052250 5,11,70,85,93,181-183,185-188,191-193,200-202,248,254,258-262,264-265,267-287,289-295
+  s_8eaa7371fd4b6c::t_994fef29e8480b 455
+  s_8eaa7371fd4b6c::t_348c507f2b6c14 46,477,480-486,535,540-541
+  s_8eaa7371fd4b6c::t_82a13667426f77 422,444
+  s_101f7a45efba1a::t_1ad7e05c79abdf 462,465,467,473-474
+  s_8eaa7371fd4b6c::t_35edd98baf2059 525
+  h_760178ed151f13 537
+  s_8eaa7371fd4b6c::t_d20514c0b3cc55 6,36-37,45,64,71,75-84,86-92,101-102,168,184,194-199,211,214,216-234,250,257,266,288,296-310,312-313,318-323,333,395,397-404,418-420,440-442,451-454,456,517
+  s_8eaa7371fd4b6c::t_5a8fb9bbbf078a 18,134-138,140-141,144-147,496-505
+  s_8eaa7371fd4b6c::t_0366a9687c96cc 1-4,7-10,12-15,17,19-35,38-44,47-60,62-63,65-69,72-74,95-97,110-117,142-143,148-161,163-167,169-180,189-190,203-210,212-213,215,235-247,249,251-253,255-256,311,314-317,324-332,334-394,396,405-410,412-417,421,423-431,433-439,443,445-450,458-460,475,487-495,506-511,529-534,543
+  s_8eaa7371fd4b6c::t_942dd68829e2a3 479
+  s_8eaa7371fd4b6c::t_abff85a938368c 94,103-109,411,432
+  s_d8c2d163d3a1a0::t_f0f07644bb6197 536,538-539
+  s_101f7a45efba1a::t_974014ebcb0e1d 16
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.utils.test.ts
+  s_101f7a45efba1a::t_3bfde20e31ea3a 63-65
+  s_101f7a45efba1a::t_b9cd56b0596d9e 121,123-124,127,129-130,133-135
+  s_8eaa7371fd4b6c::t_9381f49d32ad09 1-15,17-28,30-41,43-60,69-120,136
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 16,29,42,62,66-68,122,125-126,128,131-132
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.ts
+  ai_agent 1-18
+packages/@n8n/db/src/migrations/sqlite/1787826404992-AddRequireBranchForPromotionToGitConnection.ts
+  s_d8c2d163d3a1a0::t_950f8b791d0fa5 1-9
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection.entity.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 45
+  s_101f7a45efba1a::t_024ff02f566be5 42-44
+packages/cli/test/migration/1787826404992-add-require-branch-for-promotion-to-git-connection.test.ts
+  s_d8c2d163d3a1a0::t_bf57a56fabe0ca 1-62,64,66-70,72-83,117-157,172-189
+  s_d8c2d163d3a1a0::t_c1fd1d9f9eb261 99-103
+  s_d8c2d163d3a1a0::t_08553ec9655f6f 63,65,71,84-98,104-116
+  s_d8c2d163d3a1a0::t_cd4ce6ed20b0e8 158-171
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/views/GitConnectionsView.test.ts
+  s_8eaa7371fd4b6c::t_7d5e280c0c6d18 19,240-251,253-255,261,272-273,389-393
+  s_8eaa7371fd4b6c::t_bbc3b9cd8ac6ba 142-144,203-205
+  s_8eaa7371fd4b6c::t_90e04da6eebc49 180
+  s_8eaa7371fd4b6c::t_d3e95e6e183dc6 283,297-301,306,308-310,314-315,317-320,323,325
+  s_8eaa7371fd4b6c::t_cac422ce554cca 293,303-304,313,321,324,326-328,358-359,372-373
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 56,139
+  s_8eaa7371fd4b6c::t_8abeaebc2eb436 1-18,20-37,40-55,57-65,68-69,73-85,89-123,125-138,140-141,145-147,149-150,153-158,160-162,166-177,179,182-195,197-202,206-211,213-239,276-277,281,302,305,307,312,329-332,334,336-344,349,351-357,360,365-371,374-375,377-386,388,396-397
+  s_8eaa7371fd4b6c::t_d3789e03da2e16 38-39,66-67,72,86-88,178,311,348
+  s_8eaa7371fd4b6c::t_83e986b7d8e758 260,266-271,364
+  s_8eaa7371fd4b6c::t_b2dc2c3ae3feb1 274,282,284-285
+  s_8eaa7371fd4b6c::t_f23efa6d83543a 316
+  s_8eaa7371fd4b6c::t_4f1dfbaecfab56 333,387
+  s_8eaa7371fd4b6c::t_9086a60e383e7a 70-71,124,148,159,181,196,212,252,278,335,350,376,395
+  s_8eaa7371fd4b6c::t_8a74917bdab918 151-152,163-165,275,279-280,286-292,294-296
+docs/generated/postgres-schema/README.md
+  ai_agent 66,928
+docs/generated/sqlite-schema/README.md
+  ai_agent 66,915
+packages/@n8n/db/src/migrations/common/1787826404992-AddRequireBranchForPromotionToGitConnection.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 1-26
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_101f7a45efba1a::t_802fd79993e46e 117
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 77,116,405
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 25,36,57
+packages/frontend/editor-ui/src/app/router.ts
+  s_8eaa7371fd4b6c::t_f3a5a8fcd3d02e 62-63,989-996,1005-1015
+  s_8eaa7371fd4b6c::t_09ba0f13cd14d4 29
+  s_8eaa7371fd4b6c::t_a18daf2feca1c0 997-1004
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_8eaa7371fd4b6c::t_5538e45c292419 98
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/views/GitConnectionsView.vue
+  s_8eaa7371fd4b6c::t_32184cd8cf2ef4 5
+  s_8eaa7371fd4b6c::t_531d9f41eb6692 9-11,28-29,44,52-58,88,107,118,123,125,137,142-143,157,161,173-193,195-213,223
+  s_8eaa7371fd4b6c::t_7781d55ccb92f3 13,30,43,48-49,61,64-65,71,74,90,96,100-106,108-109,113-114,119-120,145,222
+  s_8eaa7371fd4b6c::t_994fef29e8480b 46,110-112,153,232-235
+  s_8eaa7371fd4b6c::t_4d91ca70ae14ad 1-4,6,14-16,18-27,31-42,47,59,63,68-70,72-73,75,79-87,89,91-95,97-99,116,121-122,124,126-136,138-141,144,146-152,158,194,215-221,224,226-228,236-237,239-240,243
+  s_8eaa7371fd4b6c::t_9855bc81464534 17,60,62,78,115,117
+  s_8eaa7371fd4b6c::t_d697ce6b7fb724 45
+  s_8eaa7371fd4b6c::t_df8a84fb4028ca 242
+  s_8eaa7371fd4b6c::t_163430d91dd61b 7-8,12,154-156,159-160,162-172,214,225,229-231,238,241
+packages/frontend/editor-ui/src/app/utils/handleSessionExpired.ts
+  s_8eaa7371fd4b6c::t_ffeef612895afd 15
+packages/frontend/editor-ui/src/app/utils/handleSessionExpired.test.ts
+  s_8eaa7371fd4b6c::t_2a226cbc3881ab 71-79,81-85
+  s_8eaa7371fd4b6c::t_0dffad266cfc7a 80
+packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 58,64
+  s_101f7a45efba1a::t_96e15a206b4708 57,59-63,65-73
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/getGitConnections.generated.yml
+  ai_agent 49-50,65
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/updateGitConnection.generated.yml
+  ai_agent 49-50
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8eaa7371fd4b6c::t_adae46840b6871 3644,3650,3653,3659-3660,3662-3669,3673,3684-3685,3687-3688
+  s_8eaa7371fd4b6c::t_b65e57291c4729 3643,3647,3652,3657-3658,3677-3680,3686,3689
+  s_d8c2d163d3a1a0::t_f7531a23fa5444 3674
+  s_8eaa7371fd4b6c::t_3eda5c7bd66aa7 3672
+  s_8eaa7371fd4b6c::t_6011814027aa34 3642
+  s_8eaa7371fd4b6c::t_fa1cb09943389b 3645,3648,3681-3683
+  s_8eaa7371fd4b6c::t_67710bdef750d3 3649
+  s_8eaa7371fd4b6c::t_2e47cc0909d85b 3661
+  s_8eaa7371fd4b6c::t_47876e8e3bdd17 3670-3671
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 3675-3676
+  s_8eaa7371fd4b6c::t_320907bffdf350 3646,3651,3654-3656
+docs/generated/postgres-schema/public.git_connection.md
+  ai_agent 19,36,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a54e71b0ac7d81c277078f4c5303414b1523fab7",
+  "prompts": {},
+  "sessions": {
+    "s_101f7a45efba1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93ccf2db-bd52-443e-bb62-7e6dec459517",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_8eaa7371fd4b6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82d42d15-2ef5-4e0b-ab2f-ad07bd4aad3d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_d8c2d163d3a1a0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "23333e77-640b-4412-888f-aed84f03846a",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
