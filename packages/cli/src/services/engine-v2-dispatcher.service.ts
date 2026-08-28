@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
 import type { INodeExecutionData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { isTriggerNodeType, MANUAL_TRIGGER_NODE_TYPE, UserError } from 'n8n-workflow';
 
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
@@ -141,6 +141,19 @@ export class EngineV2Dispatcher {
 		}
 
 		const triggerName = data.triggerToStartFrom?.name;
+
+		// TODO(CAT-2920, CAT-2921): the webhook and scheduler paths deliver the real
+		// trigger payload. Until then only the Manual Trigger's payload is built here.
+		const liveNodes = data.workflowData.nodes.filter((node) => node.disabled !== true);
+		const firedTrigger = triggerName
+			? liveNodes.find((node) => node.name === triggerName)
+			: liveNodes.find((node) => isTriggerNodeType(node.type));
+		if (firedTrigger !== undefined && firedTrigger.type !== MANUAL_TRIGGER_NODE_TYPE) {
+			throw new UserError(
+				`Engine 2.0 cannot run the "${firedTrigger.name}" trigger yet. Only the Manual Trigger is supported.`,
+			);
+		}
+
 		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== triggerName);
 		if (pinnedNode !== undefined) {
 			throw new UserError(

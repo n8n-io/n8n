@@ -192,24 +192,20 @@ describe('EngineV2Dispatcher', () => {
 			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 
-		it('converts a production trigger to the trigger step', async () => {
-			const scheduleTrigger = { ...MANUAL_TRIGGER, type: 'n8n-nodes-base.scheduleTrigger' };
+		it.each([
+			{ name: 'the selected trigger', triggerToStartFrom: { name: 'Schedule' } },
+			{ name: 'the only trigger', triggerToStartFrom: undefined },
+		])('rejects a production trigger, when it is $name', async ({ triggerToStartFrom }) => {
+			const scheduleTrigger = node('sched-id', 'Schedule', 'n8n-nodes-base.scheduleTrigger');
 			const data = runData({
-				workflowData: workflow({ nodes: [scheduleTrigger, SET_NODE] }),
+				triggerToStartFrom,
+				workflowData: workflow({ nodes: [scheduleTrigger, SET_NODE], connections: {} }),
 			});
 
-			await dispatcher.start(data);
-
-			const { graph } = proxy.startExecution.mock.calls[0][0];
-			expect(graph.nodes).toEqual([
-				{
-					id: scheduleTrigger.id,
-					name: scheduleTrigger.name,
-					type: 'trigger',
-					config: { nodeType: scheduleTrigger.type, typeVersion: 1, parameters: {} },
-				},
-				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
-			]);
+			await expect(dispatcher.start(data)).rejects.toThrow(
+				'Engine 2.0 cannot run the "Schedule" trigger yet. Only the Manual Trigger is supported.',
+			);
+			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 
 		it('lets the converter find the trigger when none was selected', async () => {
