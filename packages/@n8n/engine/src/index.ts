@@ -1,7 +1,6 @@
 export { createEngineRuntime } from './runtime';
 export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
-export { createConsoleLogger } from './logging';
 export type { EngineLogger } from './logging';
 
 export {
