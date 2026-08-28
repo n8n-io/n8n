@@ -402,6 +402,52 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('getFindManyInWorkflowsCondition', () => {
+		const workflowIds = ['wf-1', 'wf-2'];
+		const startedAfter = '2024-01-01T00:00:00.000Z';
+		const startedBefore = '2024-01-31T23:59:59.999Z';
+
+		test('should not set startedAt when neither startedAfter nor startedBefore is provided', () => {
+			const condition = executionRepository.getFindManyInWorkflowsCondition(workflowIds, {});
+
+			expect(condition.startedAt).toBeUndefined();
+		});
+
+		test('should use MoreThanOrEqual when only startedAfter is provided', () => {
+			const condition = executionRepository.getFindManyInWorkflowsCondition(workflowIds, {
+				startedAfter,
+			});
+
+			expect(condition.startedAt).toEqual(
+				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter))),
+			);
+		});
+
+		test('should use LessThanOrEqual when only startedBefore is provided', () => {
+			const condition = executionRepository.getFindManyInWorkflowsCondition(workflowIds, {
+				startedBefore,
+			});
+
+			expect(condition.startedAt).toEqual(
+				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore))),
+			);
+		});
+
+		test('should use And(MoreThanOrEqual, LessThanOrEqual) when both are provided', () => {
+			const condition = executionRepository.getFindManyInWorkflowsCondition(workflowIds, {
+				startedAfter,
+				startedBefore,
+			});
+
+			expect(condition.startedAt).toEqual(
+				And(
+					MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter))),
+					LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore))),
+				),
+			);
+		});
+	});
+
 	describe('updateExistingExecution', () => {
 		test.each(['sqlite', 'postgresdb'] as const)(
 			'should update execution and data in transaction on %s',
