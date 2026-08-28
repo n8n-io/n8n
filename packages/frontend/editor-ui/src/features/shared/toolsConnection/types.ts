@@ -18,14 +18,42 @@ export interface ToolCredentialRef {
 	required?: boolean;
 }
 
+/**
+ * `none` means no connection has been created. `disconnected` is reserved for
+ * an existing connection that is currently unavailable.
+ */
+export type ToolConnectionStatus = 'none' | 'connecting' | 'connected' | 'disconnected';
+
+/** Whether a connection exists or is currently being established. */
+export function hasToolConnection(status: ToolConnectionStatus): boolean {
+	return status !== 'none';
+}
+
 export interface BaseConnectionItem {
 	id: string;
 	title: string;
 	description?: string;
 	iconSource?: ToolIconSource;
-	isConnected: boolean;
+	status: ToolConnectionStatus;
 	credentials?: ToolCredentialRef[];
 	longDescription?: string;
+	/** Tab this item belongs to. Falls back to `CATEGORY_BY_KIND` when unset. */
+	category?: ToolCategoryKey;
+	/** Reviewed and approved by n8n. Drives the shield badge, install state irrelevant. */
+	verified?: boolean;
+	/** Not yet installed: swaps the Connect action for an Install one. */
+	communityPreview?: boolean;
+	installing?: boolean;
+	/** Non-admin cannot install; the action is disabled with a contact-admin tooltip. */
+	installDisabled?: boolean;
+	/**
+	 * Row is visible but not selectable. Used to surface incompatible items
+	 * (e.g. a workflow with a Wait node) at the bottom of a category so the user
+	 * can see why they're missing instead of the row simply being absent.
+	 */
+	disabled?: boolean;
+	/** Human-readable explanation shown as a tooltip when `disabled` is true. */
+	disabledReason?: string;
 }
 
 export interface NodeConnectionItem extends BaseConnectionItem {
@@ -93,30 +121,42 @@ export type ToolConnectionItem =
 	| DataStoreConnectionItem
 	| ServiceConnectionItem;
 
-export type SectionKey =
+/**
+ * One tab in the modal. Consumers declare the subset they support; `agents` and
+ * `data` have no supplier yet and are reserved for folding the sub-agent and
+ * vector-store pickers in later.
+ */
+export type ToolCategoryKey =
+	| 'all'
 	| 'connected'
-	| 'built-in-services'
-	| 'nodes'
+	| 'built-in'
+	| 'mcp'
+	| 'ai'
+	| 'n8n'
+	| 'app-action'
+	| 'community'
+	| 'workflows'
 	| 'agents'
-	| 'data'
-	| 'workflows';
+	| 'data';
 
-export type TabId = 'services' | 'agents' | 'data' | 'workflows';
-
-export const SECTION_TAB: Record<SectionKey, TabId> = {
-	connected: 'services',
-	'built-in-services': 'services',
-	nodes: 'services',
-	agents: 'agents',
-	data: 'data',
-	workflows: 'workflows',
+/** Used when an item carries no explicit `category`. */
+export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {
+	node: 'app-action',
+	workflow: 'workflows',
+	'mcp-server': 'mcp',
+	service: 'built-in',
+	agent: 'agents',
+	'data-store': 'data',
 };
 
-export const TAB_ORDER: TabId[] = ['services', 'agents', 'data', 'workflows'];
-
-export type FlattenedRow =
-	| { kind: 'section-header'; key: string; section: SectionKey; title: string; count: number }
-	| { kind: 'item'; key: string; section: SectionKey; item: ToolConnectionItem };
+/**
+ * A type alias, not an interface: N8nRecycleScroller requires an implicit
+ * index signature, which interfaces do not get.
+ */
+export type FlattenedRow = {
+	key: string;
+	item: ToolConnectionItem;
+};
 
 export interface PickableCredential {
 	id: string;
@@ -131,7 +171,7 @@ export interface PickableCredential {
  */
 export interface ToolConnectionCredentialAdapter {
 	getCredentialsByType: (authType: string) => readonly PickableCredential[];
-	openNewCredential: (authType: string) => void;
+	openNewCredential: (authType: string, item: ToolConnectionItem) => void;
 	openExistingCredential: (credentialId: string) => void;
 }
 

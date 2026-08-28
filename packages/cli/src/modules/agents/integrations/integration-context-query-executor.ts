@@ -56,10 +56,14 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 		const { credentialId } = params.descriptor.integration;
 		if (!credentialId) return connectionUnavailable();
 
-		const chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
+		let chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
 			type: params.descriptor.integration.type,
 			credentialId,
 		});
+		chat ??= await this.chatIntegrationService.getChatInstanceForTools(
+			params.descriptor.agentId,
+			params.descriptor.integration,
+		);
 		if (!chat) return connectionUnavailable();
 
 		if (!integrationDef?.executeContextQuery) {

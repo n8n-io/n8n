@@ -3,6 +3,7 @@ import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
+	FolderRepository,
 	Project,
 	ProjectRelation,
 	ProjectRelationRepository,
@@ -65,6 +66,7 @@ class ProjectNotFoundError extends NotFoundError {
 export interface ProjectCreateOverrides {
 	id?: string;
 	description?: string | null;
+	customTelemetryTags?: Array<{ key: string; value: string }>;
 }
 
 @Service()
@@ -75,6 +77,7 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly folderRepository: FolderRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly ownershipService: OwnershipService,
@@ -90,12 +93,6 @@ export class ProjectService {
 	private get credentialsService() {
 		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
-		);
-	}
-
-	private get folderService() {
-		return import('@/services/folder.service.js').then(({ FolderService }) =>
-			Container.get(FolderService),
 		);
 	}
 
@@ -126,6 +123,12 @@ export class ProjectService {
 	private get agentExecutionService() {
 		return import('@/modules/agents/agent-execution.service.js').then(({ AgentExecutionService }) =>
 			Container.get(AgentExecutionService),
+		);
+	}
+
+	private get agentChatAttachmentService() {
+		return import('@/modules/agents/agent-chat-attachment.service.js').then(
+			({ AgentChatAttachmentService }) => Container.get(AgentChatAttachmentService),
 		);
 	}
 
@@ -174,6 +177,24 @@ export class ProjectService {
 			);
 		}
 
+		const ownedCredentials = await this.sharedCredentialsRepository.find({
+			where: { projectId: project.id, role: 'credential:owner' },
+			relations: { credentials: true },
+		});
+
+		// End-user credentials can't live in personal projects, so reject the whole
+		// migration before anything moves — deleteProject is a sequence of awaits,
+		// not a transaction.
+		if (targetProject?.type === 'personal') {
+			const endUserCredentials = ownedCredentials.filter((sc) => sc.credentials.isResolvable);
+			if (endUserCredentials.length > 0) {
+				const names = endUserCredentials.map((sc) => `"${sc.credentials.name}"`).join(', ');
+				throw new BadRequestError(
+					`Can't migrate end-user credentials (${names}) to a personal project. Switch them back to fixed credentials, move them to another team project, or delete this project without migrating.`,
+				);
+			}
+		}
+
 		// 1. delete or migrate workflows owned by this project
 		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { projectId: project.id, role: 'workflow:owner' },
@@ -191,11 +212,6 @@ export class ProjectService {
 		}
 
 		// 2. delete credentials owned by this project
-		const ownedCredentials = await this.sharedCredentialsRepository.find({
-			where: { projectId: project.id, role: 'credential:owner' },
-			relations: { credentials: true },
-		});
-
 		if (targetProject) {
 			await this.sharedCredentialsRepository.makeOwner(
 				ownedCredentials.map((sc) => sc.credentialsId),
@@ -209,8 +225,7 @@ export class ProjectService {
 
 		// 3. Move folders over to the target project, before deleting the project else cascading will delete workflows
 		if (targetProject) {
-			const folderService = await this.folderService;
-			await folderService.transferAllFoldersToProject(project.id, targetProject.id);
+			await this.folderRepository.transferAllFoldersToProject(project.id, targetProject.id);
 		}
 
 		// 4. delete shared credentials into this project
@@ -238,11 +253,13 @@ export class ProjectService {
 
 		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
 		if (this.moduleRegistry.isActive('agents')) {
-			const [agentRepository, agentKnowledgeService, agentExecutionService] = await Promise.all([
-				this.agentRepository,
-				this.agentKnowledgeService,
-				this.agentExecutionService,
-			]);
+			const [agentRepository, agentKnowledgeService, agentExecutionService, agentChatAttachments] =
+				await Promise.all([
+					this.agentRepository,
+					this.agentKnowledgeService,
+					this.agentExecutionService,
+					this.agentChatAttachmentService,
+				]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
 				try {
@@ -255,7 +272,19 @@ export class ProjectService {
 					});
 				}
 
-				await agentKnowledgeService.destroySandbox(project.id, agent.id);
+				// Delete chat attachment bytes before the project removal cascades away
+				// the agent_chat_attachments rows that hold the binaryDataId handles.
+				try {
+					await agentChatAttachments.deleteByAgent(agent.id);
+				} catch (error) {
+					this.logger.warn('Failed to delete chat attachments on project delete', {
+						agentId: agent.id,
+						projectId: project.id,
+						error: error instanceof Error ? error.message : error,
+					});
+				}
+
+				await agentKnowledgeService.destroyKnowledgeSandbox(project.id, agent.id);
 				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
 			}
 		}

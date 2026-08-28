@@ -4,9 +4,9 @@ import {
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
 	type INodeListSearchResult,
-	sleep,
 } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import { filterSortSearchListItems } from '../helpers/utils';
 import {
 	buildTeamsPath,
@@ -40,22 +40,30 @@ export async function getChats(
 		$expand: 'members',
 	};
 
+	// `/v1.0/chats` occasionally 5xxs transiently; retry up to `maxAttempts` times,
+	// sleeping 1s between attempts (not after the last one), and surface the final
+	// failure instead of swallowing it as an empty result.
+	const maxAttempts = 5;
 	let value: IDataObject[] = [];
-	let attempts = 5;
-	do {
+	let lastError: Error | undefined;
+
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
 		try {
 			value = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs)) as IDataObject)
 				.value as IDataObject[];
+			lastError = undefined;
 			break;
 		} catch (error) {
-			if (attempts > 0) {
+			lastError = error;
+			if (attempt < maxAttempts - 1) {
 				await sleep(1000);
-				attempts--;
-			} else {
-				throw new NodeOperationError(this.getNode(), error);
 			}
 		}
-	} while (attempts > 0);
+	}
+
+	if (lastError) {
+		throw new NodeOperationError(this.getNode(), lastError);
+	}
 
 	for (const chat of value) {
 		if (!chat.topic) {

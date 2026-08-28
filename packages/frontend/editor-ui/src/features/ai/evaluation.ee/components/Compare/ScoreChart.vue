@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nSegmentControl, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
@@ -48,7 +48,7 @@ const letters = computed(() => props.versions.map((version) => version.letter));
 				placement="top"
 				:content="i18n.baseText('evaluation.compare.scoreChart.toggle.perCaseComingSoon')"
 			>
-				<N8nRadioButtons v-model="mode" size="small" :options="modeOptions" />
+				<N8nSegmentControl v-model="mode" size="small" :options="modeOptions" />
 			</N8nTooltip>
 		</header>
 

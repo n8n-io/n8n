@@ -45,7 +45,7 @@ vi.mock('@/features/workflows/workflowDiff/WorkflowDiffView.vue', () => ({
 
 // Mock telemetry
 const trackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: trackMock,
 	}),
@@ -94,7 +94,7 @@ vi.mock('@/app/composables/useBrowserNotifications', () => ({
 }));
 
 // Mock useToast
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),

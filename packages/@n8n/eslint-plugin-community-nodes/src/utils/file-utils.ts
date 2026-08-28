@@ -238,6 +238,29 @@ export function findNodeSourceFilesOnDisk(packageJsonPath: string): string[] {
 	return findFilesRecursively(nodesDir, (fileName) => fileName.endsWith('.node.ts'));
 }
 
+/**
+ * Recursively finds files matching `matches` within the given subdirectories of
+ * the package (relative to its `package.json`). Missing subdirectories are
+ * skipped. Returns absolute paths.
+ */
+export function findFilesInPackageDirs(
+	packageJsonPath: string,
+	dirs: string[],
+	matches: (fileName: string) => boolean,
+): string[] {
+	const packageDir = dirname(packageJsonPath);
+	const results: string[] = [];
+
+	for (const dir of dirs) {
+		const fullPath = safeJoinPath(packageDir, dir);
+		if (existsSync(fullPath)) {
+			results.push(...findFilesRecursively(fullPath, matches));
+		}
+	}
+
+	return results;
+}
+
 export function areAllCredentialUsagesTestedByNodes(
 	credentialName: string,
 	packageDir: string,

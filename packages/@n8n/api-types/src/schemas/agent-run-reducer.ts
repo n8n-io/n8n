@@ -452,7 +452,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		case 'agent-completed': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
-				agent.status = event.payload.error ? 'error' : 'completed';
+				agent.status = event.payload.status ?? (event.payload.error ? 'error' : 'completed');
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
 				// A completed/errored agent can't have tool calls still in-flight.
@@ -475,7 +475,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					inputThreadId: event.payload.inputThreadId,
 					severity: event.payload.severity,
 					message: event.payload.message,
+					targetApproval: event.payload.targetApproval,
 					credentialRequests: event.payload.credentialRequests,
+					requireUserSelection: event.payload.requireUserSelection,
 					projectId: event.payload.projectId,
 					inputType: event.payload.inputType,
 					domainAccess: event.payload.domainAccess,
@@ -489,6 +491,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					tasks: event.payload.tasks,
 					resourceDecision: event.payload.resourceDecision,
 					channelConfig: event.payload.channelConfig,
+					mcpConnectRequest: event.payload.mcpConnectRequest,
 				};
 			}
 			break;

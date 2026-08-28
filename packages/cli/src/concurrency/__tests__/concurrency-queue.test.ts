@@ -1,4 +1,5 @@
-import { sleep, ManualExecutionCancelledError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { ManualExecutionCancelledError } from 'n8n-workflow';
 
 import { ConcurrencyQueue } from '../concurrency-queue';
 
@@ -111,3 +112,4 @@ describe('ConcurrencyQueue', () => {
 		expect(emitSpy).toHaveBeenCalledTimes(1);
 	});
 });
+

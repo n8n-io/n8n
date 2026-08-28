@@ -10,8 +10,9 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import {
 	HITL_APPROVE_ACTION_ID,
 	HITL_DECLINE_ACTION_ID,
@@ -61,6 +62,81 @@ export function toMultiOptionsCsv(value: unknown): string {
 	return '';
 }
 
+/**
+ * Turns an `ok: false` Slack payload into a user-facing error. Exported so callers
+ * that opt out of `slackApiRequest`'s error handling (to treat one error code as a
+ * non-failure) can still map every other code the same way.
+ */
+export function throwOnSlackApiError(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	// tslint:disable-next-line:no-any
+	responseData: any,
+): never {
+	if (responseData.error === 'paid_teams_only') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Your current Slack plan does not include the resource '${
+				this.getNodeParameter('resource', 0) as string
+			}'`,
+			{
+				description:
+					'Hint: Upgrade to a Slack plan that includes the functionality you want to use.',
+				level: 'warning',
+			},
+		);
+	} else if (responseData.error === 'ratelimited' || responseData.error === 'rate_limited') {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Slack error response: ' + JSON.stringify(responseData.error),
+			{
+				description:
+					'Wait before running this again, or request less data at a time. Limits differ per operation - see the Slack Documentation - https://docs.slack.dev/apis/web-api/rate-limits',
+				level: 'warning',
+			},
+		);
+	} else if (responseData.error === 'missing_scope') {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Your Slack credential is missing required Oauth Scopes',
+			{
+				description: `Add the following scope(s) to your Slack App: ${responseData.needed}`,
+				level: 'warning',
+			},
+		);
+	} else if (
+		responseData.error === 'not_allowed_token_type' ||
+		responseData.error === 'invalid_action_token'
+	) {
+		throw new NodeOperationError(this.getNode(), 'This Slack operation requires a user token', {
+			description:
+				'Bot tokens are not accepted here. Use OAuth2 authentication, or an Access Token credential holding a user token (starts with "xoxp-").',
+			level: 'warning',
+		});
+	} else if (responseData.error === 'not_admin') {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Need higher Role Level for this Operation (e.g. Owner or Admin Rights)',
+			{
+				description:
+					'Hint: Check the Role of your Slack App Integration. For more information see the Slack Documentation - https://slack.com/help/articles/360018112273-Types-of-roles-in-Slack',
+				level: 'warning',
+			},
+		);
+	}
+
+	throw new NodeOperationError(
+		this.getNode(),
+		'Slack error response: ' + JSON.stringify(responseData.error),
+	);
+}
+
+// Display label for a Slack user in pickers. Real names are friendlier but aren't
+// unique in Slack, so the handle is appended to keep same-named users distinguishable.
+// `real_name` is optional, so bots and unconfigured accounts show the handle alone.
+export function formatUserLabel(user: { name: string; real_name?: string }): string {
+	return user.real_name ? `${user.real_name} (@${user.name})` : user.name;
+}
+
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
@@ -96,56 +172,21 @@ export async function slackApiRequest(
 	};
 
 	const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
-	const response = await this.helpers.requestWithAuthentication.call(
-		this,
-		credentialType,
-		options,
-		{
+	let response;
+	try {
+		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
 			oauth2: oAuth2Options,
-		},
-	);
+		});
+	} catch (error) {
+		if (error instanceof NodeOperationError) throw error;
+		throw new NodeOperationError(this.getNode(), error as Error);
+	}
 
 	const responseData = options.resolveWithFullResponse ? response.body : response;
 
 	// don't try to handle errors if simple responses are disabled
 	if (responseData.ok === false && options.simple !== false) {
-		if (responseData.error === 'paid_teams_only') {
-			throw new NodeOperationError(
-				this.getNode(),
-				`Your current Slack plan does not include the resource '${
-					this.getNodeParameter('resource', 0) as string
-				}'`,
-				{
-					description:
-						'Hint: Upgrade to a Slack plan that includes the functionality you want to use.',
-					level: 'warning',
-				},
-			);
-		} else if (responseData.error === 'missing_scope') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Your Slack credential is missing required Oauth Scopes',
-				{
-					description: `Add the following scope(s) to your Slack App: ${responseData.needed}`,
-					level: 'warning',
-				},
-			);
-		} else if (responseData.error === 'not_admin') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Need higher Role Level for this Operation (e.g. Owner or Admin Rights)',
-				{
-					description:
-						'Hint: Check the Role of your Slack App Integration. For more information see the Slack Documentation - https://slack.com/help/articles/360018112273-Types-of-roles-in-Slack',
-					level: 'warning',
-				},
-			);
-		}
-
-		throw new NodeOperationError(
-			this.getNode(),
-			'Slack error response: ' + JSON.stringify(responseData.error),
-		);
+		throwOnSlackApiError.call(this, responseData);
 	}
 
 	if (responseData.ts !== undefined) {
@@ -296,6 +337,58 @@ export async function slackApiRequestAllItems(
 			(responseData[propertyName]?.matches as IDataObject[]) ?? responseData[propertyName] ?? [],
 		);
 	} while (hasNextPage(responseData, propertyName));
+	return returnData;
+}
+
+/** Slack caps `limit` on assistant.search.context at 20 results per request. */
+const SEARCH_CONTEXT_PAGE_SIZE = 20;
+
+/**
+ * Cursor-paginates the Real-time Search API up to `maxResults`. It needs its own loop
+ * because it takes arguments in the request body and returns `results.messages` with a
+ * cursor, none of which the query-string based helpers above can express.
+ */
+export async function searchContextItems(
+	this: IExecuteFunctions,
+	body: IDataObject,
+	maxResults: number,
+): Promise<IDataObject[]> {
+	const returnData: IDataObject[] = [];
+	let cursor: string | undefined;
+
+	do {
+		const responseData = await slackApiRequest.call(
+			this,
+			'POST',
+			'/assistant.search.context',
+			{
+				...body,
+				limit: Math.min(SEARCH_CONTEXT_PAGE_SIZE, maxResults - returnData.length),
+				...(cursor ? { cursor } : {}),
+			},
+			{},
+			undefined,
+			// Errors are handled here so the pagination cap can end the loop instead of failing
+			{ simple: false },
+		);
+
+		// `simple: false` also suppresses HTTP-status errors, so anything that is not an
+		// explicit success has to be raised here rather than parsed as results.
+		if (responseData.ok !== true) {
+			// Slack caps how deep a search can be paged. Hitting the cap means there is
+			// nothing further to fetch, so keep what we have instead of failing the node.
+			if (responseData.error === 'page_limit_exceeded') break;
+			throwOnSlackApiError.call(this, responseData);
+		}
+
+		const messages = (get(responseData, 'results.messages') as IDataObject[]) ?? [];
+		returnData.push(...messages);
+		cursor = get(responseData, 'response_metadata.next_cursor') as string | undefined;
+
+		// An empty page with a cursor would otherwise spin forever
+		if (messages.length === 0) break;
+	} while (cursor && returnData.length < maxResults);
+
 	return returnData;
 }
 

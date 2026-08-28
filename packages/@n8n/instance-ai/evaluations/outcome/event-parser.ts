@@ -4,7 +4,11 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS, EVAL_CONFIG_TOOL_ID } from '../../src/tools/tool-ids';
+import {
+	DATA_TABLES_TOOL_ID,
+	DOMAIN_TOOL_IDS,
+	EVAL_CONFIG_TOOL_ID,
+} from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
 	ArtifactRef,
@@ -494,7 +498,7 @@ export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[]
 	});
 }
 
-/** Prepend the seeded prefix's counters to live metrics so a seedThread case's
+/** Prepend the seeded prefix's counters to live metrics so a seeded case's
  *  metrics span the whole conversation (matching the unified transcript). Live
  *  `reachedRunFinishCleanly` is preserved (it describes the evaluated run); an
  *  empty prefix returns metrics deep-equal to the live ones. */
@@ -622,6 +626,38 @@ function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): s
 		}
 	}
 	return undefined;
+}
+
+/**
+ * The workflow id of the MOST RECENT build that actually SAVED, or undefined if
+ * this run has saved none.
+ *
+ * Deliberately narrower than `extractOutcomeFromEvents().workflowIds`, which
+ * includes ids from FAILED builds on purpose: a save that parsed but didn't
+ * persist still returns `{ success: false, workflowId }`, and discovery wants
+ * those so cleanup can claim and delete whatever the run touched.
+ *
+ * That's the wrong set for any caller that MUTATES a workflow. A failed build
+ * against an attached or pre-existing workflow would otherwise look like a
+ * build this run performed, and the caller would act on state it never created.
+ * Requires `success === true` rather than `!== false`, so a result shape
+ * without the flag is treated as not-saved — the safe direction when the
+ * consequence is writing to someone else's workflow.
+ *
+ * Returns the last id directly rather than a deduped list for the caller to
+ * index. Dedupe keeps FIRST-seen order, so a run that saved A, then B, then A
+ * again yields [A, B] and the last element is B — while the workflow most
+ * recently written is A. Anything mutating "the workflow under discussion" has
+ * to follow save order, not first-appearance order.
+ */
+export function lastSavedWorkflowIdFromEvents(events: CapturedEvent[]): string | undefined {
+	const saved = extractOutcomeFromEvents(events)
+		.toolCalls.filter((call) => WORKFLOW_TOOLS.has(call.toolName))
+		.filter((call) => toResultRecord(call.result)?.success === true)
+		.map((call) => extractIdFromResult(call.result, 'workflowId', 'id'))
+		.filter((id): id is string => id !== undefined);
+
+	return saved.at(-1);
 }
 
 function dedupe(arr: string[]): string[] {

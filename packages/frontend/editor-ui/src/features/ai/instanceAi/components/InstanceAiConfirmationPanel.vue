@@ -4,7 +4,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { useToolLabel } from '../toolLabels';
@@ -132,6 +132,9 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * English strings over the wire.
  */
 function buildApprovalTitle(item: PendingConfirmationItem): string {
+	if (item.toolCall.confirmation.targetApproval) {
+		return i18n.baseText('agents.chat.approval.title');
+	}
 	const { toolName, args } = item.toolCall;
 	const action = typeof args?.action === 'string' ? args.action : undefined;
 	const imperativeKey = (
@@ -154,6 +157,12 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
  * message includes a trailing explanation doesn't bloat the card.
  */
 function buildApprovalSubtitle(item: PendingConfirmationItem): string {
+	const targetApproval = item.toolCall.confirmation.targetApproval;
+	if (targetApproval) {
+		return i18n.baseText('agents.chat.approval.description', {
+			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
+		});
+	}
 	const message = item.toolCall.confirmation.message ?? '';
 	const idx = message.indexOf('?');
 	return idx === -1 ? message : message.slice(0, idx + 1);
@@ -166,8 +175,15 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
  */
 function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 	const destructive = isDestructive(item);
+	const conf = item.toolCall.confirmation;
+	// Workflow edits must be scoped to a workflow ID — never offer a session grant
+	// that would collapse to a blanket tool key.
+	const alwaysAllowAvailable =
+		!destructive &&
+		!conf.targetApproval &&
+		thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 	const options: ApprovalOption[] = [];
-	if (!destructive) {
+	if (alwaysAllowAvailable) {
 		options.push({
 			key: 'always-allow',
 			icon: 'check-check',
@@ -190,6 +206,16 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 		testId: 'instance-ai-panel-confirm-deny',
 	});
 	return options;
+}
+
+function formatTargetApprovalArgs(conf: InstanceAiConfirmation): string {
+	const args = conf.targetApproval?.args;
+	if (args === undefined) return '';
+	try {
+		return JSON.stringify(args, null, 2) ?? String(args);
+	} catch {
+		return String(args);
+	}
 }
 
 function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
@@ -225,10 +251,11 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		// behaviour. `confirmAction` already surfaces a toast on failure.
 		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved });
 		if (!ok) return;
-		// "Always allow" is offered alongside Approve/Deny for non-destructive
-		// generic approvals; include it in the option set so telemetry reflects
-		// what the user actually chose between.
-		const alwaysAllowAvailable = !isDestructive(item);
+		// Match the options actually shown in `buildApprovalOptions`.
+		const alwaysAllowAvailable =
+			!isDestructive(item) &&
+			!conf.targetApproval &&
+			thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,
 			[
@@ -264,7 +291,7 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 			scope: 'session',
 		});
 		if (!ok) return;
-		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,
 			[
@@ -404,12 +431,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
 			<template v-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
+				<!-- Threads are project-bound: fall back to the thread's project so a
+				     payload without projectId never degrades to the personal project. -->
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
@@ -421,8 +450,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
+					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
 				<!-- Structured questions -->
@@ -581,6 +611,13 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
 									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
+									<ConfirmationPreview
+										v-if="formatTargetApprovalArgs(chunk.item.toolCall.confirmation)"
+										:class="$style.targetApprovalArgs"
+										data-test-id="instance-ai-target-approval-args"
+									>
+										{{ formatTargetApprovalArgs(chunk.item.toolCall.confirmation) }}
+									</ConfirmationPreview>
 								</div>
 
 								<ApprovalOptionList
@@ -622,11 +659,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	}
 }
 
+.targetApprovalArgs {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
 	font-size: var(--font-size--2xs);
 }
 
@@ -634,6 +674,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
 .textInputRow {

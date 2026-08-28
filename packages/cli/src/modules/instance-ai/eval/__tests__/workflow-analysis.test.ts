@@ -14,9 +14,11 @@ import { UserError } from 'n8n-workflow';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
+	emitsDataTableRows,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
 
@@ -46,6 +48,35 @@ function makeWorkflow(nodes: INode[], connections: IConnections = {}): IWorkflow
 		updatedAt: new Date(),
 	};
 }
+
+describe('Data Table read predicates', () => {
+	function makeDataTableNode(parameters: INodeParameters): INode {
+		return makeNode({ name: 'Table', type: 'n8n-nodes-base.dataTable', parameters });
+	}
+
+	it.each(['get', 'rowExists', 'rowNotExists'])('treats %s as a read', (operation) => {
+		expect(isDataTableRead(makeDataTableNode({ resource: 'row', operation }))).toBe(true);
+	});
+
+	it.each(['insert', 'update', 'deleteRows'])('treats %s as a write', (operation) => {
+		expect(isDataTableRead(makeDataTableNode({ resource: 'row', operation }))).toBe(false);
+	});
+
+	it('only counts `get` as row-emitting', () => {
+		// rowExists/rowNotExists return `[this.getInputData()[index]]` — the input
+		// item passed through — so the table's column contract does not apply.
+		expect(emitsDataTableRows(makeDataTableNode({ resource: 'row', operation: 'get' }))).toBe(true);
+		for (const operation of ['rowExists', 'rowNotExists', 'insert']) {
+			expect(emitsDataTableRows(makeDataTableNode({ resource: 'row', operation }))).toBe(false);
+		}
+	});
+
+	it('ignores non-Data-Table nodes', () => {
+		const node = makeNode({ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' });
+		expect(isDataTableRead(node)).toBe(false);
+		expect(emitsDataTableRows(node)).toBe(false);
+	});
+});
 
 describe('identifyNodesForPinData', () => {
 	it('should identify AI root nodes as needing pin data', () => {

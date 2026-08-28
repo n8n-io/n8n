@@ -3,9 +3,11 @@ import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
+	dropInvalidWorkflowGroups,
 	formatWorkflowStructureIssuePath,
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	isSafeObjectProperty,
+	makeGetNodeTypeForGrouping,
 	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
@@ -13,15 +15,14 @@ import {
 	summarizeDynamicCredentialsUsage,
 	validateWorkflowGroups,
 	type IDataObject,
-	type INode,
 	type INodeCredentialsDetails,
-	type INodeTypeDescription,
 	type INodeTypes,
 	type IRun,
 	type ITaskData,
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type RelatedExecution,
+	type GetNodeTypeForGrouping,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -31,6 +32,8 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { OwnershipService } from './services/ownership.service';
+
+export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
 
 /**
  * Validates that pinned data does not exceed size limits.
@@ -143,27 +146,6 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 			// node type not found, skip
 		}
 	}
-}
-
-/**
- * Resolves a node to its type description, or `null` for unknown node types.
- * Used by the grouping validator to detect trigger nodes.
- */
-type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
-
-/**
- * Builds the `getNodeType` callback that the grouping validator needs to resolve
- * a node to its type description (used to detect trigger nodes). Returns `null`
- * for unknown node types so validation degrades gracefully rather than throwing.
- */
-export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
-	return (node: INode) => {
-		try {
-			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-		} catch {
-			return null;
-		}
-	};
 }
 
 /**

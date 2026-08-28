@@ -151,6 +151,52 @@ describe('SuspendedRunRestorer — orphan restoration', () => {
 		expect(mocks.eventBus.publish).not.toHaveBeenCalled();
 	});
 
+	it('rejects a claimed suspended-kind row without touching the thread when it already has a live run', async () => {
+		const { restorer, mocks } = createRestorer();
+		mocks.runState.hasLiveRun.mockReturnValue(true);
+		mocks.pendingConfirmationRepo.claim.mockResolvedValue(
+			orphanRow({
+				requestId: 'req-stale',
+				threadId: 'thread-1',
+				userId: 'user-1',
+				kind: 'suspended',
+				runId: 'run-old',
+				toolCallId: 'tool-1',
+				checkpointKey: 'cp-1',
+			}),
+		);
+		mocks.rebuilder.rebuildSuspendedRun.mockResolvedValue(ready);
+
+		const result = await restorer.resolveOrphanedConfirmation('user-1', 'req-stale', approval);
+
+		expect(result).toBeNull();
+		expect(mocks.rebuilder.rebuildSuspendedRun).not.toHaveBeenCalled();
+		expect(mocks.runState.suspendRun).not.toHaveBeenCalled();
+		expect(mocks.rebuilder.resumeSuspendedRun).not.toHaveBeenCalled();
+		expect(mocks.eventBus.publish).not.toHaveBeenCalled();
+		expect(mocks.dbSnapshotStorage.markRunCancelled).not.toHaveBeenCalled();
+	});
+
+	it('rejects a stale inline-kind row without cancelling anything when the thread has a live run', async () => {
+		const { restorer, mocks } = createRestorer();
+		mocks.runState.hasLiveRun.mockReturnValue(true);
+		mocks.pendingConfirmationRepo.claim.mockResolvedValue(
+			orphanRow({
+				requestId: 'req-stale',
+				threadId: 'thread-1',
+				userId: 'user-1',
+				kind: 'inline',
+				runId: 'run-old',
+			}),
+		);
+
+		const result = await restorer.resolveOrphanedConfirmation('user-1', 'req-stale', approval);
+
+		expect(result).toBeNull();
+		expect(mocks.eventBus.publish).not.toHaveBeenCalled();
+		expect(mocks.dbSnapshotStorage.markRunCancelled).not.toHaveBeenCalled();
+	});
+
 	it('falls back to the terminal UserError when the rebuild fails', async () => {
 		const { restorer, mocks } = createRestorer();
 		mocks.pendingConfirmationRepo.claim.mockResolvedValue(

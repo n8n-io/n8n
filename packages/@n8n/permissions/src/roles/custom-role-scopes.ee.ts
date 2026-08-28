@@ -7,7 +7,7 @@ import type { Scope } from '@/types.ee';
  * every operation exists in that resource's definition in @n8n/permissions.
  */
 export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
-	project: ['read', 'update', 'delete', 'export'],
+	project: ['read', 'update', 'delete', 'export', 'manageMembers'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
 		'read',
@@ -127,14 +127,10 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		Manage: ['role:read', 'role:manage'],
 	},
 	apiKey: {
-		'Manage own': ['apiKey:create', 'apiKey:list', 'apiKey:delete', 'apiKey:update'],
-		'Manage all': [
-			'apiKey:create',
-			'apiKey:list',
-			'apiKey:delete',
-			'apiKey:update',
-			'apiKey:manage',
-		],
+		// Viewing and revoking your own keys needs no scope (always available),
+		// so these options only gate creating/editing own keys and managing others'.
+		'Manage own': ['apiKey:create', 'apiKey:update'],
+		'Manage all': ['apiKey:create', 'apiKey:update', 'apiKey:manage'],
 	},
 	tag: {
 		// read/list are bundled with write scopes: tags on workflows you can already

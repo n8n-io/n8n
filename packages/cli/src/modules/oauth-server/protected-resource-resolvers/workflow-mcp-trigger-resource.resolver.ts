@@ -5,9 +5,10 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { triggerResourceGate } from '../resource-gate';
 import {
 	WORKFLOW_MCP_TRIGGER_SCOPES,
 	resourceUrlToWebhookPath,
@@ -97,24 +98,17 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.mcp}/${path}`;
 			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-mcp:' + workflow.id,
 				getResourceUrl: () => resourceUrl,
-				getAudiences: () => [resourceUrl],
+				getAudiences: () => audiences,
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,
 				displayName: workflow.name,
-				authorize: async (user: User) => {
-					if (requireExecute) {
-						return (
-							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-								[workflow.id],
-								user,
-								['workflow:execute'],
-							)
-						).has(workflow.id);
-					}
-					return true;
-				},
+				...triggerResourceGate(this.workflowFinderService, {
+					audiences,
+					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,
+				}),
 			};
 		}
 

@@ -47,7 +47,12 @@ const { t } = useI18n();
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
 				<PreviewTag v-if="tag?.preview" size="small" :class="$style.previewTag" :text="tag.text" />
-				<N8nActionPill v-else-if="tag?.pill" size="small" :text="tag.text" />
+				<N8nActionPill
+					v-else-if="tag?.pill"
+					size="small"
+					:text="tag.text"
+					:type="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'default'"
+				/>
 				<ElTag
 					v-else-if="tag"
 					:class="$style.tag"

@@ -18,13 +18,6 @@ const TAIL_NARRATION_MAX_LENGTH = 200;
 
 type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
 
-/** First sentence of a streamed markdown-ish text, for trace status lines. */
-export function firstSentence(content: string): string {
-	const plain = content.replace(/[*_`#]/g, '').trim();
-	const match = plain.match(/^.*?[.!?](?=\s|$)/s);
-	return (match ? match[0] : plain).trim();
-}
-
 /**
  * The timeline reduced to renderable blocks.
  *
@@ -40,6 +33,7 @@ export type TimelineBlock =
 	| { type: 'text'; key: string; entry: TextEntry }
 	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode };
 
@@ -47,14 +41,15 @@ type ToolCallKind =
 	| 'hidden'
 	| 'tasks'
 	| 'plan-review'
+	| 'mcp-connect'
 	| 'questions'
 	| 'questions-pending'
 	| 'trace';
 
 /**
  * How a tool call renders in the timeline. `trace` rows join thinking blocks;
- * `tasks`/`plan-review`/`questions` render standalone UI; `hidden` calls are
- * dropped without splitting a run.
+ * `tasks`/`plan-review`/`mcp-connect`/`questions` render standalone UI; `hidden`
+ * calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
  * child agent section represents them. In-thread builds (`build-workflow`)
@@ -66,6 +61,7 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
 	if (tc.confirmation?.inputType === 'plan-review') return 'plan-review';
+	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
 	if (tc.renderHint === 'planner') return 'hidden';
 	if (tc.confirmation?.inputType === 'questions') {
 		return tc.isLoading ? 'questions-pending' : 'questions';
@@ -91,6 +87,13 @@ export function buildTimelineBlocks(
 	// kept working after writing it. Trailing text of a response (and text
 	// without a responseId, from old snapshots) is user-facing.
 	const lastTraceIdxByResponse = new Map<string, number>();
+	// Index of the first trace entry anywhere in the run — tells the tail guard
+	// below that the model is already in a tool loop, whatever response it is on.
+	let firstTraceIdx: number | undefined;
+	const markTrace = (responseId: string, idx: number) => {
+		lastTraceIdxByResponse.set(responseId, idx);
+		firstTraceIdx ??= idx;
+	};
 	const builderChildResponseIds = new Set(
 		entries
 			.filter(
@@ -107,7 +110,7 @@ export function buildTimelineBlocks(
 	entries.forEach((entry, idx) => {
 		if (entry.responseId === undefined) return;
 		if (entry.type === 'reasoning') {
-			lastTraceIdxByResponse.set(entry.responseId, idx);
+			markTrace(entry.responseId, idx);
 		} else if (entry.type === 'tool-call') {
 			const tc = toolCallsById[entry.toolCallId];
 			if (
@@ -118,7 +121,7 @@ export function buildTimelineBlocks(
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 				)
 			) {
-				lastTraceIdxByResponse.set(entry.responseId, idx);
+				markTrace(entry.responseId, idx);
 			}
 		}
 	});
@@ -130,14 +133,22 @@ export function buildTimelineBlocks(
 		// Streaming tail text is ambiguous — narration before the next tool call
 		// and the final answer look identical until either a tool call follows
 		// or the run ends. Rendering it outside and folding it back in reads as
-		// an answer flashing and vanishing, so short tail text following this
-		// response's trace content is optimistically kept INSIDE the block (its
-		// first sentence feeds the status line). It promotes out — an additive,
-		// non-jarring motion — once it grows answer-length or the run settles.
+		// an answer flashing and vanishing, so short tail text is optimistically
+		// kept INSIDE the block (its first sentence feeds the status line). It
+		// promotes out — an additive, non-jarring motion — once it grows
+		// answer-length or the run settles.
+		//
+		// The condition is run-scoped, not response-scoped: a step that emits no
+		// reasoning leads with its narration text, so keying on the current
+		// response would render it outside for the few hundred ms until that
+		// step's tool call lands. Trace content earlier in the run is enough to
+		// know the model is mid-tool-loop; a first answer with no trace at all
+		// still renders as text immediately.
 		return (
 			agentStatus === 'active' &&
 			idx === entries.length - 1 &&
-			lastTraceIdx !== undefined &&
+			firstTraceIdx !== undefined &&
+			firstTraceIdx < idx &&
 			entry.content.length <= TAIL_NARRATION_MAX_LENGTH
 		);
 	};
@@ -195,6 +206,9 @@ export function buildTimelineBlocks(
 				return;
 			case 'plan-review':
 				pushStandalone({ type: 'plan-review', key: `plan-${idx}`, toolCall: tc });
+				return;
+			case 'mcp-connect':
+				pushStandalone({ type: 'mcp-connect', key: `mcp-connect-${idx}`, toolCall: tc });
 				return;
 			case 'questions':
 				pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });

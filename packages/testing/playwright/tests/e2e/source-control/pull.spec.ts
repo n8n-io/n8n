@@ -6,9 +6,7 @@ import { type GitRepoHelper, setupGitRepo } from '../../../utils/source-control-
 test.use({ capability: 'source-control' });
 
 async function expectPullSuccess(n8n: n8nPage) {
-	expect(
-		await n8n.notifications.waitForNotificationAndClose('Pulled successfully', { timeout: 30000 }),
-	).toBe(true);
+	await n8n.notifications.waitForNotificationAndClose('Pulled successfully', { timeout: 30000 });
 }
 
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.

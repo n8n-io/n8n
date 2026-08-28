@@ -51,7 +51,11 @@ function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
 	};
 }
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+function emittedArgument(args: unknown, index: number): unknown {
+	return Array.isArray(args) ? args[index] : undefined;
+}
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: telemetryTrack })),
 }));
 
@@ -194,8 +198,29 @@ const CustomRawPromptSuggestionsComponent = defineComponent({
 	},
 });
 
+const InputMenuStub = defineComponent({
+	emits: ['attach-files'],
+	setup(_props, { emit }) {
+		return () =>
+			h(
+				'button',
+				{
+					type: 'button',
+					'data-test-id': 'instance-ai-input-menu-attach',
+					onClick: () => emit('attach-files'),
+				},
+				'Attach file',
+			);
+	},
+});
+
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
+	global: {
+		stubs: {
+			InstanceAiInputMenu: true,
+		},
+	},
 });
 
 describe('InstanceAiInput', () => {
@@ -244,7 +269,7 @@ describe('InstanceAiInput', () => {
 
 		expect(getByRole('textbox')).toHaveAttribute(
 			'placeholder',
-			'Tell me what to build or ask me a question',
+			'Tell me what to build or ask a question – add context with +',
 		);
 	});
 
@@ -535,7 +560,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('submits typed text and attachments from the send button', async () => {
-		const { container, emitted, getByRole, getByTestId } = renderComponent({
+		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
@@ -566,9 +591,59 @@ describe('InstanceAiInput', () => {
 						fileName: 'note.txt',
 					}),
 				],
+				expect.any(Function),
 			],
 		]);
 		expect(textbox).toHaveValue('');
+		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+		await waitFor(() => {
+			expect(textbox).toHaveValue('Please send this with context');
+			expect(getByTestId('chat-file')).toBeInTheDocument();
+		});
+	});
+
+	it('opens the hidden file picker from the input menu', async () => {
+		const fileInputClick = vi.spyOn(HTMLInputElement.prototype, 'click');
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: { stubs: { InstanceAiInputMenu: InputMenuStub } },
+		});
+
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('instance-ai-input-menu-attach'));
+
+		expect(fileInputClick).toHaveBeenCalledOnce();
+		fileInputClick.mockRestore();
+	});
+
+	it('does not restore a submitted draft over newer composer content', async () => {
+		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: { isStreaming: false },
+		});
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Original message');
+		const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+		Object.defineProperty(fileInput, 'files', {
+			value: [new File(['old context'], 'old-context.txt', { type: 'text/plain' })],
+			configurable: true,
+		});
+		await fireEvent.change(fileInput);
+		await waitFor(() => expect(getByTestId('chat-file')).toBeInTheDocument());
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		await userEvent.type(textbox, 'New message');
+
+		expect(restoreDraft()).toBe(false);
+		expect(textbox).toHaveValue('New message');
+		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
 	});
 
 	it('opens quick examples and inserts an example without submitting', async () => {

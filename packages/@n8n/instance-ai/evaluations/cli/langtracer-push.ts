@@ -1,4 +1,4 @@
-// Push selected on-disk eval cases (data/workflows/*.json) UP into a
+// Push selected on-disk eval cases (data/workflows/ + data/agents/ *.json) UP into a
 // lang-tracer suite over the REST API, upserting: create missing, update changed,
 // leave unchanged, skip unsupported. The inverse of `--source langtracer` (which
 // pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (repo-root .env.local).
@@ -10,10 +10,11 @@
 import { execFileSync } from 'node:child_process';
 import { basename } from 'node:path';
 
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import { loadAgentEvalTestCasesWithFiles } from '../data/agents';
+import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import { LangTracerClient } from '../langtracer/client';
 import { resolveLangTracerConfig } from '../langtracer/config';
-import { planPush, toUpdatePatch } from '../langtracer/push';
+import { comparableDiff, planPush, toUpdatePatch } from '../langtracer/push';
 import { diskCaseToLangTracerCreate } from '../langtracer/to-exported';
 
 interface CliArgs {
@@ -35,7 +36,7 @@ Usage:
 
 Selectors (at least one required — no accidental push-all):
   <slugs...>            Exact file slugs to push (e.g. ai-quote-carousel)
-  --changed             New/untracked + staged + modified data/workflows/*.json
+  --changed             New/untracked + staged + modified data/{workflows,agents}/*.json
   --filter <csv>        Substring match on file slug
   --tier <name>         Cases whose datasets include <name>
   --exclude <csv>       Substring exclude (modifier, not a selector on its own)
@@ -134,7 +135,7 @@ function nextArg(argv: string[], i: number, flag: string): string {
 	return value;
 }
 
-/** New/untracked + staged + modified `data/workflows/*.json` slugs, from git. */
+/** New/untracked + staged + modified `data/{workflows,agents}/*.json` slugs, from git. */
 function gitChangedSlugs(): string[] {
 	const out = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {
 		encoding: 'utf-8',
@@ -144,7 +145,10 @@ function gitChangedSlugs(): string[] {
 		if (!line.trim()) continue;
 		const raw = line.slice(3).trim(); // strip the 2-char status + space
 		const path = raw.includes(' -> ') ? raw.split(' -> ')[1] : raw; // rename → new path
-		if (path.includes('evaluations/data/workflows/') && path.endsWith('.json')) {
+		if (
+			(path.includes('evaluations/data/workflows/') || path.includes('evaluations/data/agents/')) &&
+			path.endsWith('.json')
+		) {
 			slugs.push(basename(path, '.json'));
 		}
 	}
@@ -174,7 +178,16 @@ async function main() {
 	// Select disk cases: loader applies --filter/--exclude, --tier narrows by the
 	// case's datasets (mirrors data/source.ts); then narrow to the exact slugs
 	// from positional args + --changed (if either was given).
-	const loaded = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const loaded = [
+		...loadWorkflowTestCasesWithFiles(args.filter, args.exclude),
+		...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude),
+	];
+	const dupes = loaded.filter((c, i) => loaded.findIndex((o) => o.fileSlug === c.fileSlug) !== i);
+	if (dupes.length > 0) {
+		throw new Error(
+			`duplicate case slug(s) across data/workflows and data/agents: ${dupes.map((d) => d.fileSlug).join(', ')}`,
+		);
+	}
 	const tier = args.tier;
 	const all = tier ? loaded.filter((c) => c.testCase.datasets.includes(tier)) : loaded;
 	const exactSlugs = new Set([...args.slugs, ...(args.changed ? gitChangedSlugs() : [])]);
@@ -182,7 +195,7 @@ async function main() {
 
 	const missing = [...exactSlugs].filter((s) => !all.some((c) => c.fileSlug === s));
 	if (missing.length > 0) {
-		console.warn(`⚠ no data/workflows case file for: ${missing.join(', ')}`);
+		console.warn(`⚠ no data/workflows or data/agents case file for: ${missing.join(', ')}`);
 	}
 	if (selected.length === 0) {
 		console.log('No cases selected — nothing to push.');
@@ -239,8 +252,49 @@ async function main() {
 		console.log(`  ~ updated ${item.fileSlug} (#${String(id)}, rev ${String(res.revision)})`);
 	}
 
+	await verifyWrites(client, suite.id, [...plan.toCreate, ...plan.toUpdate.map((u) => u.item)]);
+
 	console.log(
 		`\nDone: ${String(plan.toCreate.length)} created, ${String(plan.toUpdate.length)} updated, ${String(plan.unchanged.length)} unchanged, ${String(plan.skipped.length)} skipped.`,
+	);
+}
+
+/**
+ * Re-read the suite and confirm the server stored what we sent.
+ *
+ * A lang-tracer deployment predating a field's support ignores that key and still
+ * answers 200 — `seed` before #113, `attach` before #119. Without this the push
+ * reports success while the suite holds a quietly different case: a seeded case
+ * that will run unseeded, or a hand-off that became a find-it test. Both are
+ * deploy-ordering hazards no local check can catch, so ask the server.
+ */
+async function verifyWrites(
+	client: LangTracerClient,
+	suiteId: number,
+	written: WorkflowTestCaseWithFile[],
+): Promise<void> {
+	if (written.length === 0) return;
+
+	const after = await client.exportSuite(suiteId);
+	const dropped = written
+		.map((item) => ({
+			fileSlug: item.fileSlug,
+			keys: comparableDiff(after.files[`${item.fileSlug}.json`], item.testCase),
+		}))
+		.filter((result) => result.keys.length > 0);
+
+	if (dropped.length === 0) {
+		console.log(`  verified ${String(written.length)} case(s) round-trip intact`);
+		return;
+	}
+
+	for (const result of dropped) {
+		console.error(`  ! ${result.fileSlug}: server did not store ${result.keys.join(', ')}`);
+	}
+	throw new Error(
+		`${String(dropped.length)} case(s) did not round-trip: the fields above were sent but are absent from the suite export. ` +
+			'A lang-tracer deployment can silently ignore a key it predates (`seed` needs #113, `attach` needs #119) — ' +
+			'upgrade it, then re-push. The cases in the suite are NOT what you authored until you do.',
 	);
 }
 

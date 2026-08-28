@@ -169,6 +169,8 @@ test.describe(
 			});
 			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
 
+			await n8n.ndv.credentials.selectByName(credentialName);
+
 			await n8n.ndv.execute();
 			await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();
 
@@ -209,6 +211,8 @@ test.describe(
 				authentication: 'Header Auth',
 			});
 			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
+
+			await n8n.ndv.credentials.selectByName(credentialName);
 
 			await n8n.ndv.execute();
 			await expect(n8n.ndv.getWebhookTestEvent()).toBeVisible();

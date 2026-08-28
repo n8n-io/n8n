@@ -4,6 +4,9 @@
         "created_at": {
             "type": "string"
         },
+        "financial_status": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
@@ -110,6 +113,9 @@
                     "product_exists": {
                         "type": "boolean"
                     },
+                    "product_id": {
+                        "type": "integer"
+                    },
                     "properties": {
                         "type": "array",
                         "items": {
@@ -207,12 +213,21 @@
                             }
                         }
                     },
+                    "variant_id": {
+                        "type": "integer"
+                    },
                     "vendor": {
                         "type": "string"
                     }
                 }
             }
+        },
+        "order_number": {
+            "type": "integer"
+        },
+        "total_price": {
+            "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }

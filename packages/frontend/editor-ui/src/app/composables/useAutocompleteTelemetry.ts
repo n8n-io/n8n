@@ -5,7 +5,7 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTelemetry } from '../composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { Compartment } from '@codemirror/state';
 import debounce from 'lodash/debounce';
 

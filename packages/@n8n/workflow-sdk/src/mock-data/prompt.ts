@@ -1,5 +1,5 @@
-import { describeAiRootShape, findEnvelopeKey, isAiRootNodeType } from './ai-root-shapes';
-import { collectDownstreamConsumers } from './context';
+import { describeAiRootShape, isAiRootNodeType } from './ai-root-shapes';
+import { collectDownstreamConsumers, resolveEnvelopeKey } from './context';
 import { workflowToMermaid } from './mermaid';
 import type { NodeSchemaContext, PinDataGenerationInstructions } from './types';
 import type { WorkflowJSON } from '../types/base';
@@ -8,7 +8,7 @@ export const PIN_DATA_SYSTEM_PROMPT = `You are a test data generator for n8n wor
 
 RULES:
 1. Data must be consistent across nodes. If node A creates an entity with id "abc-123", downstream nodes referencing that entity must use "abc-123". When a node's "Direct downstream consumers" are listed, emit EXACTLY the field names their parameters/expressions/code read (e.g. a Code node reading item.json.last_details requires a field named "last_details") — never rename or synonymize them.
-2. Generate 1-2 items per node.
+2. Generate 1-2 items per node — UNLESS the Test Scenario calls for zero items for a node (no stored data, empty list, nothing new, all already seen): then that node's value MUST be an empty array []. NEVER represent "no data" as a single item with no fields ({}): a phantom empty item flows downstream and corrupts the run; the empty array IS the correct representation.
 3. When a JSON Schema is provided, follow its structure exactly.
 4. When no schema is provided, generate a realistic response based on the node type, resource, and operation.
 5. Use realistic but clearly fake values (e.g., "jane@example.com", "proj_abc123").
@@ -16,7 +16,7 @@ RULES:
 7. AI root nodes (Agent/Chain) have NODE-TYPE-SPECIFIC output shapes — follow each node's schema or "AI ROOT OUTPUT SHAPE" instruction exactly and never invent a different envelope key. Summary: agent wraps in { "output": ... } (a parsed object matching the parser schema when one is attached, otherwise a plain text string — never a JSON-encoded string); chainLlm uses { "text": "<string>" } without a parser, or { "output": <parsed object> } like agent when a parser is attached; chainRetrievalQa uses { "response": "<string>" }; chainSummarization uses { "output": { "output_text": "<summary>" } }; informationExtractor wraps the extracted fields in { "output": <object> }; textClassifier passes the input item through unchanged; sentimentAnalysis is the input item plus a "sentimentAnalysis" object.
 8. CRITICAL: If a "Test Scenario" section is provided, it is the authoritative test state and OVERRIDES everything else, including the general data context and your own sense of realism. When it describes stored/previous records (e.g. "the store already holds a record with status X"), exact values, counts, literal substrings, or that stored data matches current data, reproduce those constraints EXACTLY — never substitute more "interesting" or more typical data. A boring no-change/empty/matching case is usually the point of the test.
 9. Return ONLY a valid JSON object, no explanation or markdown fencing.
-10. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data.`;
+10. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data — represent it as an empty array [], never as [{}].`;
 
 const MAX_EMBEDDED_SCHEMA_CHARS = 3000;
 
@@ -44,7 +44,7 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 			lines.push(`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType)}`);
 		}
 		if (ctx.outputParser?.schemaText) {
-			const envelopeKey = findEnvelopeKey(ctx.schema);
+			const envelopeKey = resolveEnvelopeKey(ctx.nodeType, ctx.schema);
 			const target = envelopeKey ? `The \`${envelopeKey}\` object` : 'The top-level `json` fields';
 			const label = ctx.outputParser.schemaIsExample
 				? `- ${target} must have the same shape and field names as this example:`
@@ -59,6 +59,19 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 			lines.push(truncated);
 			lines.push('```');
 		}
+	}
+
+	// Real table columns are authoritative and supersede the static `__schema__`
+	// (which only knows the system columns).
+	if (ctx.dataTableColumns && ctx.dataTableColumns.length > 0) {
+		const columnList = ctx.dataTableColumns.map((c) => `${c.name} (${c.type})`).join(', ');
+		lines.push(
+			'- REAL Data Table columns — every pinned row MUST contain exactly these keys plus ' +
+				'`id` (a NUMBER, auto-incremented: 1, 2, 3…), `createdAt`, `updatedAt` (ISO ' +
+				'timestamps), and no others (values may be empty/null when the scenario calls ' +
+				`for it): ${columnList}`,
+		);
+		return lines;
 	}
 
 	if (ctx.schema) {

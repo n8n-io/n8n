@@ -1,6 +1,8 @@
 import type { CliArgs } from '../cli/args';
+import type { BuildResult } from '../harness/build-workflow';
+import { cleanupBuild } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { cleanupBuild, type BuildResult } from '../harness/runner';
+import { PROVIDER_OUTAGE_ROOT_CAUSE } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type { BuildOrchestrator, CachedBuild, LaneState } from '../run/build-orchestrator';
 import { createCasePipeline, type CasePipelineDeps } from '../run/case-pipeline';
@@ -12,11 +14,18 @@ import type { WorkflowTestCase } from '../types';
 // per-build cleanup. Both drivers run rows through runRow — keep these green
 // through the decomposition.
 
-vi.mock('../harness/runner', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../harness/runner')>();
+vi.mock('../harness/cleanup', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/cleanup')>();
 	return {
 		...actual,
 		cleanupBuild: vi.fn().mockResolvedValue(true),
+	};
+});
+
+vi.mock('../harness/seed-tables', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/seed-tables')>();
+	return {
+		...actual,
 		warnAgentSeedDataTablesIgnored: vi.fn(),
 	};
 });
@@ -47,6 +56,7 @@ function makeLane(): LaneState {
 			client: {} as never,
 			baseUrl: 'http://lane1.test',
 			preRunWorkflowIds: new Set<string>(),
+			preRunDataTableIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),
@@ -231,6 +241,27 @@ describe('createCasePipeline', () => {
 		const output = await pipeline.runRow(rowInputs('happy-path'));
 
 		expect(output.failureCategory).toBe('framework_issue');
+	});
+
+	it('stamps the pinned root cause on a provider-outage build so LangTracer sees infra', async () => {
+		const lane = makeLane();
+		const orchestrator = makeOrchestrator({
+			build: okBuild({
+				success: false,
+				workflowId: undefined,
+				error: 'Agent error: Internal server error; No output generated.',
+				transportFailure: true,
+				providerOutage: 'provider HTTP 529: Overloaded',
+			}),
+			lane,
+			buildDurationMs: 5,
+		});
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output.failureCategory).toBe('framework_issue');
+		expect(output.rootCause).toBe(`${PROVIDER_OUTAGE_ROOT_CAUSE}: provider HTTP 529: Overloaded`);
 	});
 
 	it('scores a build-only sentinel row from the expectation verdicts', async () => {

@@ -2,13 +2,18 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 import { sanitizeHtml } from '@n8n/frontend-utils/htmlUtils';
 import { useI18n } from '@n8n/i18n';
-import type { NotificationOptions } from '@n8n/stores/notifications.store';
-import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
+import type { NotificationOptions, NotificationType } from './types/notification';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
+
+export type {
+	NotificationOptions,
+	NotificationPosition,
+	NotificationType,
+} from './types/notification';
 
 /**
  * Handle returned by the notification function. Declared locally so the DTS
@@ -18,23 +23,29 @@ export interface NotificationHandle {
 	close: () => void;
 }
 
-/** Notification severity — mirrors `MessageBoxState['type']` from element-plus. */
-export type NotificationType = '' | 'success' | 'warning' | 'info' | 'error';
-
 /**
- * Notification function contract — matches `ElNotification` from element-plus.
- * The application registers the concrete implementation at bootstrap via
- * {@link setNotify}; this package owns only the contract.
+ * Notification function contract — the app's wrapper around `ElNotification`.
+ * Registered at bootstrap via {@link setNotify}; this package owns only the
+ * contract.
+ *
+ * Returning `undefined` means the app declined to show this notification — today
+ * that is notification suppression, which lives at the registration site rather
+ * than here. `showMessage` treats it as "dropped": no sticky-queue
+ * entry, no error telemetry, and a no-op handle to the caller.
  */
-type NotifyFn = (options: Record<string, unknown>) => NotificationHandle;
+type NotifyFn = (options: Record<string, unknown>) => NotificationHandle | undefined;
 
 let registeredNotify: NotifyFn | undefined;
 
 /**
  * Register the notification function. Called once at bootstrap by
- * `editor-ui` (passing `ElNotification` from element-plus) so `useToast`
- * can issue notifications without importing element-plus directly — keeping
- * the DTS build lightweight.
+ * `editor-ui` (passing a suppression-aware wrapper around `ElNotification`) so
+ * `useToast` can issue notifications without importing element-plus directly —
+ * keeping the DTS build lightweight.
+ *
+ * This is the *only* toast dependency the app registers. Whether a notification
+ * is actually shown is the notifier's decision, so if you are chasing a toast
+ * that never appeared, look at the registration site, not here.
  */
 export function setNotify(fn: NotifyFn): void {
 	registeredNotify = fn;
@@ -43,10 +54,25 @@ export function setNotify(fn: NotifyFn): void {
 const noopHandle: NotificationHandle = { close() {} };
 const noopNotify: NotifyFn = () => noopHandle;
 
+let warnedAboutMissingNotify = false;
+
+function resolveNotify(): NotifyFn {
+	if (registeredNotify) return registeredNotify;
+
+	// Falling back means bootstrap never registered. The toast is dropped rather
+	// than shown, so warn once in dev instead of failing silent.
+	if (import.meta.env.DEV && !warnedAboutMissingNotify) {
+		warnedAboutMissingNotify = true;
+		console.warn(
+			'[useToast] No notification function registered; toasts will not render. Call setNotify() at app bootstrap.',
+		);
+	}
+	return noopNotify;
+}
+
 const stickyNotificationQueue: NotificationHandle[] = [];
 
 export function useToast() {
-	const notify = registeredNotify ?? noopNotify;
 	const telemetry = useTelemetry();
 	const route = useRoute();
 	const workflowId = computed(() => {
@@ -54,7 +80,6 @@ export function useToast() {
 		const id = route?.params?.workflowId;
 		return (Array.isArray(id) ? id[0] : id) ?? '';
 	});
-	const notificationsStore = useNotificationsStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
@@ -65,11 +90,10 @@ export function useToast() {
 	}
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
-		const suppressed = notificationsStore.areNotificationsSuppressed;
-		const allowErrors = notificationsStore.allowErrorNotificationsWhenSuppressed;
-		if (suppressed && !(allowErrors && messageData.type === 'error')) {
-			return { close: () => {} } as NotificationHandle;
-		}
+		// Resolved per call, not once per `useToast()`: a composable captured before
+		// bootstrap registers would otherwise stay bound to the no-op for its whole
+		// lifetime, silently dropping toasts.
+		const notify = resolveNotify();
 
 		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 			dangerouslyUseHTMLString: true,
@@ -91,6 +115,11 @@ export function useToast() {
 		}
 
 		const notification = notify(params as unknown as Record<string, unknown>);
+
+		// The app declined to show it (suppression). Return before the sticky queue
+		// and before error telemetry, so a dropped toast leaves no trace — exactly
+		// what the removed in-package suppression branch did.
+		if (!notification) return noopHandle;
 
 		if (params.duration === 0) {
 			stickyNotificationQueue.push(notification);
@@ -238,29 +267,10 @@ export function useToast() {
 		stickyNotificationQueue.length = 0;
 	}
 
-	// Pick up and display notifications for the given list of views
-	function showNotificationForViews(views: VIEWS[]) {
-		const notifications: NotificationOptions[] = [];
-		views.forEach((view) => {
-			notifications.push(...(notificationsStore.pendingNotificationsForViews[view] ?? []));
-		});
-		if (notifications.length) {
-			notifications.forEach((notification) => {
-				// Notifications show on top of each other without this timeout
-				setTimeout(() => {
-					showMessage(notification);
-				}, 5);
-			});
-			// Clear the queue once all notifications are shown
-			notificationsStore.setNotificationsForView(VIEWS.WORKFLOW, []);
-		}
-	}
-
 	return {
 		showMessage,
 		showToast,
 		showError,
 		clearAllStickyNotifications,
-		showNotificationForViews,
 	};
 }

@@ -1,19 +1,33 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 
-type ExperimentDefinition = {
-	name: string;
+type ExperimentDefinition<TName extends string = string> = {
+	name: TName;
 };
 
-export const getExperimentTelemetryPayload = (
+export function getExperimentTelemetryPayload<
+	const TName extends string,
+	const TVariant extends string,
+	const TPayload extends ITelemetryTrackProperties = ITelemetryTrackProperties,
+>(
+	experiment: ExperimentDefinition<TName>,
+	variant: TVariant,
+	payload?: TPayload,
+): TPayload & { variant: TVariant } & Record<`$feature/${TName}`, TVariant>;
+export function getExperimentTelemetryPayload(
+	experiment: ExperimentDefinition,
+	variant: FeatureFlags[keyof FeatureFlags],
+	payload?: ITelemetryTrackProperties,
+): ITelemetryTrackProperties;
+export function getExperimentTelemetryPayload(
 	experiment: ExperimentDefinition,
 	variant: FeatureFlags[keyof FeatureFlags],
 	payload: ITelemetryTrackProperties = {},
-): ITelemetryTrackProperties => {
+): ITelemetryTrackProperties {
 	if (typeof variant !== 'string') {
 		return payload;
 	}
@@ -23,7 +37,7 @@ export const getExperimentTelemetryPayload = (
 		variant,
 		[`$feature/${experiment.name}`]: variant,
 	};
-};
+}
 
 /*
  * Extra template links

@@ -24,10 +24,10 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	parseErrorMetadata,
-	sleepWithAbort,
 } from 'n8n-workflow';
 
 import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities';
+import { sleep } from '@n8n/utils/sleep';
 
 function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
 	return isArray(data) && Boolean(data.length) && isObject(data[0]) && 'json' in data[0];
@@ -123,7 +123,7 @@ export class WorkflowToolService {
 					lastError = undefined;
 					if (waitBetweenTries !== 0) {
 						try {
-							await sleepWithAbort(waitBetweenTries, abortSignal);
+							await sleep(waitBetweenTries, abortSignal);
 						} catch (abortError) {
 							return 'There was an error: "Execution was cancelled"';
 						}

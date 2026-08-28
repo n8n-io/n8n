@@ -12,10 +12,16 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { DurableEventLog, type DrainedEvent } from './durable-event-log';
 
-// With the durable log ON, the in-memory store is a live-delivery CACHE over
-// instance_ai_events, not the source of truth: eviction bounds the cache and
-// can no longer lose data (replay reads the DB through DurableEventLog).
-// With the flag OFF it is today's only store, and eviction is data loss.
+// The store below is FLAG-OFF ONLY, and these caps bound it per thread. It has
+// no cap on thread COUNT and is released only when a thread is cleared, so with
+// the flag off a long-lived process retains up to 2MB per thread it has served.
+// Accepted for the rollback switch rather than fixed there: a global eviction
+// policy on the only store is data loss (the empty-agentTree bug class), and
+// the path sunsets with the flag at Gate B.
+//
+// With the durable log ON nothing is stored here at all: instance_ai_events is
+// the source of truth, every read goes through DurableEventLog, and this bus is
+// a pure fan-out (local SSE subscribers + the cross-main relay).
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB
 
@@ -67,6 +73,9 @@ export class InProcessEventBus implements InstanceAiEventBus {
 
 	private readonly durableLogEnabled: boolean;
 
+	/** Store-read methods already reported under the durable log (log once). */
+	private readonly warnedStoreReads = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
@@ -86,14 +95,14 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 *
 	 * Durable log ON: synchronous enqueue into the durable log's per-thread
 	 * drain, which assigns `seq` from the DB, persists durable facts, and hands
-	 * each event back here (`onDrained`): durable ones enter the cache; live
-	 * ones go to local SSE subscribers and — in multi-main — to sibling mains
-	 * via the pubsub relay. Ephemeral events (deltas, status) carry NO id, so
-	 * their SSE frames have no `id:` line and the browser's replay cursor only
-	 * ever points at durable facts. The Redis sequence machinery below is never
-	 * touched: the flag picks exactly one drain (INS-844's composition was
-	 * cancelled), and the flag-off paths below survive only as the rollback
-	 * switch until they sunset at Gate B (INS-847).
+	 * each event back here (`onDrained`) for fan-out only — live ones go to
+	 * local SSE subscribers and — in multi-main — to sibling mains via the
+	 * pubsub relay. Nothing is retained in this process. Ephemeral events
+	 * (deltas, status) carry NO id, so their SSE frames have no `id:` line and
+	 * the browser's replay cursor only ever points at durable facts. The Redis
+	 * sequence machinery below is never touched: the flag picks exactly one drain
+	 * (INS-844's composition was cancelled), and the flag-off paths below survive
+	 * only as the rollback switch until they sunset at Gate B (INS-847).
 	 *
 	 * Flag OFF, single-main: assign the next local id and deliver in the same tick.
 	 *
@@ -133,36 +142,25 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	}
 
 	/**
-	 * An event handed back by the durable log's drain (flag on). Durable events
-	 * (id = DB-assigned seq) enter the live-delivery cache; live ones are
-	 * emitted to local SSE subscribers and relayed to sibling mains. Coalesced
-	 * blocks are durable but NOT live (subscribers already saw their deltas).
+	 * An event handed back by the durable log's drain (flag on): fan it out to
+	 * local SSE subscribers and sibling mains. Nothing is retained — the row is
+	 * already in instance_ai_events, and every replay/run-scoped read goes to
+	 * the log, so keeping a copy here would only pin memory per thread for the
+	 * process lifetime. Coalesced blocks are durable but NOT live
+	 * (subscribers already saw their deltas), so they fan out to nobody.
 	 */
 	private onDrained(threadId: string, drained: DrainedEvent): void {
-		const sizeBytes = Buffer.byteLength(JSON.stringify(drained.event), 'utf8');
-		if (drained.id !== undefined) {
-			this.cacheSequencedEvent(threadId, { id: drained.id, event: drained.event }, sizeBytes);
-		}
-		if (drained.live) {
-			const stored: StoredEvent = {
-				...(drained.id !== undefined ? { id: drained.id } : {}),
-				event: drained.event,
-			};
-			this.emitter.emit(threadId, stored);
-			this.relayToSiblings(threadId, stored, sizeBytes);
-		}
-	}
-
-	/** Insert into the bounded cache without emitting (durable-log path). */
-	private cacheSequencedEvent(
-		threadId: string,
-		sequenced: SequencedEvent,
-		sizeBytes: number,
-	): void {
-		const events = this.getOrCreateStore(threadId);
-		if (!this.insertById(events, sequenced)) return;
-		this.sizeBytes.set(threadId, (this.sizeBytes.get(threadId) ?? 0) + sizeBytes);
-		this.evictIfNeeded(threadId, events);
+		if (!drained.live) return;
+		const stored: StoredEvent = {
+			...(drained.id !== undefined ? { id: drained.id } : {}),
+			event: drained.event,
+		};
+		this.emitter.emit(threadId, stored);
+		this.relayToSiblings(
+			threadId,
+			stored,
+			Buffer.byteLength(JSON.stringify(drained.event), 'utf8'),
+		);
 	}
 
 	/**
@@ -335,6 +333,14 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		threadId,
 		storedEvent,
 	}: { threadId: string; storedEvent: StoredEvent }): void {
+		if (this.durableLogEnabled) {
+			// Pure live delivery: seqs come from the DB (no local high-water mark to
+			// track) and reconnect replay reads the log, so a relayed frame is only
+			// ever needed by a subscriber attached right now. A frame delivered
+			// twice is dropped client-side by its id.
+			if (this.hasSubscribers(threadId)) this.emitter.emit(threadId, storedEvent);
+			return;
+		}
 		// Track the shared-sequence high-water mark even without subscribers, so
 		// a Redis-outage fallback keeps assigning ids above what siblings used.
 		if (storedEvent.id !== undefined) {
@@ -342,8 +348,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		}
 		if (!this.hasSubscribers(threadId)) return;
 		if (storedEvent.id === undefined) {
-			// Ephemeral durable-log frame: deliver live, never store (the DB seq
-			// is the shared replay authority, so the cache doesn't need it).
 			this.emitter.emit(threadId, storedEvent);
 			return;
 		}
@@ -361,24 +365,42 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	}
 
 	/**
-	 * Events still awaiting a sequence number are intentionally excluded: they
-	 * have no id yet, and once sequenced they reach subscribers live — the SSE
-	 * bootstrap subscribes before calling this, so nothing is missed.
-	 *
-	 * Durable log ON: cache-scoped read for same-process consumers;
-	 * cross-restart/cross-main replay must use DurableEventLog.getEventsAfter.
+	 * Threads with events retained in this process. Always 0 under the durable
+	 * log; with the flag off it grows with every thread this main has served
+	 * until each is cleared.
+	 */
+	retainedThreadCount(): number {
+		return this.store.size;
+	}
+
+	/**
+	 * FLAG-OFF ONLY. Events still awaiting a sequence number are intentionally
+	 * excluded: they have no id yet, and once sequenced they reach subscribers
+	 * live — the SSE bootstrap subscribes before calling this, so nothing is
+	 * missed. With the durable log on, use DurableEventLog.getEventsAfter.
 	 */
 	getEventsAfter(threadId: string, afterId: number): StoredEvent[] {
+		if (this.assertNoStoreUnderDurableLog('getEventsAfter', threadId)) return [];
 		const events = this.store.get(threadId);
 		if (!events) return [];
 		return events.filter((e) => e.id > afterId);
 	}
 
+	/** FLAG-OFF ONLY — see {@link getEventsForRuns}. */
 	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[] {
+		// Guarded before delegating so the report names the entry point the
+		// caller actually used, and so the two entry points dedupe separately.
+		if (this.assertNoStoreUnderDurableLog('getEventsForRun', threadId)) return [];
 		return this.getEventsForRuns(threadId, [runId]);
 	}
 
+	/**
+	 * FLAG-OFF ONLY. With the durable log on nothing is stored here, so a caller
+	 * must go through DurableEventLog.getEventsForRuns (via the service's
+	 * `readRunEvents`, which flushes open coalesce buffers first).
+	 */
 	getEventsForRuns(threadId: string, runIds: string[]): InstanceAiEvent[] {
+		if (this.assertNoStoreUnderDurableLog('getEventsForRuns', threadId)) return [];
 		if (runIds.length === 0) return [];
 		const runIdSet = new Set(runIds);
 		const stored = (this.store.get(threadId) ?? [])
@@ -396,12 +418,10 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	}
 
 	async getNextEventId(threadId: string): Promise<number> {
-		if (this.durableLogEnabled) {
-			// Cache-scoped; the durable authority is DurableEventLog.getNextEventId.
-			const events = this.store.get(threadId);
-			const last = events?.length ? events[events.length - 1].id : undefined;
-			return (last ?? 0) + 1;
-		}
+		// Delegated rather than guarded: unlike the store-scoped reads above this
+		// one is cheap to answer correctly, and the SSE cursor it seeds must never
+		// silently come back as 1.
+		if (this.durableLogEnabled) return await this.eventLog.getNextEventId(threadId);
 		if (this.instanceSettings.isMultiMain) {
 			try {
 				const value = await this.getRedisClient().get(this.seqKey(threadId));
@@ -449,6 +469,27 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		this.inFlightByThread.clear();
 		this.eventLog.clear();
 		this.emitter.removeAllListeners();
+	}
+
+	/**
+	 * The store is not populated under the durable log, so a read of it there is
+	 * a wiring bug: the caller wants the log. Reported once per method rather
+	 * than thrown — an empty result degrades a trace annotation or a replay that
+	 * the log-backed path will serve anyway, where a throw would take down run
+	 * finalization.
+	 */
+	private assertNoStoreUnderDurableLog(method: string, threadId: string): boolean {
+		if (!this.durableLogEnabled) return false;
+		// Once per entry point: any call is a bug, but a regression could sit in
+		// a per-group loop (the flag-off replay has one), and this is a read path.
+		if (!this.warnedStoreReads.has(method)) {
+			this.warnedStoreReads.add(method);
+			this.logger.error(
+				`InProcessEventBus.${method} was read with the durable event log enabled, where nothing is stored in memory — the caller must use DurableEventLog instead`,
+				{ threadId },
+			);
+		}
+		return true;
 	}
 
 	private evictIfNeeded(threadId: string, events: SequencedEvent[]): void {

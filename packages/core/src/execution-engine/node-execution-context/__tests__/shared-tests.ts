@@ -282,6 +282,17 @@ export const describeCommonTests = (
 			context.setMetadata(metadata);
 			expect(context.getExecuteData().metadata?.subExecution).toEqual(metadata.subExecution);
 		});
+
+		it('deep-merges the nested tracing key instead of clobbering it', () => {
+			context.setMetadata({ tracing: { 'llm.tokens.total': 42, 'llm.cost.total': 0.01 } });
+			context.setMetadata({ tracing: { 'ai.agent.iterations': 3 } });
+
+			expect(context.getExecuteData().metadata?.tracing).toEqual({
+				'llm.tokens.total': 42,
+				'llm.cost.total': 0.01,
+				'ai.agent.iterations': 3,
+			});
+		});
 	});
 
 	describe('evaluateExpression', () => {

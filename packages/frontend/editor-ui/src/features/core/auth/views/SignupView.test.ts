@@ -2,11 +2,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import SignupView from './SignupView.vue';
 import { VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => {
@@ -27,7 +27,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	return {
 		useToast: () => ({

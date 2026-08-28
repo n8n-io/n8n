@@ -29,6 +29,7 @@ const mockWorkflowIssue = {
 			description: 'Please update to the latest version',
 		},
 	],
+	migratable: false,
 	nbAffectedWorkflows: 5,
 };
 
@@ -44,6 +45,7 @@ const mockInstanceIssue = {
 			description: 'Update your instance configuration',
 		},
 	],
+	migratable: false,
 	instanceIssues: [
 		{
 			title: 'Configuration issue',

@@ -16,6 +16,7 @@ export type {
 export {
 	ParseValidateHandler,
 	WorkflowCodeParseError,
+	getWarningKey,
 	createCodeBuilderSearchTool,
 	createCodeBuilderGetTool,
 	createGetSuggestedNodesTool,

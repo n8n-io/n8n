@@ -6,6 +6,11 @@
 // deterministic shortcuts, repeat detection, and budget enforcement.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
+
+import type { N8nClient } from '../clients/n8n-client';
+import { createOneCredential } from '../credentials/seeder';
+import type { EvalLogger } from '../harness/logger';
 import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
@@ -15,6 +20,53 @@ import {
 	type Decision,
 	type ProxyDecisionMode,
 } from '../utils/user-proxy/tools';
+
+// Spies on the real seeder so existing credential-creation tests (which assert
+// against `client.createCredential`) keep working unchanged, while the new
+// setupHint tests below can assert on what reaches `createOneCredential`
+// itself. The mock wraps the real implementation, so tests execute the full
+// minting path (including the seeder's throw when `httpTemplatedCustomAuth`
+// is reached without a valid hint).
+vi.mock('../credentials/seeder', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../credentials/seeder')>();
+	return { ...actual, createOneCredential: vi.fn(actual.createOneCredential) };
+});
+
+/** Returns a fresh fake each call — tests assert on individual `vi.fn()` call
+ *  counts, so a single shared instance would leak state across tests. */
+function fakeLogger(): EvalLogger {
+	return {
+		warn: vi.fn(),
+		info: vi.fn(),
+		verbose: vi.fn(),
+		success: vi.fn(),
+		error: vi.fn(),
+		isVerbose: false,
+	};
+}
+
+/** Minimal fake satisfying only the two N8nClient methods credential creation uses. */
+function fakeCredentialClient(
+	createdId: string,
+	...furtherCreatedIds: string[]
+): {
+	client: N8nClient;
+	createCredential: ReturnType<typeof vi.fn>;
+	setThreadCredentialAllowlist: ReturnType<typeof vi.fn>;
+} {
+	// Extra ids are handed out per call, for a card that creates more than one.
+	const createCredential = furtherCreatedIds.reduce(
+		(mock, id) => mock.mockResolvedValueOnce({ id }),
+		vi.fn().mockResolvedValueOnce({ id: createdId }),
+	);
+	createCredential.mockResolvedValue({ id: createdId });
+	const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+	return {
+		client: { createCredential, setThreadCredentialAllowlist } as unknown as N8nClient,
+		createCredential,
+		setThreadCredentialAllowlist,
+	};
+}
 
 // ---------------------------------------------------------------------------
 // FakeAgent — programmable agent for tests
@@ -141,6 +193,36 @@ function credentialEvent(requestId: string): CapturedEvent {
 	};
 }
 
+/** Real `credentials.tool.ts` shape (`credentialType` + `existingCredentials`),
+ *  needed once the payload is actually parsed for `choose_credential_setup_option`. */
+function credentialEventWithRequests(
+	requestId: string,
+	requests: Array<{
+		credentialType: string;
+		existingCredentials?: Array<{ id: string; name: string }>;
+	}>,
+): CapturedEvent {
+	return {
+		timestamp: 100,
+		type: 'confirmation-request',
+		data: {
+			type: 'confirmation-request',
+			payload: {
+				requestId,
+				toolCallId: 'tc-x',
+				toolName: 'credential-setup',
+				args: {},
+				severity: 'info',
+				message: 'Set up credentials',
+				credentialRequests: requests.map((r) => ({
+					credentialType: r.credentialType,
+					existingCredentials: r.existingCredentials ?? [],
+				})),
+			},
+		},
+	};
+}
+
 function domainAccessEvent(requestId: string): CapturedEvent {
 	return {
 		timestamp: 100,
@@ -155,6 +237,25 @@ function domainAccessEvent(requestId: string): CapturedEvent {
 				severity: 'info',
 				message: 'Allow domain?',
 				domainAccess: { url: 'https://docs.example.com', host: 'docs.example.com' },
+			},
+		},
+	};
+}
+
+function webSearchEvent(requestId: string): CapturedEvent {
+	return {
+		timestamp: 100,
+		type: 'confirmation-request',
+		data: {
+			type: 'confirmation-request',
+			payload: {
+				requestId,
+				toolCallId: 'tc-y',
+				toolName: 'research',
+				args: {},
+				severity: 'info',
+				message: 'n8n AI wants to search the web for: stripe webhook signing',
+				webSearch: { query: 'stripe webhook signing' },
 			},
 		},
 	};
@@ -496,7 +597,646 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('handles credential events deterministically without invoking the agent', async () => {
+	// -------------------------------------------------------------------------
+	// TRUST-349 — workflows(action='setup') wizard: credential slots via
+	// apply_setup_wizard's nodeCredentialsJson. This is the tool the builder
+	// actually reaches for during a normal build ("the setup card" a real user
+	// sees); NOT the standalone credentials(action='setup') tool below.
+	// -------------------------------------------------------------------------
+
+	it("workflows(action='setup'): fills both parameters and a credential slot on a mixed wizard card when engaged", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: JSON.stringify({ 'Post Standup Reminder': { channelId: 'general' } }),
+			nodeCredentialsJson: JSON.stringify({ 'Post Standup Reminder': { slackApi: 'cred-team' } }),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post a standup reminder to Slack every morning.' },
+				{
+					role: 'user',
+					text: '[Set up the Slack credential now, using Team Slack, on the setup card.]',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-mixed', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post Standup Reminder',
+					editableParameters: [{ name: 'channelId' }],
+				},
+				{
+					nodeId: 'n1',
+					nodeName: 'Post Standup Reminder',
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeParameters).toEqual({
+				'Post Standup Reminder': { channelId: 'general' },
+			});
+			expect(response.nodeCredentials).toEqual({
+				'Post Standup Reminder': { slackApi: 'cred-team' },
+			});
+		}
+	});
+
+	it("workflows(action='setup'): routes a credential-only wizard card to the agent when engaged, instead of auto-declining", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'cred-team' } }),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now, using Team Slack.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-cred-only', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(agent.callCount).toBe(1);
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({ 'Post To Slack': { slackApi: 'cred-team' } });
+		}
+	});
+
+	it("workflows(action='setup'): still auto-declines a credential-only wizard card with no governing stage direction", async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'Post to Slack every morning.' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-cred-only-default', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(agent.callCount).toBe(0);
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+	});
+
+	it("workflows(action='setup'): maps different credential types for two different nodes on the same wizard card", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({
+				'Get Notion Pages': { notionApi: 'cred-notion' },
+				'Post To Slack': { slackApi: 'cred-team' },
+			}),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack.' },
+				{ role: 'user', text: '[Set up both the Notion and Slack credentials now.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-two-nodes', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Get Notion Pages',
+					credentialType: 'notionApi',
+					existingCredentials: [{ id: 'cred-notion', name: 'Notion' }],
+				},
+				{
+					nodeId: 'n2',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({
+				'Get Notion Pages': { notionApi: 'cred-notion' },
+				'Post To Slack': { slackApi: 'cred-team' },
+			});
+		}
+	});
+
+	it("workflows(action='setup'): drops a nodeCredentialsJson entry naming a node not on the setup card", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Unknown Node': { slackApi: 'cred-team' } }),
+		});
+		const logger = fakeLogger();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-unknown-node', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toBeUndefined();
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("workflows(action='setup'): auto-accepts the sole existing credential regardless of the id string given, when there's only one candidate", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			// The model isn't required to echo the real id back correctly when
+			// there's only one candidate — TRUST-349's folded manual behavior
+			// auto-selects the sole existing credential regardless.
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'whatever' } }),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-single-any-id', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [{ id: 'cred-team', name: 'Team Slack' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({ 'Post To Slack': { slackApi: 'cred-team' } });
+		}
+	});
+
+	it("workflows(action='setup'): drops a nodeCredentialsJson entry naming a credential id that matches none of several existing candidates", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'cred-bogus' } }),
+		});
+		const logger = fakeLogger();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-bogus-id-ambiguous', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toBeUndefined();
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("workflows(action='setup'): creates a real credential when the resolved slot has zero existing candidates", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client, createCredential, setThreadCredentialAllowlist } =
+			fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: ['cred-old'] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-create', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.any(String),
+			'slackApi',
+			expect.any(Object),
+		);
+		// The allowlist call must include the pre-existing id, not just the new
+		// one — setThreadCredentialAllowlist replaces the whole list.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-old', 'cred-fresh'],
+			[],
+		);
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({ 'Post To Slack': { slackApi: 'cred-fresh' } });
+		}
+	});
+
+	it("workflows(action='setup'): registers a mid-run-created credential id for cleanup when configured", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client } = fakeCredentialClient('cred-fresh');
+		const createdCredentialIds = new Set<string>();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: {
+				client,
+				threadId: 'thread-1',
+				allowlistedCredentialIds: [],
+				createdCredentialIds,
+			},
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-create-cleanup', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		expect(createdCredentialIds.has('cred-fresh')).toBe(true);
+	});
+
+	it("workflows(action='setup'): registers the created credential for test bypass when the direction says it works", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+			workingCredentialTypes: ['slackApi'],
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now, with a token that works.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: ['cred-old'] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-works', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// The bypass must be registered in the SAME call that appends the new id, so
+		// it lands before the product runs the credential test on the resume.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-old', 'cred-fresh'],
+			['cred-fresh'],
+		);
+		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
+	});
+
+	it("workflows(action='setup'): bypasses only the credential types the direction says work, on a two-credential card", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({
+				'Post To Slack': { slackApi: 'new' },
+				'Fetch Notion Pages': { notionApi: 'new' },
+			}),
+			// Slack works, Notion doesn't — the whole point of a per-type list.
+			workingCredentialTypes: ['slackApi'],
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient(
+			'cred-first',
+			'cred-second',
+		);
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack every morning.' },
+				{
+					role: 'user',
+					text: '[Set both credentials up now: the Slack token works, the Notion one is expired.]',
+				},
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-mixed-validity', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+				{
+					nodeId: 'n2',
+					nodeName: 'Fetch Notion Pages',
+					credentialType: 'notionApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// Assert against the ids the response actually assigned rather than the order
+		// the mock handed them out: the Slack slot's credential is registered for
+		// bypass and the Notion slot's is not, whichever was created first.
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind !== 'setupWorkflowApply') return;
+		const slackId = response.nodeCredentials?.['Post To Slack']?.slackApi;
+		const notionId = response.nodeCredentials?.['Fetch Notion Pages']?.notionApi;
+		expect(slackId).toBeDefined();
+		expect(notionId).toBeDefined();
+		expect(setThreadCredentialAllowlist.mock.calls.at(-1)?.[2]).toEqual([slackId]);
+		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
+	});
+
+	it("workflows(action='setup'): leaves the credential test alone when the direction says nothing about validity", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-no-works', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// An empty bypass list, which the client drops from the request body.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
+		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBeUndefined();
+	});
+
+	it("workflows(action='setup'): keeps the seeded credentials bypassed when it creates another", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+			workingCredentialTypes: ['slackApi'],
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now; the token works.]' },
+			],
+			agent,
+			credentialCreation: {
+				client,
+				threadId: 'thread-1',
+				allowlistedCredentialIds: ['cred-seeded'],
+				bypassCredentialTestIds: ['cred-seeded'],
+			},
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-seeded-bypass', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// The endpoint replaces both lists, so the seeded id has to be re-sent —
+		// dropping it would silently un-bypass the case's declared credentials.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-seeded', 'cred-fresh'],
+			['cred-seeded', 'cred-fresh'],
+		);
+	});
+
+	it("workflows(action='setup'): declines a zero-candidate credential slot when no credentialCreation is configured", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const logger = fakeLogger();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-create-unwired', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toBeUndefined();
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("workflows(action='setup'): threads a valid setupHint through to credential creation for httpTemplatedCustomAuth", async () => {
+		const setupHint: InstanceAiCredentialSetupHint = {
+			template: { headers: { Authorization: '{{apiKey}}' } },
+			placeholders: [{ name: 'apiKey', title: 'API Key', optional: false }],
+		};
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Call API': { httpTemplatedCustomAuth: 'new' } }),
+		});
+		const { client } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Call the API every morning.' },
+				{ role: 'user', text: '[Set up the API credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-templated-auth', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Call API',
+					credentialType: 'httpTemplatedCustomAuth',
+					existingCredentials: [],
+					setupHint,
+				},
+			]),
+		);
+
+		expect(createOneCredential).toHaveBeenCalledWith(
+			client,
+			'httpTemplatedCustomAuth',
+			undefined,
+			expect.anything(),
+			expect.objectContaining({ setupHint }),
+		);
+	});
+
+	it("workflows(action='setup'): drops a malformed setupHint instead of forwarding a garbage partial object", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Call API': { httpTemplatedCustomAuth: 'new' } }),
+		});
+		const { client } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Call the API every morning.' },
+				{ role: 'user', text: '[Set up the API credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-templated-auth-malformed', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Call API',
+					credentialType: 'httpTemplatedCustomAuth',
+					existingCredentials: [],
+					// Missing the required `placeholders` field.
+					setupHint: { template: { headers: { Authorization: '{{apiKey}}' } } },
+				},
+			]),
+		);
+
+		expect(response.kind).toBeDefined();
+		expect(createOneCredential).toHaveBeenCalledWith(
+			client,
+			'httpTemplatedCustomAuth',
+			undefined,
+			expect.anything(),
+			expect.objectContaining({ setupHint: undefined }),
+		);
+	});
+
+	it("credentials(action='setup'): handles credential events deterministically without invoking the agent", async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
@@ -511,6 +1251,379 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(0);
 	});
 
+	// -------------------------------------------------------------------------
+	// TRUST-349 — credentials(action='setup') standalone tool: choose_credential_setup_option.
+	// This is the "auto | manual | skip" card — NOT the workflows(action='setup')
+	// wizard above. Live testing (see PR description) found the builder doesn't
+	// actually reach for this tool during a normal build; kept per explicit
+	// decision to retain it in case some other flow (OAuth-specific, or a
+	// standalone "connect my X account" request) triggers it.
+	// -------------------------------------------------------------------------
+
+	it("credentials(action='setup'): routes to the agent when a stage direction asks the user to engage", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{
+					role: 'user',
+					text: '[When the credential setup card for Slack appears, set up the credential now using the existing Slack credential shown on the card.]',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-manual', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-1', name: 'My Slack' }] },
+			]),
+		);
+
+		expect(agent.callCount).toBe(1);
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({ slackApi: 'cred-1' });
+		}
+	});
+
+	it("credentials(action='setup'): resolves manual selection by explicit credentialType among multiple requests", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'manual',
+			credentialType: 'notionApi',
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack.' },
+				{ role: 'user', text: '[Connect the Notion credential shown on the card.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-multi', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-slack', name: 'Slack' }] },
+				{
+					credentialType: 'notionApi',
+					existingCredentials: [{ id: 'cred-notion', name: 'Notion' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({ notionApi: 'cred-notion' });
+		}
+	});
+
+	it("credentials(action='setup'): resolves manual selection to a specific credential by existingCredentialId when several match the same type", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'manual',
+			existingCredentialId: 'cred-team',
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the credential now, using the Team Slack one.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-disambiguate', [
+				{
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({ slackApi: 'cred-team' });
+		}
+	});
+
+	it("credentials(action='setup'): declines manual selection when existingCredentialId does not match any listed credential", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'manual',
+			existingCredentialId: 'cred-does-not-exist',
+		});
+		const logger = fakeLogger();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-bad-id', [
+				{
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("credentials(action='setup'): declines manual selection when several candidates exist and no existingCredentialId disambiguates", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
+		const logger = fakeLogger();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-ambiguous', [
+				{
+					credentialType: 'slackApi',
+					existingCredentials: [
+						{ id: 'cred-personal', name: 'Personal Slack' },
+						{ id: 'cred-team', name: 'Team Slack' },
+					],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("credentials(action='setup'): declines manual selection when the requested type has no existing credential and no credentialCreation is configured", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
+		const logger = fakeLogger();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-none', [{ credentialType: 'slackApi' }]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("credentials(action='setup'): manual creates a real credential when the requested type has zero existing candidates", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
+		const { client, createCredential, setThreadCredentialAllowlist } =
+			fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-create', [{ credentialType: 'slackApi' }]),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.any(String),
+			'slackApi',
+			expect.any(Object),
+		);
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({ slackApi: 'cred-fresh' });
+		}
+	});
+
+	it("credentials(action='setup'): requests automatic setup when the agent picks auto", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'auto',
+			credentialType: 'slackApi',
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Ask for automatic setup of the Slack credential on the card.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-auto', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-1', name: 'My Slack' }] },
+			]),
+		);
+
+		expect(response.kind).toBe('credentialAutoSetup');
+		if (response.kind === 'credentialAutoSetup') {
+			expect(response.credentialType).toBe('slackApi');
+		}
+	});
+
+	it("credentials(action='setup'): declines auto setup when no credentialType can be resolved from context or the decision", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'auto' });
+		const logger = fakeLogger();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack.' },
+				{ role: 'user', text: '[Ask for automatic setup of the credential on the card.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-auto-ambiguous', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-slack', name: 'Slack' }] },
+				{
+					credentialType: 'notionApi',
+					existingCredentials: [{ id: 'cred-notion', name: 'Notion' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("credentials(action='setup'): declines when the agent picks skip", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Explicitly decline the credential setup card for Slack.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-skip', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-1', name: 'My Slack' }] },
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+	});
+
+	// -------------------------------------------------------------------------
+	// TRUST-349 PR review: the engagement gate was originally a keyword-scoped
+	// regex (CREDENTIAL_ENGAGEMENT_PATTERN), rejected after a corpus audit found
+	// it both misfires (matches "API key"/"credential" inside a note that
+	// explicitly declines engagement) and can't be trusted to infer intent from
+	// keyword presence alone. Replaced with the same content-agnostic
+	// "any pending stage direction" check domain access and plan review already
+	// use (`hasPendingStageDirection`) — the model, not a regex, now decides
+	// whether a pending note means "engage" or "decline".
+	// -------------------------------------------------------------------------
+
+	it("credentials(action='setup'): routes to the agent whenever any stage direction is pending, regardless of content", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				// No credential/OAuth/connect vocabulary at all — the old
+				// keyword-scoped gate would have left this deterministic.
+				{ role: 'user', text: '[Reject the plan unless it sorts descending by count.]' },
+			],
+			agent,
+		});
+
+		await proxy.respondToConfirmation(credentialEvent('req-any-pending-direction'));
+		expect(agent.callCount).toBe(1);
+	});
+
+	it("credentials(action='setup'): stays fully deterministic when no stage direction is pending", async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'Post to Slack every morning.' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(credentialEvent('req-no-pending-direction'));
+		expect(response.kind).toBe('credentialSelection');
+		if (response.kind === 'credentialSelection') {
+			expect(response.credentials).toEqual({});
+		}
+		expect(agent.callCount).toBe(0);
+	});
+
+	it.each([
+		"[Stay impatient and hands-off for the whole conversation. If the agent asks you to choose or specify any detail — where to store the orders, the schema, field mappings, which service — don't engage with the specifics.]",
+		"[If the agent asks for the API key value: don't provide it — say you'll fill it into the credential yourself later. Approve plans/confirmations otherwise.]",
+	])(
+		"credentials(action='setup'): defers correctly on a real, unrelated-or-declining stage direction (%j) — the model is consulted (content-agnostic gate) but still ends up deferred",
+		async (note) => {
+			const agent = new FakeAgent();
+			agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
+			const proxy = new UserProxyLlm({
+				conversation: [
+					{ role: 'user', text: 'Post to Slack every morning.' },
+					{ role: 'user', text: note },
+				],
+				agent,
+			});
+
+			const response = await proxy.respondToConfirmation(credentialEvent('req-defers-correctly'));
+			// The gate no longer filters on wording, so the model is consulted...
+			expect(agent.callCount).toBe(1);
+			// ...but correctly reads intent and defers, same end result the old
+			// keyword-scoped gate aimed for without the false-positive risk.
+			expect(response.kind).toBe('approval');
+			if (response.kind === 'approval') {
+				expect(response.approved).toBe(false);
+			}
+		},
+	);
+
 	it('handles domain-access events deterministically with allow_all', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
@@ -523,6 +1636,57 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		if (response.kind === 'domainAccessApprove') {
 			expect(response.domainAccessAction).toBe('allow_all');
 		}
+		expect(agent.callCount).toBe(0);
+	});
+
+	it('handles web-search events deterministically with allow_all', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'go' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-search'));
+		expect(response.kind).toBe('domainAccessApprove');
+		if (response.kind === 'domainAccessApprove') {
+			expect(response.domainAccessAction).toBe('allow_all');
+		}
+		expect(agent.callCount).toBe(0);
+	});
+
+	it('defers an access gate to the LLM while a stage direction is pending, so a case can deny', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'respond_to_domain_access', response: 'deny' });
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'go' },
+				{
+					role: 'user',
+					text: '[Refuse the web-search request — the user does not want it searching.]',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-deny'));
+
+		expect(agent.callCount).toBe(1);
+		expect(response.kind).toBe('domainAccessDeny');
+	});
+
+	it('still grants an access gate deterministically when the pending script has no stage direction', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'go' },
+				{ role: 'user', text: 'also add a retry' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(webSearchEvent('req-allow'));
+
+		expect(response.kind).toBe('domainAccessApprove');
 		expect(agent.callCount).toBe(0);
 	});
 
@@ -543,7 +1707,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(0);
 	});
 
-	it('routes setup-wizard events to the agent even when they include credentialRequests', async () => {
+	it("workflows(action='setup'): routes to the agent even when the payload also includes credentialRequests (setupRequests takes priority)", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',

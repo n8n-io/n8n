@@ -42,4 +42,6 @@ jobs:
             *Otherwise, to unblock the next release:*
             1. Run the <${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-publish-new-package.yml|Release: Publish New Package> workflow for each package
             2. Configure Trusted Publishing on npmjs.com (owner: `n8n-io`, repo: `n8n`, workflow: `release-publish.yml`)
+
+            cc <!subteam^S08FYH9C9ME|@release-captain>
         run: node .github/scripts/slack/notify.mjs --channel C036AELNMV0 --text "$MESSAGE"

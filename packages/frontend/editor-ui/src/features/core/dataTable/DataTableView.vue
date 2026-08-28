@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import DataTableCard from '@/features/core/dataTable/components/DataTableCard.vue';
@@ -14,7 +13,7 @@ import {
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import debounce from 'lodash/debounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTableResource } from '@/features/core/dataTable/types';

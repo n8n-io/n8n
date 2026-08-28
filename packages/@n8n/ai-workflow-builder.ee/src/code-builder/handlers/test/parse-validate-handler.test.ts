@@ -57,6 +57,24 @@ describe('ParseValidateHandler', () => {
 			expect(mockBuilder.validate).toHaveBeenCalled();
 		});
 
+		it('skips structural checks in JSON validation that the graph pass already covers', async () => {
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await handler.parseAndValidate('const workflow = {}');
+
+			expect(mockValidateWorkflow).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ allowDisconnectedNodes: true, allowNoTrigger: true }),
+			);
+		});
+
 		it('should collect errors from graph validation as warnings for agent self-correction', async () => {
 			const mockWorkflow = {
 				id: 'test',
@@ -510,6 +528,21 @@ describe('ParseValidateHandler', () => {
 			expect(result).toHaveLength(0);
 		});
 
+		it('skips structural checks in JSON validation that the graph pass already covers', () => {
+			const mockBuilder = {
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+			};
+			mockFromJSON.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			handler.validateJSON(nonEmptyJson);
+
+			expect(mockValidateWorkflow).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ allowDisconnectedNodes: true, allowNoTrigger: true }),
+			);
+		});
+
 		it('should collect graph errors and warnings', () => {
 			const mockBuilder = {
 				validate: vi.fn().mockReturnValue({
@@ -563,6 +596,8 @@ describe('ParseValidateHandler', () => {
 			expect(mockFromJSON).toHaveBeenCalledWith(nonEmptyJson);
 			expect(mockValidateWorkflow).toHaveBeenCalledWith(nonEmptyJson, {
 				nodeTypesProvider: undefined,
+				allowDisconnectedNodes: true,
+				allowNoTrigger: true,
 			});
 		});
 	});

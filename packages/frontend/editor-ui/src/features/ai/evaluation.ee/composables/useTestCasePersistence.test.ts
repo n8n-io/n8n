@@ -186,11 +186,11 @@ vi.mock('./buildEvaluationConfigDto', () => ({
 	buildEvaluationConfigDto: (...args: unknown[]) => mocks.buildEvaluationConfigDto(...args),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mocks.track }),
 }));
 

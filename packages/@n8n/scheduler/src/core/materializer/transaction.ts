@@ -13,6 +13,21 @@ export interface NewOccurrence {
 	scheduledFor: Date;
 	runAt: Date;
 	maxAttempts: number;
+	/**
+	 * When this occurrence stops being worth running, resolved here so the claim can
+	 * compare one column against the clock instead of joining the schedule and
+	 * recomputing the window per row.
+	 */
+	missedAfter: Date;
+}
+
+/**
+ * A job's catch-up run and the instant it stands in for.
+ */
+export interface SupersededOccurrences {
+	jobId: number;
+	/** The catch-up run's instant; strictly older pending occurrences are superseded. */
+	before: Date;
 }
 
 /** Identity of a row {@link MaterializerTransaction.recordOccurrences} just created. */
@@ -67,6 +82,14 @@ export interface MaterializerTransaction {
 	 * newly created rows (see {@link RecordOccurrencesResult})
 	 */
 	recordOccurrences(occurrences: NewOccurrence[]): Promise<RecordOccurrencesResult>;
+
+	/**
+	 * Retire, as `missed`, every occurrence still `pending` at an instant strictly
+	 * older than the catch-up run that supersedes it, for each job in one batch.
+	 *
+	 * Only `pending` rows: one already claimed is in-flight work someone owns.
+	 */
+	retireSuperseded(superseded: SupersededOccurrences[]): Promise<number>;
 
 	/**
 	 * Advance every job's next-run and last-fired time in one batch.

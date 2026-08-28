@@ -22,6 +22,7 @@ type EndpointGroup =
 	| 'community-packages'
 	| 'ldap'
 	| 'saml'
+	| 'oidc'
 	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
@@ -40,6 +41,7 @@ type EndpointGroup =
 	| 'project'
 	| 'role'
 	| 'roleMappingRule'
+	| 'provisioning'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
@@ -68,6 +70,7 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
+	| 'git-connections'
 	| 'token-exchange'
 	| 'workflow-reviews';
 
@@ -89,6 +92,7 @@ export interface TestServer {
 	publicApiAgentFor: (user: User) => TestAgent;
 	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
 	publicApiAgentWithoutApiKey: () => TestAgent;
+	publicApiAgentWithCookie: (user: User) => TestAgent;
 	authlessAgent: TestAgent;
 	restlessAgent: TestAgent;
 	license: LicenseMocker;

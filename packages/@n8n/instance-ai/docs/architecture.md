@@ -414,6 +414,11 @@ The cli's `InstanceAiService` holds one manager instance and passes it to
    instances are tracked so `mcpManager.disconnect()` (called during service
    shutdown) closes SSE / stdio connections cleanly.
 
+The embedded Agent Builder receives the same per-run, approval-wrapped MCP tool
+registry as the orchestrator. Builder-native tool names remain reserved, so an
+MCP connector cannot shadow configuration or lifecycle tools. Specialized
+background agents such as eval setup remain isolated from MCP tools.
+
 The local Computer Use server is separate from external MCP configuration. Its
 browser tools are available directly to the orchestrator and are guided by the
 `credential-setup-with-computer-use` skill when credential setup requires a

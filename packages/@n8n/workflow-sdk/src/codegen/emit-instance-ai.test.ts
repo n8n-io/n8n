@@ -254,6 +254,9 @@ describe('emit-instance-ai', () => {
 			'validateWorkflow',
 			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
+			'isInformationalIssue',
+			'partitionValidationIssues',
+			'validateWorkflowBuilder',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
 			'discoverSchemasForNode',
@@ -264,10 +267,12 @@ describe('emit-instance-ai', () => {
 			// Mock/pin-data generation building blocks (src/mock-data/) — eval
 			// and simulated-verification tooling, never in workflow bodies
 			'buildDateAnchors',
+			'buildFieldViolationRetryMessage',
 			'buildNodeSchemaSection',
 			'buildPinDataUserPrompt',
 			'buildSchemaContexts',
 			'collectDownstreamConsumers',
+			'collectPinFieldViolations',
 			'describeAiRootShape',
 			'findEnvelopeKey',
 			'findOutputParserTargets',
@@ -277,6 +282,10 @@ describe('emit-instance-ai', () => {
 			'workflowToMermaid',
 			// Display-options matching
 			'matchesDisplayOptions',
+			// SDK-to-engine adapters for host-side validation and graph helpers
+			'dropInvalidWorkflowJsonGroups',
+			'toEngineConnections',
+			'toGroupValidationNodes',
 			// Plugin registration
 			'registerDefaultPlugins',
 			// Generate-types module (build-time type generation, never appears in workflows)

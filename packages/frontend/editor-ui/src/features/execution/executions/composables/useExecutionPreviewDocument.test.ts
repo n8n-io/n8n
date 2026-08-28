@@ -27,7 +27,7 @@ import {
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useExecutionPreviewDocument } from './useExecutionPreviewDocument';
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -35,7 +35,7 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 

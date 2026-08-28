@@ -134,6 +134,7 @@ export const defaultSettings: FrontendSettings = {
 		maxSize: 0,
 	},
 	workflowCallerPolicyDefaultOption: 'any',
+	excludeNodes: [],
 	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
 	variables: {
@@ -164,6 +165,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	security: {
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: [],
 	},
 	aiAssistant: {
 		enabled: false,

@@ -6,7 +6,9 @@ import type {
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { getHighlightedResponseKey, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { getHighlightedResponseKey } from 'n8n-workflow';
+import { getFailureType } from '@utils/output_parsers/langchainParserError';
 
 import { buildExecutionContext, executeBatch, resolveSubAgentRequest } from './helpers';
 import { isExecuteFunctions } from '../../utils';
@@ -146,8 +148,7 @@ export async function toolsAgentExecute(
 		// Otherwise return execution data
 		return [returnData];
 	} catch (error) {
-		failureType =
-			error instanceof Error ? error.name || error.constructor.name || 'Error' : typeof error;
+		failureType = getFailureType(error);
 		throw error;
 	} finally {
 		if (isExecuteFunctions(this)) {

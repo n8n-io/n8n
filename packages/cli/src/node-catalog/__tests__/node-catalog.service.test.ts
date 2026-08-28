@@ -409,6 +409,39 @@ describe('NodeCatalogService', () => {
 			);
 		});
 
+		test('synthesizes a hidden built-in node instead of the on-disk lookup', async () => {
+			// The build-time generator skips hidden nodes, so no on-disk artifact
+			// exists for them even though search surfaces them (e.g. messageAnAgent).
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-base.messageAnAgent',
+						version: 2,
+						hidden: true,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+					{ name: 'n8n-nodes-base.set' },
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypes([
+				'n8n-nodes-base.messageAnAgent',
+				'n8n-nodes-base.set',
+			]);
+
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n-nodes-base.messageAnAgent' }),
+			);
+			expect(mockGetNodeTypes).toHaveBeenCalledWith(['n8n-nodes-base.set'], expect.anything());
+			expect(result).toContain('synth-result');
+			expect(result).toContain('get-result');
+			expect(result).not.toContain('# Errors');
+		});
+
 		test('reports an error for an unknown requested version instead of downgrading', async () => {
 			loadNodesAndCredentials.collectTypes.mockResolvedValue({
 				nodes: [
@@ -512,6 +545,33 @@ describe('NodeCatalogService', () => {
 				expect.any(Array),
 				{ resource: undefined, operation: undefined, mode: undefined },
 			);
+		});
+
+		test('synthesizes a hidden built-in node instead of the on-disk lookup', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-base.messageAnAgent',
+						version: 2,
+						hidden: true,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({
+				nodeId: 'n8n-nodes-base.messageAnAgent',
+			});
+
+			expect(result).toEqual({ content: 'synth-result', version: '2' });
+			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n-nodes-base.messageAnAgent' }),
+			);
+			expect(mockGetNodeTypeDefinition).not.toHaveBeenCalled();
 		});
 
 		test('synthesizes type definitions for a community node', async () => {

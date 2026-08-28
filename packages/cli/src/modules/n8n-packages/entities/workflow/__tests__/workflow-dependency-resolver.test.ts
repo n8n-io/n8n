@@ -1,11 +1,10 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User, WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowDependencyResolver } from '../workflow-dependency-resolver';
-import { WorkflowRequirementsExtractor } from '../workflow-requirements.extractor';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -27,6 +26,22 @@ function makeWorkflow(id: string, referencedWorkflowIds: string | string[] = [])
 	return { id, nodes } as WorkflowEntity;
 }
 
+/** Publishes the workflow with nodes referencing `referencedWorkflowIds`, leaving its draft nodes alone. */
+function withPublishedVersion(
+	workflow: WorkflowEntity,
+	referencedWorkflowIds: string | string[],
+): WorkflowEntity {
+	const versionId = `${workflow.id}-published`;
+	workflow.activeVersionId = versionId;
+	workflow.activeVersion = {
+		versionId,
+		nodes: makeWorkflow(workflow.id, referencedWorkflowIds).nodes,
+		connections: {},
+	} as WorkflowHistory;
+
+	return workflow;
+}
+
 function makeResolver(workflows: WorkflowEntity[]) {
 	const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
 	const workflowFinder = mock<WorkflowFinderService>();
@@ -37,7 +52,7 @@ function makeResolver(workflows: WorkflowEntity[]) {
 	);
 
 	return {
-		resolver: new WorkflowDependencyResolver(workflowFinder, new WorkflowRequirementsExtractor()),
+		resolver: new WorkflowDependencyResolver(workflowFinder),
 		workflowFinder,
 	};
 }
@@ -50,7 +65,11 @@ describe('WorkflowDependencyResolver', () => {
 			makeWorkflow('workflow-c'),
 		]);
 
-		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(requirements).toEqual([
 			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
@@ -64,7 +83,11 @@ describe('WorkflowDependencyResolver', () => {
 			makeWorkflow('workflow-b', 'workflow-a'),
 		]);
 
-		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(requirements).toEqual([
 			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
@@ -76,14 +99,21 @@ describe('WorkflowDependencyResolver', () => {
 	it('keeps missing or inaccessible dependencies as requirements but does not traverse them', async () => {
 		const { resolver, workflowFinder } = makeResolver([makeWorkflow('workflow-a', 'workflow-b')]);
 
-		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(requirements).toEqual([
 			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
 		]);
-		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(['workflow-b'], user, [
-			'workflow:export',
-		]);
+		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
+			['workflow-b'],
+			user,
+			['workflow:export'],
+			{ includeActiveVersion: false },
+		);
 	});
 
 	it('resolves a complex graph with fan-out, cycles, convergence, and inaccessible dependencies', async () => {
@@ -97,7 +127,11 @@ describe('WorkflowDependencyResolver', () => {
 			makeWorkflow('workflow-e', 'workflow-b'),
 		]);
 
-		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(requirements).toEqual([
 			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
@@ -113,18 +147,80 @@ describe('WorkflowDependencyResolver', () => {
 			['workflow-a'],
 			user,
 			['workflow:export'],
+			{ includeActiveVersion: false },
 		);
 		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenNthCalledWith(
 			2,
 			['workflow-b', 'workflow-c'],
 			user,
 			['workflow:export'],
+			{ includeActiveVersion: false },
 		);
 		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenNthCalledWith(
 			3,
 			['workflow-e', 'workflow-d'],
 			user,
 			['workflow:export'],
+			{ includeActiveVersion: false },
 		);
+	});
+
+	describe('direct traversal', () => {
+		it('extracts only the references of the requested workflows without fetching the referenced ones', async () => {
+			const { resolver, workflowFinder } = makeResolver([
+				makeWorkflow('workflow-a', 'workflow-b'),
+				makeWorkflow('workflow-b', 'workflow-c'),
+				makeWorkflow('workflow-c'),
+			]);
+
+			const requirements = await resolver.resolve({
+				user,
+				workflowIds: ['workflow-a'],
+				traversal: 'direct',
+				workflowVersionPolicy: 'latest',
+			});
+
+			expect(requirements).toEqual([
+				{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
+			]);
+			expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledTimes(1);
+		});
+
+		it('extracts the references of every requested workflow, including ones between them', async () => {
+			const { resolver, workflowFinder } = makeResolver([
+				makeWorkflow('workflow-a', 'workflow-b'),
+				makeWorkflow('workflow-b', 'workflow-c'),
+			]);
+
+			const requirements = await resolver.resolve({
+				user,
+				workflowIds: ['workflow-a', 'workflow-b'],
+				traversal: 'direct',
+				workflowVersionPolicy: 'latest',
+			});
+
+			expect(requirements).toEqual([
+				{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
+				{ workflowId: 'workflow-b', referencedWorkflowId: 'workflow-c' },
+			]);
+			expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it('extracts the references of the published nodes under published-strict', async () => {
+		const { resolver } = makeResolver([
+			withPublishedVersion(makeWorkflow('workflow-a', 'draft-dep'), 'published-dep'),
+		]);
+
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			traversal: 'direct',
+			workflowVersionPolicy: 'published-strict',
+		});
+
+		expect(requirements).toEqual([
+			{ workflowId: 'workflow-a', referencedWorkflowId: 'published-dep' },
+		]);
 	});
 });

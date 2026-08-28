@@ -21,7 +21,7 @@ const { settingsState, setChatEnabledMock } = vi.hoisted(() => ({
 	setChatEnabledMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get moduleSettings() {
 			return { 'chat-hub': createChatHubModuleSettings({ enabled: settingsState.enabled }) };
@@ -53,11 +53,11 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: vi.fn(), openNewCredential: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 

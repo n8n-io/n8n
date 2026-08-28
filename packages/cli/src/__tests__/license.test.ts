@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
@@ -284,6 +285,52 @@ describe('License', () => {
 				expect(onExpirySoon).toBeUndefined();
 				expect(reloadSpy).not.toHaveBeenCalled();
 			}
+		});
+	});
+
+	describe('device fingerprint', () => {
+		const getDeviceFingerprint = () => {
+			const licenseManager = LicenseManager as MockedClass<typeof LicenseManager>;
+			const calls = licenseManager.mock.calls;
+			return calls[calls.length - 1][0].deviceFingerprint as () => string;
+		};
+
+		const globalConfig = mock<GlobalConfig>({
+			license: licenseConfig,
+			multiMainSetup: { enabled: false },
+		});
+
+		it('should use instanceId when it is at least 32 characters long', async () => {
+			const longInstanceId = 'a'.repeat(64);
+			const instanceSettings = mock<InstanceSettings>({
+				instanceId: longInstanceId,
+				derivedInstanceId: 'b'.repeat(64),
+				instanceType: 'main',
+				isLeader: true,
+			});
+			license = new License(mockLogger(), instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+
+			expect(getDeviceFingerprint()()).toEqual(longInstanceId);
+		});
+
+		it('should fall back to derivedInstanceId and warn once when instanceId is too short', async () => {
+			const derivedInstanceId = 'b'.repeat(64);
+			const instanceSettings = mock<InstanceSettings>({
+				instanceId: 'short-id',
+				derivedInstanceId,
+				instanceType: 'main',
+				isLeader: true,
+			});
+			const logger = mock<Logger>();
+			logger.scoped.mockReturnValue(logger);
+			license = new License(logger, instanceSettings, mock(), mock(), globalConfig);
+			await license.init();
+
+			const deviceFingerprint = getDeviceFingerprint();
+			expect(deviceFingerprint()).toEqual(derivedInstanceId);
+			expect(deviceFingerprint()).toEqual(derivedInstanceId);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
 		});
 	});
 });

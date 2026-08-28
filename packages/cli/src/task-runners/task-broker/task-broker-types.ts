@@ -17,7 +17,11 @@ export interface TaskBrokerServerInitRequest
 
 export type TaskBrokerServerInitResponse = Response & { req: TaskBrokerServerInitRequest };
 
-export type DisconnectReason = 'shutting-down' | 'failed-heartbeat-check' | 'unknown';
+export type DisconnectReason =
+	| 'shutting-down'
+	| 'failed-heartbeat-check'
+	| 'runner-unresponsive'
+	| 'unknown';
 
 export type DisconnectErrorOptions = {
 	runnerId?: TaskRunner['id'];

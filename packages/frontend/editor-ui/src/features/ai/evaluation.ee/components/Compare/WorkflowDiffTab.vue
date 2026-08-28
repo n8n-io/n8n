@@ -5,7 +5,7 @@ import omit from 'lodash/omit';
 import { deepCopy } from 'n8n-workflow';
 import { computed, markRaw, ref, watch } from 'vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';

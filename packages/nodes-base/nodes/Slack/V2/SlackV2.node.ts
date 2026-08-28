@@ -26,21 +26,26 @@ import { fileFields, fileOperations } from './FileDescription';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
+	formatUserLabel,
 	getMessageContent,
 	getTarget,
 	createSendAndWaitMessageBody,
 	processThreadOptions,
 	slackApiRequestAllItemsWithRateLimit,
 	toMultiOptionsCsv,
+	searchContextItems,
 } from './GenericFunctions';
 import {
+	advancedInteractivityNotice,
 	approversField,
 	captureResponderField,
 	channelRLC,
 	messageFields,
 	messageOperations,
+	postDecisionBehaviorField,
 	replyToMessageField,
 	sendToSelector,
+	unauthorizedReplyField,
 	userRLC,
 } from './MessageDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
@@ -61,7 +66,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
+			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7],
 			defaults: {
 				name: 'Slack',
 			},
@@ -171,7 +176,13 @@ export class SlackV2 implements INodeType {
 						},
 					],
 					undefined,
-					[captureResponderField, approversField],
+					[
+						advancedInteractivityNotice,
+						captureResponderField,
+						approversField,
+						unauthorizedReplyField,
+						postDecisionBehaviorField,
+					],
 					{ extraOptions: [replyToMessageField] },
 				).filter((p) => p.name !== 'subject'),
 				...starOperations,
@@ -227,18 +238,27 @@ export class SlackV2 implements INodeType {
 					});
 				return { results, paginationToken: cursor };
 			},
-			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
-				const users = (await slackApiRequestAllItems.call(
-					this,
-					'members',
-					'GET',
-					'/users.list',
-				)) as Array<{ id: string; name: string }>;
+			async getUsers(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const qs = { limit: 200, cursor: paginationToken };
+				const { data: users, cursor } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+					real_name?: string;
+				}>(this, 'members', 'GET', '/users.list', {}, qs, {
+					onFail: 'stop',
+					maxRetries: 2,
+					fallbackDelay: 30_000,
+				});
 				const results: INodeListSearchItems[] = users
 					.map((c) => ({
-						name: c.name,
+						name: formatUserLabel(c),
 						value: c.id,
 					}))
+					// the label carries both real name and handle, so either matches the filter
 					.filter(
 						(c) =>
 							!filter ||
@@ -250,7 +270,7 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				return { results };
+				return { results, paginationToken: cursor };
 			},
 		},
 		loadOptions: {
@@ -258,9 +278,13 @@ export class SlackV2 implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
+				const { data: users } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+					real_name?: string;
+				}>(this, 'members', 'GET', '/users.list', {}, { limit: 200 }, { onFail: 'stop' });
 				for (const user of users) {
-					const userName = user.name;
+					const userName = formatUserLabel(user);
 					const userId = user.id;
 					returnData.push({
 						name: userName,
@@ -268,11 +292,12 @@ export class SlackV2 implements INodeType {
 					});
 				}
 
+				// case-insensitive, so lowercase handle fallbacks aren't sorted below every real name
 				returnData.sort((a, b) => {
-					if (a.name < b.name) {
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
 					}
-					if (a.name > b.name) {
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
 						return 1;
 					}
 					return 0;
@@ -1064,35 +1089,87 @@ export class SlackV2 implements INodeType {
 						responseData = await slackApiRequest.call(this, 'GET', '/chat.getPermalink', {}, qs);
 					}
 					//https://api.slack.com/methods/search.messages
+					//https://docs.slack.dev/reference/methods/assistant.search.context
 					if (operation === 'search') {
 						let query = this.getNodeParameter('query', i) as string;
 						const sort = this.getNodeParameter('sort', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i);
+						const returnAll = this.getNodeParameter('returnAll', i, false);
 						const options = this.getNodeParameter('options', i);
-						if (options.searchChannel) {
-							const channel = options.searchChannel as IDataObject[];
-							for (const channelItem of channel) {
-								query += ` in:${channelItem}`;
+						const sortBy = sort === 'relevance' ? 'score' : 'timestamp';
+						const sortDir = sort === 'asc' ? 'asc' : 'desc';
+
+						if (nodeVersion >= 2.7) {
+							// assistant.search.context has no argument for this - its `modifiers` only
+							// applies to term clauses - so the filter goes in the query text, which
+							// Slack parses channel filters out of
+							for (const channel of toMultiOptionsCsv(options.searchChannel)
+								.split(',')
+								.filter(Boolean)) {
+								query += ` in:${channel}`;
 							}
-						}
-						qs = {
-							query,
-							sort: sort === 'relevance' ? 'score' : 'timestamp',
-							sort_dir: sort === 'asc' ? 'asc' : 'desc',
-						};
-						if (returnAll) {
-							responseData = await slackApiRequestAllItems.call(
+							// channel_types/content_types are array args: the JSON body needs real
+							// arrays, not the comma-separated form used for query-string params
+							const body: IDataObject = {
+								query,
+								content_types: ['messages'],
+								sort: sortBy,
+								sort_dir: sortDir,
+							};
+							const channelTypes = toMultiOptionsCsv(options.channelTypes);
+							if (channelTypes) {
+								body.channel_types = channelTypes.split(',');
+							}
+							const timezone = this.getTimezone();
+							if (options.after) {
+								body.after = moment.tz(options.after as string, timezone).unix();
+							}
+							if (options.before) {
+								body.before = moment.tz(options.before as string, timezone).unix();
+							}
+							if (options.keywordSearchOnly) {
+								body.disable_semantic_search = true;
+							}
+							if (options.includeArchivedChannels) {
+								body.include_archived_channels = true;
+							}
+							if (options.includeBots) {
+								body.include_bots = true;
+							}
+							if (options.includeMessageBlocks) {
+								body.include_message_blocks = true;
+							}
+
+							responseData = await searchContextItems.call(
 								this,
-								'messages',
-								'GET',
-								'/search.messages',
-								{},
-								qs,
+								body,
+								this.getNodeParameter('limit', i) as number,
 							);
 						} else {
-							qs.count = this.getNodeParameter('limit', i);
-							responseData = await slackApiRequest.call(this, 'POST', '/search.messages', {}, qs);
-							responseData = responseData.messages.matches;
+							if (options.searchChannel) {
+								const channel = options.searchChannel as IDataObject[];
+								for (const channelItem of channel) {
+									query += ` in:${channelItem}`;
+								}
+							}
+							qs = {
+								query,
+								sort: sortBy,
+								sort_dir: sortDir,
+							};
+							if (returnAll) {
+								responseData = await slackApiRequestAllItems.call(
+									this,
+									'messages',
+									'GET',
+									'/search.messages',
+									{},
+									qs,
+								);
+							} else {
+								qs.count = this.getNodeParameter('limit', i);
+								responseData = await slackApiRequest.call(this, 'POST', '/search.messages', {}, qs);
+								responseData = responseData.messages.matches;
+							}
 						}
 					}
 				}

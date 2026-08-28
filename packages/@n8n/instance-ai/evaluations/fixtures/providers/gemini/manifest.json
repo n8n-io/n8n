@@ -1,0 +1,15 @@
+{
+	"credentialType": "googlePalmApi",
+	"hosts": ["aistudio.google.com"],
+	"secretPrefix": "AQ.",
+	"routes": {
+		"/apikey": "console.html",
+		"/dashboard": "dashboard.html"
+	},
+	"defaultRoute": "/dashboard",
+	"urlField": "host",
+	"verify": {
+		"path": "/v1beta/models",
+		"query": "key"
+	}
+}

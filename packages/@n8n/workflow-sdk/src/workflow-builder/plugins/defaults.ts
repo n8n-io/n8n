@@ -16,9 +16,11 @@ import {
 	disconnectedNodeValidator,
 	expressionPathValidator,
 	expressionPrefixValidator,
+	executeWorkflowValidator,
 	filterNodeValidator,
 	fromAiValidator,
 	httpRequestValidator,
+	duplicateNodeIdValidator,
 	maxNodesValidator,
 	memorySessionKeyValidator,
 	mergeNodeValidator,
@@ -46,6 +48,7 @@ const coreValidators: ValidatorPlugin[] = [
 	noNodesValidator, // Check if workflow has any nodes
 	missingTriggerValidator, // Check if workflow has a trigger
 	maxNodesValidator, // Check max nodes per type constraint
+	duplicateNodeIdValidator, // Two nodes may not claim one stable node id
 
 	// Node-specific validators (high priority)
 	agentValidator,
@@ -60,6 +63,7 @@ const coreValidators: ValidatorPlugin[] = [
 	setNodeValidator,
 	mergeNodeValidator,
 	filterNodeValidator,
+	executeWorkflowValidator,
 
 	// Expression validators (lower priority)
 	expressionPrefixValidator,

@@ -8,7 +8,7 @@ import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 import N8nButton from '../../N8nButton';
 
-interface Props {
+export interface Props {
 	message: ChatUI.TextMessage & { quickReplies?: ChatUI.QuickReply[] };
 	isFirstOfRole: boolean;
 	user?: {

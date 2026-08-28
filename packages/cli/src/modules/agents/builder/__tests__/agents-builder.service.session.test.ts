@@ -21,14 +21,14 @@ import { AgentsBuilderService } from '../agents-builder.service';
 const agentsSdkMocks = vi.hoisted(() => {
 	const streamCalls: Array<{
 		message: string;
-		options: { persistence: { threadId: string; resourceId: string } };
+		options: { persistence: { threadId: string; resourceId: string }; abortSignal?: AbortSignal };
 	}> = [];
+	const resumeCalls: Array<{ options: Record<string, unknown> }> = [];
 	const instructionsCalls: string[] = [];
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
 	const promptCachingCalls: unknown[] = [];
-	const thinkingCalls: Array<{ provider: string; config: unknown }> = [];
-	const skillsCalls: unknown[] = [];
+	const reasoningCalls: string[] = [];
 	const telemetryCalls: unknown[] = [];
 	const memoryTaskObserverCalls: unknown[] = [];
 	const observationalMemoryCalls: Array<{
@@ -54,16 +54,15 @@ const agentsSdkMocks = vi.hoisted(() => {
 			promptCachingCalls.push(config);
 			return this;
 		}
-		thinking(provider: string, config?: unknown) {
-			thinkingCalls.push({ provider, config });
+		reasoning(effort: string) {
+			reasoningCalls.push(effort);
 			return this;
 		}
 		instructions(text: string) {
 			instructionsCalls.push(text);
 			return this;
 		}
-		skills(skills: unknown) {
-			skillsCalls.push(skills);
+		skills(_skills: unknown) {
 			return this;
 		}
 		memory() {
@@ -94,7 +93,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 			streamCalls.push({ message, options });
 			return { stream: emptyStream() };
 		}
-		async resume() {
+		async resume(_mode: string, _resumeData: unknown, options: Record<string, unknown>) {
+			resumeCalls.push({ options });
 			return { stream: emptyStream() };
 		}
 	}
@@ -122,12 +122,12 @@ const agentsSdkMocks = vi.hoisted(() => {
 
 	return {
 		streamCalls,
+		resumeCalls,
 		instructionsCalls,
 		registeredToolNames,
 		modelCalls,
 		promptCachingCalls,
-		thinkingCalls,
-		skillsCalls,
+		reasoningCalls,
 		telemetryCalls,
 		memoryTaskObserverCalls,
 		observationalMemoryCalls,
@@ -139,7 +139,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: agentsSdkMocks.MockAgent,
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
@@ -223,17 +224,18 @@ const baseSession = {
 	hostThreadId: 'instance-thread-1',
 	runId: 'run-1',
 	modelConfig: 'anthropic/claude-sonnet-host-resolved',
+	abortSignal: new AbortController().signal,
 };
 
 describe('AgentsBuilderService session isolation', () => {
 	beforeEach(() => {
 		agentsSdkMocks.streamCalls.length = 0;
+		agentsSdkMocks.resumeCalls.length = 0;
 		agentsSdkMocks.instructionsCalls.length = 0;
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.promptCachingCalls.length = 0;
-		agentsSdkMocks.thinkingCalls.length = 0;
-		agentsSdkMocks.skillsCalls.length = 0;
+		agentsSdkMocks.reasoningCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
 		agentsSdkMocks.observationalMemoryCalls.length = 0;
@@ -250,6 +252,34 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.streamCalls[0]?.options.persistence.threadId).toBe(
 			'ia-builder:t:agent-1',
 		);
+	});
+
+	it('forwards session.abortSignal to the SDK stream and resume calls', async () => {
+		const { service, user, credentialProvider, n8nCheckpointStorage } = setup();
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+		const abortSignal = new AbortController().signal;
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				abortSignal,
+			}),
+		);
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{},
+				credentialProvider,
+				user,
+				{ ...baseSession, abortSignal },
+			),
+		);
+		expect(agentsSdkMocks.streamCalls[0]?.options.abortSignal).toBe(abortSignal);
+		expect(agentsSdkMocks.resumeCalls[0]?.options.abortSignal).toBe(abortSignal);
+		expect(n8nCheckpointStorage.getStatus).toHaveBeenCalledWith('builder-run-1', 'agent-1');
 	});
 
 	it('appends the session instructionsAddendum to the built prompt when provided', async () => {
@@ -293,23 +323,74 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 	});
 
+	it('registers the parent MCP tools for an initial builder turn', async () => {
+		const { service, user, credentialProvider } = setup();
+		const notionSearch = fakeTool('notion_search');
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				mcpTools: new Map([[notionSearch.name, notionSearch]]),
+			}),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames).toContain('notion_search');
+	});
+
+	it('registers the parent MCP tools for a resumed builder turn', async () => {
+		const { service, user, credentialProvider, n8nCheckpointStorage } = setup();
+		const notionSearch = fakeTool('notion_search');
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{},
+				credentialProvider,
+				user,
+				{
+					...baseSession,
+					mcpTools: new Map([[notionSearch.name, notionSearch]]),
+				},
+			),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames).toContain('notion_search');
+	});
+
+	it('does not let an MCP tool replace a native builder tool', async () => {
+		const nativeReadConfig = fakeTool('read_config');
+		const mcpReadConfig = fakeTool('read_config');
+		const { service, logger, user, credentialProvider } = setup({
+			json: [nativeReadConfig],
+			shared: [],
+		});
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				mcpTools: new Map([[mcpReadConfig.name, mcpReadConfig]]),
+			}),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'read_config')).toEqual([
+			'read_config',
+		]);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool that conflicts with an agent builder tool',
+			{ toolName: 'read_config', agentId: 'agent-1' },
+		);
+	});
+
 	it('cancelCheckpoint expires the checkpoint scoped to the agent', async () => {
 		const { service, n8nCheckpointStorage } = setup();
 
 		await service.cancelCheckpoint('agent-1', 'run-1');
 
 		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
-	});
-
-	it('includes the external services skill', async () => {
-		const { service, user, credentialProvider } = setup();
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
-		);
-
-		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
-		expect(skills.some((skill) => skill.id === 'agent-builder-external-services')).toBe(true);
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {
@@ -329,47 +410,40 @@ describe('AgentsBuilderService session isolation', () => {
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
 		);
 
-		expect(agentsSdkMocks.promptCachingCalls).toEqual([{ anthropic: { ttl: '5m' } }]);
-	});
-
-	it('enables adaptive thinking for an Anthropic builder model', async () => {
-		const { service, user, credentialProvider } = setup();
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
-		);
-
-		expect(agentsSdkMocks.thinkingCalls).toEqual([
-			{ provider: 'anthropic', config: { mode: 'adaptive', effort: 'medium' } },
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([
+			{ enabled: true, anthropic: { ttl: '5m' } },
 		]);
 	});
 
-	it('enables high-effort reasoning for an OpenAI builder model', async () => {
+	it('uses low reasoning and skips Anthropic prompt caching for proxied Kimi', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
 				...baseSession,
-				modelConfig: 'openai/gpt-5.5',
+				modelConfig: { provider: 'moonshotai', modelId: 'kimi-k3' } as never,
 			}),
 		);
 
-		expect(agentsSdkMocks.thinkingCalls).toEqual([
-			{ provider: 'openai', config: { reasoningEffort: 'high' } },
-		]);
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([]);
+		expect(agentsSdkMocks.reasoningCalls).toEqual(['low']);
 	});
 
-	it('does not configure thinking for a provider without reasoning support', async () => {
+	it.each([
+		['Anthropic', 'anthropic/claude-sonnet-host-resolved'],
+		['OpenAI', 'openai/gpt-5.6-sol'],
+		['Google', 'google/gemini-2.5-pro'],
+	])('enables generic reasoning for a %s builder model', async (_provider, modelConfig) => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
 				...baseSession,
-				modelConfig: 'google/gemini-2.5-pro',
+				modelConfig,
 			}),
 		);
 
-		expect(agentsSdkMocks.thinkingCalls).toEqual([]);
+		expect(agentsSdkMocks.reasoningCalls).toEqual(['medium']);
 	});
 
 	it('attaches session.telemetry when provided, and omits it otherwise', async () => {

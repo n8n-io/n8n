@@ -41,16 +41,25 @@ const connectionLeafSchema = z.object({
 
 const connectionsSchema = z.record(z.record(z.array(z.array(connectionLeafSchema).nullable())));
 
+const nodeGroupSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	nodeIds: z.array(z.string().min(1)),
+	description: z.string().optional(),
+});
+
 export const serializedWorkflowSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	nodes: z.array(nodeSchema),
 	connections: connectionsSchema,
+	nodeGroups: z.array(nodeGroupSchema).optional(),
 	settings: z.record(z.unknown()).optional(),
 	versionId: z.string(),
 	parentFolderId: z.string().nullable(),
 	isPublished: z.boolean(),
 	isArchived: z.boolean(),
+	tagIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SerializedWorkflow = z.infer<typeof serializedWorkflowSchema>;

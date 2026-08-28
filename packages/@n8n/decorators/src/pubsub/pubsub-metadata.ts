@@ -25,6 +25,7 @@ export type PubSubEventName =
 	| 'response-to-get-worker-status'
 	| 'restart-event-bus'
 	| 'relay-execution-lifecycle-event'
+	| 'relay-agent-execution-update'
 	| 'relay-chat-stream-event'
 	| 'relay-instance-ai-event'
 	| 'relay-instance-ai-task-control'
@@ -39,6 +40,8 @@ export type PubSubEventName =
 	| 'cancel-collection'
 	| 'agent-chat-integration-changed'
 	| 'agent-chat-subscription-changed'
+	| 'agent-chat-leader-channel-request'
+	| 'agent-chat-leader-channel-result'
 	| 'agent-config-changed'
 	| 'agent-tasks-changed'
 	| 'redaction-floor-changed';

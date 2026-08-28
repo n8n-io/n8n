@@ -153,11 +153,6 @@ describe('Push', () => {
 			describe('should throw on invalid origin', () => {
 				test.each([
 					{
-						name: 'origin is undefined',
-						origin: undefined,
-						xForwardedHost: undefined,
-					},
-					{
 						name: 'origin does not match host',
 						origin: 'https://123example.com',
 						xForwardedHost: undefined,
@@ -191,6 +186,25 @@ describe('Push', () => {
 					}
 					expect(backend.add).not.toHaveBeenCalled();
 				});
+			});
+
+			test('should only accept a missing origin header on SSE', () => {
+				req.headers = {
+					host,
+					'sec-fetch-site': 'same-origin',
+				} as typeof req.headers;
+				const emitSpy = vi.spyOn(push, 'emit');
+
+				push.handleRequest(req, res);
+
+				if (backendName === 'sse') {
+					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, { req, res });
+					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				} else {
+					expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
+					expect(ws.close).toHaveBeenCalledWith(1008);
+					expect(backend.add).not.toHaveBeenCalled();
+				}
 			});
 
 			describe('should not throw on invalid origin if `X-Forwarded-Host` is set correctly', () => {

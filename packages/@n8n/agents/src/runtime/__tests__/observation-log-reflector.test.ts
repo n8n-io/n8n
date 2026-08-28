@@ -132,16 +132,15 @@ describe('observation-log reflector defaults', () => {
 		await reflect({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
 
 		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
-			experimental_telemetry: {
+			telemetry: {
 				isEnabled: true,
 				functionId: 'my-agent.memory-reflector',
-				metadata: { thread_id: 't1' },
 				recordInputs: true,
 				recordOutputs: false,
 			},
 		});
-		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
-		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[1][0].telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].telemetry).toBeUndefined();
 	});
 
 	it('reports usage with task="reflector" and the configured model through onUsage', async () => {
@@ -377,6 +376,10 @@ describe('runObservationLogReflector', () => {
 			observationScopeId: 'thread-1',
 			reflectorThresholdTokens: 10,
 			now: new Date('2026-05-12T15:00:00.000Z'),
+			tokenCounter: async (text) => {
+				expect(text).toBe('User compared old plan A and old plan B.');
+				return await Promise.resolve(6);
+			},
 			reflect: async (input) => {
 				expect(input.renderedObservationLog).toContain(`[${stale.id}] INFO`);
 				return await Promise.resolve(
@@ -405,6 +408,7 @@ describe('runObservationLogReflector', () => {
 						marker: 'important',
 						text: 'User compared old plan A and old plan B.',
 						createdAt: new Date('2026-05-12T15:00:00.000Z'),
+						tokenCount: 6,
 					}),
 				],
 			},
@@ -421,6 +425,9 @@ describe('runObservationLogReflector', () => {
 				expect.objectContaining({ id: oldB.id, status: 'superseded' }),
 			]),
 		);
+		await expect(
+			store.getObservationLog({ observationScopeId: 'thread-1', status: 'active' }),
+		).resolves.toMatchObject([{ tokenCount: 6 }]);
 	});
 
 	it('warns but still applies reflection output that remains over budget', async () => {

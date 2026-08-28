@@ -69,7 +69,7 @@ export function toTokenUsage(
 }
 
 /**
- * Convert a single AI SDK v6 fullStream chunk to an n8n StreamChunk
+ * Convert a single AI SDK stream chunk to an n8n StreamChunk
  */
 export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefined {
 	switch (c.type) {
@@ -125,7 +125,7 @@ export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefine
 		}
 
 		case 'tool-result':
-			// The fullStream emits the raw tool output here, not the
+			// The stream emits the raw tool output here, not the
 			// `{ type, value }` ToolResultOutput wrapper used on the message
 			// side — so pass it through verbatim. Only provider-executed tools
 			// (e.g. native web search) reach this branch; local tool results are

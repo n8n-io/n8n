@@ -43,8 +43,10 @@ describe('LinearIntegration', () => {
 	const ctx = (credential: Record<string, unknown>): AgentChatIntegrationContext => ({
 		agentId: 'agent-1',
 		projectId: 'project-1',
+		integration: { type: 'linear', credentialId: 'credential-1' },
 		credentialId: 'credential-1',
 		credential,
+		ingressEnabled: true,
 		webhookUrlFor: () => 'https://example.test/webhook',
 	});
 

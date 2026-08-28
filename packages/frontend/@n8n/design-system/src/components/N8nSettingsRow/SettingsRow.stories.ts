@@ -11,7 +11,7 @@ import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
 const meta = {
-	title: 'Instance Settings/Settings Row',
+	title: 'Areas/Settings/Settings Row',
 	component: N8nSettingsRow,
 	argTypes: {
 		layout: { control: 'select', options: ['horizontal', 'vertical', 'custom'] },

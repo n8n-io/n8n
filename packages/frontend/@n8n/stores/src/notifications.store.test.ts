@@ -1,4 +1,3 @@
-import { VIEWS } from '@n8n/frontend-constants/views';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { useNotificationsStore } from './notifications.store';
@@ -11,25 +10,9 @@ describe('notifications store', () => {
 		notificationsStore = useNotificationsStore();
 	});
 
-	it('starts with an empty queue and suppression disabled', () => {
-		expect(notificationsStore.pendingNotificationsForViews).toEqual({});
+	it('starts with suppression disabled', () => {
 		expect(notificationsStore.areNotificationsSuppressed).toBe(false);
 		expect(notificationsStore.allowErrorNotificationsWhenSuppressed).toBe(false);
-	});
-
-	it('queues notifications for a given view', () => {
-		notificationsStore.setNotificationsForView(VIEWS.WORKFLOW, [{ message: 'Saved' }]);
-
-		expect(notificationsStore.pendingNotificationsForViews[VIEWS.WORKFLOW]).toEqual([
-			{ message: 'Saved' },
-		]);
-	});
-
-	it('overwrites the queue for a view on subsequent calls', () => {
-		notificationsStore.setNotificationsForView(VIEWS.WORKFLOW, [{ message: 'First' }]);
-		notificationsStore.setNotificationsForView(VIEWS.WORKFLOW, []);
-
-		expect(notificationsStore.pendingNotificationsForViews[VIEWS.WORKFLOW]).toEqual([]);
 	});
 
 	it('suppresses notifications without allowing errors by default', () => {

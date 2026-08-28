@@ -1,7 +1,7 @@
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useEvaluationsWizardSidepanelStore } from '../wizardSidepanel.store';
 import { readFirstOutputItem } from './useSliceInputs';
 import { useUserExecutions } from './useUserExecutions';

@@ -11,7 +11,7 @@ import {
 	getEntryAtRelativeIndex,
 	isSubNodeLog,
 } from '@/features/execution/logs/logs.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useCanvasStore } from '@/app/stores/canvas.store';

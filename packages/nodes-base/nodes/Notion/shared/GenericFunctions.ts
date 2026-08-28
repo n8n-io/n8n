@@ -18,7 +18,7 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, safeRegex, setSafeObjectProperty } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
 import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
@@ -1113,8 +1113,7 @@ export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
 				if (txt.textType === 'mention' && txt.mentionType === 'database') {
 					if (typeof txt.database === 'object' && txt.database.__rl) {
 						if (txt.database.__regex) {
-							const regex = new RegExp(txt.database.__regex);
-							const extracted = regex.exec(txt.database.value);
+							const extracted = safeRegex.exec(txt.database.__regex, txt.database.value);
 							txt.database = extracted![1];
 						} else {
 							txt.database = txt.database.value;

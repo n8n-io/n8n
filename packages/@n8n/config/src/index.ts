@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
+import { AiGatewayConfig } from './configs/ai-gateway.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
@@ -22,6 +23,7 @@ import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
+import { FeatureFlagConfig } from './configs/feature-flags.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { HttpRequestConfig } from './configs/http-request.config';
@@ -198,6 +200,9 @@ export class GlobalConfig {
 	aiAssistant: AiAssistantConfig;
 
 	@Nested
+	aiGateway: AiGatewayConfig;
+
+	@Nested
 	aiBuilder: AiBuilderConfig;
 
 	@Nested
@@ -307,4 +312,7 @@ export class GlobalConfig {
 
 	@Nested
 	instanceSettingsLoader: InstanceSettingsLoaderConfig;
+
+	@Nested
+	featureFlags: FeatureFlagConfig;
 }

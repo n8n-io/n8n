@@ -20,11 +20,22 @@ describe('WorkflowHistoryCompactionService', () => {
 		trimmingMinimumAgeDays: 7,
 		trimmingTimeWindowDays: 2,
 		trimOnStartUp: false,
+		skipOnStartUp: false,
 	});
 	const globalConfig = mock<GlobalConfig>({
 		workflowHistory: {
 			pruneTime: -1,
 		},
+	});
+
+	beforeEach(() => {
+		// Set the system to a time that isn't 3 AM to avoid hitting the "trim once a day" window
+		const mockDate = new Date(2026, 10, 10, 1, 0, 0);
+		vi.setSystemTime(mockDate);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	describe('init', () => {
@@ -168,6 +179,35 @@ describe('WorkflowHistoryCompactionService', () => {
 		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
 	});
 
+	it('should not compact on start up if skipOnStartUp is set', () => {
+		const compactingService = new WorkflowHistoryCompactionService(
+			{ ...config, skipOnStartUp: true, trimOnStartUp: true },
+			globalConfig,
+			mockLogger(),
+			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+			dbConnection,
+			mock(),
+			mock<EventService>(),
+		);
+
+		const optimizeHistoriesSpy = vi
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'optimizeHistories')
+			.mockImplementation((() => {}) as never);
+		const trimLongRunningHistoriesSpy = vi
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'trimLongRunningHistories')
+			.mockImplementation((() => {}) as never);
+
+		compactingService.startCompacting();
+
+		expect(optimizeHistoriesSpy).not.toHaveBeenCalled();
+		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
+		// intervals still scheduled
+		expect(compactingService['optimizingInterval']).toBeDefined();
+		expect(compactingService['trimmingInterval']).toBeDefined();
+	});
+
 	it('should trim on start up if flag is provided', () => {
 		const compactingService = new WorkflowHistoryCompactionService(
 			{ ...config, trimOnStartUp: true },
@@ -193,5 +233,65 @@ describe('WorkflowHistoryCompactionService', () => {
 		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
 		// should still call recent history compaction
 		expect(optimizeHistoriesSpy).toHaveBeenCalled();
+	});
+
+	it('should trim if triggered at 3 AM with trimOnStartUp as false', () => {
+		const mockDate = new Date(2026, 10, 10, 3, 0, 0);
+		vi.setSystemTime(mockDate);
+
+		const compactingService = new WorkflowHistoryCompactionService(
+			{ ...config, trimOnStartUp: false },
+			globalConfig,
+			mockLogger(),
+			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+			dbConnection,
+			mock(),
+			mock<EventService>(),
+		);
+
+		vi
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'optimizeHistories')
+			.mockImplementation((() => {}) as never);
+		const trimLongRunningHistoriesSpy = vi
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'trimLongRunningHistories')
+			.mockImplementation((() => {}) as never);
+
+		compactingService.startCompacting();
+
+		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
+
+		vi.useRealTimers();
+	});
+
+	it('should not trim if triggered outside of 3 AM with trimOnStartUp as false', () => {
+		const mockDate = new Date(2026, 10, 10, 5, 0, 0);
+		vi.setSystemTime(mockDate);
+
+		const compactingService = new WorkflowHistoryCompactionService(
+			{ ...config, trimOnStartUp: false },
+			globalConfig,
+			mockLogger(),
+			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+			dbConnection,
+			mock(),
+			mock<EventService>(),
+		);
+
+		vi
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'optimizeHistories')
+			.mockImplementation((() => {}) as never);
+		const trimLongRunningHistoriesSpy = vi
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'trimLongRunningHistories')
+			.mockImplementation((() => {}) as never);
+
+		compactingService.startCompacting();
+
+		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
+
+		vi.useRealTimers();
 	});
 });

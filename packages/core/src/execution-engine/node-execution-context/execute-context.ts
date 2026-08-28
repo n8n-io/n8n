@@ -2,7 +2,6 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	AINodeConnectionType,
 	CallbackManager,
-	ChunkType,
 	CloseFunction,
 	IDataObject,
 	IExecuteData,
@@ -15,7 +14,6 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
-	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
 	EngineResponse,
@@ -61,7 +59,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
 		executeData: IExecuteData,
-		private readonly closeFunctions: CloseFunction[],
+		readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 		public subNodeExecutionResults?: EngineResponse,
 	) {
@@ -141,46 +139,6 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
-	isStreaming(): boolean {
-		// Check if we have sendChunk handlers
-		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
-		const hasHandlers = handlers !== undefined && handlers > 0;
-
-		// Check if streaming was enabled for this execution
-		const streamingEnabled = this.additionalData.streamingEnabled === true;
-
-		// Check current execution mode supports streaming
-		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
-		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
-
-		return hasHandlers && isStreamingMode && streamingEnabled;
-	}
-
-	async sendChunk(
-		type: ChunkType,
-		itemIndex: number,
-		content?: IDataObject | string,
-	): Promise<void> {
-		const node = this.getNode();
-		const metadata = {
-			nodeId: node.id,
-			nodeName: node.name,
-			itemIndex,
-			runIndex: this.runIndex,
-			timestamp: Date.now(),
-		};
-
-		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
-
-		const message: StructuredChunk = {
-			type,
-			content: parsedContent,
-			metadata,
-		};
-
-		await this.additionalData.hooks?.runHook('sendChunk', [message]);
-	}
-
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -220,7 +178,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		}
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+			console.log(
+				`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`,
+				...this.redactedConsoleArgs(args),
+			);
 		}
 	}
 

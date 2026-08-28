@@ -574,7 +574,7 @@ export class RespondToWebhook implements INodeType {
 			};
 
 			if (!shouldStream || respondWith === 'binary') {
-				this.sendResponse(response);
+				await this.sendResponse(response);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {

@@ -59,6 +59,7 @@ function isSupported(name: string): boolean {
 
 	const checkedCredType = credentialsStore.getCredentialTypeByName(name);
 	if (!checkedCredType) return false;
+	if (checkedCredType.hidden) return false;
 
 	// Exclude credentials that opt into node-restriction when the current
 	// node is not in their supportedNodes list. Mirrors the server-side
@@ -73,8 +74,10 @@ function isSupported(name: string): boolean {
 
 	for (const property of supported.has) {
 		if (checkedCredType[property as keyof ICredentialType] !== undefined) {
-			// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
-			if (name === 'httpHeaderAuth' && property === 'authenticate') continue;
+			// generic-auth credentials (e.g. httpHeaderAuth) may also define
+			// `authenticate`; they belong in the generic auth dropdown, not the
+			// predefined credential type list
+			if (property === 'authenticate' && checkedCredType.genericAuth === true) continue;
 
 			return true;
 		}

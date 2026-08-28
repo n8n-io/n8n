@@ -18,8 +18,10 @@ import {
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
 	isFormDataInstance,
+	resolveLegacyRequestTarget,
 	searchForHeader,
 	setAxiosAgents,
+	sniFor,
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
 
@@ -31,10 +33,10 @@ import type { SsrfBridge } from '../../ssrf';
  * @deprecated Backs the deprecated `request` helpers.
  */
 export function buildLegacyAgentOptions(requestObject: IRequestOptions): AgentOptions {
-	const host = getHostFromRequestObject(requestObject);
+	const servername = sniFor(getHostFromRequestObject(requestObject));
 	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
+	if (servername) {
+		agentOptions.servername = servername;
 	}
 	if (requestObject.rejectUnauthorized === false) {
 		agentOptions.rejectUnauthorized = false;
@@ -165,12 +167,9 @@ export async function buildAxiosConfigFromLegacyRequest(
 		}
 	}
 
-	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri?.toString();
-	}
-
-	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url?.toString();
+	const target = resolveLegacyRequestTarget(requestObject);
+	if (target !== undefined) {
+		axiosConfig.url = target;
 	}
 
 	if (requestObject.baseURL !== undefined) {

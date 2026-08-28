@@ -1,6 +1,16 @@
 name: 'Release: Chromatic'
 
 on:
+  # Snapshot master so PRs have a fresh baseline to diff against. Without base-branch
+  # builds, TurboSnap diffs each PR against a stale ancestor, sees ~all files changed,
+  # and disables itself — rebuilding every story on every PR.
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/frontend/@n8n/design-system/**'
+      - 'packages/frontend/@n8n/storybook/**'
+      - '.github/workflows/release-chromatic.yml'
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -25,7 +35,7 @@ jobs:
           build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/chat --filter=@n8n/design-system
 
       - name: Publish to Chromatic
-        uses: chromaui/action@1cfa065cbdab28f6ca3afaeb3d761383076a35aa # v11
+        uses: chromaui/action@14cfaef73576e69f95f47f60058063f46ca38719 # v18.1.0
         id: chromatic_tests
         with:
           workingDir: packages/frontend/@n8n/storybook

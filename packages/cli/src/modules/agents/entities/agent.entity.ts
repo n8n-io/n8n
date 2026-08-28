@@ -1,6 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentJsonConfig, AgentSkill } from '@n8n/api-types';
-import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
+import { DateTimeColumn, JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
 import type { AgentHistory } from './agent-history.entity';
@@ -35,6 +35,17 @@ export class Agent extends WithTimestampsAndStringId {
 	@JsonColumn({ default: '{}' })
 	skills: Record<string, AgentSkill>;
 
+	/** Whether MCP clients granted agent scopes may operate on this agent. */
+	@Column({ default: false })
+	availableInMCP: boolean;
+
+	/**
+	 * When this agent first reached a complete, publishable setup. Set once and
+	 * never cleared — it guards the one-off "Agent setup completed" telemetry.
+	 */
+	@DateTimeColumn({ nullable: true })
+	setupCompletedAt: Date | null;
+
 	/** UUID identifying the current draft; bumped on the first config save after each publish. */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	versionId: string | null;
@@ -46,4 +57,15 @@ export class Agent extends WithTimestampsAndStringId {
 	@ManyToOne('AgentHistory', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'activeVersionId' })
 	activeVersion?: Relation<AgentHistory> | null;
+
+	/**
+	 * Optimistic-lock token. Every write that can conflict — draft edits via
+	 * `AgentRepository.saveDraftFenced`, publish/unpublish via
+	 * `setActiveVersionFenced` — bumps it in SQL behind `WHERE revision =
+	 * :expected`, so a concurrent writer that bumped `revision` in between
+	 * loses the fence (user-retryable `ConflictError`) instead of silently
+	 * overwriting newer state. Never bump or write this column any other way.
+	 */
+	@Column({ type: 'int', default: 0 })
+	revision: number;
 }

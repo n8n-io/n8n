@@ -1,6 +1,20 @@
 import type { CheckpointStore, SerializableAgentState } from '../../types';
 
 /**
+ * A resume raced another consumer: the run was already claimed by a concurrent
+ * resume (e.g. from another main), finished, or re-suspended on a different
+ * tool call. Benign — `level: 'warning'` keeps it out of error-level reporting.
+ */
+export class StaleResumeError extends Error {
+	readonly level = 'warning';
+
+	constructor(message: string) {
+		super(message);
+		this.name = 'StaleResumeError';
+	}
+}
+
+/**
  * Default in-memory CheckpointStore implementation.
  * Used when no external store is configured (storage: 'memory' or omitted).
  *
@@ -76,14 +90,14 @@ export class RunStateManager {
 		const state = await this.store.load(runId);
 		if (!state) return undefined;
 		if (state.status !== 'suspended') {
-			throw new Error(`Run ${runId} is not suspended. Cannot resume.`);
+			throw new StaleResumeError(`Run ${runId} is not suspended. Cannot resume.`);
 		}
 		return state;
 	}
 
 	async claimResume(runId: string, state: SerializableAgentState): Promise<boolean> {
 		if (state.status !== 'suspended') {
-			throw new Error(`Run ${runId} is not suspended. Cannot resume.`);
+			throw new StaleResumeError(`Run ${runId} is not suspended. Cannot resume.`);
 		}
 
 		if (this.store.claimForResume) {
@@ -96,11 +110,12 @@ export class RunStateManager {
 
 	/** Delete a finished run from storage. Called when a resumed run completes without re-suspending. */
 	async complete(runId: string): Promise<void> {
-		try {
-			await this.store.delete(runId);
-		} catch (deleteError: unknown) {
-			console.error(`[RunStateManager] Failed to delete checkpoint ${runId}:`, deleteError);
-		}
+		await this.store.delete(runId);
+	}
+
+	/** Delete a cancelled run and surface failures so its parent can remain retryable. */
+	async cancel(runId: string): Promise<void> {
+		await this.store.delete(runId);
 	}
 }
 

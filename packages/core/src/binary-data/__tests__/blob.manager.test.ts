@@ -116,10 +116,24 @@ describe('deletion', () => {
 		expect(byteStore.delete).not.toHaveBeenCalled();
 	});
 
-	it('deleteManyByFileId is a no-op without prefix deletion, even for malformed ids', async () => {
-		await manager.deleteManyByFileId([fileId, 'malformed-id']);
+	it('deleteManyByFileId deletes objects by key, without metadata companions', async () => {
+		await manager.deleteManyByFileId([fileId]);
+
+		expect(byteStore.delete).toHaveBeenCalledWith([fileId]);
+	});
+
+	it('deleteManyByFileId warns on a malformed id without dropping the rest of the batch', async () => {
+		await manager.deleteManyByFileId(['malformed-id', fileId]);
+
+		expect(byteStore.delete).toHaveBeenCalledWith([fileId]);
+		expect(errorReporter.warn).toHaveBeenCalledWith('Could not parse file ID. Skip deletion', {
+			extra: { fileId: 'malformed-id' },
+		});
+	});
+
+	it('deleteManyByFileId leaves the store untouched when every id is malformed', async () => {
+		await manager.deleteManyByFileId(['malformed-id']);
 
 		expect(byteStore.delete).not.toHaveBeenCalled();
-		expect(errorReporter.warn).not.toHaveBeenCalled();
 	});
 });

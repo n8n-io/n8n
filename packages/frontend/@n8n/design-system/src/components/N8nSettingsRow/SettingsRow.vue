@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useResizeObserver } from '@vueuse/core';
-import { computed, ref, watch, useId, useSlots } from 'vue';
+import { computed, ref, watch, useId } from 'vue';
 
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
@@ -87,7 +87,16 @@ const emit = defineEmits<{
 	click: [event: MouseEvent | KeyboardEvent];
 }>();
 
-const slots = useSlots();
+// Declared rather than inferred from `useSlots()`: `slots` is read by a computed
+// that the template renders, so inferring it is circular and the compiler falls
+// back to `any` (TS7022), which publishes untyped slots for this component.
+const slots = defineSlots<{
+	default?: () => unknown;
+	visual?: () => unknown;
+	info?: () => unknown;
+	action?: () => unknown;
+	expanded?: () => unknown;
+}>();
 
 // Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
 const expandRegionId = `settings-row-expand-${useId()}`;
@@ -306,11 +315,12 @@ function onKeydown(event: KeyboardEvent) {
 
 <style lang="scss" module>
 @use '../../css/mixins/utils';
+@use '../../css/mixins/motion';
 
-// The expand/collapse motion. No DS duration token equals 350ms (snappy=200, base=400) and the
-// curve has no token either, so both live here as local constants per the motion spec.
-$expand-duration: 350ms;
-$expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
+// The expand/collapse motion: the shared settings-surface blur motion, whose
+// canonical duration/easing live in the motion mixins.
+$expand-duration: motion.$blur-motion-duration;
+$expand-easing: motion.$blur-motion-easing;
 
 .row {
 	position: relative;

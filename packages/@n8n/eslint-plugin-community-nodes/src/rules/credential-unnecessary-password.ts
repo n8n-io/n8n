@@ -5,7 +5,7 @@ import {
 	findClassProperty,
 	findObjectProperty,
 	getStringLiteralValue,
-	containsSensitivePattern,
+	isSensitiveName,
 	hasPasswordTypeOption,
 	createRule,
 } from '../utils/index.js';
@@ -53,12 +53,12 @@ export const CredentialUnnecessaryPasswordRule = createRule({
 					}
 
 					// Only flag a masked field when its name carries no sensitive marker at all.
-					// Requiring the *absence* of any sensitive pattern (rather than reusing
-					// isSensitiveFieldName) avoids flagging a real secret like `androidToken`,
-					// which is classified non-sensitive only because it contains the substring
-					// `id`. Reported without a fix: removing masking could still be wrong for an
+					// We check with `exclusions: []` (raw patterns, no URL/ID/pub exclusions) so a
+					// real secret like `androidToken` — non-sensitive under the default exclusions
+					// only because it contains the substring `id` — is not wrongly flagged.
+					// Reported without a fix: removing masking could still be wrong for an
 					// unlisted secret name, so the author confirms.
-					if (!containsSensitivePattern(fieldName)) {
+					if (!isSensitiveName(fieldName, { exclusions: [] })) {
 						context.report({
 							node: element,
 							messageId: 'unnecessaryPasswordOption',

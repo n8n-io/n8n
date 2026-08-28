@@ -25,7 +25,7 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 

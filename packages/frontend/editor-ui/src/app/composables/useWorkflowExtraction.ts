@@ -14,7 +14,7 @@ import type {
 	INode,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { useToast } from './useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -27,10 +27,11 @@ import { useSelectionValidation } from './useSelectionValidation';
 import type { AddedNode, INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { checkExhaustive } from '@/app/utils/typeGuards';
 import isEqual from 'lodash/isEqual';
 import uniq from 'lodash/uniq';
@@ -47,6 +48,7 @@ export function useWorkflowExtraction() {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const toast = useToast();
 	const router = useRouter();
 	const historyStore = useHistoryStore();
@@ -689,7 +691,7 @@ export function useWorkflowExtraction() {
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
 	function extractWorkflow(nodeIds: string[]) {
-		if (nodeIds.length === 0) return;
+		if (nodeIds.length === 0 || settingsStore.isSubworkflowConversionDisabled) return;
 
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);

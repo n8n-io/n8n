@@ -11,6 +11,11 @@ import { describe, it, expect } from 'vitest';
  * SDK silently falls back to the host credential chain). The scan is structural and
  * fails closed: anything it cannot statically verify is reported as an issue rather
  * than silently passing, so a future client added in a scanned dir is caught.
+ *
+ * SDK `*Command` constructions are exempt: they are request payloads sent through an
+ * already-credentialed client and accept no credentials. The exemption is not trusted
+ * by name alone — every skipped construction is recorded and a companion test imports
+ * the class from its real `@aws-sdk` module and asserts it is not client-shaped.
  */
 
 const AWS_SDK_MODULE = /^@aws-sdk\//;
@@ -30,6 +35,11 @@ const SCAN_DIRS = [
 // The chat and embeddings nodes share one construction site (createBedrockRuntimeClient).
 const MIN_EXPECTED_CLIENT_CONSTRUCTIONS = 1;
 
+// Bump when more command constructions are added to the scanned surface. Keeping this
+// at the real count ensures the runtime proof below never passes vacuously.
+// BedrockInvokeModelEmbeddings constructs InvokeModelCommand.
+const MIN_EXPECTED_COMMAND_CONSTRUCTIONS = 1;
+
 interface ImportBinding {
 	module: string;
 	isAwsSdk: boolean;
@@ -37,11 +47,20 @@ interface ImportBinding {
 	importedName: string;
 }
 
+interface SkippedCommandConstruction {
+	/** Exported class name in the source module (alias-resolved, so `import { X as y }` records `X`). */
+	importedName: string;
+	module: string;
+	file: string;
+}
+
 export interface ScanResult {
 	/** Number of `new <awsSdkClient>(...)` constructions found on the scanned surface. */
 	clientConstructionCount: number;
 	/** Human-readable description of each statically-unverifiable or missing-key finding. */
 	issues: string[];
+	/** `*Command` constructions exempted from the credentials check, for the runtime proof. */
+	skippedCommands: SkippedCommandConstruction[];
 }
 
 // Phase-0 scope is presence-only: a `credentials` / `masterCredentials` key must be
@@ -166,6 +185,7 @@ export function scanSourceForAwsCredentialIssues(
 	const declarations = buildDeclarationIndex(ast);
 
 	const issues: string[] = [];
+	const skippedCommands: SkippedCommandConstruction[] = [];
 	let clientConstructionCount = 0;
 
 	simpleTraverse(ast, {
@@ -173,18 +193,28 @@ export function scanSourceForAwsCredentialIssues(
 			// `new <awsSdkClient>(config)` must receive explicit `credentials`. Covers a bare
 			// `new STSClient(...)` and namespace-member `new ns.STSClient(...)` where `ns` is an
 			// `@aws-sdk/*` namespace import; the latter would otherwise slip the net as a
-			// credential-less client.
+			// credential-less client. `*Command` constructions (matched on the alias-resolved
+			// exported name, so a `Command`-named local alias of a client cannot dodge the check)
+			// are recorded for the runtime proof instead of being verified.
 			if (node.type === AST_NODE_TYPES.NewExpression) {
-				const clientName = resolveAwsClientName(node.callee, imports);
-				if (clientName) {
+				const construction = resolveAwsSdkConstruction(node.callee, imports);
+				if (construction?.importedName.endsWith('Command')) {
+					skippedCommands.push({
+						importedName: construction.importedName,
+						module: construction.module,
+						file: filename,
+					});
+				} else if (construction) {
 					clientConstructionCount += 1;
 					const [arg] = node.arguments;
 
 					if (!arg) {
-						issues.push(`new ${clientName}() constructed without a config argument in ${filename}`);
+						issues.push(
+							`new ${construction.displayName}() constructed without a config argument in ${filename}`,
+						);
 					} else if (!configHasCredentials(arg, declarations)) {
 						issues.push(
-							`cannot statically verify credentials for new ${clientName}(${describeArg(arg)}) in ${filename}`,
+							`cannot statically verify credentials for new ${construction.displayName}(${describeArg(arg)}) in ${filename}`,
 						);
 					}
 				}
@@ -211,20 +241,34 @@ export function scanSourceForAwsCredentialIssues(
 		},
 	});
 
-	return { clientConstructionCount, issues };
+	return { clientConstructionCount, issues, skippedCommands };
+}
+
+interface AwsSdkConstruction {
+	/** As written at the call site (local alias or `ns.Member`), for issue messages. */
+	displayName: string;
+	/** Exported name in the source module, for classification and runtime lookup. */
+	importedName: string;
+	module: string;
 }
 
 /**
- * Returns the display name of the AWS SDK client a `new` callee resolves to, or undefined.
- * Handles an Identifier bound to an `@aws-sdk/*` import and a `ns.Client` member where `ns`
+ * Resolves the AWS SDK class a `new` callee constructs, or undefined for non-SDK callees.
+ * Handles an Identifier bound to an `@aws-sdk/*` import and a `ns.Member` member where `ns`
  * is an `@aws-sdk/*` namespace import.
  */
-function resolveAwsClientName(
+function resolveAwsSdkConstruction(
 	callee: TSESTree.Expression,
 	imports: Map<string, ImportBinding>,
-): string | undefined {
+): AwsSdkConstruction | undefined {
 	if (callee.type === AST_NODE_TYPES.Identifier) {
-		return imports.get(callee.name)?.isAwsSdk ? callee.name : undefined;
+		const binding = imports.get(callee.name);
+		if (!binding?.isAwsSdk) return undefined;
+		return {
+			displayName: callee.name,
+			importedName: binding.importedName,
+			module: binding.module,
+		};
 	}
 
 	if (
@@ -235,7 +279,11 @@ function resolveAwsClientName(
 	) {
 		const binding = imports.get(callee.object.name);
 		if (binding?.isAwsSdk && binding.importedName === '*') {
-			return `${callee.object.name}.${callee.property.name}`;
+			return {
+				displayName: `${callee.object.name}.${callee.property.name}`,
+				importedName: callee.property.name,
+				module: binding.module,
+			};
 		}
 	}
 
@@ -298,7 +346,7 @@ function collectTsFiles(dir: string): string[] {
 }
 
 function scanSurface(): ScanResult {
-	const aggregate: ScanResult = { clientConstructionCount: 0, issues: [] };
+	const aggregate: ScanResult = { clientConstructionCount: 0, issues: [], skippedCommands: [] };
 
 	for (const dir of SCAN_DIRS) {
 		if (!existsSync(dir)) continue;
@@ -306,6 +354,7 @@ function scanSurface(): ScanResult {
 			const result = scanSourceForAwsCredentialIssues(readFileSync(file, 'utf8'), file);
 			aggregate.clientConstructionCount += result.clientConstructionCount;
 			aggregate.issues = aggregate.issues.concat(result.issues);
+			aggregate.skippedCommands = aggregate.skippedCommands.concat(result.skippedCommands);
 		}
 	}
 
@@ -323,6 +372,30 @@ describe('AWS SDK client credentials guardrail (real surface)', () => {
 
 	it('constructs every AWS SDK client with explicit credentials and masterCredentials', () => {
 		expect(result.issues).toEqual([]);
+	});
+
+	it('finds at least the known AWS SDK command constructions', () => {
+		expect(result.skippedCommands.length).toBeGreaterThanOrEqual(
+			MIN_EXPECTED_COMMAND_CONSTRUCTIONS,
+		);
+	});
+
+	it('proves every exempted command construction is a request class, not a client', async () => {
+		for (const skipped of result.skippedCommands) {
+			const module = (await import(skipped.module)) as Record<string, unknown>;
+			const constructor = module[skipped.importedName];
+			// Fail closed: the exempted name must exist in its module and must not be
+			// client-shaped (SDK clients expose `send` on the prototype; commands do not).
+			expect(
+				constructor,
+				`${skipped.module} does not export ${skipped.importedName} (${skipped.file})`,
+			).toBeTypeOf('function');
+			const prototype = (constructor as { prototype?: object }).prototype ?? {};
+			expect(
+				'send' in prototype,
+				`${skipped.importedName} is client-shaped and must not be exempted from the credentials check (${skipped.file})`,
+			).toBe(false);
+		}
 	});
 });
 
@@ -421,5 +494,33 @@ describe('scanSourceForAwsCredentialIssues controls', () => {
 		expect(result.issues[0]).toContain(
 			'cannot statically verify credentials for new STSClient(cfg)',
 		);
+	});
+
+	it('(j) skips but records command constructions (bare, aliased, namespace-member)', () => {
+		const result = scanSourceForAwsCredentialIssues(
+			"import { InvokeModelCommand, ConverseCommand as cc } from '@aws-sdk/client-bedrock-runtime';\n" +
+				"import * as bedrock from '@aws-sdk/client-bedrock-runtime';\n" +
+				"const a = new InvokeModelCommand({ modelId: 'm' });\n" +
+				'const b = new cc({});\n' +
+				"const c = new bedrock.InvokeModelCommand({ modelId: 'm' });",
+		);
+		expect(result.clientConstructionCount).toBe(0);
+		expect(result.issues).toEqual([]);
+		expect(result.skippedCommands.map((s) => s.importedName)).toEqual([
+			'InvokeModelCommand',
+			'ConverseCommand',
+			'InvokeModelCommand',
+		]);
+		expect(result.skippedCommands[0].module).toBe('@aws-sdk/client-bedrock-runtime');
+	});
+
+	it('(k) does not exempt a client aliased to a Command-like local name', () => {
+		const result = scanSourceForAwsCredentialIssues(
+			"import { STSClient as FooCommand } from '@aws-sdk/client-sts';\nconst c = new FooCommand({ region: 'us-east-1' });",
+		);
+		expect(result.clientConstructionCount).toBe(1);
+		expect(result.skippedCommands).toEqual([]);
+		expect(result.issues).toHaveLength(1);
+		expect(result.issues[0]).toContain('cannot statically verify credentials for new FooCommand');
 	});
 });

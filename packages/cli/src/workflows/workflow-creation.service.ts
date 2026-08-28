@@ -23,6 +23,7 @@ import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
 import { NodeTypes } from '@/node-types';
@@ -31,6 +32,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -59,6 +61,8 @@ export class WorkflowCreationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+		private readonly workflowHookContextService: WorkflowHookContextService,
+		private readonly mcpSettingsService: McpSettingsService,
 	) {}
 
 	async createWorkflow(
@@ -174,6 +178,7 @@ export class WorkflowCreationService {
 		// Run external hook after all validation has passed, right before persisting
 		await this.externalHooks.run('workflow.create', [
 			newWorkflow,
+			this.workflowHookContextService,
 			toWorkflowLifecycleHookActor(user),
 		]);
 
@@ -204,6 +209,8 @@ export class WorkflowCreationService {
 				transactionManager,
 				floor,
 			);
+
+			await this.resolveMcpExposureOnCreate(newWorkflow, transactionManager);
 
 			if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 				newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
@@ -261,6 +268,7 @@ export class WorkflowCreationService {
 
 		await this.externalHooks.run('workflow.afterCreate', [
 			savedWorkflow,
+			this.workflowHookContextService,
 			toWorkflowLifecycleHookActor(user),
 		]);
 		this.eventService.emit('workflow-created', {
@@ -334,5 +342,26 @@ export class WorkflowCreationService {
 		if (seed === undefined) return;
 
 		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), redactionPolicy: seed };
+	}
+
+	private async resolveMcpExposureOnCreate(
+		newWorkflow: WorkflowEntity,
+		transactionManager: EntityManager,
+	): Promise<void> {
+		if (newWorkflow.settings?.availableInMCP !== undefined) return;
+
+		try {
+			// Read through the create transaction's connection: a settings read on a
+			// separate pool connection would deadlock small pools (the transaction
+			// holds one, the read waits for another that never frees).
+			if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows(transactionManager))) return;
+		} catch (error) {
+			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+
+		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), availableInMCP: true };
 	}
 }

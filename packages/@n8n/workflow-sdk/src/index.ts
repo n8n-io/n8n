@@ -143,6 +143,11 @@ export {
 
 // Code helpers
 export { runOnceForAllItems, runOnceForEachItem } from './utils/code-helpers';
+export {
+	dropInvalidWorkflowJsonGroups,
+	toEngineConnections,
+	toGroupValidationNodes,
+} from './utils/workflow-json-engine-helpers';
 
 // Utility functions
 export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
@@ -159,6 +164,13 @@ export {
 	type ValidationErrorCode,
 	validateNodeConfig,
 	type SchemaValidationResult,
+	type IssueSeverity,
+	isInformationalIssue,
+	partitionValidationIssues,
+	validateWorkflowBuilder,
+	type ValidateWorkflowBuilderOptions,
+	type ValidateWorkflowBuilderResult,
+	type CollectedValidationIssue,
 } from './validation';
 
 // Code generation
@@ -221,3 +233,12 @@ export {
 	isWebhookType,
 	isDataTableType,
 } from './constants';
+
+// Canvas geometry — the same values the layout engine and the editor's canvas use.
+// Exported so consumers that place nodes themselves stay on the same grid.
+export {
+	GRID_SIZE,
+	DEFAULT_NODE_SIZE,
+	NODE_X_SPACING,
+	NODE_Y_SPACING,
+} from './workflow-builder/constants';

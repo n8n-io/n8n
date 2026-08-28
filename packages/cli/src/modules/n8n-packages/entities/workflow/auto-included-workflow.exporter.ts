@@ -15,6 +15,8 @@ import type { WorkflowDataTableRequirement } from '../data-table/data-table.type
 import { FolderSerializer } from '../folder/folder.serializer';
 import { ProjectSerializer } from '../project/project.serializer';
 import type { WorkflowExportRequirements } from '../requirements.types';
+import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
+import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
@@ -24,6 +26,7 @@ export interface AutoIncludedWorkflowExportRequest {
 	existingWorkflowEntries: ManifestEntry[];
 	existingFolderEntries: ManifestEntry[];
 	existingProjectEntries: ManifestEntry[];
+	includeTags: boolean;
 	projectTargetsById?: Map<string, string>;
 }
 
@@ -54,9 +57,12 @@ export class AutoIncludedWorkflowExporter {
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
+		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
 	) {}
 
-	export(request: AutoIncludedWorkflowExportRequest): AutoIncludedWorkflowExportResult {
+	async export(
+		request: AutoIncludedWorkflowExportRequest,
+	): Promise<AutoIncludedWorkflowExportResult> {
 		const allocators: ExportAllocators = {
 			workflows: new Map(),
 			folders: new Map(),
@@ -93,12 +99,13 @@ export class AutoIncludedWorkflowExporter {
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
+		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
 
 		for (const included of request.workflows) {
 			if (workflowEntriesById.has(included.workflow.id)) continue;
 
-			const baseDir = this.resolveWorkflowBaseDir({
+			const baseDir = await this.resolveWorkflowBaseDir({
 				included,
 				writer: request.writer,
 				folderEntriesById,
@@ -108,17 +115,19 @@ export class AutoIncludedWorkflowExporter {
 				projectEntries,
 				allocators,
 			});
-			const entry = this.writeWorkflow(
+			const entry = await this.writeWorkflow(
 				included.workflow,
 				baseDir,
 				request.writer,
 				allocators.workflows,
+				request.includeTags,
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
 			credentials.push(...this.credentialRequirementsExtractor.extract(included.workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(included.workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(included.workflow));
+			tags.push(...this.tagRequirementsExtractor.extract(included.workflow));
 			nodeTypes.push({
 				workflowId: included.workflow.id,
 				nodes: included.workflow.nodes ?? [],
@@ -129,12 +138,12 @@ export class AutoIncludedWorkflowExporter {
 			workflowEntries,
 			folderEntries,
 			projectEntries,
-			requirements: { credentials, dataTables, variables, nodeTypes },
+			requirements: { credentials, dataTables, variables, tags, nodeTypes },
 			projectTargetsById,
 		};
 	}
 
-	private resolveWorkflowBaseDir(options: {
+	private async resolveWorkflowBaseDir(options: {
 		included: AutoIncludedWorkflow;
 		writer: PackageWriter;
 		folderEntriesById: Map<string, ManifestEntry>;
@@ -143,10 +152,10 @@ export class AutoIncludedWorkflowExporter {
 		folderEntries: ManifestEntry[];
 		projectEntries: ManifestEntry[];
 		allocators: ExportAllocators;
-	}): string {
+	}): Promise<string> {
 		const { included } = options;
 		if (included.placement === 'project') {
-			const projectTarget = this.ensureProjectShell({
+			const projectTarget = await this.ensureProjectShell({
 				project: included.ownerProject,
 				writer: options.writer,
 				projectEntriesById: options.projectEntriesById,
@@ -159,7 +168,7 @@ export class AutoIncludedWorkflowExporter {
 				return `${projectTarget}/workflows`;
 			}
 
-			const folderTarget = this.ensureFolderChain({
+			const folderTarget = await this.ensureFolderChain({
 				chain: included.folderChain,
 				baseDir: `${projectTarget}/folders`,
 				writer: options.writer,
@@ -171,7 +180,7 @@ export class AutoIncludedWorkflowExporter {
 		}
 
 		if (included.placement === 'folder' && included.folderChain.length > 0) {
-			const folderTarget = this.ensureFolderChain({
+			const folderTarget = await this.ensureFolderChain({
 				chain: included.folderChain,
 				baseDir: 'folders',
 				writer: options.writer,
@@ -185,21 +194,24 @@ export class AutoIncludedWorkflowExporter {
 		return 'workflows';
 	}
 
-	private ensureProjectShell(options: {
+	private async ensureProjectShell(options: {
 		project: Project;
 		writer: PackageWriter;
 		projectEntriesById: Map<string, ManifestEntry>;
 		projectTargetsById: Map<string, string>;
 		projectEntries: ManifestEntry[];
 		allocator: UniqueFilenameAllocator;
-	}): string {
+	}): Promise<string> {
 		const existing = options.projectEntriesById.get(options.project.id);
 		if (existing) return existing.target;
 
 		const target = options.allocator.allocate(options.project.name);
 		const serialized = this.projectSerializer.serialize(options.project);
-		options.writer.writeDirectory(target);
-		options.writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
+		await options.writer.writeDirectory(target);
+		await options.writer.writeFile(
+			`${target}/project.json`,
+			JSON.stringify(serialized, null, '\t'),
+		);
 
 		const entry = { id: options.project.id, name: options.project.name, target };
 		options.projectEntries.push(entry);
@@ -208,14 +220,14 @@ export class AutoIncludedWorkflowExporter {
 		return target;
 	}
 
-	private ensureFolderChain(options: {
+	private async ensureFolderChain(options: {
 		chain: Folder[];
 		baseDir: string;
 		writer: PackageWriter;
 		folderEntriesById: Map<string, ManifestEntry>;
 		folderEntries: ManifestEntry[];
 		allocators: Map<string, UniqueFilenameAllocator>;
-	}): string {
+	}): Promise<string> {
 		let parentTarget: string | undefined;
 		let effectiveParentId: string | null = null;
 
@@ -234,8 +246,11 @@ export class AutoIncludedWorkflowExporter {
 			if (parentTarget) allocator.reserve('workflows');
 			const target = allocator.allocate(folder.name);
 			const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
-			options.writer.writeDirectory(target);
-			options.writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+			await options.writer.writeDirectory(target);
+			await options.writer.writeFile(
+				`${target}/folder.json`,
+				JSON.stringify(serialized, null, '\t'),
+			);
 
 			const entry = { id: folder.id, name: folder.name, target };
 			options.folderEntries.push(entry);
@@ -256,16 +271,17 @@ export class AutoIncludedWorkflowExporter {
 		return parentTarget;
 	}
 
-	private writeWorkflow(
+	private async writeWorkflow(
 		workflow: WorkflowEntity,
 		baseDir: string,
 		writer: PackageWriter,
 		allocators: Map<string, UniqueFilenameAllocator>,
-	): ManifestEntry {
+		includeTags: boolean,
+	): Promise<ManifestEntry> {
 		const target = allocatorFor(allocators, baseDir, 'workflow').allocate(workflow.name);
-		const serialized = this.workflowSerializer.serialize(workflow);
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
+		const serialized = this.workflowSerializer.serialize(workflow, { includeTags });
+		await writer.writeDirectory(target);
+		await writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
 		return { id: workflow.id, name: workflow.name, target };
 	}
 }
