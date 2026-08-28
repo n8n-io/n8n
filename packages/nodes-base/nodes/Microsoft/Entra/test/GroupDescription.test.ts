@@ -1,9 +1,13 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
-import nock from 'nock';
-import type { Mock } from 'vitest';
 
-import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
+import {
+	entraGroupGuid,
+	entraWorkflow,
+	expectNoGraphRequests,
+	microsoftEntraApiResponse,
+	microsoftEntraNodeResponse,
+} from './mocks';
 
 describe('Microsoft Entra Node', () => {
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
@@ -750,77 +754,17 @@ describe('Microsoft Entra Node', () => {
 	});
 
 	describe('Rejected group IDs', () => {
-		let graphRequests: Mock;
-
-		beforeEach(() => {
-			// Any request reaching Graph fails the case: a rejected ID must never be sent.
-			graphRequests = vi.fn().mockReturnValue({});
-			for (const method of ['GET', 'POST', 'PATCH', 'DELETE'] as const) {
-				nock('https://graph.microsoft.com')
-					.persist()
-					.intercept(/.*/, method)
-					.reply(200, graphRequests);
-			}
-		});
-
-		afterEach(() => {
-			const requestsSeen = graphRequests.mock.calls.length;
-			nock.cleanAll();
-			expect(requestsSeen, 'a rejected ID must never reach Graph').toBe(0);
-		});
+		expectNoGraphRequests();
 
 		testHarness.setupTest({
 			description: 'should reject a group ID containing a slash',
 			input: {
-				workflowData: {
-					nodes: [
-						{
-							parameters: {},
-							id: '416e4fc1-5055-4e61-854e-a6265256ac26',
-							name: 'When clicking ‘Execute workflow’',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [820, 380],
-							typeVersion: 1,
-						},
-						{
-							parameters: {
-								resource: 'group',
-								operation: 'get',
-								group: {
-									__rl: true,
-									value: 'a8eb60e3-0145-4d7e-85ef-c6259784761b/members',
-									mode: 'id',
-								},
-								output: 'raw',
-								requestOptions: {},
-							},
-							type: 'n8n-nodes-base.microsoftEntra',
-							typeVersion: 1,
-							position: [220, 0],
-							id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-							name: 'Microsoft Entra ID',
-							credentials: {
-								microsoftEntraOAuth2Api: {
-									id: 'Hot2KwSMSoSmMVqd',
-									name: 'Microsoft Entra ID (Azure Active Directory) account',
-								},
-							},
-						},
-					],
-					connections: {
-						'When clicking ‘Execute workflow’': {
-							main: [
-								[
-									{
-										node: 'Microsoft Entra ID',
-										type: NodeConnectionTypes.Main,
-										index: 0,
-									},
-								],
-							],
-						},
-					},
-				},
+				workflowData: entraWorkflow({
+					resource: 'group',
+					operation: 'get',
+					group: { __rl: true, mode: 'id', value: `${entraGroupGuid}/members` },
+					output: 'raw',
+				}),
 			},
 			output: { nodeData: {}, error: 'The group ID is invalid' },
 		});
