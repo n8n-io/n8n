@@ -285,9 +285,7 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed(group.id)).toBe(true);
 		});
 
-		it('pushes on first expand of a startCollapsed group, unlike a user-created one', () => {
-			// User-created groups are kept out of the push sources until re-expanded;
-			// imported groups behave like loaded ones — their first expansion pushes.
+		it('pushes on first expand of a startCollapsed group', () => {
 			const { nodeGroups, view } = setup();
 			const group = nodeGroups.createGroup(['a'], 'Imported', { startCollapsed: true });
 			view.syncLayoutComponents([
@@ -311,6 +309,63 @@ describe('useCanvasNodeGroupView', () => {
 			view.toggleCollapsed(group.id);
 
 			expect(view.getVisualOffsetForNode('b').x).toBeGreaterThan(0);
+		});
+
+		it('uses a newly created expanded group as a push source immediately', () => {
+			const { nodeGroups, view } = setup();
+			const group = nodeGroups.createGroup(['a'], 'New');
+			view.syncLayoutComponents([
+				{
+					id: `group:${group.id}`,
+					kind: 'group',
+					groupId: group.id,
+					nodeIds: ['a'],
+					rect: { x: 0, y: 0, width: 400, height: 40 },
+					collapsedRect: { x: 0, y: 0, width: 400, height: 40 },
+					expandedRect: { x: 0, y: 0, width: 600, height: 240 },
+				},
+				{
+					id: 'b',
+					kind: 'node',
+					nodeIds: ['b'],
+					rect: { x: 450, y: 10, width: 96, height: 96 },
+				},
+			]);
+
+			const offset = view.getVisualOffsetForNode('b');
+			expect(offset.x).toBeGreaterThan(0);
+			expect(offset.y).toBe(0);
+		});
+
+		it('matches the reload offsets for a newly created expanded group', () => {
+			const componentsForGroup = (groupId: string): NodeGroupLayoutComponent[] => [
+				{
+					id: `group:${groupId}`,
+					kind: 'group',
+					groupId,
+					nodeIds: ['a'],
+					rect: { x: 0, y: 0, width: 400, height: 40 },
+					collapsedRect: { x: 0, y: 0, width: 400, height: 40 },
+					expandedRect: { x: 0, y: 0, width: 600, height: 240 },
+				},
+				{
+					id: 'b',
+					kind: 'node',
+					nodeIds: ['b'],
+					rect: { x: 450, y: 10, width: 96, height: 96 },
+				},
+			];
+
+			const created = setup();
+			const group = created.nodeGroups.createGroup(['a'], 'New');
+			created.view.syncLayoutComponents(componentsForGroup(group.id));
+			const offsetBeforeReload = created.view.getVisualOffsetForNode('b');
+			expect(offsetBeforeReload.x).toBeGreaterThan(0);
+
+			const reloaded = setup([{ id: group.id, name: group.name, nodeIds: [...group.nodeIds] }]);
+			reloaded.view.syncLayoutComponents(componentsForGroup(group.id));
+
+			expect(reloaded.view.getVisualOffsetForNode('b')).toEqual(offsetBeforeReload);
 		});
 	});
 
