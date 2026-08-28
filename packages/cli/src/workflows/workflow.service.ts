@@ -664,17 +664,11 @@ export class WorkflowService {
 
 		if (versionIdToPublish) {
 			// Putting a different version live is a publication, so it has to clear the same bars as an
-			// explicit publish. A caller who may write but not publish keeps the draft they just saved;
-			// the conflict tells them it did not go live. Re-applying the version that is already live
-			// publishes nothing new, so it stays a plain update.
+			// explicit publish. A caller who may write but not publish keeps the draft they just saved,
+			// and the refusal names it. Re-applying the version that is already live publishes nothing
+			// new, so it stays a plain update.
 			if (versionIdToPublish !== workflow.activeVersionId) {
-				await this.assertMayPublishOnSave(
-					user,
-					workflowId,
-					ownerProject.id,
-					apiKeyScopes,
-					versionIdToPublish,
-				);
+				await this.assertMayPublishOnSave(user, workflowId, apiKeyScopes, versionIdToPublish);
 			}
 
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
@@ -704,7 +698,6 @@ export class WorkflowService {
 	private async assertMayPublishOnSave(
 		user: User,
 		workflowId: string,
-		projectId: string,
 		apiKeyScopes: readonly string[] | undefined,
 		savedVersionId: string,
 	): Promise<void> {
@@ -715,7 +708,9 @@ export class WorkflowService {
 			});
 		}
 
-		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { projectId });
+		// Scoped to the workflow rather than its project, so a role granted by sharing the workflow
+		// counts the same way it does on the publish endpoint.
+		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { workflowId });
 
 		if (!canPublish) {
 			this.logger.warn('User saved a draft but may not publish it', {
@@ -915,16 +910,25 @@ export class WorkflowService {
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
 
-		// Reached with access to the workflow but not the right to release a version, so there is no
-		// existence to hide behind a 404 here.
+		// Reached with access to the workflow but not, so far, the right to release a version. A caller
+		// whose re-apply hint went stale (the live version moved under it) may still be allowed to
+		// publish, so confirm before refusing. There is no existence to hide behind a 404 here.
 		if (resolvedWithEditorScopes && versionIdToActivate !== previousActiveVersionId) {
-			this.logger.warn('User attempted to publish a workflow without permissions', {
-				workflowId,
-				userId: user.id,
-			});
-			throw new ForbiddenError(
-				'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
-			);
+			const mayPublish =
+				options?.reapplyingLiveVersion === true &&
+				(await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:publish',
+				])) !== null;
+
+			if (!mayPublish) {
+				this.logger.warn('User attempted to publish a workflow without permissions', {
+					workflowId,
+					userId: user.id,
+				});
+				throw new ForbiddenError(
+					'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
+				);
+			}
 		}
 
 		let versionToActivate: WorkflowHistory;

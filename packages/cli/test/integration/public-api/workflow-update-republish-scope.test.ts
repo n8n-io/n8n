@@ -1,6 +1,7 @@
 import {
 	createActiveWorkflow,
 	createTeamProject,
+	shareWorkflowWithUsers,
 	createWorkflowWithTriggerAndHistory,
 	linkUserToProject,
 	mockInstance,
@@ -27,6 +28,7 @@ import * as utils from '../shared/utils/';
 mockInstance(Telemetry);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
+const license = testServer.license;
 
 let owner: User;
 let restrictedKeyMember: User;
@@ -275,5 +277,28 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 			expect(response.body.reason).toBe('insufficient_permissions');
 			expect(stored?.activeVersionId).toBe(workflow.versionId);
 		});
+	});
+
+	// Sharing a workflow as editor carries workflow:publish, and the publish endpoint honours it, so a
+	// save must honour it too even though the sharee holds no role in the owning project.
+	test('a workflow shared as editor is still republished on save', async () => {
+		license.enable('feat:sharing');
+
+		const project = await createTeamProject('Owning project', owner);
+		const workflow = await createPublishedWorkflow(project);
+		await shareWorkflowWithUsers(workflow, [fullKeyMember]);
+
+		const response = await fullKeyAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: changedNodes(workflow),
+			connections: workflow.connections,
+			settings: workflow.settings ?? {},
+		});
+
+		const stored = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(stored?.activeVersionId).not.toBe(workflow.versionId);
+		expect(stored?.activeVersionId).toBe(stored?.versionId);
 	});
 });
