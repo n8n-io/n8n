@@ -2775,11 +2775,8 @@ describe('workflows tool', () => {
 		});
 
 		describe('credential slots the resume just filled', () => {
-			// INS-1271: the re-analysis decides "settled" from its credential list view,
-			// and a credential created seconds ago in the panel can be missing from that
-			// view (scoped discovery, e.g. eval allowlist pins). Re-reporting the slot is
-			// what made the agent ask again for a token the user just saved — so both
-			// resume paths hand the analysis the ids they just applied.
+			// The analysis's credential list view can lag a credential created moments
+			// ago; slots this resume bound settle on the apply result instead.
 			it('hands just-applied credential ids to the post-apply analysis', async () => {
 				(analyzeWorkflow as Mock).mockResolvedValue([]);
 				(applyNodeChanges as Mock).mockResolvedValue({ applied: ['Call Replicate'], failed: [] });
