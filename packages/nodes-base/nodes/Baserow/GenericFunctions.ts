@@ -74,10 +74,10 @@ function isFullyFormattedMultiStepValue(value: string): boolean {
  */
 export function formatBaserowFilterValue(
 	operator: string,
-	value: string,
+	value?: string,
 	timezone = 'UTC',
 ): string {
-	const trimmed = value.trim();
+	const trimmed = value?.trim() ?? '';
 
 	if (!trimmed) {
 		if (DEPRECATED_TIMEZONE_ONLY_OPERATORS.has(operator)) {
