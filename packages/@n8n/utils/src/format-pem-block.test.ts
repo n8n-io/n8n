@@ -34,6 +34,12 @@ ABC
 		expect(formatPemBlock('')).toBe('');
 	});
 
+	it('should return non-PEM input unchanged', () => {
+		expect(formatPemBlock('my secret key')).toBe('my secret key');
+		expect(formatPemBlock('pass\\nphrase')).toBe('pass\\nphrase');
+		expect(formatPemBlock('-----END CERTIFICATE-----')).toBe('-----END CERTIFICATE-----');
+	});
+
 	it('should format compact RSA PRIVATE KEY block', () => {
 		const compactKey = `-----BEGIN RSA PRIVATE KEY-----${'C'.repeat(64)}-----END RSA PRIVATE KEY-----`;
 

@@ -347,10 +347,13 @@ this tool with `filePath`.
 |-------|------|----------|-------------|
 | `filePath` | string | yes | Workspace path to the `.workflow.ts` or WorkflowJSON source file |
 | `workflowId` | string | no | Existing n8n workflow ID to bind to this file on the first update |
-| `projectId` | string | no | Project ID to create the workflow in |
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
+
+There is deliberately **no `projectId`**: a build writes to the project the
+conversation is bound to, and nothing can redirect it. The field used to exist and
+the adapter ignored it, so a build could report a project it had not written to.
 
 **Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
 

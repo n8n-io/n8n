@@ -406,7 +406,7 @@ describe('BinaryDataViewModal.vue', () => {
 			});
 		});
 
-		it('should render embed element for PDF files', async () => {
+		it('should render an iframe for PDF files', async () => {
 			const binaryData = createBinaryMetadata({ mimeType: 'application/pdf' });
 			const pdfUrl = 'http://test.com/document.pdf';
 
@@ -429,10 +429,11 @@ describe('BinaryDataViewModal.vue', () => {
 			});
 
 			await waitFor(() => {
-				const embed = container.querySelector('embed');
-				expect(embed).toBeInTheDocument();
-				expect(embed?.classList.contains('binary-data')).toBe(true);
-				expect(embed?.src).toBe(mockObjectUrl);
+				const iframe = container.querySelector('iframe');
+				expect(iframe).toBeInTheDocument();
+				expect(iframe?.classList.contains('binary-data')).toBe(true);
+				expect(iframe?.src).toBe(mockObjectUrl);
+				expect(container.querySelector('embed')).not.toBeInTheDocument();
 			});
 		});
 
