@@ -7,6 +7,12 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
+		// Wiring-only stub: the real mapping has its own unit tests
+		// (instance-ai/src/tracing/__tests__/thread-provenance.test.ts). What the
+		// service tests pin is that its OUTPUT reaches the trace — spreading an
+		// undefined mock here is a no-op, so a missing entry would look like a
+		// passing test with silently empty metadata.
+		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		isQuotaExhaustedError: (error: unknown) =>
 			typeof error === 'object' &&
@@ -214,6 +220,7 @@ import {
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
+	threadProvenanceMetadata,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -1934,9 +1941,10 @@ type SuspendedRunResumeServiceInternals = {
 		getActiveRun: Mock;
 	};
 	emitTerminalRun: Mock;
-	logger: { warn: Mock };
+	logger: { warn: Mock; debug: Mock };
 	dbSnapshotStorage: unknown;
 	tracing: { createOrchestratorResumeTraceContext: Mock; finalizeDetachedTraceRun: Mock };
+	memoryService: { getThreadMetadata: Mock };
 	processResumedStream: Mock;
 	suspendedThreads: { dropPendingConfirmation: Mock };
 	trackInFlightExecution: Mock;
@@ -1976,7 +1984,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 		getActiveRun: vi.fn(() => undefined),
 	};
 	service.emitTerminalRun = vi.fn(async () => {});
-	service.logger = { warn: vi.fn() };
+	service.logger = { warn: vi.fn(), debug: vi.fn() };
+	service.memoryService = { getThreadMetadata: vi.fn(async () => undefined) };
 	service.dbSnapshotStorage = {};
 	service.tracing = {
 		createOrchestratorResumeTraceContext: vi.fn(async () => undefined),
@@ -2483,6 +2492,39 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 				browserExtension: { connectionState: 'connected', version: '0.0.7' },
 			}),
 		);
+	});
+
+	it('stamps the thread provenance on the approval-resume trace', async () => {
+		// The build finishes on a RESUME beat, so this is where an eval build's
+		// spans actually live — stamping only the message turn would leave them
+		// unattributable, which is the whole point of carrying provenance.
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(fakeUser);
+		const threadMetadata = {
+			source: 'evals',
+			sourceContext: { evalCase: 'gmail-inbox-triage', evalIteration: 1 },
+		};
+		service.memoryService.getThreadMetadata.mockResolvedValue(threadMetadata);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(threadProvenanceMetadata).toHaveBeenCalledWith(threadMetadata);
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: expect.objectContaining({ thread_source: 'evals' }),
+			}),
+		);
+	});
+
+	it('resumes even when the thread provenance read fails', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(fakeUser);
+		service.memoryService.getThreadMetadata.mockRejectedValue(new Error('db down'));
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalled();
 	});
 
 	it('passes the revalidated user into the resumed stream', async () => {
@@ -4567,7 +4609,8 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		agentMemory: { saveMessages: Mock };
 		eventBus: { publish: Mock };
 		terminalOutcome: { evaluateTerminalResponse: Mock };
-		logger: { warn: Mock; error: Mock };
+		logger: { warn: Mock; error: Mock; debug: Mock };
+		memoryService: { getThreadMetadata: Mock };
 		createProxyRunConfig: Mock;
 		isRunDebugEnabled: Mock;
 		runState: { clearActiveRun: Mock; hasSuspendedRun: Mock };
@@ -4583,7 +4626,8 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		service.agentMemory = { saveMessages: vi.fn(async () => {}) };
 		service.eventBus = { publish: vi.fn() };
 		service.terminalOutcome = { evaluateTerminalResponse: vi.fn() };
-		service.logger = { warn: vi.fn(), error: vi.fn() };
+		service.logger = { warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+		service.memoryService = { getThreadMetadata: vi.fn(async () => undefined) };
 		service.createProxyRunConfig = vi.fn(async () => ({ tracingProxyConfig: undefined }));
 		service.isRunDebugEnabled = vi.fn(() => false);
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
