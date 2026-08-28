@@ -32,27 +32,36 @@ describe('workflow publication blocker in OpenAPI', () => {
 		},
 	);
 
-	test('documents every blocker reason, and the request ID as optional', () => {
+	test('documents the review reason and request ID as optional', () => {
 		const schema = readSpec('schemas/workflowPublishBlockedError.yml');
 
 		expect(schema).toMatchObject({
 			properties: {
 				reason: {
-					enum: [
-						'review_pending',
-						'changes_requested',
-						'insufficient_api_key_scope',
-						'insufficient_permissions',
-					],
+					enum: ['review_pending', 'changes_requested'],
 				},
 				workflowReviewRequestId: {
 					type: 'string',
 				},
-				versionId: {
-					type: 'string',
-				},
 			},
 		});
+	});
+
+	test('documents the permission refusal separately, naming the saved draft', () => {
+		const workflowPath = readSpec('paths/workflows.id.yml');
+
+		expect(workflowPath.put.responses['403'].content['application/json'].schema.$ref).toBe(
+			'../schemas/workflowPublishForbiddenError.yml',
+		);
+
+		const schema = readSpec('schemas/workflowPublishForbiddenError.yml');
+
+		expect(schema.required).toEqual(['message']);
+		expect(schema.properties.reason.enum).toEqual([
+			'insufficient_api_key_scope',
+			'insufficient_permissions',
+		]);
+		expect(schema.properties.versionId.type).toBe('string');
 	});
 
 	// the same 409 also carries webhook conflicts, whose body is

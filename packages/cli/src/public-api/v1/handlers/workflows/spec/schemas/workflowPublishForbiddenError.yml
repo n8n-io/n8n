@@ -1,0 +1,17 @@
+type: object
+description: >-
+  The caller may save the workflow but not publish it. The update is stored as a
+  draft on the existing published version, which stays live. `versionId` names
+  the draft that was saved.
+required:
+  - message
+properties:
+  message:
+    type: string
+  reason:
+    type: string
+    enum:
+      - insufficient_api_key_scope
+      - insufficient_permissions
+  versionId:
+    type: string

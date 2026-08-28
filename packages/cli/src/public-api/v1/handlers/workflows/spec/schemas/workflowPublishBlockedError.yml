@@ -1,9 +1,7 @@
 type: object
 description: >-
-  Conflict response. `reason` is absent for a webhook path conflict.
-  `workflowReviewRequestId` is present only when an open workflow review is
-  what blocks publication, and `versionId` only when the blocked request saved
-  a draft, naming the version it saved.
+  Conflict response. `reason` and `workflowReviewRequestId` are present only
+  when the conflict is an open workflow review blocking publication.
 required:
   - message
 properties:
@@ -14,9 +12,5 @@ properties:
     enum:
       - review_pending
       - changes_requested
-      - insufficient_api_key_scope
-      - insufficient_permissions
   workflowReviewRequestId:
-    type: string
-  versionId:
     type: string

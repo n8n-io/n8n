@@ -43,8 +43,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
-import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
+import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
@@ -695,8 +695,8 @@ export class WorkflowService {
 	/**
 	 * Both bars a save-triggered publication has to clear: the API key's own publish scope (a key can
 	 * be scoped more narrowly than its owner) and the caller's publish permission on the project.
-	 * Raised as a conflict rather than a plain rejection because the draft is already saved, and it
-	 * carries that draft's version so the caller does not have to read it back.
+	 * Refused rather than rolled back: the draft the caller was allowed to write stays saved, and the
+	 * error carries its version so the caller does not have to read it back.
 	 */
 	private async assertMayPublishOnSave(
 		user: User,
@@ -706,7 +706,7 @@ export class WorkflowService {
 		savedVersionId: string,
 	): Promise<void> {
 		if (apiKeyScopes && !apiKeyScopes.includes(PUBLISH_API_KEY_SCOPE)) {
-			throw new WorkflowPublishBlockedError({
+			throw new WorkflowPublishForbiddenError({
 				reason: 'insufficient_api_key_scope',
 				versionId: savedVersionId,
 			});
@@ -719,7 +719,7 @@ export class WorkflowService {
 				workflowId,
 				userId: user.id,
 			});
-			throw new WorkflowPublishBlockedError({
+			throw new WorkflowPublishForbiddenError({
 				reason: 'insufficient_permissions',
 				versionId: savedVersionId,
 			});

@@ -32,8 +32,8 @@ put:
     Because that re-publication puts a new version live, it additionally
     requires the `workflow:activate` API key scope and the `workflow:publish`
     project permission. A caller without either can still save: the new version
-    is stored as a draft and the response is a `409` naming the missing
-    permission, leaving the published version untouched. Saving an unpublished
+    is stored as a draft and the response is a `403` naming the missing
+    permission, leaving the published version live. Saving an unpublished
     workflow, or saving with `publishIfActive=false`, only needs
     `workflow:update`.
   parameters:
@@ -69,16 +69,21 @@ put:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
+    '403':
+      description: >-
+        The update would re-publish the workflow, but the API key lacks
+        `workflow:activate` or the caller lacks `workflow:publish` on the
+        project. The update is still saved as a draft, named by `versionId`, and
+        the published version stays live.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflowPublishForbiddenError.yml'
     '409':
       description: >-
-        Re-publication was blocked; in every case below the update itself is
-        still saved as a draft. `reason` is `review_pending` or
-        `changes_requested` when an open workflow review blocks it (then
-        `workflowReviewRequestId` is present too), `insufficient_api_key_scope`
-        when the API key lacks `workflow:activate`, and
-        `insufficient_permissions` when the caller lacks `workflow:publish` on
-        the project. Both permission reasons carry `versionId`, the draft that
-        was saved. A webhook path conflict carries a message only.
+        Conflict, e.g. re-publication blocked by an open workflow review (then
+        `reason` and `workflowReviewRequestId` are present; the update itself is
+        still saved as a draft) or a webhook path conflict.
       content:
         application/json:
           schema:

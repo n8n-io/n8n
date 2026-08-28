@@ -140,7 +140,7 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 		const stored = await workflowRepository.findOneBy({ id: workflow.id });
 
 		// The draft it is allowed to write survives; only the publication is refused.
-		expect(response.statusCode).toBe(409);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.reason).toBe('insufficient_api_key_scope');
 		expect(response.body.message).toContain('saved as a draft');
 		expect(response.body.versionId).toBe(stored?.versionId);
@@ -170,7 +170,7 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 		const stored = await workflowRepository.findOneBy({ id: workflow.id });
 
 		// Draft versions are a workflow:update capability; publishing them is not.
-		expect(response.statusCode).toBe(409);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.reason).toBe('insufficient_permissions');
 		expect(response.body.message).toContain('saved as a draft');
 		expect(response.body.versionId).toBe(stored?.versionId);
@@ -285,7 +285,7 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 			});
 			const stored = await workflowRepository.findOneBy({ id: workflow.id });
 
-			expect(response.statusCode).toBe(409);
+			expect(response.statusCode).toBe(403);
 			expect(response.body.reason).toBe('insufficient_permissions');
 			expect(stored?.activeVersionId).toBe(workflow.versionId);
 		});
