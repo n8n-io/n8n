@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.21.4",
+  "version": "1.21.5",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json",
