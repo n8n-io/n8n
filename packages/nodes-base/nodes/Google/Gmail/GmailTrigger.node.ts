@@ -529,9 +529,11 @@ export class GmailTrigger implements INodeType {
 
 			// Take only what fits in the remaining budget, store the rest as pending.
 			let messagesToProcess = messages;
+			let beyondBudgetIds: string[] = [];
 			if (shouldLimitMessages && messages.length > budget) {
 				messagesToProcess = messages.slice(0, budget);
-				nodeStaticData.pendingMessageIds = messages.slice(budget).map((m) => m.id);
+				beyondBudgetIds = messages.slice(budget).map((m) => m.id);
+				nodeStaticData.pendingMessageIds = beyondBudgetIds;
 			}
 
 			if (messagesToProcess.length > 0) {
@@ -539,8 +541,18 @@ export class GmailTrigger implements INodeType {
 				Object.assign(fetchQs, options);
 				delete fetchQs.includeDrafts;
 
-				for (const message of messagesToProcess) {
+				for (const [index, message] of messagesToProcess.entries()) {
 					await fetchAndProcessMessage(message.id, fetchQs);
+					if (shouldLimitMessages) {
+						// An id leaves persisted state only after its fetch succeeded. A
+						// mid-loop throw is swallowed by the catch below, and the cursor can
+						// still advance past every listed id — an unfetched within-budget id
+						// kept in no persisted structure would be lost for good.
+						nodeStaticData.pendingMessageIds = [
+							...messagesToProcess.slice(index + 1).map((m) => m.id),
+							...beyondBudgetIds,
+						];
+					}
 				}
 			}
 
