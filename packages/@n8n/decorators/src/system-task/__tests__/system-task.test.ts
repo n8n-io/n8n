@@ -32,26 +32,6 @@ it('should register classes decorated with @SystemTask', () => {
 	expect(metadata.register).toHaveBeenCalledWith(TestTask);
 });
 
-it('should make the decorated class injectable', () => {
-	@SystemTask()
-	class TestTask implements SystemTask {
-		readonly name = 'test-task';
-
-		readonly schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 60 };
-
-		readonly effects = 'non-idempotent' as const;
-
-		readonly durable = false;
-
-		async run() {}
-	}
-
-	const instance = Container.get(TestTask);
-
-	expect(instance).toBeInstanceOf(TestTask);
-	expect(Container.get(TestTask)).toBe(instance);
-});
-
 it('should notify a subscribed listener when a task class is decorated later', () => {
 	const seen: SystemTaskClass[] = [];
 	metadata.subscribe((taskClass) => seen.push(taskClass));

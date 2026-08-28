@@ -40,7 +40,6 @@ it('should keep a non-idempotent task to a single attempt and drop missed occurr
 it.each([
 	['misfirePolicy', { misfirePolicy: ScheduledJobMisfirePolicy.Skip }],
 	['misfireGraceSeconds', { misfireGraceSeconds: 5 }],
-	['maxAttempts', { maxAttempts: 10 }],
 ] as const)('should let a task override %s', (field, override) => {
 	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override }));
 

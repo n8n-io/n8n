@@ -23,6 +23,7 @@ describe('SystemTaskMetadata', () => {
 		metadata.register(secondTaskClass);
 
 		expect(metadata.getClasses()).toEqual([firstTaskClass, secondTaskClass]);
+		expect(metadata.getClasses()).not.toBe(metadata.getClasses());
 	});
 
 	it('should replay task classes registered before subscribe()', () => {
