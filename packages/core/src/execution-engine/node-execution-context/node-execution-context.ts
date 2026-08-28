@@ -7,6 +7,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
 	IExecuteData,
+	IGetDecryptedCredentialsOptions,
 	IGetNodeParameterOptions,
 	INode,
 	INodeCredentialDescription,
@@ -320,6 +321,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		executeData?: IExecuteData,
 		connectionInputData?: INodeExecutionData[],
 		itemIndex?: number,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 
@@ -338,6 +340,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 					type,
 					mode,
 					executeData,
+					undefined,
+					undefined,
+					options,
 				)) as T;
 			}
 		}
@@ -465,6 +470,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			executeData,
 			false,
 			expressionResolveValues,
+			options,
 		);
 
 		return decryptedDataObject as T;

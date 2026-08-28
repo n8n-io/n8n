@@ -223,6 +223,11 @@ export interface IRequestOptionsSimplifiedAuth {
 export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
+
+export interface IGetDecryptedCredentialsOptions {
+	credentialUsage?: 'trigger';
+}
+
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
 
@@ -271,6 +276,7 @@ export abstract class ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	abstract updateCredentials(

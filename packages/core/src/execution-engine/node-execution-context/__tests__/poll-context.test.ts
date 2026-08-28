@@ -100,7 +100,7 @@ describe('PollContext', () => {
 			expect(credentials).toEqual({ secret: 'token' });
 		});
 
-		it('should surface the node to the credentials helper', async () => {
+		it('should identify credentials requested by a polling trigger', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
 			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
@@ -115,6 +115,7 @@ describe('PollContext', () => {
 				expect.objectContaining({ node }),
 				false,
 				undefined,
+				{ credentialUsage: 'trigger' },
 			);
 		});
 	});

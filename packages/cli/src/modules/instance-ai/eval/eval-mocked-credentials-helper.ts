@@ -9,6 +9,7 @@ import type {
 	ICredentials,
 	ICredentialsExpressionResolveValues,
 	IExecuteData,
+	IGetDecryptedCredentialsOptions,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INode,
@@ -107,6 +108,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<ICredentialDataDecryptedObject> {
 		// Id-less refs make the inner helper throw UnexpectedError (not CredentialNotFoundError),
 		// which the catch below won't handle — synthesize a mock here instead of delegating.
@@ -133,6 +135,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 				executeData,
 				raw,
 				expressionResolveValues,
+				options,
 			);
 		} catch (error) {
 			if (!(error instanceof CredentialNotFoundError)) throw error;

@@ -77,6 +77,8 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		// the credentials helper (e.g. for policy checks) — `data`/`source` are unused.
 		const executeData: IExecuteData = { data: {}, node: this.node, source: null };
 
-		return await this._getCredentials<T>(type, executeData);
+		return await this._getCredentials<T>(type, executeData, undefined, undefined, {
+			credentialUsage: 'trigger',
+		});
 	}
 }
