@@ -875,12 +875,14 @@ export class WorkflowService {
 			'workflow:publish',
 		]);
 
-		// Re-applying the version that is already live publishes nothing new — it only re-registers
-		// the triggers so a settings change takes effect — so `workflow:update` is enough for it.
-		// Resolved as a fallback, leaving the publish path above untouched.
+		// Re-applying the version that is already live publishes nothing new. It only re-registers the
+		// triggers so a settings change takes effect, so an editor's own scopes are enough. Resolved as
+		// a fallback, leaving the publish path above untouched. `workflow:read` is required alongside
+		// the update scope because this path reads the live version back out of history below.
 		const resolvedWithoutPublishScope = workflow === null;
 		if (resolvedWithoutPublishScope) {
 			workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+				'workflow:read',
 				'workflow:update',
 			]);
 		}

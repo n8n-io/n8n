@@ -3,14 +3,28 @@ import { z } from 'zod';
 const REVIEW_REASONS = ['review_pending', 'changes_requested'] as const;
 const PERMISSION_REASONS = ['insufficient_api_key_scope', 'insufficient_permissions'] as const;
 
+/** Exposed separately because the refined schema below is a `ZodEffects` and has no `shape`. */
+export const workflowPublishBlockedDetailsShape = {
+	reason: z.enum([...REVIEW_REASONS, ...PERMISSION_REASONS]),
+	workflowReviewRequestId: z.string().min(1).optional(),
+	/** The version that was saved as a draft but not published, when the caller wrote one. */
+	versionId: z.string().min(1).optional(),
+};
+
 export const workflowPublishBlockedDetailsSchema = z
-	.object({
-		reason: z.enum([...REVIEW_REASONS, ...PERMISSION_REASONS]),
-		workflowReviewRequestId: z.string().min(1).optional(),
-		/** The version that was saved as a draft but not published, when the caller wrote one. */
-		versionId: z.string().min(1).optional(),
-	})
-	.strict();
+	.object(workflowPublishBlockedDetailsShape)
+	.strict()
+	// A review is identified by the request it belongs to, so that reason is only meaningful with
+	// one. The permission reasons need nothing beyond themselves.
+	.refine(
+		(details) =>
+			!(REVIEW_REASONS as readonly string[]).includes(details.reason) ||
+			details.workflowReviewRequestId !== undefined,
+		{
+			message: 'workflowReviewRequestId is required when a review blocks publication',
+			path: ['workflowReviewRequestId'],
+		},
+	);
 
 export type WorkflowPublishBlockedDetails = z.infer<typeof workflowPublishBlockedDetailsSchema>;
 export type WorkflowPublishBlockedReason = WorkflowPublishBlockedDetails['reason'];
@@ -29,18 +43,8 @@ export type WorkflowPublishForbiddenDetails = {
 	versionId?: string;
 };
 
-const isReviewReason = (reason: WorkflowPublishBlockedReason) =>
-	(REVIEW_REASONS as readonly string[]).includes(reason);
-
 export function isWorkflowPublishBlockedDetails(
 	value: unknown,
 ): value is WorkflowPublishBlockedDetails {
-	const parsed = workflowPublishBlockedDetailsSchema.safeParse(value);
-
-	// A review is identified by the request it belongs to, so that reason is only meaningful with one.
-	// The permission reasons need nothing beyond themselves.
-	return (
-		parsed.success &&
-		(!isReviewReason(parsed.data.reason) || parsed.data.workflowReviewRequestId !== undefined)
-	);
+	return workflowPublishBlockedDetailsSchema.safeParse(value).success;
 }

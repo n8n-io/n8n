@@ -2370,14 +2370,23 @@ describe('PATCH /workflows/:workflowId as an editor who may not publish', () => 
 		publishedWorkflowIds.length = 0;
 	});
 
-	const publishedWorkflowMemberCanOnlyEdit = async (label: string) => {
+	// One role for the whole block: the roles table is not truncated between tests, so creating one
+	// per test would leave a row behind each time. It outlives the block rather than being deleted,
+	// because the last test's project relation still references it when a suite teardown would run.
+	let editorWithoutPublishSlug: string;
+
+	beforeAll(async () => {
 		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
 			roleType: 'project',
-			displayName: `Editor without publish ${label}`,
+			displayName: 'Editor without publish',
 			description: 'Can edit workflows but not publish them',
 		});
+		editorWithoutPublishSlug = role.slug;
+	});
+
+	const publishedWorkflowMemberCanOnlyEdit = async (label: string) => {
 		const project = await createTeamProject(`Project ${label}`, owner);
-		await linkUserToProject(member, project, role.slug);
+		await linkUserToProject(member, project, editorWithoutPublishSlug);
 
 		const workflow = await createWorkflowWithTriggerAndHistory({}, project);
 		await Container.get(WorkflowRepository).update(workflow.id, {
