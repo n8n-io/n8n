@@ -729,10 +729,8 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		options: { source: WorkflowActionSource; reapplyingLiveVersion?: boolean } = { source: 'ui' },
+		options: { source: WorkflowActionSource } = { source: 'ui' },
 	): Promise<void> {
-		const { reapplyingLiveVersion = false } = options;
-
 		let didPublish = false;
 		try {
 			await this.activeWorkflowManager.add(workflowId, mode);
@@ -757,22 +755,17 @@ export class WorkflowService {
 				});
 			}
 
-			// Re-applying the version that is already live publishes nothing, so a failure there has no
-			// partial publication to undo. Unpublishing would take a workflow down over a save that never
-			// asked to change what is published.
-			if (!reapplyingLiveVersion) {
-				const rollbackPayload = {
-					active: false,
-					activeVersionId: null,
-					activeVersion: null,
-				};
-				await this.workflowRepository.update(workflowId, rollbackPayload);
+			const rollbackPayload = {
+				active: false,
+				activeVersionId: null,
+				activeVersion: null,
+			};
+			await this.workflowRepository.update(workflowId, rollbackPayload);
 
-				// Also set it in the returned data
-				workflow.active = rollbackPayload.active;
-				workflow.activeVersionId = rollbackPayload.activeVersionId;
-				workflow.activeVersion = rollbackPayload.activeVersion;
-			}
+			// Also set it in the returned data
+			workflow.active = rollbackPayload.active;
+			workflow.activeVersionId = rollbackPayload.activeVersionId;
+			workflow.activeVersion = rollbackPayload.activeVersion;
 
 			const message = (error as Error).message;
 			const description = getErrorDescription(error);
@@ -780,9 +773,6 @@ export class WorkflowService {
 			throw new WorkflowActivationBadRequestError(message, {
 				nodeId: getErrorNodeId(error),
 				description,
-				// Tells the editor the published version is untouched, so it does not flip the workflow
-				// to inactive on the client while the database still has it published.
-				validationError: reapplyingLiveVersion,
 			});
 		} finally {
 			if (didPublish) {
@@ -1078,7 +1068,7 @@ export class WorkflowService {
 				workflowId,
 				workflowForActivation,
 				activationMode,
-				{ source, reapplyingLiveVersion: versionIdToActivate === previousActiveVersionId },
+				{ source },
 			);
 		}
 
