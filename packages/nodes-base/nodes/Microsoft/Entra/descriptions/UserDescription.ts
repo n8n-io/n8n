@@ -32,7 +32,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/groups/{{ $parameter["group"] }}/members/$ref',
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}/members/$ref',
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
@@ -72,7 +72,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/users/{{ $parameter["user"] }}',
+						url: '=/users/{{ encodeURIComponent($parameter["user"]) }}',
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
@@ -96,7 +96,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/users/{{ $parameter["user"] }}',
+						url: '=/users/{{ encodeURIComponent($parameter["user"]) }}',
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
@@ -137,7 +137,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/groups/{{ $parameter["group"] }}/members/{{ $parameter["user"] }}/$ref',
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}/members/{{ encodeURIComponent($parameter["user"]) }}/$ref',
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
@@ -161,7 +161,7 @@ export const userOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '=/users/{{ $parameter["user"] }}',
+						url: '=/users/{{ encodeURIComponent($parameter["user"]) }}',
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 					},
 					output: {
@@ -254,7 +254,7 @@ const addGroupFields: INodeProperties[] = [
 				propertyInDotNotation: false,
 				type: 'body',
 				value:
-					'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0/directoryObjects/{{ $value }}',
+					'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0/directoryObjects/{{ encodeURIComponent($value) }}',
 			},
 		},
 		type: 'resourceLocator',

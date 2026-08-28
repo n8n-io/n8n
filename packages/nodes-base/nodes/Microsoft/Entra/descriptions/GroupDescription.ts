@@ -48,7 +48,7 @@ export const groupOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'DELETE',
-						url: '=/groups/{{ $parameter["group"] }}',
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}',
 					},
 					output: {
 						postReceive: [
@@ -72,7 +72,7 @@ export const groupOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'GET',
-						url: '=/groups/{{ $parameter["group"] }}',
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -112,7 +112,7 @@ export const groupOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'PATCH',
-						url: '=/groups/{{ $parameter["group"] }}',
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}',
 					},
 					output: {
 						postReceive: [
