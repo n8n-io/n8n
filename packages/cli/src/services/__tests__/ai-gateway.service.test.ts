@@ -221,7 +221,7 @@ describe('AiGatewayService', () => {
 			const service = makeService({ aiGatewayEnabled: false });
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
-			).rejects.toThrow('Gateway credits is not enabled on this instance.');
+			).rejects.toThrow('Gateway credits are not enabled on this instance.');
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {

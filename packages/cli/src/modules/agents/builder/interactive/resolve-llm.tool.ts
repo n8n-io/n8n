@@ -247,14 +247,14 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
 				'claims them automatically and resolves to openai/gpt-5-mini — the result carries ' +
 				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the ' +
-				'provider has no own credential but Gateway credits (the managed option) serves it, the tool ' +
+				'provider has no own credential but Gateway credits (the managed option) serve it, the tool ' +
 				'resolves to the managed credential — the result credentialName is "Gateway credits"; persist it ' +
 				'like any credential and tell the user the model runs on Gateway credits. When the user ' +
 				'explicitly asks to use Gateway credits, pass useGatewayCredits: true (with provider when named): ' +
 				'the tool resolves Gateway credits for that provider without a picker even if the user has their ' +
 				'own credential for it, and returns ok=false with reason "gateway_credits_unsupported_provider", ' +
 				'"ambiguous_gateway_credits_provider" (with providers), or "gateway_credits_unavailable" (Gateway ' +
-				'credits serves no provider on this instance) when it cannot. When multiple ' +
+				'credits serve no provider on this instance) when it cannot. When multiple ' +
 				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
 				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. ' +
 				'When the user picks between multiple credentials of one provider, pass the picked credentialId ' +

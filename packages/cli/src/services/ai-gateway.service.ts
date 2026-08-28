@@ -77,7 +77,7 @@ export class AiGatewayService {
 
 	assertEnabled(): void {
 		if (!this.isEnabled()) {
-			throw new BadRequestError('Gateway credits is not enabled on this instance');
+			throw new BadRequestError('Gateway credits are not enabled on this instance');
 		}
 	}
 
@@ -183,7 +183,7 @@ export class AiGatewayService {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
 		if (!this.isEnabled()) {
-			throw new UserError('Gateway credits is not enabled on this instance.');
+			throw new UserError('Gateway credits are not enabled on this instance.');
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -349,7 +349,7 @@ export class AiGatewayService {
 	private requireBaseUrl(): string {
 		const url = this.globalConfig.aiAssistant.baseUrl;
 		if (!url)
-			throw new UserError('Gateway credits is not configured. Set the AI assistant base URL.');
+			throw new UserError('Gateway credits are not configured. Set the AI assistant base URL.');
 		return url;
 	}
 
