@@ -10,7 +10,6 @@ import { computed, onMounted } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
-	N8nActionDropdown,
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nDropdownMenu,
@@ -39,7 +38,6 @@ const props = defineProps<{
 	headerActions: Array<ActionDropdownItem<string>>;
 	saveStatus?: 'idle' | 'saving' | 'saved';
 	beforeRevertToPublished?: () => Promise<void> | void;
-	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
 	isPreviewOpen?: boolean;
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
@@ -137,7 +135,16 @@ function onPreviewClick() {
 // Disabled until the agent has at least one publish history row. The flag
 // is set by the backend (see AgentsService.hasPublishHistory) so it stays
 // true after an unpublish, when activeVersionId is null but rows persist.
-const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory);
+const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
+	props.headerActions.map((action) => ({
+		...action,
+		icon: { type: 'icon', value: action.icon ?? 'file' },
+	})),
+);
+
+function onMenuSelect(id: string) {
+	emit('header-action', id);
+}
 </script>
 
 <template>
@@ -180,6 +187,24 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 									@select="onCreateAgent"
 								/>
 							</div>
+						</template>
+					</N8nDropdownMenu>
+					<N8nDropdownMenu
+						v-if="!props.artifactMode && menuItems.length > 0"
+						:items="menuItems"
+						placement="bottom-start"
+						:extra-popper-class="$style.headerActionsMenu"
+						data-testid="agent-header-actions"
+						@select="onMenuSelect"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon="ellipsis"
+								icon-only
+								:aria-label="i18n.baseText('node.moreActions')"
+							/>
 						</template>
 					</N8nDropdownMenu>
 				</template>
@@ -226,34 +251,6 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"
-			/>
-			<N8nTooltip v-if="!props.artifactMode" placement="bottom">
-				<template #content>
-					<span v-if="isVersionHistoryDisabled">{{
-						i18n.baseText('agents.versionHistory.button.tooltip.empty')
-					}}</span>
-					<span v-else>{{ i18n.baseText('agents.versionHistory.title') }}</span>
-				</template>
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					icon="history"
-					icon-only
-					:class="{ [$style.activeButton]: isVersionHistoryOpen }"
-					:disabled="isVersionHistoryDisabled"
-					:aria-label="i18n.baseText('agents.versionHistory.button.ariaLabel')"
-					data-testid="agent-header-version-history-btn"
-					@click="emit('toggle-version-history')"
-				/>
-			</N8nTooltip>
-			<N8nActionDropdown
-				v-if="!props.artifactMode && headerActions.length > 0"
-				:items="headerActions"
-				activator-icon="ellipsis"
-				activator-size="medium"
-				:extra-popper-class="$style.headerActionsMenu"
-				data-testid="agent-header-actions"
-				@select="(item: string) => emit('header-action', item)"
 			/>
 		</div>
 	</header>
@@ -340,10 +337,6 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	user-select: none;
-}
-
-.activeButton {
-	background-color: var(--background--active);
 }
 
 .headerActionsMenu {

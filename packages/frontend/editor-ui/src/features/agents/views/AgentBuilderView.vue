@@ -1231,6 +1231,15 @@ const headerActions = computed(() => {
 		});
 	}
 
+	actions.push({
+		id: 'version-history',
+		label: locale.baseText('agents.versionHistory.title'),
+		icon: 'history',
+		disabled: !agent.value?.hasPublishHistory,
+		checked: isVersionHistoryOpen.value,
+		divided: true,
+	});
+
 	if (canDeleteAgent.value) {
 		actions.push({
 			id: 'delete',
@@ -1280,6 +1289,10 @@ function openImportJsonModal() {
 }
 
 async function onHeaderAction(action: string) {
+	if (action === 'version-history') {
+		onToggleVersionHistory();
+		return;
+	}
 	if (action === 'export-json') {
 		await exportAgentJson();
 		return;
@@ -1819,7 +1832,6 @@ function onSwitchAgent(nextAgentId: string) {
 			:header-actions="headerActions"
 			:save-status="saveStatus"
 			:before-revert-to-published="settleAutosave"
-			:is-version-history-open="isVersionHistoryOpen"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="props.artifactEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
@@ -1833,7 +1845,6 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@toggle-version-history="onToggleVersionHistory"
 		/>
 		<div
 			ref="builderContainer"
