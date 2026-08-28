@@ -1,10 +1,9 @@
 import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date';
-import { defaultSettings } from '@n8n/stores/__tests__/defaultSettings';
+import { createComponentRenderer, defaultSettings } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { reactive } from 'vue';
 
 import InsightsSummary from './InsightsSummary.vue';
-import { createComponentRenderer } from '../__tests__/render';
 import type { InsightsSummaryDisplay } from '../insights.types';
 
 vi.mock('vue-router', () => ({

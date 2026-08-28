@@ -9,8 +9,8 @@ import { reactive } from 'vue';
 import type { Component } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { defaultSettings } from '@/__tests__/defaults';
-import { getDropdownItems, mockedStore } from '@/__tests__/utils';
+import { defaultSettings, mockedStore } from '@n8n/frontend-test-utils';
+import { getDropdownItems } from '@/__tests__/utils';
 
 import { createProjectListItem } from '../__tests__/utils';
 import { useProjectsStore } from '../projects.store';

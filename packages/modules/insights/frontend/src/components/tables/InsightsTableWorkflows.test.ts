@@ -1,13 +1,11 @@
 import type { InsightsByWorkflow } from '@n8n/api-types';
+import { createComponentRenderer, useEmitters } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { screen, within } from '@testing-library/vue';
 import { vi } from 'vitest';
-import { defineComponent } from 'vue';
 
 import InsightsTableWorkflows from './InsightsTableWorkflows.vue';
-import { createComponentRenderer } from '../../__tests__/render';
-import { useEmitters } from '../../__tests__/utils';
 
 const { emitters, addEmitter } = useEmitters<'n8nDataTableServer'>();
 
@@ -22,7 +20,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
 		...original,
-		N8nDataTableServer: defineComponent({
+		// A plain options object, not `defineComponent`. This factory is hoisted above the
+		// imports and runs while `@n8n/frontend-test-utils` is still initialising — it reaches
+		// design-system through its renderer — so calling anything imported from `vue` here
+		// throws a TDZ error on an import that has not been evaluated yet.
+		N8nDataTableServer: {
 			props: {
 				headers: { type: Array, required: true },
 				items: { type: Array, required: true },
@@ -31,7 +33,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				page: { type: Number },
 				itemsPerPage: { type: Number },
 			},
-			setup(_, { emit }) {
+			setup(_: unknown, { emit }: { emit: (event: string, ...args: unknown[]) => void }) {
 				addEmitter('n8nDataTableServer', emit);
 			},
 			template: `
@@ -62,7 +64,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 					</div>
 					<slot name="cover" />
 				</div>`,
-		}),
+		},
 	};
 });
 

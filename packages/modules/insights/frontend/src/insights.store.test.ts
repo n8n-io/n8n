@@ -1,6 +1,6 @@
 import type { FrontendModuleSettings } from '@n8n/api-types';
+import { mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { mockedStore, type MockedStore } from '@n8n/stores/__tests__/mockedStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';

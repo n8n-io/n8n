@@ -5,9 +5,15 @@ import type {
 	InsightsSummaryType,
 } from '@n8n/api-types';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
+import {
+	createComponentRenderer,
+	defaultSettings,
+	mockedStore,
+	useEmitters,
+	waitAllPromises,
+	type MockedStore,
+} from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client/utils';
-import { defaultSettings } from '@n8n/stores/__tests__/defaultSettings';
-import { mockedStore, type MockedStore } from '@n8n/stores/__tests__/mockedStore';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within, screen, waitFor } from '@testing-library/vue';
@@ -15,13 +21,17 @@ import { vi } from 'vitest';
 import { defineComponent, h, reactive } from 'vue';
 
 import InsightsDashboard from './InsightsDashboard.vue';
-import { createComponentRenderer } from '../__tests__/render';
-import { useEmitters, waitAllPromises } from '../__tests__/utils';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { useInsightsStore } from '../insights.store';
 import type { InsightsSummaryDisplay } from '../insights.types';
 
-const { emitters, addEmitter } = useEmitters<'n8nDataTableServer'>();
+// Called in a hook, not at module scope: the design-system mock below is hoisted above the
+// imports, and `@n8n/frontend-test-utils` reaches design-system through its renderer.
+let emitterHandles: ReturnType<typeof useEmitters<'n8nDataTableServer'>>;
+
+beforeAll(() => {
+	emitterHandles = useEmitters<'n8nDataTableServer'>();
+});
 
 const mockRoute = reactive<{
 	params: {
@@ -49,17 +59,21 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
 		...original,
-		N8nDataTableServer: defineComponent({
+		// A plain options object, not `defineComponent`. This factory is hoisted above the
+		// imports and runs while `@n8n/frontend-test-utils` is still initialising — it reaches
+		// design-system through its renderer — so calling anything imported from `vue` here
+		// throws a TDZ error on an import that has not been evaluated yet.
+		N8nDataTableServer: {
 			props: {
 				headers: { type: Array, required: true },
 				items: { type: Array, required: true },
 				itemsLength: { type: Number, required: true },
 			},
-			setup(_, { emit }) {
-				addEmitter('n8nDataTableServer', emit);
+			setup(_: unknown, { emit }: { emit: (event: string, ...args: unknown[]) => void }) {
+				emitterHandles.addEmitter('n8nDataTableServer', emit);
 			},
 			template: '<div data-test-id="insights-table"><slot /></div>',
-		}),
+		},
 	};
 });
 
@@ -575,7 +589,7 @@ describe('InsightsDashboard', () => {
 
 			await waitAllPromises();
 
-			emitters.n8nDataTableServer.emit('update:options', {
+			emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
 				page: 1,
 				itemsPerPage: 50,
 				sortBy: [{ id: 'total', desc: true }],
@@ -599,7 +613,7 @@ describe('InsightsDashboard', () => {
 			await waitAllPromises();
 
 			await waitFor(() => {
-				emitters.n8nDataTableServer.emit('update:options', {
+				emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
 					page: 0,
 					itemsPerPage: 25,
 					sortBy: [{ id: 'failed', desc: false }],
@@ -623,7 +637,7 @@ describe('InsightsDashboard', () => {
 			await waitAllPromises();
 
 			await waitFor(() => {
-				emitters.n8nDataTableServer.emit('update:options', {
+				emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
 					page: 0,
 					itemsPerPage: 25,
 					sortBy: [],
@@ -745,7 +759,7 @@ describe('InsightsDashboard', () => {
 			await waitAllPromises();
 			vi.clearAllMocks();
 
-			emitters.n8nDataTableServer.emit('update:options', {
+			emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
 				page: 1,
 				itemsPerPage: 50,
 				sortBy: [{ id: 'failed', desc: true }],
