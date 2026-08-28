@@ -65,7 +65,7 @@ export const VARIANTS = {
 		requires: 'syft',
 		command: (out, image) => [
 			'syft',
-			[image, '-o', `cyclonedx-json=${out}`, '--select-catalogers', '-file', '-q'],
+			[image, '-o', `cyclonedx-json@1.6=${out}`, '--select-catalogers', '-file', '-q'],
 			{},
 		],
 	},
@@ -138,6 +138,18 @@ export function ecosystemCounts(components) {
 	return counts;
 }
 
+/**
+ * The gate prints one line per failure as `  <label> (<purl>) - <reason>` and one per
+ * warning as `  <label> - <reason>`. Match on the purl, so a new failure reason in
+ * check-sbom-licenses.mjs still appears here instead of being silently uncounted.
+ */
+export function parseGateFailures(gateOutput) {
+	return gateOutput
+		.split('\n')
+		.filter((line) => /\(pkg:[^)]+\)\s+\u2014\s+\S/.test(line))
+		.map((line) => line.trim());
+}
+
 function indexByPurl(sbom) {
 	const map = new Map();
 	for (const component of sbom.components ?? []) {
@@ -187,21 +199,21 @@ async function profile(variant, image) {
 		npmLicensed: npm.filter((c) => licenseOf(c) !== null).length,
 		ecosystems: ecosystemCounts(components),
 		gatePassed,
-		gateFailures: gateOutput
-			.split('\n')
-			.filter((l) => /— (no license declared|non-SPDX)/.test(l))
-			.map((l) => l.trim()),
+		gateFailures: parseGateFailures(gateOutput),
 		byPurl: indexByPurl(sbom),
 	};
 }
 
-function compare(baseline, candidate) {
+export function compare(baseline, candidate) {
 	console.log(`\n=== ${baseline.variant} -> ${candidate.variant} ===`);
 
 	const onlyInBaseline = [...baseline.byPurl.keys()].filter((p) => !candidate.byPurl.has(p));
 	const onlyInCandidate = [...candidate.byPurl.keys()].filter((p) => !baseline.byPurl.has(p));
 
-	// The critical question: does the candidate lose a license that the baseline resolved?
+	// `lost` counts only components present in BOTH runs whose license disappeared.
+	// A component the candidate never reported is a coverage change, not a license
+	// loss, and is counted separately in onlyInBaseline. Keep the two apart: syft
+	// legitimately omits thousands of cdxgen filesystem entries.
 	const lost = [];
 	for (const [purl, before] of baseline.byPurl) {
 		const after = candidate.byPurl.get(purl);

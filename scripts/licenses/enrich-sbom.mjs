@@ -219,6 +219,12 @@ export function enrichSbom(
 	const source = sbom.components ?? [];
 	const kept = dropPhantomNpm ? source.filter((c) => !isPhantomNpm(c)) : source;
 	const droppedPhantoms = source.length - kept.length;
+	// Report which components were dropped, not only how many. A dropped component
+	// leaves the signed SBOM, so a real package caught by the heuristic must stay
+	// reviewable after the run.
+	const droppedPhantomPurls = dropPhantomNpm
+		? source.filter(isPhantomNpm).map((c) => c.purl ?? c.name)
+		: [];
 
 	const components = kept.map((component) =>
 		enrichComponent(component, {
@@ -240,6 +246,7 @@ export function enrichSbom(
 
 	return {
 		droppedPhantoms,
+		droppedPhantomPurls,
 		sbom: { ...sbom, components },
 		summary: {
 			totalComponents: components.length,
@@ -297,6 +304,7 @@ async function main() {
 		summary,
 		staleOverrides,
 		staleElections,
+		droppedPhantomPurls,
 	} = enrichSbom(sbom, {
 		overrides,
 		byName,
@@ -307,6 +315,11 @@ async function main() {
 	});
 
 	console.log(JSON.stringify(summary, null, 2));
+
+	if (droppedPhantomPurls.length > 0) {
+		console.error(`\nDropped ${droppedPhantomPurls.length} phantom component(s):`);
+		for (const purl of droppedPhantomPurls) console.error('  ' + purl);
+	}
 
 	if (staleOverrides.length > 0 || staleElections.length > 0) {
 		// A pinned override/election no longer matches any component. In a full

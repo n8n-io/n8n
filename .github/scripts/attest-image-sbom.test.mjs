@@ -1,6 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTargets } from './attest-image-sbom.mjs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { assertSbomIsUsable, parseTargets } from './attest-image-sbom.mjs';
 
 describe('parseTargets', () => {
 	it('builds a target per image when both ref and digest are present', () => {
@@ -33,5 +36,41 @@ describe('parseTargets', () => {
 
 	it('returns nothing when no digests are present', () => {
 		assert.deepEqual(parseTargets({}), []);
+	});
+});
+
+describe('assertSbomIsUsable', () => {
+	const tmp = mkdtempSync(path.join(os.tmpdir(), 'sbom-assert-'));
+	const write = (name, components) => {
+		const p = path.join(tmp, name);
+		writeFileSync(p, JSON.stringify({ components }));
+		return p;
+	};
+	const OS = { type: 'operating-system', name: 'alpine', version: '3.24' };
+
+	it('accepts an SBOM with npm components and an operating system', () => {
+		assert.doesNotThrow(() =>
+			assertSbomIsUsable(write('ok.json', [{ purl: 'pkg:npm/a@1' }, OS]), 'n8n'),
+		);
+	});
+
+	// The gate reports failures only for components it can see, so it passes on an
+	// SBOM that catalogued nothing. This is the check that stops that being signed.
+	it('rejects an SBOM the scanner failed to populate', () => {
+		const p = write('empty.json', [{ purl: 'pkg:apk/alpine/busybox@1.0' }, OS]);
+		assert.throws(() => assertSbomIsUsable(p, 'n8n'), /no npm components/);
+	});
+
+	it('rejects an SBOM with no operating-system component', () => {
+		assert.throws(
+			() => assertSbomIsUsable(write('no-os.json', [{ purl: 'pkg:npm/a@1' }]), 'runners'),
+			/no operating-system component/,
+		);
+	});
+
+	it('names the image in the failure so a four-image run says which one broke', () => {
+		assert.throws(() => assertSbomIsUsable(write('named.json', [OS]), 'runners-distroless'), {
+			message: /^runners-distroless:/,
+		});
 	});
 });

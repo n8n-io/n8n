@@ -11,6 +11,7 @@
  * Usage: node .github/scripts/attest-image-sbom.mjs   (run from the repo root)
  */
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -39,6 +40,25 @@ function run(cmd, args, extraEnv) {
 	});
 }
 
+/**
+ * The license gate only inspects components it can see, so it passes on an SBOM
+ * that catalogued almost nothing. A base-image or layout change that hides
+ * node_modules from the scanner would therefore attest a near-empty SBOM to the
+ * release digest with a green CI. Assert the shape before signing.
+ */
+export function assertSbomIsUsable(sbomPath, label) {
+	const components = JSON.parse(readFileSync(sbomPath, 'utf-8')).components ?? [];
+	const npm = components.filter((c) => c.purl?.startsWith('pkg:npm/')).length;
+	if (npm === 0) {
+		throw new Error(`${label}: SBOM has no npm components. The scanner catalogued nothing.`);
+	}
+	if (!components.some((c) => c.type === 'operating-system')) {
+		throw new Error(
+			`${label}: SBOM has no operating-system component. Scanners need it to select a distro vulnerability feed.`,
+		);
+	}
+}
+
 function attest({ label, image, digest }) {
 	const ref = `${image}@${digest}`;
 	const out = path.join(REPO_ROOT, `sbom-${label}.cdx.json`);
@@ -49,7 +69,7 @@ function attest({ label, image, digest }) {
 	// syft reads licenses from the package files on disk, including LICENSE text, so
 	// this scan makes no registry requests. `-file` excludes syft's per-file
 	// catalogue, which adds about 4000 entries that a dependency SBOM does not use.
-	run('syft', [ref, '-o', `cyclonedx-json=${out}`, '--select-catalogers', '-file', '-q']);
+	run('syft', [ref, '-o', `cyclonedx-json@1.6=${out}`, '--select-catalogers', '-file', '-q']);
 
 	// Resolve first-party + override licenses (lenient: this image holds only a
 	// subset of the npm closure, so absent overrides are not stale pins) and drop
@@ -59,6 +79,7 @@ function attest({ label, image, digest }) {
 	// Release-blocking gate, scoped to npm — OS packages carry upstream-distro
 	// license strings we don't control, so they're inventoried but not gated.
 	run(process.execPath, [CHECK, out, ...ALLOW_REFS, '--enforce-prefix=pkg:npm/']);
+	assertSbomIsUsable(out, label);
 
 	run('cosign', ['attest', '--yes', '--type', 'cyclonedx', '--predicate', out, ref]);
 	console.log('::endgroup::');
