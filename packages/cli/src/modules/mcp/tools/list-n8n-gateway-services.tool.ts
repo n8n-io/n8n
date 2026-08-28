@@ -13,7 +13,7 @@ const outputSchema = {
 	available: z
 		.boolean()
 		.describe(
-			'True when Gateway credits is available for this instance. When false, the remaining fields are omitted.',
+			'True when Gateway credits are available for this instance. When false, the remaining fields are omitted.',
 		),
 	credentialTypes: z
 		.array(z.string())
@@ -22,7 +22,7 @@ const outputSchema = {
 	nodes: z
 		.array(z.string())
 		.optional()
-		.describe('Node types Gateway credits covers (e.g. "@n8n/n8n-nodes-langchain.openAi").'),
+		.describe('Node types Gateway credits cover (e.g. "@n8n/n8n-nodes-langchain.openAi").'),
 	supportedActions: z
 		.record(z.record(z.array(z.string())))
 		.optional()
@@ -37,7 +37,7 @@ const outputSchema = {
 		.record(z.array(z.string()))
 		.optional()
 		.describe(
-			'Per-node property names hidden from the user when Gateway credits provides the credential.',
+			'Per-node property names hidden from the user when Gateway credits provide the credential.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -46,7 +46,7 @@ const outputSchema = {
  * instance: which node types and credential types Gateway credits can serve, plus
  * per-node action allowlists, min versions, and hidden properties.
  *
- * Read-only. Omits all coverage fields when Gateway credits is unavailable
+ * Read-only. Omits all coverage fields when Gateway credits are unavailable
  * (unlicensed, misconfigured, or gateway down) — callers should key on
  * `available: false` and fall back to user credentials.
  */

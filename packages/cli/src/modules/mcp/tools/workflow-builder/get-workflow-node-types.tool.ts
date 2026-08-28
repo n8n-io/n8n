@@ -49,7 +49,7 @@ const outputSchema = {
 		})
 		.optional()
 		.describe(
-			`Present when Gateway credits is available. Candidate coverage — cross-reference against the returned node types, but call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} for exact eligibility (supported actions, min versions, hidden properties).`,
+			`Present when Gateway credits are available. Candidate coverage — cross-reference against the returned node types, but call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} for exact eligibility (supported actions, min versions, hidden properties).`,
 		),
 } satisfies z.ZodRawShape;
 

@@ -58,7 +58,7 @@ const n8nConnectSchema = z
 	})
 	.optional()
 	.describe(
-		`Present when Gateway credits is available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} for the authoritative contract.`,
+		`Present when Gateway credits are available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} for the authoritative contract.`,
 	);
 
 const outputSchema = {
