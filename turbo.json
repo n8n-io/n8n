@@ -34,6 +34,14 @@
 		"lint": {
 			"dependsOn": ["^build", "@n8n/eslint-config#build"]
 		},
+		// `nodes-base`'s lint script also runs validate-load-options-methods and
+		// validate-schema-versions, which read `dist/methods/*.json` and `dist/nodes`
+		// from its OWN build. `^build` alone does not order that build first, so the
+		// two validators fail with "Failed to find methods to validate" whenever turbo
+		// happens to schedule the lint before the build.
+		"n8n-nodes-base#lint": {
+			"dependsOn": ["^build", "build", "@n8n/eslint-config#build"]
+		},
 		"lint:fix": {},
 		"lint:styles": {
 			"dependsOn": ["@n8n/stylelint-config#build"]
