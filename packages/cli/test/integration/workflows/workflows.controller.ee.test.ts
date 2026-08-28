@@ -2428,6 +2428,24 @@ describe('PATCH /workflows/:workflowId as an editor who may not publish', () => 
 		expect(stored?.activeVersionId).toBe(workflow.versionId);
 	});
 
+	test('stays published when re-registering the live version fails', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('registration');
+
+		activeWorkflowManager.add.mockRejectedValueOnce(new Error('trigger failed to register'));
+
+		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			settings: { ...(workflow.settings ?? {}), timezone: 'America/New_York' },
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+
+		// Nothing new was being published, so a failed re-registration must not take the workflow down.
+		expect(response.statusCode).toBe(400);
+		expect(stored?.active).toBe(true);
+		expect(stored?.activeVersionId).toBe(workflow.versionId);
+	});
+
 	test('is still refused when it explicitly asks to publish', async () => {
 		const workflow = await publishedWorkflowMemberCanOnlyEdit('publish');
 

@@ -717,8 +717,13 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		tracking: { source: WorkflowActionSource } = { source: 'ui' },
+		tracking: { source: WorkflowActionSource; unpublishOnFailure?: boolean } = { source: 'ui' },
 	): Promise<void> {
+		// Re-applying the version that is already live publishes nothing, so a failure there has no
+		// partial publication to undo. Unpublishing would take a workflow down over a save that was
+		// never asking to change what is published.
+		const { unpublishOnFailure = true } = tracking;
+
 		let didPublish = false;
 		try {
 			await this.activeWorkflowManager.add(workflowId, mode);
@@ -743,17 +748,19 @@ export class WorkflowService {
 				});
 			}
 
-			const rollbackPayload = {
-				active: false,
-				activeVersionId: null,
-				activeVersion: null,
-			};
-			await this.workflowRepository.update(workflowId, rollbackPayload);
+			if (unpublishOnFailure) {
+				const rollbackPayload = {
+					active: false,
+					activeVersionId: null,
+					activeVersion: null,
+				};
+				await this.workflowRepository.update(workflowId, rollbackPayload);
 
-			// Also set it in the returned data
-			workflow.active = rollbackPayload.active;
-			workflow.activeVersionId = rollbackPayload.activeVersionId;
-			workflow.activeVersion = rollbackPayload.activeVersion;
+				// Also set it in the returned data
+				workflow.active = rollbackPayload.active;
+				workflow.activeVersionId = rollbackPayload.activeVersionId;
+				workflow.activeVersion = rollbackPayload.activeVersion;
+			}
 
 			const message = (error as Error).message;
 			const description = getErrorDescription(error);
@@ -1037,7 +1044,7 @@ export class WorkflowService {
 				workflowId,
 				workflowForActivation,
 				activationMode,
-				{ source },
+				{ source, unpublishOnFailure: versionIdToActivate !== previousActiveVersionId },
 			);
 		}
 
