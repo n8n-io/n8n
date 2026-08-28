@@ -450,6 +450,7 @@ export class Tool<
 			hasResume: this.resumeSchemaValue !== undefined,
 			hasToMessage: this.toMessageFn !== undefined,
 			requireApproval: this.requireApprovalValue ?? false,
+			outputTrust: this.outputTrustValue ?? null,
 			providerOptions: this.providerOptionsValue ?? null,
 		};
 	}

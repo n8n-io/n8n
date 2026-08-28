@@ -153,7 +153,12 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01TavzmdA3Aadx5CGsr8emTy",
-							"content": "{\"content\":[{\"type\":\"text\",\"text\":\"integration test passed\"}]}"
+							"content": [
+								{
+									"type": "text",
+									"text": "<untrusted_data source=\"tool:tools_echo\">\n{\"content\":[{\"type\":\"text\",\"text\":\"integration test passed\"}]}\n</untrusted_data>"
+								}
+							]
 						}
 					]
 				}

@@ -170,7 +170,12 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01LgD9epQm36Eyt1wPvKJzeX",
-							"content": "{\"content\":[{\"type\":\"text\",\"text\":\"42\"}]}"
+							"content": [
+								{
+									"type": "text",
+									"text": "<untrusted_data source=\"tool:tools_add\">\n{\"content\":[{\"type\":\"text\",\"text\":\"42\"}]}\n</untrusted_data>"
+								}
+							]
 						}
 					]
 				}

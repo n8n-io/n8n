@@ -192,6 +192,17 @@ function isSerializedOffloadedToolResult(value: string): boolean {
 	}
 }
 
+const UNTRUSTED_DATA_BOUNDARY_PATTERN =
+	/^(<untrusted_data\b[^>]*>\n)([\s\S]*)(\n<\/untrusted_data>)$/;
+
+function expireSerializedOffloadedToolResult(value: string): string | undefined {
+	if (isSerializedOffloadedToolResult(value)) return EXPIRED_OFFLOADED_TOOL_RESULT_JSON;
+
+	const boundary = UNTRUSTED_DATA_BOUNDARY_PATTERN.exec(value);
+	if (!boundary || !isSerializedOffloadedToolResult(boundary[2])) return undefined;
+	return `${boundary[1]}${EXPIRED_OFFLOADED_TOOL_RESULT_JSON}${boundary[3]}`;
+}
+
 export function sanitizeOffloadedToolResultsForMemory(
 	messages: AgentDbMessage[],
 ): AgentDbMessage[] {
@@ -208,21 +219,23 @@ export function sanitizeOffloadedToolResultsForMemory(
 						...block,
 						output: toJsonValue({
 							type: 'content',
-							value: block.output.value.map((part) =>
-								part.type === 'text' && isSerializedOffloadedToolResult(part.text)
-									? { ...part, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON }
-									: part,
-							),
+							value: block.output.value.map((part) => {
+								if (part.type !== 'text') return part;
+								const replacement = expireSerializedOffloadedToolResult(part.text);
+								return replacement ? { ...part, text: replacement } : part;
+							}),
 						}),
 					};
 				}
-				if (block.state === 'rejected' && isSerializedOffloadedToolResult(block.error)) {
-					return { ...block, error: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
+				if (block.state === 'rejected') {
+					const replacement = expireSerializedOffloadedToolResult(block.error);
+					if (replacement) return { ...block, error: replacement };
 				}
 			}
 
-			if (block.type === 'text' && isSerializedOffloadedToolResult(block.text)) {
-				return { ...block, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
+			if (block.type === 'text') {
+				const replacement = expireSerializedOffloadedToolResult(block.text);
+				if (replacement) return { ...block, text: replacement };
 			}
 
 			return { ...block };

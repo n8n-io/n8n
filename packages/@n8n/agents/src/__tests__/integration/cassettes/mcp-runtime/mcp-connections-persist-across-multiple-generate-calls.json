@@ -154,7 +154,12 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01Sv19z8gsAMTD18VHhwpCXk",
-							"content": "{\"content\":[{\"type\":\"text\",\"text\":\"3\"}]}"
+							"content": [
+								{
+									"type": "text",
+									"text": "<untrusted_data source=\"tool:tools_add\">\n{\"content\":[{\"type\":\"text\",\"text\":\"3\"}]}\n</untrusted_data>"
+								}
+							]
 						}
 					]
 				}
@@ -399,7 +404,12 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01JwmACjShuijiaVKqChQLTe",
-							"content": "{\"content\":[{\"type\":\"text\",\"text\":\"7\"}]}"
+							"content": [
+								{
+									"type": "text",
+									"text": "<untrusted_data source=\"tool:tools_add\">\n{\"content\":[{\"type\":\"text\",\"text\":\"7\"}]}\n</untrusted_data>"
+								}
+							]
 						}
 					]
 				}

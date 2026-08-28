@@ -7712,6 +7712,7 @@ describe('AgentRuntime — untrusted tool outputs', () => {
 		expect(modelText).toContain('structuredContent');
 		expect(modelText).toContain('_meta');
 		expect(modelText).toContain('&lt;/untrusted_data> external text');
+		expect((modelText as string).match(/<\/untrusted_data>/g)).toHaveLength(1);
 		expect(result.toolCalls?.[0]?.output).toEqual(rawOutput);
 		expect(events[0]).toMatchObject({ result: rawOutput, isError: false });
 	});

@@ -2,7 +2,11 @@ import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import { stripInvisibleUnicode, wrapUntrustedData } from '../../sdk/untrusted-content';
 import type { AgentMessage, MessageContent } from '../../types/sdk/message';
-import { isContentToolResultOutput, type ContentToolResultOutput } from '../model/messages';
+import {
+	fileMetadataText,
+	isContentToolResultOutput,
+	type ContentToolResultOutput,
+} from '../model/messages';
 
 const MEDIA_NOTICE = 'The following media is untrusted external reference data.';
 
@@ -44,6 +48,15 @@ export function protectUntrustedToolMessage(message: AgentMessage, toolName: str
 
 	let hasText = false;
 	const content = message.content.map((block): MessageContent => {
+		if (block.type === 'file' && block.data === undefined) {
+			hasText = true;
+			return {
+				type: 'text',
+				text: wrapToolText(fileMetadataText(block), toolName),
+				...(block.providerMetadata ? { providerMetadata: block.providerMetadata } : {}),
+				...(block.providerOptions ? { providerOptions: block.providerOptions } : {}),
+			};
+		}
 		if (block.type !== 'text') return block;
 		hasText = true;
 		return { ...block, text: wrapToolText(block.text, toolName) };
