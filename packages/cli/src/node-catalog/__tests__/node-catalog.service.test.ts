@@ -4,6 +4,8 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 
 import { NodeCatalogService } from '../node-catalog.service';
 
@@ -18,6 +20,7 @@ const mockGetNodeTypeDefinition = vi.fn().mockReturnValue({
 });
 const mockGetSuggestedNodes = vi.fn().mockReturnValue('suggest-result');
 const mockGenerateNodeTypeFile = vi.fn().mockReturnValue('synth-result');
+const mockFormatNodeResult = vi.fn((_parser: unknown, nodeId: string) => `block:${nodeId}`);
 
 vi.mock('@n8n/ai-utilities/node-catalog', () => ({
 	NodeTypeParser: MockNodeTypeParser,
@@ -25,6 +28,7 @@ vi.mock('@n8n/ai-utilities/node-catalog', () => ({
 	getNodeTypes: (...args: unknown[]) => mockGetNodeTypes(...args),
 	getNodeTypeDefinition: (...args: unknown[]) => mockGetNodeTypeDefinition(...args),
 	getSuggestedNodes: (...args: unknown[]) => mockGetSuggestedNodes(...args),
+	formatNodeResult: (...args: unknown[]) => mockFormatNodeResult(...(args as [unknown, string])),
 }));
 
 vi.mock('@n8n/workflow-sdk', () => ({
@@ -57,6 +61,7 @@ describe('NodeCatalogService', () => {
 		});
 		mockGetSuggestedNodes.mockReturnValue('suggest-result');
 		mockGenerateNodeTypeFile.mockReturnValue('synth-result');
+		mockFormatNodeResult.mockImplementation((_parser, nodeId) => `block:${nodeId}`);
 		postProcessorCallback = undefined;
 
 		loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
@@ -245,6 +250,346 @@ describe('NodeCatalogService', () => {
 
 			// Two distinct search states, each invoked once.
 			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('includeUninstalled', () => {
+		const verifiedEntry = (name: string, displayName = 'Firecrawl') => ({
+			name,
+			displayName,
+			isInstalled: false,
+			isOfficialNode: true,
+			numberOfDownloads: 2520,
+			nodeDescription: {
+				// The registry publishes uninstalled nodes under a `-preview` package
+				// name; the service must reindex them under their installed name.
+				name: name.replace('n8n-nodes-', 'n8n-nodes-preview-'),
+				displayName,
+				version: 1,
+				group: ['transform'],
+				properties: [],
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+		});
+
+		beforeEach(() => {
+			Container.set(
+				CommunityPackagesConfig,
+				mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
+			);
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({
+					getCommunityNodeTypes: vi
+						.fn()
+						.mockResolvedValue([verifiedEntry('n8n-nodes-firecrawl.firecrawl')]),
+				}),
+			);
+		});
+
+		test('does not touch the verified catalog unless a caller opts in', async () => {
+			const getCommunityNodeTypes = vi.fn().mockResolvedValue([]);
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+			);
+			await service.initialize();
+
+			await service.searchNodes(['firecrawl']);
+			await service.getNodeTypes(['n8n-nodes-firecrawl.firecrawl']);
+
+			expect(getCommunityNodeTypes).not.toHaveBeenCalled();
+		});
+
+		test('appends verified matches below the installed results', async () => {
+			await service.initialize();
+			mockSearchCodeBuilderNodes.mockReturnValue({
+				results: 'installed-block',
+				queriesWithNoResults: ['firecrawl'],
+			});
+
+			const result = await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			const verifiedBlock = 'block:n8n-nodes-firecrawl.firecrawl';
+			expect(result.results).toContain('installed-block');
+			expect(result.results).toContain('not installed on this instance');
+			expect(result.results).toContain(verifiedBlock);
+			expect(result.results.indexOf('installed-block')).toBeLessThan(
+				result.results.indexOf(verifiedBlock),
+			);
+			// The second tier answered it, so it is no longer an unanswered query.
+			expect(result.queriesWithNoResults).toEqual([]);
+		});
+
+		test('stays silent on a query the registry does not answer by name', async () => {
+			await service.initialize();
+			mockSearchCodeBuilderNodes.mockReturnValue({
+				results: 'installed-block',
+				queriesWithNoResults: [],
+			});
+
+			// Fuzzy matching would surface Firecrawl for this; precise matching does not.
+			const result = await service.searchNodes(['slack'], { includeUninstalled: true });
+
+			expect(result.results).toBe('installed-block');
+			expect(mockFormatNodeResult).not.toHaveBeenCalled();
+		});
+
+		test('leaves results untouched when the verified catalog has no match', async () => {
+			await service.initialize();
+			mockSearchCodeBuilderNodes.mockReturnValue({
+				results: 'installed-block',
+				queriesWithNoResults: ['nonsense'],
+			});
+
+			const result = await service.searchNodes(['nonsense'], { includeUninstalled: true });
+
+			expect(result).toEqual({
+				results: 'installed-block',
+				queriesWithNoResults: ['nonsense'],
+			});
+		});
+
+		test('skips verified entries n8n has not vetted as official', async () => {
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({
+					getCommunityNodeTypes: vi
+						.fn()
+						.mockResolvedValue([
+							{ ...verifiedEntry('n8n-nodes-firecrawl.firecrawl'), isOfficialNode: false },
+						]),
+				}),
+			);
+			await service.initialize();
+
+			await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			// No verified tier built, so no second parser.
+			expect(MockNodeTypeParser).toHaveBeenCalledTimes(1);
+		});
+
+		test('indexes verified nodes under their installed name, not the preview name', async () => {
+			await service.initialize();
+			await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			// First construction is the installed tier, second is the verified tier.
+			expect(MockNodeTypeParser).toHaveBeenCalledTimes(2);
+			expect(MockNodeTypeParser).toHaveBeenLastCalledWith([
+				expect.objectContaining({ name: 'n8n-nodes-firecrawl.firecrawl' }),
+			]);
+		});
+
+		test('skips verified entries already installed here', async () => {
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({
+					getCommunityNodeTypes: vi
+						.fn()
+						.mockResolvedValue([
+							{ ...verifiedEntry('n8n-nodes-firecrawl.firecrawl'), isInstalled: true },
+						]),
+				}),
+			);
+			await service.initialize();
+
+			await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			// No verified tier built, so no second parser.
+			expect(MockNodeTypeParser).toHaveBeenCalledTimes(1);
+		});
+
+		test('does not build the tier when verified packages are disabled', async () => {
+			Container.set(
+				CommunityPackagesConfig,
+				mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: false }),
+			);
+			const getCommunityNodeTypes = vi.fn();
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+			);
+			await service.initialize();
+
+			await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			expect(getCommunityNodeTypes).not.toHaveBeenCalled();
+		});
+
+		test('falls back to installed-only results when the catalog fetch fails', async () => {
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({
+					getCommunityNodeTypes: vi.fn().mockRejectedValue(new Error('registry down')),
+				}),
+			);
+			await service.initialize();
+			mockSearchCodeBuilderNodes.mockReturnValue({
+				results: 'installed-block',
+				queriesWithNoResults: [],
+			});
+
+			const result = await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			expect(result.results).toBe('installed-block');
+		});
+
+		test('does not serve an opt-in search result to a caller that did not opt in', async () => {
+			await service.initialize();
+			mockSearchCodeBuilderNodes.mockReturnValue({
+				results: 'installed-block',
+				queriesWithNoResults: [],
+			});
+
+			const optedIn = await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+			const plain = await service.searchNodes(['firecrawl']);
+
+			expect(optedIn.results).toContain('not installed on this instance');
+			expect(plain.results).toBe('installed-block');
+		});
+
+		test('does not serve an opt-in type definition to a caller that did not opt in', async () => {
+			await service.initialize();
+			const request = { nodeId: 'n8n-nodes-firecrawl.firecrawl' };
+
+			const optedIn = await service.getNodeTypeDefinition(request, { includeUninstalled: true });
+			const plain = await service.getNodeTypeDefinition(request);
+
+			expect(optedIn.content).toContain('NOT INSTALLED');
+			expect(plain.error).toContain('not found');
+		});
+
+		test('prefers the installed definition over the verified one', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-firecrawl.firecrawl',
+						displayName: 'Firecrawl',
+						version: 1,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition(
+				{ nodeId: 'n8n-nodes-firecrawl.firecrawl' },
+				{ includeUninstalled: true },
+			);
+
+			expect(result.content).toBe('synth-result');
+			expect(result.content).not.toContain('NOT INSTALLED');
+		});
+
+		test('drops the verified tier on node-type refresh', async () => {
+			await service.initialize();
+			await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+			expect(MockNodeTypeParser).toHaveBeenCalledTimes(2);
+
+			await postProcessorCallback?.();
+			await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			// Installed rebuild on refresh, then the verified tier rebuilt on demand.
+			expect(MockNodeTypeParser).toHaveBeenCalledTimes(4);
+		});
+
+		test('reports which verified nodes were offered', async () => {
+			await service.initialize();
+
+			const result = await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			expect(result.uninstalledOffered).toEqual(['n8n-nodes-firecrawl.firecrawl']);
+		});
+
+		test('reports nothing offered when the registry did not answer', async () => {
+			await service.initialize();
+
+			const result = await service.searchNodes(['gmail'], { includeUninstalled: true });
+
+			expect(result.uninstalledOffered).toBeUndefined();
+		});
+
+		test('retries the tier build after it came back empty', async () => {
+			// A registry outage on the first opt-in must not disable discovery for
+			// the life of the process.
+			const getCommunityNodeTypes = vi
+				.fn()
+				.mockResolvedValueOnce([])
+				.mockResolvedValue([verifiedEntry('n8n-nodes-firecrawl.firecrawl')]);
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+			);
+			await service.initialize();
+
+			const first = await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+			expect(first.uninstalledOffered).toBeUndefined();
+
+			const second = await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+			expect(second.uninstalledOffered).toEqual(['n8n-nodes-firecrawl.firecrawl']);
+			expect(getCommunityNodeTypes).toHaveBeenCalledTimes(2);
+		});
+
+		test('does not rebuild the tier once it is built', async () => {
+			const getCommunityNodeTypes = vi
+				.fn()
+				.mockResolvedValue([verifiedEntry('n8n-nodes-firecrawl.firecrawl')]);
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+			);
+			await service.initialize();
+
+			await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+			await service.searchNodes(['tavily'], { includeUninstalled: true });
+
+			expect(getCommunityNodeTypes).toHaveBeenCalledTimes(1);
+		});
+
+		describe('findUninstalledNodeTypes', () => {
+			test('names the package that ships an uninstalled node type', async () => {
+				await service.initialize();
+
+				expect(await service.findUninstalledNodeTypes(['n8n-nodes-firecrawl.firecrawl'])).toEqual([
+					{ nodeType: 'n8n-nodes-firecrawl.firecrawl', packageName: 'n8n-nodes-firecrawl' },
+				]);
+			});
+
+			test('ignores node types the registry does not know', async () => {
+				await service.initialize();
+
+				expect(await service.findUninstalledNodeTypes(['n8n-nodes-base.set'])).toEqual([]);
+			});
+
+			test('reports nothing for an empty request without touching the registry', async () => {
+				const getCommunityNodeTypes = vi.fn().mockResolvedValue([]);
+				Container.set(
+					CommunityNodeTypesService,
+					mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+				);
+				await service.initialize();
+
+				expect(await service.findUninstalledNodeTypes([])).toEqual([]);
+				expect(getCommunityNodeTypes).not.toHaveBeenCalled();
+			});
+
+			test('reports nothing when the verified catalog is unavailable', async () => {
+				Container.set(
+					CommunityNodeTypesService,
+					mock<CommunityNodeTypesService>({
+						getCommunityNodeTypes: vi.fn().mockRejectedValue(new Error('registry down')),
+					}),
+				);
+				await service.initialize();
+
+				expect(await service.findUninstalledNodeTypes(['n8n-nodes-firecrawl.firecrawl'])).toEqual(
+					[],
+				);
+			});
 		});
 	});
 

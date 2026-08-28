@@ -62,6 +62,8 @@ export const createGetWorkflowNodeTypesTool = (
 	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
 	aiGatewayService: AiGatewayService,
+	/** Resolve defs for verified community nodes not installed here. See search_nodes. */
+	includeUninstalled: boolean = false,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName,
 	config: {
@@ -86,7 +88,9 @@ export const createGetWorkflowNodeTypesTool = (
 
 		try {
 			const [result, availability] = await Promise.all([
-				nodeCatalogService.getNodeTypes(nodeIds),
+				// Matches search_nodes: MCP is the only surface that resolves node
+				// types from the verified-but-uninstalled registry tier.
+				nodeCatalogService.getNodeTypes(nodeIds, { includeUninstalled }),
 				aiGatewayService.isAvailable(),
 			]);
 

@@ -46,6 +46,17 @@ export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
  * Tool name constants
  */
 export const LIST_N8N_CONNECT_SERVICES_TOOL_NAME = 'list_n8n_connect_services';
+
+/**
+ * Installs a vetted community package so its nodes become usable. Not in
+ * `@n8n/ai-workflow-builder` with the other builder tool constants because
+ * installing packages is an instance-administration action, not something the
+ * code-builder agent can do.
+ */
+export const INSTALL_COMMUNITY_NODE_TOOL = {
+	toolName: 'install_community_node',
+	displayTitle: 'Install Community Node',
+} as const;
 export const MCP_CALL_AGENT_TOOL_NAME = 'call_agent';
 export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
 

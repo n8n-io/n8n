@@ -23,6 +23,10 @@ import {
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
+import {
+	buildUninstalledNodeWarnings,
+	type FindUninstalledNodeTypes,
+} from './uninstalled-node-warnings';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
@@ -56,6 +60,14 @@ export type CreateWorkflowFromCodeToolOptions = {
 	 * that shared service's own (fatal) group check never actually triggers here.
 	 */
 	canvasGroupsEnabled?: boolean;
+
+	/**
+	 * Reports which of the workflow's node types are verified community nodes
+	 * that are not installed here, so creation can warn that the workflow will
+	 * not run yet. Supplied only on surfaces that offer community-node
+	 * discovery, which keeps this tool independent of the node catalog.
+	 */
+	findUninstalledNodeTypes?: FindUninstalledNodeTypes;
 };
 
 function normalizeWorkflowDescription(description?: string) {
@@ -444,8 +456,12 @@ export const createCreateWorkflowFromCodeTool = (
 				note: notes.length ? notes.join(' ') : undefined,
 				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
-			const output =
-				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
+			const uninstalledWarnings = await buildUninstalledNodeWarnings(
+				savedWorkflow.nodes,
+				options.findUninstalledNodeTypes,
+			);
+			const warnings = [...result.warnings, ...uninstalledWarnings];
+			const output = warnings.length > 0 ? { ...baseOutput, warnings } : baseOutput;
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

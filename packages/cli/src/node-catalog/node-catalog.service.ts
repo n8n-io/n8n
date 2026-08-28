@@ -5,7 +5,7 @@ import type {
 } from '@n8n/ai-utilities/node-catalog';
 import { Logger } from '@n8n/backend-common';
 import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import * as fs from 'fs/promises';
 import { LRUCache } from 'lru-cache';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -13,6 +13,8 @@ import * as path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
+
+import { findRegistryMatches, type RegistryCandidate } from './registry-lookup';
 
 export type NodeFilter = (nodeId: string) => boolean;
 
@@ -41,7 +43,29 @@ const versionLabel = (description: INodeTypeDescription): string | undefined => 
 	return version > 0 ? String(version) : undefined;
 };
 
-export interface SearchNodesOptions {
+/**
+ * Opt-in access to the second catalog tier: verified community nodes published
+ * to the n8n registry but *not installed* on this instance.
+ *
+ * Off by default, so every existing caller (Instance AI, the agents builder)
+ * keeps seeing installed nodes only. The MCP workflow-builder tools are the
+ * sole opt-in today — they can offer the agent an `install_community_node`
+ * step, which the other surfaces have no equivalent for.
+ */
+export interface CatalogScopeOptions {
+	includeUninstalled?: boolean;
+}
+
+/**
+ * Search result plus the second-tier nodes that were offered, so callers can
+ * report on the tier without parsing the rendered results string.
+ */
+export interface CatalogSearchResult extends CodeBuilderSearchResult {
+	/** Verified-but-uninstalled node types offered alongside the installed hits. */
+	uninstalledOffered?: string[];
+}
+
+export interface SearchNodesOptions extends CatalogScopeOptions {
 	/**
 	 * Optional predicate restricting which node IDs are included in search results.
 	 * Each unique filter reference gets its own search state and result cache;
@@ -73,6 +97,13 @@ interface SearchState {
 const UNFILTERED: unique symbol = Symbol('unfiltered');
 
 const MAX_TYPE_DEFINITION_CACHE_BYTES = 16 * 1024 * 1024;
+
+const UNINSTALLED_SECTION_HEADING = [
+	'## Verified community nodes (not installed on this instance)',
+	'',
+	'These are published to the n8n community registry and vetted by n8n, but not installed here.',
+	'A workflow using one will not run until the package is installed.',
+].join('\n');
 
 const stringBytes = (value?: string): number => (value ? Buffer.byteLength(value, 'utf8') : 0);
 
@@ -118,6 +149,24 @@ export class NodeCatalogService {
 	 * The cache stores the complete `CodeBuilderSearchResult`, so callers can consume only the fields they need.
 	 */
 	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
+
+	/**
+	 * Second-tier verified community nodes not installed here, indexed only when
+	 * a caller opts in. Built lazily on first opt-in request and dropped on
+	 * node-type refresh, so instances that never opt in pay nothing.
+	 */
+	private uninstalledParser: NodeTypeParser | undefined;
+
+	/**
+	 * One description per type, unlike {@link descriptionsById}: the registry
+	 * publishes a single version of each entry.
+	 */
+	private uninstalledDescriptionsById = new Map<string, INodeTypeDescription>();
+
+	/** Match/rank inputs for the second tier, parallel to the descriptions above. */
+	private uninstalledCandidates: RegistryCandidate[] = [];
+
+	private uninstalledPromise: Promise<void> | undefined;
 
 	private readonly getCache = new Map<string, string>();
 
@@ -170,6 +219,16 @@ export class NodeCatalogService {
 	async searchNodes(
 		queries: string[],
 		options: SearchNodesOptions = {},
+	): Promise<CatalogSearchResult> {
+		const installed = await this.searchInstalledNodes(queries, options);
+		if (!options.includeUninstalled) return installed;
+
+		return await this.appendUninstalledMatches(queries, installed, options.nodeFilter);
+	}
+
+	private async searchInstalledNodes(
+		queries: string[],
+		options: SearchNodesOptions = {},
 	): Promise<CodeBuilderSearchResult> {
 		const { nodeFilter } = options;
 		const stateKey: NodeFilter | typeof UNFILTERED = nodeFilter ?? UNFILTERED;
@@ -198,11 +257,159 @@ export class NodeCatalogService {
 		return result;
 	}
 
+	/**
+	 * Append verified-but-uninstalled matches below the installed results, as a
+	 * clearly labelled second section.
+	 *
+	 * Matching is deliberately precise rather than fuzzy (see
+	 * {@link findRegistryMatches}): a fuzzy index over the registry answers
+	 * almost every query with something, so "slack" comes back with unrelated
+	 * packages. Precise matching answers with the service asked for, or with
+	 * nothing, and nothing is the right answer most of the time.
+	 *
+	 * Blocks are rendered with the shared formatter so they read identically to
+	 * the installed results above them.
+	 */
+	private async appendUninstalledMatches(
+		queries: string[],
+		installed: CodeBuilderSearchResult,
+		nodeFilter?: NodeFilter,
+	): Promise<CatalogSearchResult> {
+		const parser = await this.getUninstalledParser();
+		if (!parser) return installed;
+
+		const { formatNodeResult } = await import('@n8n/ai-utilities/node-catalog');
+		const candidates = nodeFilter
+			? this.uninstalledCandidates.filter((candidate) => nodeFilter(candidate.name))
+			: this.uninstalledCandidates;
+
+		const blocks: string[] = [];
+		const answered = new Set<string>();
+		const offered = new Set<string>();
+		for (const query of queries) {
+			const matches = findRegistryMatches(query, candidates);
+			const formatted: string[] = [];
+			for (const match of matches) {
+				const block = formatNodeResult(parser, match.name);
+				if (!block) continue;
+				formatted.push(block);
+				offered.add(match.name);
+			}
+			if (formatted.length === 0) continue;
+
+			blocks.push(`## "${query}"\n\n${formatted.join('\n\n')}`);
+			answered.add(query);
+		}
+
+		if (blocks.length === 0) return installed;
+
+		return {
+			results: [installed.results, UNINSTALLED_SECTION_HEADING, ...blocks].join('\n\n---\n\n'),
+			queriesWithNoResults: installed.queriesWithNoResults.filter((q) => !answered.has(q)),
+			uninstalledOffered: [...offered],
+		};
+	}
+
+	/**
+	 * Build (once) the parser over verified community nodes this instance has
+	 * not installed. Returns `undefined` when the community-packages module is
+	 * disabled, verified packages are turned off, or the registry fetch failed —
+	 * in every one of those cases the caller falls back to installed-only
+	 * results rather than erroring.
+	 */
+	private async getUninstalledParser(): Promise<NodeTypeParser | undefined> {
+		this.uninstalledPromise ??= this.buildUninstalledTier();
+		await this.uninstalledPromise;
+
+		// Retry on the next call when the build came back empty: the registry may
+		// simply have been unreachable, and memoizing that would disable discovery
+		// until the next node-type reload. Retries are cheap and self-limiting —
+		// CommunityNodeTypesService holds its own retry timestamp, so a follow-up
+		// call reads its empty map instead of refetching.
+		if (!this.uninstalledParser) this.uninstalledPromise = undefined;
+
+		return this.uninstalledParser;
+	}
+
+	private async buildUninstalledTier(): Promise<void> {
+		const entries = await this.loadUninstalledEntries();
+		if (entries.length === 0) return;
+
+		const descriptions = entries.map((entry) => entry.description);
+
+		const { NodeTypeParser: NodeTypeParserClass } = await import('@n8n/ai-utilities/node-catalog');
+		try {
+			this.uninstalledParser = new NodeTypeParserClass(descriptions);
+		} catch (error) {
+			this.logger.warn('Could not index uninstalled verified community nodes', { error });
+			return;
+		}
+
+		for (const description of descriptions) {
+			this.uninstalledDescriptionsById.set(description.name, description);
+		}
+		this.uninstalledCandidates = entries.map((entry) => entry.candidate);
+
+		this.logger.debug('NodeCatalogService indexed uninstalled verified community nodes', {
+			nodeTypeCount: descriptions.length,
+		});
+	}
+
+	/**
+	 * Verified registry entries this instance has not installed.
+	 *
+	 * Restricted to `isOfficialNode`, matching what the node creator panel
+	 * already surfaces on the canvas, so the agent and the editor offer the same
+	 * set. Returns an empty list when the community-packages module is disabled,
+	 * verified packages are turned off, or the registry fetch failed, in every
+	 * case leaving the caller with installed-only results rather than an error.
+	 */
+	private async loadUninstalledEntries(): Promise<
+		Array<{ description: INodeTypeDescription; candidate: RegistryCandidate }>
+	> {
+		try {
+			const { CommunityPackagesConfig } = await import(
+				'@/modules/community-packages/community-packages.config.js'
+			);
+			const config = Container.get(CommunityPackagesConfig);
+			// Checked before resolving the service so a disabled module never has
+			// its dependency chain constructed just to return an empty catalog.
+			if (!config.enabled || !config.verifiedEnabled) return [];
+
+			const { CommunityNodeTypesService } = await import(
+				'@/modules/community-packages/community-node-types.service.js'
+			);
+			const catalog = await Container.get(CommunityNodeTypesService).getCommunityNodeTypes();
+
+			return catalog
+				.filter((entry) => entry.isOfficialNode && !entry.isInstalled)
+				.filter((entry) => !this.descriptionsById.has(entry.name))
+				.filter((entry) => Array.isArray(entry.nodeDescription?.properties))
+				.map((entry) => ({
+					// The registry publishes uninstalled nodes under a `-preview`
+					// package name; index them under the type they will have once
+					// installed, so nothing downstream has to strip the token.
+					// Shallow-copied because the description object is shared with
+					// CommunityNodeTypesService.
+					description: { ...entry.nodeDescription, name: entry.name },
+					candidate: {
+						name: entry.name,
+						displayName: entry.displayName,
+						numberOfDownloads: entry.numberOfDownloads,
+					},
+				}));
+		} catch (error) {
+			this.logger.warn('Could not load verified community node catalog', { error });
+			return [];
+		}
+	}
+
 	/** Get TypeScript type definitions for nodes, with result caching. */
-	async getNodeTypes(nodeIds: NodeRequest[]): Promise<string> {
-		const cacheKey = JSON.stringify(
+	async getNodeTypes(nodeIds: NodeRequest[], options: CatalogScopeOptions = {}): Promise<string> {
+		const cacheKey = JSON.stringify([
+			Boolean(options.includeUninstalled),
 			nodeIds.map((id) => (typeof id === 'string' ? id : JSON.stringify(id))).sort(),
-		);
+		]);
 		const cached = this.getCache.get(cacheKey);
 		if (cached) return cached;
 
@@ -220,7 +427,7 @@ export class NodeCatalogService {
 		const errors: string[] = [];
 
 		for (const id of synthesizeIds) {
-			const result = await this.getNodeTypeDefinition(this.toDefinitionRequest(id));
+			const result = await this.getNodeTypeDefinition(this.toDefinitionRequest(id), options);
 			if (result.error) {
 				errors.push(result.error);
 			} else {
@@ -245,19 +452,89 @@ export class NodeCatalogService {
 	/** Get a structured TypeScript type definition for one node. */
 	async getNodeTypeDefinition(
 		request: NodeTypeDefinitionRequest,
+		options: CatalogScopeOptions = {},
 	): Promise<NodeTypeDefinitionResult> {
-		const cacheKey = JSON.stringify(request);
+		const includeUninstalled = Boolean(options.includeUninstalled);
+		const cacheKey = JSON.stringify([includeUninstalled, request]);
 		const cached = this.getDefinitionCache.get(cacheKey);
 		if (cached) return cached;
 
-		const result = this.resolvesFromDisk(request)
+		let result = this.resolvesFromDisk(request)
 			? await this.getBuiltinNodeTypeDefinition(request)
 			: this.getSynthesizedNodeTypeDefinition(request);
+
+		// Only fall through to the registry once the installed catalog has had
+		// its say, so an installed node always wins over the published one.
+		if (result.error && includeUninstalled) {
+			result = await this.getUninstalledNodeTypeDefinition(request, result);
+		}
 
 		if (!result.error) {
 			this.getDefinitionCache.set(cacheKey, result);
 		}
 		return result;
+	}
+
+	/**
+	 * Which of the given node types are verified community nodes this instance
+	 * has not installed, with the package that ships each.
+	 *
+	 * Lets workflow creation warn about a node that will not run, which is
+	 * otherwise saved silently. Reports nothing when the second tier is not
+	 * built, so a caller that has not opted in never gets a warning it cannot
+	 * act on.
+	 */
+	async findUninstalledNodeTypes(
+		nodeTypeNames: string[],
+	): Promise<Array<{ nodeType: string; packageName: string }>> {
+		if (nodeTypeNames.length === 0) return [];
+
+		await this.getUninstalledParser();
+		if (this.uninstalledDescriptionsById.size === 0) return [];
+
+		const found: Array<{ nodeType: string; packageName: string }> = [];
+		for (const nodeType of new Set(nodeTypeNames)) {
+			// An installed node always wins, in case a reload signal lagged behind
+			// an install and left the type in both tiers.
+			if (this.descriptionsById.has(nodeType)) continue;
+			if (!this.uninstalledDescriptionsById.has(nodeType)) continue;
+			found.push({ nodeType, packageName: nodeType.split('.')[0] });
+		}
+		return found;
+	}
+
+	/**
+	 * Synthesize a def from the verified registry for a node this instance has
+	 * not installed, prefixed with a notice so a caller reading only the type
+	 * def still learns the node needs installing. Falls back to the original
+	 * installed-catalog error when the registry doesn't know the node either.
+	 */
+	private async getUninstalledNodeTypeDefinition(
+		request: NodeTypeDefinitionRequest,
+		installedResult: NodeTypeDefinitionResult,
+	): Promise<NodeTypeDefinitionResult> {
+		await this.getUninstalledParser();
+		const description = this.uninstalledDescriptionsById.get(request.nodeId);
+		if (!description) return installedResult;
+
+		try {
+			const version = versionLabel(description);
+			const packageName = request.nodeId.split('.')[0];
+			return {
+				content: [
+					`// NOT INSTALLED: this node ships in the community package '${packageName}',`,
+					'// which is not installed on this instance. Install it before the workflow can run.',
+					synthesizeNodeTypeDef(description),
+				].join('\n'),
+				...(version ? { version } : {}),
+			};
+		} catch (error) {
+			this.logger.debug('Could not synthesize uninstalled node type definition', {
+				nodeId: request.nodeId,
+				error,
+			});
+			return installedResult;
+		}
 	}
 
 	/** Get curated node suggestions by category, with result caching. */
@@ -300,6 +577,13 @@ export class NodeCatalogService {
 		this.indexDescriptions(nodeTypeDescriptions);
 
 		this.searchStates.clear();
+
+		// A package installed since the last build moves from the second tier to
+		// the first, so drop the tier and let the next opt-in rebuild it.
+		this.uninstalledParser = undefined;
+		this.uninstalledDescriptionsById = new Map();
+		this.uninstalledCandidates = [];
+		this.uninstalledPromise = undefined;
 
 		this.getCache.clear();
 		this.getDefinitionCache.clear();
