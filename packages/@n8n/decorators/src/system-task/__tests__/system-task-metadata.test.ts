@@ -69,6 +69,21 @@ describe('SystemTaskMetadata', () => {
 		expect(received).toEqual([firstTaskClass, secondTaskClass]);
 	});
 
+	it('should leave the subscription open when the listener throws during replay', () => {
+		metadata.register(firstTaskClass);
+
+		expect(() =>
+			metadata.subscribe(() => {
+				throw new Error('listener failed');
+			}),
+		).toThrowError('listener failed');
+
+		const listener = vi.fn();
+
+		expect(() => metadata.subscribe(listener)).not.toThrow();
+		expect(listener).toHaveBeenCalledWith(firstTaskClass);
+	});
+
 	it('should reject a second subscriber', () => {
 		metadata.subscribe(vi.fn());
 

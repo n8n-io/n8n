@@ -29,9 +29,13 @@ export class SystemTaskMetadata {
 			throw new UnexpectedError('A listener is already subscribed to system task registrations');
 		}
 
-		this.onRegister = listener;
-		for (const taskClass of [...this.taskClasses]) {
+		// Subscribe only after the replay: iterating the live array already picks up
+		// anything a listener registers re-entrantly, and holding off means a throwing
+		// listener does not lock the subscription shut.
+		for (const taskClass of this.taskClasses) {
 			listener(taskClass);
 		}
+
+		this.onRegister = listener;
 	}
 }
