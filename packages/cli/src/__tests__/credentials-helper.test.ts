@@ -380,5 +380,1553 @@ describe('CredentialsHelper', () => {
 			expect(parsedUpdatedData.oauthTokenData.expires_in).toBe(7200);
 			expect(parsedUpdatedData.oauthTokenData.token_type).toBe('Bearer');
 		});
+<<<<<<< HEAD
+=======
+
+		describe('dynamic credential resolution', () => {
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: 'cred-789',
+				name: 'Test OAuth2 Credential',
+			};
+
+			const existingCredentialData = {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				oauthTokenData: {
+					access_token: 'old-token',
+					refresh_token: 'old-refresh',
+				},
+			};
+
+			const newOauthTokenData = {
+				oauthTokenData: {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh',
+					expires_in: 3600,
+				},
+			};
+
+			let storeOAuthTokenDataSpy: MockInstance;
+
+			beforeEach(() => {
+				vi.clearAllMocks();
+				// Spy on the dynamicCredentialProxy's storeOAuthTokenDataIfNeeded method
+				storeOAuthTokenDataSpy = vi
+					.spyOn(dynamicCredentialProxy, 'storeOAuthTokenDataIfNeeded')
+					.mockResolvedValue(undefined);
+			});
+
+			afterEach(() => {
+				storeOAuthTokenDataSpy.mockRestore();
+			});
+
+			test('should use dynamic proxy when credentials are resolvable with credentials context', async () => {
+				// Setup: Resolvable credential with resolver
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: 'resolver-123',
+					usageScope: 'project',
+				} as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const additionalDataWithCredentials = {
+					executionContext: {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'manual' as const,
+						credentials: 'encrypted-credential-context', // credentials context present
+					},
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-123',
+					},
+					executionId: 'exec-123',
+				} as IWorkflowExecuteAdditionalData;
+
+				// Act
+				await credentialsHelper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'oAuth2Api',
+					newOauthTokenData,
+					additionalDataWithCredentials,
+				);
+
+				// Assert: Should use dynamic proxy, NOT direct database update, and forward the
+				// execution id so a context already bound to this execution (via
+				// `maybeBindExecutionId`) passes the resolver's replay check the same way
+				// `resolveIfNeeded` already does.
+				expect(storeOAuthTokenDataSpy).toHaveBeenCalledWith(
+					{
+						id: 'cred-789',
+						name: 'Test OAuth2 Credential',
+						type: 'oAuth2Api',
+						isResolvable: true,
+						resolverId: 'resolver-123',
+					},
+					newOauthTokenData.oauthTokenData,
+					additionalDataWithCredentials.executionContext,
+					existingCredentialData,
+					additionalDataWithCredentials.workflowSettings,
+					'exec-123',
+				);
+				expect(credentialsRepository.update).not.toHaveBeenCalled();
+			});
+
+			test('should fall back to the system resolver from the proxy when no override is set', async () => {
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: null,
+					usageScope: 'project',
+				} as unknown as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const resolverProvider = {
+					resolveIfNeeded: vi.fn(),
+					getSystemResolverId: vi.fn().mockReturnValue('system-resolver'),
+				};
+				dynamicCredentialProxy.setResolverProvider(resolverProvider);
+
+				const additionalDataWithCredentials = {
+					executionContext: {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'manual' as const,
+						credentials: 'encrypted-credential-context',
+					},
+					workflowSettings: {},
+				} as IWorkflowExecuteAdditionalData;
+
+				try {
+					await credentialsHelper.updateCredentialsOauthTokenData(
+						nodeCredentials,
+						'oAuth2Api',
+						newOauthTokenData,
+						additionalDataWithCredentials,
+					);
+
+					expect(storeOAuthTokenDataSpy).toHaveBeenCalledWith(
+						expect.objectContaining({
+							id: 'cred-789',
+							isResolvable: true,
+							resolverId: 'system-resolver',
+						}),
+						newOauthTokenData.oauthTokenData,
+						additionalDataWithCredentials.executionContext,
+						existingCredentialData,
+						additionalDataWithCredentials.workflowSettings,
+						undefined,
+					);
+					expect(credentialsRepository.update).not.toHaveBeenCalled();
+				} finally {
+					dynamicCredentialProxy.setResolverProvider(undefined as any);
+				}
+			});
+
+			test('should skip dynamic proxy when credentials context is missing', async () => {
+				// Setup: Resolvable credential with resolver, but NO credentials context
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: 'resolver-123',
+					usageScope: 'project',
+				} as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const additionalDataWithoutCredentials = {
+					executionContext: {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'manual' as const,
+						// credentials is undefined - static credential execution
+					},
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-123',
+					},
+				} as any;
+
+				// Act
+				await credentialsHelper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'oAuth2Api',
+					newOauthTokenData,
+					additionalDataWithoutCredentials,
+				);
+
+				// Assert: Should skip dynamic proxy and use direct database update
+				expect(storeOAuthTokenDataSpy).not.toHaveBeenCalled();
+				expect(credentialsRepository.update).toHaveBeenCalledWith(
+					{ id: 'cred-789', type: 'oAuth2Api' },
+					expect.objectContaining({
+						id: 'cred-789',
+						data: expect.any(String),
+						updatedAt: expect.any(Date),
+					}),
+				);
+
+				// Verify OAuth token was updated in database
+				const updateCall = credentialsRepository.update.mock.calls[0];
+				const updatedData = cipher.decrypt(updateCall[1].data as string);
+				const parsedData = JSON.parse(updatedData);
+				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
+			});
+
+			test('should skip dynamic proxy when executionContext is entirely missing', async () => {
+				// Setup: Resolvable credential with resolver, but NO executionContext
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: 'resolver-123',
+					usageScope: 'project',
+				} as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const additionalDataWithoutContext = {
+					executionContext: undefined, // No execution context at all
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-123',
+					},
+				} as any;
+
+				// Act
+				await credentialsHelper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'oAuth2Api',
+					newOauthTokenData,
+					additionalDataWithoutContext,
+				);
+
+				// Assert: Should skip dynamic proxy and use direct database update
+				expect(storeOAuthTokenDataSpy).not.toHaveBeenCalled();
+				expect(credentialsRepository.update).toHaveBeenCalledWith(
+					{ id: 'cred-789', type: 'oAuth2Api' },
+					expect.objectContaining({
+						id: 'cred-789',
+						data: expect.any(String),
+						updatedAt: expect.any(Date),
+					}),
+				);
+
+				// Verify OAuth token was updated in database
+				const updateCall = credentialsRepository.update.mock.calls[0];
+				const updatedData = cipher.decrypt(updateCall[1].data as string);
+				const parsedData = JSON.parse(updatedData);
+				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
+			});
+		});
+	});
+
+	describe('getDecrypted - AI Gateway managed credentials', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should pass workflowId and projectId for owner resolution when userId is absent', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+				policyEnforcementService,
+			);
+
+			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
+			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: undefined,
+				workflowId: 'workflow-123',
+				projectId: 'project-456',
+				executionId: undefined,
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+
+			const result = await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'googlePalmApi',
+				'manual',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'googlePalmApi',
+				userId: undefined,
+				workflowId: 'workflow-123',
+				projectId: 'project-456',
+				executionId: undefined,
+			});
+			expect(result).toEqual(syntheticCred);
+		});
+
+		it('should call getSyntheticCredential and return its result when __aiGatewayManaged is true', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+				policyEnforcementService,
+			);
+
+			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
+			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+				executionId: undefined,
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+
+			const result = await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'googlePalmApi',
+				'manual',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'googlePalmApi',
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+				executionId: undefined,
+			});
+			expect(result).toEqual(syntheticCred);
+			// Should NOT attempt to look up a DB credential
+			expect(credentialsRepository.findOneByOrFail).not.toHaveBeenCalled();
+		});
+
+		it('should forward executionId from additionalData to getSyntheticCredential', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+				policyEnforcementService,
+			);
+
+			const syntheticCred = {
+				apiKey: 'mock-jwt',
+				host: 'http://gateway/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google',
+			};
+			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: undefined,
+				executionId: '29021',
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+
+			const result = await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'googlePalmApi',
+				'manual',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'googlePalmApi',
+				userId: 'user-123',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: undefined,
+				executionId: '29021',
+			});
+			expect(result).toEqual(syntheticCred);
+		});
+	});
+
+	describe('getDecrypted - externalSecrets license check', () => {
+		const mockAdditionalDataForLicense = mock<IWorkflowExecuteAdditionalData>();
+
+		const nodeCredentials: INodeCredentialsDetails = {
+			id: 'cred-license-test',
+			name: 'License Test Credential',
+		};
+
+		const mockCredentialEntityForLicense = {
+			id: 'cred-license-test',
+			name: 'License Test Credential',
+			type: 'testApi',
+			data: cipher.encrypt({ apiKey: 'test' }),
+			isResolvable: false,
+			usageScope: 'project',
+		} as CredentialsEntity;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntityForLicense);
+			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([]);
+			mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential = undefined;
+			externalSecretsConfig.externalSecretsForProjects = false;
+		});
+
+		test('should set externalSecretProviderKeysAccessibleByCredential on additionalData when externalSecrets is licensed', async () => {
+			licenseState.isExternalSecretsLicensed.mockReturnValue(true);
+			externalSecretsConfig.externalSecretsForProjects = true;
+			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([
+				'secret_key_1',
+				'secret_key_2',
+			]);
+
+			await credentialsHelper.getDecrypted(
+				mockAdditionalDataForLicense,
+				nodeCredentials,
+				'testApi',
+				'manual',
+			);
+
+			expect(
+				secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId,
+			).toHaveBeenCalledWith('cred-license-test');
+			expect(mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential).toEqual(
+				new Set(['secret_key_1', 'secret_key_2']),
+			);
+		});
+
+		test('should not query secretsProviderRepository or set externalSecretProviderKeysAccessibleByCredential when externalSecrets is not licensed', async () => {
+			licenseState.isExternalSecretsLicensed.mockReturnValue(false);
+			externalSecretsConfig.externalSecretsForProjects = false;
+
+			await credentialsHelper.getDecrypted(
+				mockAdditionalDataForLicense,
+				nodeCredentials,
+				'testApi',
+				'manual',
+			);
+
+			expect(
+				secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId,
+			).not.toHaveBeenCalled();
+			expect(
+				mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential,
+			).toBeUndefined();
+		});
+	});
+
+	describe('getDecrypted - credential resolution integration', () => {
+		const mockCredentialResolutionProvider = {
+			resolveIfNeeded: vi.fn(),
+			getSystemResolverId: vi.fn(),
+		};
+
+		const mockAdditionalData = {
+			executionContext: {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual' as const,
+				credentials: 'encrypted-credential-context',
+			},
+			workflowSettings: {
+				executionTimeout: 300,
+				credentialResolverId: 'workflow-resolver-123',
+			},
+		} as any;
+
+		const nodeCredentials: INodeCredentialsDetails = {
+			id: 'cred-456',
+			name: 'Test Credentials',
+		};
+
+		const credentialType = 'testApi';
+
+		const mockCredentialEntity = {
+			id: 'cred-456',
+			name: 'Test Credentials',
+			type: credentialType,
+			data: cipher.encrypt({ apiKey: 'static-key' }),
+			isResolvable: false,
+			usageScope: 'project',
+		} as CredentialsEntity;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+			// Clear the provider between tests to ensure clean state
+			dynamicCredentialProxy.setResolverProvider(undefined as any);
+		});
+
+		test('should call resolveIfNeeded when credentialResolutionProvider is set', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+
+			const resolvedData = { apiKey: 'dynamic-key' };
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: resolvedData,
+				isDynamic: true,
+			});
+			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+			const result = await credentialsHelper.getDecrypted(
+				mockAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'trigger',
+				undefined, // executeData
+				true, // raw = true to get the resolved data directly
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledWith(
+				{
+					id: mockCredentialEntity.id,
+					name: mockCredentialEntity.name,
+					isResolvable: false,
+					type: 'testApi',
+					resolverId: undefined,
+				},
+				{ apiKey: 'static-key' },
+				mockAdditionalData.executionContext,
+				mockAdditionalData.workflowSettings,
+				undefined, // executeData
+			);
+			expect(result).toEqual(resolvedData);
+		});
+
+		test('should pass executionContext from additionalData to resolver', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
+
+			await credentialsHelper.getDecrypted(
+				mockAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'trigger',
+				undefined,
+				true,
+			);
+
+			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
+			expect(call[2]).toBe(mockAdditionalData.executionContext);
+		});
+
+		test('should pass workflowSettings from additionalData to resolver', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
+
+			await credentialsHelper.getDecrypted(
+				mockAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'trigger',
+				undefined,
+				true,
+			);
+
+			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
+			expect(call[3]).toBe(mockAdditionalData.workflowSettings);
+		});
+
+		test('should skip resolution when credentialResolutionProvider is not set', async () => {
+			// Create a new proxy instance without provider
+			const proxyWithoutProvider = new DynamicCredentialsProxy(mockLogger);
+			const helperWithoutProvider = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				proxyWithoutProvider,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+				policyEnforcementService,
+			);
+
+			const result = await helperWithoutProvider.getDecrypted(
+				mockAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			// Should return static decrypted data
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should use resolved data instead of static data when resolution succeeds', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+
+			const dynamicData = { apiKey: 'dynamic-key', extraField: 'extra-value' };
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: dynamicData,
+				isDynamic: true,
+			});
+
+			const result = await credentialsHelper.getDecrypted(
+				mockAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'trigger',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual(dynamicData);
+			expect(result).not.toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should skip resolution when executionContext is missing (manual mode)', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
+
+			const additionalDataWithoutContext = {
+				...mockAdditionalData,
+				executionContext: undefined,
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				additionalDataWithoutContext,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should resolve in manual mode when credentials context is present (test webhook with identity extractor)', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			const dynamicData = { apiKey: 'dynamic-key' };
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: dynamicData,
+				isDynamic: true,
+			});
+
+			// mockAdditionalData has credentials context set — simulates a test webhook run
+			const result = await credentialsHelper.getDecrypted(
+				mockAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalled();
+			expect(result).toEqual(dynamicData);
+		});
+
+		test('should skip resolution when credentials context is missing (manual mode)', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
+
+			const additionalDataWithoutCredentials = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'manual' as const,
+					// credentials is undefined
+				},
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				additionalDataWithoutCredentials,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			// Resolution should not happen when credentials context is missing in manual mode
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			// Should return static decrypted data
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should skip resolution in a subworkflow when rootExecutionMode is manual', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'dynamic-key' },
+				isDynamic: true,
+			});
+
+			// Simulates a subworkflow: local mode is 'integrated' but root was 'manual'
+			const subworkflowAdditionalData = {
+				...mockAdditionalData,
+				executionContext: undefined,
+				rootExecutionMode: 'manual' as const,
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				subworkflowAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'integrated',
+				undefined,
+				true,
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should throw when dynamic credential cannot be resolved in non-manual mode (no execution context)', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+
+			const { CredentialResolutionError } = await import(
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
+			);
+
+			const resolvableCredentialEntity = {
+				...mockCredentialEntity,
+				isResolvable: true,
+				resolverId: 'resolver-123',
+			} as CredentialsEntity;
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new CredentialResolutionError(
+					"This node uses an end-user credential, but no user could be identified for this run, so the credential for it couldn't be resolved",
+				),
+			);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{ ...mockAdditionalData, executionContext: undefined },
+					nodeCredentials,
+					credentialType,
+					'webhook',
+					undefined,
+					true,
+				),
+			).rejects.toThrow(CredentialResolutionError);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledTimes(1);
+		});
+
+		test('should throw when dynamic credential cannot be resolved in non-manual mode (no credentials in context)', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+
+			const { CredentialResolutionError } = await import(
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
+			);
+
+			const resolvableCredentialEntity = {
+				...mockCredentialEntity,
+				isResolvable: true,
+				resolverId: 'resolver-123',
+			} as CredentialsEntity;
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new CredentialResolutionError(
+					"This node uses an end-user credential, but no user could be identified for this run, so the credential for it couldn't be resolved",
+				),
+			);
+
+			const additionalDataWithEmptyContext = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1 as const,
+					establishedAt: Date.now(),
+					source: 'webhook' as const,
+					// credentials is undefined
+				},
+			};
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					additionalDataWithEmptyContext,
+					nodeCredentials,
+					credentialType,
+					'webhook',
+					undefined,
+					true,
+				),
+			).rejects.toThrow(CredentialResolutionError);
+
+			// Verify static credentials were NOT used as a fallback
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledTimes(1);
+		});
+
+		test('should handle missing workflowSettings gracefully', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
+
+			const additionalDataWithoutSettings = {
+				...mockAdditionalData,
+				workflowSettings: undefined,
+			};
+
+			await credentialsHelper.getDecrypted(
+				additionalDataWithoutSettings,
+				nodeCredentials,
+				credentialType,
+				'trigger',
+				undefined,
+				true,
+			);
+
+			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
+			expect(call[2]).toBe(additionalDataWithoutSettings.executionContext);
+			expect(call[3]).toBeUndefined(); // workflowSettings
+		});
+	});
+
+	describe('isCredentialUsableByNode', () => {
+		const buildHelper = (credentialTypes: CredentialTypes) =>
+			new CredentialsHelper(
+				credentialTypes,
+				mock<CredentialsOverwrites>(),
+				mock<CredentialsRepository>(),
+				mock<DynamicCredentialsProxy>(),
+				mock<SecretsProviderConnectionRepository>(),
+				mock<LicenseState>(),
+				mock<ExternalSecretsConfig>(),
+				mock<AiGatewayService>(),
+				policyEnforcementService,
+			);
+
+		// The loader sets the class's `supportedNodes` to short names (e.g. "restrictedConsumer");
+		// the FQ list (matching `nodeType`) comes from `credentialTypes.getSupportedNodes`.
+		// Mocks split the two so the FQ-vs-short bug stays caught.
+		const mockType = (overrides: Partial<ICredentialType>): ICredentialType =>
+			({ name: 'restrictedApi', ...overrides }) as ICredentialType;
+
+		const buildCredentialTypes = (typeDef: ICredentialType, supportedNodes: string[] = []) => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.mockReturnValue(typeDef);
+			credentialTypes.getSupportedNodes.mockReturnValue(supportedNodes);
+			return credentialTypes;
+		};
+
+		it('returns true when the credential type does not opt into restriction', () => {
+			// no restrictToSupportedNodes — FQ list shouldn't even be consulted
+			const credentialTypes = buildCredentialTypes(
+				mockType({ supportedNodes: ['restrictedConsumer'] }),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.httpRequest',
+				),
+			).toBe(true);
+		});
+
+		it('returns true when restricted and the node is in supportedNodes', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({
+					restrictToSupportedNodes: true,
+					supportedNodes: ['restrictedConsumer'],
+				}),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.restrictedConsumer',
+				),
+			).toBe(true);
+		});
+
+		it('returns false when restricted and the node is NOT in supportedNodes', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({
+					restrictToSupportedNodes: true,
+					supportedNodes: ['restrictedConsumer'],
+				}),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.httpRequest',
+				),
+			).toBe(false);
+		});
+
+		it('returns false when restricted and the FQ supportedNodes list is empty (fail-safe)', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({ restrictToSupportedNodes: true }), // no supportedNodes
+				[],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.restrictedConsumer',
+				),
+			).toBe(false);
+		});
+
+		it('returns true when the credential type is unknown (caller surfaces the real error)', () => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.mockImplementation(() => {
+				throw new Error('Unknown credential type');
+			});
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode('missing', 'n8n-nodes-base.anything'),
+			).toBe(true);
+		});
+	});
+
+	describe('credential isolation per workflow (GHC-7550)', () => {
+		const credentialType = 'communityApi';
+
+		const credentialDataA = { apiKey: 'key_account_A', accountId: 'pn_A' };
+		const credentialDataB = { apiKey: 'key_account_B', accountId: 'pn_B' };
+
+		const credEntityA = {
+			id: 'cred-aaa',
+			name: 'Account A Credential',
+			type: credentialType,
+			data: cipher.encrypt(credentialDataA),
+			isResolvable: false,
+			resolverId: null,
+			usageScope: 'project',
+		} as CredentialsEntity;
+
+		const credEntityB = {
+			id: 'cred-bbb',
+			name: 'Account B Credential',
+			type: credentialType,
+			data: cipher.encrypt(credentialDataB),
+			isResolvable: false,
+			resolverId: null,
+			usageScope: 'project',
+		} as CredentialsEntity;
+
+		const additionalData = {
+			executionContext: undefined,
+			workflowSettings: undefined,
+			rootExecutionMode: 'manual',
+		} as any;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			dynamicCredentialProxy.setResolverProvider(undefined as any);
+
+			credentialsRepository.findOneByOrFail.mockImplementation(async (query: any) => {
+				if (query.id === 'cred-aaa' && query.type === credentialType) return credEntityA;
+				if (query.id === 'cred-bbb' && query.type === credentialType) return credEntityB;
+				throw new EntityNotFoundError(CredentialsEntity, query);
+			});
+		});
+
+		test('should return correct data for credential A when queried with ID A', async () => {
+			const result = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual(credentialDataA);
+			expect(result.apiKey).toBe('key_account_A');
+			expect(result.accountId).toBe('pn_A');
+		});
+
+		test('should return correct data for credential B when queried with ID B', async () => {
+			const result = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-bbb', name: 'Account B Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual(credentialDataB);
+			expect(result.apiKey).toBe('key_account_B');
+			expect(result.accountId).toBe('pn_B');
+		});
+
+		test('should isolate credentials when resolved sequentially (A then B then A)', async () => {
+			const resultA1 = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			const resultB = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-bbb', name: 'Account B Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			const resultA2 = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(resultA1.apiKey).toBe('key_account_A');
+			expect(resultB.apiKey).toBe('key_account_B');
+			expect(resultA2.apiKey).toBe('key_account_A');
+			expect(resultA1).toEqual(resultA2);
+			expect(resultA1).not.toEqual(resultB);
+		});
+
+		test('should isolate credentials in production mode (non-manual)', async () => {
+			const prodAdditionalData = {
+				executionContext: undefined,
+				workflowSettings: undefined,
+				rootExecutionMode: undefined,
+			} as any;
+
+			const resultA = await credentialsHelper.getDecrypted(
+				prodAdditionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'trigger',
+				undefined,
+				true,
+			);
+
+			const resultB = await credentialsHelper.getDecrypted(
+				prodAdditionalData,
+				{ id: 'cred-bbb', name: 'Account B Credential' },
+				credentialType,
+				'trigger',
+				undefined,
+				true,
+			);
+
+			expect(resultA.apiKey).toBe('key_account_A');
+			expect(resultB.apiKey).toBe('key_account_B');
+		});
+
+		test('should isolate credentials when resolved concurrently', async () => {
+			const [resultA, resultB] = await Promise.all([
+				credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: 'cred-aaa', name: 'Account A Credential' },
+					credentialType,
+					'manual',
+					undefined,
+					true,
+				),
+				credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: 'cred-bbb', name: 'Account B Credential' },
+					credentialType,
+					'manual',
+					undefined,
+					true,
+				),
+			]);
+
+			expect(resultA.apiKey).toBe('key_account_A');
+			expect(resultB.apiKey).toBe('key_account_B');
+		});
+
+		test('should use credential ID for lookup, not credential name', async () => {
+			await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(credentialsRepository.findOneByOrFail).toHaveBeenCalledWith({
+				id: 'cred-aaa',
+				type: credentialType,
+			});
+		});
+
+		test('credential B save should not affect subsequent resolution of credential A', async () => {
+			const resultA_before = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			// Simulate saving credential B with updated data (re-encrypt with new values)
+			const updatedDataB = { apiKey: 'key_account_B_UPDATED', accountId: 'pn_B_UPDATED' };
+			credEntityB.data = cipher.encrypt(updatedDataB);
+
+			const resultA_after = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(resultA_before.apiKey).toBe('key_account_A');
+			expect(resultA_after.apiKey).toBe('key_account_A');
+			expect(resultA_before).toEqual(resultA_after);
+
+			// Verify B returns updated data
+			const resultB = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-bbb', name: 'Account B Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+			expect(resultB.apiKey).toBe('key_account_B_UPDATED');
+		});
+	});
+
+	describe('preAuthentication token caching', () => {
+		// Proves the framework performs the JWT login only when the cached token is
+		// missing or expired, so chained Salesforce actions reuse one session instead
+		// of authenticating on every request. The login is the credential's
+		// `preAuthentication` hook, which we observe through a counting token request.
+		const { privateKey } = generateKeyPairSync('rsa', {
+			modulusLength: 2048,
+			publicKeyEncoding: { type: 'spki', format: 'pem' },
+			privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+		});
+
+		const salesforceJwt = new SalesforceJwtApi();
+
+		const node: INode = {
+			id: 'uuid-sf',
+			name: 'Salesforce',
+			type: 'n8n-nodes-base.salesforce',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { salesforceJwtApi: { id: 'sf-cred', name: 'Salesforce JWT' } },
+		};
+
+		const helpers = mock<IHttpRequestHelper>();
+		let updateSpy: MockInstance;
+		let getSpy: MockInstance;
+		let credentials: ICredentialDataDecryptedObject;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockNodesAndCredentials.getCredential
+				.calledWith('salesforceJwtApi')
+				.mockReturnValue({ type: salesforceJwt, sourcePath: '' });
+
+			let logins = 0;
+			// eslint-disable-next-line @typescript-eslint/require-await
+			mockTokenRequest.mockImplementation(async () => ({
+				access_token: `TOKEN_${++logins}`,
+				instance_url: 'https://acme.my.salesforce.com',
+			}));
+
+			// Stub persistence so the test does not touch the DB. The returned token is
+			// what the request helper merges back into the in-memory credentials for the
+			// next request (see httpRequestWithAuthentication).
+			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			// preAuthentication reads the raw stored credential before caching the token.
+			getSpy = vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(
+				mock<Credentials>({
+					getData: vi.fn().mockResolvedValue({
+						accessToken: '',
+						instanceUrl: '',
+						clientId: 'connected-app-client-id',
+						username: 'user@example.com',
+						privateKey,
+						environment: 'production',
+					}),
+				}),
+			);
+
+			credentials = {
+				accessToken: '',
+				instanceUrl: '',
+				clientId: 'connected-app-client-id',
+				username: 'user@example.com',
+				privateKey,
+				environment: 'production',
+			};
+		});
+
+		afterEach(() => {
+			updateSpy.mockRestore();
+			getSpy.mockRestore();
+		});
+
+		test('logs in once and reuses the cached token across requests', async () => {
+			// Request 1: no cached token → exactly one login.
+			const first = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				false,
+			);
+
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+			expect(mockTokenRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					url: 'https://login.salesforce.com/services/oauth2/token',
+				}),
+			);
+			expect(first).toMatchObject({
+				accessToken: 'TOKEN_1',
+				instanceUrl: 'https://acme.my.salesforce.com',
+			});
+			// The token would be persisted so the next request reads it back.
+			expect(updateSpy).toHaveBeenCalledTimes(1);
+
+			// preAuthentication merges the token into the in-memory credentials, exactly
+			// as the request helper does before the next request.
+			Object.assign(credentials, first);
+
+			// Requests 2 and 3 already have a token → no further logins.
+			const second = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				false,
+			);
+			const third = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				false,
+			);
+
+			expect(second).toBeUndefined();
+			expect(third).toBeUndefined();
+			// Still only the single login from request 1 across all three requests.
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+		});
+
+		test('re-authenticates when the cached token is reported expired (e.g. after a 401)', async () => {
+			await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				false,
+			);
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+			expect(credentials.accessToken).toBe('TOKEN_1');
+
+			// credentialsExpired = true mirrors the request helper's retry after a 401.
+			const refreshed = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				node,
+				true,
+			);
+
+			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
+			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
+		});
+	});
+
+	describe('preAuthentication expression preservation', () => {
+		// A credential field holding an expression must survive a manual/test run.
+		// preAuthentication resolves the expression to a static value for the run and
+		// caches the fetched token; it must persist only the token, leaving the raw
+		// expression in the stored credential so later runs stay dynamic.
+		const expressionText = "={{ $('Webhook').item.json.body.installation.id }}";
+
+		// Mimics a credential whose preAuthentication spreads the resolved credentials
+		// back into its output (the GitHub App shape) — the strictest case, since the
+		// resolved value is present in `output` itself.
+		class SpreadingExpirableApi implements ICredentialType {
+			name = 'spreadingExpirableApi';
+
+			displayName = 'Spreading Expirable API';
+
+			properties: INodeProperties[] = [
+				{ displayName: 'Installation ID', name: 'installationId', type: 'string', default: '' },
+				{
+					displayName: 'Access Token',
+					name: 'accessToken',
+					type: 'hidden',
+					typeOptions: { expirable: true },
+					default: '',
+				},
+			];
+
+			// eslint-disable-next-line @typescript-eslint/require-await
+			async preAuthentication(
+				this: IHttpRequestHelper,
+				credentials: ICredentialDataDecryptedObject,
+			): Promise<ICredentialDataDecryptedObject> {
+				return { ...credentials, accessToken: 'NEW_TOKEN' };
+			}
+
+			authenticate: IAuthenticateGeneric = { type: 'generic', properties: {} };
+		}
+
+		const spreadingCred = new SpreadingExpirableApi();
+
+		const node: INode = {
+			id: 'uuid-spread',
+			name: 'Node',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { spreadingExpirableApi: { id: 'cred-1', name: 'Cred' } },
+		};
+
+		const helpers = mock<IHttpRequestHelper>();
+		let updateSpy: MockInstance;
+		let getSpy: MockInstance;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockNodesAndCredentials.getCredential
+				.calledWith('spreadingExpirableApi')
+				.mockReturnValue({ type: spreadingCred, sourcePath: '' });
+
+			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			// The raw stored credential keeps the expression; getData() returns it verbatim.
+			getSpy = vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(
+				mock<Credentials>({
+					getData: vi.fn().mockResolvedValue({ installationId: expressionText, accessToken: '' }),
+				}),
+			);
+		});
+
+		afterEach(() => {
+			updateSpy.mockRestore();
+			getSpy.mockRestore();
+		});
+
+		test('persists only the fetched token and keeps the stored expression intact', async () => {
+			// The credentials the helper receives are already expression-resolved for
+			// this run: installationId is the static value the expression evaluated to.
+			const resolved: ICredentialDataDecryptedObject = {
+				installationId: '12345',
+				accessToken: '',
+			};
+
+			const result = await credentialsHelper.preAuthentication(
+				helpers,
+				resolved,
+				'spreadingExpirableApi',
+				node,
+				false,
+			);
+
+			expect(updateSpy).toHaveBeenCalledTimes(1);
+			expect(updateSpy).toHaveBeenCalledWith(
+				node.credentials!.spreadingExpirableApi,
+				'spreadingExpirableApi',
+				{ installationId: expressionText, accessToken: 'NEW_TOKEN' },
+			);
+			expect(result).toMatchObject({ accessToken: 'NEW_TOKEN' });
+		});
+	});
+
+	describe('getDecrypted - credentialDecrypt policy enforcement', () => {
+		const nodeCredentials: INodeCredentialsDetails = {
+			id: 'cred-policy',
+			name: 'Policy Test Credential',
+		};
+
+		const credentialEntity = {
+			id: 'cred-policy',
+			name: 'Policy Test Credential',
+			type: 'testApi',
+			data: cipher.encrypt({ apiKey: 'test' }),
+			isResolvable: false,
+			usageScope: 'project',
+		} as CredentialsEntity;
+
+		let helper: CredentialsHelper;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			credentialsRepository.findOneByOrFail.mockResolvedValue(credentialEntity);
+			policyEnforcementService.enforceCredentialDecrypt.mockResolvedValue(mock());
+			helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+				policyEnforcementService,
+			);
+		});
+
+		test('calls enforceCredentialDecrypt with the credential, consumer and project context', async () => {
+			const executeData = {
+				node: {
+					name: 'Slack1',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				data: {},
+				source: null,
+			} as IExecuteData;
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1' });
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'manual',
+				executeData,
+				true,
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith({
+				credentialType: 'testApi',
+				credentialId: 'cred-policy',
+				consumer: { nodeType: 'n8n-nodes-base.slack' },
+				projectId: 'proj-1',
+			});
+		});
+
+		test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: undefined });
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ consumer: null, projectId: null }),
+			);
+		});
+
+		test('resolves the credential before enforcing the policy check', async () => {
+			const callOrder: string[] = [];
+			credentialsRepository.findOneByOrFail.mockImplementation(async () => {
+				callOrder.push('findOneByOrFail');
+				return credentialEntity;
+			});
+			policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async () => {
+				callOrder.push('enforceCredentialDecrypt');
+				return await mock();
+			});
+
+			await helper.getDecrypted(
+				mock<IWorkflowExecuteAdditionalData>(),
+				nodeCredentials,
+				'testApi',
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(callOrder).toEqual(['findOneByOrFail', 'enforceCredentialDecrypt']);
+		});
+
+		test('blocks decryption when the policy check throws', async () => {
+			const violation = new Error('blocked by policy');
+			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValueOnce(violation);
+
+			await expect(
+				helper.getDecrypted(
+					mock<IWorkflowExecuteAdditionalData>(),
+					nodeCredentials,
+					'testApi',
+					'manual',
+				),
+			).rejects.toThrow(violation);
+		});
+
+		test('decryption behavior is unchanged when the policy check clears', async () => {
+			const result = await helper.getDecrypted(
+				mock<IWorkflowExecuteAdditionalData>(),
+				nodeCredentials,
+				'testApi',
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ apiKey: 'test' });
+		});
+>>>>>>> 42a782d6 (fix(core): Thread execution id through dynamic-credential storage (#37233))
 	});
 });

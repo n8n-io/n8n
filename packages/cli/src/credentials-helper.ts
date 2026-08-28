@@ -500,6 +500,40 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
+<<<<<<< HEAD
+=======
+		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		const resolverId =
+			credentialsEntity.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(additionalData.workflowSettings);
+
+		if (
+			credentialsEntity.isResolvable &&
+			resolverId &&
+			additionalData.executionContext?.credentials
+		) {
+			const credentials = await this.getCredentials(nodeCredentials, type);
+			const staticData = await credentials.getData();
+
+			await this.dynamicCredentialsProxy.storeOAuthTokenDataIfNeeded(
+				{
+					id: credentialsEntity.id,
+					name: credentialsEntity.name,
+					type: credentialsEntity.type,
+					isResolvable: credentialsEntity.isResolvable,
+					resolverId,
+				},
+				data.oauthTokenData as IDataObject,
+				additionalData.executionContext,
+				staticData,
+				additionalData.workflowSettings,
+				additionalData.executionId,
+			);
+			return;
+		}
+
+>>>>>>> 42a782d6 (fix(core): Thread execution id through dynamic-credential storage (#37233))
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		credentials.updateData({ oauthTokenData: data.oauthTokenData });
