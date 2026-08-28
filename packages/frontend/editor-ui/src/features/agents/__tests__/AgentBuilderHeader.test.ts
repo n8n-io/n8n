@@ -72,13 +72,13 @@ vi.mock('@n8n/design-system', () => ({
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items'],
+		props: ['items', 'placement', 'extraPopperClass'],
 		emits: ['select'],
 	},
 	'n8n-dropdown-menu': {
 		name: 'N8nDropdownMenu',
 		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
-		props: ['items'],
+		props: ['items', 'placement', 'extraPopperClass'],
 		emits: ['select'],
 	},
 	N8nActionDropdown: {
@@ -197,13 +197,13 @@ describe('AgentBuilderHeader', () => {
 
 	it('uses the horizontal dots action menu icon', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
-		const action = wrapper.findComponent({ name: 'ActionDropdown' });
-		expect(action.props('activatorIcon')).toBe('ellipsis');
+		const action = wrapper.get('[data-testid="agent-header-actions"]');
+		expect(action.get('button').attributes('data-icon')).toBe('ellipsis');
 	});
 
 	it('widens the header action menu so labels are readable from the icon trigger', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete agent' }] });
-		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		const action = wrapper.getComponent('[data-testid="agent-header-actions"]');
 		expect(action.props('extraPopperClass')).toBeTruthy();
 	});
 
@@ -287,9 +287,9 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('reverted')).toBeTruthy();
 	});
 
-	it('forwards header-action from the action dropdown', async () => {
+	it('forwards header-action from the action menu', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
-		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		const action = wrapper.getComponent('[data-testid="agent-header-actions"]');
 		action.vm.$emit('select', 'delete');
 		expect(wrapper.emitted('header-action')).toEqual([['delete']]);
 	});

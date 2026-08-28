@@ -6,7 +6,7 @@
  * Navigation intents are emitted as events, except for the project breadcrumb
  * which links back to the owning project/personal page.
  */
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, useCssModule } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
@@ -16,7 +16,6 @@ import {
 	N8nDropdownMenuItem,
 	N8nIcon,
 	N8nToggle,
-	N8nTooltip,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -60,6 +59,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const router = useRouter();
+const $style = useCssModule();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 onMounted(() => {
@@ -139,6 +139,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	props.headerActions.map((action) => ({
 		...action,
 		icon: { type: 'icon', value: action.icon ?? 'file' },
+		class: action.id === 'delete' ? $style.destructiveItem : undefined,
 	})),
 );
 
@@ -341,5 +342,10 @@ function onMenuSelect(id: string) {
 
 .headerActionsMenu {
 	--n8n--dropdown-menu-width: var(--spacing--5xl);
+}
+
+.destructiveItem,
+.destructiveItem * {
+	color: var(--text-color--danger) !important;
 }
 </style>

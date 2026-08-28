@@ -280,7 +280,7 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 				label: locale.baseText('menuActions.delete'),
 				icon: { type: 'icon', value: 'trash-2' },
 				disabled: props.isNewWorkflow,
-				class: $style.deleteItem,
+				class: $style.destructiveItem,
 			});
 		} else {
 			lifecycle.push({
@@ -288,7 +288,7 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 				label: locale.baseText('menuActions.archive'),
 				icon: { type: 'icon', value: 'archive' },
 				disabled: props.isNewWorkflow,
-				class: $style.deleteItem,
+				class: $style.destructiveItem,
 			});
 		}
 	}
@@ -544,8 +544,9 @@ defineExpose({
 	</div>
 </template>
 <style lang="scss" module>
-.deleteItem {
-	color: var(--color--danger);
+.destructiveItem,
+.destructiveItem * {
+	color: var(--text-color--danger) !important;
 }
 .group {
 	display: flex;
