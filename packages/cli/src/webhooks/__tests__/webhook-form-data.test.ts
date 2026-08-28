@@ -79,6 +79,15 @@ describe('webhook-form-data', () => {
 	describe('createMultiFormDataParser', () => {
 		const oneKbData = Buffer.from('1'.repeat(1024));
 		const testServer = new TestServer();
+		const cleanupFunctions: Array<() => Promise<void>> = [];
+		const parseWithCleanup = async (
+			parseFn: ReturnType<typeof createMultiFormDataParser>,
+			req: IncomingMessage,
+		) => {
+			const { body, cleanup } = await parseFn(req);
+			cleanupFunctions.push(cleanup);
+			return body;
+		};
 
 		beforeAll(() => {
 			nock.enableNetConnect('127.0.0.1');
@@ -86,7 +95,8 @@ describe('webhook-form-data', () => {
 			testServer.start();
 		});
 
-		afterEach(() => {
+		afterEach(async () => {
+			await Promise.all(cleanupFunctions.splice(0).map(async (cleanup) => await cleanup()));
 			testServer.reset();
 		});
 
@@ -99,7 +109,7 @@ describe('webhook-form-data', () => {
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
+					const parsedData = await parseWithCleanup(parseFn, req);
 
 					expect(parsedData).toStrictEqual({
 						data: {
@@ -119,7 +129,7 @@ describe('webhook-form-data', () => {
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
+					const parsedData = await parseWithCleanup(parseFn, req);
 
 					expect(parsedData).toStrictEqual({
 						data: {
@@ -145,7 +155,7 @@ describe('webhook-form-data', () => {
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
+					const parsedData = await parseWithCleanup(parseFn, req);
 
 					expect(parsedData).toStrictEqual({
 						data: {
@@ -226,7 +236,7 @@ describe('webhook-form-data', () => {
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
+					const parsedData = await parseWithCleanup(parseFn, req);
 
 					expect(parsedData).toStrictEqual({
 						data: {
@@ -262,7 +272,7 @@ describe('webhook-form-data', () => {
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
+					const parsedData = await parseWithCleanup(parseFn, req);
 
 					// One entry remains, so `normalizeFormData` unwraps the array.
 					expect(parsedData).toStrictEqual({
@@ -316,7 +326,7 @@ describe('webhook-form-data', () => {
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
+					const parsedData = await parseWithCleanup(parseFn, req);
 
 					expect(parsedData).toStrictEqual({
 						data: {},
@@ -357,7 +367,7 @@ describe('webhook-form-data', () => {
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
+					const parsedData = await parseWithCleanup(parseFn, req);
 
 					expect(parsedData).toStrictEqual({
 						data: {},
@@ -382,7 +392,7 @@ describe('webhook-form-data', () => {
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
+					const parsedData = await parseWithCleanup(parseFn, req);
 
 					expect(parsedData).toStrictEqual({
 						data: {},

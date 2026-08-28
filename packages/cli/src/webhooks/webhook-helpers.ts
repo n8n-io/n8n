@@ -56,6 +56,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -94,6 +95,24 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+
+const deferCleanupUntilStreamEnds = (
+	stream: Readable,
+	res: express.Response,
+	cleanup: () => Promise<void>,
+) => {
+	let cleanupPromise: Promise<void> | undefined;
+	const cleanupOnce = async () => {
+		cleanupPromise ??= cleanup();
+		await cleanupPromise;
+	};
+
+	void finished(stream).then(cleanupOnce, cleanupOnce);
+	res.once('close', () => {
+		stream.destroy();
+		void cleanupOnce();
+	});
+};
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -706,12 +725,19 @@ export async function executeWebhook(
 
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
+	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
 	try {
 		// Run the webhook function to see what should be returned and if
 		// the workflow should be executed or not
 		let webhookResultData: IWebhookResponseData;
 
-		await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
+		cleanupMultipartFiles = await parseRequestBody(
+			req,
+			workflowStartNode,
+			workflow,
+			executionMode,
+			additionalKeys,
+		);
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
@@ -795,6 +821,13 @@ export async function executeWebhook(
 				workflowData: [[{ json: {} }]],
 			};
 		}
+
+		if (cleanupMultipartFiles && webhookResultData.webhookResponse instanceof Readable) {
+			deferCleanupUntilStreamEnds(webhookResultData.webhookResponse, res, cleanupMultipartFiles);
+		} else {
+			await cleanupMultipartFiles?.();
+		}
+		cleanupMultipartFiles = undefined;
 
 		const responseHeaders = evaluateResponseHeaders(context);
 
@@ -1203,6 +1236,8 @@ export async function executeWebhook(
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;
+	} finally {
+		await cleanupMultipartFiles?.();
 	}
 }
 
@@ -1296,7 +1331,9 @@ async function parseRequestBody(
 
 	const { contentType } = req;
 	if (contentType === 'multipart/form-data') {
-		req.body = await parseFormData(req);
+		const { body, cleanup } = await parseFormData(req);
+		req.body = body;
+		return cleanup;
 	} else {
 		if (nodeVersion > 1) {
 			if (
@@ -1312,6 +1349,8 @@ async function parseRequestBody(
 			await parseBody(req);
 		}
 	}
+
+	return undefined;
 }
 
 /**
