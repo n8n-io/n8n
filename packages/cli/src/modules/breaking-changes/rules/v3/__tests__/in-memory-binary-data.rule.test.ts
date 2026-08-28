@@ -1,21 +1,17 @@
-import type { BinaryDataConfig } from 'n8n-core';
-import { mock } from 'vitest-mock-extended';
-
 import { InMemoryBinaryDataRule } from '../in-memory-binary-data.rule';
 
 describe('InMemoryBinaryDataRule', () => {
-	let rule: InMemoryBinaryDataRule;
-	const binaryDataConfig: BinaryDataConfig = mock<BinaryDataConfig>();
+	const rule = new InMemoryBinaryDataRule();
 
-	beforeEach(() => {
-		rule = new InMemoryBinaryDataRule(binaryDataConfig);
+	afterEach(() => {
+		delete process.env.N8N_DEFAULT_BINARY_DATA_MODE;
 	});
 
 	describe('detect()', () => {
-		it.each(['filesystem', 's3', 'database'] as const)(
-			'should not be affected in %s mode',
+		it.each(['filesystem', 's3', 'database', undefined])(
+			'should not be affected when env var is %s',
 			async (mode) => {
-				binaryDataConfig.mode = mode;
+				if (mode) process.env.N8N_DEFAULT_BINARY_DATA_MODE = mode;
 
 				const result = await rule.detect();
 
@@ -24,8 +20,8 @@ describe('InMemoryBinaryDataRule', () => {
 			},
 		);
 
-		it('should be affected in default (in-memory) mode', async () => {
-			binaryDataConfig.mode = 'default';
+		it('should be affected when env var is set to removed default (in-memory) mode', async () => {
+			process.env.N8N_DEFAULT_BINARY_DATA_MODE = 'default';
 
 			const result = await rule.detect();
 
