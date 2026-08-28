@@ -613,8 +613,6 @@ export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRunt
 export type PlannedTaskCoordinator = PlannedTaskServiceMod.PlannedTaskCoordinator;
 export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoordinator =
 	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
-export const applyPlannedTaskPermissions: typeof PlannedTaskPermissionsMod.applyPlannedTaskPermissions =
-	lazyFunction(() => loadPlannedTaskPermissions().applyPlannedTaskPermissions);
 export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
 	InstanceAiContext,

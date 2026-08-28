@@ -131,6 +131,8 @@ const credentialsHandlers: CredentialsHandlers = {
 						take: limit,
 						skip: offset,
 						sortBy: 'createdAt:desc',
+						// skip eager-loading shared.project.projectRelations to avoid query fan-out
+						relations: ['shared', 'shared.project'],
 					},
 				},
 			);
