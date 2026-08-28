@@ -359,7 +359,9 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (node?.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 
-		return classifyTriggerIdentity(node.type, node.parameters).providesN8nIdentity;
+		return classifyTriggerIdentity(node.type, node.parameters, {
+			isChatOAuth2Enabled: isChatOAuth2Enabled(),
+		}).providesN8nIdentity;
 	}
 
 	/**
