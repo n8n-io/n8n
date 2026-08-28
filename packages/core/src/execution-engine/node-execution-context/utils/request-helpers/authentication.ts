@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { httpRequest, removeEmptyBody } from '@n8n/backend-network';
+import { OutboundHttp, removeEmptyBody } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -102,41 +103,43 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequest(requestOptions, additionalData.ssrfBridge);
+		return await Container.get(OutboundHttp).requests().request(requestOptions);
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
 		if (
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			error.response?.status === 401 &&
-			additionalData.credentialsHelper.preAuthentication !== undefined
+			additionalData.credentialsHelper.preAuthentication !== undefined &&
+			// OAuth 401s are already retried inside requestOAuth1/2 and leave
+			// credentialsDecrypted unset; with nothing refreshed, resending the same
+			// request (possibly with a consumed single-use body) could only fail again
+			credentialsDecrypted !== undefined
 		) {
 			try {
-				if (credentialsDecrypted !== undefined) {
-					// try to refresh the credentials
-					const data = await additionalData.credentialsHelper.preAuthentication(
-						{ helpers: this.helpers },
-						credentialsDecrypted,
-						credentialsType,
-						node,
-						true,
-					);
+				// try to refresh the credentials
+				const data = await additionalData.credentialsHelper.preAuthentication(
+					{ helpers: this.helpers },
+					credentialsDecrypted,
+					credentialsType,
+					node,
+					true,
+				);
 
-					if (data) {
-						// make the updated property in the credentials
-						// available to the authenticate method
-						Object.assign(credentialsDecrypted, data);
-					}
-
-					requestOptions = await additionalData.credentialsHelper.authenticate(
-						credentialsDecrypted,
-						credentialsType,
-						requestOptions,
-						workflow,
-						node,
-					);
+				if (data) {
+					// make the updated property in the credentials
+					// available to the authenticate method
+					Object.assign(credentialsDecrypted, data);
 				}
-				return await httpRequest(requestOptions, additionalData.ssrfBridge);
+
+				requestOptions = await additionalData.credentialsHelper.authenticate(
+					credentialsDecrypted,
+					credentialsType,
+					requestOptions,
+					workflow,
+					node,
+				);
+				return await Container.get(OutboundHttp).requests().request(requestOptions);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}

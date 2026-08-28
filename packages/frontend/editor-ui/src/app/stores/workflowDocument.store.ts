@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, provide, shallowRef, watchEffect, type ShallowRef } from 'vue';
+import { computed, inject, provide, ref, shallowRef, watchEffect, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -176,6 +176,7 @@ export function getWorkflowDocumentStoreId(id: string) {
 export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
+		const hydrated = ref(false);
 
 		const nodeTypesStore = useNodeTypesStore();
 
@@ -298,6 +299,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			return data;
 		}
 
+		function setHydrated(value: boolean) {
+			hydrated.value = value;
+		}
+
 		function hydrate(workflow: IWorkflowDb) {
 			if (workflow.id !== workflowId) {
 				throw new Error(
@@ -356,9 +361,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				settings: workflow.settings ?? { ...DEFAULT_SETTINGS },
 				pinData: workflow.pinData ?? {},
 			});
+			setHydrated(true);
 		}
 
 		function reset() {
+			setHydrated(false);
 			workflowDocumentName.setName('');
 			workflowDocumentDescription.setDescription('');
 			workflowDocumentActive.setActiveState({ activeVersionId: null, activeVersion: null });
@@ -448,6 +455,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			documentId: id,
 			workflowId,
 			workflowVersion,
+			hydrated,
 			...workflowDocumentName,
 			...workflowDocumentActive,
 			...workflowDocumentPublicationStatus,
@@ -474,6 +482,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentNodesIssues,
 			...workflowDocumentNodeGroups,
 			removeAllNodes,
+			setHydrated,
 			hydrate,
 			reset,
 			getSnapshot,

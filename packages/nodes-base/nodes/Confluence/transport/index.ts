@@ -86,7 +86,7 @@ export async function confluenceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	body: IDataObject = {},
+	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ): Promise<IDataObject> {
 	const credentials = await this.getCredentials(CONFLUENCE_CREDENTIAL_NAME);
