@@ -388,7 +388,6 @@ function onBackButton() {
 	flex-direction: column;
 	scrollbar-width: none; /* Firefox 64 */
 	padding-bottom: var(--spacing--xl);
-
 	&::-webkit-scrollbar {
 		display: none;
 	}
