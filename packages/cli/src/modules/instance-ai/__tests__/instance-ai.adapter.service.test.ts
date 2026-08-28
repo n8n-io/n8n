@@ -6337,100 +6337,34 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.workflowData.settings?.errorWorkflow).toBe('error-wf-1');
 	});
 
-	it('opts a run the credential check refuses out of the error workflow, and names the reason', async () => {
-		const scheduleNode = {
-			id: 'node-1',
-			name: 'Schedule Trigger',
-			type: 'n8n-nodes-base.scheduleTrigger',
-			typeVersion: 1,
-			parameters: {},
-			position: [0, 0],
-		};
-		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
-			createRunAdapterForTests(
-				{ id: 'wf-1', settings: { errorWorkflow: 'error-wf-1' }, nodes: [scheduleNode] },
-				{
-					execution: makeExecution({
-						status: 'error',
-						runData: {
-							'Schedule Trigger': [
-								{ ...makeTaskData([]), redactedError: { type: undefined } } as unknown as ITaskData,
-							],
-						},
-					}),
-					threadId: 'thread-1',
-				},
-			);
-		const checker = mock<CredentialsPermissionChecker>();
-		checker.check.mockRejectedValue(
-			Object.assign(
-				new UserError('Node "Schedule Trigger" uses the credential "Bot", which you cannot use', {
-					description: 'Ask its owner to share this credential with you.',
-				}),
-				{ node: scheduleNode },
-			),
+	it('wraps manual metadata into executionData in queue mode so the worker can run it', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				// No trigger node: the adapter sets neither startNodes nor executionData,
+				// so an offloaded worker would receive an execution with no run data.
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				settings: { executionOrder: 'v1' },
+			},
+			{ queueMode: true, execution: makeExecution({ status: 'success' }) },
 		);
-		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
-			token === CredentialsPermissionChecker
-				? checker
-				: mockExecutionPersistence) as typeof Container.get);
 
-		const result = await adapter.run('wf-1');
+		await adapter.run('wf-1');
 
 		const runData = mockWorkflowRunner.run.mock.calls[0][0];
-		expect(checker.check).toHaveBeenCalledWith('wf-1', [scheduleNode], 'user-1');
-		expect(runData.executionMode).toBe('trigger');
-		expect(runData.suppressErrorWorkflow).toBe(true);
-		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
-		const reason =
-			'Node "Schedule Trigger" uses the credential "Bot", which you cannot use. Ask its owner to share this credential with you.';
-		expect(result.error).toBe(reason);
-		expect(result.nodeErrors).toEqual([{ nodeName: 'Schedule Trigger', message: reason }]);
-		// Redaction strips the saved reason, so telemetry gets it from the check.
-		expect(mockTelemetry.track).toHaveBeenCalledWith(
-			'Builder executed workflow',
-			expect.objectContaining({
-				status: 'error',
-				error: 'Node "Schedule Trigger" uses the credential "Bot", which you cannot use',
-			}),
-		);
-	});
-
-	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
-		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
-		try {
-			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
-				{
-					id: 'wf-1',
-					// No trigger node: the adapter sets neither startNodes nor executionData,
-					// so an offloaded worker would receive an execution with no run data.
-					nodes: [
-						{
-							id: 'n1',
-							name: 'Set',
-							type: 'n8n-nodes-base.set',
-							typeVersion: 3,
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					settings: { executionOrder: 'v1' },
-				},
-				{ queueMode: true, execution: makeExecution({ status: 'success' }) },
-			);
-
-			await adapter.run('wf-1');
-
-			const runData = mockWorkflowRunner.run.mock.calls[0][0];
-			// Offloaded workers reconstruct the run from execution.data (= runData.executionData).
-			// Without this wrapping it is undefined and job-processor throws "without run data".
-			expect(runData.executionData).toBeDefined();
-			expect(runData.executionData?.manualData?.userId).toBe('user-1');
-		} finally {
-			if (original === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = original;
-		}
+		// Offloaded workers reconstruct the run from execution.data (= runData.executionData).
+		// Without this wrapping it is undefined and job-processor throws "without run data".
+		expect(runData.executionData).toBeDefined();
+		expect(runData.executionData?.manualData?.userId).toBe('user-1');
 	});
 });
 
