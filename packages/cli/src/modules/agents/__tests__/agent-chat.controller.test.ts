@@ -56,6 +56,7 @@ function makeController() {
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		agentChatAttachmentService,
+		agentsBuilderService,
 		agentsService: {
 			findById: agentsService.findById,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
@@ -127,6 +128,7 @@ describe('AgentChatController chat message history', () => {
 
 		const result = await controller.getChatMessages({
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
 		} as never);
 
 		expect(result).toEqual({
@@ -159,8 +161,84 @@ describe('AgentChatController chat message history', () => {
 		await expect(
 			controller.getChatMessages({
 				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+				user: { id: 'user-1' },
 			} as never),
 		).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe('AgentChatController suspension and resume binding', () => {
+	const suspendedCheckpoint = (resourceId: string) =>
+		({
+			persistence: { threadId: 'thread-1', resourceId },
+			pendingToolCalls: {
+				'tc-1': {
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					toolName: 'Code',
+					suspended: true,
+					suspendPayload: { type: 'approval', toolName: 'Code', args: {} },
+				},
+			},
+			messageList: { messages: [] },
+		}) as never;
+
+	it("binds the resumed checkpoint to the calling user's chat memory", async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		let received: { expectedMemory?: unknown } | undefined;
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			received = config;
+			yield* [];
+		});
+
+		await controller.chatResume(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse([]),
+			'agent-1',
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+		);
+
+		expect(received?.expectedMemory).toEqual({ resourceId: 'draft-chat:user-1' });
+	});
+
+	it("includes open suspensions for the calling user's own checkpoint", async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue([] as never);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(
+			suspendedCheckpoint('draft-chat:user-1'),
+		);
+
+		const result = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([
+			{
+				toolCallId: 'tc-1',
+				runId: 'run-1',
+				suspendPayload: { type: 'approval', toolName: 'Code', args: {} },
+			},
+		]);
+	});
+
+	it("does not surface open suspensions for another user's checkpoint", async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getConversationHistory.mockResolvedValue([
+			{ id: 'execution-1:user', role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+		] as never);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(
+			suspendedCheckpoint('draft-chat:someone-else'),
+		);
+
+		const result = await controller.getChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([]);
 	});
 });
 
