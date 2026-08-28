@@ -413,6 +413,9 @@ async function reconstructWithClient(
 			dataTables,
 			// A trace carries no agent artifacts yet; only authored seeds can seed one.
 			agents: [],
+			// Likewise no projects: a replayed thread ran in whatever project it ran in,
+			// and a seeded project is a fixture an author declares, not something a trace records.
+			projects: [],
 		},
 		liveTurn,
 		runCount: runs.length,

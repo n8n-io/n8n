@@ -214,7 +214,15 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	google: {
 		build: (creds, model, fetch) => {
 			const { createGoogle } = require('@ai-sdk/google') as typeof import('@ai-sdk/google');
-			return createGoogle({ ...creds, fetch })(model);
+			// The SDK expects a version-qualified base (its own default ends in
+			// `/v1beta`), but `googlePalmApi.host` stores the bare host — the Gemini
+			// node's SDK appends the API version itself. Passing the host through
+			// unqualified drops the version from every request path, and Google
+			// answers 404 for any model.
+			const normalizedBaseURL = creds.baseURL
+				? ensureUrlPathSuffix(creds.baseURL, '/v1beta')
+				: creds.baseURL;
+			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
 	xai: {
