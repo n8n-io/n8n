@@ -16,11 +16,11 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import {
 	BINARY_AD_ATTRIBUTES,
 	createLdapClient,
+	escapeResolvables,
 	escapeValue,
 	resolveBinaryAttributes,
 } from './Helpers';
 import { ldapFields } from './LdapDescription';
-import { getResolvables } from '@utils/utilities';
 
 export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
@@ -378,20 +378,24 @@ export class Ldap implements INodeType {
 					}
 					options.explicitBufferAttributes = BINARY_AD_ATTRIBUTES;
 
+					const evaluate = (resolvable: string) =>
+						this.evaluateExpression(`${resolvable}`, itemIndex);
+
 					if (searchFor === 'custom') {
-						searchFor = this.getNodeParameter('customFilter', itemIndex) as string;
-					} else {
-						let searchText = this.getNodeParameter('searchText', itemIndex, undefined, {
+						// Read the filter before expressions are interpolated, so only the
+						// values they resolve to get escaped and the filter syntax the user
+						// wrote stays intact
+						const customFilter = this.getNodeParameter('customFilter', itemIndex, undefined, {
 							rawExpressions: true,
 						}) as string;
-						searchText = searchText.replace(/^=+/, '');
-						const resolvables = getResolvables(searchText);
-						for (const resolvable of resolvables) {
-							const resolvedValue = escapeValue(
-								String(this.evaluateExpression(`${resolvable}`, itemIndex)),
-							);
-							searchText = searchText.replace(resolvable, resolvedValue);
-						}
+						searchFor = escapeResolvables(customFilter, evaluate);
+					} else {
+						const searchText = escapeResolvables(
+							this.getNodeParameter('searchText', itemIndex, undefined, {
+								rawExpressions: true,
+							}) as string,
+							evaluate,
+						);
 
 						const attribute = escapeValue(this.getNodeParameter('attribute', itemIndex) as string);
 						searchFor = `(&${searchFor}(${attribute}=${searchText}))`;

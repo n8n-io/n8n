@@ -278,6 +278,108 @@ describe('Ldap', () => {
 				}),
 			);
 		});
+
+		describe('custom filter', () => {
+			const customFilterTemplate = '=(&(objectClass=inetOrgPerson)(cn={{ $json.body.username }}))';
+
+			function mockCustomFilter(customFilter: string, resolvedValue?: string) {
+				mockParameters({ searchFor: 'custom', customFilter });
+
+				executeFunctions.evaluateExpression.mockImplementation((expr) => {
+					if (expr === '{{ $json.body.username }}') return resolvedValue;
+					return expr;
+				});
+			}
+
+			it('should not escape a plain value resolved from an expression', async () => {
+				mockCustomFilter(customFilterTemplate, 'alice');
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&(objectClass=inetOrgPerson)(cn=alice))',
+					}),
+				);
+			});
+
+			it('should escape filter special characters resolved from an expression', async () => {
+				mockCustomFilter(customFilterTemplate, '*)(|(');
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&(objectClass=inetOrgPerson)(cn=\\2a\\29\\28|\\28))',
+					}),
+				);
+			});
+
+			it('should escape a backslash resolved from an expression', async () => {
+				mockCustomFilter(customFilterTemplate, 'domain\\alice');
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&(objectClass=inetOrgPerson)(cn=domain\\5calice))',
+					}),
+				);
+			});
+
+			it('should keep a `$` sequence resolved from an expression as a literal value', async () => {
+				// `$'`, `$&` and similar sequences are meaningful to String.replace, so
+				// they must not expand into the surrounding filter syntax
+				mockCustomFilter(customFilterTemplate, "$'");
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: "(&(objectClass=inetOrgPerson)(cn=$'))",
+					}),
+				);
+			});
+
+			it('should pass a static custom filter through unescaped', async () => {
+				mockCustomFilter('(objectclass=*)');
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({ filter: '(objectclass=*)' }),
+				);
+			});
+
+			it('should keep converting hand-escaped special characters in a static custom filter', async () => {
+				mockCustomFilter('(cn=john\\*doe)');
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({ filter: '(cn=john\\2adoe)' }),
+				);
+			});
+
+			it('should keep a wildcard the user typed next to an escaped expression value', async () => {
+				mockCustomFilter('=(&(objectClass=inetOrgPerson)(cn={{ $json.body.username }}*))', 'ali*');
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&(objectClass=inetOrgPerson)(cn=ali\\2a*))',
+					}),
+				);
+			});
+		});
 	});
 
 	describe('rename', () => {
