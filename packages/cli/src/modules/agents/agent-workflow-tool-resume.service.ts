@@ -1,18 +1,26 @@
 import { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { OnLifecycleEvent, OnPubSubEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { RelatedAgentRun } from 'n8n-workflow';
+import { isTerminalExecutionStatus } from 'n8n-workflow';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTestRunService } from './agent-test-run.service';
+import {
+	AgentBackgroundJobService,
+	serializeWorkflowJobResult,
+	settlementStatusForExecution,
+} from './background/agent-background-job.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
+import { collectResultData } from './tools/workflow-tool-factory';
 
 /**
  * Wakes the agent tool call a finished sub-execution belongs to, from the
@@ -32,6 +40,8 @@ export class AgentWorkflowToolResumeService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
+		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly agentsConfig: AgentsConfig,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -42,6 +52,13 @@ export class AgentWorkflowToolResumeService {
 		if (!agentRun) return; // Not a sub-execution started by an agent workflow tool.
 		// Parked at a Wait node, so the workflow has not finished.
 		if (ctx.runData.status === 'waiting') return;
+
+		// A backgrounded execution has a job row instead of a suspended checkpoint;
+		// settling it is a plain DB write, so it happens right here — also on
+		// workers, without the pubsub hop the resume below needs.
+		if (this.agentsConfig.backgroundTasksEnabled) {
+			await this.settleBackgroundJob(ctx);
+		}
 
 		// Every sub-execution carries the marker, but only one that actually parked left
 		// a suspended checkpoint. Without this an ordinary tool call drives a resume
@@ -70,6 +87,36 @@ export class AgentWorkflowToolResumeService {
 		status: string;
 	}): Promise<void> {
 		await this.resumeSafely(agentRun, status);
+	}
+
+	/**
+	 * Settle the background job tracking this execution, carrying a bounded
+	 * serialization of the result — the run data is in memory here, so the job
+	 * row gets its answer without a later read of the executions table. A no-op
+	 * when the execution was not backgrounded. Never throws into the
+	 * execution's lifecycle.
+	 */
+	private async settleBackgroundJob(ctx: WorkflowExecuteAfterContext): Promise<void> {
+		const { status, data } = ctx.runData;
+		if (!isTerminalExecutionStatus(status)) return;
+
+		try {
+			const settlementStatus = settlementStatusForExecution(status);
+			const runData = data.resultData?.runData;
+			await this.backgroundJobService.settleWorkflowJobByExecutionId(ctx.executionId, {
+				status: settlementStatus,
+				result:
+					settlementStatus === 'completed' && runData
+						? serializeWorkflowJobResult(collectResultData(runData, false))
+						: null,
+				error: data.resultData?.error?.message ?? null,
+			});
+		} catch (error) {
+			this.logger.error('Failed to settle workflow background job', {
+				executionId: ctx.executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/** Never let a failed agent resume disturb the execution that triggered it. */

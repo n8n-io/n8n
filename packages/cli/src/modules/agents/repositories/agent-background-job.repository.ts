@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Not, Repository } from '@n8n/typeorm';
+import { OperationalError } from 'n8n-workflow';
 
 import {
 	AgentBackgroundJob,
@@ -43,6 +44,37 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 
 	async insertJob(job: NewAgentBackgroundJob): Promise<void> {
 		await this.insert({ ...job, status: 'running' });
+	}
+
+	/**
+	 * Insert a workflow job, or read back the job already tracking the same
+	 * execution. The partial unique index on `childExecutionId` makes the
+	 * execution the job's identity: `orIgnore` (`ON CONFLICT DO NOTHING` on
+	 * both supported drivers) lets a concurrent or earlier insert win silently,
+	 * and the readback deliberately ignores status — the identity holds after
+	 * settlement too, so a replayed registration can never start a second
+	 * tracker for a finished execution.
+	 */
+	async insertWorkflowJobOrGetExisting(
+		job: NewWorkflowJob,
+	): Promise<{ inserted: true } | { inserted: false; existing: AgentBackgroundJob }> {
+		await this.createQueryBuilder()
+			.insert()
+			.into(AgentBackgroundJob)
+			.values({ ...job, status: 'running' })
+			.orIgnore()
+			.execute();
+
+		const inserted = await this.existsBy({ id: job.id });
+		if (inserted) return { inserted: true };
+
+		const existing = await this.findOne({ where: { childExecutionId: job.childExecutionId } });
+		if (existing) return { inserted: false, existing };
+
+		// Only the 30-day retention prune deletes rows, so losing the insert
+		// without a readback hit means something outside this code path removed
+		// the winner mid-flight.
+		throw new OperationalError('Failed to register workflow background job');
 	}
 
 	async countRunningByParentThread(parentThreadId: string): Promise<number> {

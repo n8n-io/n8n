@@ -479,6 +479,11 @@ export class AgentRuntimeReconstructionService {
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: supportsHitl ?? runtimeProfile === 'top-level',
+				// Only the top-level agent backgrounds waiting workflows: a child's job
+				// would nest under its own thread, where no check/cancel tools exist.
+				// Children handle waits the legacy way instead.
+				backgroundTasksEnabled:
+					runtimeProfile === 'top-level' && Container.get(AgentsConfig).backgroundTasksEnabled,
 			},
 			instrumentation,
 		);
@@ -638,6 +643,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType?: string;
 			userId?: string;
 			supportsHitl: boolean;
+			backgroundTasksEnabled: boolean;
 		},
 		instrumentation?: AgentRuntimeInstrumentation,
 	): ToolResolver {
@@ -649,6 +655,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			userId,
 			supportsHitl,
+			backgroundTasksEnabled,
 		} = runIdentity;
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
@@ -667,6 +674,7 @@ export class AgentRuntimeReconstructionService {
 					integrationType,
 					userId,
 					supportsHitl,
+					backgroundTasksEnabled,
 				});
 			}
 

@@ -1,8 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
+import type { TerminalExecutionStatus } from 'n8n-workflow';
+import { isTerminalExecutionStatus } from 'n8n-workflow';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
@@ -10,6 +13,7 @@ import {
 	AgentBackgroundJobRepository,
 	type AgentBackgroundJobSettlement,
 	type NewSubAgentJob,
+	type NewWorkflowJob,
 } from '../repositories/agent-background-job.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
@@ -23,8 +27,48 @@ export type BackgroundJobReceipt =
 
 export type BackgroundJobView = Pick<
 	AgentBackgroundJob,
-	'id' | 'kind' | 'title' | 'status' | 'result' | 'error' | 'createdAt' | 'timeoutAt' | 'settledAt'
+	| 'id'
+	| 'kind'
+	| 'title'
+	| 'status'
+	| 'result'
+	| 'error'
+	| 'createdAt'
+	| 'timeoutAt'
+	| 'settledAt'
+	| 'childExecutionId'
 >;
+
+/** Cap on the result text persisted on a workflow job row at settle. */
+export const WORKFLOW_JOB_RESULT_MAX_CHARS = 8000;
+
+/** Job settlement status a finished workflow execution maps to. */
+export function settlementStatusForExecution(
+	status: TerminalExecutionStatus,
+): 'completed' | 'failed' | 'cancelled' {
+	if (status === 'success') return 'completed';
+	if (status === 'canceled') return 'cancelled';
+	return 'failed';
+}
+
+/**
+ * Serialize a workflow's result data for the job row, bounded so a large
+ * output cannot bloat the table — the execution itself keeps the full data.
+ */
+export function serializeWorkflowJobResult(
+	resultData: Record<string, unknown> | undefined,
+): string | null {
+	if (!resultData || Object.keys(resultData).length === 0) return null;
+
+	let serialized: string;
+	try {
+		serialized = JSON.stringify(resultData);
+	} catch {
+		return null;
+	}
+	if (serialized.length <= WORKFLOW_JOB_RESULT_MAX_CHARS) return serialized;
+	return `${serialized.slice(0, WORKFLOW_JOB_RESULT_MAX_CHARS)}… [truncated, full data on execution]`;
+}
 
 /**
  * Registry of durable background jobs dispatched by top-level agents. The job
@@ -39,6 +83,7 @@ export class AgentBackgroundJobService {
 	constructor(
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly executionRepository: AgentExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly publisher: Publisher,
 		private readonly logger: Logger,
 	) {
@@ -67,6 +112,37 @@ export class AgentBackgroundJobService {
 		return { status: 'started', jobId: params.id };
 	}
 
+	/**
+	 * Register a workflow execution parked at a Wait node as a background job.
+	 * The execution is already running either way, so there is no cap check and
+	 * no timeout — its own lifecycle governs. The schema allows exactly one job
+	 * per execution: a concurrent or replayed registration converges on the job
+	 * that won the insert, so the receipt always names the row actually tracking
+	 * the execution.
+	 */
+	async registerWorkflowJob(
+		params: Omit<NewWorkflowJob, 'kind' | 'childExecutionId'> & { executionId: string },
+	): Promise<BackgroundJobReceipt> {
+		const { executionId, ...job } = params;
+		const outcome = await this.jobRepository.insertWorkflowJobOrGetExisting({
+			...job,
+			kind: 'workflow',
+			childExecutionId: executionId,
+		});
+		return { status: 'started', jobId: outcome.inserted ? params.id : outcome.existing.id };
+	}
+
+	/** Settle the workflow job tracking the given execution; no-op without a running row. */
+	async settleWorkflowJobByExecutionId(
+		executionId: string,
+		settlement: AgentBackgroundJobSettlement,
+	): Promise<boolean> {
+		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
+		if (!job) return false;
+
+		return await this.settle(job.id, settlement);
+	}
+
 	async settle(jobId: string, settlement: AgentBackgroundJobSettlement): Promise<boolean> {
 		try {
 			return await this.jobRepository.settleIfRunning(jobId, settlement);
@@ -89,8 +165,11 @@ export class AgentBackgroundJobService {
 	async listForThread(parentThreadId: string, ids?: string[]): Promise<BackgroundJobView[]> {
 		let jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
 
-		const reconciled = await this.failOrphanedSubAgentJobs(jobs);
-		if (reconciled) jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
+		const settledSubAgents = await this.failOrphanedSubAgentJobs(jobs);
+		const settledWorkflows = await this.settleFinishedWorkflowJobs(jobs);
+		if (settledSubAgents || settledWorkflows) {
+			jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
+		}
 
 		return jobs.map((job) => ({
 			id: job.id,
@@ -102,6 +181,7 @@ export class AgentBackgroundJobService {
 			createdAt: job.createdAt,
 			timeoutAt: job.timeoutAt,
 			settledAt: job.settledAt,
+			childExecutionId: job.childExecutionId,
 		}));
 	}
 
@@ -120,6 +200,11 @@ export class AgentBackgroundJobService {
 
 		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
 		if (!claimed) return 'already-settled';
+
+		if (job.kind === 'workflow') {
+			await this.stopWorkflowExecution(job);
+			return 'cancelled';
+		}
 
 		const controller = this.abortControllers.get(jobId);
 		if (controller) {
@@ -160,8 +245,75 @@ export class AgentBackgroundJobService {
 	async reconcile(): Promise<void> {
 		await this.failJobsPastTimeout();
 		await this.failOrphanedSubAgentJobs(await this.jobRepository.findRunningJobs('subagent'));
+		await this.settleFinishedWorkflowJobs(await this.jobRepository.findRunningJobs('workflow'));
 
 		await this.jobRepository.deleteSettledBefore(new Date(Date.now() - SETTLED_JOB_RETENTION_MS));
+	}
+
+	/**
+	 * Cross-process stop of a cancelled workflow job's execution. The job row is
+	 * already claimed, so a stop that finds the execution finished (or gone) is
+	 * not an error worth surfacing to the model.
+	 */
+	private async stopWorkflowExecution(job: AgentBackgroundJob): Promise<void> {
+		if (job.childExecutionId === null || job.workflowId === null) return;
+
+		// Lazy: ExecutionService is a heavy dependency this service otherwise
+		// never needs — workers load this class for the settle path alone.
+		const { ExecutionService } = await import('@/executions/execution.service.js');
+		try {
+			await Container.get(ExecutionService).stop(job.childExecutionId, [job.workflowId]);
+		} catch (error) {
+			this.logger.debug('Stopping a cancelled workflow job execution did not succeed', {
+				jobId: job.id,
+				executionId: job.childExecutionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Settle running workflow jobs whose execution already reached a terminal
+	 * state — the settle hook never ran (crash) or lost the registration race.
+	 * The result is left empty here; the lifecycle hook is the path that
+	 * captures output. An execution that no longer exists (pruned, deleted)
+	 * fails the job. Returns whether any row was settled.
+	 */
+	private async settleFinishedWorkflowJobs(jobs: AgentBackgroundJob[]): Promise<boolean> {
+		const candidates = jobs.filter(
+			(job) => job.kind === 'workflow' && job.status === 'running' && job.childExecutionId !== null,
+		);
+
+		let settledAny = false;
+		for (const job of candidates) {
+			const executionId = job.childExecutionId;
+			if (executionId === null) continue;
+			try {
+				const execution = await this.executionPersistence.findSingleExecution(executionId);
+				if (!execution) {
+					settledAny =
+						(await this.settle(job.id, {
+							status: 'failed',
+							error: 'The workflow execution no longer exists',
+						})) || settledAny;
+					continue;
+				}
+				if (!isTerminalExecutionStatus(execution.status)) continue;
+
+				settledAny =
+					(await this.settle(job.id, {
+						status: settlementStatusForExecution(execution.status),
+						error: execution.status === 'success' ? null : `Execution ${execution.status}`,
+					})) || settledAny;
+			} catch (error) {
+				this.logger.error('Failed to reconcile workflow background job', {
+					jobId: job.id,
+					executionId,
+					error,
+				});
+			}
+		}
+		return settledAny;
 	}
 
 	private async failJobsPastTimeout(): Promise<void> {
