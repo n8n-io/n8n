@@ -54,8 +54,6 @@ describe('WorkflowsPublicController', () => {
 			await expect(updateWorkflow()).rejects.toBe('not an error object');
 		});
 
-		// A PolicyViolationError is a UserError, not a ResponseError, so the blanket branch below
-		// would rewrap it and drop both the 403 and `meta.violations`.
 		it('rethrows a policy violation with its status and violations intact', async () => {
 			const violation = {
 				kind: 'node-type-unavailable',

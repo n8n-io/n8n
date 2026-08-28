@@ -402,8 +402,6 @@ export class WorkflowsPublicController {
 		} catch (error) {
 			if (error instanceof FolderNotFoundError) throw new NotFoundError(error.message);
 			if (error instanceof ResponseError) throw error;
-			// Carries its own 403 and the structured violations, neither of which survives being
-			// rewrapped as a bad request.
 			if (error instanceof PolicyViolationError) throw error;
 			if (error instanceof Error) throw new BadRequestError(error.message);
 			throw error;
