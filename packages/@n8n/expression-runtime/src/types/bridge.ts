@@ -101,4 +101,11 @@ export interface ExecuteOptions {
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
 	timezone?: string;
+
+	/**
+	 * Milliseconds already spent by the chain of evaluations this call belongs
+	 * to. Subtracted from the configured timeout so a chain shares one budget
+	 * instead of each call starting a fresh one. Omit for a standalone call.
+	 */
+	elapsedMs?: number;
 }

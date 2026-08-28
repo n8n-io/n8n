@@ -721,6 +721,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
 
+		// A nested call runs on what is left of the configured timeout, so the
+		// whole chain it belongs to shares one budget.
+		const elapsedMs = options?.elapsedMs ?? 0;
+		const nested = elapsedMs > 0 && this.config.timeout > 0;
+		let timeout = this.config.timeout;
+		if (nested) {
+			// isolated-vm reads a non-positive timeout as "no timeout" and rejects
+			// fractional values, so an exhausted budget stops here instead.
+			timeout = Math.trunc(this.config.timeout - elapsedMs);
+			if (timeout <= 0) throw this.timeoutError(true);
+		}
+
 		// Host callbacks are ivm.Callback instances: inside the isolate they
 		// arrive as plain functions with structured-clone marshaling, so the
 		// runtime invokes them directly. Callbacks are GC-managed; there is no
@@ -773,7 +785,7 @@ try {
 			const result = this.context.evalClosureSync(
 				wrappedCode,
 				[getValueAtPath, getArrayElement, callHost],
-				{ result: { copy: true }, timeout: this.config.timeout },
+				{ result: { copy: true }, timeout },
 			);
 
 			if (isErrorSentinel(result)) {
@@ -797,7 +809,7 @@ try {
 			}
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			if (errorMessage.includes('Script execution timed out')) {
-				throw new TimeoutError(`Expression timed out after ${this.config.timeout}ms`, {});
+				throw this.timeoutError(nested);
 			}
 			if (errorMessage.includes('memory limit')) {
 				throw new MemoryLimitError(
@@ -807,6 +819,19 @@ try {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		}
+	}
+
+	/**
+	 * Always names the configured limit, never the reduced budget a nested call
+	 * ran on — reporting "timed out after 137ms" would misstate the limit.
+	 */
+	private timeoutError(nested: boolean): TimeoutError {
+		return new TimeoutError(
+			nested
+				? `Nested expressions timed out after sharing the ${this.config.timeout}ms limit`
+				: `Expression timed out after ${this.config.timeout}ms`,
+			{},
+		);
 	}
 
 	/**

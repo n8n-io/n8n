@@ -47,6 +47,16 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	private bridgesByCaller = new WeakMap<object, RuntimeBridge>();
 
+	/**
+	 * Depth of the evaluation chain currently in progress, and when it started.
+	 * An expression can evaluate another one (`$evaluateExpression`), which
+	 * re-enters `evaluate()` through a synchronous host callback; the whole
+	 * chain runs on the time budget the outermost call started with.
+	 */
+	private chainDepth = 0;
+
+	private chainStart = 0;
+
 	private readonly createBridge: () => Promise<RuntimeBridge>;
 
 	constructor(config: EvaluatorConfig) {
@@ -120,15 +130,22 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		const { observability } = this.config;
 		const start = performance.now();
 
+		const nested = this.chainDepth > 0;
+		if (!nested) this.chainStart = start;
+		this.chainDepth++;
+
 		try {
 			const result = bridge.execute(transformedCode, data, {
 				timezone: options?.timezone,
+				elapsedMs: nested ? start - this.chainStart : undefined,
 			});
 			recordOutcome(observability, start, 'success');
 			return result;
 		} catch (error) {
 			recordOutcome(observability, start, 'error', error);
 			throw error;
+		} finally {
+			this.chainDepth--;
 		}
 	}
 
