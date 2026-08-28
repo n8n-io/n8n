@@ -396,11 +396,12 @@ export class GmailTrigger implements INodeType {
 			}
 		};
 
-		// A poll that never starts listing (early pending return) has no unlisted
-		// remainder, so the default keeps the cursor advance allowed. The list loop
-		// flips this to false on entry; from then on only an exhausted token proves
-		// the window complete.
-		let windowFullyListed = true;
+		// May only permit a cursor advance when an exhausted page token proved the
+		// window complete. Every path that never completes a listing — the early
+		// pending return (which exits before the advance) or any thrown fetch/list
+		// — must leave it pessimistic, or a held cursor would advance past mail
+		// the failed poll never listed.
+		let windowFullyListed = false;
 
 		try {
 			let budget = maxResults;

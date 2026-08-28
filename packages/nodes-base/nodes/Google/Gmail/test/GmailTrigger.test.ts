@@ -1829,6 +1829,43 @@ describe('GmailTrigger', () => {
 			);
 		});
 
+		it('should keep holding the cursor when a drain fetch fails during a held backlog', async () => {
+			// The cursor was held by a previous capped tick, so unlisted older mail
+			// exists beyond the boundary. When a drain fetch throws before any
+			// listing starts, nothing proved the window complete — the drained
+			// message's newer date must not advance the cursor past the unlisted
+			// remainder.
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					pendingMessageIds: ['P1', 'P2'],
+					possibleDuplicates: ['X'],
+				},
+			};
+
+			mockLabels();
+			mockGet('P1', 5_000_000_000_000);
+			mockGetError('P2');
+			// No list mocks: the throw precedes listing, so an unexpected list
+			// request must fail loudly.
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			// The message drained before the error is still delivered...
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['P1']);
+			// ...but the cursor must keep holding: P1's date (5000s) must not
+			// become the new boundary while the window was never listed.
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['P2']);
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
+				expect.arrayContaining(['X', 'P1']),
+			);
+		});
+
 		it('should emit a message only once when pages return an overlapping id', async () => {
 			// Gmail pagination can repeat an id across pages when the mailbox shifts
 			// between page fetches. The accumulated list must be deduplicated.
