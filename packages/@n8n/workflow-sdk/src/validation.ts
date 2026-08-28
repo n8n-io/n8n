@@ -19,6 +19,7 @@ export {
 	connectRequiredSubnodeInputs,
 	describeAddedSubnodeConnection,
 	type AddedSubnodeConnection,
+	type ClearedSubnodeInput,
 	type WorkflowForSubnodeWiring,
 } from './validation/index';
 

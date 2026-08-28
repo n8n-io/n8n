@@ -77,6 +77,14 @@ export function describeAddedSubnodeConnection(link: AddedSubnodeConnection): {
 	};
 }
 
+/** An input the caller cleared on purpose, which must not be repaired. */
+export interface ClearedSubnodeInput {
+	/** Node whose input was cleared */
+	nodeName: string;
+	/** The AI connection type that was removed, e.g. `ai_languageModel` */
+	connectionType: string;
+}
+
 /** node -> connection type -> source nodes feeding it. */
 type IncomingIndex = Map<string, Map<string, Set<string>>>;
 
@@ -141,11 +149,19 @@ function addConnection(
  * Mutates `workflow.connections` in place and returns the links it added. An
  * input it cannot satisfy is left alone: `validateWorkflow` already reports
  * those as `MISSING_REQUIRED_INPUT`.
+ *
+ * Pass `clearedInputs` for anything the caller just disconnected on purpose.
+ * Repairing one of those would undo the removal in the same breath, so they are
+ * skipped and reported as missing instead.
  */
 export function connectRequiredSubnodeInputs(
 	workflow: WorkflowForSubnodeWiring,
 	nodeTypesProvider: INodeTypes,
+	options: { clearedInputs?: readonly ClearedSubnodeInput[] } = {},
 ): AddedSubnodeConnection[] {
+	const cleared = new Set(
+		(options.clearedInputs ?? []).map((input) => `${input.nodeName}\u0000${input.connectionType}`),
+	);
 	const added: AddedSubnodeConnection[] = [];
 	const incoming = buildIncomingIndex(workflow);
 
@@ -172,6 +188,7 @@ export function connectRequiredSubnodeInputs(
 		for (const [connectionType, inputConfig] of Object.entries(builderHintInputs)) {
 			if (!connectionType.startsWith('ai_')) continue;
 			if (!inputConfig?.required) continue;
+			if (cleared.has(`${node.name}\u0000${connectionType}`)) continue;
 
 			// A gated input only exists once its condition holds; until then the
 			// node renders no port and nothing is missing.

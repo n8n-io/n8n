@@ -112,6 +112,28 @@ describe('connectRequiredSubnodeInputs', () => {
 		expect(result).toEqual([]);
 	});
 
+	it('does not repair an input the caller just cleared', () => {
+		// Re-adding it would make the caller's own removeConnection a no-op.
+		const workflow = agentWithParser({ autoFix: true });
+
+		const result = connectRequiredSubnodeInputs(workflow, nodeTypes, {
+			clearedInputs: [{ nodeName: 'Output Parser', connectionType: 'ai_languageModel' }],
+		});
+
+		expect(result).toEqual([]);
+		expect(workflow.connections['OpenAI Chat Model']?.ai_languageModel?.[0]).toHaveLength(1);
+	});
+
+	it('still repairs inputs the caller did not clear', () => {
+		const workflow = agentWithParser({ autoFix: true });
+
+		const result = connectRequiredSubnodeInputs(workflow, nodeTypes, {
+			clearedInputs: [{ nodeName: 'Some Other Node', connectionType: 'ai_languageModel' }],
+		});
+
+		expect(result).toHaveLength(1);
+	});
+
 	it('wires nothing when the parent has no model to take', () => {
 		const workflow = agentWithParser({ autoFix: true }, { models: [] });
 

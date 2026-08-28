@@ -7,7 +7,7 @@ import {
 	describeAddedSubnodeConnection,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
-import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
+import { NodeConnectionTypes, Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -1200,8 +1200,18 @@ export const createUpdateWorkflowTool = (
 
 				// Operations set parameters without touching connections, so turning on a
 				// capability (an output parser's autoFix, say) can leave its now-required
-				// subnode input dangling. Complete those links before the result is saved.
-				const addedSubnodeLinks = connectRequiredSubnodeInputs(result.workflow, nodeTypes);
+				// subnode input dangling. Complete those links before the result is saved,
+				// except where this same batch disconnected the input on purpose: undoing
+				// the caller's own removeConnection would make it a no-op.
+				const clearedInputs = strictOperations
+					.filter((op) => op.type === 'removeConnection')
+					.map((op) => ({
+						nodeName: op.target,
+						connectionType: op.connectionType ?? NodeConnectionTypes.Main,
+					}));
+				const addedSubnodeLinks = connectRequiredSubnodeInputs(result.workflow, nodeTypes, {
+					clearedInputs,
+				});
 
 				const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
 					resolveNodeGroupViolations(result, canvasGroupsEnabled, nodeTypes);
