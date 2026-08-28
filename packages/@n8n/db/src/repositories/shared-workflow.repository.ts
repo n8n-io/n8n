@@ -35,14 +35,17 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	): Promise<Set<string>> {
 		if (workflowIds.length === 0 || projectIds.length === 0) return new Set();
 
+		// Chunk both filters to keep each IN clause within database parameter limits
 		const found = new Set<string>();
-		for (const chunk of chunkIds(workflowIds)) {
-			const rows = await this.find({
-				select: { workflowId: true },
-				where: { workflowId: In(chunk), projectId: In(projectIds) },
-			});
-			for (const row of rows) {
-				found.add(row.workflowId);
+		for (const workflowChunk of chunkIds(workflowIds)) {
+			for (const projectChunk of chunkIds(projectIds)) {
+				const rows = await this.find({
+					select: { workflowId: true },
+					where: { workflowId: In(workflowChunk), projectId: In(projectChunk) },
+				});
+				for (const row of rows) {
+					found.add(row.workflowId);
+				}
 			}
 		}
 

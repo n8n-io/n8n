@@ -141,4 +141,86 @@ describe('SharedWorkflowRepository', () => {
 			expect(result).toEqual([first, last]);
 		});
 	});
+
+	describe('findWorkflowIdsInProjects', () => {
+		it('returns an empty set without querying when there are no workflow ids', async () => {
+			const result = await sharedWorkflowRepository.findWorkflowIdsInProjects([], ['project-1']);
+
+			expect(result).toEqual(new Set());
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty set without querying when there are no project ids', async () => {
+			const result = await sharedWorkflowRepository.findWorkflowIdsInProjects(['workflow-1'], []);
+
+			expect(result).toEqual(new Set());
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('filters by both workflow and project, and returns each id once', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				mock<SharedWorkflow>({ workflowId: 'workflow-1' }),
+				// Same workflow shared with two of the projects, so it is returned twice.
+				mock<SharedWorkflow>({ workflowId: 'workflow-1' }),
+				mock<SharedWorkflow>({ workflowId: 'workflow-2' }),
+			]);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsInProjects(
+				['workflow-1', 'workflow-2', 'workflow-3'],
+				['project-1', 'project-2'],
+			);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: { workflowId: true },
+				where: {
+					workflowId: In(['workflow-1', 'workflow-2', 'workflow-3']),
+					projectId: In(['project-1', 'project-2']),
+				},
+			});
+			expect(result).toEqual(new Set(['workflow-1', 'workflow-2']));
+		});
+
+		it('chunks the workflow ids and applies the project filter to every chunk', async () => {
+			entityManager.find
+				.mockResolvedValueOnce([mock<SharedWorkflow>({ workflowId: 'workflow-0' })])
+				.mockResolvedValueOnce([mock<SharedWorkflow>({ workflowId: 'workflow-10000' })]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsInProjects(workflowIds, [
+				'project-1',
+			]);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedWorkflow, {
+				select: { workflowId: true },
+				where: {
+					workflowId: In(['workflow-10000']),
+					projectId: In(['project-1']),
+				},
+			});
+			expect(result).toEqual(new Set(['workflow-0', 'workflow-10000']));
+		});
+
+		it('chunks the project ids and merges the results across project chunks', async () => {
+			entityManager.find
+				.mockResolvedValueOnce([mock<SharedWorkflow>({ workflowId: 'workflow-1' })])
+				.mockResolvedValueOnce([mock<SharedWorkflow>({ workflowId: 'workflow-2' })]);
+			const projectIds = Array.from({ length: 10_001 }, (_, index) => `project-${index}`);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsInProjects(
+				['workflow-1', 'workflow-2'],
+				projectIds,
+			);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedWorkflow, {
+				select: { workflowId: true },
+				where: {
+					workflowId: In(['workflow-1', 'workflow-2']),
+					projectId: In(['project-10000']),
+				},
+			});
+			expect(result).toEqual(new Set(['workflow-1', 'workflow-2']));
+		});
+	});
 });
