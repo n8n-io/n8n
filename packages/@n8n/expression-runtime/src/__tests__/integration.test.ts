@@ -2,6 +2,7 @@ import { DateTime, Duration, Interval } from 'luxon';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
+import type { WorkflowData } from '../types';
 import { TimeoutError, MemoryLimitError } from '../types';
 
 describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
@@ -729,5 +730,65 @@ describe('Integration: Concurrent execution pooling', () => {
 		expect(result).toBe('replenished');
 
 		await evaluator.release(caller2);
+	});
+});
+
+describe('Integration: nested evaluation time budget', () => {
+	const TIMEOUT_MS = 400;
+	const BURN_MS = 150;
+	const DEPTH = 8;
+
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: TIMEOUT_MS }),
+			maxCodeCacheSize: 1024,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	/**
+	 * Spends `BURN_MS` inside the isolate, then hands the next depth down to
+	 * `$evaluateExpression`; depth 0 spins forever. The remaining depth travels
+	 * as the expression argument (a nested `{{ }}` literal would terminate the
+	 * enclosing template), and the host callback turns it back into a template.
+	 */
+	const frame = (depth: number): string =>
+		depth === 0
+			? '{{ (function() { while (true) {} })() }}'
+			: `{{ (function() { var s = Date.now(); while (Date.now() - s < ${BURN_MS}) {} return $evaluateExpression("${depth - 1}"); })() }}`;
+
+	it('bounds a chain of nested evaluations to a single time budget', () => {
+		let framesEvaluated = 0;
+		const data: WorkflowData = {
+			$evaluateExpression: (depth: string) => {
+				framesEvaluated++;
+				return evaluator.evaluate(frame(Number(depth)), data, caller);
+			},
+		};
+
+		const start = Date.now();
+		expect(() => evaluator.evaluate(frame(DEPTH), data, caller)).toThrow(/timed out/);
+		const elapsed = Date.now() - start;
+
+		expect(framesEvaluated).toBeGreaterThan(1);
+		expect(elapsed).toBeLessThan(TIMEOUT_MS * 2);
+	});
+
+	it('gives a single evaluation the full budget', () => {
+		const start = Date.now();
+		expect(() => evaluator.evaluate(frame(0), {}, caller)).toThrow(TimeoutError);
+		const elapsed = Date.now() - start;
+
+		expect(elapsed).toBeGreaterThanOrEqual(TIMEOUT_MS * 0.8);
+		expect(elapsed).toBeLessThan(TIMEOUT_MS * 2);
 	});
 });
