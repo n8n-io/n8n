@@ -1172,6 +1172,111 @@ describe('POST /executions/:id/stop', () => {
 
 		executionServiceSpy.mockRestore();
 	});
+
+	test('should return only the five stop-result fields and no id', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				mode: 'manual',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				finished: false,
+				status: 'canceled',
+			});
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body).sort()).toEqual([
+			'finished',
+			'mode',
+			'startedAt',
+			'status',
+			'stoppedAt',
+		]);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should omit stoppedAt when the service returns none', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				mode: 'manual',
+				startedAt: new Date(),
+				stoppedAt: undefined,
+				finished: false,
+				status: 'canceled',
+			});
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('stoppedAt');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 404 when the execution is missing but a workflow is accessible', async () => {
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent.post('/executions/99999999/stop');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Failed to find execution to stop');
+	});
+
+	test('should return 500 when the execution cannot be stopped', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(500);
+		expect(response.body).toEqual({ message: 'Internal server error' });
+	});
+
+	test('should stop when the API key has the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:stop'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				mode: 'manual',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				finished: false,
+				status: 'canceled',
+			});
+
+		const workflow = await createWorkflow({}, scopedOwner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await scopedAgent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(200);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 403 when the API key lacks the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:read'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const workflow = await createWorkflow({}, scopedOwner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const response = await scopedAgent.post(`/executions/${execution.id}/stop`);
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 describe('POST /executions/stop', () => {
@@ -1191,8 +1296,10 @@ describe('POST /executions/stop', () => {
 		const response = await authUser1Agent.post('/executions/stop').send({ status: [] });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('Status filter is required');
-		expect(response.body.example).toBeDefined();
+		expect(response.body).toEqual({
+			message: 'Status filter is required. Please provide at least one status to stop executions.',
+			example: { status: ['running', 'waiting', 'queued'] },
+		});
 	});
 
 	test('should stop multiple running executions', async () => {
@@ -1358,5 +1465,114 @@ describe('POST /executions/stop', () => {
 		expect(calledWithWorkflowIds).toContain(workflow3.id);
 
 		executionServiceSpy.mockRestore();
+	});
+
+	test('should map the queued status to the internal new status', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(1);
+
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['queued', 'running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy.mock.calls[0][0].status).toEqual(['new', 'running']);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 400 for a status outside the stoppable set', async () => {
+		const response = await authUser1Agent.post('/executions/stop').send({ status: ['success'] });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 for an empty status even when the caller has no workflows', async () => {
+		const userWithNoWorkflows = await createMemberWithApiKey();
+		const authAgentWithNoWorkflows = testServer.publicApiAgentFor(userWithNoWorkflows);
+
+		const response = await authAgentWithNoWorkflows.post('/executions/stop').send({ status: [] });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'Status filter is required. Please provide at least one status to stop executions.',
+		);
+	});
+
+	test('should return 404 for a workflowId the caller cannot access', async () => {
+		await createWorkflow({}, user1);
+		const otherWorkflow = await createWorkflow({}, owner);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running'], workflowId: otherWorkflow.id });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow not found or not accessible');
+	});
+
+	test('should accept "all" as the workflowId', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(4);
+
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent
+			.post('/executions/stop')
+			.send({ status: ['running'], workflowId: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy.mock.calls[0][0].workflowId).toBe('all');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should not route the literal /stop path to the by-id handler', async () => {
+		const stopSpy = vi.spyOn(Container.get(ExecutionService), 'stop');
+		const stopManySpy = vi.spyOn(Container.get(ExecutionService), 'stopMany').mockResolvedValue(0);
+
+		await createWorkflow({}, user1);
+
+		const response = await authUser1Agent.post('/executions/stop').send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(stopManySpy).toHaveBeenCalled();
+		expect(stopSpy).not.toHaveBeenCalled();
+
+		stopSpy.mockRestore();
+		stopManySpy.mockRestore();
+	});
+
+	test('should stop many when the API key has the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:stop'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stopMany')
+			.mockResolvedValue(2);
+
+		await createWorkflow({}, scopedOwner);
+
+		const response = await scopedAgent.post('/executions/stop').send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ stopped: 2 });
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 403 when the API key lacks the "execution:stop" scope', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:read'] });
+		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
+
+		await createWorkflow({}, scopedOwner);
+
+		const response = await scopedAgent.post('/executions/stop').send({ status: ['running'] });
+
+		expect(response.statusCode).toBe(403);
 	});
 });

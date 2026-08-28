@@ -2,6 +2,10 @@ import {
 	DeletedExecutionPublicDto,
 	ExecutionPublicDto,
 	GetExecutionQueryDto,
+	STOPPABLE_PUBLIC_TO_INTERNAL_STATUS,
+	StopManyExecutionsPublicDto,
+	StoppedExecutionPublicDto,
+	StoppedExecutionsPublicDto,
 } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
@@ -12,21 +16,25 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	Delete,
 	Get,
 	Param,
+	Post,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 import { replaceCircularReferences } from 'n8n-workflow';
 
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
+import type { StopResult } from '@/executions/execution.types';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
@@ -137,6 +145,96 @@ export class ExecutionsPublicController {
 
 		return toDeletedExecutionPublicDto(execution, executionId);
 	}
+	@Post('/stop')
+	@ApiKeyScope('execution:stop')
+	@ApiSummary('Stop multiple executions')
+	@ApiDescription('Stop multiple executions from your instance based on filter criteria.')
+	@ApiTags(['Execution'])
+	@ApiResponse(200, StoppedExecutionsPublicDto)
+	@ApiErrorResponse(404)
+	async stopManyExecutions(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body body: StopManyExecutionsPublicDto,
+	): Promise<StoppedExecutionsPublicDto | undefined> {
+		// This 400 body predates the standard one and carries an `example` field callers may read, so
+		// it is answered here rather than left to the request DTO. It is also answered before the
+		// shared-workflow lookup, so a caller with no workflows still sees it.
+		if (body.status.length === 0) {
+			res.status(400).json({
+				message:
+					'Status filter is required. Please provide at least one status to stop executions.',
+				example: {
+					status: ['running', 'waiting', 'queued'],
+				},
+			});
+			return;
+		}
+
+		const status = body.status.map((value) => STOPPABLE_PUBLIC_TO_INTERNAL_STATUS[value]);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			return { stopped: 0 };
+		}
+
+		const { workflowId } = body;
+
+		if (workflowId && workflowId !== 'all' && !sharedWorkflowsIds.includes(workflowId)) {
+			throw new NotFoundError('Workflow not found or not accessible');
+		}
+
+		const stopped = await this.executionService.stopMany(
+			{
+				workflowId: workflowId ?? 'all',
+				status,
+				startedAfter: body.startedAfter,
+				startedBefore: body.startedBefore,
+			},
+			sharedWorkflowsIds,
+		);
+
+		return { stopped };
+	}
+
+	@Post('/:executionId/stop')
+	@ApiKeyScope('execution:stop')
+	@ApiSummary('Stop an execution')
+	@ApiDescription('Stop an execution by id.')
+	@ApiTags(['Execution'])
+	@ApiResponse(200, StoppedExecutionPublicDto)
+	@ApiErrorResponse(404)
+	async stopExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+	): Promise<StoppedExecutionPublicDto> {
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			const stopResult = await this.executionService.stop(executionId, sharedWorkflowsIds);
+
+			return toStoppedExecutionPublicDto(stopResult);
+		} catch (error) {
+			// A `UserError` would otherwise surface as a 400.
+			if (error instanceof MissingExecutionStopError) {
+				throw new NotFoundError(error.message);
+			}
+
+			throw error;
+		}
+	}
 }
 
 function toBaseFields(execution: PublicExecution) {
@@ -186,5 +284,15 @@ function toDeletedExecutionPublicDto(
 	return {
 		id: Number(executionId),
 		...toBaseFields(execution),
+	};
+}
+
+function toStoppedExecutionPublicDto(stopResult: StopResult): StoppedExecutionPublicDto {
+	return {
+		mode: stopResult.mode,
+		startedAt: stopResult.startedAt.toISOString(),
+		stoppedAt: stopResult.stoppedAt?.toISOString(),
+		finished: stopResult.finished,
+		status: stopResult.status,
 	};
 }
