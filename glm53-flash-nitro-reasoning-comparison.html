@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GLM 5.3 Flash Nitro — Reasoning Effort Comparison</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2f3d;
+      --text: #e8eaef;
+      --muted: #9aa3b2;
+      --low: #5b9bd5;
+      --high: #ed7d31;
+      --max: #a569bd;
+      --grid: #2a2f3d;
+      --accent: #70ad47;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .meta strong { color: #c5ccd8; font-weight: 600; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      margin: 1.25rem 0 2rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    .swatch.low { background: var(--low); }
+    .swatch.high { background: var(--high); }
+    .swatch.max { background: var(--max); }
+
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.35rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 1.1rem;
+    }
+
+    .chart {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 52px;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .metric-label {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .bars {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.65rem;
+      align-items: end;
+      height: 140px;
+      padding-top: 0.25rem;
+    }
+
+    .bar-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+      gap: 0.35rem;
+    }
+
+    .bar-value {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .bar {
+      width: 100%;
+      max-width: 72px;
+      border-radius: 6px 6px 2px 2px;
+      min-height: 4px;
+      transition: height 0.2s ease;
+    }
+
+    .bar.low { background: var(--low); }
+    .bar.high { background: var(--high); }
+    .bar.max { background: var(--max); }
+
+    .bar-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .metric-best {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-align: right;
+    }
+
+    .iter-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .iter-card {
+      background: #141821;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 0.9rem;
+    }
+
+    .iter-card h3 {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.55rem;
+    }
+
+    .iter-card h3.low { color: var(--low); }
+    .iter-card h3.high { color: var(--high); }
+    .iter-card h3.max { color: var(--max); }
+
+    .iter-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.35rem;
+      height: 72px;
+    }
+
+    .iter-bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      gap: 0.2rem;
+    }
+
+    .iter-bar {
+      width: 100%;
+      background: #3d4659;
+      border-radius: 3px 3px 1px 1px;
+    }
+
+    .iter-bar.low { background: var(--low); opacity: 0.85; }
+    .iter-bar.high { background: var(--high); opacity: 0.85; }
+    .iter-bar.max { background: var(--max); opacity: 0.85; }
+
+    .iter-num {
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    td.num { font-variant-numeric: tabular-nums; }
+
+    .pill {
+      display: inline-block;
+      padding: 0.12rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .pill.best { background: rgba(112, 173, 71, 0.18); color: #9fd26b; }
+    .pill.warn { background: rgba(237, 125, 49, 0.15); color: #f0a56a; }
+
+    footer {
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    footer a { color: #8eb4e3; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>GLM 5.3 Flash Nitro — Reasoning Effort Comparison</h1>
+      <p class="meta">
+        <strong>Model:</strong> openrouter/z-ai/glm-5.3-flash:nitro ·
+        <strong>Suite:</strong> model-comparison (31 cases, 3 iterations) ·
+        <strong>Branch:</strong> cursor/openrouter-thinking-eval-effort-e2b6 ·
+        <strong>Date:</strong> 27 Aug 2026
+      </p>
+    </header>
+
+    <div class="legend">
+      <div class="legend-item"><span class="swatch low"></span> low</div>
+      <div class="legend-item"><span class="swatch high"></span> high</div>
+      <div class="legend-item"><span class="swatch max"></span> max</div>
+    </div>
+
+    <section>
+      <h2>Headline metrics</h2>
+      <div class="chart">
+        <div class="metric-row">
+          <div class="metric-label">pass@k</div>
+          <div class="bars">
+            <div class="bar-col">
+              <div class="bar-value">93.5%</div>
+              <div class="bar low" style="height: 93.5%;"></div>
+              <div class="bar-label">low</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">93.9%</div>
+              <div class="bar high" style="height: 93.9%;"></div>
+              <div class="bar-label">high</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">91.1%</div>
+              <div class="bar max" style="height: 91.1%;"></div>
+              <div class="bar-label">max</div>
+            </div>
+          </div>
+          <div class="metric-best">high</div>
+        </div>
+
+        <div class="metric-row">
+          <div class="metric-label">pass^k</div>
+          <div class="bars">
+            <div class="bar-col">
+              <div class="bar-value">84.4%</div>
+              <div class="bar low" style="height: 84.4%;"></div>
+              <div class="bar-label">low</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">80.7%</div>
+              <div class="bar high" style="height: 80.7%;"></div>
+              <div class="bar-label">high</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">82.3%</div>
+              <div class="bar max" style="height: 82.3%;"></div>
+              <div class="bar-label">max</div>
+            </div>
+          </div>
+          <div class="metric-best">low</div>
+        </div>
+
+        <div class="metric-row">
+          <div class="metric-label">cases built</div>
+          <div class="bars">
+            <div class="bar-col">
+              <div class="bar-value">29/31</div>
+              <div class="bar low" style="height: 93.5%;"></div>
+              <div class="bar-label">low</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">30/31</div>
+              <div class="bar high" style="height: 96.8%;"></div>
+              <div class="bar-label">high</div>
+            </div>
+            <div class="bar-col">
+              <div class="bar-value">28/31</div>
+              <div class="bar max" style="height: 90.3%;"></div>
+              <div class="bar-label">max</div>
+            </div>
+          </div>
+          <div class="metric-best">high</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Per-iteration pass rate</h2>
+      <div class="iter-grid">
+        <div class="iter-card">
+          <h3 class="low">low</h3>
+          <div class="iter-bars">
+            <div class="iter-bar-wrap"><div class="iter-bar low" style="height: 86%;"></div><div class="iter-num">86%</div></div>
+            <div class="iter-bar-wrap"><div class="iter-bar low" style="height: 87%;"></div><div class="iter-num">87%</div></div>
+            <div class="iter-bar-wrap"><div class="iter-bar low" style="height: 89%;"></div><div class="iter-num">89%</div></div>
+          </div>
+        </div>
+        <div class="iter-card">
+          <h3 class="high">high</h3>
+          <div class="iter-bars">
+            <div class="iter-bar-wrap"><div class="iter-bar high" style="height: 88%;"></div><div class="iter-num">88%</div></div>
+            <div class="iter-bar-wrap"><div class="iter-bar high" style="height: 81%;"></div><div class="iter-num">81%</div></div>
+            <div class="iter-bar-wrap"><div class="iter-bar high" style="height: 84%;"></div><div class="iter-num">84%</div></div>
+          </div>
+        </div>
+        <div class="iter-card">
+          <h3 class="max">max</h3>
+          <div class="iter-bars">
+            <div class="iter-bar-wrap"><div class="iter-bar max" style="height: 87%;"></div><div class="iter-num">87%</div></div>
+            <div class="iter-bar-wrap"><div class="iter-bar max" style="height: 85%;"></div><div class="iter-num">85%</div></div>
+            <div class="iter-bar-wrap"><div class="iter-bar max" style="height: 83%;"></div><div class="iter-num">83%</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Summary table</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Effort</th>
+            <th>pass@k</th>
+            <th>pass^k</th>
+            <th>Per iter</th>
+            <th>Built</th>
+            <th>vs baseline</th>
+            <th>Run</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>low</td>
+            <td class="num">93.5%</td>
+            <td class="num"><span class="pill best">84.4%</span></td>
+            <td class="num">86 / 87 / 89</td>
+            <td class="num">29/31</td>
+            <td class="num">−0.4pp</td>
+            <td><a href="https://github.com/n8n-io/n8n/actions/runs/33040933861">33040933861</a></td>
+          </tr>
+          <tr>
+            <td>high</td>
+            <td class="num"><span class="pill best">93.9%</span></td>
+            <td class="num"><span class="pill warn">80.7%</span></td>
+            <td class="num">88 / 81 / 84</td>
+            <td class="num"><span class="pill best">30/31</span></td>
+            <td class="num">−4.4pp</td>
+            <td><a href="https://github.com/n8n-io/n8n/actions/runs/33041778821">33041778821</a></td>
+          </tr>
+          <tr>
+            <td>max</td>
+            <td class="num">91.1%</td>
+            <td class="num">82.3%</td>
+            <td class="num">87 / 85 / 83</td>
+            <td class="num">28/31</td>
+            <td class="num">−0.8pp</td>
+            <td><a href="https://github.com/n8n-io/n8n/actions/runs/33042105054">33042105054</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      Baseline comparison target: <code>instance-ai-baseline-13/07</code>.
+      Reference (no explicit effort, master): 93.3% pass@k · 84.5% pass^k —
+      <a href="https://github.com/n8n-io/n8n/actions/runs/33038454888">33038454888</a>.
+    </footer>
+  </div>
+</body>
+</html>
