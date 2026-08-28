@@ -1,7 +1,20 @@
 import { mockDeep } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INode,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { microsoftApiRequest, microsoftApiPaginateRequest } from '../GenericFunctions';
+import {
+	microsoftApiRequest,
+	microsoftApiPaginateRequest,
+	validateEntraGroupId,
+	validateEntraUserId,
+	validateGroupPreSend,
+	validateUserPreSend,
+} from '../GenericFunctions';
 import type { Mock, Mocked } from 'vitest';
 
 describe('Microsoft Entra GenericFunctions', () => {
@@ -364,6 +377,165 @@ describe('Microsoft Entra GenericFunctions', () => {
 			).rejects.toThrow('Refusing to send credentials to an unexpected host');
 
 			expect(mockRequestWithAuthenticationPaginated).not.toHaveBeenCalled();
+		});
+	});
+
+	// The shared `validateUserTargetId` table in nodes/Microsoft/test covers the accepted and
+	// rejected UPN alphabet, so these only cover what Entra adds on top of it.
+	describe('validateEntraUserId', () => {
+		it.each([
+			['a GUID', '02bd9fd6-8f93-4758-87c3-1fb73740a315'],
+			['a UPN', 'jane@contoso.com'],
+			['a guest UPN', 'user_contoso.com#EXT#@tenant.onmicrosoft.com'],
+		])('accepts %s', (_label, id) => {
+			expect(() => validateEntraUserId(id, mockNode)).not.toThrow();
+		});
+
+		it.each([
+			['a GUID with surrounding spaces', ' 02bd9fd6-8f93-4758-87c3-1fb73740a315 '],
+			['a UPN with a trailing space', 'jane@contoso.com '],
+			['a UPN with a percent-encoded at sign', 'jane%40contoso.com'],
+		])('rejects %s', (_label, id) => {
+			expect(() => validateEntraUserId(id, mockNode)).toThrow(NodeOperationError);
+		});
+
+		it('reports an empty value as empty', () => {
+			let caught: NodeOperationError | undefined;
+			try {
+				validateEntraUserId('', mockNode);
+			} catch (error) {
+				caught = error as NodeOperationError;
+			}
+			expect(caught?.message).toBe('The user is empty');
+			expect(caught?.description).toBe(
+				'Select a user from the list, or set the ID. The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315, or a user principal name e.g. jane@contoso.com.',
+			);
+		});
+
+		it('reports a dots-only value without the UPN hint', () => {
+			let caught: NodeOperationError | undefined;
+			try {
+				validateEntraUserId('..', mockNode);
+			} catch (error) {
+				caught = error as NodeOperationError;
+			}
+			expect(caught?.message).toBe('The user ID is invalid');
+			expect(caught?.description).toBe(
+				'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315.',
+			);
+		});
+
+		it('reports an unrecognised value with the UPN hint', () => {
+			let caught: NodeOperationError | undefined;
+			try {
+				validateEntraUserId('jane', mockNode);
+			} catch (error) {
+				caught = error as NodeOperationError;
+			}
+			expect(caught?.message).toBe('The user ID is invalid');
+			expect(caught?.description).toBe(
+				'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315, or a user principal name e.g. jane@contoso.com.',
+			);
+		});
+	});
+
+	describe('validateEntraGroupId', () => {
+		it.each([
+			['a lowercase GUID', 'a8eb60e3-0145-4d7e-85ef-c6259784761b'],
+			['an uppercase GUID', 'A8EB60E3-0145-4D7E-85EF-C6259784761B'],
+		])('accepts %s', (_label, id) => {
+			expect(() => validateEntraGroupId(id, mockNode)).not.toThrow();
+		});
+
+		it.each([
+			['a UPN', 'jane@contoso.com'],
+			['a mail nickname', 'sales-team'],
+			['a GUID with surrounding spaces', ' a8eb60e3-0145-4d7e-85ef-c6259784761b '],
+			['an empty value', ''],
+			['two dots', '..'],
+			['a forward slash', 'a8eb60e3-0145-4d7e-85ef-c6259784761b/members'],
+			['a question mark', 'a8eb60e3-0145-4d7e-85ef-c6259784761b?x=1'],
+			['a hash', 'a8eb60e3-0145-4d7e-85ef-c6259784761b#x'],
+			['a percent-encoded dot pair', '%2e%2e'],
+		])('rejects %s', (_label, id) => {
+			expect(() => validateEntraGroupId(id, mockNode)).toThrow(NodeOperationError);
+		});
+
+		it('reports an empty value as empty', () => {
+			let caught: NodeOperationError | undefined;
+			try {
+				validateEntraGroupId('', mockNode);
+			} catch (error) {
+				caught = error as NodeOperationError;
+			}
+			expect(caught?.message).toBe('The group is empty');
+			expect(caught?.description).toBe(
+				'Select a group from the list, or set the ID. The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315.',
+			);
+		});
+
+		it('tells the user that a group is addressed by object ID', () => {
+			let caught: NodeOperationError | undefined;
+			try {
+				validateEntraGroupId('sales-team', mockNode);
+			} catch (error) {
+				caught = error as NodeOperationError;
+			}
+			expect(caught?.message).toBe('The group ID is invalid');
+			expect(caught?.description).toBe(
+				'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315. Groups are addressed by object ID, not by name or email address.',
+			);
+		});
+	});
+
+	describe.each([
+		['validateUserPreSend', validateUserPreSend, 'user', '87d349ed-44d7-43e1-9a83-5f2406dee5bd'],
+		['validateGroupPreSend', validateGroupPreSend, 'group', 'a8eb60e3-0145-4d7e-85ef-c6259784761b'],
+	])('%s', (_label, preSend, parameterName, validId) => {
+		const requestOptions = { url: 'https://graph.microsoft.com/v1.0/users' } as IHttpRequestOptions;
+
+		const context = (stored: unknown, extracted: unknown) => {
+			const single = mockDeep<IExecuteSingleFunctions>();
+			single.getNode.mockReturnValue(mockNode);
+			single.getNodeParameter.mockImplementation(((
+				name: string,
+				_fallbackValue: unknown,
+				options?: { extractValue?: boolean },
+			) => {
+				if (name !== parameterName) return undefined;
+				return options?.extractValue ? extracted : stored;
+			}) as never);
+			return single;
+		};
+
+		it('passes the request options through for a valid ID', async () => {
+			const single = context({ __rl: true, mode: 'id', value: validId }, validId);
+
+			await expect(preSend.call(single, requestOptions)).resolves.toBe(requestOptions);
+		});
+
+		it('throws for an ID containing a slash', async () => {
+			const single = context(
+				{ __rl: true, mode: 'id', value: `${validId}/members` },
+				`${validId}/members`,
+			);
+
+			await expect(preSend.call(single, requestOptions)).rejects.toThrow(NodeOperationError);
+		});
+
+		it('throws when the stored value carries an extraction rule', async () => {
+			const single = context({ __rl: true, mode: 'id', value: validId, __regex: '(.*)' }, validId);
+
+			let caught: NodeOperationError | undefined;
+			try {
+				await preSend.call(single, requestOptions);
+			} catch (error) {
+				caught = error as NodeOperationError;
+			}
+			expect(caught?.message).toBe(`The ${parameterName} ID is invalid`);
+			expect(caught?.description).toBe(
+				'Remove the ID extraction rule from this field and set the ID directly.',
+			);
 		});
 	});
 });

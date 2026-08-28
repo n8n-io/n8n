@@ -6,15 +6,106 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	INode,
 	IRequestOptions,
 	INodeExecutionData,
 	IN8nHttpFullResponse,
 	INodePropertyOptions,
 	INodeListSearchResult,
 	INodeListSearchItems,
+	PreSendAction,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sanitizeXmlName } from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
+
+import { validateUserTargetId, type UserTargetMessages } from '../GenericFunctions';
+
+const ID_FORMAT_HINT = 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315';
+
+const OBJECT_ID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
+
+const ENTRA_USER_MESSAGES: UserTargetMessages = {
+	required: {
+		message: 'The user is empty',
+		description: `Select a user from the list, or set the ID. ${ID_FORMAT_HINT}, or a user principal name e.g. jane@contoso.com.`,
+	},
+	dotsOnly: {
+		message: 'The user ID is invalid',
+		description: `${ID_FORMAT_HINT}.`,
+	},
+	invalid: {
+		message: 'The user ID is invalid',
+		description: `${ID_FORMAT_HINT}, or a user principal name e.g. jane@contoso.com.`,
+	},
+};
+
+const ENTRA_GROUP_MESSAGES = {
+	required: {
+		message: 'The group is empty',
+		description: `Select a group from the list, or set the ID. ${ID_FORMAT_HINT}.`,
+	},
+	invalid: {
+		message: 'The group ID is invalid',
+		description: `${ID_FORMAT_HINT}. Groups are addressed by object ID, not by name or email address.`,
+	},
+};
+
+/**
+ * Validates a user ID before it is encoded into a Graph URL path. Graph accepts either an object
+ * ID or a user principal name, guests included. The value is validated untrimmed, because the URL
+ * interpolates it untrimmed. Both accepted alphabets are closed under substring, so no substring
+ * of an accepted ID can contain `/ \ ? % #` and change the request path.
+ */
+export function validateEntraUserId(id: unknown, node: INode): void {
+	const value = String(id ?? '');
+	if (value.trim() === '') {
+		throw new NodeOperationError(node, ENTRA_USER_MESSAGES.required.message, {
+			description: ENTRA_USER_MESSAGES.required.description,
+		});
+	}
+	validateUserTargetId(value, node, ENTRA_USER_MESSAGES);
+}
+
+/** Graph resolves `/groups/{id}` and `/directoryObjects/{id}` by object ID only. */
+export function validateEntraGroupId(id: unknown, node: INode): void {
+	const value = String(id ?? '');
+	if (value.trim() === '') {
+		throw new NodeOperationError(node, ENTRA_GROUP_MESSAGES.required.message, {
+			description: ENTRA_GROUP_MESSAGES.required.description,
+		});
+	}
+	if (!OBJECT_ID.test(value)) {
+		throw new NodeOperationError(node, ENTRA_GROUP_MESSAGES.invalid.message, {
+			description: ENTRA_GROUP_MESSAGES.invalid.description,
+		});
+	}
+}
+
+/**
+ * Reads an ID the way the routing layer does. A `$parameter[...]` URL template applies a stored
+ * `__regex` while `extractValue` applies the mode's own rule, so a stored `__regex` would put a
+ * substring in the URL that this guard never saw. No Entra mode declares `extractValue`, so
+ * refusing a stored `__regex` refuses nothing legitimate.
+ */
+function readEntraId(this: IExecuteSingleFunctions, name: 'user' | 'group'): unknown {
+	const stored = this.getNodeParameter(name);
+	if (typeof stored === 'object' && stored !== null && '__regex' in stored) {
+		throw new NodeOperationError(this.getNode(), `The ${name} ID is invalid`, {
+			description: 'Remove the ID extraction rule from this field and set the ID directly.',
+		});
+	}
+	return this.getNodeParameter(name, undefined, { extractValue: true });
+}
+
+export const validateUserPreSend: PreSendAction = async function (requestOptions) {
+	validateEntraUserId(readEntraId.call(this, 'user'), this.getNode());
+	return requestOptions;
+};
+
+export const validateGroupPreSend: PreSendAction = async function (requestOptions) {
+	validateEntraGroupId(readEntraId.call(this, 'group'), this.getNode());
+	return requestOptions;
+};
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
