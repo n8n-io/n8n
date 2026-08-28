@@ -181,7 +181,7 @@ gh attestation verify sbom-source.cdx.json \
 
 | Tool | Role |
 |---|---|
-| syft | Image SBOM generation (CycloneDX) — resolves licenses from files on disk |
+| syft | Image SBOM generation (CycloneDX 1.6) — resolves licenses from files on disk |
 | cdxgen | Release SBOM generation (CycloneDX 1.6) from the pnpm lockfile |
 | enrich-sbom.mjs | License enrichment (`scripts/licenses/`) |
 | check-sbom-licenses.mjs | SPDX compliance gate (`scripts/licenses/`) |

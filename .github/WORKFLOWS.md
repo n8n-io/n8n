@@ -704,7 +704,8 @@ There are two, with different subjects and different consumers. They are not dup
 | **Output** | `sbom-source.cdx.json`, `THIRD_PARTY_LICENSES.md`, `vex.openvex.json` on the GitHub Release | attestation in the registry beside the image |
 | **Consumer** | humans — legal/license compliance; backs `/third-party-licenses` | machines — `cosign verify-attestation`, admission control |
 
-Format is CycloneDX JSON for both.
+Format is CycloneDX JSON 1.6 for both. Each pipeline pins the schema version, so a
+scanner upgrade cannot change the shape of a signed artifact without a visible diff.
 
 The two use different scanners on purpose. The release SBOM runs `cdxgen -t pnpm` over the
 resolved pnpm closure with `FETCH_LICENSE=true`, because a lockfile scan has no package files

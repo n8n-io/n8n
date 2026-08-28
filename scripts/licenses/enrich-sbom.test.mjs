@@ -239,6 +239,49 @@ describe('enrichSbom dropPhantomNpm + byName', () => {
 		assert.equal(on.sbom.components[0].name, 'ssh2');
 		assert.deepEqual(on.sbom.components[0].licenses, [{ license: { id: 'MIT' } }]); // byName, version-agnostic
 	});
+
+	// The image pipeline runs this path against syft output, so prove the filter is
+	// wired through end to end for that shape, not only for cdxgen's.
+	it('drops a syft-shaped phantom and keeps the real package alongside it', () => {
+		const sbom = {
+			components: [
+				{
+					name: 'polyfill',
+					version: 'UNKNOWN',
+					purl: 'pkg:npm/web-streams-polyfill',
+					properties: [
+						{
+							name: 'syft:location:0:path',
+							value: '/app/node_modules/web-streams-polyfill/es5/package.json',
+						},
+					],
+				},
+				{
+					name: 'ssh2',
+					version: '1.16.0',
+					purl: 'pkg:npm/ssh2@1.16.0',
+					properties: [
+						{ name: 'syft:location:0:path', value: '/app/node_modules/ssh2/package.json' },
+					],
+				},
+			],
+		};
+
+		const result = enrichSbom(sbom, {
+			overrides: {},
+			byName: { ssh2: { license: 'MIT' } },
+			elections: {},
+			licenseText: LICENSE_TEXT,
+			dropPhantomNpm: true,
+		});
+
+		assert.equal(result.droppedPhantoms, 1);
+		assert.deepEqual(
+			result.sbom.components.map((c) => c.name),
+			['ssh2'],
+		);
+		assert.deepEqual(result.droppedPhantomPurls, ['pkg:npm/web-streams-polyfill']);
+	});
 });
 
 describe('buildFirstPartyOsiMap', () => {

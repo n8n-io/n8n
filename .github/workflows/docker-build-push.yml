@@ -644,6 +644,9 @@ jobs:
         with:
           build-command: ''
           install-command: ''
+          # Scope the cache key: the default is the root lockfile, which would
+          # restore the whole workspace pnpm store into a job that never runs pnpm.
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Install Syft
         uses: anchore/sbom-action/download-syft@43a17d6e7add2b5535efe4dcae9952337c479a93 # v0.20.11
