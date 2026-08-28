@@ -46,6 +46,23 @@ describe('Form Node', () => {
 		mockWebhookFunctions.getExecutionId.mockReturnValue(testExecutionId);
 	});
 
+	describe('node description', () => {
+		it('should offer an option to hide the attribution footer on the Form Ending page', () => {
+			// The Form Trigger exposes `appendAttribution` so builders can drop the
+			// "Form automated with n8n" footer, but the Form Ending page has no
+			// equivalent toggle — it always renders the footer.
+			const completionOptions = form.description.properties.find(
+				(property) =>
+					property.name === 'options' &&
+					property.displayOptions?.show?.operation?.includes('completion'),
+			);
+
+			expect(completionOptions?.options).toContainEqual(
+				expect.objectContaining({ name: 'appendAttribution' }),
+			);
+		});
+	});
+
 	describe('execute method', () => {
 		it('should throw an error if Form Trigger node is not set', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('page');
