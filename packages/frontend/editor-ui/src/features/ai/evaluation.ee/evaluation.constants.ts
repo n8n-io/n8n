@@ -194,7 +194,7 @@ const TEST_CASE_EXECUTION_ERROR_CODE = {
 export type TestCaseExecutionErrorCodes =
 	(typeof TEST_CASE_EXECUTION_ERROR_CODE)[keyof typeof TEST_CASE_EXECUTION_ERROR_CODE];
 
-const TEST_RUN_ERROR_CODES = {
+export const TEST_RUN_ERROR_CODES = {
 	TEST_CASES_NOT_FOUND: 'TEST_CASES_NOT_FOUND',
 	INTERRUPTED: 'INTERRUPTED',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
@@ -242,6 +242,22 @@ export const getErrorBaseKey = (errorCode?: string): BaseTextKey | '' => {
 		''
 	);
 };
+
+/**
+ * The compiler's failure reason (e.g. "workflow trigger has multiple downstream
+ * nodes; set startNodeName explicitly") is already a user-safe message — the
+ * compiler only ever throws a UserError there — so prefer it over the generic
+ * static hint when present, so the user learns *why* compilation failed rather
+ * than just that it did.
+ */
+export function resolveCompilationFailureReason(
+	errorCode: string | undefined,
+	errorDetails: Record<string, unknown> | undefined,
+): string | undefined {
+	if (errorCode !== TEST_RUN_ERROR_CODES.COMPILATION_FAILED) return undefined;
+	const reason = errorDetails?.reason;
+	return typeof reason === 'string' && reason ? reason : undefined;
+}
 
 export const statusDictionary: Record<
 	TestRunRecord['status'],

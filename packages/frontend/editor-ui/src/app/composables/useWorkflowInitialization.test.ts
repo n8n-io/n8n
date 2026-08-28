@@ -113,7 +113,10 @@ const mockWorkflowDocumentStore = vi.hoisted(() => ({
 	setHydrated: vi.fn(),
 	onNameChange: vi.fn(),
 }));
-vi.mock('@/app/stores/workflowDocument.store', () => ({
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	// Keeps the real `deriveHomeProject` so the recovery-path test below
+	// exercises actual derivation logic, not a hand-rolled stand-in.
+	...(await importOriginal<typeof import('@/app/stores/workflowDocument.store')>()),
 	useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn((id: string) => id),
 	disposeWorkflowDocumentStore: vi.fn(),
@@ -252,6 +255,44 @@ describe('useWorkflowInitialization', () => {
 			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'personal-project-id' }),
 			);
+		});
+	});
+
+	describe('recovery path (initializeWorkspace failure)', () => {
+		it('derives homeProject from the shared relation when the license-gated field is absent', async () => {
+			mockInitializeWorkspace.mockRejectedValueOnce(new Error('boom'));
+
+			let openWorkflow!: (data: IWorkflowDb) => Promise<void>;
+			renderWithComposable((init) => {
+				openWorkflow = init.openWorkflow;
+			});
+
+			const ownerProject = { id: 'proj-1', name: 'Acme', type: 'team' };
+			await openWorkflow({
+				id: 'wf-1',
+				name: 'My Test Workflow',
+				shared: [{ role: 'workflow:owner', project: ownerProject }],
+			} as unknown as IWorkflowDb);
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(ownerProject);
+		});
+
+		it('prefers the license-gated homeProject when present', async () => {
+			mockInitializeWorkspace.mockRejectedValueOnce(new Error('boom'));
+
+			let openWorkflow!: (data: IWorkflowDb) => Promise<void>;
+			renderWithComposable((init) => {
+				openWorkflow = init.openWorkflow;
+			});
+
+			const homeProject = { id: 'proj-2', name: 'Direct', type: 'team' };
+			await openWorkflow({
+				id: 'wf-1',
+				name: 'My Test Workflow',
+				homeProject,
+			} as unknown as IWorkflowDb);
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(homeProject);
 		});
 	});
 });

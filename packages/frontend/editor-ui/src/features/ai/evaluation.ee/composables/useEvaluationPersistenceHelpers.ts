@@ -30,6 +30,7 @@ import {
 	updateEvaluationConfig,
 } from '../evaluation.api';
 import { useEvaluationsWizardSidepanelStore } from '../wizardSidepanel.store';
+import { resolveSingleUpstream } from './resolveSingleUpstream';
 
 // A single data-table row change, tracked so a failed persist can undo it.
 export type RowMutation =
@@ -318,9 +319,16 @@ export function useEvaluationPersistenceHelpers() {
 		const parents = getParentNodes(byDest, start, 'main', 1);
 		const resolved = resolveSingleUpstream(parents, evaluationTriggerNames);
 		if (!resolved) {
+			// A converging Evaluation Trigger doesn't count towards ambiguity (see
+			// `resolveSingleUpstream`), so the count shown here shouldn't include it
+			// either — unless excluding it would leave nothing to report (e.g. two
+			// pre-existing Evaluation Triggers with no real trigger among them), in
+			// which case the raw total is more accurate than claiming "found 0".
+			const nonEvalParentCount =
+				parents.filter((p) => !evaluationTriggerNames.has(p)).length || parents.length;
 			return {
 				ok: false,
-				reason: `Start node "${start}" must have exactly one upstream node (found ${parents.length})`,
+				reason: `Start node "${start}" must have exactly one upstream node (found ${nonEvalParentCount})`,
 			};
 		}
 		return { ok: true, upstreamNodeName: resolved, startNodeName: start, endNodeName: end };
@@ -336,24 +344,6 @@ export function useEvaluationPersistenceHelpers() {
 // ---------------------------------------------------------------------------
 // Module-level pure helpers (no closure dependencies)
 // ---------------------------------------------------------------------------
-
-/**
- * Picks the sole "real" node from a list of upstream parents, ignoring any
- * Evaluation Trigger among them — a pre-existing Evaluation Trigger can
- * converge on the same node as a workflow's real trigger (added to enable
- * evaluation without disturbing production), and shouldn't count towards
- * ambiguity. Falls back to the Evaluation Trigger itself when it's the only
- * parent (a workflow built entirely around evaluation, TRUST-407).
- */
-export function resolveSingleUpstream(
-	parents: string[],
-	evaluationTriggerNames: Set<string>,
-): string | undefined {
-	const nonEvalParents = parents.filter((p) => !evaluationTriggerNames.has(p));
-	if (nonEvalParents.length === 1) return nonEvalParents[0];
-	if (nonEvalParents.length === 0 && parents.length === 1) return parents[0];
-	return undefined;
-}
 
 export function numericRowId(id: unknown): number | undefined {
 	if (typeof id === 'number') return id;

@@ -771,6 +771,62 @@ describe('useTestCasePersistence', () => {
 			);
 			expect(mocks.buildEvaluationConfigDto).not.toHaveBeenCalled();
 		});
+
+		it('reports the real (non-evaluation-trigger) parent count when ambiguous, not the raw total (JoseBra review)', async () => {
+			setupHappyPath();
+			mocks.activeRowIndex = 2;
+			mocks.activeRowId = 99;
+			mocks.updateDataTableRowsApi = vi.fn().mockResolvedValue([{ id: 99 }]);
+			mocks.isSliceMode = true;
+			mocks.startNodeName = 'Start Node';
+			mocks.endNodeName = 'End Node';
+			// Two real triggers (genuinely ambiguous) plus a converging Evaluation
+			// Trigger that shouldn't count towards the reported total.
+			mocks.allNodes = [
+				{ name: 'Trigger A', type: 'trigger' },
+				{ name: 'Trigger B', type: 'trigger' },
+				{ name: 'Old Eval Trigger', type: 'n8n-nodes-base.evaluationTrigger' },
+			];
+			mocks.parentsByNode['Start Node'] = ['Trigger A', 'Trigger B', 'Old Eval Trigger'];
+
+			const { persistAndRunCase } = useTestCasePersistence();
+			const result = await persistAndRunCase('run_again');
+
+			expect(result).toBe(false);
+			expect(mocks.showError).toHaveBeenCalledWith(
+				expect.objectContaining({ message: expect.stringContaining('found 2') }),
+				expect.anything(),
+			);
+			expect(mocks.buildEvaluationConfigDto).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the raw parent count when every parent is an Evaluation Trigger (cubic review)', async () => {
+			setupHappyPath();
+			mocks.activeRowIndex = 2;
+			mocks.activeRowId = 99;
+			mocks.updateDataTableRowsApi = vi.fn().mockResolvedValue([{ id: 99 }]);
+			mocks.isSliceMode = true;
+			mocks.startNodeName = 'Start Node';
+			mocks.endNodeName = 'End Node';
+			// Two pre-existing Evaluation Triggers, no real trigger among them — the
+			// non-evaluation count is 0, but there genuinely are 2 upstream parents,
+			// so the message shouldn't claim "found 0".
+			mocks.allNodes = [
+				{ name: 'Old Eval Trigger A', type: 'n8n-nodes-base.evaluationTrigger' },
+				{ name: 'Old Eval Trigger B', type: 'n8n-nodes-base.evaluationTrigger' },
+			];
+			mocks.parentsByNode['Start Node'] = ['Old Eval Trigger A', 'Old Eval Trigger B'];
+
+			const { persistAndRunCase } = useTestCasePersistence();
+			const result = await persistAndRunCase('run_again');
+
+			expect(result).toBe(false);
+			expect(mocks.showError).toHaveBeenCalledWith(
+				expect.objectContaining({ message: expect.stringContaining('found 2') }),
+				expect.anything(),
+			);
+			expect(mocks.buildEvaluationConfigDto).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('serialized saves', () => {

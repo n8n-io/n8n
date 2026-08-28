@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveSingleUpstream } from './useEvaluationPersistenceHelpers';
+import { resolveSingleUpstream } from './resolveSingleUpstream';
 
 describe('resolveSingleUpstream', () => {
 	it('returns the sole parent when it is not an Evaluation Trigger', () => {
