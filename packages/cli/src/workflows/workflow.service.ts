@@ -674,7 +674,6 @@ export class WorkflowService {
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
 				versionId: versionIdToPublish,
 				source,
-				reapplyingLiveVersion: versionIdToPublish === workflow.activeVersionId,
 			});
 			updatedWorkflow.active = publishedWorkflow.active;
 			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
@@ -683,7 +682,6 @@ export class WorkflowService {
 			await this.activateWorkflow(user, workflowId, {
 				versionId: workflow.activeVersionId,
 				source,
-				reapplyingLiveVersion: true,
 			});
 		}
 		return updatedWorkflow;
@@ -857,24 +855,19 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
-			/** Set when the caller already knows this only re-registers the version that is live. */
-			reapplyingLiveVersion?: boolean;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
 		const publicApi = source === 'api';
 
-		// Re-applying the version that is already live publishes nothing new. It only re-registers the
-		// triggers so a settings change takes effect, so an editor's own scopes are enough. `workflow:read`
-		// joins the update scope because this path reads the live version back out of history below.
-		// A caller that already knows it is a re-apply skips the publish lookup that would only miss;
-		// the version check further down still rejects one that was wrong about it.
-		let workflow = options?.reapplyingLiveVersion
-			? null
-			: await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:publish',
-				]);
+		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:publish',
+		]);
 
+		// Re-applying the version that is already live publishes nothing new. It only re-registers the
+		// triggers so a settings change takes effect, so an editor's own scopes are enough. Resolved as
+		// a fallback, leaving the publish path above untouched. `workflow:read` joins the update scope
+		// because this path reads the live version back out of history below.
 		const resolvedWithEditorScopes = workflow === null;
 		if (resolvedWithEditorScopes) {
 			workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -900,19 +893,9 @@ export class WorkflowService {
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
 
+		// Reached with access to the workflow but not the right to release a version, so there is no
+		// existence to hide behind a 404 here.
 		if (resolvedWithEditorScopes && versionIdToActivate !== previousActiveVersionId) {
-			// The caller said this only re-applies the live version, but that version moved while the
-			// save was in flight. Refusing keeps this from turning into a publication nobody checked
-			// permission for: the checks that gate a publication ran against the version the caller
-			// read, not this one.
-			if (options?.reapplyingLiveVersion) {
-				throw new ConflictError(
-					'The published version changed while this save was in progress. Retry the save.',
-				);
-			}
-
-			// Reached with access to the workflow but not the right to release a version, so there is
-			// no existence to hide behind a 404 here.
 			this.logger.warn('User attempted to publish a workflow without permissions', {
 				workflowId,
 				userId: user.id,
