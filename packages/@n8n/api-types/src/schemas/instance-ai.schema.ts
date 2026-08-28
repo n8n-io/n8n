@@ -185,8 +185,8 @@ export const instanceAiEventTypeSchema = z.enum([
 export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
 
 /**
- * Live-only event types under the durable log (`N8N_INSTANCE_AI_DURABLE_LOG`):
- * never persisted, their SSE frames carry no `id:` line, and the browser's
+ * Live-only event types: never persisted, their SSE frames carry no `id:` line,
+ * and the browser's
  * replay cursor never points at them. Deltas are transport, not state: a
  * completed segment replays as a coalesced block fact instead. One list,
  * shared by the writer (what to persist) and the frontend (which frames to
