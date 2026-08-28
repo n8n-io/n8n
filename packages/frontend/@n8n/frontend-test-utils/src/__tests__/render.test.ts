@@ -77,15 +77,53 @@ const Labelled = defineComponent({
 });
 
 describe('the { merge: true } option', () => {
-	// No test pins the "defaults stay clean" property yet: `merge` mutates them, and three
-	// editor-ui suites depend on that. See the comment on the `merge` call in `render.ts`.
-
 	it('still merges the call options over the defaults', () => {
 		const render = createComponentRenderer(Labelled, { props: { label: 'default' } });
 
 		const { getByTestId } = render({ props: { hint: 'from the call' } }, { merge: true });
 
 		expect(getByTestId('labelled').textContent).toBe('default|from the call');
+	});
+
+	it('leaves the defaults untouched, so one render cannot leak into the next', () => {
+		const defaults = { props: { label: 'default' } };
+		const render = createComponentRenderer(Labelled, defaults);
+
+		render({ props: { hint: 'from the first render' } }, { merge: true });
+		// Both renders stay in the document, in order, so index 1 is the second one.
+		const { getAllByTestId } = render({}, { merge: true });
+
+		expect(defaults.props).toEqual({ label: 'default' });
+		expect(getAllByTestId('labelled')[1].textContent).toBe('default|');
+	});
+
+	it('keeps a symbol-keyed provide the defaults carry', () => {
+		const ProvidedKey = Symbol('provided');
+		const Consumer = defineComponent({
+			setup: () => ({ provided: inject<number>(ProvidedKey) }),
+			template: '<span data-test-id="provided">{{ provided }}</span>',
+		});
+		const render = createComponentRenderer(Consumer, {
+			global: { provide: { [ProvidedKey]: 7 } },
+		});
+
+		// Every injection key in the shell is a symbol, and `merge` walks string keys only.
+		const { getByTestId } = render({ pinia: createTestingPinia() }, { merge: true });
+
+		expect(getByTestId('provided')).toHaveTextContent('7');
+	});
+
+	it('installs the pinia the defaults carry', () => {
+		const pinia = createTestingPinia();
+		const counter = mockedStore(useCounterStore);
+		counter.label.mockReturnValue('count: 42');
+		// `createTestingPinia` makes itself the active pinia, so a render that lost its own
+		// `pinia` option would read this second one instead of the seeded store.
+		createTestingPinia();
+
+		const { getByTestId } = createComponentRenderer(Probe, { pinia })({}, { merge: true });
+
+		expect(getByTestId('store')).toHaveTextContent('count: 42');
 	});
 });
 

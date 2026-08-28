@@ -252,6 +252,10 @@ describe('ResourceMapper.vue', () => {
 						name: 'columns',
 						typeOptions: {
 							resourceMapper: {
+								// The plural word only reaches the matching-column label and its
+								// description under multi-key matching; the singular word reaches the
+								// mapping-mode description either way. Both are asserted below.
+								multiKeyMatch: true,
 								fieldWords: {
 									singular: 'foo',
 									plural: 'foos',
@@ -660,16 +664,28 @@ describe('ResourceMapper.vue', () => {
 							columns: {
 								mappingMode: 'autoMapInputData',
 								matchingColumns: ['name'],
+								// `display: true` is what puts a field in the matching-column list —
+								// a field the node returns but hides is not selectable.
 								schema: [
 									{
 										id: 'name',
 										displayName: 'name',
 										canBeUsedToMatch: true,
+										display: true,
+										required: false,
+										defaultMatch: false,
+										type: 'string',
+										removed: false,
 									},
 									{
 										id: 'email',
 										displayName: 'email',
 										canBeUsedToMatch: true,
+										display: true,
+										required: false,
+										defaultMatch: false,
+										type: 'string',
+										removed: false,
 									},
 								],
 							},
