@@ -13,6 +13,39 @@ import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 export const PAGE_LIMIT = 250;
 
 /**
+ * Top-level site selector carried by every operation (each resource spreads it
+ * right after its Operation field). The stored From List value is the cloudId
+ * itself — accessible-resources returns it, so list mode needs no resolution;
+ * By URL is hostname-matched against the connection's sites at execute time.
+ * Left empty, single-site connections auto-resolve at runtime.
+ */
+export const siteRLC: INodeProperties = {
+	displayName: 'Site',
+	name: 'site',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description:
+		'The Confluence site to use. Can be left empty when the connection has access to exactly one site.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getSites',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://your-site.atlassian.net',
+		},
+	],
+};
+
+/**
  * Shared page-selection fields: operations spread `spaceRLC`/`pageRLC`/
  * `bodyFormatOption`, add their own displayOptions, and resolve the selection
  * with `resolvePageId`. An empty space leaves page lookups site-wide.
@@ -25,7 +58,7 @@ export const pageRLC: INodeProperties = {
 	required: true,
 	description: 'The page to operate on',
 	typeOptions: {
-		loadOptionsDependsOn: ['space.value'],
+		loadOptionsDependsOn: ['site.value', 'space.value'],
 	},
 	modes: [
 		{
@@ -87,6 +120,9 @@ export const labelRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description: 'The label to operate on',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -147,6 +183,9 @@ export const spaceRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	description: 'The Confluence space',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',

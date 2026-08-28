@@ -5,8 +5,10 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 
+import { fetchAtlassianAccessibleResources } from '@utils/atlassian';
+
 import { extractNextCursor, resolveSpaceKey } from '../actions/common';
-import { confluenceApiRequest } from '../transport';
+import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
 interface SearchPage {
 	entries: IDataObject[];
@@ -62,6 +64,39 @@ async function searchByName(
 	}
 
 	return { results, paginationToken: cursor };
+}
+
+/**
+ * Lists the sites the OAuth2 connection can reach; the item value is the
+ * cloudId itself, so the selection needs no resolution at execute time. Always
+ * fetched fresh (cache updated) so a site granted after a reconnect shows up
+ * without a restart.
+ */
+export async function getSites(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const resources = await fetchAtlassianAccessibleResources.call(this, CONFLUENCE_CREDENTIAL_NAME, {
+		bypassCache: true,
+	});
+	const filterLower = (filter ?? '').trim().toLowerCase();
+
+	const results = resources
+		.filter((site) => typeof site?.id === 'string' && site.id !== '')
+		.map((site) => {
+			const url = typeof site.url === 'string' && site.url !== '' ? site.url : undefined;
+			const name = typeof site.name === 'string' && site.name !== '' ? site.name : (url ?? site.id);
+			return { name, value: site.id, url };
+		})
+		.filter(
+			(item) =>
+				filterLower === '' ||
+				item.name.toLowerCase().includes(filterLower) ||
+				(item.url ?? '').toLowerCase().includes(filterLower),
+		)
+		.sort((a, b) => a.name.localeCompare(b.name));
+
+	return { results };
 }
 
 export async function searchSpaces(

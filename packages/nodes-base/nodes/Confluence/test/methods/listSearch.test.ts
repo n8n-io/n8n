@@ -1,8 +1,17 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { clearAtlassianAccessibleResourcesCache } from '@utils/atlassian';
+
 import { clearSpaceKeyCache } from '../../actions/common';
-import { getLabels, getPages, searchSpaces, searchSpacesWithAll } from '../../methods/listSearch';
+import {
+	getLabels,
+	getPages,
+	getSites,
+	searchSpaces,
+	searchSpacesWithAll,
+} from '../../methods/listSearch';
 import { confluenceApiRequest } from '../../transport';
 
 vi.mock('../../transport', () => ({
@@ -440,5 +449,72 @@ describe('Confluence listSearch.getLabels', () => {
 			expect.objectContaining({ cursor: 'abc==' }),
 		);
 		expect(result.paginationToken).toBe('xyz==');
+	});
+});
+
+describe('Confluence listSearch.getSites', () => {
+	let ctx: ILoadOptionsFunctions;
+	let httpRequestWithAuthentication: Mock;
+
+	const accessibleResources = [
+		{ id: 'cloud-2', url: 'https://zeta.atlassian.net', name: 'Zeta' },
+		{ id: 'cloud-1', url: 'https://alpha.atlassian.net', name: 'Alpha' },
+		{ id: 'cloud-3', url: 'https://nameless.atlassian.net' },
+		{ id: '', url: 'https://broken.atlassian.net', name: 'No ID' },
+	];
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearAtlassianAccessibleResourcesCache();
+		ctx = mockDeep<ILoadOptionsFunctions>();
+		httpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
+		ctx.helpers.httpRequestWithAuthentication = httpRequestWithAuthentication;
+		vi.mocked(ctx.getNode).mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
+		});
+	});
+
+	it('lists accessible sites sorted by name, cloudId as the value', async () => {
+		const result = await getSites.call(ctx);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({
+				url: 'https://api.atlassian.com/oauth/token/accessible-resources',
+			}),
+		);
+		expect(result).toEqual({
+			results: [
+				{ name: 'Alpha', value: 'cloud-1', url: 'https://alpha.atlassian.net' },
+				// A site without a name falls back to its URL; entries without an ID are dropped
+				{
+					name: 'https://nameless.atlassian.net',
+					value: 'cloud-3',
+					url: 'https://nameless.atlassian.net',
+				},
+				{ name: 'Zeta', value: 'cloud-2', url: 'https://zeta.atlassian.net' },
+			],
+		});
+	});
+
+	it('filters by name or URL, case-insensitively', async () => {
+		const byName = await getSites.call(ctx, 'alp');
+		expect(byName.results.map((r) => r.value)).toEqual(['cloud-1']);
+
+		const byUrl = await getSites.call(ctx, 'ZETA.atlassian');
+		expect(byUrl.results.map((r) => r.value)).toEqual(['cloud-2']);
+	});
+
+	it('bypasses the accessible-resources cache so newly granted sites appear', async () => {
+		await getSites.call(ctx);
+		await getSites.call(ctx);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
 });

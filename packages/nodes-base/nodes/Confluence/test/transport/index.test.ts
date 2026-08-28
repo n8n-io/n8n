@@ -4,7 +4,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { clearAtlassianCloudIdCache } from '@utils/atlassian';
+import { clearAtlassianAccessibleResourcesCache } from '@utils/atlassian';
 
 import {
 	confluenceApiRequest,
@@ -16,6 +16,8 @@ const accessibleResources = [
 	{ id: 'cloud-1', url: 'https://example.atlassian.net', name: 'example' },
 	{ id: 'cloud-2', url: 'https://Other.Atlassian.NET' },
 ];
+
+const siteByUrl = (url: string) => ({ __rl: true, mode: 'url', value: url });
 
 const pageNotFoundResponse = {
 	message: 'Request failed with status code 404',
@@ -60,7 +62,7 @@ describe('confluenceApiRequest', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		clearAtlassianCloudIdCache();
+		clearAtlassianAccessibleResourcesCache();
 		ctx = mockDeep<IExecuteFunctions>();
 		mockHttpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
 		ctx.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
@@ -74,13 +76,13 @@ describe('confluenceApiRequest', () => {
 			parameters: {},
 		};
 		ctx.getNode.mockReturnValue(mockNode);
-		ctx.getCredentials.mockResolvedValue({ domain: 'https://example.atlassian.net/wiki' });
+		ctx.getNodeParameter.mockReturnValue(siteByUrl('https://example.atlassian.net/wiki') as never);
 	});
 
 	it('routes requests to https://api.atlassian.com/ex/confluence/{cloudId}', async () => {
 		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
 
-		expect(ctx.getCredentials).toHaveBeenCalledWith('confluenceCloudOAuth2Api');
+		expect(ctx.getNodeParameter).toHaveBeenCalledWith('site', 0, null);
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			1,
@@ -226,22 +228,55 @@ describe('confluenceApiRequest', () => {
 		expect(error).toBe(wrapped);
 	});
 
-	it('surfaces the cloudId lookup error when no site matches', async () => {
-		ctx.getCredentials.mockResolvedValue({ domain: 'https://missing.atlassian.net' });
+	it('surfaces the cloudId lookup error when no site matches the By URL value', async () => {
+		ctx.getNodeParameter.mockReturnValue(siteByUrl('https://missing.atlassian.net') as never);
 
 		await expect(confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages')).rejects.toThrow(
 			'No Confluence site matched "https://missing.atlassian.net"',
 		);
 	});
 
-	it('throws a NodeOperationError naming the Site URL field when the credential lacks it', async () => {
-		ctx.getCredentials.mockResolvedValue({});
+	it('uses a From List selection as the cloudId directly, without the resources lookup', async () => {
+		ctx.getNodeParameter.mockReturnValue({ __rl: true, mode: 'list', value: 'cloud-2' } as never);
+		mockHttpRequestWithAuthentication.mockResolvedValueOnce({ results: [] });
+
+		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({
+				url: 'https://api.atlassian.com/ex/confluence/cloud-2/wiki/api/v2/pages',
+			}),
+		);
+	});
+
+	it('auto-resolves an empty Site parameter when the connection reaches one site', async () => {
+		ctx.getNodeParameter.mockReturnValue({ __rl: true, mode: 'list', value: '' } as never);
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce([accessibleResources[0]])
+			.mockResolvedValueOnce({ results: [] });
+
+		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+			2,
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({
+				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/api/v2/pages',
+			}),
+		);
+	});
+
+	it('asks to pick a site when the Site parameter is empty and several sites are reachable', async () => {
+		ctx.getNodeParameter.mockReturnValue({ __rl: true, mode: 'list', value: '' } as never);
 
 		const promise = confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
-		await expect(promise).rejects.toThrow('Site URL');
-		expect(mockHttpRequestWithAuthentication).not.toHaveBeenCalled();
+		await expect(promise).rejects.toThrow(
+			"This connection can access: https://example.atlassian.net, https://Other.Atlassian.NET — pick a site in the 'Site' parameter.",
+		);
 	});
 });
 
@@ -251,7 +286,7 @@ describe('confluenceApiRequestBinary', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		clearAtlassianCloudIdCache();
+		clearAtlassianAccessibleResourcesCache();
 		ctx = mockDeep<IExecuteFunctions>();
 		mockHttpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
 		ctx.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
@@ -263,7 +298,7 @@ describe('confluenceApiRequestBinary', () => {
 			position: [0, 0],
 			parameters: {},
 		});
-		ctx.getCredentials.mockResolvedValue({ domain: 'https://example.atlassian.net/wiki' });
+		ctx.getNodeParameter.mockReturnValue(siteByUrl('https://example.atlassian.net/wiki') as never);
 	});
 
 	it('fetches the endpoint through the gateway as a Buffer', async () => {
@@ -371,7 +406,7 @@ describe('confluenceApiRequestUpload', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		clearAtlassianCloudIdCache();
+		clearAtlassianAccessibleResourcesCache();
 		ctx = mockDeep<IExecuteFunctions>();
 		mockHttpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
 		ctx.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
@@ -383,7 +418,7 @@ describe('confluenceApiRequestUpload', () => {
 			position: [0, 0],
 			parameters: {},
 		});
-		ctx.getCredentials.mockResolvedValue({ domain: 'https://example.atlassian.net/wiki' });
+		ctx.getNodeParameter.mockReturnValue(siteByUrl('https://example.atlassian.net/wiki') as never);
 	});
 
 	it('PUTs the multipart body with the XSRF-bypass header, no json flag', async () => {
@@ -447,8 +482,8 @@ describe('confluenceApiRequestUpload', () => {
 		expect(error?.httpCode).toBe('401');
 	});
 
-	it('throws a NodeOperationError naming the Site URL field when the credential lacks it', async () => {
-		ctx.getCredentials.mockResolvedValue({});
+	it('asks to pick a site when the Site parameter is empty and several sites are reachable', async () => {
+		ctx.getNodeParameter.mockReturnValue({ __rl: true, mode: 'list', value: '' } as never);
 
 		const promise = confluenceApiRequestUpload.call(
 			ctx,
@@ -457,7 +492,7 @@ describe('confluenceApiRequestUpload', () => {
 		);
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
-		await expect(promise).rejects.toThrow('Site URL');
-		expect(mockHttpRequestWithAuthentication).not.toHaveBeenCalled();
+		await expect(promise).rejects.toThrow("pick a site in the 'Site' parameter");
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });

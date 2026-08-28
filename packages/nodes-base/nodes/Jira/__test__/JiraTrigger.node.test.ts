@@ -8,7 +8,7 @@ import type {
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
-import { clearAtlassianCloudIdCache } from '@utils/atlassian';
+import { clearAtlassianAccessibleResourcesCache } from '@utils/atlassian';
 
 import {
 	allEvents,
@@ -29,7 +29,7 @@ describe('JiraTrigger', () => {
 
 		beforeEach(() => {
 			staticData = {};
-			clearAtlassianCloudIdCache();
+			clearAtlassianAccessibleResourcesCache();
 		});
 
 		function mockHookFunctions(
