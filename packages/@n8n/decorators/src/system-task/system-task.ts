@@ -78,17 +78,19 @@ export interface SystemTaskRunOptions {
 /**
  * Run options implied by a task's effects, when the task declares no override.
  * Idempotent work may be retried and may run late, non-idempotent work may not.
+ * The grace window is not effects-derived, so it is not listed here.
  */
-const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<SystemTaskEffects, SystemTaskRunOptions> = {
+const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
+	SystemTaskEffects,
+	Omit<SystemTaskRunOptions, 'misfireGraceSeconds'>
+> = {
 	idempotent: {
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
-		misfireGraceSeconds: DEFAULT_MISFIRE_GRACE_SECONDS,
 		maxAttempts: 3,
 	},
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'non-idempotent': {
 		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-		misfireGraceSeconds: DEFAULT_MISFIRE_GRACE_SECONDS,
 		maxAttempts: 1,
 	},
 };
@@ -102,7 +104,7 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 
 	const options = {
 		misfirePolicy: task.misfirePolicy ?? defaults.misfirePolicy,
-		misfireGraceSeconds: task.misfireGraceSeconds ?? defaults.misfireGraceSeconds,
+		misfireGraceSeconds: task.misfireGraceSeconds ?? DEFAULT_MISFIRE_GRACE_SECONDS,
 		maxAttempts: task.maxAttempts ?? defaults.maxAttempts,
 	};
 
