@@ -1,5 +1,7 @@
 import type { ScheduleDefinition } from '@n8n/constants';
 
+// Re-exported so a caller of the provisioning API needs one import for a job and
+// its schedule.
 export type {
 	ScheduleDefinition,
 	CronDefinition,

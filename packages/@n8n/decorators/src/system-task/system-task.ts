@@ -9,13 +9,10 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { SystemTaskMetadata } from './system-task-metadata';
 
-/**
- * Whether a run is safe to repeat.
- * - 'Idempotent' work can run twice without harm,
- * - 'Non-idempotent' work must not be duplicated
- */
+/** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
 
+/** A system task always has a next run, so a one-off schedule is not allowed. */
 export type SystemTaskSchedule = Exclude<ScheduleDefinition, OneOffDefinition>;
 
 /**
@@ -23,19 +20,15 @@ export type SystemTaskSchedule = Exclude<ScheduleDefinition, OneOffDefinition>;
  */
 export interface SystemTask {
 	/**
-	 * Identity of the task, unique across all system tasks.
-	 * Registration only sees the class, so the consumer that resolves the
-	 * instances is what enforces this.
+	 * Identity of the task, unique across all system tasks. Registration sees
+	 * only the class, so the consumer that resolves the instances has to enforce
+	 * this.
 	 */
 	readonly name: string;
 
-	/** When the task runs. */
 	readonly schedule: SystemTaskSchedule;
 
-	/**
-	 * What kind of effects a run has. The defaults of the overrides below
-	 * derive from this.
-	 */
+	/** What kind of effects a run has, which sets the defaults of the overrides below. */
 	readonly effects: SystemTaskEffects;
 
 	/**
@@ -78,9 +71,10 @@ export interface SystemTaskRunOptions {
 }
 
 /**
- * Run options implied by a task's effects, when the task declares no override.
- * Idempotent work may be retried and may run late, non-idempotent work may not.
- * The grace window is not effects-derived, so it is not listed here.
+ * Run options a task's effects imply, when the task declares no override:
+ * retries and late runs only where a repeat is harmless.
+ * The grace window does not depend on effects, so every task defaults to
+ * {@link DEFAULT_MISFIRE_GRACE_SECONDS}.
  */
 const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
 	SystemTaskEffects,
@@ -98,8 +92,9 @@ const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
 };
 
 /**
- * Resolves the run options a task will be scheduled with. A task's own overrides
- * win over the defaults its effects imply.
+ * Resolves the run options a task is scheduled with, and rejects values the
+ * scheduler cannot store. A task's own overrides win over the defaults its
+ * effects imply.
  */
 export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOptions {
 	const defaults = SYSTEM_TASK_RUN_OPTION_DEFAULTS[task.effects];
@@ -147,6 +142,8 @@ export type SystemTaskClass = Constructable<SystemTask>;
 export const SystemTask =
 	() =>
 	<T extends SystemTaskClass>(target: T): T => {
+		// Injectable first: a subscribed listener resolves the class while this
+		// decorator is still running.
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		Service()(target);
 		Container.get(SystemTaskMetadata).register(target);

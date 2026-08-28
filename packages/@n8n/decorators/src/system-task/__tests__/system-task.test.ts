@@ -5,6 +5,8 @@ import { SystemTaskMetadata } from '../system-task-metadata';
 
 let metadata: SystemTaskMetadata;
 
+// Task classes are declared inside each test, so decoration runs after beforeEach
+// seeds the container.
 beforeEach(() => {
 	Container.reset();
 

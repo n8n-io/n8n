@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /**
- * The durable scheduler's shared vocabulary:
- * - schedule definitions
- * - recurrence kinds
- * - the task lifecycle
+ * The durable scheduler's shared vocabulary: schedule definitions, recurrence
+ * kinds, misfire handling and the task lifecycle.
  *
- * Defined here — a leaf package both sides already depend on — so
- * `@n8n/scheduler` (the domain and algorithms) and `@n8n/db` (the schema:
- * column defaults, CHECK constraints) share one definition without a package
- * cycle.
+ * Defined in a leaf package so every consumer shares one definition without a
+ * package cycle: `@n8n/scheduler` (the domain and algorithms), `@n8n/db` (the
+ * schema: column defaults, CHECK constraints) and `@n8n/decorators` (the
+ * system task contract).
  */
 
 /**
@@ -54,7 +52,7 @@ export const RecurringCronUnitList = Object.values(RecurringCronUnit);
 
 /**
  * When a job runs, minus its identity and clock: the schedule half of a scheduled job.
- * Comparing two of these (plus clock liveness) is what tells provisioning whether a job's schedule changed.
+ * Comparing two of these (plus clock liveness) is what tells a caller whether a job's schedule changed.
  */
 export type ScheduleDefinition =
 	| CronDefinition
