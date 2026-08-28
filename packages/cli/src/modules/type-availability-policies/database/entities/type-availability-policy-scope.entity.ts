@@ -6,9 +6,10 @@ import type { PolicyAction } from '../../policy-rule.types';
 /**
  * What one scope owns: its default action, plus the attachments that point at it.
  *
- * `projectId IS NULL` is what makes a row the instance scope, so there is no scope-kind
- * column to keep consistent. Two partial unique indexes (declared in the migration)
- * enforce at most one row per project and at most one instance row per kind.
+ * Whether a row is the instance scope is derived — `projectId IS NULL` — rather than stored,
+ * so there is no instance-vs-project flag that could disagree with `projectId`. Two partial
+ * unique indexes (declared in the migration) enforce at most one row per kind per project,
+ * and at most one instance row per kind.
  *
  * The FK to `project` is declared in the migration rather than as a `@ManyToOne`, to keep
  * the module entity decoupled from the core `Project` entity.

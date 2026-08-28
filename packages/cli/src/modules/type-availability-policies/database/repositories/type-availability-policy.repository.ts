@@ -1,6 +1,7 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
+import { isDeepStrictEqual } from 'node:util';
 
 import type { PolicyRule } from '../../policy-rule.types';
 import { TypeAvailabilityPolicy } from '../entities/type-availability-policy.entity';
@@ -11,9 +12,14 @@ type NewPolicy = {
 	updatedBy: string;
 };
 
-/** Rules are an ordered document, so order is part of the content. */
+/**
+ * Structural, not serialised: rule order is part of the content, but object-key order is
+ * not. Comparing JSON text would report a change when a client happens to serialise
+ * `{ action, id }` instead of `{ id, action }`, bumping the version and invalidating caches
+ * for a policy that behaves identically.
+ */
 function rulesEqual(a: readonly PolicyRule[], b: readonly PolicyRule[]): boolean {
-	return JSON.stringify(a) === JSON.stringify(b);
+	return isDeepStrictEqual([...a], [...b]);
 }
 
 @Service()

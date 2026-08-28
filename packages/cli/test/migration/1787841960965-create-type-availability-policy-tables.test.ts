@@ -120,11 +120,55 @@ describe('CreateTypeAvailabilityPolicyTables migration', () => {
 	}
 
 	describe('uq_type_availability_policy_scope_instance', () => {
+		// An instance scope is a singleton per kind and this suite has no per-test
+		// cleanup, so the row is removed here rather than left to collide with
+		// whatever runs next.
+		afterEach(async () => {
+			const context = createTestMigrationContext(dataSource);
+			await context.runQuery(
+				`DELETE FROM ${context.escape.tableName('type_availability_policy_scope')}
+				 WHERE "projectId" IS NULL AND "kind" = :kind`,
+				{ kind: KIND },
+			);
+			await context.queryRunner.release();
+		});
+
 		it('rejects a second instance scope for the same kind', async () => {
 			const context = createTestMigrationContext(dataSource);
 			await insertScope(context, randomUUID(), null);
 
 			await expect(insertScope(context, randomUUID(), null)).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('admits an instance scope for a different kind', async () => {
+			const context = createTestMigrationContext(dataSource);
+			await insertScope(context, randomUUID(), null);
+
+			await context.runQuery(
+				`INSERT INTO ${context.escape.tableName('type_availability_policy_scope')}
+				 ("id", "kind", "projectId", "defaultAction", "version", "updatedBy", "createdAt", "updatedAt")
+				 VALUES (:id, :kind, NULL, :defaultAction, 1, :updatedBy, :now, :now)`,
+				{
+					id: randomUUID(),
+					kind: 'credential-types',
+					defaultAction: 'allow',
+					updatedBy: 'environment',
+					now: new Date(),
+				},
+			);
+
+			const rows = await context.runQuery<Array<{ c: number }>>(
+				`SELECT COUNT(*) as c FROM ${context.escape.tableName('type_availability_policy_scope')}
+				 WHERE "projectId" IS NULL`,
+			);
+			expect(Number(rows[0].c)).toBe(2);
+
+			await context.runQuery(
+				`DELETE FROM ${context.escape.tableName('type_availability_policy_scope')}
+				 WHERE "projectId" IS NULL AND "kind" = :kind`,
+				{ kind: 'credential-types' },
+			);
 			await context.queryRunner.release();
 		});
 	});

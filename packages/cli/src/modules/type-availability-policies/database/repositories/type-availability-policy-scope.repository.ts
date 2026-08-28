@@ -1,4 +1,4 @@
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, TransactionRunner, chunkIds, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull } from '@n8n/typeorm';
 
@@ -85,14 +85,32 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		await this.managerFor(ctx).increment(TypeAvailabilityPolicyScope, { id }, 'version', 1);
 	}
 
-	/** Bumps every scope in one statement, for a policy edit fanning out to its scopes. */
+	/**
+	 * Bumps every named scope, for a policy edit fanning out to the scopes it is attached to.
+	 *
+	 * Chunked, because one `IN (…)` binds a parameter per id and a policy may be attached to a
+	 * scope in every project. Wrapped in a transaction so the chunks still land together for a
+	 * caller that passed the root context — one statement was atomic on its own, several are
+	 * not.
+	 */
 	async bumpVersions(ids: string[], ctx: OperationContext): Promise<void> {
 		if (ids.length === 0) return;
-		await this.managerFor(ctx).increment(
-			TypeAvailabilityPolicyScope,
-			{ id: In(ids) },
-			'version',
-			1,
-		);
+
+		const batches = chunkIds(ids);
+		if (batches.length === 1) {
+			await this.managerFor(ctx).increment(
+				TypeAvailabilityPolicyScope,
+				{ id: In(batches[0]) },
+				'version',
+				1,
+			);
+			return;
+		}
+
+		await this.runInTransaction(ctx, async (tx) => {
+			for (const batch of batches) {
+				await tx.increment(TypeAvailabilityPolicyScope, { id: In(batch) }, 'version', 1);
+			}
+		});
 	}
 }

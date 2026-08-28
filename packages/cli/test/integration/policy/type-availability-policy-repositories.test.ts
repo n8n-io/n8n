@@ -129,6 +129,22 @@ describe('type availability policy repositories', () => {
 			expect(third?.rules).toEqual([ALLOW_BASE, DENY_SLACK]);
 		});
 
+		it('treats a differently-ordered rule object as unchanged', async () => {
+			const policy = await createPolicy([DENY_SLACK]);
+			// Same rule, keys serialised in another order — as a client or an env
+			// config could plausibly send it.
+			const reordered = {
+				selector: { value: 'n8n-nodes-base.slack', kind: 'name' },
+				action: 'deny',
+				id: 'rule-1',
+			} as unknown as PolicyRule;
+
+			const updated = await policyRepo.updateRules(policy.id, [reordered], 'user-2', ROOT);
+
+			expect(updated?.version).toBe(1);
+			expect(updated?.updatedBy).toBe('user-1');
+		});
+
 		it('returns null when updating a policy that does not exist', async () => {
 			expect(await policyRepo.updateRules('missing', [ALLOW_BASE], 'user-1', ROOT)).toBeNull();
 		});
