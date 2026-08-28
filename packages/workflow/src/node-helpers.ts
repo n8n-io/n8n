@@ -1244,6 +1244,17 @@ export function getNodeInputs(
 	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
+	options: {
+		/**
+		 * Surface a failed `inputs` expression instead of reporting no inputs.
+		 *
+		 * Swallowing the error is right for rendering, where a node with unknown
+		 * ports is better than a broken canvas. It is wrong for anything deciding
+		 * whether a workflow is valid: an empty list reads as "requires nothing"
+		 * and quietly passes a node whose requirements could not be read.
+		 */
+		throwOnExpressionError?: boolean;
+	} = {},
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
@@ -1258,6 +1269,7 @@ export function getNodeInputs(
 			{},
 		) || []) as NodeConnectionType[];
 	} catch (e) {
+		if (options.throwOnExpressionError) throw e;
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}

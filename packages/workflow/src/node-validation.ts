@@ -39,16 +39,18 @@ export type WorkflowForInputValidation = Pick<
  * the execution engine reports ("must be connected and enabled").
  *
  * Shared so the editor warning and the publish check agree; each caller
- * formats its own message.
+ * formats its own message. Pass `throwOnExpressionError` when a node whose
+ * inputs cannot be resolved must not be read as requiring nothing.
  */
 export function getUnconnectedRequiredInputs(
 	workflow: WorkflowForInputValidation,
 	node: INode,
 	nodeTypeDescription: INodeTypeDescription,
+	options: { throwOnExpressionError?: boolean } = {},
 ): INodeInputConfiguration[] {
 	const unconnected: INodeInputConfiguration[] = [];
 
-	for (const input of getNodeInputs(workflow, node, nodeTypeDescription)) {
+	for (const input of getNodeInputs(workflow, node, nodeTypeDescription, options)) {
 		if (typeof input === 'string' || input.required !== true) continue;
 
 		const parents = workflow.getParentNodes(node.name, input.type, 1);

@@ -380,7 +380,23 @@ export class WorkflowValidationService {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (!nodeType?.description) continue;
 
-				for (const input of getUnconnectedRequiredInputs(workflow, node, nodeType.description)) {
+				// Read the node's requirements strictly. A failed `inputs` expression
+				// would otherwise come back as an empty list, which reads as "requires
+				// nothing" and would wave through the very workflows this check exists
+				// to stop.
+				let required: ReturnType<typeof getUnconnectedRequiredInputs>;
+				try {
+					required = getUnconnectedRequiredInputs(workflow, node, nodeType.description, {
+						throwOnExpressionError: true,
+					});
+				} catch (error) {
+					issues.push(
+						`the inputs of '${node.name}' could not be determined (${ensureError(error).message})`,
+					);
+					continue;
+				}
+
+				for (const input of required) {
 					issues.push(
 						`'${node.name}' has no node connected to its required '${input.displayName ?? input.type}' input`,
 					);

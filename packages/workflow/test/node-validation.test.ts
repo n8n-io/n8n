@@ -441,6 +441,42 @@ describe('node-validation', () => {
 			expect(result).toHaveLength(1);
 		});
 
+		it('reports nothing when a failed inputs expression is treated as empty', () => {
+			// Default behaviour, kept for rendering: an unreadable node shows no ports
+			// rather than breaking the canvas.
+			const throwing = {
+				expression: {
+					getSimpleParameterValue: () => {
+						throw new Error('boom');
+					},
+				},
+				getNode: () => parser,
+				getParentNodes: () => [],
+			} as unknown as WorkflowForInputValidation;
+
+			expect(getUnconnectedRequiredInputs(throwing, parser, description)).toEqual([]);
+		});
+
+		it('surfaces a failed inputs expression when asked to', () => {
+			// Callers deciding whether a workflow is valid must not read "could not
+			// resolve" as "requires nothing".
+			const throwing = {
+				expression: {
+					getSimpleParameterValue: () => {
+						throw new Error('boom');
+					},
+				},
+				getNode: () => parser,
+				getParentNodes: () => [],
+			} as unknown as WorkflowForInputValidation;
+
+			expect(() =>
+				getUnconnectedRequiredInputs(throwing, parser, description, {
+					throwOnExpressionError: true,
+				}),
+			).toThrow('boom');
+		});
+
 		it('reports nothing when the parameters do not make the input required', () => {
 			const off = { ...parser, parameters: { autoFix: false } };
 			const result = getUnconnectedRequiredInputs(
