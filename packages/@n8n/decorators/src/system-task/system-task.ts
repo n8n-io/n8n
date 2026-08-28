@@ -54,6 +54,8 @@ export interface SystemTask {
 
 	/**
 	 * Overrides how late an occurrence may run before the misfire policy applies.
+	 * At least 1: a grace of `0` leaves every occurrence past its deadline the
+	 * instant it comes due.
 	 * Defaults to {@link DEFAULT_MISFIRE_GRACE_SECONDS}.
 	 */
 	readonly misfireGraceSeconds?: number;
@@ -108,11 +110,13 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 		maxAttempts: task.maxAttempts ?? defaults.maxAttempts,
 	};
 
-	// Both end up in `int` columns, and an override of `0` passes the `??` above.
-	// Caught here so a mistyped constant fails at startup instead of leaving a task
-	// that never runs or a deadline the scheduler rounds off.
+	// Both end up in `int` columns, where a fractional value is rounded, and an
+	// override of `0` passes the `??` above. `scheduled_job` rejects a grace of `0`
+	// outright, so match that floor here rather than at the failing insert.
+	// Only a static floor: the scheduler's usable minimum depends on its configured
+	// intervals, so whatever provisions a task still has to clamp against those.
 	assertInteger(task.name, 'maxAttempts', options.maxAttempts, 1);
-	assertInteger(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 0);
+	assertInteger(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
 
 	return options;
 }
