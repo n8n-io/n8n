@@ -910,25 +910,26 @@ export class WorkflowService {
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
 
-		// Reached with access to the workflow but not, so far, the right to release a version. A caller
-		// whose re-apply hint went stale (the live version moved under it) may still be allowed to
-		// publish, so confirm before refusing. There is no existence to hide behind a 404 here.
 		if (resolvedWithEditorScopes && versionIdToActivate !== previousActiveVersionId) {
-			const mayPublish =
-				options?.reapplyingLiveVersion === true &&
-				(await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:publish',
-				])) !== null;
-
-			if (!mayPublish) {
-				this.logger.warn('User attempted to publish a workflow without permissions', {
-					workflowId,
-					userId: user.id,
-				});
-				throw new ForbiddenError(
-					'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
+			// The caller said this only re-applies the live version, but that version moved while the
+			// save was in flight. Refusing keeps this from turning into a publication nobody checked
+			// permission for: the checks that gate a publication ran against the version the caller
+			// read, not this one.
+			if (options?.reapplyingLiveVersion) {
+				throw new ConflictError(
+					'The published version changed while this save was in progress. Retry the save.',
 				);
 			}
+
+			// Reached with access to the workflow but not the right to release a version, so there is
+			// no existence to hide behind a 404 here.
+			this.logger.warn('User attempted to publish a workflow without permissions', {
+				workflowId,
+				userId: user.id,
+			});
+			throw new ForbiddenError(
+				'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
+			);
 		}
 
 		let versionToActivate: WorkflowHistory;

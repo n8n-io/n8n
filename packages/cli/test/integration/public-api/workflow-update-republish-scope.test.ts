@@ -11,14 +11,17 @@ import type { Project, User } from '@n8n/db';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
+	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { v4 as uuid } from 'uuid';
 import { InstanceSettings } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Telemetry } from '@/telemetry';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
@@ -300,5 +303,32 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 		expect(response.statusCode).toBe(200);
 		expect(stored?.activeVersionId).not.toBe(workflow.versionId);
 		expect(stored?.activeVersionId).toBe(stored?.versionId);
+	});
+
+	// A stale re-apply hint must not become a publication: the permission checks that gate one ran
+	// against the version the caller read, not the one that is live now.
+	test('refuses a re-apply whose live version moved, without publishing it', async () => {
+		const workflow = await createPublishedWorkflow(restrictedKeyMember);
+		const movedOnVersionId = uuid();
+
+		await Container.get(WorkflowHistoryRepository).insert({
+			workflowId: workflow.id,
+			versionId: movedOnVersionId,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			nodeGroups: [],
+			authors: 'Test User',
+		});
+
+		await expect(
+			Container.get(WorkflowService).activateWorkflow(restrictedKeyMember, workflow.id, {
+				versionId: movedOnVersionId,
+				reapplyingLiveVersion: true,
+			}),
+		).rejects.toThrow('The published version changed while this save was in progress');
+
+		const stored = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(stored?.activeVersionId).toBe(workflow.versionId);
 	});
 });
