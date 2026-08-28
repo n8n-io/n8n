@@ -72,6 +72,7 @@ type ModuleName =
 	| 'source-control'
 	| 'git-connections'
 	| 'token-exchange'
+	| 'policy-infrastructure'
 	| 'workflow-reviews';
 
 export interface SetupProps {

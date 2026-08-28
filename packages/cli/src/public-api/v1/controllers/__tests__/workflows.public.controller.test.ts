@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowsPublicController } from '../workflows.public.controller';
@@ -51,6 +52,23 @@ describe('WorkflowsPublicController', () => {
 			workflowService.update.mockRejectedValue('not an error object');
 
 			await expect(updateWorkflow()).rejects.toBe('not an error object');
+		});
+
+		// A PolicyViolationError is a UserError, not a ResponseError, so the blanket branch below
+		// would rewrap it and drop both the 403 and `meta.violations`.
+		it('rethrows a policy violation with its status and violations intact', async () => {
+			const violation = {
+				kind: 'node-type-unavailable',
+				checkId: 'node-allowlist',
+				message: 'Slack is not allowed',
+			};
+			workflowService.update.mockRejectedValue(new PolicyViolationError([violation]));
+
+			const error = await updateWorkflow().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PolicyViolationError);
+			expect((error as PolicyViolationError).httpStatusCode).toBe(403);
+			expect((error as PolicyViolationError).meta.violations).toEqual([violation]);
 		});
 	});
 });

@@ -13,6 +13,7 @@ type TestMenuItem = {
 	keepOpen?: boolean;
 	header?: boolean;
 	disabled?: boolean;
+	divided?: boolean;
 	children?: TestMenuItem[];
 	data?: {
 		badgeLabel?: string;
@@ -22,6 +23,7 @@ type TestMenuItem = {
 		leadingIcon?: string;
 		credentialType?: string;
 		provider?: string;
+		connectedLabel?: string;
 	};
 };
 
@@ -52,7 +54,9 @@ const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
 		const template =
 			{
+				'agents.modelSelector.connected': 'Connected',
 				'agents.modelSelector.defaultLabel': 'Choose model',
+				'agents.modelSelector.includedInN8n': 'Included in n8n',
 				'agents.modelSelector.configureCredentials': 'Create credential',
 				'agents.modelSelector.connectTo': 'Connect to {provider}',
 				'agents.modelSelector.models': 'Models',
@@ -316,6 +320,106 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: null });
 
 		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toBeUndefined();
+	});
+
+	it('pins the currently selected provider to the top and marks it connected', async () => {
+		const wrapper = await mountSelector({ anthropic: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items[0].id).toBe('anthropic');
+		expect(items[0].data?.connectedLabel).toBe('Connected');
+		expect(items.filter((item) => item.data?.connectedLabel).length).toBe(1);
+	});
+
+	it('does not mark anything as connected when there is no selected model', async () => {
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items.some((item) => item.data?.connectedLabel)).toBe(false);
+		// No pinned selection, so providers fall back to declaration order.
+		expect(items[0].id).toBe('openai');
+	});
+
+	it('hoists n8n Connect providers below the selected provider with a header and a single divider', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['openAiApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items[0].id).toBe('anthropic');
+		expect(items[1]).toMatchObject({
+			id: 'n8nConnect::header',
+			header: true,
+			label: 'Included in n8n',
+		});
+		expect(items[2].id).toBe('openai');
+		expect(items[2].divided).toBeFalsy();
+		// First provider after the n8n Connect group gets the group-boundary divider.
+		expect(items[3].divided).toBe(true);
+		// Only one divider in the whole list.
+		expect(items.filter((item) => item.divided).length).toBe(1);
+	});
+
+	it('does not show a header or divider when no other provider is n8n Connect eligible', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set<string>();
+
+		const wrapper = await mountSelector({ anthropic: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items.some((item) => item.id === 'n8nConnect::header')).toBe(false);
+		expect(items.some((item) => item.divided)).toBe(false);
+	});
+
+	it('does not duplicate a selected provider that is also n8n Connect eligible', async () => {
+		aiGatewayState.isEnabled.value = true;
+		// anthropic is both the selected provider and n8n Connect eligible here.
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		const wrapper = await mountSelector({ anthropic: null });
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items[0].id).toBe('anthropic');
+		expect(items[0].data?.connectedLabel).toBe('Connected');
+		expect(items.filter((item) => item.id === 'anthropic').length).toBe(1);
+		// No other provider is n8n Connect eligible, so the group is empty.
+		expect(items.some((item) => item.id === 'n8nConnect::header')).toBe(false);
+	});
+
+	it('pins an aggregator provider when it is selected, without duplicating it in the aggregator group', async () => {
+		const wrapper = await mountSelector(
+			{ anthropic: null },
+			{
+				selectedModel: {
+					provider: 'aws-bedrock',
+					model: 'anthropic.claude-3-5-sonnet',
+					name: 'Claude 3.5 Sonnet',
+					description: null,
+					createdAt: null,
+					metadata: { functionCalling: true, available: true },
+				},
+			},
+		);
+		const items = getDropdown(wrapper).props('items') as TestMenuItem[];
+
+		expect(items[0].id).toBe('aws-bedrock');
+		expect(items[0].data?.connectedLabel).toBe('Connected');
+		expect(items.filter((item) => item.id === 'aws-bedrock').length).toBe(1);
+	});
+
+	it('orders regular providers before aggregators in the remaining list', async () => {
+		const wrapper = await mountSelector({ anthropic: null });
+		const ids = (getDropdown(wrapper).props('items') as TestMenuItem[])
+			.map((item) => item.id)
+			.filter((id) => id !== 'n8nConnect::header');
+
+		const aggregatorIds = ['aws-bedrock', 'openrouter', 'vercel'];
+		const firstAggregatorIndex = Math.min(...aggregatorIds.map((id) => ids.indexOf(id)));
+		const regularIds = ids.filter((id) => id !== 'anthropic' && !aggregatorIds.includes(id));
+		const lastRegularIndex = Math.max(...regularIds.map((id) => ids.indexOf(id)));
+
+		expect(lastRegularIndex).toBeLessThan(firstAggregatorIndex);
 	});
 
 	it('does not offer n8n credits when the gateway is disabled', async () => {

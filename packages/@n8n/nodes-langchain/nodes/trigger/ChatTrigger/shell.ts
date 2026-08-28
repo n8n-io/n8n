@@ -36,26 +36,6 @@ export function buildInnerFrameSrc(req: Request): string {
 	return `${path}?${params.toString()}`;
 }
 
-/**
- * For the post-signin redirect, from the forwarding headers so it survives a proxy. Only
- * ever points back at this page, so a spoofed Host breaks one visitor's return trip at
- * worst — it can't redirect to another origin.
- */
-export function buildAbsoluteChatUrl(req: Request): string {
-	const headerValue = (name: string) => {
-		const raw = req.headers[name];
-		return typeof raw === 'string' ? raw.trim() : undefined;
-	};
-	const protocol = headerValue('x-forwarded-proto') ?? req.protocol ?? 'http';
-	const host = headerValue('x-forwarded-host') ?? req.headers.host ?? '';
-	return `${protocol}://${host}${req.originalUrl}`;
-}
-
-export function readAuthCookie(req: Request): string | null {
-	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
-	return match ? match[1].trim() : null;
-}
-
 // Carries the AS access token across the single same-site redirect from the AS
 // callback to the clean inner-frame URL, so `code`/`state` never reach the
 // author-shaped chat widget. The token is otherwise already embedded in the
