@@ -374,7 +374,6 @@ registerKeyHook('MainViewArrowLeft', {
 		>
 			<template v-if="isSearchResultEmpty" #empty>
 				<NoResults
-					v-if="!isMcpCategory"
 					:query="activeViewStack.search ?? ''"
 					:root-view="activeViewStack.rootView"
 					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
@@ -382,6 +381,10 @@ registerKeyHook('MainViewArrowLeft', {
 				/>
 			</template>
 		</ItemsRenderer>
+
+		<!-- Render empty state for MCP separately because ItemsRenderer renders
+			the empty slot only when there are no elements. However, for MCP we
+			always have the generic client pinned at the top -->
 		<div v-if="isMcpCategory && isSearchResultEmpty" :class="$style.mcpNoResults">
 			<N8nText color="text-light">
 				{{
