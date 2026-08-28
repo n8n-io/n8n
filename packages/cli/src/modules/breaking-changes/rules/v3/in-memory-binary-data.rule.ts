@@ -1,5 +1,4 @@
 import { BreakingChangeRule } from '@n8n/decorators';
-import { BinaryDataConfig } from 'n8n-core';
 
 import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
@@ -11,8 +10,6 @@ import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v3' })
 export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
-	constructor(private readonly binaryDataConfig: BinaryDataConfig) {}
-
 	id: string = 'in-memory-binary-data-v3';
 
 	getMetadata(): BreakingChangeRuleMetadata {
@@ -27,8 +24,10 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		if (this.binaryDataConfig.mode !== 'default') {
-			return NOT_AFFECTED_INSTANCE;
+		// read the env var directly - `default` is no longer a valid config value,
+		// so `BinaryDataConfig.mode` can never hold it
+		if (process.env.N8N_DEFAULT_BINARY_DATA_MODE !== 'default') {
+			return { isAffected: false, instanceIssues: [], recommendations: [] };
 		}
 
 		return {
