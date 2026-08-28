@@ -107,6 +107,39 @@ export const validateGroupPreSend: PreSendAction = async function (requestOption
 	return requestOptions;
 };
 
+/**
+ * Resolves the URL a request is sent to. An explicit `url` (e.g. a next-page link from Graph) is
+ * used verbatim, but only after it is confirmed to be on the credential's Graph host: the bearer
+ * token must never travel to an unexpected origin. Graph's own @odata.nextLink is always
+ * same-origin, so nothing legitimate is refused.
+ */
+async function resolveGraphTarget(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	url?: string,
+): Promise<string> {
+	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
+	if (!URL.canParse(baseUrl)) {
+		throw new NodeOperationError(this.getNode(), 'The Graph API base URL is not a valid URL', {
+			description:
+				'Set a full URL on the credential, e.g. https://graph.microsoft.com, and try again.',
+		});
+	}
+	const target = url ?? `${baseUrl}/v1.0${endpoint}`;
+	if (!URL.canParse(target) || new URL(target).origin !== new URL(baseUrl).origin) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
+	}
+	return target;
+}
+
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -116,23 +149,7 @@ export async function microsoftApiRequest(
 	headers?: IDataObject,
 	url?: string,
 ): Promise<any> {
-	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
-	const baseUrl = (
-		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-			? credentials.graphApiBaseUrl
-			: 'https://graph.microsoft.com'
-	).replace(/\/+$/, '');
-	// An explicit `url` (e.g. a next-page link from Graph) is used verbatim,
-	// but it must stay on the credential's Graph host: the bearer token must
-	// never travel to an unexpected origin. Graph's own @odata.nextLink is
-	// always same-origin, so nothing legitimate is refused.
-	const target = url ?? `${baseUrl}/v1.0${endpoint}`;
-	if (new URL(target).origin !== new URL(baseUrl).origin) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Refusing to send credentials to an unexpected host',
-		);
-	}
+	const target = await resolveGraphTarget.call(this, endpoint, url);
 	const options: IHttpRequestOptions = {
 		method,
 		url: target,
@@ -159,23 +176,7 @@ export async function microsoftApiPaginateRequest(
 	url?: string,
 	itemIndex: number = 0,
 ): Promise<IDataObject[]> {
-	const credentials = await this.getCredentials('microsoftEntraOAuth2Api');
-	const baseUrl = (
-		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-			? credentials.graphApiBaseUrl
-			: 'https://graph.microsoft.com'
-	).replace(/\/+$/, '');
-	// An explicit `url` (e.g. a next-page link from Graph) is used verbatim,
-	// but it must stay on the credential's Graph host: the bearer token must
-	// never travel to an unexpected origin. Graph's own @odata.nextLink is
-	// always same-origin, so nothing legitimate is refused.
-	const target = url ?? `${baseUrl}/v1.0${endpoint}`;
-	if (new URL(target).origin !== new URL(baseUrl).origin) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Refusing to send credentials to an unexpected host',
-		);
-	}
+	const target = await resolveGraphTarget.call(this, endpoint, url);
 	// Todo: IHttpRequestOptions doesn't have uri property which is required for requestWithAuthenticationPaginated
 	const options: IRequestOptions = {
 		method,

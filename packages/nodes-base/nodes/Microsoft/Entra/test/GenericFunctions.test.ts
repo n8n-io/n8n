@@ -347,7 +347,37 @@ describe('Microsoft Entra GenericFunctions', () => {
 			);
 		});
 
-		it('microsoftApiRequest rejects a URL override on another host', async () => {
+		it('microsoftApiPaginateRequest keeps a URL override on the credential host', async () => {
+			mockRequestWithAuthenticationPaginated.mockResolvedValue([{ body: { value: [] } }]);
+
+			await microsoftApiPaginateRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/groups',
+				{},
+				undefined,
+				undefined,
+				'https://graph.microsoft.com/v1.0/groups?$skiptoken=abc',
+			);
+
+			expect(mockRequestWithAuthenticationPaginated).toHaveBeenCalledWith(
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/groups?$skiptoken=abc',
+				}),
+				0,
+				expect.any(Object),
+				'microsoftEntraOAuth2Api',
+			);
+		});
+
+		it.each([
+			['another host', 'https://not-graph.example.com/v1.0/groups'],
+			['a userinfo prefix', 'https://graph.microsoft.com@not-graph.example.com/v1.0/groups'],
+			['a plain-text scheme', 'http://graph.microsoft.com/v1.0/groups'],
+			['a lookalike host', 'https://graph.microsoft.com.not-graph.example.com/v1.0/groups'],
+			['a scheme-relative URL', '//not-graph.example.com/v1.0/groups'],
+			['a URL that cannot be parsed', 'not a url'],
+		])('microsoftApiRequest rejects a URL override with %s', async (_label, url) => {
 			await expect(
 				microsoftApiRequest.call(
 					mockExecuteFunctions,
@@ -356,9 +386,38 @@ describe('Microsoft Entra GenericFunctions', () => {
 					{},
 					undefined,
 					undefined,
-					'https://not-graph.example.com/v1.0/groups',
+					url,
 				),
 			).rejects.toThrow('Refusing to send credentials to an unexpected host');
+
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('microsoftApiRequest keeps an explicit default port on the credential host', async () => {
+			mockRequestWithAuthentication.mockResolvedValue({ value: [] });
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/groups',
+				{},
+				undefined,
+				undefined,
+				'https://graph.microsoft.com:443/v1.0/groups',
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalled();
+		});
+
+		it('microsoftApiRequest rejects a base URL that is not a full URL', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'test-access-token' },
+				graphApiBaseUrl: 'graph.microsoft.com',
+			});
+
+			await expect(
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups'),
+			).rejects.toThrow('The Graph API base URL is not a valid URL');
 
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
