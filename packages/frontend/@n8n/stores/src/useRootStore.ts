@@ -35,7 +35,7 @@ export type RootStoreState = {
 	urlBaseEditor: string;
 	urlBaseWebhookTest: string;
 	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
+	binaryDataMode: 'filesystem' | 's3' | 'azure' | 'database';
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
@@ -64,7 +64,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		urlBaseEditor: 'http://localhost:5678',
 		urlBaseWebhookTest: 'http://localhost:5678/',
 		instanceId: '',
-		binaryDataMode: 'default',
+		binaryDataMode: 'filesystem',
 	});
 
 	// ---------------------------------------------------------------------------

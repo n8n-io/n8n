@@ -61,7 +61,7 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			message:
-				'In-memory binary data storage (`default` mode) will be removed in a future version. Switch to `filesystem`, `s3`, or `database`.',
+				'In-memory binary data storage (`default` mode) has been removed. This value is now ignored and n8n falls back to `filesystem` mode (`database` in scaling mode). Remove this environment variable or set it to `filesystem`, `s3`, or `database`.',
 			checkValue: (value?: string) => value === 'default',
 		},
 		{

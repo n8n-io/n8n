@@ -118,8 +118,7 @@ export function useDebugInfo() {
 			error: settingsStore.saveDataErrorExecution,
 			progress: settingsStore.saveDataProgressExecution,
 			manual: settingsStore.saveManualExecutions,
-			binaryMode:
-				settingsStore.binaryDataMode === 'default' ? 'memory' : settingsStore.binaryDataMode,
+			binaryMode: settingsStore.binaryDataMode,
 		};
 	};
 
