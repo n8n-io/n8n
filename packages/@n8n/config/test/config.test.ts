@@ -388,6 +388,7 @@ describe('GlobalConfig', () => {
 					sentinelNodes: '',
 					sentinelMasterName: '',
 					sentinelPassword: '',
+					sentinelTls: false,
 					tls: false,
 					tlsConfig: {
 						serverName: '',

@@ -51,6 +51,7 @@ describe('RedisClientService', () => {
 					sentinelNodes: '',
 					sentinelMasterName: '',
 					sentinelPassword: '',
+					sentinelTls: false,
 					keepAlive: undefined,
 				},
 			},
@@ -167,6 +168,7 @@ describe('RedisClientService', () => {
 			globalConfig.queue.bull.redis.sentinelNodes = '';
 			globalConfig.queue.bull.redis.sentinelMasterName = '';
 			globalConfig.queue.bull.redis.sentinelPassword = '';
+			globalConfig.queue.bull.redis.sentinelTls = false;
 		});
 
 		it('should create a sentinel client when sentinel nodes are configured', () => {
@@ -223,6 +225,47 @@ describe('RedisClientService', () => {
 
 			const callArgs = mockedRedis.mock.calls[0][0];
 			expect(callArgs).not.toHaveProperty('sentinelPassword');
+		});
+
+		it('should enable TLS for sentinel mode when sentinelTls is set', () => {
+			globalConfig.queue.bull.redis.sentinelTls = true;
+			globalConfig.queue.bull.redis.tlsConfig = {
+				serverName: 'sentinel.example.com',
+				rejectUnauthorized: true,
+			};
+
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			expect(Redis).toHaveBeenCalledWith(
+				expect.objectContaining({
+					enableTLSForSentinelMode: true,
+					sentinelTLS: { servername: 'sentinel.example.com', rejectUnauthorized: true },
+				}),
+			);
+		});
+
+		it('should pass sentinelTLS without servername when serverName is empty', () => {
+			globalConfig.queue.bull.redis.sentinelTls = true;
+			globalConfig.queue.bull.redis.tlsConfig = { serverName: '', rejectUnauthorized: false };
+
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			const callArgs = mockedRedis.mock.calls[0][0] as {
+				sentinelTLS: { servername: unknown; rejectUnauthorized: boolean };
+			};
+			expect(callArgs.sentinelTLS.servername).toBeUndefined();
+			expect(callArgs.sentinelTLS.rejectUnauthorized).toBe(false);
+		});
+
+		it('should not enable TLS for sentinel mode by default', () => {
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			const callArgs = mockedRedis.mock.calls[0][0];
+			expect(callArgs).not.toHaveProperty('enableTLSForSentinelMode');
+			expect(callArgs).not.toHaveProperty('sentinelTLS');
 		});
 
 		it('should throw when sentinel nodes are configured without a master name', () => {

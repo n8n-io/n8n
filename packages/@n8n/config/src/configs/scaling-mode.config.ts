@@ -83,6 +83,10 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_SENTINEL_PASSWORD')
 	sentinelPassword: string = '';
 
+	/** Whether to connect to the Sentinel nodes over TLS. Uses the same TLS settings as `QUEUE_BULL_REDIS_TLS_*`. */
+	@Env('QUEUE_BULL_REDIS_SENTINEL_TLS')
+	sentinelTls: boolean = false;
+
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;

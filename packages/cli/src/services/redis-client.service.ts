@@ -151,7 +151,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	) {
 		const options = this.getOptions({ extraOptions, retryStrategy });
 
-		const { sentinelMasterName, sentinelPassword } = this.globalConfig.queue.bull.redis;
+		const { sentinelMasterName, sentinelPassword, sentinelTls, tlsConfig } =
+			this.globalConfig.queue.bull.redis;
 
 		if (sentinelMasterName.length === 0) {
 			throw new UserError(
@@ -164,6 +165,16 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		options.sentinels = sentinels;
 		options.name = sentinelMasterName;
 		if (sentinelPassword.length > 0) options.sentinelPassword = sentinelPassword;
+
+		// `tls` above only secures the data-node connection. Connecting to the
+		// Sentinel nodes over TLS needs `enableTLSForSentinelMode` + `sentinelTLS`.
+		if (sentinelTls) {
+			options.enableTLSForSentinelMode = true;
+			options.sentinelTLS = {
+				servername: tlsConfig.serverName || undefined,
+				rejectUnauthorized: tlsConfig.rejectUnauthorized,
+			};
+		}
 
 		const client = new ioRedis(options);
 
