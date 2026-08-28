@@ -565,7 +565,6 @@ Scripts in `.github/scripts/`:
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
-| `profile-image-sbom.mjs`| Local A/B for the image SBOM pipeline — runs scan/enrich/gate per scanner variant (cdxgen, syft) and reports licenses lost relative to the baseline. Not called by CI | run by hand |
 
 ### Branch Replay Scripts
 
@@ -717,10 +716,9 @@ The image job used to run `cdxgen -t docker --profile license-compliance`. That 
 component — roughly 3,700 per release, about half the job's runtime. syft resolves the same
 licenses locally in a fraction of the time, and catalogues more of the image besides.
 
-Use `profile-image-sbom.mjs` to A/B any change here before shipping it. The gate only enforces
-`pkg:npm/`, so a scanner change can silently degrade PyPI or OS license coverage while CI stays
-green — the harness reports licenses **lost** relative to the baseline, which is the number that
-matters.
+A/B any scanner change against the current output before shipping it. The gate only enforces
+`pkg:npm/`, so a change can silently degrade PyPI or OS license coverage while CI stays green.
+Compare the licenses resolved per component, not just the component counts.
 
 `enrich-sbom.mjs --drop-phantom-npm` removes scan artefacts that would otherwise assert
 components the image does not contain: nested test/fixture `package.json` and `exports`

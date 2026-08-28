@@ -41,10 +41,8 @@ function run(cmd, args, extraEnv) {
 }
 
 /**
- * The license gate only inspects components it can see, so it passes on an SBOM
- * that catalogued almost nothing. A base-image or layout change that hides
- * node_modules from the scanner would therefore attest a near-empty SBOM to the
- * release digest with a green CI. Assert the shape before signing.
+ * The gate only inspects components it can see, so it passes on an SBOM that
+ * catalogued nothing. Check the shape before signing a near-empty SBOM.
  */
 export function assertSbomIsUsable(sbomPath, label) {
 	const components = JSON.parse(readFileSync(sbomPath, 'utf-8')).components ?? [];
@@ -66,9 +64,8 @@ function attest({ label, image, digest }) {
 
 	// Pull the (host-arch) image and scan its filesystem: OS packages + npm.
 	run('docker', ['pull', ref]);
-	// syft reads licenses from the package files on disk, including LICENSE text, so
-	// this scan makes no registry requests. `-file` excludes syft's per-file
-	// catalogue, which adds about 4000 entries that a dependency SBOM does not use.
+	// syft reads licenses from the LICENSE files on disk, so this scan makes no
+	// registry requests. `-file` excludes its per-file catalogue, ~4000 entries.
 	run('syft', [ref, '-o', `cyclonedx-json@1.6=${out}`, '--select-catalogers', '-file', '-q']);
 
 	// Resolve first-party + override licenses (lenient: this image holds only a

@@ -240,8 +240,6 @@ describe('enrichSbom dropPhantomNpm + byName', () => {
 		assert.deepEqual(on.sbom.components[0].licenses, [{ license: { id: 'MIT' } }]); // byName, version-agnostic
 	});
 
-	// The image pipeline runs this path against syft output, so prove the filter is
-	// wired through end to end for that shape, not only for cdxgen's.
 	it('drops a syft-shaped phantom and keeps the real package alongside it', () => {
 		const sbom = {
 			components: [

@@ -637,8 +637,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      # enrich-sbom.mjs and check-sbom-licenses.mjs have no dependencies. syft
-      # replaces cdxgen, so this step pins the Node version and installs nothing.
+      # Nothing to install: syft replaced cdxgen, and the two license scripts have
+      # no dependencies. This step only pins the Node version.
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:

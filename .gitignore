@@ -40,7 +40,6 @@ tcr-dry.log
 .agent-recordings/
 .pi-subagents/
 sbom-source.cdx.json
-.sbom-profile/
 *.junit.xml
 junit.xml
 test-results.json
