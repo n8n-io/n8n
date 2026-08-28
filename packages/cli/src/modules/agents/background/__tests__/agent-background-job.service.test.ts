@@ -78,10 +78,10 @@ describe('registerSubAgentJob', () => {
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
 		const inserted = jobRepository.insertJob.mock.calls[0][0];
-		expect(inserted.kind).toBe('subagent');
+		if (inserted.kind !== 'subagent') throw new Error('expected a subagent job insert');
 		const expectedTimeout = Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS;
-		expect(inserted.timeoutAt?.getTime()).toBeGreaterThan(expectedTimeout - 5000);
-		expect(inserted.timeoutAt?.getTime()).toBeLessThanOrEqual(expectedTimeout);
+		expect(inserted.timeoutAt.getTime()).toBeGreaterThan(expectedTimeout - 5000);
+		expect(inserted.timeoutAt.getTime()).toBeLessThanOrEqual(expectedTimeout);
 	});
 
 	it('returns limit-reached when the thread is at the running-job cap', async () => {

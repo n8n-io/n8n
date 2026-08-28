@@ -8,7 +8,7 @@ import type { AgentBackgroundJob } from '../entities/agent-background-job.entity
 import {
 	AgentBackgroundJobRepository,
 	type AgentBackgroundJobSettlement,
-	type NewAgentBackgroundJob,
+	type NewSubAgentJob,
 } from '../repositories/agent-background-job.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
@@ -49,11 +49,7 @@ export class AgentBackgroundJobService {
 	 * else `started`.
 	 */
 	async registerSubAgentJob(
-		params: Pick<
-			NewAgentBackgroundJob,
-			'id' | 'parentAgentId' | 'parentThreadId' | 'projectId' | 'title' | 'subAgentId'
-		> &
-			Required<Pick<NewAgentBackgroundJob, 'childThreadId'>>,
+		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'>,
 	): Promise<BackgroundJobReceipt> {
 		// ponytail: count-then-insert can briefly admit one job over the cap under
 		// concurrent spawns; the limit is advisory. Wrap in a transaction if it

@@ -7,16 +7,28 @@ import {
 	type AgentBackgroundJobStatus,
 } from '../entities/agent-background-job.entity';
 
-export type NewAgentBackgroundJob = Pick<
-	AgentBackgroundJob,
-	'id' | 'kind' | 'parentAgentId' | 'parentThreadId' | 'projectId' | 'title'
-> &
-	Partial<
-		Pick<
-			AgentBackgroundJob,
-			'subAgentId' | 'childThreadId' | 'childExecutionId' | 'workflowId' | 'timeoutAt'
-		>
-	>;
+type NewAgentBackgroundJobBase = {
+	id: string;
+	parentAgentId: string;
+	parentThreadId: string;
+	projectId: string;
+	title: string;
+};
+
+export type NewSubAgentJob = NewAgentBackgroundJobBase & {
+	kind: 'subagent';
+	subAgentId: string;
+	childThreadId: string;
+	timeoutAt: Date;
+};
+
+export type NewWorkflowJob = NewAgentBackgroundJobBase & {
+	kind: 'workflow';
+	workflowId: string;
+	childExecutionId: string;
+};
+
+export type NewAgentBackgroundJob = NewSubAgentJob | NewWorkflowJob;
 
 export type AgentBackgroundJobSettlement = {
 	status: Exclude<AgentBackgroundJobStatus, 'running'>;
