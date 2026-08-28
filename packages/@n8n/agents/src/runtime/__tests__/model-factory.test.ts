@@ -64,6 +64,7 @@ vi.mock('@ai-sdk/google', () => ({
 		provider: 'google',
 		modelId: model,
 		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
@@ -517,6 +518,41 @@ describe('createModel', () => {
 				unknown
 			>;
 			expect(model.baseURL).toBeUndefined();
+		});
+	});
+
+	describe('google baseURL normalization', () => {
+		const baseURLFor = (creds: Record<string, unknown>) =>
+			(
+				createModel({
+					id: 'google/gemini-3.7-flash',
+					apiKey: 'g-test',
+					...creds,
+				}) as unknown as Record<string, unknown>
+			).baseURL;
+
+		// `googlePalmApi.host` defaults to the bare host, which drops the API
+		// version from every request path — Google then 404s for any model.
+		it('appends the API version to the credential host', () => {
+			expect(baseURLFor({ url: 'https://generativelanguage.googleapis.com' })).toBe(
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+		});
+
+		it('leaves a baseURL that already targets the API version unchanged', () => {
+			expect(baseURLFor({ url: 'https://generativelanguage.googleapis.com/v1beta' })).toBe(
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+		});
+
+		it('appends to a proxy host', () => {
+			expect(baseURLFor({ url: 'https://proxy.example/gemini' })).toBe(
+				'https://proxy.example/gemini/v1beta',
+			);
+		});
+
+		it('leaves the SDK default in place when no host is configured', () => {
+			expect(baseURLFor({})).toBeUndefined();
 		});
 	});
 

@@ -6,8 +6,15 @@
 # Settings defined here take precedence over UI-configured settings.
 # See https://docs.cubic.dev/configure/cubic-yaml for documentation.
 #
+# Guidance lives at one of three levels of reach: `custom_instructions` for what
+# is true of every agent, a rule file linked by several agents for a policy that
+# is identical across domains, and an agent's own directory for everything else.
+# `.agents/review-rules/README.md` explains the split.
+#
 # Only the first 5 custom_rules take effect, and each one is truncated at 10,000
-# characters (description + linked file_paths). `pnpm check:cubic-config` enforces both.
+# characters — its description, its linked file_paths, and custom_instructions,
+# which is prepended to every agent and so is charged against each one separately.
+# `pnpm check:cubic-config` enforces both limits and prints the split.
 # Scope every rule with include/exclude so it is not evaluated against the whole monorepo.
 
 version: 1
@@ -16,6 +23,18 @@ reviews:
   sensitivity: medium
   incremental_commits: true
   check_drafts: true
+  architecture_diagrams: false
+  merge_confidence_summary: true
+
+  # Both of these turn on a risk judgement this config deliberately does not
+  # define — guessing the scale up front would just bake in a wrong one. Shadow
+  # mode makes a miscalibrated call free, so calibrate from what cubic actually
+  # classifies before writing a risk section into custom_instructions.
+  auto_approve_behavior: shadow
+  auto_approve: low_risk_only
+
+  auto_ultrareview: high_risk_only
+
   ignore:
     # Mechanical PRs: content was already reviewed on master, or there is nothing
     # to review. Backports stay reviewed — their conflicts are resolved by hand.
@@ -36,47 +55,51 @@ reviews:
       - '**/*.snap'
       - '**/*.generated.yml'
       - '**/*.generated.ts'
+  # Reaches every agent, so it holds only how to review — never what to look
+  # for. Domain rules belong in a rule file under `.agents/review-rules/`.
   custom_instructions: |-
+    ## The bar for a comment
+
+    Priority order: architecture fit, solution complexity, bugs and behavioural
+    regressions, security edge cases, code quality, missing tests. Style and
+    naming last, and only when they genuinely matter.
+
+    A comment must name the concrete failure — the input, state, or sequence that
+    makes the code wrong — and what to do instead: the snippet, or the specific
+    function to reach for. "This could be cleaner" is noise. Zero comments on a
+    clean PR is a good review; do not manufacture findings.
+
+    Where a deliberate decision and a mistake look identical, ask what the intent
+    was rather than asserting a defect.
+
     ## Scope
 
     Review only the lines this PR adds or modifies. Each PR is meant to have a
     limited scope — do not report problems in surrounding code that already
     existed.
 
-    ## Don't repeat the linter
+    Each linked rule file opens with the packages it applies to. Skip a file when
+    the changed code is out of its scope; if none apply, say nothing.
 
-    `pnpm lint` and `pnpm typecheck` run on every PR and already fail the build
-    for a large set of n8n-specific rules (`@n8n/eslint-config`). Do not spend a
-    comment on anything ESLint reports as an error — notably `ApplicationError`
-    usage, `sleep`/`sleepWithAbort` helpers, `sleep` imported from
-    `n8n-workflow`, `@n8n/typeorm` imports in `packages/cli` business logic,
-    uncaught `JSON.parse`, `JSON.parse(JSON.stringify())`, skipped tests, and
-    CSS custom-property naming. Report what static analysis cannot see.
+    ## Don't repeat what CI already fails on
 
-    ## Test coverage
+    `pnpm lint`, `pnpm typecheck`, Poutine, Zizmor, and `@n8n/code-health` run on
+    every PR. A defect one of them already fails the build for is not a finding —
+    the author sees it before you do. The linked rule files name the specific
+    exemptions. Report what static analysis cannot see.
 
-    BE REASONABLE when evaluating test coverage.
+    ## This is a public repository
 
-    **PASS if:**
-
-    - Core functionality has tests
-    - Critical paths are tested
-    - Coverage is reasonable (not necessarily 100%)
-
-    **DO NOT require tests for:**
-
-    - Exports, types, configs
-    - Metadata files
-    - Version files
-
-    Approve if reasonably tested. Let humans handle edge cases.
+    Your comments are public. On a change that looks security-related, describe the
+    defect in functional terms — do not spell out an exploit path, name a
+    vulnerability class, or speculate about attacks in the thread. Never name a
+    customer; say "a customer" or "a large deployment" instead.
 
     ## Community contributions
 
-    For PRs from outside the n8n organisation, the bar is set by the "Community
-    PR Guidelines" section of `CONTRIBUTING.md`. The golden rule there: a
-    contribution should be worth more to the project than the time it takes to
-    review it.
+    For PRs from outside the n8n organisation, the bar is set by the "Community PR
+    Guidelines" section of `CONTRIBUTING.md`. The golden rule there: a contribution
+    should be worth more to the project than the time it takes to review it.
   custom_rules:
     - name: Security
       file_paths:
@@ -99,8 +122,6 @@ reviews:
         - '**/test/**'
       description: |-
         Flag security defects introduced by this PR, using the linked rules.
-        Each rule file opens with the packages it applies to — skip a file when
-        the changed code is out of its scope.
 
         Higher scrutiny for the expression engine, credential handling, code
         execution nodes, license enforcement, and SSO integrations. Community
@@ -112,6 +133,7 @@ reviews:
         - .agents/review-rules/backend/explicit-any.md
         - .agents/review-rules/backend/lazy-load-heavy-modules.md
         - .agents/review-rules/backend/hand-rolled-delays.md
+        - .agents/review-rules/testing/coverage.md
       include:
         - packages/cli/**
         - packages/@n8n/db/**
@@ -126,17 +148,20 @@ reviews:
         - '**/test/**'
       description: |-
         Review n8n's backend and node packages against the linked rules. Think in
-        terms of blast radius, resource cost, and failure modes. Be pragmatic,
-        not pedantic.
+        terms of blast radius, resource cost, and failure modes.
 
         The rules are drawn from real incidents and the conventions the team
-        enforces. Each file opens with the packages it applies to — skip one when
-        the changed code is out of its scope. If none match, say nothing.
+        enforces.
+
+        ESLint already fails the build for `@n8n/typeorm` imports in
+        `packages/cli` business logic, uncaught `JSON.parse`, and
+        `JSON.parse(JSON.stringify())` — never spend a comment on those.
     - name: Frontend
       file_paths:
         - .agents/skills/design-system/SKILL.md
         - .agents/review-rules/frontend/design-system.md
         - .agents/review-rules/frontend/workflow-document-store.md
+        - .agents/review-rules/testing/coverage.md
       include:
         - packages/frontend/**
       exclude:
@@ -176,10 +201,8 @@ reviews:
         are lessons from builds that actually broke and from checks that turned
         out to be bypassable, not general Docker or Actions advice.
 
-        Most of this surface is already scanned — Poutine, Zizmor, and
-        `@n8n/code-health` fail CI for the well-known hazards. Report what those
-        cannot see: a documented invariant being undone, a guard being widened,
-        a gate that stops being able to fail.
+        What this surface's scanners cannot see: a documented invariant being
+        undone, a guard being widened, a gate that stops being able to fail.
 
   # cubic silently drops any rule past the fifth, so the last slot is a decision,
   # not somewhere to append. Merge into an existing agent instead.

@@ -439,6 +439,21 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
+				displayName: 'Require Workflow Execute Permission',
+				name: 'requireExecuteAccess',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						mode: ['hostedChat'],
+						public: [true],
+					},
+				},
+				description:
+					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
 				displayName: 'Initial Message(s)',
 				name: 'initialMessages',
 				type: 'string',
