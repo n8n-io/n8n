@@ -146,7 +146,7 @@ export const defaultSettings: FrontendSettings = {
 	banners: {
 		dismissed: [],
 	},
-	binaryDataMode: 'default',
+	binaryDataMode: 'filesystem',
 	previewMode: false,
 	mfa: {
 		enabled: false,

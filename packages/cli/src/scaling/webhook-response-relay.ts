@@ -13,7 +13,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { jsonSizeExceeds } from '@n8n/utils/json/json-size-exceeds';
-import { BinaryDataConfig, BinaryDataService, FileLocation, FileTooLargeError } from 'n8n-core';
+import { BinaryDataService, FileLocation, FileTooLargeError } from 'n8n-core';
 import type { BinaryData } from 'n8n-core';
 import { BINARY_ENCODING, jsonParse, OperationalError } from 'n8n-workflow';
 import type {
@@ -40,16 +40,6 @@ export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
  */
 export const OFFLOADED_BODY_KIND_KEY = '__@N8nOffloadedBodyKind@__';
 
-/**
- * The one mode with nowhere to offload a body to: it keeps bytes in memory, so a
- * body stored in it would travel inline after all.
- *
- * Every other mode has a store, and whether main reaches it is the deployment's to
- * get right: a store only the instance that wrote the body can read surfaces when
- * main reads it back, rather than being refused up front.
- */
-const IN_MEMORY_MODE: BinaryDataConfig['mode'] = 'default';
-
 /** What Express sets on a string body sent inline through `res.send`. */
 const INLINE_STRING_CONTENT_TYPE = 'text/html; charset=utf-8';
 
@@ -65,8 +55,6 @@ const OFFLOAD_DISABLED_GUIDANCE =
 
 const BINARY_DATA_DOCS_LINK =
 	"<a href='https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/binary-data' target='_blank'>in the docs</a>";
-
-const NO_STORE_GUIDANCE = `In scaling mode a response over this size is stored for the main instance to stream, which the in-memory binary-data mode cannot do. Set N8N_DEFAULT_BINARY_DATA_MODE to a mode with a store, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX. The modes are described ${BINARY_DATA_DOCS_LINK}.`;
 
 const UNREADABLE_BODY_GUIDANCE = `A response over N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX is stored by the instance that produced it, so N8N_DEFAULT_BINARY_DATA_MODE has to name a store every instance can read. The modes are described ${BINARY_DATA_DOCS_LINK}.`;
 
@@ -117,7 +105,6 @@ export class WebhookResponseRelay {
 	constructor(
 		private readonly logger: Logger,
 		private readonly binaryDataService: BinaryDataService,
-		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		this.logger = this.logger.scoped('scaling');
@@ -262,19 +249,12 @@ export class WebhookResponseRelay {
 	/**
 	 * Asserts that a body over the limit has somewhere to be offloaded to.
 	 *
-	 * @throws {WebhookResponseTooLargeError} When offload is turned off, or when the
-	 * binary-data mode keeps bytes in memory.
+	 * @throws {WebhookResponseTooLargeError} When offload is turned off.
 	 */
 	private assertOffloadAvailable(): void {
 		if (!this.executionsConfig.webhookResponseRelayOffloadEnabled) {
 			throw new WebhookResponseTooLargeError(TOO_LARGE_MESSAGE, {
 				description: withInlineLimit(OFFLOAD_DISABLED_GUIDANCE, this.maxInlineMib),
-			});
-		}
-
-		if (this.binaryDataConfig.mode === IN_MEMORY_MODE) {
-			throw new WebhookResponseTooLargeError(TOO_LARGE_MESSAGE, {
-				description: withInlineLimit(NO_STORE_GUIDANCE, this.maxInlineMib),
 			});
 		}
 	}

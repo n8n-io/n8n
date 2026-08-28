@@ -21,9 +21,9 @@ export namespace BinaryData {
 
 	/**
 	 * Binary data mode in binary data ID in stored execution data. Both legacy
-	 * and upgraded modes may be present, except default in-memory mode.
+	 * and upgraded modes may be present.
 	 */
-	export type StoredMode = Exclude<ConfigMode | UpgradedMode, 'default'>;
+	export type StoredMode = ConfigMode | UpgradedMode;
 
 	export type Metadata = BlobMetadata;
 
