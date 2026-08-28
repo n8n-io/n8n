@@ -15,8 +15,8 @@ let getPullRequestByIdImpl = async () => ({});
 let getChangedFilesImpl = async () => new Set();
 /** @type {(pullRequestNumber: number) => Promise<any[]>} */
 let getPrReviewsImpl = async () => [];
-/** @type {(teamSlug: string) => Promise<string[]>} */
-let listTeamMembersImpl = async () => [];
+/** @type {(teamSlug: string, username: string) => Promise<boolean>} */
+let isTeamMemberImpl = async () => false;
 /** @type {(sha: string, status: any) => Promise<void>} */
 let setCommitStatusImpl = async () => {};
 
@@ -26,7 +26,7 @@ mock.module('../scripts/github-helpers.mjs', {
 		getPullRequestById: (n) => getPullRequestByIdImpl(n),
 		getChangedFiles: (n) => getChangedFilesImpl(n),
 		getPrReviews: (n) => getPrReviewsImpl(n),
-		listTeamMembers: (slug) => listTeamMembersImpl(slug),
+		isTeamMember: (slug, username) => isTeamMemberImpl(slug, username),
 		setCommitStatus: (sha, status) => setCommitStatusImpl(sha, status),
 	},
 });
@@ -172,7 +172,7 @@ describe('run', () => {
 		});
 		getChangedFilesImpl = async () => new Set(['a.ts']);
 		getPrReviewsImpl = async () => [];
-		listTeamMembersImpl = async () => [];
+		isTeamMemberImpl = async () => false;
 		parseOwnersFileImpl = () => [];
 		resolveRequiredTeamsImpl = () => new Map();
 		setCommitStatus = mock.fn(async () => {});
@@ -200,7 +200,7 @@ describe('run', () => {
 		getPrReviewsImpl = async () => [
 			{ user: { login: 'outsider' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
 		];
-		listTeamMembersImpl = async () => ['member-1', 'member-2'];
+		isTeamMemberImpl = async () => false;
 
 		await run();
 
@@ -231,12 +231,40 @@ describe('run', () => {
 			{ user: { login: 'poly' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
 		];
 		// `poly` is a member of both required teams.
-		listTeamMembersImpl = async () => ['poly'];
+		isTeamMemberImpl = async (slug, username) => username === 'poly';
 
 		await run();
 
 		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
 		assert.equal(status.state, 'success');
+	});
+
+	it('checks membership per approver and required team', async () => {
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		getPrReviewsImpl = async () => [
+			{ user: { login: 'poly' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
+		];
+		const isTeamMember = mock.fn(async () => true);
+		isTeamMemberImpl = isTeamMember;
+
+		await run();
+
+		assert.deepEqual(
+			isTeamMember.mock.calls.map((call) => call.arguments),
+			[['qa-dx', 'poly']],
+		);
+	});
+
+	it('does not check membership when there is no approval', async () => {
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		const isTeamMember = mock.fn(async () => true);
+		isTeamMemberImpl = isTeamMember;
+
+		await run();
+
+		assert.equal(isTeamMember.mock.calls.length, 0);
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'failure');
 	});
 
 	it('does not count an approval that was later dismissed', async () => {
@@ -245,7 +273,7 @@ describe('run', () => {
 			{ user: { login: 'poly' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
 			{ user: { login: 'poly' }, state: 'DISMISSED', submitted_at: '2026-01-02T00:00:00Z' },
 		];
-		listTeamMembersImpl = async () => ['poly'];
+		isTeamMemberImpl = async (slug, username) => username === 'poly';
 
 		await run();
 

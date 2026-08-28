@@ -18,7 +18,7 @@ import {
 	getEventFromGithubEventPath,
 	getPrReviews,
 	getPullRequestById,
-	listTeamMembers,
+	isTeamMember,
 	setCommitStatus,
 } from '../scripts/github-helpers.mjs';
 import { parseOwnersFile, resolveRequiredTeams, teamHandleToSlug } from './owners.mjs';
@@ -130,8 +130,13 @@ async function evaluateRequiredReviews(pullRequestNumber) {
 		console.log(`Current approvals: ${[...approvers].join(', ') || '(none)'}`);
 
 		for (const [team, files] of requiredTeams) {
-			const members = new Set(await listTeamMembers(teamHandleToSlug(team)));
-			const teamApprovers = [...approvers].filter((login) => members.has(login));
+			const slug = teamHandleToSlug(team);
+			// Per-approver membership checks instead of fetching the roster:
+			// approvers are few, teams can be large.
+			const teamApprovers = [];
+			for (const login of approvers) {
+				if (await isTeamMember(slug, login)) teamApprovers.push(login);
+			}
 			const verdict = teamApprovers.length > 0 ? `approved by ${teamApprovers.join(', ')}` : 'approval missing';
 
 			console.log(`${team}: ${verdict} — owns ${files.length} changed file(s):`);

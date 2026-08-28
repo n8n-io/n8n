@@ -442,25 +442,31 @@ export async function getPrReviews(pullRequestNumber) {
 }
 
 /**
- * Returns the logins of all members of an org team.
+ * Test whether a user is an active member of an org team.
  *
  * Team slugs are the part after the org, e.g. `catalysts` for
  * `@n8n-io/catalysts`. Requires a token with org members read access
- * (the plain GITHUB_TOKEN cannot read team membership).
+ * (the plain GITHUB_TOKEN cannot read team membership). Returns false
+ * for pending invitations and for teams that do not exist.
  *
  * @param { string } teamSlug
- * @returns { Promise<string[]> }
+ * @param { string } username
+ * @returns { Promise<boolean> }
  * */
-export async function listTeamMembers(teamSlug) {
+export async function isTeamMember(teamSlug, username) {
 	const { octokit, owner } = initGithub();
 
-	const members = await octokit.paginate(octokit.rest.teams.listMembersInOrg, {
-		org: owner,
-		team_slug: teamSlug,
-		per_page: 100,
-	});
-
-	return members.map((member) => member.login);
+	try {
+		const { data } = await octokit.rest.teams.getMembershipForUserInOrg({
+			org: owner,
+			team_slug: teamSlug,
+			username,
+		});
+		return data.state === 'active';
+	} catch (ex) {
+		if (ex?.status === 404) return false;
+		throw ex;
+	}
 }
 
 /**
