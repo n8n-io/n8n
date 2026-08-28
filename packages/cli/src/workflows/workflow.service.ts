@@ -680,6 +680,7 @@ export class WorkflowService {
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
 				versionId: versionIdToPublish,
 				source,
+				reapplyingLiveVersion: versionIdToPublish === workflow.activeVersionId,
 			});
 			updatedWorkflow.active = publishedWorkflow.active;
 			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
@@ -688,6 +689,7 @@ export class WorkflowService {
 			await this.activateWorkflow(user, workflowId, {
 				versionId: workflow.activeVersionId,
 				source,
+				reapplyingLiveVersion: true,
 			});
 		}
 		return updatedWorkflow;
@@ -732,12 +734,9 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		options: { source: WorkflowActionSource; unpublishOnFailure?: boolean } = { source: 'ui' },
+		options: { source: WorkflowActionSource; reapplyingLiveVersion?: boolean } = { source: 'ui' },
 	): Promise<void> {
-		// Re-applying the version that is already live publishes nothing, so a failure there has no
-		// partial publication to undo. Unpublishing would take a workflow down over a save that was
-		// never asking to change what is published.
-		const { unpublishOnFailure = true } = options;
+		const { reapplyingLiveVersion = false } = options;
 
 		let didPublish = false;
 		try {
@@ -763,7 +762,10 @@ export class WorkflowService {
 				});
 			}
 
-			if (unpublishOnFailure) {
+			// Re-applying the version that is already live publishes nothing, so a failure there has no
+			// partial publication to undo. Unpublishing would take a workflow down over a save that never
+			// asked to change what is published.
+			if (!reapplyingLiveVersion) {
 				const rollbackPayload = {
 					active: false,
 					activeVersionId: null,
@@ -785,7 +787,7 @@ export class WorkflowService {
 				description,
 				// Tells the editor the published version is untouched, so it does not flip the workflow
 				// to inactive on the client while the database still has it published.
-				validationError: !unpublishOnFailure,
+				validationError: reapplyingLiveVersion,
 			});
 		} finally {
 			if (didPublish) {
@@ -870,21 +872,26 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			/** Set when the caller already knows this only re-registers the version that is live. */
+			reapplyingLiveVersion?: boolean;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
 		const publicApi = source === 'api';
 
-		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:publish',
-		]);
-
 		// Re-applying the version that is already live publishes nothing new. It only re-registers the
-		// triggers so a settings change takes effect, so an editor's own scopes are enough. Resolved as
-		// a fallback, leaving the publish path above untouched. `workflow:read` is required alongside
-		// the update scope because this path reads the live version back out of history below.
-		const resolvedWithoutPublishScope = workflow === null;
-		if (resolvedWithoutPublishScope) {
+		// triggers so a settings change takes effect, so an editor's own scopes are enough. `workflow:read`
+		// joins the update scope because this path reads the live version back out of history below.
+		// A caller that already knows it is a re-apply skips the publish lookup that would only miss;
+		// the version check further down still rejects one that was wrong about it.
+		let workflow = options?.reapplyingLiveVersion
+			? null
+			: await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:publish',
+				]);
+
+		const resolvedWithEditorScopes = workflow === null;
+		if (resolvedWithEditorScopes) {
 			workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 				'workflow:read',
 				'workflow:update',
@@ -910,7 +917,7 @@ export class WorkflowService {
 
 		// Reached with access to the workflow but not the right to release a version, so there is no
 		// existence to hide behind a 404 here.
-		if (resolvedWithoutPublishScope && versionIdToActivate !== previousActiveVersionId) {
+		if (resolvedWithEditorScopes && versionIdToActivate !== previousActiveVersionId) {
 			this.logger.warn('User attempted to publish a workflow without permissions', {
 				workflowId,
 				userId: user.id,
@@ -1066,7 +1073,7 @@ export class WorkflowService {
 				workflowId,
 				workflowForActivation,
 				activationMode,
-				{ source, unpublishOnFailure: versionIdToActivate !== previousActiveVersionId },
+				{ source, reapplyingLiveVersion: versionIdToActivate === previousActiveVersionId },
 			);
 		}
 

@@ -1,4 +1,5 @@
 import {
+	createActiveWorkflow,
 	createTeamProject,
 	createWorkflowWithTriggerAndHistory,
 	linkUserToProject,
@@ -50,10 +51,23 @@ const changedNodes = (workflow: { nodes: unknown[] }) =>
 			: node,
 	);
 
-/** Mark a workflow as published without going through the (scope-guarded) publish endpoint. */
-const markPublished = async (workflowId: string, versionId: string) => {
-	await workflowRepository.update(workflowId, { active: true, activeVersionId: versionId });
-	await publishedVersionRepository.setPublishedVersion(workflowId, versionId);
+/** A published workflow, without going through the (scope-guarded) publish endpoint. */
+const createPublishedWorkflow = async (owner: User | Project) => {
+	const workflow = await createActiveWorkflow({}, owner);
+	await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+	return workflow;
+};
+
+/** A project where the member may edit workflows but not publish them. */
+const projectWithoutPublishFor = async (user: User, label: string) => {
+	const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+		roleType: 'project',
+		displayName: `Workflow updater ${label}`,
+		description: 'Can update workflows but not publish them',
+	});
+	const project: Project = await createTeamProject(`Project ${label}`, owner);
+	await linkUserToProject(user, project, role.slug);
+	return project;
 };
 
 beforeAll(async () => {
@@ -127,8 +141,7 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 	});
 
 	test('a key lacking workflow:activate saves a draft instead of republishing', async () => {
-		const workflow = await createWorkflowWithTriggerAndHistory({}, restrictedKeyMember);
-		await markPublished(workflow.id, workflow.versionId);
+		const workflow = await createPublishedWorkflow(restrictedKeyMember);
 
 		const response = await restrictedKeyAgent.put(`/workflows/${workflow.id}`).send({
 			name: workflow.name,
@@ -149,16 +162,9 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 	});
 
 	test('keeps the draft when the project role blocks the republish', async () => {
-		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
-			roleType: 'project',
-			displayName: 'Workflow updater',
-			description: 'Can update workflows but not publish them',
-		});
-		const project: Project = await createTeamProject('Team project', owner);
-		await linkUserToProject(fullKeyMember, project, role.slug);
+		const project = await projectWithoutPublishFor(fullKeyMember, 'content');
 
-		const workflow = await createWorkflowWithTriggerAndHistory({}, project);
-		await markPublished(workflow.id, workflow.versionId);
+		const workflow = await createPublishedWorkflow(project);
 
 		const response = await fullKeyAgent.put(`/workflows/${workflow.id}`).send({
 			name: workflow.name,
@@ -179,16 +185,9 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 	});
 
 	test('settings-only change is allowed without publish permission', async () => {
-		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
-			roleType: 'project',
-			displayName: 'Workflow updater settings',
-			description: 'Can update workflows but not publish them',
-		});
-		const project: Project = await createTeamProject('Settings project', owner);
-		await linkUserToProject(fullKeyMember, project, role.slug);
+		const project = await projectWithoutPublishFor(fullKeyMember, 'settings');
 
-		const workflow = await createWorkflowWithTriggerAndHistory({}, project);
-		await markPublished(workflow.id, workflow.versionId);
+		const workflow = await createPublishedWorkflow(project);
 
 		const response = await fullKeyAgent
 			.put(`/workflows/${workflow.id}?publishIfActive=false`)
@@ -227,8 +226,7 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 	});
 
 	test('publishIfActive=false still stages a draft for a key without workflow:activate', async () => {
-		const workflow = await createWorkflowWithTriggerAndHistory({}, restrictedKeyMember);
-		await markPublished(workflow.id, workflow.versionId);
+		const workflow = await createPublishedWorkflow(restrictedKeyMember);
 
 		const response = await restrictedKeyAgent
 			.put(`/workflows/${workflow.id}?publishIfActive=false`)
@@ -249,20 +247,8 @@ describe('PUT /workflows/:id republish and the API key publish scope', () => {
 	// A key scope is a ceiling on the key, never a grant to the account. Holding workflow:activate
 	// must not let a member publish where their project role cannot.
 	describe('an API key with workflow:activate in a project the member cannot publish in', () => {
-		const publishedWorkflowInProjectWithoutPublish = async (label: string) => {
-			const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
-				roleType: 'project',
-				displayName: `Editor without publish ${label}`,
-				description: 'Can edit workflows but not publish them',
-			});
-			const project: Project = await createTeamProject(`Project ${label}`, owner);
-			await linkUserToProject(activateKeyMember, project, role.slug);
-
-			const workflow = await createWorkflowWithTriggerAndHistory({}, project);
-			await markPublished(workflow.id, workflow.versionId);
-
-			return workflow;
-		};
+		const publishedWorkflowInProjectWithoutPublish = async (label: string) =>
+			await createPublishedWorkflow(await projectWithoutPublishFor(activateKeyMember, label));
 
 		test('cannot publish through the direct publish route', async () => {
 			const workflow = await publishedWorkflowInProjectWithoutPublish('direct');

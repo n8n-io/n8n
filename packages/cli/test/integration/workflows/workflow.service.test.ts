@@ -242,6 +242,8 @@ describe('update()', () => {
 		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
 			versionId: workflow.activeVersionId,
 			source: 'ui',
+			// The caller knows this only re-registers what is already live.
+			reapplyingLiveVersion: true,
 		});
 	});
 

@@ -5,7 +5,6 @@ import {
 	createWorkflow,
 	createActiveWorkflow,
 	createWorkflowWithHistory,
-	createWorkflowWithTriggerAndHistory,
 	getWorkflowSharing,
 	shareWorkflowWithProjects,
 	shareWorkflowWithUsers,
@@ -2388,11 +2387,7 @@ describe('PATCH /workflows/:workflowId as an editor who may not publish', () => 
 		const project = await createTeamProject(`Project ${label}`, owner);
 		await linkUserToProject(member, project, editorWithoutPublishSlug);
 
-		const workflow = await createWorkflowWithTriggerAndHistory({}, project);
-		await Container.get(WorkflowRepository).update(workflow.id, {
-			active: true,
-			activeVersionId: workflow.versionId,
-		});
+		const workflow = await createActiveWorkflow({}, project);
 		await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
 			workflow.id,
 			workflow.versionId,

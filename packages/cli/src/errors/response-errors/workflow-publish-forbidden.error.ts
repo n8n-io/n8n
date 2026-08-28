@@ -21,6 +21,6 @@ export class WorkflowPublishForbiddenError extends ForbiddenError {
 
 	constructor(readonly details: WorkflowPublishForbiddenDetails) {
 		super(messages[details.reason]);
-		this.meta = { ...details, validationError: true };
+		this.meta = { ...this.details, validationError: true };
 	}
 }
