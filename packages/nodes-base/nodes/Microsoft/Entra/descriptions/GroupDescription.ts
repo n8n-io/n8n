@@ -545,11 +545,20 @@ const createFields: INodeProperties[] = [
 								}
 
 								try {
-									await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
+									await microsoftApiRequest.call(
+										this,
+										'PATCH',
+										`/groups/${encodeURIComponent(groupId)}`,
+										body,
+									);
 									merge(item.json, body);
 								} catch (error) {
 									try {
-										await microsoftApiRequest.call(this, 'DELETE', `/groups/${groupId}`);
+										await microsoftApiRequest.call(
+											this,
+											'DELETE',
+											`/groups/${encodeURIComponent(groupId)}`,
+										);
 									} catch {}
 									throw error;
 								}
@@ -1178,7 +1187,12 @@ const updateFields: INodeProperties[] = [
 								const body: IDataObject = {
 									...separateFields,
 								};
-								await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
+								await microsoftApiRequest.call(
+									this,
+									'PATCH',
+									`/groups/${encodeURIComponent(groupId)}`,
+									body,
+								);
 							}
 						}
 						return items;

@@ -1174,6 +1174,11 @@ describe('Microsoft Entra Node', () => {
 	});
 
 	describe('Accepted user IDs', () => {
+		// Only the user templates can carry a UPN. The five group templates take a GUID, which
+		// encodes to itself, so there is nothing falsifiable to assert for them.
+		const guestUpn = 'user_contoso.com#EXT#@tenant.onmicrosoft.com';
+		const guestPath = '/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com';
+
 		const deleteUser = (
 			description: string,
 			user: INodeParameters,
@@ -1203,13 +1208,8 @@ describe('Microsoft Entra Node', () => {
 			),
 			deleteUser(
 				'should delete a guest user addressed by UPN',
-				{ __rl: true, mode: 'id', value: 'user_contoso.com#EXT#@tenant.onmicrosoft.com' },
-				'/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com',
-			),
-			deleteUser(
-				'should delete a user addressed by UPN',
-				{ __rl: true, mode: 'id', value: 'jane@contoso.com' },
-				'/users/jane%40contoso.com',
+				{ __rl: true, mode: 'id', value: guestUpn },
+				guestPath,
 			),
 			deleteUser(
 				'should delete a user picked from the list',
@@ -1221,6 +1221,63 @@ describe('Microsoft Entra Node', () => {
 				{ __rl: true, mode: 'id', value: guid.toUpperCase() },
 				`/users/${guid.toUpperCase()}`,
 			),
+			{
+				description: 'should get a guest user addressed by UPN',
+				input: {
+					workflowData: entraWorkflow({
+						resource: 'user',
+						operation: 'get',
+						user: { __rl: true, mode: 'id', value: guestUpn },
+						output: 'fields',
+						fields: [],
+					}),
+				},
+				output: { nodeData: { 'Microsoft Entra ID': [microsoftEntraNodeResponse.getUser] } },
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'get',
+							path: `${guestPath}?$select=id`,
+							statusCode: 200,
+							responseBody: microsoftEntraApiResponse.getUser,
+						},
+					],
+				},
+			},
+			{
+				// `update` sends a second, programmatic PATCH for the fields Graph only accepts on
+				// their own, so the ID reaches a Graph path twice.
+				description: 'should update a guest user on both of its requests',
+				input: {
+					workflowData: entraWorkflow({
+						resource: 'user',
+						operation: 'update',
+						user: { __rl: true, mode: 'id', value: guestUpn },
+						updateFields: { city: 'New York', aboutMe: 'About me' },
+					}),
+				},
+				output: { nodeData: { 'Microsoft Entra ID': [microsoftEntraNodeResponse.updateUser] } },
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'patch',
+							path: guestPath,
+							statusCode: 204,
+							requestBody: { city: 'New York' },
+							responseBody: {},
+						},
+						{
+							method: 'patch',
+							path: guestPath,
+							statusCode: 204,
+							requestBody: { aboutMe: 'About me' },
+							responseBody: {},
+						},
+					],
+				},
+			},
 		];
 
 		for (const testData of tests) {
