@@ -2456,9 +2456,10 @@ describe('GmailTrigger', () => {
 			};
 
 			mockLabels();
-			// The time budget, not a small page cap, bounds listing reach: a
-			// 21-page window must be walked to token exhaustion so the cursor
-			// can advance without losing the unlisted remainder.
+			// Listing reach is bounded by the time budget, not a fixed page count:
+			// 21 pages (one past the old 20-page cap) are walked to token
+			// exhaustion, so unfetched ids park as pending and the cursor can
+			// advance.
 			const pages = Array.from({ length: 21 }, (_, page) => [`q${page}`]);
 			pages.forEach((ids, page) =>
 				mockList(

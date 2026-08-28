@@ -323,6 +323,8 @@ export async function testPollingTriggerNode(
 	(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
 
 	const { pollBudgetMs } = options;
+	// Defaults for __emit, __emitError, __commitCursor, __runPoll,
+	// resolveNodeStaticData — only the poll-budget getter is overridden.
 	const pollContext = new PollContext(
 		workflow,
 		node,
