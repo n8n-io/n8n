@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	AmbiguousTriggerError,
+	NotATriggerError,
 	UnknownTriggerError,
 	UnsupportedConnectionTypeError,
 	UnsupportedCycleError,
@@ -104,22 +105,26 @@ describe('V1WorkflowConverter', () => {
 			]);
 		});
 
-		it('makes the named node the trigger, over the one it would have guessed', () => {
-			// ┌────────┐    ┌─┐
-			// │Webhook ├───►│A│    "A" is named, so A is the trigger
-			// └────────┘    └─┘
+		it('takes the named trigger, where guessing would give up', () => {
 			const graph = converter.convert(
 				workflow({
-					nodes: [trigger('t-uuid', 'Webhook', 'n8n-nodes-base.webhook'), node('a-uuid', 'A')],
-					connections: { Webhook: { main: [[main('A')]] } },
+					nodes: [
+						trigger('webhook-uuid', 'Webhook', 'n8n-nodes-base.webhook'),
+						trigger('sched-uuid', 'Schedule', 'n8n-nodes-base.scheduleTrigger'),
+					],
 				}),
-				'A',
+				'Schedule',
 			);
 
 			expect(graph.nodes).toEqual([
-				expect.objectContaining({ id: 'a-uuid', name: 'A', type: 'trigger' }),
+				expect.objectContaining({ id: 'sched-uuid', name: 'Schedule', type: 'trigger' }),
 			]);
-			expect(graph.edges).toEqual([]);
+		});
+
+		it('rejects a name that points at a node which is not a trigger', () => {
+			expect(() =>
+				converter.convert(workflow({ nodes: [manualTrigger, node('a-uuid', 'A')] }), 'A'),
+			).toThrow(NotATriggerError);
 		});
 
 		it('drops another trigger and the branch only it reaches', () => {

@@ -17,6 +17,12 @@ export class AmbiguousTriggerError extends UserError {
 	}
 }
 
+export class NotATriggerError extends UserError {
+	constructor(nodeName: string, nodeType: string) {
+		super(`Node "${nodeName}" (${nodeType}) is not a trigger, so nothing can start from it.`);
+	}
+}
+
 export class UnknownTriggerError extends UserError {
 	constructor(nodeName: string) {
 		super(`This workflow has no enabled node named "${nodeName}" to start from.`);

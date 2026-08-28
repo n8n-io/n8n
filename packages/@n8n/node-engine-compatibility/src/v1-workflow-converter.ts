@@ -12,6 +12,7 @@ import {
 } from './constants';
 import {
 	AmbiguousTriggerError,
+	NotATriggerError,
 	UnknownTriggerError,
 	UnsupportedConnectionTypeError,
 	UnsupportedCycleError,
@@ -77,7 +78,7 @@ export class V1WorkflowConverter {
 		return { nodes, edges };
 	}
 
-	/** A name is taken as given. Guessing is a heuristic: there is no `INodeTypes` here. */
+	/** What counts as a trigger is a type heuristic: there is no `INodeTypes` here. */
 	private resolveFiredTrigger(
 		workflow: IWorkflowBase,
 		firedTriggerName?: string,
@@ -87,6 +88,9 @@ export class V1WorkflowConverter {
 		if (firedTriggerName !== undefined) {
 			const fired = liveNodes.find((node) => node.name === firedTriggerName);
 			if (fired === undefined) throw new UnknownTriggerError(firedTriggerName);
+			// A non-trigger named here would lose its own work: the step drops its
+			// parameters and stands in for the payload.
+			if (!isTriggerNodeType(fired.type)) throw new NotATriggerError(fired.name, fired.type);
 			return fired;
 		}
 
