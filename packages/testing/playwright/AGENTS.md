@@ -203,10 +203,17 @@ checker reports into the same scan list.
 
 ### Report and failure budget
 
-Every scan is attached to its test and aggregated by
-`reporters/a11y-reporter.ts` into one axe HTML report per run, written to
-`a11y-report/index.html` and uploaded as its own CI artifact. Under sharding
-each shard reports the specs it ran.
+Every scan is attached to its test, so the raw axe results are always available
+on that test (including in Currents). Set `PLAYWRIGHT_A11Y_REPORT` to also
+register `reporters/a11y-reporter.ts`, which aggregates a run's scans into one
+axe HTML report at `a11y-report/index.html` plus a table in the GitHub job
+summary. Under sharding each shard reports the specs it ran. CI sets the
+variable for the e2e workflow, which uploads the report as its own artifact on a
+failing run; locally the reporter stays off unless asked for:
+
+```bash
+PLAYWRIGHT_A11Y_REPORT=1 pnpm --filter=n8n-playwright test:local
+```
 
 Violations are **reporting-only by default**. Set
 `PLAYWRIGHT_A11Y_MAX_VIOLATIONS` to the number of violations a single test may

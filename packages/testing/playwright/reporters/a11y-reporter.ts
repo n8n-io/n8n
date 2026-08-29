@@ -72,25 +72,33 @@ export function parseA11yAttachment(body: Buffer | undefined): A11yScan[] {
 /**
  * Aggregates the axe scans every test attached into a single HTML report per run.
  *
+ * Opt-in: `playwright.config.ts` only registers this reporter when
+ * `PLAYWRIGHT_A11Y_REPORT` is set. The per-test scans are attached either way, so
+ * a run without it still carries its raw axe results on the tests themselves.
+ *
  * The report is written whether or not the run found violations - the budget
  * ({@link A11Y_MAX_VIOLATIONS_ENV}) is what decides if they fail the build, and it
  * is unset by default. Under sharding each shard writes the report for the specs
- * it ran, which is what gets uploaded as that shard's artifact.
+ * it ran.
  */
-class A11yReporter implements Reporter {
+export class A11yReporter implements Reporter {
 	/** Keyed by test so a retry replaces its earlier attempt instead of adding to it. */
 	private readonly scansByTest = new Map<string, A11yScan[]>();
 
-	private get scans(): A11yScan[] {
+	get scans(): A11yScan[] {
 		return [...this.scansByTest.values()].flat();
 	}
 
 	onTestEnd(test: TestCase, result: TestResult): void {
-		const scans = result.attachments
-			.filter((attachment) => attachment.name === A11Y_ATTACHMENT_NAME)
-			.flatMap((attachment) => parseA11yAttachment(attachment.body));
-
-		if (scans.length > 0) this.scansByTest.set(test.id, scans);
+		// Replaced unconditionally, empty list included: the last attempt is the
+		// authoritative one, so a retry that recorded no scan must not leave the
+		// earlier attempt's violations in the report.
+		this.scansByTest.set(
+			test.id,
+			result.attachments
+				.filter((attachment) => attachment.name === A11Y_ATTACHMENT_NAME)
+				.flatMap((attachment) => parseA11yAttachment(attachment.body)),
+		);
 	}
 
 	onEnd(): void {

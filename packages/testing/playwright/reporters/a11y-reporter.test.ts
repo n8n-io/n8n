@@ -1,7 +1,8 @@
+import type { TestCase, TestResult } from '@playwright/test/reporter';
 import { describe, expect, test } from 'vitest';
 
-import { mergeA11yScans, parseA11yAttachment } from './a11y-reporter';
-import type { A11yScan, A11yViolation } from '../fixtures/a11y';
+import { A11yReporter, mergeA11yScans, parseA11yAttachment } from './a11y-reporter';
+import { A11Y_ATTACHMENT_NAME, type A11yScan, type A11yViolation } from '../fixtures/a11y';
 
 type NodeResult = A11yViolation['nodes'][number];
 
@@ -67,6 +68,59 @@ describe('mergeA11yScans', () => {
 			'serious-few',
 			'minor-rule',
 		]);
+	});
+});
+
+describe('A11yReporter.onTestEnd', () => {
+	const testCase = (id: string) => ({ id }) as TestCase;
+
+	const resultWith = (scans: A11yScan[] | undefined): TestResult =>
+		({
+			attachments: scans
+				? [
+						{
+							name: A11Y_ATTACHMENT_NAME,
+							contentType: 'application/json',
+							body: Buffer.from(JSON.stringify(scans)),
+						},
+					]
+				: [],
+		}) as TestResult;
+
+	test('keeps the scans of the last attempt of a test', () => {
+		const reporter = new A11yReporter();
+		const retried = scan('page', [violation('label', [node('select')])]);
+
+		reporter.onTestEnd(
+			testCase('spec-1'),
+			resultWith([scan('page', [violation('label', [node('input')])])]),
+		);
+		reporter.onTestEnd(testCase('spec-1'), resultWith([retried]));
+
+		expect(reporter.scans).toEqual([retried]);
+	});
+
+	test('drops the earlier attempt when the retry recorded no scan', () => {
+		const reporter = new A11yReporter();
+
+		reporter.onTestEnd(
+			testCase('spec-1'),
+			resultWith([scan('page', [violation('label', [node('input')])])]),
+		);
+		reporter.onTestEnd(testCase('spec-1'), resultWith(undefined));
+
+		expect(reporter.scans).toEqual([]);
+	});
+
+	test('keeps the scans of every test that ran', () => {
+		const reporter = new A11yReporter();
+		const first = scan('page', [violation('label', [node('input')])]);
+		const second = scan('sidebar', [violation('label', [node('select')])]);
+
+		reporter.onTestEnd(testCase('spec-1'), resultWith([first]));
+		reporter.onTestEnd(testCase('spec-2'), resultWith([second]));
+
+		expect(reporter.scans).toEqual([first, second]);
 	});
 });
 

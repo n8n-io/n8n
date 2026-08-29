@@ -173,6 +173,9 @@ jobs:
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
+          # Opt in to the a11y reporter here rather than in playwright.config.ts,
+          # so a local run stays quiet unless it is asked for.
+          PLAYWRIGHT_A11Y_REPORT: '1'
 
       - name: Upload Shard Artifacts
         if: always()
@@ -190,12 +193,12 @@ jobs:
           retention-days: 1
           if-no-files-found: ignore
 
-      # Standalone so a red run's accessibility report is one download away
-      # instead of buried in the shard bundle. Uploaded on green runs too: the
-      # checks are non-blocking by default (PLAYWRIGHT_A11Y_MAX_VIOLATIONS is
-      # unset), so a passing run is where the current violations show up.
+      # Only on a red run: the per-test axe scans are already attached to their
+      # test in Currents, and a green run still gets the violation table in the
+      # job summary, so uploading the full report every time would be a third
+      # copy of the same data per shard.
       - name: Upload Accessibility Report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ inputs.artifact-prefix }}-a11y-report-shard-${{ matrix.shard }}
