@@ -7255,6 +7255,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 0.91.1
         version: 0.91.1(zod@3.25.76)
+      '@axe-core/playwright':
+        specifier: ^4.13.0
+        version: 4.13.0(playwright-core@1.62.1)
       '@currents/playwright':
         specifier: catalog:e2e
         version: 2.0.0(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
@@ -7312,6 +7315,12 @@ importers:
       autocannon:
         specifier: ^8.0.0
         version: 8.0.0
+      axe-core:
+        specifier: ^4.13.0
+        version: 4.13.0
+      axe-html-reporter:
+        specifier: ^2.2.11
+        version: 2.2.11(axe-core@4.13.0)
       eslint-plugin-playwright:
         specifier: catalog:e2e
         version: 2.2.2(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -8205,6 +8214,11 @@ packages:
   '@aws/lambda-invoke-store@0.3.0':
     resolution: {integrity: sha512-sl4Bm6yiMNYrZKkqqDFWN0UfnWhlS8ivKxrYl+6t0gCLrqr8y3B2IqZZbFRkfaVVp7C/baApyh71P+LeE1A2sQ==}
     engines: {node: '>=18.0.0'}
+
+  '@axe-core/playwright@4.13.0':
+    resolution: {integrity: sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@azure/abort-controller@1.1.0':
     resolution: {integrity: sha512-TrRLIoSQVzfAJX9H1JeFjzAoDGcoK1IYX1UImfceTZpsyYfWr09Ss1aHW1y5TrrR3iq6RZLBwJ3E24uwPhwahw==}
@@ -15247,9 +15261,19 @@ packages:
   aws4fetch@1.0.20:
     resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
+    engines: {node: '>=4'}
+
   axe-core@4.7.2:
     resolution: {integrity: sha512-zIURGIS1E1Q4pcrMjp+nnEh+16G56eG/MUllJH8yEvw7asDo7Ac9uhC9KIH5jzpITueEZolfYglnCGIuSBz39g==}
     engines: {node: '>=4'}
+
+  axe-html-reporter@2.2.11:
+    resolution: {integrity: sha512-WlF+xlNVgNVWiM6IdVrsh+N0Cw7qupe5HT9N6Uyi+aN7f6SSi92RDomiP1noW8OWIV85V6x404m5oKMeqRV3tQ==}
+    engines: {node: '>=8.9.0'}
+    peerDependencies:
+      axe-core: '>=3'
 
   axios-retry@4.5.0:
     resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
@@ -25881,6 +25905,11 @@ snapshots:
   '@aws/lambda-invoke-store@0.3.0':
     optional: true
 
+  '@axe-core/playwright@4.13.0(playwright-core@1.62.1)':
+    dependencies:
+      axe-core: 4.13.0
+      playwright-core: 1.62.1
+
   '@azure/abort-controller@1.1.0':
     dependencies:
       tslib: 2.8.1
@@ -34837,7 +34866,14 @@ snapshots:
 
   aws4fetch@1.0.20: {}
 
+  axe-core@4.13.0: {}
+
   axe-core@4.7.2: {}
+
+  axe-html-reporter@2.2.11(axe-core@4.13.0):
+    dependencies:
+      axe-core: 4.13.0
+      mustache: 4.2.0
 
   axios-retry@4.5.0(axios@1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)):
     dependencies:
