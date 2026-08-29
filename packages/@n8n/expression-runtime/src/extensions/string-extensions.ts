@@ -123,6 +123,14 @@ function isNotEmpty(value: string): boolean {
 	return !isEmpty(value);
 }
 
+function isBlank(value: string): boolean {
+	return value.trim() === '';
+}
+
+function isNotBlank(value: string): boolean {
+	return !isBlank(value);
+}
+
 function length(value: string): number {
 	return value.length;
 }
@@ -716,6 +724,36 @@ isNotEmpty.doc = {
 	],
 };
 
+isBlank.doc = {
+	name: 'isBlank',
+	description:
+		'Returns <code>true</code> if the string is empty or contains only whitespace. Returns <code>false</code> if it has non-whitespace characters.',
+	section: 'validation',
+	returnType: 'boolean',
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isBlank',
+	examples: [
+		{ example: '"   ".isBlank()', evaluated: 'true' },
+		{ example: '"".isBlank()', evaluated: 'true' },
+		{ example: '"hello".isBlank()', evaluated: 'false' },
+		{ example: '"  hello  ".isBlank()', evaluated: 'false' },
+	],
+};
+
+isNotBlank.doc = {
+	name: 'isNotBlank',
+	description: 'Returns <code>true</code> if the string has at least one non-whitespace character.',
+	section: 'validation',
+	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isNotBlank',
+	examples: [
+		{ example: '"hello".isNotBlank()', evaluated: 'true' },
+		{ example: '"  hello  ".isNotBlank()', evaluated: 'true' },
+		{ example: '"   ".isNotBlank()', evaluated: 'false' },
+		{ example: '"".isNotBlank()', evaluated: 'false' },
+	],
+};
+
 toJsonString.doc = {
 	name: 'toJsonString',
 	description:
@@ -913,6 +951,8 @@ export const stringExtensions: ExtensionMap = {
 		isUrl,
 		isEmpty,
 		isNotEmpty,
+		isBlank,
+		isNotBlank,
 		toJsonString,
 		extractEmail,
 		extractDomain,
