@@ -1,5 +1,5 @@
 import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -8,7 +8,7 @@ import { Service } from '@n8n/di';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
-import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
+import { BUILDER_TOOLS, FOLDER_FEATURE_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
@@ -52,6 +52,7 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly mcpConfig: McpConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	get scopes(): string[] {
@@ -66,6 +67,7 @@ export class McpProtectedResource implements ProtectedResource {
 	getScopeTools(): Record<string, string[]> {
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const tagsDisabled = this.globalConfig.tags.disabled;
+		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
 
 		return Object.fromEntries(
@@ -76,7 +78,8 @@ export class McpProtectedResource implements ProtectedResource {
 					tools.filter(
 						(tool) =>
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
-							(!tagsDisabled || tool !== 'list_workflow_tags'),
+							(!tagsDisabled || tool !== 'list_workflow_tags') &&
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)),
 					),
 				]),
 		);

@@ -31,6 +31,7 @@ function inlineSeed(overrides: Record<string, unknown> = {}) {
 		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		projects: [],
 		...overrides,
 	};
 }

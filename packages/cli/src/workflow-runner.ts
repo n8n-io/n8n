@@ -52,6 +52,7 @@ import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
+import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -93,6 +94,7 @@ export class WorkflowRunner {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
+		private readonly engineV2Dispatcher: EngineV2Dispatcher,
 	) {}
 
 	/** The process did error */
@@ -246,6 +248,12 @@ export class WorkflowRunner {
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		// The engine 2.0 path owns the whole run: it keeps no control-plane
+		// execution row, so everything below here does not apply to it.
+		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
+			return await this.engineV2Dispatcher.start(data);
+		}
+
 		const establishContextError = await this.establishContextForPersistence(data);
 
 		// Register a new execution
@@ -537,6 +545,7 @@ export class WorkflowRunner {
 			mcpSessionId: data.mcpSessionId,
 			mcpMessageId: data.mcpMessageId,
 			mcpToolCall: data.mcpToolCall,
+			mcpToolInput: data.mcpToolInput,
 		};
 
 		if (!this.scalingService) {

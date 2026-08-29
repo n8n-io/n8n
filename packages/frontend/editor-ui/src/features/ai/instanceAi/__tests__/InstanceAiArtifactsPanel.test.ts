@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
-import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { TaskList } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
 import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 
@@ -37,20 +37,6 @@ const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
 			// Lucide-only icons (outside the curated set) need the async body loader.
 			[IconBodyLoaderKey as symbol]: async () => '<path d="M1 1"/>',
 		},
-		stubs: {
-			ConnectionsCard: defineComponent({
-				props: {
-					dropdownPortalTarget: { type: HTMLElement, required: false },
-				},
-				setup(props) {
-					return () =>
-						h('section', {
-							'data-test-id': 'connections-card',
-							'data-portal-target-tag': props.dropdownPortalTarget?.tagName ?? '',
-						});
-				},
-			}),
-		},
 	},
 });
 
@@ -64,7 +50,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		updateThreadMetadataMock.mockClear();
 	});
 
-	it('keeps empty artifacts and connections sections visible without an empty tasks section', () => {
+	it('keeps the empty artifacts section visible without an empty tasks section', () => {
 		const { getByText, getByTestId, queryByText } = renderComponent();
 
 		expect(getByTestId('instance-ai-artifacts-sidebar')).toBeInTheDocument();
@@ -72,15 +58,6 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getByText('No artifacts yet')).toBeInTheDocument();
 		expect(queryByText('To-do list')).not.toBeInTheDocument();
 		expect(queryByText('No tasks yet')).not.toBeInTheDocument();
-		expect(getByTestId('connections-card')).toBeInTheDocument();
-	});
-
-	it('anchors connection menus inside the panel', async () => {
-		const { getByTestId } = renderComponent();
-
-		await nextTick();
-
-		expect(getByTestId('connections-card')).toHaveAttribute('data-portal-target-tag', 'ASIDE');
 	});
 
 	it('opens artifacts in preview and shows tasks without progress counts', async () => {
@@ -201,7 +178,7 @@ describe('InstanceAiArtifactsPanel', () => {
 				context: {
 					source: 'credential-modal',
 					credential: {
-						credentialType: 'gmailOAuth2Api',
+						credentialType: 'gmailOAuth2',
 						displayName: 'Gmail OAuth2 API',
 					},
 				},
@@ -216,7 +193,7 @@ describe('InstanceAiArtifactsPanel', () => {
 	});
 
 	it('renders pending handoff context from the composer before any message is sent', () => {
-		const pendingComposerContext = ref({
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
 			threadId: 'preview-thread-1',
@@ -267,18 +244,23 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
 	});
 
-	it('clears pending handoff context on dismiss and persists the dismissed key', async () => {
-		const pendingComposerContext = ref({
+	it('asks the composer owner to clear a pending handoff on dismiss', async () => {
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
 			threadId: 'preview-thread-1',
 			agentName: 'SEO Auditor',
+		});
+		const dismissPendingComposerContext = vi.fn((key: string) => {
+			pendingComposerContext.value = null;
+			return key === 'agent-preview:agent-1:preview-thread-1:';
 		});
 
 		const { getByTestId, queryByText } = renderComponent({
 			global: {
 				provide: {
 					pendingComposerContext,
+					dismissPendingComposerContext,
 				},
 			},
 		});
@@ -286,18 +268,23 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
-		});
+		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
+			'agent-preview:agent-1:preview-thread-1:',
+		);
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
 	});
 
-	it('dismisses pending context that is also present on a user message', async () => {
-		const pendingComposerContext = ref({
+	it('keeps sent context visible when its pending copy is dismissed', async () => {
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
 			threadId: 'preview-thread-1',
 			agentName: 'SEO Auditor',
+		});
+		const dismissPendingComposerContext = vi.fn(() => {
+			pendingComposerContext.value = null;
+			return true;
 		});
 		storeState.messages = [
 			{
@@ -315,6 +302,7 @@ describe('InstanceAiArtifactsPanel', () => {
 			global: {
 				provide: {
 					pendingComposerContext,
+					dismissPendingComposerContext,
 				},
 			},
 		});
@@ -322,17 +310,41 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
+		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
+			'agent-preview:agent-1:preview-thread-1:',
+		);
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
+		expect(queryByText('SEO Auditor session')).toBeInTheDocument();
+	});
+
+	it('does not partially dismiss pending context without its composer owner', async () => {
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			agentName: 'SEO Auditor',
 		});
-		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
+
+		const { getByTestId, getByText } = renderComponent({
+			global: {
+				provide: {
+					pendingComposerContext,
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+
+		expect(pendingComposerContext.value).not.toBeNull();
+		expect(getByText('SEO Auditor session')).toBeInTheDocument();
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 	});
 
 	it('renders pending credential handoff context before any message is sent', () => {
 		const pendingComposerContext = ref({
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 			},
 		});

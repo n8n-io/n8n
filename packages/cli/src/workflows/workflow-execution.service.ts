@@ -1,6 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
+import type {
+	Project,
+	User,
+	CreateExecutionPayload,
+	WorkflowEntity,
+	PollLeaseFence,
+} from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -26,6 +32,7 @@ import type {
 	PollCursor,
 } from 'n8n-workflow';
 import {
+	OperationalError,
 	SubworkflowOperationError,
 	UnexpectedError,
 	Workflow,
@@ -126,6 +133,7 @@ export class WorkflowExecutionService {
 		mode: WorkflowExecuteMode,
 		cursor: PollCursor,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		fence?: PollLeaseFence,
 	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -186,12 +194,27 @@ export class WorkflowExecutionService {
 			tracingContext: runData.tracingContext ?? null,
 		};
 
-		const { executionId } = await this.pollCursorService.commitWithExecution({
+		const commitResult = await this.pollCursorService.commitWithExecution({
 			workflowId: workflowData.id,
 			nodeId: node.id,
 			cursor,
 			payload,
+			fence,
 		});
+
+		if (commitResult === null) {
+			this.logger.debug('Poll cursor commit skipped: the poll no longer holds its lease', {
+				workflowId: workflowData.id,
+				nodeId: node.id,
+				nodeName: node.name,
+			});
+			responsePromise?.reject(
+				new OperationalError('Poll cursor commit skipped: the poll no longer holds its lease'),
+			);
+			return undefined;
+		}
+
+		const { executionId } = commitResult;
 
 		// The row was committed at `new`; `expectedStatus` claims it and moves it to
 		// running, so a concurrent starter cannot run it a second time.
@@ -310,6 +333,7 @@ export class WorkflowExecutionService {
 					destinationNode: payload.destinationNode,
 					chatSessionId: payload.chatSessionId,
 					workflowIsActive,
+					n8nAuthCookie,
 				}))
 			) {
 				return { waitingForWebhook: true };
@@ -347,6 +371,7 @@ export class WorkflowExecutionService {
 					pushRef,
 					destinationNode: payload.destinationNode,
 					workflowIsActive,
+					n8nAuthCookie,
 				}))
 			) {
 				return { waitingForWebhook: true };

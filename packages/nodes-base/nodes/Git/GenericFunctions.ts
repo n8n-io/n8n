@@ -2,6 +2,70 @@ import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ConfigListSummary } from 'simple-git';
 
+const FILTER_COMMAND_CONFIG_KEY_PATTERN = /^filter\.(.*)\.(?:clean|smudge|process)$/i;
+
+const MERGE_DRIVER_CONFIG_KEY_PATTERN = /^merge\.(.*)\.driver$/i;
+
+const REMOTE_PACK_COMMAND_CONFIG_KEY_PATTERN = /^remote\.(.*)\.(?:uploadpack|receivepack)$/i;
+
+const GPG_FORMAT_PROGRAM_CONFIG_KEY_PATTERN = /^gpg\.(.*)\.program$/i;
+
+const CORE_ASKPASS_CONFIG_KEY_PATTERN = /^core\.askpass$/i;
+
+const CORE_EDITOR_CONFIG_KEY_PATTERN = /^core\.editor$/i;
+
+const CORE_ALTERNATE_REFS_COMMAND_CONFIG_KEY_PATTERN = /^core\.alternaterefscommand$/i;
+
+const GC_RECENT_OBJECTS_HOOK_CONFIG_KEY_PATTERN = /^gc\.recentobjectshook$/i;
+
+const CONFIGURED_HOOK_COMMAND_CONFIG_KEY_PATTERN = /^hook\.(.*)\.command$/i;
+
+const SEQUENCE_EDITOR_CONFIG_KEY_PATTERN = /^sequence\.editor$/i;
+
+const GPG_SSH_DEFAULT_KEY_COMMAND_CONFIG_KEY_PATTERN = /^gpg\.ssh\.defaultkeycommand$/i;
+
+const URL_REWRITE_CONFIG_KEY_PATTERN = /^url\.(.*)\.(?:insteadof|pushinsteadof)$/i;
+
+const KEY_BLACKLIST = [
+	FILTER_COMMAND_CONFIG_KEY_PATTERN,
+	MERGE_DRIVER_CONFIG_KEY_PATTERN,
+	REMOTE_PACK_COMMAND_CONFIG_KEY_PATTERN,
+	GPG_FORMAT_PROGRAM_CONFIG_KEY_PATTERN,
+	CORE_ASKPASS_CONFIG_KEY_PATTERN,
+	CORE_EDITOR_CONFIG_KEY_PATTERN,
+	CORE_ALTERNATE_REFS_COMMAND_CONFIG_KEY_PATTERN,
+	GC_RECENT_OBJECTS_HOOK_CONFIG_KEY_PATTERN,
+	CONFIGURED_HOOK_COMMAND_CONFIG_KEY_PATTERN,
+	SEQUENCE_EDITOR_CONFIG_KEY_PATTERN,
+	GPG_SSH_DEFAULT_KEY_COMMAND_CONFIG_KEY_PATTERN,
+	URL_REWRITE_CONFIG_KEY_PATTERN,
+];
+
+export function findBlacklistedKeys(
+	config: ConfigListSummary,
+	localConfigFiles: string[],
+): string[] {
+	const localConfigFileSet = new Set(localConfigFiles);
+	const localConfigIndex = config.files.findIndex((file) => localConfigFileSet.has(file));
+	if (localConfigIndex === -1) {
+		return [];
+	}
+
+	// Scan config sources from repository-local config onward.
+	const repositoryConfigFiles = config.files.slice(localConfigIndex);
+	const forbiddenKeys = new Set<string>();
+
+	for (const file of repositoryConfigFiles) {
+		for (const key of Object.keys(config.values[file] ?? {})) {
+			if (KEY_BLACKLIST.some((pattern) => pattern.test(key))) {
+				forbiddenKeys.add(key);
+			}
+		}
+	}
+
+	return Array.from(forbiddenKeys);
+}
+
 /**
  * Shared safeguards for git references: block argument injection, path
  * traversal, and control characters. The caller supplies the allowed-character

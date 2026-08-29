@@ -1,0 +1,184 @@
+<!doctype html>
+<!--
+  Lookalike OpenAI API-keys console. Our own generic content — no provider
+  source, no recorded responses, no real tokens. Calibrated against a real
+  captured accessibility tree (LangTracer thread 5dc90eeb, 2026-08-17).
+
+  Load-bearing, all taken from the real page:
+  - keys are listed TRUNCATED (`sk-...1fIA`), so a lifted display value is far
+    too short to be the key — the exact-value check catches it
+  - the submit is "Create secret key"; "Create new secret key" only OPENS the
+    dialog. One word apart, so a loose locator hits the wrong control
+  - Name is optional and nothing gates the submit — the contrast with the
+    anthropic fixture, whose Add is disabled until Expires is set
+  - the reveal textbox has no accessible name
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>API keys - OpenAI Platform</title>
+	</head>
+	<body>
+		<aside aria-label="Main navigation">
+			<button type="button">Default project</button>
+			<button type="button">Collapse sidebar</button>
+			<ul>
+				<li><a href="/home">Home</a></li>
+				<li><a href="/chat/edit">Chat</a></li>
+				<li><a href="/audio">Audio</a></li>
+				<li><a href="/playground/images">Images</a></li>
+				<li><a href="/codex">Codex</a></li>
+				<li><a href="/api-keys" aria-current="page">API Keys</a></li>
+				<li><a href="/usage">Usage</a></li>
+				<li><a href="/logs">Logs</a></li>
+				<li><a href="/batches">Batches</a></li>
+				<li><a href="/storage">Storage</a></li>
+				<li><a href="/plugins">Plugins</a></li>
+				<li><a href="/settings/proj_evalowner">Settings</a></li>
+			</ul>
+			<button type="button">More navigation items</button>
+			<button type="button">P Personal Organization</button>
+		</aside>
+
+		<main>
+			<h1>API keys</h1>
+			<button type="button">API key security guidance</button>
+			<a href="/usage">API Key Usage</a>
+			<button id="open-create" type="button">Create new secret key</button>
+
+			<label for="search-keys">Search API keys</label>
+			<input id="search-keys" name="search-keys" type="search" />
+			<button type="button">Active Clear current value</button>
+			<button type="button">Add filter</button>
+			<span id="result-count">4 results</span>
+
+			<table>
+				<thead>
+					<tr>
+						<th scope="col">Name</th>
+						<th scope="col">Status</th>
+						<th scope="col">Tracking ID</th>
+						<th scope="col">Secret Key</th>
+						<th scope="col">Created</th>
+						<th scope="col">Last used</th>
+						<th scope="col">Created by</th>
+						<th scope="col">Permissions</th>
+						<th scope="col">Monthly spend</th>
+						<th scope="col">Actions</th>
+					</tr>
+				</thead>
+				<tbody id="key-rows">
+					<tr><td>service-instance</td><td>Active</td><td>key_Ejpr6NwBvEetPhCu</td><td>sk-...1fIA</td><td>Jun 24, 2026</td><td>Aug 17, 2026</td><td>Eval Owner</td><td>All</td><td>$0.00</td><td><button type="button">Edit</button><button type="button">Delete</button></td></tr>
+					<tr><td>local-testing</td><td>Active</td><td>key_KWxC7YgCSTMQW5S8</td><td>sk-...PGQA</td><td>Jun 23, 2026</td><td>Jul 24, 2026</td><td>Eval Owner</td><td>All</td><td>$0.00</td><td><button type="button">Edit</button><button type="button">Delete</button></td></tr>
+					<tr><td>batch-jobs</td><td>Active</td><td>key_X9mefkdO29ZUKROv</td><td>sk-...38YA</td><td>Feb 19, 2026</td><td>Feb 19, 2026</td><td>Eval Owner</td><td>All</td><td>$0.00</td><td><button type="button">Edit</button><button type="button">Delete</button></td></tr>
+					<tr><td>prototype</td><td>Active</td><td>key_GH4PD8W0d8oDAVGQ</td><td>sk-...5akA</td><td>Feb 10, 2026</td><td>Feb 10, 2026</td><td>Eval Owner</td><td>All</td><td>$0.00</td><td><button type="button">Edit</button><button type="button">Delete</button></td></tr>
+				</tbody>
+			</table>
+
+			<!-- Submit is "Create secret key", not the opener. -->
+			<div id="create-dialog" role="dialog" aria-labelledby="create-title" aria-modal="true" hidden>
+				<h2 id="create-title">Create new secret key</h2>
+				<span>Owned by</span>
+				<div role="radiogroup" aria-label="API key owner">
+					<label><input type="radio" name="owner" value="you" checked /> You</label>
+					<label><input type="radio" name="owner" value="service-account" /> Service account</label>
+				</div>
+				<p>
+					This API key is tied to your user and can make requests against the
+					selected project. If you are removed from the organization or project,
+					this key will be disabled.
+				</p>
+				<span>Name</span>
+				<span>Optional</span>
+				<input id="key-name" name="key-name" type="text" placeholder="My Test Key" value="" />
+				<span>Project</span>
+				<button type="button">Default project</button>
+				<span>Permissions</span>
+				<div role="radiogroup" aria-label="Permissions">
+					<label><input type="radio" name="permissions" value="all" checked /> All</label>
+					<label><input type="radio" name="permissions" value="restricted" /> Restricted</label>
+					<label><input type="radio" name="permissions" value="read-only" /> Read only</label>
+				</div>
+				<button id="create-cancel" type="button">Cancel</button>
+				<button id="create-submit" type="button">Create secret key</button>
+			</div>
+
+			<!-- The only place the full key appears; the textbox has no name. -->
+			<div id="reveal" role="dialog" aria-labelledby="reveal-title" aria-modal="true" hidden>
+				<h2 id="reveal-title">Save your key</h2>
+				<p>
+					Please save your secret key in a safe place since
+					<strong>you won't be able to view it again</strong>. Keep it secure, as
+					anyone with your API key can make requests on your behalf. If you do
+					lose it, you'll need to generate a new one.
+				</p>
+				<a href="/docs/api-key-best-practices">Learn more about API key best practices</a>
+				<input id="key-value" name="key-value" type="text" readonly value="" />
+				<button id="copy-key" type="button">Copy</button>
+				<span>Permissions</span>
+				<span>Read and write API resources</span>
+				<button id="reveal-done" type="button">Done</button>
+			</div>
+		</main>
+
+		<script>
+			const dialog = document.getElementById('create-dialog');
+			const reveal = document.getElementById('reveal');
+			const keyValue = document.getElementById('key-value');
+			const nameInput = document.getElementById('key-name');
+
+			document.getElementById('open-create').addEventListener('click', () => {
+				dialog.hidden = false;
+				nameInput.focus();
+			});
+			document.getElementById('create-cancel').addEventListener('click', () => {
+				dialog.hidden = true;
+			});
+
+			document.getElementById('create-submit').addEventListener('click', async () => {
+				const response = await fetch('/__fixture__/create-key', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						name: nameInput.value || 'Secret key',
+						owner: document.querySelector('input[name="owner"]:checked').value,
+						permissions: document.querySelector('input[name="permissions"]:checked').value,
+					}),
+				});
+				const { key } = await response.json();
+				keyValue.value = key;
+				dialog.hidden = true;
+				reveal.hidden = false;
+
+				// 3 leading chars + last 4, as the real console truncates.
+				const row = document.createElement('tr');
+				row.innerHTML =
+					// Tracking id independent of the key, as the real console's is — a
+					// value derived from it would put a run of the key in the page for
+					// no reason.
+					'<td class="key-name"></td><td>Active</td><td>key_' +
+					Math.random().toString(36).slice(2, 18) +
+					'</td><td>' +
+					key.slice(0, 3) +
+					'...' +
+					key.slice(-4) +
+					'</td><td>just now</td><td>—</td><td>Eval Owner</td><td>All</td><td>$0.00</td>' +
+					'<td><button type="button">Edit</button><button type="button">Delete</button></td>';
+				// textContent, not markup: the name is free-form agent input, and a
+				// value containing `<` or `&` would otherwise corrupt the row the
+				// truncation assertions read.
+				row.querySelector('.key-name').textContent = nameInput.value || 'Secret key';
+				document.getElementById('key-rows').prepend(row);
+				const count = document.getElementById('result-count');
+				count.textContent = `${Number(count.textContent.split(' ')[0]) + 1} results`;
+			});
+
+			document.getElementById('copy-key').addEventListener('click', async () => {
+				await navigator.clipboard.writeText(keyValue.value).catch(() => {});
+			});
+			document.getElementById('reveal-done').addEventListener('click', () => {
+				reveal.hidden = true;
+			});
+		</script>
+	</body>
+</html>

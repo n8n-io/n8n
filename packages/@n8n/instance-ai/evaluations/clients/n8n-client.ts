@@ -100,9 +100,36 @@ const GatewayStatusSchema = z.object({
 const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
 export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
+// Browser-use relay (a different channel from the computer-use gateway above:
+// the server owns the CDP relay and the extension dials in).
+const BrowserLinkSchema = z.object({
+	connectUrl: z.string(),
+	expiresAt: z.string().nullable(),
+	ttlSeconds: z.number().nullable(),
+});
+const BrowserLinkEnvelope = z.object({ data: BrowserLinkSchema });
+export type BrowserLink = z.infer<typeof BrowserLinkSchema>;
+
+const BrowserStatusSchema = z.object({
+	connected: z.boolean(),
+	connectedAt: z.string().nullable(),
+	toolCategories: z.array(z.object({ name: z.string(), enabled: z.boolean() })),
+});
+const BrowserStatusEnvelope = z.object({ data: BrowserStatusSchema });
+export type BrowserStatus = z.infer<typeof BrowserStatusSchema>;
+
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
 // ---------------------------------------------------------------------------
+
+/** A credential as `GET /rest/credentials` returns it. No `data`: the REST read
+ *  blanks every password field, so nothing here consumes decrypted credential
+ *  data — see the header of `credential-setup-checks.ts`. */
+export interface CredentialResponse {
+	id: string;
+	name: string;
+	type: string;
+}
 
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
@@ -122,6 +149,14 @@ export interface WorkflowNodeResponse {
 	credentials?: Record<string, unknown>;
 }
 
+/** A canvas node group as returned by the n8n REST API — members are node *ids*. */
+export interface WorkflowNodeGroupResponse {
+	id: string;
+	name: string;
+	nodeIds: string[];
+	description?: string;
+}
+
 /** A workflow as returned by GET /rest/workflows/:id. */
 export interface WorkflowResponse {
 	id: string;
@@ -131,6 +166,7 @@ export interface WorkflowResponse {
 	description?: string;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
+	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
 }
 
@@ -203,7 +239,9 @@ export class N8nApiError extends Error {
 export class N8nClient {
 	private sessionCookie?: string;
 
-	constructor(private readonly baseUrl: string) {}
+	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
+	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
+	constructor(readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
 
@@ -232,7 +270,15 @@ export class N8nClient {
 	 * Ensure a conversation thread exists before sending chat messages.
 	 * POST /rest/instance-ai/threads body: { threadId, projectId, source }
 	 */
-	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+	/** `sourceContext` is persisted on the thread and surfaced on the run's
+	 *  LangSmith trace (prefixed `source_context.`), so pass what a later reader
+	 *  needs to tell one build apart from another — the eval harness sends the
+	 *  case slug and iteration. Capped at 2 KB by the API. */
+	async ensureThread(
+		threadId: string,
+		projectId?: string,
+		sourceContext?: Record<string, string | number | boolean>,
+	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
@@ -241,6 +287,7 @@ export class N8nClient {
 				projectId: resolvedProjectId,
 				source: 'evals',
 				origin: 'internal',
+				...(sourceContext ? { sourceContext } : {}),
 			},
 		});
 	}
@@ -362,6 +409,36 @@ export class N8nClient {
 		return GatewayStatusEnvelope.parse(result).data;
 	}
 
+	// -- Browser-use relay (extension pairing + status) ----------------------
+
+	/**
+	 * Mint a connect URL for the browser-use extension to dial into. This is the
+	 * production `mode: 'remote'` path — the server owns the relay.
+	 * POST /rest/instance-ai/browser/create-link
+	 */
+	async createBrowserLink(): Promise<BrowserLink> {
+		const result = await this.fetch('/rest/instance-ai/browser/create-link', { method: 'POST' });
+		return BrowserLinkEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Read the browser relay status. Flips to `connected: true` once the
+	 * extension has registered.
+	 * GET /rest/instance-ai/browser/status
+	 */
+	async getBrowserStatus(): Promise<BrowserStatus> {
+		const result = await this.fetch('/rest/instance-ai/browser/status');
+		return BrowserStatusEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Drop the browser session so the next case starts from a clean relay.
+	 * POST /rest/instance-ai/browser/disconnect-session
+	 */
+	async disconnectBrowserSession(): Promise<void> {
+		await this.fetch('/rest/instance-ai/browser/disconnect-session', { method: 'POST' });
+	}
+
 	// -- REST API (verification helpers) -------------------------------------
 
 	/**
@@ -391,12 +468,51 @@ export class N8nClient {
 		return { id: result.data.id };
 	}
 
+	/**
+	 * List all credentials visible to the authenticated user (no secret data).
+	 * GET /rest/credentials
+	 */
+	async listCredentials(): Promise<CredentialResponse[]> {
+		const result = (await this.fetch('/rest/credentials')) as { data: CredentialResponse[] };
+		return Array.isArray(result.data) ? result.data : [];
+	}
+
+	/**
+	 * Run a credential's own test request WITHOUT persisting anything.
+	 * POST /rest/credentials/test
+	 *
+	 * Proves the stored secret works without the harness ever reading it back.
+	 */
+	async testCredential(credential: {
+		id: string;
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): Promise<{ status: string; message?: string }> {
+		const result = (await this.fetch('/rest/credentials/test', {
+			method: 'POST',
+			body: { credentials: credential },
+		})) as { data?: { status?: string; message?: string } };
+		return { status: result.data?.status ?? 'Error', message: result.data?.message };
+	}
+
+	/** Read one credential including its (password-blanked) data — the shape the
+	 *  test endpoint wants echoed back. */
+	async getCredentialForTest(id: string): Promise<{
+		id: string;
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}> {
+		const result = (await this.fetch(`/rest/credentials/${id}?includeData=true`)) as {
+			data: { id: string; name: string; type: string; data?: Record<string, unknown> };
+		};
+		return { ...result.data, data: result.data.data ?? {} };
+	}
+
 	/** List all credential IDs visible to the authenticated user. */
 	async listCredentialIds(): Promise<string[]> {
-		const result = (await this.fetch('/rest/credentials')) as {
-			data: Array<{ id: string }>;
-		};
-		return Array.isArray(result.data) ? result.data.map((c) => c.id) : [];
+		return (await this.listCredentials()).map((c) => c.id);
 	}
 
 	/**
@@ -833,6 +949,69 @@ export class N8nClient {
 			throw new Error('Could not determine personal project ID');
 		}
 		return result.data.id;
+	}
+
+	/**
+	 * Create a team project. Used to seed the extra projects a project-scope case
+	 * needs: a second project the eval user can see but whose writes are barred,
+	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 *
+	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
+	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
+	 * unlicensed instance. The error is re-thrown with that hint rather than
+	 * swallowed: a case that silently ran without it would grade the agent
+	 * against a project list it never saw, and pass for the wrong reason.
+	 * POST /rest/projects
+	 */
+	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+		try {
+			const result = (await this.fetch('/rest/projects', {
+				method: 'POST',
+				body: { name },
+			})) as { data?: { id?: string; name?: string } };
+			const id = result.data?.id;
+			if (!id) {
+				throw new Error(`Project "${name}" was created but the response carried no id`);
+			}
+			return { id, name: result.data?.name ?? name };
+		} catch (error: unknown) {
+			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
+				throw new Error(
+					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
+						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
+						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
+						'cert in the env is ignored. Re-enable it after seeding the owner:\n' +
+						'      PATCH /rest/e2e/feature {"feature":"feat:projectRole:admin","enabled":true}\n' +
+						'      PATCH /rest/e2e/quota   {"feature":"quota:maxTeamProjects","value":-1}\n' +
+						`  Original error: ${error.message}`,
+				);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * List the team projects the authenticated user can see, so a run can evict a
+	 * crashed predecessor's leftover before recreating it. Personal projects
+	 * are filtered out — they're never seeded and must never be deleted.
+	 * GET /rest/projects
+	 */
+	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+		const result = (await this.fetch('/rest/projects')) as {
+			data?: Array<{ id?: string; name?: string; type?: string }>;
+		};
+		return (result.data ?? []).flatMap(({ id, name, type }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		);
+	}
+
+	/**
+	 * Delete a project. Used to tear down seeded projects after a run.
+	 * DELETE /rest/projects/:projectId
+	 */
+	async deleteProject(projectId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}`, { method: 'DELETE' });
 	}
 
 	/**

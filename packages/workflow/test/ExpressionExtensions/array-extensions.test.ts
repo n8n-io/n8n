@@ -125,6 +125,39 @@ describe('Data Transformation Functions', () => {
 			).toEqual({ test1: 1, test2: 2, test3: 3, test4: 4 });
 		});
 
+		test('.merge() should drop elements past the length of the shorter array', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].merge([{ c: 3 }]) }}')).toEqual({
+				a: 1,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep all elements when the base array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].mergeIntoObject([{ c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep all elements when the argument array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }].mergeIntoObject([{ b: 2 }, { c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep the base object when the counterpart at that index is not an object', () => {
+			expect(
+				evaluate('={{ [{ a: 1 }, { b: 2 }].mergeIntoObject([{ c: 3 }, "not an object"]) }}'),
+			).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
 		test('.merge() should work correctly without arguments', () => {
 			expect(
 				evaluate(

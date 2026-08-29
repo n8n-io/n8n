@@ -1,6 +1,7 @@
 import { useRouter } from 'vue-router';
 import { useUserHelpers } from './useUserHelpers';
 import { useAiGateway } from './useAiGateway';
+import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -18,6 +19,7 @@ export function useSettingsItems() {
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
 	const { balance } = useAiGateway();
+	const { openTopUp } = useAiGatewayTopUp();
 	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
@@ -58,13 +60,17 @@ export function useSettingsItems() {
 			{
 				id: 'settings-n8n-connect',
 				icon: 'plug-zap',
-				label: i18n.baseText('settings.n8nConnect'),
+				label: i18n.baseText(
+					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
+				),
 				position: 'top',
 				available:
 					settingsStore.isAiGatewayEnabled &&
-					!settingsStore.isAiGatewayCloudUbbEnabled &&
-					canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
-				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+					(settingsStore.isAiGatewayCloudUbbEnabled ||
+						canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS)),
+				route: settingsStore.isAiGatewayCloudUbbEnabled
+					? undefined
+					: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 				creditsTag:
 					balance.value !== undefined
 						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
@@ -112,6 +118,14 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
+			},
+			{
+				id: 'settings-git-connections',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.gitConnections.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.GIT_CONNECTIONS_SETTINGS),
+				route: { to: { name: VIEWS.GIT_CONNECTIONS_SETTINGS } },
 			},
 			{
 				id: 'settings-sso',
@@ -169,17 +183,6 @@ export function useSettingsItems() {
 		});
 
 		menuItems.push({
-			id: 'settings-opentelemetry',
-			icon: 'telescope',
-			label: i18n.baseText('settings.opentelemetry'),
-			position: 'top',
-			available:
-				settingsStore.isModuleActive('otel') &&
-				hasPermission(['rbac'], { rbac: { scope: 'otel:manage' } }),
-			route: { to: { name: VIEWS.OPENTELEMETRY_SETTINGS } },
-		});
-
-		menuItems.push({
 			id: 'settings-community-nodes',
 			icon: 'box',
 			label: i18n.baseText('settings.communityNodes'),
@@ -207,5 +210,11 @@ export function useSettingsItems() {
 
 	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));
 
-	return { settingsItems: visibleSettingsItems };
+	const handleSettingsItemSelect = async (itemId: string) => {
+		if (itemId === 'settings-n8n-connect' && settingsStore.isAiGatewayCloudUbbEnabled) {
+			await openTopUp({ source: 'settings_page' });
+		}
+	};
+
+	return { settingsItems: visibleSettingsItems, handleSettingsItemSelect };
 }

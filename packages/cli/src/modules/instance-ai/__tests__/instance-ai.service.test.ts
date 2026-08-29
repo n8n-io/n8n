@@ -7,6 +7,12 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
+		// Wiring-only stub: the real mapping has its own unit tests
+		// (instance-ai/src/tracing/__tests__/thread-provenance.test.ts). What the
+		// service tests pin is that its OUTPUT reaches the trace — spreading an
+		// undefined mock here is a no-op, so a missing entry would look like a
+		// passing test with silently empty metadata.
+		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		isQuotaExhaustedError: (error: unknown) =>
 			typeof error === 'object' &&
@@ -208,11 +214,13 @@ import {
 	createOrchestratorRunControl,
 	createSandbox,
 	createWorkspace,
+	createInstanceAiTraceContext,
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
+	threadProvenanceMetadata,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -665,12 +673,7 @@ type TerminalGuardOrderServiceInternals = {
 	suspendedThreads: { dropPendingConfirmationsForThread: Mock; persistPendingConfirmation: Mock };
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-	instanceAiConfig: {
-		outputRedactionEnabled: boolean;
-		outputRedactionSecrets: boolean;
-		outputRedactionPii: string;
-		outputRedactionPlaceholder: string;
-	};
+	instanceAiConfig: {};
 	tracing: {
 		finalizeRunTracing: Mock;
 		finalizeDetachedTraceRun: Mock;
@@ -772,7 +775,6 @@ type SnapshotServiceInternals = {
 		getEventsForRuns: Mock;
 	};
 	eventLog: { flush: Mock; getEventsForRuns: Mock };
-	instanceAiConfig: { durableLog: boolean };
 	tracing: { getTraceContext: Mock };
 	logger: { warn: Mock };
 };
@@ -807,12 +809,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	};
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-	service.instanceAiConfig = {
-		outputRedactionEnabled: true,
-		outputRedactionSecrets: true,
-		outputRedactionPii: 'credit-card',
-		outputRedactionPlaceholder: '[REDACTED]',
-	};
+	service.instanceAiConfig = {};
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
@@ -837,11 +834,11 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.preserveHitlOnShutdown = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
-		durableLog: false,
 		eventBus: service.eventBus,
 		dbSnapshotStorage: {},
 		agentMemory: {},
 		telemetry: service.telemetry,
+		errorReporter: service.instanceAiErrorReporter,
 		logger: service.logger,
 		runState: service.runState,
 		suspendedThreads: service.suspendedThreads,
@@ -876,7 +873,6 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRuns: vi.fn(() => []),
 	};
 	service.eventLog = { flush: vi.fn(async () => {}), getEventsForRuns: vi.fn(async () => []) };
-	service.instanceAiConfig = { durableLog: false };
 	service.tracing = { getTraceContext: vi.fn(() => undefined) };
 	service.logger = { warn: vi.fn() };
 	return service;
@@ -927,6 +923,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				abortSignal: AbortSignal,
 			) => Promise<{
 				orchestrationContext: {
+					outputRedaction?: unknown;
 					workspace?: unknown;
 					runtimeSkills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
@@ -953,7 +950,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				isConfigEvalsEnabled: Mock;
 				isMcpConnectionsEnabled: Mock;
 			};
-			sourceControlPreferencesService: { getPreferences: Mock };
+			instanceWriteAccess: { isReadOnly: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
@@ -1001,9 +998,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
 			isMcpConnectionsEnabled: vi.fn().mockResolvedValue(false),
 		};
-		service.sourceControlPreferencesService = {
-			getPreferences: vi.fn(() => ({ branchReadOnly: false })),
-		};
+		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
@@ -1071,6 +1066,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			new AbortController().signal,
 		);
 
+		// OutputRedactor treats an OMITTED policy as ENABLED (`options !== false`),
+		// so this must stay an explicit false or every stream is scanned and the
+		// durable log stores redacted text instead of raw (INS-837).
+		expect(environment.orchestrationContext.outputRedaction).toBe(false);
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
 		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
 			2,
@@ -1404,7 +1403,7 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 		const context = {
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				documentationUrl:
 					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
@@ -1910,6 +1909,8 @@ type SuspendedRunResumeServiceInternals = {
 			approved: boolean;
 			autoSetup?: { credentialType: string };
 			userInput?: string;
+			scope?: 'once' | 'session';
+			denied?: boolean;
 			credentials?: Record<string, string>;
 			answers?: Array<{
 				questionId: string;
@@ -1919,10 +1920,12 @@ type SuspendedRunResumeServiceInternals = {
 			}>;
 			action?: 'apply' | 'test-trigger';
 			resourceDecision?: string;
+			connectedSlugs?: string[];
 		},
 	) => Promise<{ ok: true; runId: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock;
+	finalizeCancelledSuspendedRun: Mock;
 	runState: {
 		findSuspendedByRequestId: Mock;
 		activateSuspendedRun: Mock;
@@ -1930,14 +1933,16 @@ type SuspendedRunResumeServiceInternals = {
 		getActiveRun: Mock;
 	};
 	emitTerminalRun: Mock;
-	logger: { warn: Mock };
+	logger: { warn: Mock; debug: Mock };
 	dbSnapshotStorage: unknown;
 	tracing: { createOrchestratorResumeTraceContext: Mock; finalizeDetachedTraceRun: Mock };
+	memoryService: { getThreadMetadata: Mock };
 	processResumedStream: Mock;
 	suspendedThreads: { dropPendingConfirmation: Mock };
 	trackInFlightExecution: Mock;
-	rebuildAgentForAutoSetupResume: Mock;
+	rebuildAgentForResume: Mock;
 	threadPushRef: { get: Mock };
+	browserSessionService: { getExtensionTraceContext: Mock };
 };
 
 function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
@@ -1946,6 +1951,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	) as unknown as SuspendedRunResumeServiceInternals;
 	service.revalidateActiveUser = vi.fn();
 	service.cancelRun = vi.fn();
+	service.finalizeCancelledSuspendedRun = vi.fn(async () => {});
 	service.suspendedThreads = { dropPendingConfirmation: vi.fn(async () => {}) };
 	service.trackInFlightExecution = vi.fn();
 	service.runState = {
@@ -1970,15 +1976,19 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 		getActiveRun: vi.fn(() => undefined),
 	};
 	service.emitTerminalRun = vi.fn(async () => {});
-	service.logger = { warn: vi.fn() };
+	service.logger = { warn: vi.fn(), debug: vi.fn() };
+	service.memoryService = { getThreadMetadata: vi.fn(async () => undefined) };
 	service.dbSnapshotStorage = {};
 	service.tracing = {
 		createOrchestratorResumeTraceContext: vi.fn(async () => undefined),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
 	};
 	service.processResumedStream = vi.fn();
-	service.rebuildAgentForAutoSetupResume = vi.fn();
+	service.rebuildAgentForResume = vi.fn();
 	service.threadPushRef = { get: vi.fn(() => undefined) };
+	service.browserSessionService = {
+		getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
+	};
 	return service;
 }
 
@@ -2459,6 +2469,56 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
+	it('stamps the browser extension dimensions on the approval-resume trace', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(fakeUser);
+		service.browserSessionService.getExtensionTraceContext.mockReturnValue({
+			connectionState: 'connected',
+			version: '0.0.7',
+		});
+
+		await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				browserExtension: { connectionState: 'connected', version: '0.0.7' },
+			}),
+		);
+	});
+
+	it('stamps the thread provenance on the approval-resume trace', async () => {
+		// The build finishes on a RESUME beat, so this is where an eval build's
+		// spans actually live — stamping only the message turn would leave them
+		// unattributable, which is the whole point of carrying provenance.
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(fakeUser);
+		const threadMetadata = {
+			source: 'evals',
+			sourceContext: { evalCase: 'gmail-inbox-triage', evalIteration: 1 },
+		};
+		service.memoryService.getThreadMetadata.mockResolvedValue(threadMetadata);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(threadProvenanceMetadata).toHaveBeenCalledWith(threadMetadata);
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: expect.objectContaining({ thread_source: 'evals' }),
+			}),
+		);
+	});
+
+	it('resumes even when the thread provenance read fails', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(fakeUser);
+		service.memoryService.getThreadMetadata.mockRejectedValue(new Error('db down'));
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalled();
+	});
+
 	it('passes the revalidated user into the resumed stream', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
@@ -2549,7 +2609,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		const freshUser = { id: 'user-1', disabled: false } as User;
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
 		const rebuiltAgent = { id: 'rebuilt-agent' };
-		service.rebuildAgentForAutoSetupResume.mockResolvedValue({
+		service.rebuildAgentForResume.mockResolvedValue({
 			agent: rebuiltAgent,
 			modelId: { provider: 'anthropic', model: 'claude' },
 		});
@@ -2560,7 +2620,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		});
 
 		expect(result).toEqual({ ok: true, runId: 'run-1' });
-		expect(service.rebuildAgentForAutoSetupResume).toHaveBeenCalledWith(
+		expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
 			freshUser,
 			'thread-a',
 			'run-1',
@@ -2584,7 +2644,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		const resumeTracing = { id: 'resume-trace' } as unknown as InstanceAiTraceContext;
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
 		service.tracing.createOrchestratorResumeTraceContext.mockResolvedValue(resumeTracing);
-		service.rebuildAgentForAutoSetupResume.mockResolvedValue(undefined);
+		service.rebuildAgentForResume.mockResolvedValue(undefined);
 
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
 			approved: true,
@@ -2622,7 +2682,90 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
 
 		expect(result).toEqual({ ok: true, runId: 'run-1' });
-		expect(service.rebuildAgentForAutoSetupResume).not.toHaveBeenCalled();
+		expect(service.rebuildAgentForResume).not.toHaveBeenCalled();
+	});
+
+	it('threads the connected MCP slugs into the resume data', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.rebuildAgentForResume.mockResolvedValue({ agent: {}, modelId: undefined });
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['brave'],
+		});
+
+		const [options] = service.tracing.createOrchestratorResumeTraceContext.mock.calls[0] as [
+			{ input: { resumeFields: string[] } },
+		];
+		expect(options.input.resumeFields).toContain('connectedSlugs');
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ connectedSlugs: ['brave'] }),
+			expect.any(Object),
+		);
+	});
+
+	it('rebuilds the agent when the resume reports a newly connected MCP server', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const rebuiltAgent = { id: 'rebuilt-agent' };
+		service.rebuildAgentForResume.mockResolvedValue({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['notion'],
+		});
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'run-1',
+			expect.any(AbortController),
+			undefined,
+			undefined,
+			'group-1',
+		);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			rebuiltAgent,
+			expect.objectContaining({ connectedSlugs: ['notion'] }),
+			expect.any(Object),
+		);
+	});
+
+	it('does not rebuild the agent when the connect card reports no new connection', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: false,
+			connectedSlugs: [],
+		});
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForResume).not.toHaveBeenCalled();
+		expect(service.processResumedStream).toHaveBeenCalled();
+	});
+
+	it('rebuilds the agent so the tools of a just-connected server reach the run', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.rebuildAgentForResume.mockResolvedValue({
+			agent: { id: 'rebuilt-agent' },
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['linear'],
+		});
+
+		expect(service.rebuildAgentForResume).toHaveBeenCalled();
 	});
 
 	it('includes the substantive user response in the resume trace input', async () => {
@@ -2651,6 +2794,46 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(options.input).not.toHaveProperty('credentials');
 		expect((options.input as { resumeFields: string[] }).resumeFields).toContain('credentials');
 	});
+
+	it('forwards approval envelope fields (userInput, scope) into resumeData', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			userInput: 'rename it first',
+			scope: 'session',
+		});
+
+		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [
+			unknown,
+			Record<string, unknown>,
+		];
+		expect(resumeDataArg).toEqual({
+			approved: true,
+			userInput: 'rename it first',
+			scope: 'session',
+		});
+	});
+
+	it('forwards planDeny denied flag into resumeData', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: false,
+			denied: true,
+		});
+
+		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [
+			unknown,
+			Record<string, unknown>,
+		];
+		expect(resumeDataArg).toEqual({
+			approved: false,
+			denied: true,
+		});
+	});
 });
 
 describe('InstanceAiService — stale confirmation resume guard', () => {
@@ -2669,9 +2852,9 @@ describe('InstanceAiService — stale confirmation resume guard', () => {
 	});
 });
 
-describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
+describe('InstanceAiService — rebuildAgentForResume', () => {
 	type RebuildAgentServiceInternals = {
-		rebuildAgentForAutoSetupResume: (
+		rebuildAgentForResume: (
 			user: User,
 			threadId: string,
 			runId: string,
@@ -2706,7 +2889,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 		});
 		const runHandoff = { handoffReason: undefined };
 
-		const result = await service.rebuildAgentForAutoSetupResume(
+		const result = await service.rebuildAgentForResume(
 			fakeUser,
 			'thread-a',
 			'run-1',
@@ -2733,7 +2916,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 			orchestrationContext,
 		});
 
-		await service.rebuildAgentForAutoSetupResume(
+		await service.rebuildAgentForResume(
 			fakeUser,
 			'thread-a',
 			'run-1',
@@ -2750,7 +2933,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 		const service = createRebuildAgentService();
 		service.buildFreshInstanceAgent.mockRejectedValue(new Error('boom'));
 
-		const result = await service.rebuildAgentForAutoSetupResume(
+		const result = await service.rebuildAgentForResume(
 			fakeUser,
 			'thread-a',
 			'run-1',
@@ -2762,7 +2945,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 
 		expect(result).toBeUndefined();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Failed to rebuild agent for credential auto-setup resume',
+			'Failed to rebuild agent for resume',
 			expect.objectContaining({ threadId: 'thread-a', runId: 'run-1' }),
 		);
 	});
@@ -2804,7 +2987,7 @@ describe('InstanceAiService — agent tree snapshots', () => {
 			save: vi.fn(async () => {}),
 			updateLast: vi.fn(async () => {}),
 		};
-		service.eventBus.getEventsForRuns.mockReturnValue([terminalEvent]);
+		service.eventLog.getEventsForRuns.mockResolvedValue([terminalEvent]);
 
 		await service.saveAgentTreeSnapshot(
 			'thread-a',
@@ -2819,7 +3002,7 @@ describe('InstanceAiService — agent tree snapshots', () => {
 			messageGroupId: 'group-old',
 			runId: 'run-background',
 		});
-		expect(service.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', [
+		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', [
 			'run-original',
 			'run-background',
 		]);
@@ -2868,9 +3051,8 @@ describe('InstanceAiService — agent tree snapshots', () => {
 		);
 	});
 
-	it('reads snapshot input from the durable log instead of the bus when the flag is on', async () => {
+	it('reads snapshot input from the durable log', async () => {
 		const service = createSnapshotService();
-		service.instanceAiConfig.durableLog = true;
 		const logEvent: InstanceAiEvent = {
 			type: 'text-delta',
 			runId: 'run-1',
@@ -2887,7 +3069,6 @@ describe('InstanceAiService — agent tree snapshots', () => {
 		await service.saveAgentTreeSnapshot('thread-a', 'run-1', snapshotStorage);
 
 		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
-		expect(service.eventBus.getEventsForRun).not.toHaveBeenCalled();
 		// Read-own-writes barrier: the drain settles before the snapshot input is
 		// read, so a just-published terminal fact can't be missing from the tree.
 		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');
@@ -3046,6 +3227,42 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error_source: 'stream',
 			user_id: 'user-1',
 		});
+	});
+
+	it('scrubs secrets from the "Builder generation errored" message', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'errored',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			error: new Error(
+				'provider rejected key sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+			),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder generation errored',
+			expect.objectContaining({
+				error_message: 'provider rejected key [REDACTED]',
+			}),
+		);
 	});
 
 	it('claims credits when a resumed run completes', async () => {
@@ -4382,7 +4599,8 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		agentMemory: { saveMessages: Mock };
 		eventBus: { publish: Mock };
 		terminalOutcome: { evaluateTerminalResponse: Mock };
-		logger: { warn: Mock; error: Mock };
+		logger: { warn: Mock; error: Mock; debug: Mock };
+		memoryService: { getThreadMetadata: Mock };
 		createProxyRunConfig: Mock;
 		isRunDebugEnabled: Mock;
 		runState: { clearActiveRun: Mock; hasSuspendedRun: Mock };
@@ -4390,6 +4608,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		instanceAiErrorReporter: { beginRun: Mock; endRun: Mock };
 		schedulePlannedTasks: Mock;
 		taskProjector: { syncFromWorkflowLoop: Mock };
+		browserSessionService: { getExtensionTraceContext: Mock };
 	};
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
@@ -4397,7 +4616,8 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		service.agentMemory = { saveMessages: vi.fn(async () => {}) };
 		service.eventBus = { publish: vi.fn() };
 		service.terminalOutcome = { evaluateTerminalResponse: vi.fn() };
-		service.logger = { warn: vi.fn(), error: vi.fn() };
+		service.logger = { warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+		service.memoryService = { getThreadMetadata: vi.fn(async () => undefined) };
 		service.createProxyRunConfig = vi.fn(async () => ({ tracingProxyConfig: undefined }));
 		service.isRunDebugEnabled = vi.fn(() => false);
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
@@ -4406,6 +4626,9 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		service.instanceAiErrorReporter = {
 			beginRun: vi.fn(() => Symbol('error-reporter-execution')),
 			endRun: vi.fn(),
+		};
+		service.browserSessionService = {
+			getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
 		};
 		return service;
 	}
@@ -4428,6 +4651,51 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 					}),
 				],
 			}),
+		);
+	});
+
+	it('passes the connected extension version to the trace', async () => {
+		const service = createCancelPersistenceService();
+		service.browserSessionService.getExtensionTraceContext.mockReturnValue({
+			connectionState: 'connected',
+			version: '0.0.7',
+		});
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				browserExtension: { connectionState: 'connected', version: '0.0.7' },
+			}),
+		);
+	});
+
+	it('separates a connected extension that reports no version from no extension at all', async () => {
+		const connected = createCancelPersistenceService();
+		connected.browserSessionService.getExtensionTraceContext.mockReturnValue({
+			connectionState: 'connected',
+		});
+		const firstAbort = new AbortController();
+		firstAbort.abort();
+
+		await connected.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', firstAbort);
+
+		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({ browserExtension: { connectionState: 'connected' } }),
+		);
+	});
+
+	it('leaves the trace version undefined when no extension is connected', async () => {
+		const service = createCancelPersistenceService();
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({ browserExtension: { connectionState: 'disconnected' } }),
 		);
 	});
 

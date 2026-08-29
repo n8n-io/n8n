@@ -104,6 +104,7 @@ export class E2EController {
 		[LICENSE_FEATURES.LOG_STREAMING]: false,
 		[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
+		[LICENSE_FEATURES.GIT_CONNECTIONS]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
 		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
@@ -268,14 +269,18 @@ export class E2EController {
 	}
 
 	/**
-	 * A poll node's stored cursor, so a test can assert on it directly instead of
-	 * inferring it from execution behaviour.
+	 * A poll node's stored cursor and failure counters, so a test can assert on them
+	 * directly instead of inferring them from execution behaviour.
 	 */
 	@Get('/poller-state', { skipAuth: true })
 	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const cursor = await this.pollerStateRepository.findCursor(workflowId, nodeId);
-		return { cursor };
+		const state = await this.pollerStateRepository.findState(workflowId, nodeId);
+		return {
+			cursor: state?.cursor ?? null,
+			consecutiveErrors: state?.consecutiveErrors ?? 0,
+			backoffUntil: state?.backoffUntil ?? null,
+		};
 	}
 
 	/**
@@ -457,7 +462,7 @@ export class E2EController {
 	}
 
 	private static coverageKey(url: string, fn: Profiler.FunctionCoverage): string {
-		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
+		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
 	}
 
 	private static coverageCount(fn: Profiler.FunctionCoverage): number {

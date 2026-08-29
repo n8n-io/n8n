@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-engine-compatibility",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Adapts v1 nodes and workflows to the Engine 2.0 execution model",
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -30,7 +30,9 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testcontainers/postgresql": "catalog:",
+    "@types/supertest": "^6.0.3",
     "n8n-nodes-base": "workspace:*",
+    "supertest": "^7.1.1",
     "testcontainers": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"

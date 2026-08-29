@@ -45,6 +45,10 @@ function createService(options: CreateServiceOptions = {}) {
 		const entities = servers.map(toMockEntity);
 		repository.find.mockResolvedValue(entities);
 		repository.findBy.mockImplementation(async (where) => {
+			if (Array.isArray(where)) {
+				const slugs = new Set(where.map((condition) => condition.slug));
+				return entities.filter((e) => slugs.has(e.slug));
+			}
 			if (where && 'status' in where) {
 				return entities.filter((e) => e.status === where.status);
 			}
@@ -148,6 +152,33 @@ describe('McpRegistryService', () => {
 
 			expect(repository.findBy).toHaveBeenCalledWith([{ slug: 'notion' }, { slug: 'linear' }]);
 			expect(servers).toEqual([notionMockServer, linearMockServer]);
+		});
+
+		it('maps resolveBySlugs into the same shape as search', async () => {
+			const { service } = createService();
+
+			const resolved = await service.resolveBySlugs(['notion']);
+			const searched = await service.search(['notion']);
+
+			expect(resolved).toEqual(searched);
+		});
+
+		it('omits unknown slugs from resolveBySlugs', async () => {
+			const { service } = createService({ storedServers: [notionMockServer, linearMockServer] });
+
+			const results = await service.resolveBySlugs(['notion', 'made-up']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
+		});
+
+		it('omits deprecated servers from resolveBySlugs, as search does', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, { ...linearMockServer, status: 'deprecated' }],
+			});
+
+			const results = await service.resolveBySlugs(['notion', 'linear']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
 		});
 	});
 

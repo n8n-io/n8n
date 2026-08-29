@@ -20,6 +20,7 @@ const context = {
 	stepId: 'step-b',
 	workflowId: 'wf-1',
 	mode: 'production',
+	iteration: 0,
 } as const;
 
 describe('createEngineStepDataLoader', () => {
@@ -28,25 +29,33 @@ describe('createEngineStepDataLoader', () => {
 			loadExecution: vi.fn().mockResolvedValue({ id: 'exec-1', graph }),
 		} as unknown as ExecutionStore;
 		const stepStore = {
-			// the trigger's completed row carries its payload as output slot 0
-			loadStepOutputs: vi.fn().mockResolvedValue({
-				t: [{ body: { hello: 'world' } }],
-				a: [[{ json: { from: 'a' } }]],
-				b: null,
-			}),
+			// the trigger's completed step carries its payload as output slot 0, and
+			// `a` ran twice, once per pass of a loop
+			loadAllSteps: vi.fn().mockResolvedValue([
+				{
+					nodeId: 't',
+					iteration: 0,
+					status: 'completed',
+					outputs: [{ body: { hello: 'world' } }],
+				},
+				{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { from: 'a' } }]] },
+				{ nodeId: 'a', iteration: 1, status: 'completed', outputs: [[{ json: { from: 'a2' } }]] },
+				{ nodeId: 'b', iteration: 0, status: 'running', outputs: null },
+			]),
 		} as unknown as StepStore;
 
 		const loadStepData = createEngineStepDataLoader(executionStore, stepStore);
 		const stepData = await loadStepData(context);
 
 		expect(executionStore.loadExecution).toHaveBeenCalledWith('exec-1');
-		expect(stepStore.loadStepOutputs).toHaveBeenCalledWith('exec-1', ['t', 'a', 'b']);
+		expect(stepStore.loadAllSteps).toHaveBeenCalledWith('exec-1');
 		expect(stepData.graph).toBe(graph);
-		// incomplete steps are omitted, not mapped to null, so expressions
-		// referencing them fail as "hasn't been executed"
-		expect(stepData.outputsByNodeId).toEqual({
-			t: [{ body: { hello: 'world' } }],
-			a: [[{ json: { from: 'a' } }]],
+		// keyed by iteration, so a loop member's passes stay apart. Incomplete steps
+		// are omitted, not mapped to null, so expressions referencing them fail as
+		// "hasn't been executed"
+		expect(stepData.outputsByNode).toEqual({
+			t: { 0: [{ body: { hello: 'world' } }] },
+			a: { 0: [[{ json: { from: 'a' } }]], 1: [[{ json: { from: 'a2' } }]] },
 		});
 	});
 });

@@ -96,6 +96,8 @@ directly on that object — there is no \`value\` wrapper. For example:
 - skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
+  On a replace, an omitted \`timezone\` keeps the zone the task already has; send \`null\` to move it
+  back to the instance timezone.
 - task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
 - customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
   Only \`@n8n/agents\` and \`zod\` imports are available. The default export must be a Tool builder
@@ -141,8 +143,8 @@ options first. Never place credential secret data in Agent configuration or MCP 
 credential IDs returned by list_credentials.
 
 Skills and tasks have separately persisted bodies. Always manage them through mutate_agent instead
-of manually inventing their IDs. Saved sub-agents must be published Agents from the same project.
-Use discover_agent_assets with kind=subagents to obtain valid IDs.
+of manually inventing their IDs. Saved sub-agents must be Agents from the same project. Use
+discover_agent_assets with kind=subagents to obtain valid IDs.
 
 Chat integrations are conversation surfaces, not ordinary node tools. Use an integration when users
 should invoke and converse with the Agent in Slack, Telegram, or Linear. Use a node/workflow tool

@@ -2,13 +2,7 @@ import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig, AgentJsonToolConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -25,6 +19,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -133,13 +128,11 @@ function makeService(overrides: {
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
-		{ modules: [] } as unknown as AgentsConfig,
+		mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
 		mock<AgentKnowledgeMirrorService>(),
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),

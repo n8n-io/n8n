@@ -13,24 +13,37 @@ import {
 	type SerializableAgentState,
 	type StreamChunk,
 	type StreamResult,
+	type SubAgentTaskDifficulty,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
-import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
+import type {
+	ResolvedSubAgentSource,
+	RunnableAgentJsonConfig,
+	SubAgentSource,
+	SubAgentSpawnRequest,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
+import {
+	decodeAgentSandboxHostMetadata,
+	encodeAgentSandboxHostMetadata,
+	isAgentSandboxPrincipalHash,
+	type AgentSandboxPrincipalHash,
+} from '../agent-sandbox-principal';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
@@ -41,10 +54,7 @@ export interface SubAgentForegroundRunContext {
 	parentAgentId?: string;
 	credentialProvider: CredentialProvider;
 	/**
-	 * Telemetry classification inherited from the delegating parent run. A
-	 * sub-agent always runs its own published snapshot, so classifying by that
-	 * alone would report `production` for every delegation — including ones made
-	 * while the parent is being tested in the builder preview.
+	 * Telemetry classification inherited from the delegating parent run.
 	 */
 	runType: AgentRunTelemetryType;
 	/** Workflow execution classification inherited from the parent runtime. */
@@ -72,6 +82,8 @@ export interface SubAgentForegroundRunContext {
 	instrumentation?: AgentRuntimeInstrumentation;
 	/** Optional callback to forward child stream chunks to the parent chat. */
 	onChunk?: (chunk: StreamChunk) => void;
+	/** Difficulty-selected model override for parent self-delegation only. */
+	selfDelegationDifficulty?: SubAgentTaskDifficulty;
 }
 
 export interface SubAgentForegroundResult {
@@ -91,7 +103,7 @@ type ForegroundOperation = {
 	| {
 			type: 'resume';
 			request: DelegateSubAgentResumeRequest;
-			source: { agentId: string; versionId: string };
+			source: SubAgentSource;
 			threadId: string;
 	  }
 );
@@ -127,12 +139,13 @@ export class SubAgentForegroundRunner {
 	async resumeForeground(
 		request: DelegateSubAgentResumeRequest,
 		context: SubAgentForegroundRunContext,
+		expectedSourceAgentId = request.subAgentId,
 	): Promise<SubAgentForegroundResult> {
 		assertSubAgentTaskPath(request.taskPath);
 		if (request.childThreadId === undefined || request.resumeContext === undefined) {
 			throw new UserError('Configured sub-agent checkpoint metadata is missing or invalid');
 		}
-		const pinnedSource = parseResumeContext(request.resumeContext, request.subAgentId);
+		const pinnedSource = parseResumeContext(request.resumeContext, expectedSourceAgentId);
 		return await this.executeForeground(
 			{
 				type: 'resume',
@@ -145,12 +158,15 @@ export class SubAgentForegroundRunner {
 		);
 	}
 
-	async cancelForeground(request: DelegateSubAgentCancelRequest): Promise<void> {
+	async cancelForeground(
+		request: DelegateSubAgentCancelRequest,
+		expectedSourceAgentId = request.subAgentId,
+	): Promise<void> {
 		assertSubAgentTaskPath(request.taskPath);
 		if (request.resumeContext === undefined) {
 			throw new UserError('Configured sub-agent checkpoint metadata is missing or invalid');
 		}
-		const pinnedSource = parseResumeContext(request.resumeContext, request.subAgentId);
+		const pinnedSource = parseResumeContext(request.resumeContext, expectedSourceAgentId);
 		await this.checkpointStorage.delete(request.childRunId, pinnedSource.agentId);
 	}
 
@@ -158,20 +174,32 @@ export class SubAgentForegroundRunner {
 		operation: ForegroundOperation,
 		context: SubAgentForegroundRunContext,
 	): Promise<SubAgentForegroundResult> {
+		// Same versioning model as sub-workflows and "Message an Agent": test runs
+		// resolve the child's current draft, production runs its published version.
+		// A resume carries the pinned versionId it started with, which wins either way.
 		const runtimeSource = await this.sourceResolver.resolveForRuntime(
 			operation.type === 'run' ? operation.request.source : operation.source,
-			{ projectId: context.projectId },
+			{ projectId: context.projectId, usePublishedVersion: context.runType === 'production' },
 		);
 
 		// A delegated run uses the same fresh id for SDK memory and its session record.
 		const threadId = operation.type === 'run' ? uuid() : operation.threadId;
 		const resourceId =
 			operation.type === 'run' ? (operation.request.parentResourceId ?? threadId) : threadId;
+		const sandboxPrincipalHash = await this.resolveSandboxPrincipalHash(
+			operation,
+			runtimeSource.source.sourceId,
+			context.projectId,
+		);
 		const reconstructionService = await getReconstructionService();
+		const resolvedConfig = applyDifficultyModelOverride(
+			runtimeSource.source.config,
+			context.selfDelegationDifficulty,
+		);
 		const childConfig =
-			context.instrumentation?.transformDelegatedAgentConfig?.(runtimeSource.source.config, {
+			context.instrumentation?.transformDelegatedAgentConfig?.(resolvedConfig, {
 				subAgentId: runtimeSource.source.sourceId,
-			}) ?? runtimeSource.source.config;
+			}) ?? resolvedConfig;
 		const { agent } = await reconstructionService.reconstructFromResolvedSource({
 			config: childConfig,
 			memoryOwnerAgentId: runtimeSource.source.sourceId,
@@ -186,6 +214,7 @@ export class SubAgentForegroundRunner {
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
 			instrumentation: context.instrumentation,
+			...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
 		});
 
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
@@ -219,6 +248,14 @@ export class SubAgentForegroundRunner {
 								resourceId,
 								threadId,
 								delegated: true,
+								...(sandboxPrincipalHash !== undefined
+									? {
+											hostMetadata: encodeAgentSandboxHostMetadata({
+												projectId: context.projectId,
+												principalHash: sandboxPrincipalHash,
+											}),
+										}
+									: {}),
 							},
 						})
 					: await agent.resume('stream', operation.request.resumeData, {
@@ -226,6 +263,12 @@ export class SubAgentForegroundRunner {
 							runId: operation.request.childRunId,
 							toolCallId: operation.request.childToolCallId,
 						});
+			if (operation.type === 'resume') {
+				recorder.recordHitlResponse(
+					operation.request.childToolCallId,
+					operation.request.resumeData,
+				);
+			}
 			try {
 				const currentExecutionId = await this.agentExecutionService.startExecutionRecording(
 					{
@@ -320,6 +363,32 @@ export class SubAgentForegroundRunner {
 				});
 			});
 		}
+	}
+
+	private async resolveSandboxPrincipalHash(
+		operation: ForegroundOperation,
+		childAgentId: string,
+		projectId: string,
+	): Promise<AgentSandboxPrincipalHash | undefined> {
+		if (operation.type === 'run') {
+			const value = operation.request.parentSandboxPrincipalHash;
+			if (value === undefined) return undefined;
+			if (!isAgentSandboxPrincipalHash(value)) {
+				throw new UserError('Configured sub-agent workspace scope is invalid');
+			}
+			return value;
+		}
+
+		const checkpoint = await this.checkpointStorage.load(
+			operation.request.childRunId,
+			childAgentId,
+		);
+		const scope = decodeAgentSandboxHostMetadata(checkpoint?.persistence?.hostMetadata);
+		if (!scope) return undefined;
+		if (scope.projectId !== projectId) {
+			throw new UserError('Configured sub-agent workspace scope is invalid');
+		}
+		return scope.principalHash;
 	}
 
 	private async recordSubAgentExecution(params: {
@@ -433,27 +502,50 @@ async function consumeAgentStream(
 }
 
 function createResumeContext(runtimeSource: ResolvedSubAgentSource): JSONValue {
-	if (runtimeSource.versionId === undefined) {
-		throw new UnexpectedError('Resolved sub-agent source is missing its published version');
-	}
-	return { agentId: runtimeSource.sourceId, versionId: runtimeSource.versionId };
+	return {
+		agentId: runtimeSource.sourceId,
+		...(runtimeSource.versionId !== undefined ? { versionId: runtimeSource.versionId } : {}),
+	};
+}
+
+function applyDifficultyModelOverride(
+	config: RunnableAgentJsonConfig,
+	difficulty?: SubAgentTaskDifficulty,
+): RunnableAgentJsonConfig {
+	const modelConfig = difficulty ? config.subAgents?.modelsByDifficulty?.[difficulty] : undefined;
+	if (!modelConfig) return config;
+
+	const providerTools = Object.fromEntries(
+		buildProviderToolsForModel(config, modelConfig.model).map(({ name, args }) => [name, args]),
+	);
+	return {
+		...config,
+		model: modelConfig.model,
+		credential: modelConfig.credential,
+		providerTools,
+	};
 }
 
 function parseResumeContext(
 	resumeContext: JSONValue,
-	subAgentId: string,
-): { agentId: string; versionId: string } {
+	expectedSourceAgentId: string,
+): SubAgentSource {
 	if (
 		!isRecord(resumeContext) ||
 		typeof resumeContext.agentId !== 'string' ||
 		resumeContext.agentId.length === 0 ||
-		resumeContext.agentId !== subAgentId ||
-		typeof resumeContext.versionId !== 'string' ||
-		resumeContext.versionId.length === 0
+		resumeContext.agentId !== expectedSourceAgentId
 	) {
 		throw new UserError('Configured sub-agent resume context is missing or invalid');
 	}
-	return { agentId: resumeContext.agentId, versionId: resumeContext.versionId };
+	const versionId = resumeContext.versionId;
+	if (versionId !== undefined && (typeof versionId !== 'string' || versionId.length === 0)) {
+		throw new UserError('Configured sub-agent resume context is missing or invalid');
+	}
+	return {
+		agentId: resumeContext.agentId,
+		...(versionId !== undefined ? { versionId } : {}),
+	};
 }
 
 function buildGenerateResultFromRecord(

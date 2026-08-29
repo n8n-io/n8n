@@ -12,6 +12,7 @@ import {
 
 import {
 	generateFormUserAuthToken,
+	getHostNavigationPath,
 	getNodeReference,
 	handleNewlines,
 	resolveRawData,
@@ -122,7 +123,10 @@ export const renderFormCompletion = async (
 	// resumes the paused workflow) can re-authenticate the user — cookies
 	// aren't sent on fetch from the sandboxed completion page.
 	const authToken = authedUser
-		? generateFormUserAuthToken(context.getNode(), authedUser)
+		? generateFormUserAuthToken(context.getNode(), authedUser, {
+				workflowId: context.getWorkflow().id,
+				executionId: context.getExecutionId(),
+			})
 		: undefined;
 
 	res.render('form-trigger-completion', {
@@ -135,6 +139,10 @@ export const renderFormCompletion = async (
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
 		authToken,
+		// The completion page reloads itself while the run finishes, and that hop is
+		// subject to the same cookie semantics as every other page of the form, so it
+		// goes through the host when the host is the shell.
+		hostNavigationPath: getHostNavigationPath(context),
 	});
 
 	return { noWebhookResponse: true };

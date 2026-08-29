@@ -105,7 +105,15 @@ describe('formatPreviewSessionContext', () => {
 				id: 'exec-2',
 				userMessage: null,
 				hitlStatus: 'resumed',
-				timeline: [{ type: 'text', content: 'After resume.', timestamp: 4, endTime: 5 }],
+				timeline: [
+					{
+						type: 'hitl-response',
+						toolCallId: 'tc-1',
+						response: { approved: true },
+						timestamp: 4,
+					},
+					{ type: 'text', content: 'After resume.', timestamp: 4, endTime: 5 },
+				],
 			}),
 			makeExecution({ id: 'exec-3', userMessage: 'Turn two' }),
 		];
@@ -116,6 +124,7 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).toContain('User: Turn one');
 		expect(block).toContain('Before suspension.');
 		expect(block).toContain('[suspended waiting on ask_question]');
+		expect(block).toContain('Human response: {"approved":true}');
 		expect(block).toContain('After resume.');
 		expect(block).not.toContain('Turn two');
 	});

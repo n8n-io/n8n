@@ -3,6 +3,7 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
@@ -23,12 +24,11 @@ interface Props {
 	/**
 	 * Where this panel is mounted. The component renders different subsets of
 	 * `pendingConfirmations` depending on this:
-	 * - `inline`: full-form confirmations rendered in the chat flow (questions,
-	 *   plan review, text, setup, credential, gateway resource-decision,
-	 *   continue).
-	 * - `floating`: single-click approvals and domain/web-search access, which
-	 *   replace the chat input slot. Only the oldest pending item is rendered
-	 *   at a time — no stacking.
+	 * - `inline`: full-form confirmations rendered in the chat flow (plan review,
+	 *   text, setup, credential, gateway resource-decision, continue).
+	 * - `floating`: questions, single-click approvals, and domain/web-search
+	 *   access, which replace the chat input slot. Only the oldest pending item
+	 *   is rendered at a time — no stacking.
 	 */
 	kind: 'inline' | 'floating';
 }
@@ -75,7 +75,11 @@ function trackInputCompleted(
 		skipped_inputs: skippedInputs,
 		...extra,
 	};
-	telemetry.track('User finished providing input', eventProps);
+	// The inputs carry free text — what the user typed into a question card, and
+	// the agent's own description of the action it wants to take. This event
+	// reaches RudderStack *and* PostHog from the browser, so the backend
+	// redactor never sees it. The `*_id` keys are exempted by the scrubber.
+	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
 }
 
 interface StandaloneChunk {
@@ -93,9 +97,8 @@ type ConfirmationChunk = FloatingChunk | StandaloneChunk;
 /**
  * Filter pending confirmations to those that belong in this panel mount.
  *
- * - `inline`: every non-floating item (questions/plan/text/setup/etc.) in
- *   chronological order — these forms coexist comfortably in the chat
- *   flow.
+ * - `inline`: every non-floating item (plan/text/setup/etc.) in chronological
+ *   order — these forms coexist comfortably in the chat flow.
  * - `floating`: only the **oldest** floating item. We intentionally do not
  *   stack: the floating panel replaces the chat input, and stacking would
  *   shove the input far up the screen. The user must resolve the visible
@@ -428,15 +431,30 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 <template>
 	<TransitionGroup name="confirmation-slide">
 		<template v-for="chunk in chunks" :key="chunk.item.toolCall.confirmation.requestId">
+			<!-- Structured questions replace the chat input like other floating confirmations. -->
+			<InstanceAiQuestions
+				v-if="
+					chunk.type === 'floating' &&
+					chunk.item.toolCall.confirmation.inputType === 'questions' &&
+					chunk.item.toolCall.confirmation.questions
+				"
+				:key="'q-' + chunk.item.toolCall.confirmation.requestId"
+				:questions="chunk.item.toolCall.confirmation.questions!"
+				:intro-message="chunk.item.toolCall.confirmation.introMessage"
+				@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
+			/>
+
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
-			<template v-if="chunk.type === 'standalone'">
+			<template v-else-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
+				<!-- Threads are project-bound: fall back to the thread's project so a
+				     payload without projectId never degrades to the personal project. -->
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
@@ -448,20 +466,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
-				/>
-
-				<!-- Structured questions -->
-				<InstanceAiQuestions
-					v-else-if="
-						chunk.item.toolCall.confirmation.inputType === 'questions' &&
-						chunk.item.toolCall.confirmation.questions
-					"
-					:key="'q-' + chunk.item.toolCall.confirmation.requestId"
-					:questions="chunk.item.toolCall.confirmation.questions!"
-					:intro-message="chunk.item.toolCall.confirmation.introMessage"
-					@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
+					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
 				<!-- Plan review -->
@@ -632,10 +639,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 
 <style lang="scss" module>
 .root {
-	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
-	box-shadow: var(--shadow--sm);
 	background-color: var(--background--surface);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .floatingRoot {
@@ -688,8 +694,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 .textCard {
-	border: 2px solid var(--color--primary);
+	border: 0;
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 </style>
 

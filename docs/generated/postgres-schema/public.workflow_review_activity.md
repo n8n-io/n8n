@@ -10,16 +10,13 @@
 | id | integer |  | false | [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) |  |  |
 | type | varchar(64) |  | false |  |  | Feed entry kind; see WorkflowReviewActivityType in @n8n/api-types |
 | typeVersion | integer | 1 | false |  |  | Schema version of the `data` payload for this `type` |
-| workflowId | varchar(36) |  | true |  | [public.workflow_entity](public.workflow_entity.md) | Scopes the entry to one workflow; NULL for review-level entries like comments |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_workflow_review_activity_type | CHECK | CHECK (((type)::text = ANY ((ARRAY['review.opened'::character varying, 'comment.created'::character varying, 'review.changes_requested'::character varying, 'review.version_updated'::character varying, 'review.approved'::character varying, 'workflow.published'::character varying, 'review.closed'::character varying])::text[]))) |
 | FK_61048bf6220dd354c955a9d9379 | FOREIGN KEY | FOREIGN KEY ("workflowReviewRequestId") REFERENCES workflow_review_request(id) ON DELETE CASCADE |
-| FK_d0162c063ffb699b0f1d1172508 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 | FK_fcf78b037a72fc7aa01ab237e08 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | PK_f1e66ba0b645dec566057ad21e6 | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_review_activity_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -42,7 +39,6 @@ erDiagram
 
 "public.workflow_review_activity" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_review_activity_comment" }o--|| "public.workflow_review_activity" : "FOREIGN KEY (#quot;activityId#quot;) REFERENCES workflow_review_activity(id) ON DELETE CASCADE"
-"public.workflow_review_activity" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_review_activity" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 
 "public.workflow_review_activity" {
@@ -52,7 +48,6 @@ erDiagram
   integer id
   varchar_64_ type
   integer typeVersion
-  varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK
 }
 "public.user" {
@@ -81,28 +76,6 @@ erDiagram
   json history
   integer id
   timestamp_3__with_time_zone updatedAt
-}
-"public.workflow_entity" {
-  boolean active
-  varchar_36_ activeVersionId FK
-  json connections
-  timestamp_3__with_time_zone createdAt
-  text description
-  varchar_36_ id
-  boolean isArchived
-  json meta
-  varchar_128_ name
-  json nodeGroups
-  json nodes
-  varchar_36_ parentFolderId FK
-  json pinData
-  json settings
-  varchar sourceWorkflowId
-  json staticData
-  integer triggerCount
-  timestamp_3__with_time_zone updatedAt
-  integer versionCounter
-  character_36_ versionId
 }
 "public.workflow_review_request" {
   timestamp_3__with_time_zone approvedAt

@@ -2,11 +2,21 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { truncate } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
-import { N8nHoverCard, N8nIconButton } from '@n8n/design-system';
+import { N8nBadge, N8nHoverCard, N8nIconButton } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import { formatDuration, isSubAgentTimelineItem, itemFilterKey } from '../session-timeline.utils';
+import {
+	executionErrorLabel,
+	executionErrorMessage,
+	formatDuration,
+	hitlRequestLabelKey,
+	hitlTimelineName,
+	isErroredTimelineItem,
+	isSubAgentTimelineItem,
+	matchesTimelineFilters,
+	timelineItemStatus,
+} from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
@@ -38,6 +48,10 @@ const canScrollLeft = ref(false);
 const canScrollRight = ref(false);
 const activePopover = ref<PopoverTarget | null>(null);
 const popoverOpen = ref(false);
+const activePopoverStatus = computed(() => {
+	const segment = activePopover.value?.segment;
+	return segment?.kind === 'event' ? timelineItemStatus(segment.item) : undefined;
+});
 
 const INSTANT_MS = 100;
 const POPOVER_SHOW_DELAY_MS = 300;
@@ -68,8 +82,7 @@ const segments = computed<Segment[]>(() => {
 });
 
 function isDimmed(item: TimelineItem): boolean {
-	if (props.visibleKinds.size === 0) return false;
-	return !props.visibleKinds.has(itemFilterKey(item));
+	return !matchesTimelineFilters(item, props.visibleKinds);
 }
 
 function cellStyle(seg: Segment): Record<string, string> {
@@ -104,8 +117,12 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return executionErrorLabel(item, i18n);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspension');
+			return i18n.baseText(hitlRequestLabelKey(item.hitlRequestType));
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
 			return '';
 	}
@@ -126,11 +143,19 @@ function popoverName(item: TimelineItem): string {
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
+		case 'execution-error':
+			return executionErrorMessage(item, i18n);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'hitl-response':
+			return hitlTimelineName(item, i18n);
 		default:
 			return '';
 	}
+}
+
+function statusLabel(item: TimelineItem): string | undefined {
+	const status = timelineItemStatus(item);
+	return status ? i18n.baseText(status.labelKey) : undefined;
 }
 
 /**
@@ -153,6 +178,12 @@ function idleDuration(range: IdleRange): string {
 function popoverTime(item: TimelineItem): string {
 	if (!item.timestamp) return '';
 	return convertToDisplayDate(new Date(item.timestamp).toISOString()).time;
+}
+
+function blockAriaLabel(item: TimelineItem): string {
+	return [popoverLabel(item), popoverName(item), statusLabel(item)]
+		.filter((part): part is string => Boolean(part))
+		.join(', ');
 }
 
 function onClick(index: number, item: TimelineItem): void {
@@ -316,6 +347,20 @@ onBeforeUnmount(() => {
 							show-label
 						/>
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
+						<N8nBadge
+							v-if="activePopoverStatus"
+							:theme="activePopoverStatus.theme"
+							size="xsmall"
+							:data-test-id="
+								activePopoverStatus.kind === 'hitl-response'
+									? 'timeline-popover-hitl-response-badge'
+									: activePopover.segment.item.kind === 'execution-error'
+										? 'timeline-popover-execution-error-badge'
+										: 'timeline-popover-tool-error-badge'
+							"
+						>
+							{{ i18n.baseText(activePopoverStatus.labelKey) }}
+						</N8nBadge>
 						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
 							{{ popoverDuration(activePopover.segment.item) }}
 						</span>
@@ -327,6 +372,7 @@ onBeforeUnmount(() => {
 				v-for="(seg, segIdx) in segments"
 				:key="segIdx"
 				data-test-id="timeline-cell"
+				:data-error="seg.kind === 'event' && isErroredTimelineItem(seg.item) ? 'true' : undefined"
 				:class="$style.cell"
 				:style="cellStyle(seg)"
 			>
@@ -344,6 +390,8 @@ onBeforeUnmount(() => {
 					type="button"
 					data-test-id="timeline-block"
 					:data-timeline-index="seg.index"
+					:data-error="isErroredTimelineItem(seg.item) ? 'true' : undefined"
+					:aria-label="blockAriaLabel(seg.item)"
 					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
 					:style="eventStyle(seg.item)"
@@ -399,6 +447,7 @@ onBeforeUnmount(() => {
  * anchored to the active block/idle element.
  */
 .cell {
+	position: relative;
 	display: flex;
 	align-items: stretch;
 	min-width: 24px;
@@ -408,8 +457,20 @@ onBeforeUnmount(() => {
 		transform var(--duration--snappy) var(--easing--ease-out);
 }
 
+.cell[data-error='true']::before {
+	position: absolute;
+	top: calc(var(--spacing--5xs) * -1);
+	left: 0;
+	width: 100%;
+	height: var(--spacing--4xs);
+	border-radius: var(--radius--sm);
+	background-color: var(--color--danger);
+	content: '';
+	z-index: 10;
+}
+
 .chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {
-	opacity: 0.6;
+	opacity: 0.4;
 }
 
 .idle {
@@ -450,14 +511,6 @@ onBeforeUnmount(() => {
 	background-color: var(--session-timeline-chart-block-color);
 	cursor: pointer;
 	transition: filter 0.15s;
-}
-
-.selected {
-	outline: 2px solid var(--session-timeline-chart-block-color);
-	outline-offset: 1px;
-	/* Lift above neighbouring idle stripes so the highlight outline doesn't
-	   get covered by the adjacent .idle background. */
-	z-index: 2;
 }
 
 /*

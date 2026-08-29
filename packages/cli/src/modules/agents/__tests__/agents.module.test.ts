@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
+import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
 import { AgentsModule } from '../agents.module';
 
@@ -21,12 +22,10 @@ describe('AgentsModule', () => {
 		])(
 			'keeps knowledge base ($sandboxEnabled) and proxy ($proxyEnabled) availability independent',
 			async ({ sandboxEnabled, proxyEnabled }) => {
+				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
 				Container.set(
-					AgentsConfig,
-					mock<AgentsConfig>({
-						modules: [],
-						sandboxEnabled,
-					}),
+					SandboxSettingsService,
+					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => sandboxEnabled }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 

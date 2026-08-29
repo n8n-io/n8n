@@ -70,6 +70,13 @@ For repairs, prefer editing the workspace file directly with file tools
 (`workspace_str_replace_file`) and calling `build-workflow` again with the same
 `filePath`.
 
+When a repair adds a node into an existing chain (an ensure-the-target-exists
+step, a dedupe, a notification), check what the downstream node reads before
+wiring it in-line — workflow rule 7 applies: an inserted write/create node
+replaces the payload flowing into the next node with its own API response.
+Branch it in parallel, reorder it upstream of the data producer, or make the
+downstream node reference the data node explicitly.
+
 ## Escalation
 
 If the service or workflow shape is clear, never stop before the first
@@ -279,7 +286,8 @@ When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
 - The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
+- Setup is required and `workflows(action="setup")` has been routed or deferred,
+  or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
@@ -317,6 +325,16 @@ decision after testing.
   workflow already had it. Otherwise use `newCredential('Suggested Credential
   Name')` — build tools mock unresolved credentials for verification and setup
   collects real ones later.
+- When the user explicitly asks for a **new** credential ("create a new Slack
+  credential"), the unresolved `newCredential('Name')` is not enough on its own —
+  the build would still attach their sole existing credential of that type, and
+  setup would preselect their most recent one. Pass the credential type in
+  `preferNewCredentials` on `build-workflow` **and** on
+  `workflows(action="setup")` (or `preferNew: true` on the entry of
+  `credentials(action="setup")`). The slot then stays unresolved through the build
+  and the card opens on credential creation, with existing credentials still
+  listed in case the user changes their mind. Pass it only on an explicit request,
+  never by default — reuse is the right behavior everywhere else.
 - When `build-workflow` returns `resolvedCredentialsByNode`, the build already
   attached a credential to those nodes — either an existing stored credential or
   an n8n credits–managed one (entries with `id: null` and `__aiGatewayManaged:
@@ -350,12 +368,16 @@ decision after testing.
      only for what a template cannot express: basic auth's base64-encoded
      pair, digest's challenge-response, OAuth flows — or when the user
      explicitly asks for a specific plain type.
-- `credentials(action="list", type=...)` may include a synthetic n8n credits
-  entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
-  when the type is covered by n8n credits (see n8n credits Preference). It is
-  not a stored credential: never pass it to `newCredential(...)` and never
-  emit `id: null` or the `__aiGatewayManaged` marker in SDK output. Setup
-  applies it automatically when the user has no stored credential of that type.
+- `credentials(action="list", type=...)` may include an n8n credits entry
+  `{ id: "__AI_GATEWAY_MANAGED__", name: "n8n credits", type, __aiGatewayManaged: true }`
+  when the type is covered by n8n credits (see n8n credits Preference). Treat its
+  `id` like any credential id: to use n8n credits, write
+  `newCredential('n8n credits', '__AI_GATEWAY_MANAGED__')` on the node — exactly as
+  you copy a stored credential's id. The build keeps it and attaches n8n credits,
+  even when the user already has their own credential of that type. Write it
+  whenever the user asks for n8n credits; otherwise the normal reuse/own-credential
+  rules apply. (When the user has no stored credential of a covered type, the build
+  still auto-attaches n8n credits even if you didn't write the entry.)
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.
@@ -405,6 +427,11 @@ API quota. The synthetic entry in `credentials(action="list", type=...)` (see
 Credential Rules) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).
+
+If `credentialResolutionNote` on the build result says n8n credits are
+depleted, follow that note: tell the user they must top up n8n credits
+or add their own key on the node. Do not say the workflow works out of the
+box, and do not offer a live test.
 
 - If the user explicitly specified their own credential (by name or by
   choosing one from a list), use that credential and do not substitute
@@ -476,7 +503,16 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing.
+- Avoid code node where possible, use n8n nodes that help do the same thing.
+  If it makes it simpler, go ahead and use code node.
+- Write Code nodes in JavaScript unless the user explicitly asks for Python.
+  `language: 'pythonNative'` runs a locked-down runner that defines only `_items`
+  (all-items mode), `_item` (per-item mode) and `print()` — no `_('Node Name')`,
+  `_input` or `$` helpers. Its imports are allowlisted per deployment and the
+  allowlist is empty by default: write import-free Python unless the **Python
+  Code Nodes** section of your system prompt says this instance allows more.
+  `build-workflow` re-checks the code against the real allowlist and reports
+  anything the runner would reject.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
@@ -492,6 +528,15 @@ every reported error and warning before calling `build-workflow`.
   configs and from `sticky()` options alike. Positions are auto-calculated, and
   the saved workflow's own layout is restored on save, so nothing you drop here
   is lost. Leaving some in place is worse than dropping all of them.
+- When editing a pre-loaded workflow, keep every `config.id` value **exactly** as
+  `get-as-code` produced it, on the node it came with. `id` is the node's
+  permanent identity in n8n — execution logs, poll cursors, deduplication state
+  and the version diff are all keyed on it. Rename a node freely; the `id` stays.
+  Move it, rewire it, change its parameters — the `id` stays. Never invent, edit,
+  renumber or reuse an `id`, and never copy one from a template, another workflow
+  or another node. **Omit `id` entirely for any node you are adding** — one is
+  assigned on save. Deleting a node means deleting its `id` line with it. This is
+  the opposite of `position`: drop every `position`, keep every `id`.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
@@ -575,8 +620,9 @@ first.
 
 `.group(name, members, { description })` on the workflow builder; members are the node handles.
 Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
-one connected section, AI sub-nodes stay with their Agent) before creating groups — an invalid
-group is rejected on save. When editing an existing workflow, keep existing `.group(...)` calls
+one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
+tools drop an invalid group from the saved workflow and report a warning, so fix the source
+instead of re-emitting it. When editing an existing workflow, keep existing `.group(...)` calls
 and their descriptions intact unless the change is about grouping.
 
 ## Workflow Rules
@@ -624,6 +670,15 @@ Follow these rules strictly when generating workflows:
    match time units broadly (day/days, week/weeks…), and give every classifier
    an explicit fallback bucket — a one-phrasing regex silently misroutes every
    other phrasing.
+7. Inserting a node into an existing connection A→B changes what B receives:
+   `$json` and auto-mapped fields in B now read the inserted node's output, not
+   A's. Write/create/send nodes output their **API response** (ids, metadata,
+   `ok` flags), never the data that flowed into them — so inserting one
+   in-line (e.g. an ensure-the-target-exists step before a write) silently
+   replaces the payload with metadata. Keep the data path intact instead:
+   branch the inserted node in parallel from the data producer, reorder it
+   upstream of the data producer, or have B reference `$('Data Node')`
+   explicitly.
 
 ## Tool Naming Rules
 

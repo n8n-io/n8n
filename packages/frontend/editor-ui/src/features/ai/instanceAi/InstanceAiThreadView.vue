@@ -33,21 +33,38 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
-import { getAgentBuilderTargetFromThreadMetadata } from './instanceAi.threadRuntime';
+import {
+	getAgentBuilderTargetFromThreadMetadata,
+	getAgentPreviewSessionFromThreadMetadata,
+	getAgentPreviewViewFromThreadMetadata,
+} from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
+	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
+	clearPendingComposerDraft,
+	clearPendingHandoffContext,
+	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
-	consumePendingHandoffContext,
 	getPendingAgentAttachment,
+	getPendingComposerDraft,
+	getPendingHandoffContext,
+	stashPendingComposerDraft,
+	stashPendingHandoffContext,
 } from './composables/useInstanceAiHandoff';
+import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
-import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import {
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_VIEW,
+	NEW_CONVERSATION_TITLE,
+} from './constants';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -99,7 +116,10 @@ const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
+const toast = useToast();
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
+const pendingComposerDraft = ref<string | null>(null);
+const generatedComposerDraft = ref<string | null>(null);
 const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
 const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => {
 	const queued = pendingAgentAttachment.value;
@@ -149,8 +169,8 @@ watch(
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
-// slot (generic approvals + domain/web-search access). Drives the swap
-// between the input and the floating confirmation panel.
+// slot (questions, generic approvals, or domain/web-search access). Drives
+// the swap between the input and the floating confirmation panel.
 const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
@@ -262,11 +282,24 @@ const preview = useCanvasPreview({
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 });
+const activeAgentPreviewSessionId = computed(() => {
+	const context = pendingComposerContext.value;
+	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
+		return context.threadId;
+	}
+
+	const metadata = store.getThreadMetadata(props.threadId);
+	const persisted =
+		getAgentPreviewViewFromThreadMetadata(metadata) ??
+		getAgentPreviewSessionFromThreadMetadata(metadata);
+	return persisted?.agentId === preview.activeAgentId.value ? persisted.threadId : undefined;
+});
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('pendingComposerContext', pendingComposerContext);
+provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -362,8 +395,6 @@ function suppressPanelTransitionsUntilStableRender() {
 }
 
 // --- Preview panel resize (when canvas is visible) ---
-// Cap the preview at 50% of the available thread area so the chat retains at
-// least the other half when side panels or app layout chrome are visible.
 const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const mainSidebarOccupiedWidth = computed(() =>
@@ -406,7 +437,7 @@ const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
 const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-const previewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
+const preferredPreviewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
@@ -417,23 +448,32 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	}
 });
 
-const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-// Keep the artifact at its current width and split the remaining space evenly
-// between the Instance AI chat and the agent preview chat.
-const agentPreviewChatColumnWidth = computed(() =>
-	Math.max(0, (threadAreaWidth.value - previewPanelWidth.value) / 2),
+const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value * 0.7));
+// Preserve the default or manually selected width while temporarily
+// constraining it to the available space.
+const previewPanelWidth = computed(() =>
+	Math.min(preferredPreviewPanelWidth.value, previewMaxWidth.value),
 );
+const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
+const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
+const AGENT_PREVIEW_CHAT_MAX_RATIO = 0.5;
+
+/** Keep the agent chat readable without using more than half of its preview panel. */
+const agentPreviewChatColumnWidth = computed(() => {
+	const containerWidth = isPreviewExpanded.value ? threadAreaWidth.value : previewPanelWidth.value;
+	const maximumWidth = containerWidth * AGENT_PREVIEW_CHAT_MAX_RATIO;
+	const minimumWidth = Math.min(AGENT_PREVIEW_CHAT_MIN_WIDTH, maximumWidth);
+
+	return Math.round(
+		Math.max(minimumWidth, Math.min(AGENT_PREVIEW_CHAT_PREFERRED_WIDTH, maximumWidth)),
+	);
+});
+
+/** Add custom width to Agent Preview chat when canvas area is full expanded. */
 const agentPreviewPanelStyle = computed(() => {
 	const chatColumnWidth = {
 		'--agent-preview-chat-column-width': `${agentPreviewChatColumnWidth.value}px`,
 	};
-
-	if (isAgentPreviewDockOpen.value) {
-		return {
-			...chatColumnWidth,
-			width: `${previewPanelWidth.value + agentPreviewChatColumnWidth.value}px`,
-		};
-	}
 
 	return isPreviewExpanded.value
 		? chatColumnWidth
@@ -441,28 +481,15 @@ const agentPreviewPanelStyle = computed(() => {
 });
 
 function togglePreviewExpanded() {
-	if (isAgentPreviewDockOpen.value) return;
-
 	isPreviewExpanded.value = !isPreviewExpanded.value;
 }
 
 function handleAgentPreviewDockOpenChange(open: boolean) {
 	isAgentPreviewDockOpen.value = open;
-	if (open) {
-		isPreviewExpanded.value = false;
-	}
 }
 
-// Clamp preview width when the available area shrinks (sidebar open, window
-// resize, etc.)
-watch(previewMaxWidth, (max) => {
-	if (previewPanelWidth.value > max) {
-		previewPanelWidth.value = max;
-	}
-});
-
 function handlePreviewResize({ width }: { width: number }) {
-	previewPanelWidth.value = width;
+	preferredPreviewPanelWidth.value = width;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -487,7 +514,7 @@ watch(
 
 		if (visible) {
 			isArtifactsPanelRevealed.value = false;
-			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
+			preferredPreviewPanelWidth.value = previewMaxWidth.value;
 		} else {
 			isAgentPreviewDockOpen.value = false;
 		}
@@ -498,8 +525,8 @@ watch(
 // Late-initialize if the panel became visible before the ResizeObserver
 // reported the container size (otherwise the panel would render at 0px).
 watch(threadAreaWidth, (width) => {
-	if (width > 0 && previewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
-		previewPanelWidth.value = Math.round(width / 2);
+	if (width > 0 && preferredPreviewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
+		preferredPreviewPanelWidth.value = previewMaxWidth.value;
 	}
 });
 
@@ -624,6 +651,17 @@ watch(chatInputRef, (el) => {
 	}
 });
 
+watch(
+	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
+	([input, draft, planEdit]) => {
+		if (!input || !draft || planEdit) return;
+		input.setText(draft);
+		generatedComposerDraft.value = draft;
+		pendingComposerDraft.value = null;
+		void nextTick(focusChatInputIfFocusIsIdle);
+	},
+);
+
 // Reset scroll state when switching threads so new content auto-scrolls.
 watch(
 	() => props.threadId,
@@ -641,7 +679,7 @@ function isCurrentThreadRuntime(): boolean {
 
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
-	if (pendingAgentAttachment.value?.pending && agentAttachment) {
+	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
 		return {
 			key: `pending-agent:${agentAttachment.id}`,
 			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
@@ -686,9 +724,6 @@ const composerContextChip = computed(() => {
 });
 
 function reconnectThreadAfterHydration(): void {
-	// Apply preview/credential composer context before hydration so a quick first
-	// submit cannot race past attachment while the composer is already enabled.
-	pendingComposerContext.value = consumePendingHandoffContext(props.threadId);
 	const agentAttachment = getPendingAgentAttachment(props.threadId);
 	if (agentAttachment) {
 		pendingAgentAttachment.value = agentAttachment;
@@ -718,12 +753,17 @@ function reconnectThreadAfterHydration(): void {
 // store-level "active thread" state is needed here.
 async function syncRouteToStore() {
 	const requestedThreadId = props.threadId;
+	// Apply preview/credential composer state synchronously so a quick first
+	// submit cannot race past it while the thread list is still loading.
+	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
+	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
 	if (!store.threads.length) {
 		await store.loadThreads();
 	}
 	// User may have navigated elsewhere while we awaited
 	if (requestedThreadId !== props.threadId) return;
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
+		clearPendingThreadHandoff(requestedThreadId);
 		void router.replace({ name: INSTANCE_AI_VIEW });
 		return;
 	}
@@ -763,7 +803,11 @@ const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
 
 // --- Message handlers ---
-function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -809,6 +853,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	}
 
 	const handoffContext = pendingComposerContext.value ?? undefined;
+	const submittedGeneratedDraft = generatedComposerDraft.value;
 	const queuedAgentAttachment = pendingAgentAttachment.value;
 	const agentAttachment = currentAgentAttachment.value;
 	const submittedAttachments = agentAttachment
@@ -818,9 +863,20 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	void thread
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
-			if (!sent) return;
-			if (handoffContext && pendingComposerContext.value === handoffContext) {
-				pendingComposerContext.value = null;
+			if (!sent) {
+				if (restoreDraft?.()) return;
+				const input = chatInputRef.value;
+				if (input && !input.isDirty()) input.setText(message);
+				return;
+			}
+			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
+			const isCurrentDraft =
+				!submittedGeneratedDraft || generatedComposerDraft.value === submittedGeneratedDraft;
+			if ((handoffContext || submittedGeneratedDraft) && isCurrentHandoff && isCurrentDraft) {
+				clearPendingHandoffContext(props.threadId);
+				clearPendingComposerDraft(props.threadId);
+				if (handoffContext) pendingComposerContext.value = null;
+				if (submittedGeneratedDraft) generatedComposerDraft.value = null;
 			}
 			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(props.threadId);
@@ -856,6 +912,52 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	failedRun.value = report;
 }
 
+function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
+	if (
+		params.agentId !== preview.activeAgentId.value ||
+		params.projectId !== preview.activeAgentProjectId.value
+	) {
+		return;
+	}
+	if (chatInputRef.value?.isDirty()) {
+		toast.showMessage({
+			title: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.title'),
+			message: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.message'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const context = buildInstanceAiAgentPreviewHandoffContext(params);
+	stashPendingHandoffContext(props.threadId, context);
+	pendingComposerContext.value = context;
+
+	void store
+		.updateThreadMetadata(thread.id, {
+			[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
+				agentId: params.agentId,
+				threadId: params.threadId,
+			},
+		})
+		.catch((error: unknown) => {
+			toast.showError(error, i18n.baseText('generic.error'));
+		});
+	if (params.initialDraft) {
+		stashPendingComposerDraft(props.threadId, params.initialDraft);
+		pendingComposerDraft.value = params.initialDraft;
+	} else {
+		const generatedDraft = generatedComposerDraft.value;
+		if (generatedDraft) chatInputRef.value?.clearTextIfMatches(generatedDraft);
+		clearPendingComposerDraft(props.threadId);
+		pendingComposerDraft.value = null;
+		generatedComposerDraft.value = null;
+	}
+
+	if (!thread.activePlanEdit) {
+		void nextTick(() => chatInputRef.value?.focus());
+	}
+}
+
 /**
  * Reveal the agent artifact, then hand off to the builder to select its Evals
  * tab and generate. Generation deliberately stays in the builder: it already
@@ -889,17 +991,34 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 	});
 }
 
+function clearPendingComposerHandoff() {
+	const draft = generatedComposerDraft.value ?? pendingComposerDraft.value;
+	if (draft) chatInputRef.value?.clearTextIfMatches(draft);
+	pendingComposerDraft.value = null;
+	generatedComposerDraft.value = null;
+	pendingComposerContext.value = null;
+	clearPendingHandoffContext(props.threadId);
+	clearPendingComposerDraft(props.threadId);
+}
+
+function dismissPendingComposerContext(key: string): boolean {
+	const context = pendingComposerContext.value;
+	if (!context || handoffContextKey(context) !== key) return false;
+	clearPendingComposerHandoff();
+	return true;
+}
+
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
-	if (pendingAgentAttachment.value?.pending) {
+	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(props.threadId);
 		pendingAgentAttachment.value = null;
 		return;
 	}
 
 	if (composerContextChip.value.isPending) {
-		pendingComposerContext.value = null;
+		clearPendingComposerHandoff();
 		return;
 	}
 
@@ -1046,8 +1165,8 @@ async function dismissComposerContextChip() {
 										:agent-node="builder"
 									/>
 								</div>
-								<!-- Inline confirmations (questions, plan review, text, setup,
-									 credential, gateway resource-decision, continue) render in
+								<!-- Inline confirmations (plan review, text, setup, credential,
+									 gateway resource-decision, continue) render in
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
@@ -1078,7 +1197,7 @@ async function dismissComposerContextChip() {
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. The credit banner stays
+								 floating interaction is pending. The credit banner stays
 								 anchored above the slot in both states. The leaving child is
 								 positioned absolutely during the cross-fade so the in-flow child
 								 can size the slot to its natural height. -->
@@ -1108,7 +1227,6 @@ async function dismissComposerContextChip() {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
-											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											:amounts-hidden="quotaLocked"
@@ -1204,7 +1322,7 @@ async function dismissComposerContextChip() {
 					:min-width="400"
 					:max-width="previewMaxWidth"
 					:supported-directions="['left']"
-					:is-resizing-enabled="!isPreviewExpanded && !isAgentPreviewDockOpen"
+					:is-resizing-enabled="!isPreviewExpanded"
 					:grid-size="8"
 					:outset="true"
 					@resize="handlePreviewResize"
@@ -1220,7 +1338,6 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
-							:is-expand-disabled="isAgentPreviewDockOpen"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
@@ -1255,8 +1372,10 @@ async function dismissComposerContextChip() {
 								:class="$style.previewSlot"
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
+								:preview-session-id="activeAgentPreviewSessionId"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
+								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
 						</div>
 					</TabsRoot>

@@ -1,5 +1,11 @@
 import { type Router } from 'vue-router';
-import { modalRegistry, registerResource } from '@n8n/frontend-module-sdk';
+import {
+	assertUniqueRouteNames,
+	modalRegistry,
+	registerResource,
+	pushHandlerRegistry,
+	commandRegistry,
+} from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -88,6 +94,36 @@ export const registerModuleModals = () => {
 		module.modals?.forEach((modalDef) => {
 			modalRegistry.register(modalDef);
 		});
+		module.adHocModalKeyPrefixes?.forEach((prefix) => {
+			modalRegistry.declareAdHocKeyPrefix(prefix);
+		});
+	});
+};
+
+/**
+ * Initialize module push handlers, done in init.ts. `useModulePushDispatcher`
+ * dispatches to them at app scope.
+ *
+ * Only an active module registers: a claimed type also suppresses the shell's
+ * built-in handler for it, so an inactive module would silently kill it.
+ */
+export const registerModulePushHandlers = () => {
+	const settingsStore = useSettingsStore();
+	modules.forEach((module) => {
+		if (module.pushHandlers && settingsStore.isModuleActive(module.id)) {
+			pushHandlerRegistry.registerAll(module.pushHandlers);
+		}
+	});
+};
+
+/**
+ * Initialize module command-bar contributions, done in init.ts.
+ */
+export const registerModuleCommands = () => {
+	modules.forEach((module) => {
+		module.commands?.forEach((command) => {
+			commandRegistry.register(command);
+		});
 	});
 };
 
@@ -95,6 +131,8 @@ export const registerModuleModals = () => {
  * Initialize module routes, done in main.ts
  */
 export const registerModuleRoutes = (router: Router) => {
+	assertUniqueRouteNames(modules, router);
+
 	modules.forEach((module) => {
 		module.routes?.forEach((route) => {
 			// Prepare the enhanced route with module metadata and custom middleware that checks module availability

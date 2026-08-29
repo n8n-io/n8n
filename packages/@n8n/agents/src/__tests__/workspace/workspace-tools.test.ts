@@ -65,7 +65,6 @@ describe('createWorkspaceTools', () => {
 			'workspace_read_file',
 			'workspace_read_tool_result',
 			'workspace_str_replace_file',
-			'workspace_batch_str_replace_file',
 			'workspace_write_file',
 			'workspace_list_files',
 			'workspace_file_stat',
@@ -103,9 +102,8 @@ describe('createWorkspaceTools', () => {
 		expect(names).toContain('workspace_read_file');
 		expect(names).toContain('workspace_read_tool_result');
 		expect(names).toContain('workspace_str_replace_file');
-		expect(names).toContain('workspace_batch_str_replace_file');
 		expect(names).toContain('workspace_execute_command');
-		expect(names).toHaveLength(14);
+		expect(names).toHaveLength(13);
 	});
 
 	describe('tool handlers', () => {
@@ -125,7 +123,7 @@ describe('createWorkspaceTools', () => {
 
 		it('read_tool_result describes and pages a nested result through escaped pointers', async () => {
 			const hash = 'a'.repeat(43);
-			const path = `tool-results/threads/${hash}/${hash}/${hash}.result.json`;
+			const path = `tool-results/runs/${hash}/${hash}.result.json`;
 			const escapedKey = 'folder/name~version';
 			const largeString = '"\\\n'.repeat(12_000);
 			const storedResult = {
@@ -251,90 +249,18 @@ describe('createWorkspaceTools', () => {
 		it('targeted edit input schemas serialize with a top-level object type', () => {
 			const tools = createWorkspaceTools({ filesystem: makeFakeFilesystem() });
 			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
-			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
 
 			expect(zodToJsonSchema(strReplaceTool.inputSchema)).toMatchObject({ type: 'object' });
-			expect(zodToJsonSchema(batchStrReplaceTool.inputSchema)).toMatchObject({
-				type: 'object',
-			});
 		});
 
-		it('str_replace_file handler reads then writes changed content', async () => {
-			const fs = makeFakeFilesystem({
-				readFile: vi.fn().mockResolvedValue('first\nsecond'),
-			});
-			const tools = createWorkspaceTools({ filesystem: fs });
-			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
-
-			const result = await strReplaceTool.handler!(
-				{
-					path: '/test.txt',
-					old_str: 'second',
-					new_str: 'changed',
-				},
-				{} as never,
-			);
-
-			expect(fs.writeFile).toHaveBeenCalledWith('/test.txt', 'first\nchanged', {
-				overwrite: true,
-				abortSignal: undefined,
-			});
-			expect(result).toEqual({ success: true, result: 'Edit applied successfully.' });
-		});
-
-		it('str_replace_file handler returns errors without writing when replacement is not unique', async () => {
-			const fs = makeFakeFilesystem({
-				readFile: vi.fn().mockResolvedValue('same\nsame'),
-			});
-			const tools = createWorkspaceTools({ filesystem: fs });
-			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
-
-			const result = await strReplaceTool.handler!(
-				{
-					path: '/test.txt',
-					old_str: 'same',
-					new_str: 'changed',
-				},
-				{} as never,
-			);
-
-			expect(fs.writeFile).not.toHaveBeenCalled();
-			expect(result).toEqual({
-				success: false,
-				error: 'Found 2 matches. Please provide more context to make the replacement unique.',
-			});
-		});
-
-		it('str_replace_file handler rethrows abort errors instead of soft-failing', async () => {
-			const abortError = new Error('This operation was aborted');
-			abortError.name = 'AbortError';
-			const fs = makeFakeFilesystem({
-				readFile: vi.fn().mockRejectedValue(abortError),
-			});
-			const tools = createWorkspaceTools({ filesystem: fs });
-			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
-
-			await expect(
-				strReplaceTool.handler!(
-					{
-						path: '/test.txt',
-						old_str: 'a',
-						new_str: 'b',
-					},
-					{} as never,
-				),
-			).rejects.toMatchObject({ name: 'AbortError' });
-			expect(fs.writeFile).not.toHaveBeenCalled();
-		});
-
-		it('batch_str_replace_file handler applies all replacements atomically', async () => {
+		it('str_replace_file handler applies replacements atomically', async () => {
 			const fs = makeFakeFilesystem({
 				readFile: vi.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
 			});
 			const tools = createWorkspaceTools({ filesystem: fs });
-			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
 
-			const result = await batchStrReplaceTool.handler!(
+			const result = await strReplaceTool.handler!(
 				{
 					path: '/test.ts',
 					replacements: [
@@ -355,14 +281,14 @@ describe('createWorkspaceTools', () => {
 			});
 		});
 
-		it('batch_str_replace_file handler does not write when any replacement fails', async () => {
+		it('str_replace_file handler does not write when any replacement fails', async () => {
 			const fs = makeFakeFilesystem({
 				readFile: vi.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
 			});
 			const tools = createWorkspaceTools({ filesystem: fs });
-			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
 
-			const result = await batchStrReplaceTool.handler!(
+			const result = await strReplaceTool.handler!(
 				{
 					path: '/test.ts',
 					replacements: [
@@ -376,7 +302,7 @@ describe('createWorkspaceTools', () => {
 			expect(fs.writeFile).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				success: false,
-				error: 'Batch replacement failed.',
+				error: 'String replacement failed.',
 				results: [
 					{ index: 0, old_str: 'const a = 1;', status: 'success' },
 					{
@@ -388,6 +314,27 @@ describe('createWorkspaceTools', () => {
 					},
 				],
 			});
+		});
+
+		it('str_replace_file handler rethrows abort errors instead of soft-failing', async () => {
+			const abortError = new Error('This operation was aborted');
+			abortError.name = 'AbortError';
+			const fs = makeFakeFilesystem({
+				readFile: vi.fn().mockRejectedValue(abortError),
+			});
+			const tools = createWorkspaceTools({ filesystem: fs });
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
+
+			await expect(
+				strReplaceTool.handler!(
+					{
+						path: '/test.txt',
+						replacements: [{ old_str: 'a', new_str: 'b' }],
+					},
+					{} as never,
+				),
+			).rejects.toMatchObject({ name: 'AbortError' });
+			expect(fs.writeFile).not.toHaveBeenCalled();
 		});
 
 		it('write_file handler calls filesystem.writeFile', async () => {

@@ -22,6 +22,18 @@ can fan one source into many records. Carry fields such as channel, city,
 account, request ID, team, label, or origin on the current item before fan-out,
 and create failure records with explicit source fields only on real error paths.
 
+## Preserve Node Identity
+
+`config.id` is a node's stable identity in n8n, not a cosmetic field. Two nodes may
+never share one `id`; `build-workflow` rejects the save with `DUPLICATE_NODE_ID`
+when they do, and the fix is to delete the `id` line from the node you added, not to
+invent a new value.
+
+If you rewrite a workflow file from scratch and lose the `id` lines, every node is
+recorded as deleted and recreated: execution-log pairing, poll cursors and
+deduplication state all reset, and the version diff becomes unreadable. Carry the
+`id` lines through every rewrite.
+
 ## Keep Effects Independent
 
 When the user asks for multiple final effects from the same trigger, each effect
@@ -107,6 +119,17 @@ expression there produce "Failed to parse schema" and crash the node before
 any output. Serialize the schema with double-quoted keys and strings, keep it
 minimal, and set the sibling `name` field.
 
+## Slack Blocks Fields Take the Whole Block Kit Payload
+
+The Slack node's Blocks field (`blocksUi`) holds the **whole Block Kit payload
+object** — `{ "blocks": [ ... ] }` — not the bare blocks array. The node reads
+that value as an object and picks the blocks off its `blocks` key before
+sending. A top-level `[ { "type": "section" }, ... ]` leaves that key
+undefined, so Slack gets a body with no blocks, replies `ok: true`, and the
+message renders empty — a silent failure the run never reports. Also set
+`messageType: "block"`; with any other message type the payload is dropped and
+only the plain text is posted.
+
 ## Data After Side-Effect Nodes
 
 Send/notify/write nodes (Gmail, Slack, Telegram, email send, most "create"
@@ -117,6 +140,14 @@ silently no-ops (an update matching no rows, an empty mapped column). When a
 node after a side-effect needs the original data, reference it by node name
 (`$('Compute Change').item.json.status`) or wire it in parallel from the
 data-producing node instead of chaining through the send.
+
+The same trap applies in reverse when **inserting** a side-effect node into an
+existing connection: adding C between A→B (e.g. a create-if-missing step before
+a write, during a repair) makes B read C's API response instead of A's data —
+auto-mapped columns silently fill with metadata. Keep the data path intact:
+branch C in parallel off the data producer, reorder C upstream of the data
+producer (trigger → ensure-target → produce data → write), or have B reference
+`$('Data Node')` explicitly.
 
 ## Code Nodes
 

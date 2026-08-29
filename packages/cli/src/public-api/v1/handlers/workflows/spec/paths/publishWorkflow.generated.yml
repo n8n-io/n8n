@@ -1,0 +1,65 @@
+operationId: publishWorkflow
+tags:
+  - Workflow
+summary: Publish a workflow
+description: Publish a workflow. In n8n v1, this action was termed activating a workflow.
+x-required-scope: workflow:activate
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: workflowId
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          versionId:
+            type: string
+            description: The specific version ID to publish. If not provided, the latest version is used.
+          name:
+            type: string
+            description: Optional name for the workflow version during publication.
+          description:
+            type: string
+            description: Optional description for the workflow version during publication.
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    description: Conflict, e.g. publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present) or a webhook path conflict.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            reason:
+              type: string
+              enum:
+                - review_pending
+                - changes_requested
+            workflowReviewRequestId:
+              type: string
+          required:
+            - message
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

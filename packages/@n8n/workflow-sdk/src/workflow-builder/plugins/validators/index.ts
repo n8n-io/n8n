@@ -15,6 +15,7 @@ export { executeWorkflowValidator } from './execute-workflow-validator';
 export { filterNodeValidator } from './filter-node-validator';
 export { fromAiValidator } from './from-ai-validator';
 export { httpRequestValidator } from './http-request-validator';
+export { duplicateNodeIdValidator } from './duplicate-node-id-validator';
 export { maxNodesValidator } from './max-nodes-validator';
 export { memorySessionKeyValidator } from './memory-session-key-validator';
 export { mergeNodeValidator } from './merge-node-validator';

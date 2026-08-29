@@ -27,6 +27,18 @@ export const STICKY_BOTTOM_PADDING = GRID_SIZE * 4; // 64
 
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
+/** Matches the StickyNote node's own width/height defaults. */
+export const DEFAULT_STICKY_SIZE: [number, number] = [240, 160];
+
+/** Gap between a sticky's edge and the nodes it wraps. */
+export const STICKY_PADDING = GRID_SIZE * 2; // 32
+
+/** Headroom above wrapped nodes so the sticky's text does not sit on top of them. */
+export const STICKY_HEADER_HEIGHT = GRID_SIZE * 4; // 64
+
+/** Bound on the sticky de-overlap walk so a pathological graph can't spin. */
+export const MAX_STICKY_SEPARATION_STEPS = 50;
+
 // BFS layout constants (used by calculateNodePositions for basic positioning)
 export const NODE_SPACING_X = 200;
 export const DEFAULT_Y = 300;

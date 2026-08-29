@@ -36,7 +36,7 @@ import type { InstanceSettings } from 'n8n-core';
 import * as utils from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { readFile } from 'node:fs/promises';
-import type { Mock } from 'vitest';
+import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { IWorkflowToImport } from '@/interfaces';
@@ -44,6 +44,7 @@ import { SourceControlContextFactory } from '@/modules/source-control.ee/source-
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
@@ -77,6 +78,7 @@ describe('SourceControlImportService', () => {
 	let workflowHistoryService: WorkflowHistoryService;
 	let sourceControlContextFactory: SourceControlContextFactory;
 	let sourceControlScopedService: SourceControlScopedService;
+	let mockPolicyEnforcementService: Mocked<PolicyEnforcementService>;
 
 	const cipher = mockInstance(Cipher);
 	const mockFileData = new Map<string, string>();
@@ -97,6 +99,9 @@ describe('SourceControlImportService', () => {
 		workflowHistoryService = Container.get(WorkflowHistoryService);
 		sourceControlContextFactory = Container.get(SourceControlContextFactory);
 		sourceControlScopedService = Container.get(SourceControlScopedService);
+		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
+		mockPolicyEnforcementService.hasChecksFor.mockReturnValue(true);
+		mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
@@ -123,6 +128,7 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(), // redactionEnforcementService
+			mockPolicyEnforcementService,
 			mock(), // dataTableSizeValidator
 			mock(), // activeWorkflowManager
 			mock(), // executionPersistence
@@ -2013,6 +2019,84 @@ describe('SourceControlImportService', () => {
 				const post = await workflowRepository.findOne({ where: { id: workflowId } });
 				expect(post?.active).toBe(false);
 				expect(post?.activeVersionId).toBeNull();
+			});
+		});
+
+		describe('content-import policy', () => {
+			beforeEach(() => {
+				mockPolicyEnforcementService.evaluateContentImport.mockClear();
+				mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
+			});
+
+			it('evaluates content-import policy once per imported workflow, with the resolved target project', async () => {
+				const importingUser = await getGlobalOwner();
+				const importingUserProject = await getPersonalProject(importingUser);
+
+				const workflow = makeWorkflowImport();
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledTimes(1);
+				expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
+					workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+					projectId: importingUserProject.id,
+				});
+			});
+
+			it('does not fail the pull when a violation is returned, and attaches it to the result', async () => {
+				const importingUser = await getGlobalOwner();
+				const violation = {
+					kind: 'node-type-unavailable',
+					checkId: 'test.check',
+					message: 'not allowed',
+				};
+				mockPolicyEnforcementService.evaluateContentImport.mockResolvedValueOnce({
+					violations: [violation],
+				});
+
+				const workflow = makeWorkflowImport();
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([
+					expect.objectContaining({
+						id: workflow.id,
+						contentImportPolicy: { violations: [violation], checkErrors: [] },
+					}),
+				]);
+				// The pull completes regardless of the violation.
+				await expect(
+					workflowRepository.findOne({ where: { id: workflow.id } }),
+				).resolves.toBeTruthy();
+			});
+
+			it('does not fail the pull when evaluateContentImport throws', async () => {
+				const importingUser = await getGlobalOwner();
+				mockPolicyEnforcementService.evaluateContentImport.mockRejectedValueOnce(
+					new Error('backend unavailable'),
+				);
+
+				const workflow = makeWorkflowImport();
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([expect.objectContaining({ id: workflow.id })]);
+				expect(result[0]).not.toHaveProperty('contentImportPolicy');
+				await expect(
+					workflowRepository.findOne({ where: { id: workflow.id } }),
+				).resolves.toBeTruthy();
 			});
 		});
 	});

@@ -70,6 +70,37 @@ describe('createWorkItem', () => {
 // ── handleBuildOutcome ──────────────────────────────────────────────────────
 
 describe('handleBuildOutcome', () => {
+	it('carries a user-skipped setup requirement onto the state', () => {
+		const { state: next } = handleBuildOutcome(
+			makeState(),
+			[],
+			makeOutcome({
+				workflowId: 'wf_123',
+				setupRequirement: { status: 'not_required', reason: 'skipped-by-user' },
+			}),
+		);
+
+		expect(next.setupSkippedByUser).toBe(true);
+	});
+
+	it("clears a previous build's skipped-setup flag when setup is required again", () => {
+		// A credential added after the skip must still route setup, so the flag can't be sticky.
+		const { state: next } = handleBuildOutcome(
+			{ ...makeState(), setupSkippedByUser: true },
+			[],
+			makeOutcome({
+				workflowId: 'wf_123',
+				setupRequirement: {
+					status: 'required',
+					reason: 'mocked-credentials',
+					guidance: 'Route the workflow through setup so the user can add real credentials.',
+				},
+			}),
+		);
+
+		expect(next.setupSkippedByUser).toBe(false);
+	});
+
 	it('transitions to verifying when submitted and testable', () => {
 		const state = makeState();
 		const outcome = makeOutcome({

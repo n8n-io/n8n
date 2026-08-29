@@ -95,7 +95,8 @@ function heartbeatWithinSession(
 	sessionTimeout: number,
 	logger?: Logger,
 ): number {
-	// An unusable session timeout is left to librdkafka to reject by name.
+	// An unusable session timeout is left to the broker, which refuses the join;
+	// `transport/LibraryLogger` matches that refusal as non-recoverable.
 	if (!Number.isFinite(sessionTimeout) || sessionTimeout <= 0) return heartbeatInterval;
 
 	const largest = Math.floor(sessionTimeout / HEARTBEATS_PER_SESSION);
