@@ -77,7 +77,9 @@ export class ExecutionsPublicController {
 					lastId = decoded.lastId;
 				}
 				if (Number.isInteger(decoded.limit)) {
-					limit = Math.min(Math.max(decoded.limit, 0), MAX_ITEMS_PER_PAGE);
+					// The floor is 1, not 0: TypeORM omits the SQL LIMIT clause for `take: 0`,
+					// so a zero floor would return every execution the caller can see.
+					limit = Math.min(Math.max(decoded.limit, 1), MAX_ITEMS_PER_PAGE);
 				}
 			} catch {
 				throw new BadRequestError('An invalid cursor was provided');
@@ -236,6 +238,9 @@ export class ExecutionsPublicController {
 			...('data' in execution && { data: execution.data }),
 			...('workflowData' in execution && { workflowData: execution.workflowData }),
 			...('customData' in execution && { customData: execution.customData }),
+			...('dataTooLargeToDisplay' in execution && {
+				dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
+			}),
 		};
 	}
 

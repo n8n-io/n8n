@@ -81,6 +81,7 @@ export const executionListItemPublicSchema = executionPublicSchema
 		data: executionPublicSchema.shape.data,
 		workflowData: executionPublicSchema.shape.workflowData,
 		customData: executionPublicSchema.shape.customData,
+		dataTooLargeToDisplay: executionPublicSchema.shape.dataTooLargeToDisplay,
 	});
 
 export class ExecutionListPublicDto extends Z.class({

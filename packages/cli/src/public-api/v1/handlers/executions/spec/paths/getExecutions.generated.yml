@@ -199,6 +199,9 @@ responses:
                     description: Execution metadata set by the workflow. Only included when `includeData` is `true`.
                     additionalProperties:
                       type: string
+                  dataTooLargeToDisplay:
+                    type: boolean
+                    description: Present and true when the execution data was larger than `EXECUTIONS_DATA_MAX_DISPLAY_SIZE`. `data` is then empty and `jsonSizeBytes` holds the real size. Use `ignoreDataSizeLimit` to read it anyway.
                 required:
                   - id
                   - finished

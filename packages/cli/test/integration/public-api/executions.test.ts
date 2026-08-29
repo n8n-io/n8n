@@ -523,19 +523,54 @@ describe('GET /executions', () => {
 		}
 	});
 
-	test('should ignore a forged cursor limit instead of querying with it', async () => {
+	test('should bound a forged cursor limit instead of querying with it', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
 
+		// `lastId` must exceed every seeded id, or `LessThan` matches no rows and the
+		// assertions below hold for any limit.
 		const forge = (limit: unknown) =>
-			Buffer.from(JSON.stringify({ lastId: '0', limit })).toString('base64');
+			Buffer.from(JSON.stringify({ lastId: '999999', limit })).toString('base64');
 
-		for (const limit of ['abc', -1, 9999, null]) {
+		const cases: Array<[unknown, number]> = [
+			// A limit below 1 must floor to 1. TypeORM omits the SQL LIMIT clause for
+			// `take: 0`, so a zero floor returns every row the caller can see.
+			[-1, 1],
+			[0, 1],
+			[2, 2],
+			// Not an integer, so the decoded limit is ignored and the default applies.
+			['abc', 3],
+			[null, 3],
+		];
+
+		for (const [limit, expected] of cases) {
 			const response = await authOwnerAgent.get('/executions').query({ cursor: forge(limit) });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.data.length).toBeLessThanOrEqual(250);
+			expect(response.body.data).toHaveLength(expected);
 		}
+	});
+
+	test('should keep dataTooLargeToDisplay on a list item that exceeds the display size limit', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				jsonSizeBytes: 200 * 1024 * 1024,
+				data: '[]',
+			},
+			workflow,
+		);
+
+		const response = await authOwnerAgent.get('/executions').query({ includeData: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].dataTooLargeToDisplay).toBe(true);
+		expect(response.body.data[0].data?.resultData?.runData).toEqual({});
 	});
 
 	test('should return 400 for an invalid cursor', async () => {
