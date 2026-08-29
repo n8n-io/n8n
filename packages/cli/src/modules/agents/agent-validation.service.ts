@@ -396,7 +396,7 @@ export class AgentValidationService {
 
 	private collectSubAgentRefIssues(
 		ctx: ConfigurationValidationContext,
-		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>,
+		agentsById: Map<string, Pick<Agent, 'id'>>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const refs = ctx.config.subAgents?.agents ?? [];
@@ -417,11 +417,6 @@ export class AgentValidationService {
 			const target = agentsById.get(ref.agentId);
 			if (!target) {
 				issues.push(issue('missing_reference', path, capability));
-				continue;
-			}
-
-			if (!target.activeVersionId) {
-				issues.push(issue('incompatible_reference', path, capability));
 			}
 		}
 	}

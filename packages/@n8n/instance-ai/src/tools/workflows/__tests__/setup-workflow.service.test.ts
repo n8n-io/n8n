@@ -2364,6 +2364,106 @@ describe('setup analysis for credentials the user asked to create fresh', () => 
 		expect(result[0].preferNewCredential).toBeUndefined();
 	});
 
+	// INS-1271: a bound credential (e.g. one whose token the user is replacing)
+	// must not settle the slot — the card renders it unbound and actionable.
+	it('renders a bound credential slot as unbound and needing action', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'Slack account', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+		} as Partial<NodeJSON>);
+
+		const result = await buildSetupRequests(
+			context,
+			node,
+			undefined,
+			undefined,
+			undefined,
+			new Set(['slackApi']),
+		);
+
+		expect(result[0].preferNewCredential).toBe(true);
+		expect(result[0].node.credentials).toBeUndefined();
+		expect(result[0].needsAction).toBe(true);
+		expect(result[0].credentialNeedsAction).toBe(true);
+		// The bound credential is the one being replaced — don't test or report it.
+		expect(result[0].credentialTestResult).toBeUndefined();
+		expect(context.credentialService.test).not.toHaveBeenCalled();
+		expect(result[0].existingCredentials).toEqual([{ id: 'cred-1', name: 'Slack account' }]);
+	});
+
+	it('keeps a bound credential settled for types not asked fresh', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'Slack account', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+		} as Partial<NodeJSON>);
+
+		const result = await buildSetupRequests(
+			context,
+			node,
+			undefined,
+			undefined,
+			undefined,
+			new Set(['telegramApi']),
+		);
+
+		expect(result[0].node.credentials).toEqual({
+			slackApi: { id: 'cred-1', name: 'Slack account' },
+		});
+		expect(result[0].credentialNeedsAction).toBeUndefined();
+	});
+
+	// INS-1271: a slot bound to a credential the resume just applied is settled
+	// even when the credential list view lags the new credential (scoped
+	// discovery, e.g. eval allowlist pins) — re-reporting it as unconfigured
+	// made the agent re-ask for a token the user had just saved.
+	it('settles a bound slot whose credential id was just applied even if unlisted', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-old', name: 'Slack account', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-new', name: 'Slack account 2' } },
+		} as Partial<NodeJSON>);
+
+		const result = await buildSetupRequests(
+			context,
+			node,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			new Set(['cred-new']),
+		);
+
+		expect(result[0].credentialNeedsAction).toBeUndefined();
+		expect(result[0].needsAction).toBeFalsy();
+	});
+
+	it('keeps an unlisted bound slot needing action when its id was not applied', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-old', name: 'Slack account', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-new', name: 'Slack account 2' } },
+		} as Partial<NodeJSON>);
+
+		const result = await buildSetupRequests(
+			context,
+			node,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			new Set(['cred-other']),
+		);
+
+		expect(result[0].credentialNeedsAction).toBe(true);
+		expect(result[0].needsAction).toBe(true);
+	});
+
 	it('hands analyzeWorkflow an unfilled card where the default pre-fills one', async () => {
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 			makeWorkflowJSON([makeNode()]),

@@ -518,16 +518,13 @@ describe('V1WorkflowConverter', () => {
 				}),
 			);
 
+			// the engine runs a batch node itself, so its config is the batch size, not
+			// the v1 node identity the shim carries for every other type
 			expect(graph.nodes).toContainEqual({
 				id: 'loop-uuid',
 				name: 'Loop',
 				type: 'batch',
-				config: {
-					nodeType: 'n8n-nodes-base.splitInBatches',
-					typeVersion: 3,
-					parameters: {},
-					continueOnFail: false,
-				},
+				config: { batchSize: 1 },
 			});
 			expect(graph.edges).toEqual([
 				{ from: 'trigger-uuid', to: 'loop-uuid', outputIndex: 0, inputIndex: 0 },

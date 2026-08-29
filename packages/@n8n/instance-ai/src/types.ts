@@ -352,13 +352,13 @@ export interface InstanceAiWorkflowService {
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { projectId?: string; markAsAiTemporary?: boolean },
+		options?: { markAsAiTemporary?: boolean },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string; expectedChecksum?: string },
+		options?: { expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;
@@ -499,6 +499,11 @@ export interface InstanceAiCredentialService {
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
 	/** Whether a credential type has a test function. When false, skip testing. */
 	isTestable?(credentialType: string): Promise<boolean>;
+	/** Whether a stored credential carries any values at all — `blank` when every
+	 *  text field its type declares is empty. Non-secret: only the verdict crosses
+	 *  the boundary, never the data. Tells an empty binding from a real one for the
+	 *  types that declare no connection test (generic auth). */
+	getCredentialFillState?(credentialId: string): Promise<'blank' | 'filled' | 'unknown'>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;
 	getCredentialFields?(
 		credentialType: string,
@@ -1692,7 +1697,11 @@ export interface OrchestrationContext {
 	checkpointStore?: CheckpointStore;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
-	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
+	/**
+	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
+	 * default policy, which on the durable-log path would persist redacted text
+	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
+	 */
 	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/**

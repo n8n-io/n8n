@@ -50,4 +50,16 @@ export class EngineConfig {
 	 */
 	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(AUTH_SECRET_MIN_LENGTH))
 	authSecret: string = '';
+
+	/** Port the control plane server listens on. Its own, so it can be firewalled off from the editor API. */
+	@Env('N8N_ENGINE_CONTROL_PLANE_PORT')
+	controlPlanePort: number = 3001;
+
+	/** Bind address for the control plane server. Loopback by default: only a data plane calls it. */
+	@Env('N8N_ENGINE_CONTROL_PLANE_HOST')
+	controlPlaneHost: string = '127.0.0.1';
+
+	/** Where the engine dials the control plane server. Defaults to loopback; set it when that is not reachable. */
+	@Env('N8N_ENGINE_CONTROL_PLANE_BASE_URL')
+	controlPlaneBaseUrl: string = '';
 }

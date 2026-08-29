@@ -73,6 +73,9 @@ describe('DeprecationService', () => {
 		['N8N_WORKFLOW_TAGS_DISABLED', '1', true],
 		['N8N_WORKFLOW_TAGS_DISABLED', 'false', false],
 		['N8N_WORKFLOW_TAGS_DISABLED', undefined, false],
+		['N8N_OUTBOUND_PROXY_MODE', 'main-only', true],
+		['N8N_OUTBOUND_PROXY_MODE', 'all', false],
+		['N8N_OUTBOUND_PROXY_MODE', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
