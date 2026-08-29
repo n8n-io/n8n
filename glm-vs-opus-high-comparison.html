@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Opus 4.8 vs GLM 5.3 vs GLM 5.3 Flash — high reasoning</title>
+  <meta name="description" content="Instance AI model-comparison: Claude Opus 4.8 vs GLM 5.3 vs GLM 5.3 Flash at high reasoning effort." />
+  <meta property="og:title" content="Opus 4.8 vs GLM 5.3 vs GLM 5.3 Flash" />
+  <meta property="og:description" content="High-reasoning Instance AI eval on model-comparison (31×3). Pass rates, builds, timeouts, speed." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/style.min.css" />
+  <style>
+    :root {
+      --bg: #000000;
+      --fg: #ededed;
+      --muted: #888888;
+      --subtle: #1a1a1a;
+      --border: #333333;
+      --border-strong: #444444;
+      --blue: #0070f3;
+      --green: #3ecf8e;
+      --amber: #f5a623;
+      --card: #0a0a0a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+      min-height: 100%;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 112, 243, 0.18), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(62, 207, 142, 0.08), transparent 45%),
+        #000;
+      padding: 48px 24px 64px;
+    }
+
+    .page {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    /* Share card — designed to screenshot cleanly */
+    .card {
+      background: linear-gradient(180deg, #0c0c0c 0%, #050505 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 24px 80px rgba(0,0,0,0.55);
+    }
+
+    .card-top {
+      padding: 36px 40px 28px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .eyebrow .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 12px var(--blue);
+    }
+
+    h1 {
+      font-size: clamp(28px, 4.5vw, 40px);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+
+    h1 .sep {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 54ch;
+    }
+
+    .subtitle strong {
+      color: #cfcfcf;
+      font-weight: 500;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      margin-top: 20px;
+      font-family: "Geist Mono", ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .meta-row span::before {
+      content: "";
+    }
+
+    /* Metrics table */
+    .table-wrap {
+      padding: 8px 16px 16px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    thead th {
+      text-align: left;
+      font-weight: 500;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 20px 16px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    thead th.model {
+      text-transform: none;
+      letter-spacing: -0.02em;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      vertical-align: bottom;
+    }
+
+    thead th .tag {
+      display: block;
+      margin-top: 4px;
+      font-family: "Geist Mono", ui-monospace, monospace;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--muted);
+    }
+
+    tbody th {
+      text-align: left;
+      font-weight: 500;
+      color: var(--muted);
+      padding: 14px 16px;
+      border-bottom: 1px solid #1f1f1f;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      font-family: "Geist Mono", ui-monospace, monospace;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 14px 16px;
+      border-bottom: 1px solid #1f1f1f;
+      color: var(--fg);
+      letter-spacing: -0.02em;
+    }
+
+    tbody tr:last-child th,
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .best {
+      color: var(--green);
+    }
+
+    .worst {
+      color: #ff6b6b;
+    }
+
+    .model-opus { border-top: 2px solid transparent; }
+    .col-opus { box-shadow: inset 0 2px 0 var(--blue); }
+    .col-glm { box-shadow: inset 0 2px 0 #a78bfa; }
+    .col-flash { box-shadow: inset 0 2px 0 var(--green); }
+
+    /* Verdict strip */
+    .verdict {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-top: 1px solid var(--border);
+    }
+
+    .verdict article {
+      background: #0a0a0a;
+      padding: 22px 24px;
+    }
+
+    .verdict h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .verdict p {
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .verdict .label {
+      font-family: "Geist Mono", ui-monospace, monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    footer.page-foot {
+      margin-top: 28px;
+      font-size: 12px;
+      color: #555;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      justify-content: space-between;
+    }
+
+    footer.page-foot a {
+      color: #777;
+      text-decoration: none;
+    }
+
+    footer.page-foot a:hover { color: var(--fg); }
+
+    @media (max-width: 720px) {
+      body { padding: 24px 12px 40px; }
+      .card-top { padding: 28px 20px 22px; }
+      thead th, tbody th, tbody td { padding: 12px 10px; }
+      .verdict { grid-template-columns: 1fr; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card" role="img" aria-label="Comparison card: Opus 4.8 vs GLM 5.3 vs GLM 5.3 Flash">
+      <div class="card-top">
+        <div class="eyebrow"><span class="dot"></span> Instance AI · high reasoning</div>
+        <h1>Opus 4.8 <span class="sep">vs</span> GLM 5.3 <span class="sep">vs</span> GLM 5.3 Flash</h1>
+        <p class="subtitle">
+          Same suite, same N — <strong>model-comparison</strong>, 31 cases × 3 iterations.
+          High reasoning effort on both GLM runs.
+        </p>
+        <div class="meta-row">
+          <span>suite=model-comparison</span>
+          <span>N=3</span>
+          <span>reasoning=high</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col" class="model col-opus">Opus 4.8<span class="tag">anthropic/claude-opus-4-8</span></th>
+              <th scope="col" class="model col-glm">GLM 5.3<span class="tag">z-ai/glm-5.3:nitro</span></th>
+              <th scope="col" class="model col-flash">GLM 5.3 Flash<span class="tag">z-ai/glm-5.3-flash:nitro</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">pass@k</th>
+              <td>95.1%</td>
+              <td class="best">95.5%</td>
+              <td>94.5%</td>
+            </tr>
+            <tr>
+              <th scope="row">pass^k</th>
+              <td class="best">88.4%</td>
+              <td>83.7%</td>
+              <td>81.4%</td>
+            </tr>
+            <tr>
+              <th scope="row">Built</th>
+              <td class="best">30/31</td>
+              <td>29/31</td>
+              <td class="best">30/31</td>
+            </tr>
+            <tr>
+              <th scope="row">Per-iter</th>
+              <td class="best">93 / 93 / 88%</td>
+              <td>88 / 89 / 87%</td>
+              <td>88 / 83 / 88%</td>
+            </tr>
+            <tr>
+              <th scope="row">Timeouts</th>
+              <td class="best">0</td>
+              <td class="worst">13</td>
+              <td>5</td>
+            </tr>
+            <tr>
+              <th scope="row">avg build</th>
+              <td class="best">187s</td>
+              <td>550s</td>
+              <td>371s</td>
+            </tr>
+            <tr>
+              <th scope="row">Wall</th>
+              <td class="best">~19 min</td>
+              <td>~38 min</td>
+              <td>~28 min</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="verdict">
+        <article>
+          <div class="label">Best consistency</div>
+          <h3>Opus 4.8</h3>
+          <p>Highest pass^k, zero timeouts, fastest builds.</p>
+        </article>
+        <article>
+          <div class="label">Best pass@k</div>
+          <h3>GLM 5.3</h3>
+          <p>Edges the ceiling — pays for it in timeouts and latency.</p>
+        </article>
+        <article>
+          <div class="label">Best tradeoff</div>
+          <h3>GLM 5.3 Flash</h3>
+          <p>Near Opus build rate, much faster and cheaper than GLM 5.3.</p>
+        </article>
+      </div>
+    </div>
+
+    <footer class="page-foot">
+      <div>
+        Runs:
+        <a href="https://github.com/n8n-io/n8n/actions/runs/32029701284">Opus</a> ·
+        <a href="https://github.com/n8n-io/n8n/actions/runs/33225976038">GLM 5.3</a> ·
+        <a href="https://github.com/n8n-io/n8n/actions/runs/33233774281">Flash</a>
+      </div>
+      <div>n8n Instance AI evals · Aug 2026</div>
+    </footer>
+  </div>
+</body>
+</html>
