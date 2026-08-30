@@ -291,6 +291,14 @@ const strippedPatterns = [
 echo(chalk.yellow('INFO: Verifying strips removed what they targeted'));
 for (const { label, find } of strippedPatterns) {
 	const left = await $`find ${config.compiledAppDir}/node_modules/.pnpm ${find}`.nothrow();
+	// A `find` that could not traverse the tree also returns empty stdout, which
+	// would read as "nothing survived" — the exact false pass this check exists
+	// to prevent. Fail closed when it could not run.
+	if (left.exitCode !== 0) {
+		echo(chalk.red(`ERROR: could not verify ${label} were stripped (find exited ${left.exitCode})`));
+		echo(chalk.dim(left.stderr.slice(0, 400)));
+		process.exit(1);
+	}
 	const count = left.stdout.split('\n').filter(Boolean).length;
 	if (count > 0) {
 		echo(chalk.red(`ERROR: ${count} ${label} survived the strip — the pattern no longer matches`));
@@ -312,9 +320,11 @@ const aliasCheck = await $`
     done
   done
 `.nothrow();
-if (aliasCheck.stdout.includes('MISMATCH')) {
-	echo(chalk.red(`ERROR: agent-browser glibc alias does not point at the musl build`));
-	echo(chalk.dim(aliasCheck.stdout));
+// Same reasoning as above: a failed traversal produces no MISMATCH lines, so
+// treat a non-zero exit as unverifiable rather than as a pass.
+if (aliasCheck.exitCode !== 0 || aliasCheck.stdout.includes('MISMATCH')) {
+	echo(chalk.red('ERROR: agent-browser glibc alias does not point at the musl build'));
+	echo(chalk.dim(aliasCheck.stdout || aliasCheck.stderr.slice(0, 400)));
 	process.exit(1);
 }
 
