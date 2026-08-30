@@ -81,18 +81,30 @@ function srcFileOf(component) {
  * as standalone components: `exports` subpaths (@google/genai/web), sub-builds
  * (web-streams-polyfill-es6), and test/benchmark fixtures bundled inside real
  * deps (resolve/test/.../false_main, tedious/benchmarks). None are real shippable
- * packages. Two robust signals identify them:
- *   - no version (real npm packages always carry one), or
- *   - the package.json does not sit at its own canonical
- *     node_modules/<name>/package.json (it's nested inside another package).
+ * packages.
+ *
+ * The path is the stronger signal, so it decides whenever it is present. The
+ * version is only a fallback for components carrying no path at all — used
+ * alone it drops real packages whose version the scanner could not resolve.
  */
 export function isPhantomNpm(component) {
 	const purl = component.purl ?? '';
 	if (!purl.startsWith('pkg:npm/')) return false;
-	// syft writes "UNKNOWN" where cdxgen omits the field. Neither is a real version.
-	if (!component.version || component.version === 'UNKNOWN') return true;
+
 	const src = srcFileOf(component);
-	if (!src) return false; // can't prove it's a phantom — keep it
+	// syft writes "UNKNOWN" where cdxgen omits the field. Neither is a real
+	// version. cdxgen emits `exports`-subpath phantoms with no path either, so
+	// this is the only signal left for them.
+	if (!src) return !component.version || component.version === 'UNKNOWN';
+
+	// An application root sits outside anyone's node_modules — a real shipped
+	// package, whatever its version resolved to. The runners images copy the JS
+	// task runner to /opt/runners/task-runner-javascript, so this is not
+	// hypothetical.
+	if (!src.includes('/node_modules/')) return false;
+
+	// Inside node_modules the canonical path proves the package is real, and
+	// anything else is nested inside another package.
 	return !src.endsWith(`/node_modules/${qualifiedName(component)}/package.json`);
 }
 
