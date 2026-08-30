@@ -73,7 +73,11 @@ runs:
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'pnpm'
+        # A job that installs nothing must not participate in the pnpm-store
+        # cache. Its post step would save an empty store, and cache keys are
+        # write-once — so if it lost the race to a real installer, every other
+        # job on that key would restore nothing and silently re-download.
+        cache: ${{ inputs.install-command != '' && 'pnpm' || '' }}
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Fail fast if setup-node silently fell through to the runner's baked-in

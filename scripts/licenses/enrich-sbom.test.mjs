@@ -201,6 +201,73 @@ describe('isPhantomNpm (cdxgen image-scan noise)', () => {
 			false,
 		);
 	});
+
+	const syftSrc = (p) => ({ properties: [{ name: 'syft:location:0:path', value: p }] });
+
+	it('keeps an application root outside node_modules (runners ship the task runner there)', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'task-runner',
+				group: '@n8n',
+				version: '1.0.0',
+				purl: 'pkg:npm/%40n8n/task-runner@1.0.0',
+				...syftSrc('/opt/runners/task-runner-javascript/package.json'),
+			}),
+			false,
+		);
+	});
+
+	it('keeps an application root even when the scanner could not resolve its version', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'task-runner',
+				group: '@n8n',
+				version: 'UNKNOWN',
+				purl: 'pkg:npm/%40n8n/task-runner',
+				...syftSrc('/opt/runners/task-runner-javascript/package.json'),
+			}),
+			false,
+		);
+	});
+
+	it('keeps a package at its canonical path when the version is UNKNOWN', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'ssh2',
+				version: 'UNKNOWN',
+				purl: 'pkg:npm/ssh2',
+				...syftSrc('/x/node_modules/ssh2/package.json'),
+			}),
+			false,
+		);
+	});
+
+	it('still flags a nested fixture reported via the syft property', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'false_main',
+				version: '1.0.0',
+				purl: 'pkg:npm/false_main@1.0.0',
+				...syftSrc('/x/node_modules/resolve/test/false_main/package.json'),
+			}),
+			true,
+		);
+	});
+
+	it('prefers cdxgen SrcFile over the syft property when both are present', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'ssh2',
+				version: '1.16.0',
+				purl: 'pkg:npm/ssh2@1.16.0',
+				properties: [
+					{ name: 'SrcFile', value: '/x/node_modules/ssh2/package.json' },
+					{ name: 'syft:location:0:path', value: '/x/node_modules/other/nested/package.json' },
+				],
+			}),
+			false,
+		);
+	});
 });
 
 describe('enrichSbom dropPhantomNpm + byName', () => {

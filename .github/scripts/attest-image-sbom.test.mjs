@@ -59,11 +59,21 @@ describe('assertSbomIsUsable', () => {
 		assert.throws(() => assertSbomIsUsable(p, 'n8n'), /no npm components/);
 	});
 
-	it('rejects an SBOM with no operating-system component', () => {
-		assert.throws(
-			() => assertSbomIsUsable(write('no-os.json', [{ purl: 'pkg:npm/a@1' }]), 'runners'),
-			/no operating-system component/,
-		);
+	// Warns rather than throws: the distroless runners image carries no package
+	// manager and the runtime base strips apk-tools, so an absent OS component
+	// is not known to be a fault. Blocking on it would fail every release.
+	it('warns but accepts an SBOM with no operating-system component', () => {
+		const logged = [];
+		const original = console.log;
+		console.log = (msg) => logged.push(String(msg));
+		try {
+			assert.doesNotThrow(() =>
+				assertSbomIsUsable(write('no-os.json', [{ purl: 'pkg:npm/a@1' }]), 'runners'),
+			);
+		} finally {
+			console.log = original;
+		}
+		assert.ok(logged.some((l) => /^::warning::runners: .*no operating-system component/.test(l)));
 	});
 
 	it('names the image in the failure so a four-image run says which one broke', () => {
