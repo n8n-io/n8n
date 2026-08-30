@@ -299,7 +299,22 @@ export function createDeepLazyProxy(
 				return arrayLength;
 			}
 
-			// Check cache - if already fetched, return cached value
+			// Check cache - if already fetched, return cached value. Only own
+			// entries count: `prop in targetObj` also matches inherited members,
+			// so an item key named `toString`/`valueOf`/`hasOwnProperty` would
+			// resolve to the prototype method instead of the workflow data.
+			if (Object.prototype.hasOwnProperty.call(targetObj, prop)) {
+				return targetObj[prop];
+			}
+
+			// A known data key always shadows an inherited prototype member,
+			// matching plain-object semantics and the legacy engine.
+			if (!isArray && objectKeys?.includes(prop)) {
+				return fetchAndCacheObjectValue(prop);
+			}
+
+			// Not one of our keys - fall through to the target's prototype so
+			// `arr.map(...)`, `obj.toString()` and friends keep working.
 			if (prop in targetObj) {
 				return targetObj[prop];
 			}

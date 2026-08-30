@@ -140,12 +140,6 @@ const unsafeObjectProperties = new Set([
 	'__defineSetter__',
 	'__lookupGetter__',
 	'__lookupSetter__',
-	'toString',
-	'valueOf',
-	'toLocaleString',
-	'hasOwnProperty',
-	'isPrototypeOf',
-	'propertyIsEnumerable',
 ]);
 
 export function __sanitize(value: unknown): unknown {
