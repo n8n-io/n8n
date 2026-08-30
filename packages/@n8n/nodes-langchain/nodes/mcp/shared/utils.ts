@@ -15,7 +15,7 @@ import type {
 import { assertCredentialAllowsUrl, assertUrlAllowed, NodeOperationError } from 'n8n-workflow';
 
 import {
-	isMcpOAuth2Authentication,
+	isOAuth2Authentication,
 	type McpAuthenticationOption,
 	type McpServerTransport,
 	type McpTool,
@@ -370,7 +370,7 @@ export async function getAuthHeaders(
 	headers?: Record<string, string>;
 	credentials?: ICredentialDataDecryptedObject;
 }> {
-	if (isMcpOAuth2Authentication(authentication)) {
+	if (isOAuth2Authentication(authentication)) {
 		const credentials = await ctx
 			.getCredentials<McpOAuth2Credentials>(authentication)
 			.catch(() => null);
@@ -451,14 +451,14 @@ export async function getAuthHeaders(
  * @param ctx - The execution context
  * @param authentication - The authentication method
  * @param headers - The headers to refresh
- * @returns The refreshed headers or null if authentication is not an MCP OAuth2 credential type or has failed
+ * @returns The refreshed headers or null if authentication is not an OAuth2 credential type or has failed
  */
 export async function tryRefreshOAuth2Token(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
 	headers?: Record<string, string>,
 ) {
-	if (!isMcpOAuth2Authentication(authentication)) {
+	if (!isOAuth2Authentication(authentication)) {
 		return null;
 	}
 
