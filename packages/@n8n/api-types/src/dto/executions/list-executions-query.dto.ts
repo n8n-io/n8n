@@ -4,8 +4,8 @@ import { ExecutionStatusList } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { booleanFromString } from '../../schemas/boolean-from-string';
-import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 import { Z } from '../../zod-class';
+import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 export class ListExecutionsQueryDto extends Z.class({
 	includeData: booleanFromString
