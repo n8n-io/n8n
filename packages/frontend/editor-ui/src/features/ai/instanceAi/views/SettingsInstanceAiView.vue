@@ -643,6 +643,9 @@ function openAiUsageSettings() {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
+			<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+			<DefaultEditorSetting />
+
 			<N8nSettingsSection
 				v-if="showCredentialsRows || isComputerUseExperimentEnabled || isBrowserUseEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
@@ -825,8 +828,9 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 		</template>
 
-		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
-		<DefaultEditorSetting v-if="!store.isLoading && !neverConfigured" />
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. Members see
+		none of the admin sections above, so they get the row on its own. -->
+		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured" />
 
 		<ConnectionDialog
 			v-if="showCredentialsRows && !isModelReadOnly"
