@@ -81,7 +81,8 @@ async function onSettingsLink() {
 	grid-template-columns: auto 1fr auto;
 	align-items: start;
 	column-gap: var(--spacing--2xs);
-	width: 380px;
+	// Shrink with the content area so narrow viewports do not clip the box.
+	width: min(380px, calc(100% - 2 * var(--spacing--lg)));
 	padding: var(--spacing--sm);
 	border-radius: var(--radius--lg);
 	border: var(--border);
