@@ -3,7 +3,11 @@ run-name: "Docker: SBOM probe (sbom=${{ inputs.sbom }})"
 
 # Asserts that the merged manifest is an OCI image index. 2.26.0 shipped as a
 # Docker manifest list and did not pull on AKS (#31997). Run this after a
-# buildx, BuildKit or base image change. It changes no published tag.
+# buildx, BuildKit or base image change. It pushes only to a separate
+# -format-probe package, so the published image repo is untouched.
+#
+# The release itself is gated by create_multi_arch_manifest in
+# docker-build-push.yml; this probe is for investigating exporter behaviour.
 
 on:
   workflow_dispatch:
@@ -17,6 +21,10 @@ on:
 env:
   NODE_VERSION: '26.7.0'
   SCRATCH_TAG: sbom-probe-${{ github.run_id }}
+  # A separate package. These are throwaway fixtures (one is a two-layer
+  # alpine), and ghcr.io/<repo> is where the real release tags live - they
+  # would show up in the public n8n tag listing and never get cleaned up.
+  SCRATCH_IMAGE: ghcr.io/${{ github.repository }}-format-probe
 
 permissions:
   contents: read
@@ -58,7 +66,7 @@ jobs:
       - name: Build and push scratch image
         env:
           PLATFORMS: linux/${{ matrix.platform }}
-          N8N_TAGS: ghcr.io/${{ github.repository }}:${{ env.SCRATCH_TAG }}-${{ matrix.platform }}
+          N8N_TAGS: ${{ env.SCRATCH_IMAGE }}:${{ env.SCRATCH_TAG }}-${{ matrix.platform }}
           SBOM: ${{ inputs.sbom }}
         run: |
           if [ "$SBOM" = 'true' ]; then
@@ -92,7 +100,7 @@ jobs:
 
       - name: Merge per-arch manifests
         env:
-          IMAGE: ghcr.io/${{ github.repository }}
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
         run: |
           docker buildx imagetools create \
             --tag "${IMAGE}:${SCRATCH_TAG}" \
@@ -101,14 +109,14 @@ jobs:
 
       - name: Assert OCI image index
         env:
-          IMAGE: ghcr.io/${{ github.repository }}
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
         run: |
           node .github/scripts/docker/assert-manifest-format.mjs \
             "${IMAGE}:${SCRATCH_TAG}" --expect-platforms 2
 
       - name: Report scratch tag
         env:
-          IMAGE: ghcr.io/${{ github.repository }}
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
         run: |
           {
             echo "### SBOM probe (sbom=${{ inputs.sbom }})"
@@ -162,7 +170,7 @@ jobs:
 
       - name: Build both arches and merge
         env:
-          IMAGE: ghcr.io/${{ github.repository }}
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
           TAG: fmt-${{ github.run_id }}-${{ matrix.name }}
           SBOM: ${{ matrix.sbom }}
           OCI_MEDIATYPES: ${{ matrix.oci_mediatypes }}
@@ -186,7 +194,7 @@ jobs:
 
       - name: Report merged format
         env:
-          IMAGE: ghcr.io/${{ github.repository }}
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
           TAG: fmt-${{ github.run_id }}-${{ matrix.name }}
           EXPECT_FAIL: ${{ matrix.expect_fail }}
         run: |

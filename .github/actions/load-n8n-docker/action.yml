@@ -30,13 +30,24 @@ runs:
       id: restore
       uses: actions/cache/restore@640a1c2554105b57832a23eea0b4672fc7a790d5 # v4.2.3
       with:
-        key: n8n-docker-image-${{ inputs.build-variant }}-${{ inputs.cache-sha || github.sha }}
+        key: n8n-docker-image-v2-${{ inputs.build-variant }}-${{ inputs.cache-sha || github.sha }}
         path: /tmp/n8n-images
 
     - name: Load n8n and runners images into docker
       if: steps.restore.outputs.cache-hit == 'true'
       shell: bash
-      run: for f in /tmp/n8n-images/*.tar; do docker load -i "$f"; done
+      # A restore reports a hit whatever it wrote, and writes to the paths
+      # recorded at save time. Fail loudly rather than letting an unexpanded
+      # glob reach `docker load`.
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+        files=(/tmp/n8n-images/*.tar)
+        if [ ${#files[@]} -eq 0 ]; then
+          echo "::error::cache hit but /tmp/n8n-images holds no archives"
+          exit 1
+        fi
+        for f in "${files[@]}"; do docker load -i "$f"; done
 
     - name: Warn on cache miss
       if: steps.restore.outputs.cache-hit != 'true'
@@ -45,7 +56,7 @@ runs:
         BUILD_VARIANT: ${{ inputs.build-variant }}
         GITHUB_SHA: ${{ inputs.cache-sha || github.sha }}
       run: |
-        echo "::warning::Cache miss for n8n-docker-image-$BUILD_VARIANT-$GITHUB_SHA (SHA $GITHUB_SHA); falling back to rebuild via build-n8n-docker."
+        echo "::warning::Cache miss for n8n-docker-image-v2-$BUILD_VARIANT-$GITHUB_SHA (SHA $GITHUB_SHA); falling back to rebuild via build-n8n-docker."
 
     - name: Rebuild image on cache miss
       if: steps.restore.outputs.cache-hit != 'true'
@@ -58,4 +69,12 @@ runs:
     - name: Load rebuilt images into docker
       if: steps.restore.outputs.cache-hit != 'true'
       shell: bash
-      run: for f in /tmp/n8n-images/*.tar; do docker load -i "$f"; done
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+        files=(/tmp/n8n-images/*.tar)
+        if [ ${#files[@]} -eq 0 ]; then
+          echo "::error::rebuild produced no archives in /tmp/n8n-images"
+          exit 1
+        fi
+        for f in "${files[@]}"; do docker load -i "$f"; done

@@ -43,7 +43,8 @@ const imageTag = process.env.IMAGE_TAG || 'local';
 
 // Push directly when the name has a registry host. This avoids the slow
 // --load export and import.
-const shouldPush = imageBaseName.split('/').length > 2;
+const hasRegistryHost = (name) => name.split('/').length > 2;
+const shouldPush = hasRegistryHost(imageBaseName);
 // CI needs a tarball, not images in the daemon. BuildKit writes it directly.
 // This removes the dockerd import and the `docker save` that follows it.
 const tarballDir = process.env.DOCKER_BUILD_TARBALL_DIR;
@@ -230,6 +231,20 @@ async function main() {
 			echo(chalk.red(`Error: the podman path does not support ${unsupported.join(', ')}`));
 			process.exit(1);
 		}
+	}
+
+	// --push applies to every target in the bake call. If only the n8n name
+	// carries a registry, the runners target would push to its Docker Hub
+	// default instead - a 401 at best, a tag in the official repo at worst.
+	if (shouldPush && !hasRegistryHost(runnersImageBaseName)) {
+		echo(
+			chalk.red(
+				`Error: IMAGE_BASE_NAME (${imageBaseName}) has a registry host but ` +
+					`RUNNERS_IMAGE_BASE_NAME (${runnersImageBaseName}) does not. ` +
+					'Set both, or neither.',
+			),
+		);
+		process.exit(1);
 	}
 
 	const targets = selectTargets();

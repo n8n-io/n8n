@@ -13,11 +13,18 @@ process.env.FORCE_COLOR = '1';
 
 const IMAGE = process.env.SMOKE_IMAGE || 'n8nio/n8n:local';
 // Runners images to exec-check. Tracks DOCKER_BUILD_DISTROLESS so the same
-// flag drives both build and check.
-const RUNNERS_IMAGES = [
-	'n8nio/runners:local',
-	...(process.env.DOCKER_BUILD_DISTROLESS === 'true' ? ['n8nio/runners:local-distroless'] : []),
-];
+// flag drives both build and check. SMOKE_RUNNERS_IMAGES (comma-separated)
+// overrides both, so the release job can point this at the pushed tags.
+const RUNNERS_IMAGES = process.env.SMOKE_RUNNERS_IMAGES
+	? process.env.SMOKE_RUNNERS_IMAGES.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean)
+	: [
+			'n8nio/runners:local',
+			...(process.env.DOCKER_BUILD_DISTROLESS === 'true'
+				? ['n8nio/runners:local-distroless']
+				: []),
+		];
 const TIMEOUT = '45s';
 // Matches an n8n runtime image ref (e.g. `n8nio/n8n:2.4.4`, `ghcr.io/n8n-io/n8n@sha256:…`)
 // but not sidecars like `n8nio/runners:…` or controller images that happen to contain "n8n".
