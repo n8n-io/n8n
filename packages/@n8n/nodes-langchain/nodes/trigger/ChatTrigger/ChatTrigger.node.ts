@@ -35,6 +35,7 @@ import {
 import {
 	buildInnerFrameSrc,
 	CHAT_FRAME_SANDBOX,
+	CHAT_SHELL_INNER_PARAM,
 	isChatOAuth2Enabled,
 	isShellInnerRequest,
 } from './shell';
@@ -42,6 +43,47 @@ import { createPage, createShellPage } from './templates';
 import { assertValidLoadPreviousSessionOption, type ChatFrameIdentity } from './types';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
+
+function getQueryParameters(
+	queryParameters: Request['query'],
+	excludedKey?: string,
+): Record<string, string | string[]> {
+	const query: Record<string, string | string[]> = {};
+
+	for (const [key, rawValue] of Object.entries(queryParameters)) {
+		if (key === excludedKey) continue;
+
+		const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+		for (const value of values) {
+			if (typeof value !== 'string') continue;
+
+			const existing = query[key];
+			if (existing === undefined) {
+				query[key] = value;
+			} else if (Array.isArray(existing)) {
+				existing.push(value);
+			} else {
+				query[key] = [existing, value];
+			}
+		}
+	}
+
+	return query;
+}
+
+function appendQueryParameters(url: string, queryParameters: Request['query']): string {
+	const result = new URL(url);
+	const query = getQueryParameters(queryParameters, CHAT_SHELL_INNER_PARAM);
+
+	for (const [key, value] of Object.entries(query)) {
+		for (const item of Array.isArray(value) ? value : [value]) {
+			result.searchParams.append(key, item);
+		}
+	}
+
+	return result.toString();
+}
+
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
@@ -883,6 +925,24 @@ export class ChatTrigger extends Node {
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const bodyData = ctx.getBodyData() ?? {};
+		if (typeof bodyData.query === 'string') {
+			try {
+				bodyData.query = JSON.parse(bodyData.query);
+			} catch {
+				// Ignore malformed query payloads and keep the original raw value for compatibility.
+			}
+		}
+		const requestQuery = getQueryParameters(req.query, CHAT_SHELL_INNER_PARAM);
+		if (Object.keys(requestQuery).length > 0) {
+			bodyData.query = {
+				...requestQuery,
+				...(typeof bodyData.query === 'object' &&
+				bodyData.query !== null &&
+				!Array.isArray(bodyData.query)
+					? bodyData.query
+					: {}),
+			};
+		}
 
 		try {
 			// The editor's canvas chat can't supply webhook credentials, so its session-scoped
@@ -912,8 +972,10 @@ export class ChatTrigger extends Node {
 					throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
 				}
 
-				const webhookUrl =
-					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
+				const webhookUrl = appendQueryParameters(
+					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw,
+					req.query,
+				);
 				const authentication = ctx.getNodeParameter('authentication') as
 					| 'none'
 					| 'basicAuth'

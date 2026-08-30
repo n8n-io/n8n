@@ -22,6 +22,53 @@ describe('sendMessageStreaming', () => {
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		window.history.pushState({}, '', '/chat?q=123&foo=bar');
+	});
+
+	it('should include the current page query parameters in the webhook payload', async () => {
+		const mockResponse = {
+			ok: true,
+			status: 200,
+			body: new ReadableStream({
+				start(controller) {
+					controller.enqueue(
+						new TextEncoder().encode(
+							JSON.stringify({
+								type: 'end',
+								metadata: { nodeId: 'node-1', runIndex: 0 },
+							}) + '\n',
+						),
+					);
+					controller.close();
+				},
+			}),
+			headers: new Headers(),
+		} as Response;
+
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+		await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+			onChunk: vi.fn(),
+			onBeginMessage: vi.fn(),
+			onEndMessage: vi.fn(),
+		});
+
+		expect(fetch).toHaveBeenCalledWith('https://test.example.com/webhook', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'text/plain',
+			},
+			body: JSON.stringify({
+				action: 'sendMessage',
+				sessionId: 'test-session-id',
+				chatInput: 'Test message',
+				query: {
+					q: '123',
+					foo: 'bar',
+				},
+			}),
+		});
 	});
 
 	it('should call the webhook URL with correct parameters', async () => {

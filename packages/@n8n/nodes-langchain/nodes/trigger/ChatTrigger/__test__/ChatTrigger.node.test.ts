@@ -53,6 +53,7 @@ describe('ChatTrigger Node', () => {
 
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
+		mockContext.customData = { set: vi.fn() } as unknown as IWebhookFunctions['customData'];
 		mockContext.getNode.mockReturnValue({
 			name: 'Chat Trigger',
 			type: 'n8n-nodes-langchain.chatTrigger',
@@ -211,6 +212,47 @@ describe('ChatTrigger Node', () => {
 				webhookResponse: { status: 200 },
 				workflowData: expect.any(Array),
 			});
+		});
+
+		it('passes serialized query parameters through the workflow payload', async () => {
+			mockRequest.query = { test: '123' };
+			mockContext.getBodyData.mockReturnValue({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+				query: '{"q":"123","foo":"bar"}',
+			});
+
+			await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
+				{
+					json: {
+						action: 'sendMessage',
+						chatInput: 'Hello',
+						query: { test: '123', q: '123', foo: 'bar' },
+					},
+				},
+			]);
+		});
+
+		it('does not include the internal shell parameter in the workflow payload', async () => {
+			mockRequest.query = { n8nShellInner: '1', test: '123' };
+			mockContext.getBodyData.mockReturnValue({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+			});
+
+			await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
+				{
+					json: {
+						action: 'sendMessage',
+						chatInput: 'Hello',
+						query: { test: '123' },
+					},
+				},
+			]);
 		});
 
 		it('should enable streaming when availableInChat is true and responseMode is not set', async () => {
@@ -501,6 +543,17 @@ describe('ChatTrigger Node', () => {
 			);
 			// No author-supplied CSS or markup on the trusted document.
 			expect(renderedPage()).not.toContain('createChat');
+		});
+
+		it('forwards page query parameters to the chat webhook URL', async () => {
+			mockRequest.originalUrl = '/webhook/abc/chat?test=123';
+			mockRequest.query = { test: '123' };
+
+			await renderSetupPage('none');
+
+			expect(renderedPage()).toContain(
+				'webhookUrl: "http://localhost:5678/webhook/abc/chat?test=123",',
+			);
 		});
 
 		it('renders the author chat for the frame own request', async () => {
