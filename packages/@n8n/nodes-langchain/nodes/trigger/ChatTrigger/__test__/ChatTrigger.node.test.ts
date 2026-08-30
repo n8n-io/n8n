@@ -235,6 +235,47 @@ describe('ChatTrigger Node', () => {
 			]);
 		});
 
+		it('prefers the page URL query over any query previously set in the chat payload', async () => {
+			mockRequest.query = { q: '123', foo: 'bar' };
+			mockContext.getBodyData.mockReturnValue({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+				query: { q: 'override', baz: 'qux' },
+			});
+
+			await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
+				{
+					json: {
+						action: 'sendMessage',
+						chatInput: 'Hello',
+						query: { q: '123', foo: 'bar', baz: 'qux' },
+					},
+				},
+			]);
+		});
+
+		it('preserves special keys in the page query without mutating the prototype', async () => {
+			mockRequest.query = { constructor: 'abc', __proto__: 'danger', foo: 'bar' };
+			mockContext.getBodyData.mockReturnValue({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+			});
+
+			await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
+				{
+					json: {
+						action: 'sendMessage',
+						chatInput: 'Hello',
+						query: { constructor: 'abc', __proto__: 'danger', foo: 'bar' },
+					},
+				},
+			]);
+		});
+
 		it('does not include the internal shell parameter in the workflow payload', async () => {
 			mockRequest.query = { n8nShellInner: '1', test: '123' };
 			mockContext.getBodyData.mockReturnValue({
