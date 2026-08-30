@@ -257,7 +257,16 @@ describe('ChatTrigger Node', () => {
 		});
 
 		it('preserves special keys in the page query without mutating the prototype', async () => {
-			mockRequest.query = { constructor: 'abc', __proto__: 'danger', foo: 'bar' };
+			const pageQuery = Object.create(null) as Record<string, string>;
+			pageQuery.constructor = 'abc';
+			Object.defineProperty(pageQuery, '__proto__', {
+				value: 'danger',
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
+			pageQuery.foo = 'bar';
+			mockRequest.query = pageQuery;
 			mockContext.getBodyData.mockReturnValue({
 				action: 'sendMessage',
 				chatInput: 'Hello',
@@ -265,12 +274,22 @@ describe('ChatTrigger Node', () => {
 
 			await chatTrigger.webhook(mockContext);
 
+			const expectedQuery = Object.create(null) as Record<string, string>;
+			expectedQuery.constructor = 'abc';
+			Object.defineProperty(expectedQuery, '__proto__', {
+				value: 'danger',
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
+			expectedQuery.foo = 'bar';
+
 			expect(mockContext.helpers.returnJsonArray).toHaveBeenCalledWith([
 				{
 					json: {
 						action: 'sendMessage',
 						chatInput: 'Hello',
-						query: { constructor: 'abc', __proto__: 'danger', foo: 'bar' },
+						query: expectedQuery,
 					},
 				},
 			]);
