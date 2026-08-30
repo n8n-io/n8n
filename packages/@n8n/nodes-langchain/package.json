@@ -138,6 +138,7 @@
       "dist/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.js",
       "dist/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.js",
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
+      "dist/nodes/llms/LmChatOpenAiCodex/LmChatOpenAiCodex.node.js",
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
       "dist/nodes/llms/LMLemonade/LmLemonade.node.js",

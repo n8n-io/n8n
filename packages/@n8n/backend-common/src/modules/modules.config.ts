@@ -22,6 +22,7 @@ export const MODULE_NAMES = [
 	'log-streaming',
 	'ldap',
 	'quick-connect',
+	'openai-codex-oauth',
 	'workflow-builder',
 	'favorites',
 	'redaction',

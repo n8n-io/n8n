@@ -21,6 +21,7 @@ import CredentialSharing from './CredentialSharing.ee.vue';
 import Modal from '@/app/components/Modal.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
 import { useMessage } from '@/app/composables/useMessage';
+import { completeCodexOAuth, startCodexOAuth } from '../../codexOAuth.api';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@n8n/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
@@ -241,6 +242,7 @@ const {
 	credentialType,
 	parentTypes,
 	isOAuthType,
+	isCodexOAuthType,
 	isOAuthConnected,
 	managedOAuthAvailable,
 	isEditingManagedCredential,
@@ -1042,6 +1044,61 @@ async function deleteCredential() {
 	closeDialog();
 }
 
+/**
+ * Codex sign-in.
+ *
+ * Unlike the generic flow the browser never returns to n8n: the authorization
+ * server only accepts a fixed loopback redirect. Either the backend bound that
+ * port and reads the callback itself, or — when n8n and the browser are on
+ * different hosts — the user copies the redirect address back here.
+ */
+async function codexAuthorize(credentialId: string, popup: Window): Promise<void> {
+	try {
+		const flow = await startCodexOAuth(rootStore.restApiContext, credentialId);
+		popup.location.href = flow.authUrl;
+
+		let redirectInput: string | undefined;
+		if (!flow.listening) {
+			const response = await message.prompt(
+				i18n.baseText('credentialEdit.credentialEdit.codex.pasteRedirect.message'),
+				{
+					confirmButtonText: i18n.baseText('credentialEdit.credentialConfig.connect'),
+					cancelButtonText: i18n.baseText('generic.cancel'),
+					inputPlaceholder: 'http://localhost:1455/auth/callback?code=…',
+				},
+			);
+			if (response.action !== MODAL_CONFIRM || !response.value) {
+				popup.close();
+				return;
+			}
+			redirectInput = response.value;
+		}
+
+		await completeCodexOAuth(rootStore.restApiContext, flow.flowId, redirectInput);
+		popup.close();
+
+		// Reload so the freshly stored token drives the connected state.
+		if (currentCredential.value) {
+			await loadCurrentCredential();
+		}
+		credentialData.value = { ...credentialData.value, accessToken: 'connected' };
+		authError.value = '';
+
+		toast.showMessage({
+			title: i18n.baseText('nodeCredentials.oauth.accountConnected'),
+			type: 'success',
+		});
+	} catch (error) {
+		popup.close();
+		toast.showError(
+			error,
+			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
+		);
+	} finally {
+		credentialsStore.pendingOAuthRefresh = false;
+	}
+}
+
 async function oAuthCredentialAuthorize() {
 	let url;
 
@@ -1071,6 +1128,11 @@ async function oAuthCredentialAuthorize() {
 	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
 	if (!credential) {
 		oauthPopup.close();
+		return;
+	}
+
+	if (isCodexOAuthType.value) {
+		await codexAuthorize(credential.id, oauthPopup);
 		return;
 	}
 

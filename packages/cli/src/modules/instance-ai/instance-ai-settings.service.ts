@@ -93,13 +93,21 @@ export const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	xAiApi: 'xai',
 	openRouterApi: 'openrouter',
 	cohereApi: 'cohere',
+	openAiCodexOAuthApi: 'openai-codex',
 } satisfies Record<(typeof INSTANCE_AI_MODEL_CREDENTIAL_TYPES)[number], string>;
+
+/** The Codex credential holds an OAuth access token instead of an API key. */
+const CODEX_CREDENTIAL_TYPE = 'openAiCodexOAuthApi';
+
+/** Refresh a Codex token this far ahead of its expiry, to absorb clock skew. */
+const CODEX_EXPIRY_SKEW_MS = 60_000;
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
 	openAiApi: 'url',
 	anthropicApi: 'url',
 	googlePalmApi: 'host',
+	openAiCodexOAuthApi: 'url',
 };
 
 function requireConnectionValue(
@@ -151,6 +159,18 @@ function modelCredentialHeaders(
 	data: Record<string, unknown>,
 ): Record<string, string> | undefined {
 	const headers: Record<string, string> = {};
+	if (credentialType === CODEX_CREDENTIAL_TYPE) {
+		// Codex rejects requests whose account header does not match the token.
+		if (typeof data.accountId === 'string') {
+			const accountId = data.accountId.trim();
+			if (accountId) headers['chatgpt-account-id'] = accountId;
+		}
+		// Workspaces with enforced data residency answer 401 without this.
+		if (typeof data.residency === 'string') {
+			const residency = data.residency.trim();
+			if (residency) headers['x-openai-internal-codex-residency'] = residency;
+		}
+	}
 	if (credentialType === 'openAiApi' && typeof data.organizationId === 'string') {
 		const organizationId = data.organizationId.trim();
 		if (organizationId) headers['OpenAI-Organization'] = organizationId;
@@ -1430,7 +1450,8 @@ export class InstanceAiSettingsService {
 			);
 			if (!resolved) return null;
 
-			const config = this.buildModelConfig(resolved.type, resolved.data, modelName);
+			const data = await this.refreshCodexCredentialIfExpired(resolved, resolved.data);
+			const config = this.buildModelConfig(resolved.type, data, modelName);
 			if (!config) {
 				this.warnCredentialFallback(
 					'model',
@@ -1446,7 +1467,8 @@ export class InstanceAiSettingsService {
 		credential: CredentialsEntity,
 		modelName: string,
 	): Promise<ModelConfig | null> {
-		const data = await this.credentialsService.decrypt(credential, true);
+		const decrypted = await this.credentialsService.decrypt(credential, true);
+		const data = await this.refreshCodexCredentialIfExpired(credential, decrypted);
 		return this.buildModelConfig(credential.type, data, modelName);
 	}
 
@@ -1460,14 +1482,65 @@ export class InstanceAiSettingsService {
 			return null;
 		}
 
-		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
+		// Codex authenticates with a rotating OAuth access token, not an API key.
+		const isCodex = credentialType === CODEX_CREDENTIAL_TYPE;
+		const rawKey = isCodex ? data.accessToken : data.apiKey;
+		const apiKey = typeof rawKey === 'string' ? rawKey : '';
 		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
+		// The `openai-codex` provider owns the Responses API choice and the
+		// `store: false`/originator requirements, so nothing extra is emitted here.
 		return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}), ...(headers ? { headers } : {}) };
+	}
+
+	/**
+	 * Exchanges an expired Codex access token for a fresh one and writes the
+	 * result back, so later runs reuse it.
+	 *
+	 * OpenAI rotates the refresh token on every call, so the whole credential must
+	 * be replaced. A failure here is non-fatal: the caller falls back to the stored
+	 * token and lets the request surface the real authorization error.
+	 */
+	private async refreshCodexCredentialIfExpired(
+		credential: Pick<CredentialsEntity, 'id' | 'name' | 'type'>,
+		data: ICredentialDataDecryptedObject,
+	): Promise<ICredentialDataDecryptedObject> {
+		if (credential.type !== CODEX_CREDENTIAL_TYPE) return data;
+
+		const expiresAt = typeof data.expiresAt === 'number' ? data.expiresAt : 0;
+		const hasToken = typeof data.accessToken === 'string' && data.accessToken.length > 0;
+		if (hasToken && expiresAt - CODEX_EXPIRY_SKEW_MS > Date.now()) return data;
+
+		const refreshToken = data.refreshToken;
+		if (typeof refreshToken !== 'string' || !refreshToken) return data;
+
+		try {
+			const { refreshCredentials } = await import('../openai-codex-oauth/codex-oauth.js');
+			const refreshed = await refreshCredentials(refreshToken);
+			const updated: ICredentialDataDecryptedObject = { ...data, ...refreshed };
+
+			const encrypted = await this.credentialsService.createEncryptedData({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: updated,
+			});
+			await this.credentialsService.update(credential.id, encrypted, updated);
+
+			return updated;
+		} catch (error: unknown) {
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.warn('Could not refresh the Codex access token; using the stored one', {
+					credentialId: credential.id,
+					error: ensureError(error).message,
+				});
+			return data;
+		}
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────

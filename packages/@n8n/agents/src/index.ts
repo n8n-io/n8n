@@ -281,6 +281,8 @@ export type {
 
 export { createModel } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
+export { setCodexSocketFactory, closeCodexWebSockets } from './runtime/model/codex-websocket';
+export type { CodexSocket, SocketFactory } from './runtime/model/codex-websocket';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,

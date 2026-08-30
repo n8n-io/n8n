@@ -17,6 +17,13 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 		// OpenAI can serve /responses. Leave unset to keep the heuristic.
 		apiStyle: z.enum(['responses', 'chat']).optional(),
 	}),
+	/**
+	 * Codex on a ChatGPT subscription. A provider of its own rather than `openai`
+	 * with options: it is reached through a different endpoint, authenticates with
+	 * an OAuth token instead of an API key, and exposes a narrower tool surface —
+	 * so conflating the two would advertise capabilities it does not serve.
+	 */
+	'openai-codex': apiKeyCreds,
 	custom: apiKeyCreds.extend({
 		baseURL: z.string().min(1, 'baseURL is required'),
 		supportsStructuredOutputs: z.boolean().optional(),

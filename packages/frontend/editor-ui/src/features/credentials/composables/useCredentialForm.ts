@@ -21,6 +21,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
 
 import type { IUpdateInformation } from '@/Interface';
+import { CODEX_OAUTH_CREDENTIAL_TYPE } from '@/features/credentials/codexOAuth.constants';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { setParameterValue } from '@/app/utils/parameterUtils';
@@ -176,12 +177,22 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	);
 
 	// --- OAuth / managed derivations ---------------------------------------
+
+	/**
+	 * Codex signs in against a fixed loopback redirect, so it cannot extend
+	 * `oAuth2Api`. It still needs the connect/disconnect UI, hence its own flag:
+	 * it counts as an OAuth type everywhere except where the instance callback URL
+	 * is involved.
+	 */
+	const isCodexOAuthType = computed(() => credentialTypeName.value === CODEX_OAUTH_CREDENTIAL_TYPE);
+
 	const isOAuthType = computed(
 		() =>
 			!!credentialTypeName.value &&
-			(((credentialTypeName.value === 'oAuth2Api' || parentTypes.value.includes('oAuth2Api')) &&
-				(credentialData.value.grantType === 'authorizationCode' ||
-					credentialData.value.grantType === 'pkce')) ||
+			(isCodexOAuthType.value ||
+				((credentialTypeName.value === 'oAuth2Api' || parentTypes.value.includes('oAuth2Api')) &&
+					(credentialData.value.grantType === 'authorizationCode' ||
+						credentialData.value.grantType === 'pkce')) ||
 				credentialTypeName.value === 'oAuth1Api' ||
 				parentTypes.value.includes('oAuth1Api')),
 	);
@@ -202,6 +213,8 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 	const isOAuthConnected = computed(() => {
 		if (!isOAuthType.value) return false;
+		// Codex stores the token itself rather than an `oauthTokenData` blob.
+		if (isCodexOAuthType.value) return !!credentialData.value.accessToken;
 		if (isResolvable.value) return connectedByMe.value;
 		return !!credentialData.value.oauthTokenData;
 	});
@@ -653,6 +666,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		mergedProperties,
 		parentTypes,
 		isOAuthType,
+		isCodexOAuthType,
 		isOAuthConnected,
 		isManagedOAuthMode,
 		managedOAuthAvailable,

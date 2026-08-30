@@ -34,6 +34,12 @@ function getOptionsForProviders(
 	providers: readonly InstanceAiCatalogProvider[],
 	catalog: InstanceAiModelCatalogResponse['models'] | null,
 	currentModel: string,
+	/**
+	 * Which curated lists to offer. Defaults to the catalog providers; Codex
+	 * separates the two because it serves OpenAI's models through its own
+	 * shortlist while publishing no catalog of its own.
+	 */
+	curatedProviders: readonly InstanceAiModelProvider[] = providers,
 ): InstanceAiModelOption[] {
 	const catalogModels = providers.flatMap((provider) => catalog?.[provider] ?? []);
 	const catalogById = new Map<string, InstanceAiCatalogModel>();
@@ -43,7 +49,7 @@ function getOptionsForProviders(
 
 	const seen = new Set<string>();
 	const recommended: InstanceAiModelOption[] = [];
-	for (const [providerIndex, provider] of providers.entries()) {
+	for (const [providerIndex, provider] of curatedProviders.entries()) {
 		for (const [modelIndex, id] of INSTANCE_AI_CURATED_MODELS[provider].entries()) {
 			if (seen.has(id)) continue;
 			seen.add(id);
@@ -78,6 +84,10 @@ export function getInstanceAiModelOptions(
 	currentModel: string,
 ): InstanceAiModelOption[] {
 	if (provider === 'custom') return [];
+	// Codex reads OpenAI's catalog for display names, but offers its own shortlist.
+	if (provider === 'openai-codex') {
+		return getOptionsForProviders(['openai'], catalog, currentModel, ['openai-codex']);
+	}
 	return getOptionsForProviders([provider], catalog, currentModel);
 }
 

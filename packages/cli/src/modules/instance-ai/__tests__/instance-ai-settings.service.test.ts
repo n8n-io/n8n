@@ -8,6 +8,7 @@ import type {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -28,6 +29,12 @@ import {
 	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 	InstanceAiSettingsService,
 } from '../instance-ai-settings.service';
+
+/** The settings service reaches the Codex token endpoint through a dynamic import. */
+const refreshCredentialsMock = vi.hoisted(() => vi.fn());
+vi.mock('../../openai-codex-oauth/codex-oauth.js', () => ({
+	refreshCredentials: refreshCredentialsMock,
+}));
 
 type CredentialOperationContext = NonNullable<
 	Parameters<InstanceCredentialBroker['clearForUse']>[1]
@@ -1981,6 +1988,170 @@ describe('InstanceAiSettingsService', () => {
 			expect(() =>
 				service.buildModelConfigForConnection({ type: 'openAiApi', data: {} }, 'gpt-5.4'),
 			).toThrow('The field "apiKey" or "url" is required');
+		});
+
+		describe('Codex OAuth connections', () => {
+			const codexData = {
+				accessToken: 'codex-access-token',
+				refreshToken: 'codex-refresh-token',
+				accountId: 'acc_1',
+				expiresAt: Date.now() + 3_600_000,
+				url: 'https://chatgpt.com/backend-api/codex',
+			};
+
+			it('maps the OAuth token onto the openai provider and forces the Responses API', () => {
+				const config = service.buildModelConfigForConnection(
+					{ type: 'openAiCodexOAuthApi', data: codexData },
+					'gpt-5.6-sol',
+				);
+
+				expect(config).toEqual({
+					// A provider of its own, so its narrower capabilities and its
+					// transport rules are not conflated with the OpenAI API's.
+					id: 'openai-codex/gpt-5.6-sol',
+					url: 'https://chatgpt.com/backend-api/codex',
+					// The access token stands in for the API key.
+					apiKey: 'codex-access-token',
+					headers: { 'chatgpt-account-id': 'acc_1' },
+				});
+			});
+
+			it('keeps the OpenAI API on its own provider id', () => {
+				const config = service.buildModelConfigForConnection(
+					{ type: 'openAiApi', data: { apiKey: 'key', url: 'https://proxy.local/v1' } },
+					'gpt-5.4',
+				);
+
+				expect(config).toMatchObject({ id: 'openai/gpt-5.4' });
+			});
+
+			it('sends the residency header when the workspace enforces one', () => {
+				const config = service.buildModelConfigForConnection(
+					{ type: 'openAiCodexOAuthApi', data: { ...codexData, residency: 'us' } },
+					'gpt-5.6-sol',
+				);
+
+				expect(config).toMatchObject({
+					headers: { 'chatgpt-account-id': 'acc_1', 'x-openai-internal-codex-residency': 'us' },
+				});
+			});
+
+			it('omits the residency header when no residency is stored', () => {
+				const config = service.buildModelConfigForConnection(
+					{ type: 'openAiCodexOAuthApi', data: codexData },
+					'gpt-5.6-sol',
+				);
+
+				expect(config).toMatchObject({ headers: { 'chatgpt-account-id': 'acc_1' } });
+				expect(config).not.toMatchObject({
+					headers: { 'x-openai-internal-codex-residency': expect.anything() },
+				});
+			});
+
+			it('omits the account header when the credential has no account id', () => {
+				const config = service.buildModelConfigForConnection(
+					{ type: 'openAiCodexOAuthApi', data: { ...codexData, accountId: '   ' } },
+					'gpt-5.6-sol',
+				);
+
+				expect(config).not.toHaveProperty('headers');
+			});
+
+			/** Drives the user-credential branch of `resolveModelConfig`. */
+			const resolveWithUserCredential = async (data: ICredentialDataDecryptedObject) => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(
+					mock<CredentialsEntity>({
+						id: 'user-credential',
+						name: 'My Codex',
+						type: 'openAiCodexOAuthApi',
+					}),
+				);
+				credentialsService.decrypt.mockResolvedValue(data);
+
+				return await service.resolveModelConfig(
+					mock<User>({
+						settings: {
+							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-5.6-sol' },
+						},
+					}),
+				);
+			};
+
+			it('refreshes an expired token and persists the rotated credentials', async () => {
+				const rotated = {
+					accessToken: 'fresh-access',
+					refreshToken: 'rotated-refresh',
+					expiresAt: Date.now() + 3_600_000,
+					accountId: 'acc_1',
+				};
+				refreshCredentialsMock.mockResolvedValue(rotated);
+				credentialsService.createEncryptedData.mockResolvedValue({
+					id: 'user-credential',
+				} as never);
+
+				const config = await resolveWithUserCredential({
+					...codexData,
+					expiresAt: Date.now() - 1_000,
+				});
+
+				expect(refreshCredentialsMock).toHaveBeenCalledWith('codex-refresh-token');
+				// The rotated refresh token must be written back, or the next refresh fails.
+				expect(credentialsService.createEncryptedData).toHaveBeenCalledWith(
+					expect.objectContaining({
+						id: 'user-credential',
+						data: expect.objectContaining({ refreshToken: 'rotated-refresh' }),
+					}),
+				);
+				expect(credentialsService.update).toHaveBeenCalled();
+				expect(config).toMatchObject({ apiKey: 'fresh-access' });
+			});
+
+			it('refreshes a token that is inside the skew window but not yet expired', async () => {
+				refreshCredentialsMock.mockResolvedValue({
+					accessToken: 'fresh-access',
+					refreshToken: 'rotated-refresh',
+					expiresAt: Date.now() + 3_600_000,
+					accountId: 'acc_1',
+				});
+				credentialsService.createEncryptedData.mockResolvedValue({
+					id: 'user-credential',
+				} as never);
+
+				await resolveWithUserCredential({ ...codexData, expiresAt: Date.now() + 30_000 });
+
+				expect(refreshCredentialsMock).toHaveBeenCalled();
+			});
+
+			it('does not refresh a token that is still comfortably valid', async () => {
+				const config = await resolveWithUserCredential(codexData);
+
+				expect(refreshCredentialsMock).not.toHaveBeenCalled();
+				expect(config).toMatchObject({ apiKey: 'codex-access-token' });
+			});
+
+			it('falls back to the stored token when refreshing fails', async () => {
+				refreshCredentialsMock.mockRejectedValue(new Error('network down'));
+
+				const config = await resolveWithUserCredential({
+					...codexData,
+					expiresAt: Date.now() - 1_000,
+				});
+
+				// Non-fatal: let the actual request surface the authorization error.
+				expect(credentialsService.update).not.toHaveBeenCalled();
+				expect(config).toMatchObject({ apiKey: 'codex-access-token' });
+			});
+
+			it('does not attempt a refresh without a stored refresh token', async () => {
+				await resolveWithUserCredential({
+					...codexData,
+					refreshToken: '',
+					expiresAt: Date.now() - 1_000,
+				});
+
+				expect(refreshCredentialsMock).not.toHaveBeenCalled();
+			});
 		});
 
 		it('builds model configs from environment URL and API key combinations', async () => {

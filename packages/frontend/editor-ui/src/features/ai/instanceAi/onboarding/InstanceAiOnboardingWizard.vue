@@ -118,6 +118,13 @@ const modelConfig = computed(
 		INSTANCE_AI_MODEL_PROVIDERS.find(({ id }) => id === modelProvider.value) ??
 		DEFAULT_MODEL_PROVIDER,
 );
+/**
+ * Codex is connected by signing in, not by pasting a key, and signing in needs
+ * an existing credential to write the token onto. So here it is picked, never
+ * created inline.
+ */
+const isCodexProvider = computed(() => modelProvider.value === 'openai-codex');
+
 const modelConnectionLocked = computed(() => store.settings?.envManaged?.model?.provider === true);
 const modelNameLocked = computed(() => store.settings?.envManaged?.model?.model === true);
 const modelOptions = computed(() =>
@@ -188,13 +195,12 @@ const environmentManaged = computed(() => {
 	if (props.step === 'search') return searchEnvManaged.value;
 	return false;
 });
-const showExistingCredentialSelect = computed(
-	() =>
-		props.surface === 'settings' &&
-		!modelConnectionLocked.value &&
-		!environmentManaged.value &&
-		allCompatibleCredentials.value.length > 1,
-);
+const showExistingCredentialSelect = computed(() => {
+	if (modelConnectionLocked.value || environmentManaged.value) return false;
+	// Codex has no inline alternative, so the picker is its only way in.
+	if (isCodexProvider.value) return true;
+	return props.surface === 'settings' && allCompatibleCredentials.value.length > 1;
+});
 
 function formSnapshot(): string {
 	return JSON.stringify({
@@ -219,6 +225,8 @@ const stepReady = computed(() => {
 		if (modelConnectionLocked.value)
 			return modelNameLocked.value || modelName.value.trim().length > 0;
 		if (selectedExistingCredentialId.value) return modelName.value.trim().length > 0;
+		// Codex cannot be completed here: it needs a credential connected first.
+		if (isCodexProvider.value) return false;
 		return Boolean(
 			modelName.value.trim() &&
 				(modelProvider.value === 'custom' ? modelBaseUrl.value.trim() : modelApiKey.value.trim()),
@@ -842,7 +850,12 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 						/>
 					</N8nInputLabel>
 
+					<N8nCallout v-if="isCodexProvider && !selectedExistingCredentialId" theme="info">
+						{{ i18n.baseText('instanceAi.onboarding.model.codexHint') }}
+					</N8nCallout>
+
 					<N8nInputLabel
+						v-if="!isCodexProvider"
 						:class="$style.compactLabel"
 						:label="i18n.baseText('instanceAi.onboarding.model.apiKey')"
 						input-name="assistant-model-api-key"

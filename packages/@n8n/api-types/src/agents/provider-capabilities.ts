@@ -95,6 +95,17 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: ['openai.web_search', 'openai.image_generation'],
 		attachments: { image: true, pdf: true, audio: false },
 	},
+	// Codex on a ChatGPT subscription. Deliberately narrower than `openai`: the
+	// subscription endpoint is a coding surface whose hosted-tool support is not
+	// the API's. Advertising a tool it rejects fails the whole request, so these
+	// stay off until confirmed against the live endpoint.
+	'openai-codex': {
+		thinking: 'reasoningEffort',
+		promptCaching: true,
+		webSearch: false,
+		providerTools: [],
+		attachments: { image: true, pdf: false, audio: false },
+	},
 	google: {
 		thinking: false,
 		promptCaching: false,

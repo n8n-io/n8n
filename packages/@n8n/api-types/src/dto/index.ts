@@ -348,6 +348,11 @@ export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-se
 export { GetQuickConnectApiKeyDto } from './quick-connect/create-quick-connect-credential.dto';
 
 export {
+	StartCodexOAuthFlowDto,
+	CompleteCodexOAuthFlowDto,
+} from './openai-codex-oauth/openai-codex-oauth.dto';
+
+export {
 	ExecutionRedactionQueryDtoSchema,
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';

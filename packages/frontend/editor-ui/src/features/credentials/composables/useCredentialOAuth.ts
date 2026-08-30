@@ -18,10 +18,17 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getTrustedOAuthOrigins, hasOAuthTokenData, waitForOAuthCallback } from './oauthCallback';
+import { completeCodexOAuth, startCodexOAuth } from '../codexOAuth.api';
+import { CODEX_OAUTH_CREDENTIAL_TYPE } from '../codexOAuth.constants';
 
 interface OAuthAuthorizationOptions {
 	abortOnPopupClose?: boolean;
 	preopenedPopup?: Window;
+	/**
+	 * Codex only: asks the user for the redirect URL when the backend could not
+	 * bind the loopback callback. Resolves to undefined when they cancel.
+	 */
+	promptForRedirect?: (authUrl: string) => Promise<string | undefined>;
 }
 
 /**
@@ -65,6 +72,9 @@ export function useCredentialOAuth() {
 	function isOAuthCredentialType(credentialTypeName: string): boolean {
 		const parentTypes = getParentTypes(credentialTypeName);
 		return (
+			// Codex extends neither base type — its redirect URI is fixed — but it is
+			// still connected rather than typed in.
+			credentialTypeName === CODEX_OAUTH_CREDENTIAL_TYPE ||
 			credentialTypeName === 'oAuth2Api' ||
 			credentialTypeName === 'oAuth1Api' ||
 			parentTypes.includes('oAuth2Api') ||
@@ -227,6 +237,52 @@ export function useCredentialOAuth() {
 	}
 
 	/**
+	 * Codex sign-in. Distinct from the generic flow because the authorization
+	 * server only accepts a fixed loopback redirect: the browser never comes back
+	 * to n8n, so there is no callback to listen for here. Either the backend
+	 * captured the loopback itself, or the user pastes the redirect URL back.
+	 */
+	async function authorizeCodex(
+		credential: ICredentialsResponse,
+		options: OAuthAuthorizationOptions = {},
+	): Promise<boolean> {
+		const popup = options.preopenedPopup ?? openOAuthPopup('about:blank');
+		if (!popup) {
+			showPopupBlockedError();
+			return false;
+		}
+
+		try {
+			const flow = await startCodexOAuth(rootStore.restApiContext, credential.id);
+			popup.location.href = flow.authUrl;
+
+			// Without a listener the backend cannot observe the callback, so the code
+			// has to travel back through the user.
+			const redirectInput = flow.listening
+				? undefined
+				: await options.promptForRedirect?.(flow.authUrl);
+
+			if (!flow.listening && !redirectInput) {
+				popup.close();
+				return false;
+			}
+
+			await completeCodexOAuth(rootStore.restApiContext, flow.flowId, redirectInput);
+			popup.close();
+
+			toast.showMessage({
+				title: i18n.baseText('nodeCredentials.oauth.accountConnected'),
+				type: 'success',
+			});
+			return true;
+		} catch (error) {
+			popup.close();
+			toast.showError(error, i18n.baseText('nodeCredentials.oauth.accountConnectionFailed'));
+			return false;
+		}
+	}
+
+	/**
 	 * Authorize OAuth credentials by opening a popup and listening for callback.
 	 * Returns true if OAuth was successful, false if cancelled or failed.
 	 *
@@ -238,6 +294,10 @@ export function useCredentialOAuth() {
 		signal?: AbortSignal,
 		options: OAuthAuthorizationOptions = {},
 	): Promise<boolean> {
+		if (credential.type === CODEX_OAUTH_CREDENTIAL_TYPE) {
+			return await authorizeCodex(credential, options);
+		}
+
 		// window.open must run within the click's transient user activation:
 		// opening after the network round trips below gets the popup blocked on
 		// slow connections (Chrome expires activation after ~5s) and in stricter

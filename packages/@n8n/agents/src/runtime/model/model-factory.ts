@@ -4,6 +4,7 @@ import { ensureUrlPathSuffix } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import { withCodexCompat } from './codex-compat';
 import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
 	type ProviderId,
@@ -170,6 +171,17 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				(apiStyle === undefined &&
 					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
 			return useChat ? provider.chat(model) : provider(model);
+		},
+	},
+	/**
+	 * Codex always speaks the Responses API behind its own base URL, and needs the
+	 * request adjustments in `codex-compat` — both are properties of the provider,
+	 * so neither is left to per-credential configuration.
+	 */
+	'openai-codex': {
+		build: (creds, model, fetch) => {
+			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
+			return createOpenAI({ ...creds, fetch: withCodexCompat(fetch) })(model);
 		},
 	},
 	custom: {

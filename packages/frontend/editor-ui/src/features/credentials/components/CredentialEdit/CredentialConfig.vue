@@ -11,6 +11,7 @@ import type {
 import { isCommunityPackageName } from 'n8n-workflow';
 
 import type { IUpdateInformation } from '@/Interface';
+import { CODEX_OAUTH_CREDENTIAL_TYPE } from '../../codexOAuth.constants';
 import CredentialModeSelector, { type CredentialModeOption } from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
@@ -197,6 +198,12 @@ const documentationUrl = computed(() => {
 
 	return url.href;
 });
+
+/**
+ * Codex is an OAuth type but has no instance callback URL: its redirect is a
+ * fixed loopback address, so the copy-the-redirect-URL step does not apply.
+ */
+const isCodexOAuthType = computed(() => credentialTypeName.value === CODEX_OAUTH_CREDENTIAL_TYPE);
 
 const isGoogleOAuthType = computed(
 	() =>
@@ -397,7 +404,8 @@ async function onInstanceAiCredentialHelpClick() {
 		...(placeholderTitles.length ? { placeholderTitles } : {}),
 		...(recipeDocsUrl ? { docsUrl: recipeDocsUrl } : {}),
 		documentationUrl: documentationUrl.value || undefined,
-		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
+		oauthRedirectUrl:
+			props.isOAuthType && !isCodexOAuthType.value ? oAuthCallbackUrl.value : undefined,
 	});
 	if (shouldCloseModal) {
 		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -699,7 +707,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 				<template v-if="canWrite">
 					<CopyInput
-						v-if="isOAuthType && !isManagedOAuth"
+						v-if="isOAuthType && !isManagedOAuth && !isCodexOAuthType"
 						:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 						:value="oAuthCallbackUrl"
 						:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"

@@ -1772,6 +1772,9 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_TYPES = [
 	'xAiApi',
 	'openRouterApi',
 	'cohereApi',
+	// Codex speaks the OpenAI Responses API behind its own base URL, so it maps
+	// to the `openai` provider but must opt out of the chat-completions heuristic.
+	'openAiCodexOAuthApi',
 ] as const;
 
 export const INSTANCE_AI_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
