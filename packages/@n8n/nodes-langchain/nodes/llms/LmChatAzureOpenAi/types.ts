@@ -56,6 +56,16 @@ export interface AzureOpenAIApiKeyModelConfig extends AzureOpenAIBaseModelConfig
 export interface AzureOpenAIOAuth2ModelConfig extends AzureOpenAIBaseModelConfig {
 	azureOpenAIApiKey?: undefined;
 	azureADTokenProvider: () => Promise<string>;
+	apimConfig?: ApimConfig;
+}
+
+/**
+ * APIM (Azure API Management) configuration for custom gateway access
+ */
+export interface ApimConfig {
+	basePath?: string;
+	queryParams?: Record<string, string>;
+	headers?: Record<string, string>;
 }
 
 /**
@@ -83,6 +93,19 @@ type TokenData = OAuth2CredentialData['oauthTokenData'] & {
 	expires_on: number;
 	ext_expires_on: number;
 };
+/**
+ * APIM credential field types for fixedCollection
+ */
+export interface ApimQueryParam {
+	name: string;
+	value: string;
+}
+
+export interface ApimHeader {
+	name: string;
+	value: string;
+}
+
 export type AzureEntraCognitiveServicesOAuth2ApiCredential = OAuth2CredentialData & {
 	customScopes: boolean;
 	authentication: string;
@@ -91,4 +114,26 @@ export type AzureEntraCognitiveServicesOAuth2ApiCredential = OAuth2CredentialDat
 	resourceName: string;
 	tenantId: string;
 	oauthTokenData: TokenData;
+	// APIM configuration fields
+	useApim?: boolean;
+	apimBasePath?: string;
+	apimQueryParams?: {
+		params?: ApimQueryParam[];
+	};
+	apimHeaders?: {
+		headers?: ApimHeader[];
+	};
+	// Approved models list (comma-separated)
+	approvedModels?: string;
 };
+
+/**
+ * API Key credential type used by Azure OpenAI node
+ */
+export interface AzureOpenAiApiCredential {
+	apiKey: string;
+	resourceName: string;
+	apiVersion: string;
+	endpoint?: string;
+	approvedModels?: string;
+}
