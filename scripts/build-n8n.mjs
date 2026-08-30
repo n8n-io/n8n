@@ -168,6 +168,8 @@ await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --fil
 // `files` field in their package.json. These are valid runtime deps but their
 // authors published full source trees; syft inventories the subdirs as phantom
 // packages with no license, which fails enterprise SBOM license gates.
+const closureKbBefore = Number((await $`du -sk ${config.compiledAppDir} | cut -f1`).stdout.trim());
+
 echo(chalk.yellow('INFO: Stripping test/example/benchmark dirs from production closure...'));
 const phantomDirs = [
 	'resolve/*/test',
@@ -250,14 +252,15 @@ echo(chalk.green('✅ Runtime assets intact'));
 const budget = await fs.readJson(
 	path.join(config.rootDir, '.github/test-metrics/image-closure-budget.json'),
 );
-const closureBytes = Number(
-	(await $`du -sk ${config.compiledAppDir} | cut -f1`).stdout.trim() * 1024,
-);
+const closureBytes =
+	Number((await $`du -sk ${config.compiledAppDir} | cut -f1`).stdout.trim()) * 1024;
 const closureFiles = Number((await $`find ${config.compiledAppDir} -type f | wc -l`).stdout.trim());
+const strippedMb = (closureKbBefore * 1024 - closureBytes) / 1e6;
 echo(
 	chalk.yellow(
-		`INFO: Closure ${(closureBytes / 1e6).toFixed(0)}MB / ${closureFiles} files ` +
-			`(budget ${(budget.maxBytes / 1e6).toFixed(0)}MB / ${budget.maxFiles})`,
+		`INFO: Closure ${((closureKbBefore * 1024) / 1e6).toFixed(0)}MB -> ` +
+			`${(closureBytes / 1e6).toFixed(0)}MB (stripped ${strippedMb.toFixed(0)}MB), ` +
+			`${closureFiles} files (budget ${(budget.maxBytes / 1e6).toFixed(0)}MB / ${budget.maxFiles})`,
 	),
 );
 if (closureBytes > budget.maxBytes || closureFiles > budget.maxFiles) {
