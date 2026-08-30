@@ -16,8 +16,12 @@ function getCurrentPageQuery(): Record<string, string | string[]> | undefined {
 		return undefined;
 	}
 
-	const query: Record<string, string | string[]> = {};
+	const query: Record<string, string | string[]> = Object.create(null);
 	for (const [key, value] of params.entries()) {
+		if (key === 'n8nShellInner') {
+			continue;
+		}
+
 		const existing = query[key];
 		if (existing === undefined) {
 			query[key] = value;
@@ -32,7 +36,7 @@ function getCurrentPageQuery(): Record<string, string | string[]> | undefined {
 		query[key] = [existing, value];
 	}
 
-	return query;
+	return Object.keys(query).length > 0 ? query : undefined;
 }
 
 export async function loadPreviousSession(sessionId: string, options: ChatOptions) {

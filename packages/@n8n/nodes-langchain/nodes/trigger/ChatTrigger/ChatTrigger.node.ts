@@ -94,7 +94,7 @@ function getQueryParameters(
 	queryParameters: Request['query'],
 	excludedKey?: string,
 ): Record<string, string | string[]> {
-	const query: Record<string, string | string[]> = {};
+	const query: Record<string, string | string[]> = Object.create(null);
 
 	for (const [key, rawValue] of Object.entries(queryParameters)) {
 		if (key === excludedKey) continue;
@@ -1017,14 +1017,16 @@ export class ChatTrigger extends Node {
 		}
 		const requestQuery = getQueryParameters(req.query, CHAT_SHELL_INNER_PARAM);
 		if (Object.keys(requestQuery).length > 0) {
-			bodyData.query = {
-				...requestQuery,
-				...(typeof bodyData.query === 'object' &&
+			const mergedQuery = Object.create(null) as Record<string, string | string[]>;
+			if (
+				typeof bodyData.query === 'object' &&
 				bodyData.query !== null &&
 				!Array.isArray(bodyData.query)
-					? bodyData.query
-					: {}),
-			};
+			) {
+				Object.assign(mergedQuery, bodyData.query);
+			}
+			Object.assign(mergedQuery, requestQuery);
+			bodyData.query = mergedQuery;
 		}
 
 		const authentication = ctx.getNodeParameter('authentication', 'none');
