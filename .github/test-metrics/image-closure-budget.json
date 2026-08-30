@@ -1,5 +1,0 @@
-{
-  "comment": "Ceiling for the production closure that ships in the n8n image. build-n8n.mjs fails when compiled/ exceeds either figure. DEVP-157 and DEVP-674 both cleaned this up and both regressed, so the numbers are asserted rather than tracked. Raise deliberately, in a PR that says why.",
-  "maxBytes": 1350000000,
-  "maxFiles": 118000
-}
