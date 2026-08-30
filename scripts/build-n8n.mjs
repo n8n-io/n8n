@@ -187,6 +187,20 @@ echo(chalk.green('✅ Phantom dirs stripped'));
 // isolated-vm ships prebuilds for darwin, win32 and linux. The image compiles
 // the binding from source, so these are unused. Removing them also keeps 15MB
 // out of the build context.
+// Third-party source maps are 20k files that only help when debugging inside a
+// dependency. First-party maps stay: source-map-support uses them for our own
+// stack traces. `file+packages` is how pnpm names the workspace packages.
+echo(chalk.yellow('INFO: Stripping third-party source maps...'));
+await $`find ${config.compiledAppDir}/node_modules/.pnpm -name "*.map" -not -path "*file+packages*" -delete 2>/dev/null || true`;
+echo(chalk.green('✅ Third-party source maps stripped'));
+
+// agent-browser ships one binary per platform. The image is Alpine, so only the
+// musl builds can run. Both architectures stay, because the build host does not
+// always match the image platform.
+echo(chalk.yellow('INFO: Stripping unusable agent-browser binaries...'));
+await $`find ${config.compiledAppDir}/node_modules/.pnpm -path "*agent-browser/bin/*" -type f -not -name "*linux-musl*" -delete 2>/dev/null || true`;
+echo(chalk.green('✅ Non-musl agent-browser binaries stripped'));
+
 echo(chalk.yellow('INFO: Stripping isolated-vm prebuilds...'));
 await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/isolated-vm/prebuilds" -exec rm -rf {} + 2>/dev/null || true`;
 echo(chalk.green('✅ isolated-vm prebuilds stripped'));
@@ -215,6 +229,10 @@ const runtimeAssetGlobs = [
 	'*/@n8n/instance-ai/skills/*',
 	'*/@n8n/instance-ai/knowledge-base/*',
 	'*/dist/node-definitions/*',
+	// source-map-support reads these for our own stack traces.
+	'*file+packages*/dist/*.js.map',
+	// The only agent-browser binary the Alpine image can run.
+	'*agent-browser/bin/*linux-musl*',
 ];
 
 echo(chalk.yellow('INFO: Verifying Runtime assets'));
@@ -226,6 +244,28 @@ for (const glob of runtimeAssetGlobs) {
 	}
 }
 echo(chalk.green('✅ Runtime assets intact'));
+
+// DEVP-157 and DEVP-674 both shrank this closure and both regressed. The budget
+// turns that into a build failure instead of a later discovery.
+const budget = await fs.readJson(
+	path.join(config.rootDir, '.github/test-metrics/image-closure-budget.json'),
+);
+const closureBytes = Number(
+	(await $`du -sk ${config.compiledAppDir} | cut -f1`).stdout.trim() * 1024,
+);
+const closureFiles = Number((await $`find ${config.compiledAppDir} -type f | wc -l`).stdout.trim());
+echo(
+	chalk.yellow(
+		`INFO: Closure ${(closureBytes / 1e6).toFixed(0)}MB / ${closureFiles} files ` +
+			`(budget ${(budget.maxBytes / 1e6).toFixed(0)}MB / ${budget.maxFiles})`,
+	),
+);
+if (closureBytes > budget.maxBytes || closureFiles > budget.maxFiles) {
+	echo(chalk.red('ERROR: the production closure is over budget'));
+	echo(chalk.yellow('Remove what grew, or raise .github/test-metrics/image-closure-budget.json'));
+	process.exit(1);
+}
+echo(chalk.green('✅ Closure within budget'));
 
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
