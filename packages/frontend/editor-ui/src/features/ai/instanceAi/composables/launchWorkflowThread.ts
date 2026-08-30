@@ -4,7 +4,7 @@ import { VIEWS } from '@/app/constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../constants';
-import { provisionLaunchedThread } from './useInstanceAiHandoff';
+import { ensurePersonalProjectId, provisionLaunchedThread } from './useInstanceAiHandoff';
 
 const WORKFLOW_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -25,11 +25,14 @@ export async function launchWorkflowThread(
 	const editorFallback = { name: VIEWS.WORKFLOW, params: { workflowId } };
 
 	let name: string;
-	let projectId: string | undefined;
+	let projectId: string | null | undefined;
 	try {
 		const workflow = await useWorkflowsListStore().fetchWorkflow(workflowId);
 		name = workflow.name;
-		projectId = workflow.homeProject?.id;
+		// The response includes `homeProject` only when workflow sharing is licensed.
+		// Without sharing, a user can open only their own workflows. Their personal
+		// project is then the correct home.
+		projectId = workflow.homeProject?.id ?? (await ensurePersonalProjectId());
 	} catch {
 		return editorFallback;
 	}

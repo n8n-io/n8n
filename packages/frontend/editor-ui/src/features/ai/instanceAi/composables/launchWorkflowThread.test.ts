@@ -11,8 +11,10 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 }));
 
 const provisionLaunchedThread = vi.fn();
+const ensurePersonalProjectId = vi.fn();
 vi.mock('./useInstanceAiHandoff', () => ({
 	provisionLaunchedThread: (...args: unknown[]) => provisionLaunchedThread(...args),
+	ensurePersonalProjectId: () => ensurePersonalProjectId(),
 }));
 
 describe('launchWorkflowThread', () => {
@@ -25,6 +27,7 @@ describe('launchWorkflowThread', () => {
 			homeProject: { id: 'p1' },
 		});
 		provisionLaunchedThread.mockResolvedValue('thread-1');
+		ensurePersonalProjectId.mockResolvedValue('personal-1');
 	});
 
 	it('rejects a malformed workflow id without fetching', async () => {
@@ -42,8 +45,23 @@ describe('launchWorkflowThread', () => {
 		});
 	});
 
-	it('falls back to the manual editor when the workflow has no home project', async () => {
+	// `homeProject` is absent when workflow sharing is not licensed.
+	it('uses the personal project when the workflow has no home project', async () => {
 		fetchWorkflow.mockResolvedValue({ id: 'wf1', name: 'Gmail fetch', homeProject: null });
+		await expect(launchWorkflowThread('wf1', undefined)).resolves.toEqual({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-1' },
+		});
+		expect(provisionLaunchedThread).toHaveBeenCalledWith(
+			'personal-1',
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('falls back to the manual editor when no project can be resolved', async () => {
+		fetchWorkflow.mockResolvedValue({ id: 'wf1', name: 'Gmail fetch', homeProject: null });
+		ensurePersonalProjectId.mockResolvedValue(null);
 		await expect(launchWorkflowThread('wf1', undefined)).resolves.toEqual({
 			name: VIEWS.WORKFLOW,
 			params: { workflowId: 'wf1' },
