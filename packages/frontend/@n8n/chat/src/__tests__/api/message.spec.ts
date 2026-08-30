@@ -109,7 +109,12 @@ describe('sendMessageStreaming', () => {
 		});
 
 		const expectedQuery: Record<string, string> = Object.create(null);
-		expectedQuery.constructor = 'abc';
+		Object.defineProperty(expectedQuery, 'constructor', {
+			value: 'abc',
+			enumerable: true,
+			configurable: true,
+			writable: true,
+		});
 		Object.defineProperty(expectedQuery, '__proto__', {
 			value: 'danger',
 			enumerable: true,
