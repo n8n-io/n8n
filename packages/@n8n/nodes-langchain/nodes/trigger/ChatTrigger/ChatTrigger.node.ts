@@ -1,4 +1,5 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { Request } from 'express';
 import pick from 'lodash/pick';
 import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {

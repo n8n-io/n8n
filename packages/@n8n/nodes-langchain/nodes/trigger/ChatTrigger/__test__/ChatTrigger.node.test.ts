@@ -258,7 +258,12 @@ describe('ChatTrigger Node', () => {
 
 		it('preserves special keys in the page query without mutating the prototype', async () => {
 			const pageQuery = Object.create(null) as Record<string, string>;
-			pageQuery.constructor = 'abc';
+			Object.defineProperty(pageQuery, 'constructor', {
+				value: 'abc',
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
 			Object.defineProperty(pageQuery, '__proto__', {
 				value: 'danger',
 				enumerable: true,
@@ -275,7 +280,12 @@ describe('ChatTrigger Node', () => {
 			await chatTrigger.webhook(mockContext);
 
 			const expectedQuery = Object.create(null) as Record<string, string>;
-			expectedQuery.constructor = 'abc';
+			Object.defineProperty(expectedQuery, 'constructor', {
+				value: 'abc',
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
 			Object.defineProperty(expectedQuery, '__proto__', {
 				value: 'danger',
 				enumerable: true,
