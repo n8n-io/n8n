@@ -23,5 +23,13 @@ export const userSettingsSchema = z.object({
 	easyAIWorkflowOnboarded: z.boolean().optional(),
 	userClaimedAiCredits: z.boolean().optional(),
 	dismissedCallouts: z.record(z.boolean()).optional(),
+	// `GET /users` removes the keys that are not listed here. The frontend then
+	// merges that response over the settings of the current user. Add every key
+	// that the UI reads from `currentUser.settings`.
+	instanceAi: z
+		.object({
+			defaultEditor: z.enum(['assistant', 'manual']).optional(),
+		})
+		.optional(),
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;

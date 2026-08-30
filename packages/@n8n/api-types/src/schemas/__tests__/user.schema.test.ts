@@ -245,4 +245,24 @@ describe('user.schema', () => {
 			expect(result.success).toBe(isValid);
 		});
 	});
+
+	describe('settings', () => {
+		it('should keep settings the UI reads off the current user', () => {
+			const result = userDetailSchema.parse({
+				id: '123',
+				role: 'global:owner',
+				settings: {
+					userActivated: true,
+					dismissedCallouts: { 'some-callout': true },
+					instanceAi: { defaultEditor: 'manual' },
+				},
+			});
+
+			expect(result.settings).toEqual({
+				userActivated: true,
+				dismissedCallouts: { 'some-callout': true },
+				instanceAi: { defaultEditor: 'manual' },
+			});
+		});
+	});
 });

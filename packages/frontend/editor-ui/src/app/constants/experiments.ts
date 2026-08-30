@@ -139,6 +139,9 @@ export const INSTANCE_AI_FREE_NUDGE_EXPERIMENT = createExperiment('105_instance_
 	variant2: 'variant-2',
 });
 
+// Retiring this flag also means deciding the fate of the `instanceAi.defaultEditor`
+// preference it introduced: `packages/workflow` interfaces, the api-types
+// `instance-ai` + `user-settings` schemas, and `instance-ai-settings.service.ts`.
 export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
 	'108_open_workflow_in_assistant',
 );
