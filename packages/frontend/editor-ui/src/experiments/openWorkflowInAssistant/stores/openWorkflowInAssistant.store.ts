@@ -3,7 +3,6 @@ import { defineStore } from 'pinia';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
@@ -12,10 +11,10 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
-import { updatePreferences } from '@/features/ai/instanceAi/instanceAi.settings.api';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 
 export const OPEN_IN_ASSISTANT_CALLOUT_KEY = 'open-workflows-in-assistant';
+export const OPEN_IN_ASSISTANT_OPT_OUT_KEY = 'open-workflows-in-assistant-opt-out';
 
 export type DefaultEditor = 'assistant' | 'manual';
 
@@ -25,7 +24,6 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 		const posthogStore = usePostHog();
 		const usersStore = useUsersStore();
 		const uiStore = useUIStore();
-		const rootStore = useRootStore();
 		const telemetry = useTelemetry();
 		const instanceAiAvailable = useInstanceAiAvailable();
 
@@ -39,22 +37,17 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 			),
 		);
 
-		const storedPreference = computed<DefaultEditor | undefined>(
-			() => usersStore.currentUser?.settings?.instanceAi?.defaultEditor,
-		);
-		// Tri-state: an explicit preference wins; unset falls back to the variant.
-		const resolvedDefaultEditor = computed<DefaultEditor>(
-			() => storedPreference.value ?? (isTreatment.value ? 'assistant' : 'manual'),
+		const optedOut = computed(() => usersStore.isCalloutDismissed(OPEN_IN_ASSISTANT_OPT_OUT_KEY));
+		// Only read under treatment (DefaultEditorSetting is v-if="isTreatment").
+		const resolvedDefaultEditor = computed<DefaultEditor>(() =>
+			optedOut.value ? 'manual' : 'assistant',
 		);
 
 		const opensInAssistant = computed(
-			() =>
-				isTreatment.value &&
-				instanceAiAvailable.value &&
-				resolvedDefaultEditor.value === 'assistant',
+			() => isTreatment.value && instanceAiAvailable.value && !optedOut.value,
 		);
 		const showsOptedOutCardButton = computed(
-			() => isTreatment.value && instanceAiAvailable.value && storedPreference.value === 'manual',
+			() => isTreatment.value && instanceAiAvailable.value && optedOut.value,
 		);
 
 		function experimentPayload<const T extends ITelemetryTrackProperties>(payload: T) {
@@ -69,7 +62,6 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 
 		// --- First-open notification ---
 		const notificationThreadId = ref<string | null>(null);
-		const notificationWorkflowId = ref<string | null>(null);
 
 		function isNotificationVisibleFor(threadId: string) {
 			return notificationThreadId.value === threadId;
@@ -99,7 +91,6 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 					? context.workflowId
 					: null;
 			notificationThreadId.value = threadId;
-			notificationWorkflowId.value = workflowId;
 			telemetry.track(
 				TELEMETRY_EVENT.INSTANCE_AI.OPEN_BY_DEFAULT_NOTIFICATION_SHOWN,
 				experimentPayload({ workflow_id: workflowId }),
@@ -132,40 +123,55 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 			});
 		}
 
+		// --- Settings-row highlight hand-off ---
+		// Consume-on-read rather than a `?highlight=` query param: the one-shot
+		// semantics come for free and a reload cannot replay in-memory state.
+		const settingHighlightRequested = ref(false);
+
+		function requestSettingHighlight() {
+			settingHighlightRequested.value = true;
+		}
+
+		function consumeSettingHighlight() {
+			const requested = settingHighlightRequested.value;
+			settingHighlightRequested.value = false;
+			return requested;
+		}
+
 		// --- Preference ---
 		async function saveDefaultEditor(value: DefaultEditor) {
-			await updatePreferences(rootStore.restApiContext, { defaultEditor: value });
-			// Mirror into the local user settings copy — the card reads from there.
-			// Fresh users have settings: null, so build the object rather than
-			// requiring it to exist.
-			if (usersStore.currentUser) {
-				usersStore.currentUser.settings = {
-					...(usersStore.currentUser.settings ?? {}),
-					instanceAi: {
-						...(usersStore.currentUser.settings?.instanceAi ?? {}),
-						defaultEditor: value,
-					},
-				};
-			}
+			await usersStore.updateUserSettings({
+				dismissedCallouts: {
+					...usersStore.currentUser?.settings?.dismissedCallouts,
+					[OPEN_IN_ASSISTANT_OPT_OUT_KEY]: value === 'manual',
+				},
+			});
 			telemetry.track(
 				TELEMETRY_EVENT.INSTANCE_AI.DEFAULT_EDITOR_PREFERENCE_CHANGED,
 				experimentPayload({ value }),
 			);
 		}
 
+		function trackManualEditorOpened(workflowId: string, threadId?: string) {
+			telemetry.track(
+				TELEMETRY_EVENT.INSTANCE_AI.MANUAL_EDITOR_OPENED,
+				experimentPayload({ workflow_id: workflowId, thread_id: threadId }),
+			);
+		}
+
 		return {
-			currentVariant,
 			isTreatment,
-			storedPreference,
 			resolvedDefaultEditor,
 			opensInAssistant,
 			showsOptedOutCardButton,
-			notificationWorkflowId,
 			isNotificationVisibleFor,
 			handleRedirectLanding,
 			closeNotification,
 			neverShowAgain,
+			requestSettingHighlight,
+			consumeSettingHighlight,
 			saveDefaultEditor,
+			trackManualEditorOpened,
 		};
 	},
 );

@@ -17,10 +17,8 @@ const visible = computed(() => store.isNotificationVisibleFor(props.threadId));
 
 async function onSettingsLink() {
 	store.closeNotification('settings_link');
-	await router.push({
-		name: INSTANCE_AI_SETTINGS_VIEW,
-		query: { highlight: 'default-editor' },
-	});
+	store.requestSettingHighlight();
+	await router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
 }
 </script>
 
@@ -28,13 +26,13 @@ async function onSettingsLink() {
 	<div v-if="visible" :class="$style.notification" data-test-id="open-in-assistant-notification">
 		<div :class="$style.body">
 			<N8nText size="small">
-				{{ i18n.baseText('openWorkflowInAssistant.notification.text') }}
+				{{ i18n.baseText('experiments.openWorkflowInAssistant.notification.text') }}
 				<N8nLink
 					size="small"
 					data-test-id="open-in-assistant-notification-settings-link"
 					@click="onSettingsLink"
 				>
-					{{ i18n.baseText('openWorkflowInAssistant.notification.settingsLink') }}
+					{{ i18n.baseText('experiments.openWorkflowInAssistant.notification.settingsLink') }}
 				</N8nLink>
 			</N8nText>
 			<N8nIconButton
@@ -50,14 +48,14 @@ async function onSettingsLink() {
 			<N8nButton
 				variant="outline"
 				size="small"
-				:label="i18n.baseText('openWorkflowInAssistant.notification.neverShowAgain')"
+				:label="i18n.baseText('experiments.openWorkflowInAssistant.notification.neverShowAgain')"
 				data-test-id="open-in-assistant-notification-never"
 				@click="store.neverShowAgain()"
 			/>
 			<N8nButton
 				variant="solid"
 				size="small"
-				:label="i18n.baseText('openWorkflowInAssistant.notification.gotIt')"
+				:label="i18n.baseText('experiments.openWorkflowInAssistant.notification.gotIt')"
 				data-test-id="open-in-assistant-notification-got-it"
 				@click="store.closeNotification('got_it')"
 			/>

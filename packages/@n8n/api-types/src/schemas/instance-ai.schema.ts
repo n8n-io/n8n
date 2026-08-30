@@ -1297,6 +1297,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
+ * Experiment cleanup: remove with openWorkflowInAssistant.
  * - `workflow_list_auto` — treatment redirect: a workflow list card opened in the assistant by default
  * - `workflow_list_button` — deliberate "Edit with AI Assistant" button on a workflow list card
  */
@@ -1311,6 +1312,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',
 	'workflow_list_button',
 	'evals',
@@ -1990,14 +1992,12 @@ export interface InstanceAiUserPreferencesResponse {
 	credentialName: string | null;
 	modelName: string;
 	localGatewayDisabled: boolean;
-	defaultEditor: 'assistant' | 'manual' | null;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
 	localGatewayDisabled: z.boolean().optional(),
-	defaultEditor: z.enum(['assistant', 'manual']).optional(),
 }) {}
 
 export interface InstanceAiProviderConnection {

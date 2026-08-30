@@ -7,13 +7,13 @@ import {
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
-	INSTANCE_AI_SOURCE_QUERY,
 } from './constants';
 import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
 } from './composables/useInstanceAiHandoff';
-import { launchWorkflowThread } from './composables/launchWorkflowThread';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
 import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -42,13 +42,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					path: 'new',
 					component: InstanceAiEmptyView,
 					beforeEnter: async (to) => {
-						// Workflow deep link (open-by-default experiment + card button).
-						if (typeof to.query.workflowId === 'string') {
-							return await launchWorkflowThread(
-								to.query.workflowId,
-								to.query[INSTANCE_AI_SOURCE_QUERY],
-							);
-						}
+						// Experiment cleanup: remove with openWorkflowInAssistant.
+						const workflowRedirect = await launchWorkflowThread(to.query);
+						if (workflowRedirect) return workflowRedirect;
+
 						// Numeric ids only, so a crafted URL can't inject prompt text.
 						const raw = to.query.templateId;
 						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {

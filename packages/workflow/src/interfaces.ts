@@ -4309,7 +4309,6 @@ export interface IUserSettings {
 		credentialId?: string | null;
 		modelName?: string;
 		localGatewayDisabled?: boolean;
-		defaultEditor?: 'assistant' | 'manual';
 	};
 }
 

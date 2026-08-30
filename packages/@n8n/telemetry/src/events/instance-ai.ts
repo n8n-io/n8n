@@ -34,6 +34,7 @@ const setupSnapshotProps = {
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+// Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
@@ -62,6 +63,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/105_instance_ai_free_nudge': freeNudgeTreatmentVariant,
 		}),
 	},
+	// Experiment cleanup: remove with openWorkflowInAssistant.
 	OPEN_BY_DEFAULT_NOTIFICATION_SHOWN: {
 		name: 'Open in assistant notification shown',
 		description:

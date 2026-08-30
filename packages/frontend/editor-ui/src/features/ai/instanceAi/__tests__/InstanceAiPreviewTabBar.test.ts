@@ -77,7 +77,7 @@ const Wrapper = defineComponent({
 	},
 });
 
-// The tab bar reads the open-in-assistant experiment store at setup.
+// Experiment cleanup: remove with openWorkflowInAssistant.
 const renderComponent = createComponentRenderer(Wrapper, { pinia: createTestingPinia() });
 
 async function openAgentTabContextMenu(container: Element, tabId = 'agent-1') {

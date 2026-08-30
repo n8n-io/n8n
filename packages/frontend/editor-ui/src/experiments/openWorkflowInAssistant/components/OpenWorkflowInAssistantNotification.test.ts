@@ -47,9 +47,7 @@ describe('OpenWorkflowInAssistantNotification', () => {
 		const { getByTestId } = renderComponent({ props: { threadId: 't1' } });
 		await userEvent.click(getByTestId('open-in-assistant-notification-settings-link'));
 		expect(store.closeNotification).toHaveBeenCalledWith('settings_link');
-		expect(push).toHaveBeenCalledWith({
-			name: 'InstanceAiSettings',
-			query: { highlight: 'default-editor' },
-		});
+		expect(store.requestSettingHighlight).toHaveBeenCalled();
+		expect(push).toHaveBeenCalledWith({ name: 'InstanceAiSettings' });
 	});
 });

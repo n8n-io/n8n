@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -12,16 +12,12 @@ import {
 	TabsTrigger,
 } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { ArtifactTab } from '../useCanvasPreview';
 
-import { OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT } from '@/app/constants/experiments';
-import { getExperimentTelemetryPayload } from '@/experiments/utils';
-import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -46,35 +42,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const clipboard = useClipboard();
 const toast = useToast();
-const router = useRouter();
-const route = useRoute();
-const telemetry = useTelemetry();
-const openInAssistantExperiment = useOpenWorkflowInAssistantStore();
 const tabListRef = ref<HTMLElement | null>(null);
-
-const activeTab = computed(() => props.tabs.find((tab) => tab.id === props.activeTabId));
-const showManualEditorButton = computed(
-	() => openInAssistantExperiment.isTreatment && activeTab.value?.type === 'workflow',
-);
-
-async function handleOpenManualEditor() {
-	const tab = activeTab.value;
-	if (!tab || tab.type !== 'workflow') return;
-	// The registered event requires a variant literal; the button is
-	// treatment-gated, so a non-variant value can only mean control.
-	const variant =
-		openInAssistantExperiment.currentVariant === OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.variant
-			? OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.variant
-			: OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.control;
-	telemetry.track(
-		TELEMETRY_EVENT.INSTANCE_AI.MANUAL_EDITOR_OPENED,
-		getExperimentTelemetryPayload(OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT, variant, {
-			workflow_id: tab.id,
-			thread_id: typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
-		}),
-	);
-	await router.push(`/workflow/${tab.id}`);
-}
 const sizeToggleLabel = computed(() =>
 	i18n.baseText(
 		props.isExpanded ? 'instanceAi.previewTabBar.collapse' : 'instanceAi.previewTabBar.expand',
@@ -201,14 +169,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
-		<N8nButton
-			v-if="showManualEditorButton"
-			variant="subtle"
-			size="small"
-			:label="i18n.baseText('instanceAi.previewTabBar.manualEditor')"
-			data-test-id="instance-ai-manual-editor-button"
-			@click="handleOpenManualEditor"
-		/>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
 		<N8nIconButton
 			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"

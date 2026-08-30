@@ -13,6 +13,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import {
 	OPEN_IN_ASSISTANT_CALLOUT_KEY,
+	OPEN_IN_ASSISTANT_OPT_OUT_KEY,
 	useOpenWorkflowInAssistantStore,
 } from './openWorkflowInAssistant.store';
 
@@ -24,10 +25,6 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 const instanceAiAvailable = ref(true);
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
 	useInstanceAiAvailable: () => instanceAiAvailable,
-}));
-
-vi.mock('@/features/ai/instanceAi/instanceAi.settings.api', () => ({
-	updatePreferences: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('@n8n/rest-api-client/api/users', () => ({
@@ -47,6 +44,11 @@ describe('openWorkflowInAssistant.store', () => {
 		);
 	};
 
+	/** One mock now serves both callout keys — dismiss only the ones named. */
+	const dismissCallouts = (...keys: string[]) => {
+		usersStore.isCalloutDismissed.mockImplementation((key: string) => keys.includes(key));
+	};
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
@@ -56,23 +58,22 @@ describe('openWorkflowInAssistant.store', () => {
 		instanceAiStore = mockedStore(useInstanceAiStore);
 		instanceAiAvailable.value = true;
 		usersStore.currentUser = { id: 'u1', settings: {} } as never;
-		usersStore.isCalloutDismissed.mockReturnValue(false);
+		dismissCallouts();
 	});
 
-	it('resolves to the assistant for treatment users with no stored preference', () => {
+	it('resolves to the assistant for treatment users who have not opted out', () => {
 		setVariant('variant');
 		const store = useOpenWorkflowInAssistantStore();
+		expect(store.resolvedDefaultEditor).toBe('assistant');
 		expect(store.opensInAssistant).toBe(true);
 		expect(store.showsOptedOutCardButton).toBe(false);
 	});
 
 	it('lets an explicit manual preference win over the treatment variant', () => {
 		setVariant('variant');
-		usersStore.currentUser = {
-			id: 'u1',
-			settings: { instanceAi: { defaultEditor: 'manual' } },
-		} as never;
+		dismissCallouts(OPEN_IN_ASSISTANT_OPT_OUT_KEY);
 		const store = useOpenWorkflowInAssistantStore();
+		expect(store.resolvedDefaultEditor).toBe('manual');
 		expect(store.opensInAssistant).toBe(false);
 		expect(store.showsOptedOutCardButton).toBe(true);
 	});
@@ -89,6 +90,44 @@ describe('openWorkflowInAssistant.store', () => {
 		instanceAiAvailable.value = false;
 		const store = useOpenWorkflowInAssistantStore();
 		expect(store.opensInAssistant).toBe(false);
+		expect(store.showsOptedOutCardButton).toBe(false);
+	});
+
+	describe('saveDefaultEditor', () => {
+		it('writes the opt-out callout alongside the existing ones and tracks the change', async () => {
+			setVariant('variant');
+			usersStore.currentUser = {
+				id: 'u1',
+				settings: { dismissedCallouts: { 'other-callout': true } },
+			} as never;
+			const store = useOpenWorkflowInAssistantStore();
+
+			await store.saveDefaultEditor('manual');
+
+			expect(updateCurrentUserSettings).toHaveBeenCalledWith(expect.anything(), {
+				dismissedCallouts: {
+					'other-callout': true,
+					[OPEN_IN_ASSISTANT_OPT_OUT_KEY]: true,
+				},
+			});
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.DEFAULT_EDITOR_PREFERENCE_CHANGED,
+				expect.objectContaining({ value: 'manual', variant: 'variant' }),
+			);
+		});
+
+		// Fresh users have settings: null — opting back in must still send the flag.
+		it('clears the opt-out callout when switching back to the assistant', async () => {
+			setVariant('variant');
+			usersStore.currentUser = { id: 'u1', settings: null } as never;
+			const store = useOpenWorkflowInAssistantStore();
+
+			await store.saveDefaultEditor('assistant');
+
+			expect(updateCurrentUserSettings).toHaveBeenCalledWith(expect.anything(), {
+				dismissedCallouts: { [OPEN_IN_ASSISTANT_OPT_OUT_KEY]: false },
+			});
+		});
 	});
 
 	describe('handleRedirectLanding', () => {
@@ -122,16 +161,21 @@ describe('openWorkflowInAssistant.store', () => {
 			expect(store.isNotificationVisibleFor('thread-1')).toBe(false);
 		});
 
-		// Fresh users have settings: null — both writes must still take effect locally.
-		it('mirrors a saved preference locally even when user settings are null', async () => {
+		it('hides the notification and tracks the action on close', () => {
 			setVariant('variant');
-			usersStore.currentUser = { id: 'u1', settings: null } as never;
+			instanceAiStore.getThreadMetadata.mockReturnValue({
+				source: 'workflow_list_auto',
+			} as never);
 			const store = useOpenWorkflowInAssistantStore();
+			store.handleRedirectLanding('thread-1');
 
-			await store.saveDefaultEditor('manual');
+			store.closeNotification('got_it');
 
-			expect(store.storedPreference).toBe('manual');
-			expect(store.opensInAssistant).toBe(false);
+			expect(store.isNotificationVisibleFor('thread-1')).toBe(false);
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.OPEN_BY_DEFAULT_NOTIFICATION_ACTION,
+				expect.objectContaining({ method: 'got_it', variant: 'variant' }),
+			);
 		});
 
 		it('syncs never-show-again into local state even when user settings are null', async () => {
@@ -153,13 +197,15 @@ describe('openWorkflowInAssistant.store', () => {
 			expect(
 				usersStore.currentUser?.settings?.dismissedCallouts?.[OPEN_IN_ASSISTANT_CALLOUT_KEY],
 			).toBe(true);
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.OPEN_BY_DEFAULT_NOTIFICATION_ACTION,
+				expect.objectContaining({ method: 'never_show_again', variant: 'variant' }),
+			);
 		});
 
 		it('collapses the sidebar but keeps the notification hidden after never-show-again', () => {
 			setVariant('variant');
-			usersStore.isCalloutDismissed.mockImplementation(
-				(key: string) => key === OPEN_IN_ASSISTANT_CALLOUT_KEY,
-			);
+			dismissCallouts(OPEN_IN_ASSISTANT_CALLOUT_KEY);
 			instanceAiStore.getThreadMetadata.mockReturnValue({
 				source: 'workflow_list_auto',
 			} as never);

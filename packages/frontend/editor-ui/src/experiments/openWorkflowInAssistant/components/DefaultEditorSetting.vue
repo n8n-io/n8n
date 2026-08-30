@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nOption,
 	N8nSelect,
@@ -18,8 +17,6 @@ import {
 
 const store = useOpenWorkflowInAssistantStore();
 const i18n = useI18n();
-const route = useRoute();
-const router = useRouter();
 const toast = useToast();
 
 const rootEl = ref<HTMLElement | null>(null);
@@ -29,19 +26,21 @@ const selected = computed<DefaultEditor>({
 	get: () => store.resolvedDefaultEditor,
 	set: (value) => {
 		store.saveDefaultEditor(value).catch((error: unknown) => {
-			toast.showError(error, i18n.baseText('openWorkflowInAssistant.setting.saveError'));
+			toast.showError(
+				error,
+				i18n.baseText('experiments.openWorkflowInAssistant.setting.saveError'),
+			);
 		});
 	},
 });
 
-onMounted(async () => {
-	if (route.query.highlight !== 'default-editor') return;
-	// One-shot: scroll to the row, flash it, then clear the query so a reload
-	// or back-navigation does not replay the highlight.
+onMounted(() => {
+	// Consume-on-read: the notification link arms this once, so a reload or
+	// back-navigation cannot replay the highlight.
+	if (!store.consumeSettingHighlight()) return;
 	rootEl.value?.scrollIntoView({ block: 'center' });
 	highlighted.value = true;
 	setTimeout(() => (highlighted.value = false), 2400);
-	await router.replace({ query: { ...route.query, highlight: undefined } });
 });
 </script>
 
@@ -55,18 +54,18 @@ onMounted(async () => {
 		<N8nSettingsSection>
 			<N8nSettingsRowGroup>
 				<N8nSettingsRow
-					:title="i18n.baseText('openWorkflowInAssistant.setting.label')"
-					:description="i18n.baseText('openWorkflowInAssistant.setting.description')"
+					:title="i18n.baseText('experiments.openWorkflowInAssistant.setting.label')"
+					:description="i18n.baseText('experiments.openWorkflowInAssistant.setting.description')"
 				>
 					<template #action>
 						<N8nSelect v-model="selected" size="small" data-test-id="default-editor-select">
 							<N8nOption
 								value="assistant"
-								:label="i18n.baseText('openWorkflowInAssistant.setting.assistant')"
+								:label="i18n.baseText('experiments.openWorkflowInAssistant.setting.assistant')"
 							/>
 							<N8nOption
 								value="manual"
-								:label="i18n.baseText('openWorkflowInAssistant.setting.manual')"
+								:label="i18n.baseText('experiments.openWorkflowInAssistant.setting.manual')"
 							/>
 						</N8nSelect>
 					</template>

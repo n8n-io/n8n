@@ -30,6 +30,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+// Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
@@ -824,6 +825,7 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 		</template>
 
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
 		<DefaultEditorSetting v-if="!store.isLoading && !neverConfigured" />
 
 		<ConnectionDialog

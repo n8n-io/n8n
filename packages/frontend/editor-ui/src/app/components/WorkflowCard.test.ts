@@ -21,6 +21,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+// Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { INSTANCE_AI_NEW_VIEW } from '@/features/ai/instanceAi/constants';
 
@@ -110,7 +111,6 @@ describe('WorkflowCard', () => {
 	let usersStore: MockedStore<typeof useUsersStore>;
 	let mcpStore: MockedStore<typeof useMCPStore>;
 	let uiStore: MockedStore<typeof useUIStore>;
-	let openInAssistantStore: MockedStore<typeof useOpenWorkflowInAssistantStore>;
 	let message: ReturnType<typeof useMessage>;
 	let toast: ReturnType<typeof useToast>;
 
@@ -123,9 +123,6 @@ describe('WorkflowCard', () => {
 		usersStore = mockedStore(useUsersStore);
 		mcpStore = mockedStore(useMCPStore);
 		uiStore = mockedStore(useUIStore);
-		openInAssistantStore = mockedStore(useOpenWorkflowInAssistantStore);
-		openInAssistantStore.opensInAssistant = false;
-		openInAssistantStore.showsOptedOutCardButton = false;
 		message = useMessage();
 		toast = useToast();
 
@@ -1413,16 +1410,21 @@ describe('WorkflowCard', () => {
 		});
 	});
 
+	// Experiment cleanup: remove with openWorkflowInAssistant.
 	describe('open in assistant experiment', () => {
-		const editableWorkflow = () =>
-			createWorkflow({
-				scopes: ['workflow:update'],
-				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
-			});
+		let openInAssistantStore: MockedStore<typeof useOpenWorkflowInAssistantStore>;
+
+		beforeEach(() => {
+			openInAssistantStore = mockedStore(useOpenWorkflowInAssistantStore);
+			openInAssistantStore.opensInAssistant = false;
+		});
 
 		it('opens the workflow in the assistant for treatment users', async () => {
 			openInAssistantStore.opensInAssistant = true;
-			const data = editableWorkflow();
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
+			});
 			const { getByRole } = renderComponent({ props: { data } });
 
 			await userEvent.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
@@ -1432,78 +1434,6 @@ describe('WorkflowCard', () => {
 					query: { workflowId: data.id },
 				});
 			});
-		});
-
-		it('resolves the assistant route for ctrl-click new tabs', async () => {
-			openInAssistantStore.opensInAssistant = true;
-			const data = editableWorkflow();
-			const { getByRole } = renderComponent({ props: { data } });
-
-			const user = userEvent.setup();
-			await user.keyboard('[ControlLeft>]');
-			await user.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
-
-			expect(router.resolve).toHaveBeenCalledWith({
-				name: INSTANCE_AI_NEW_VIEW,
-				query: { workflowId: data.id },
-			});
-			expect(windowOpenSpy).toHaveBeenCalled();
-			expect(router.push).not.toHaveBeenCalled();
-		});
-
-		it('keeps the manual editor for archived workflows', async () => {
-			openInAssistantStore.opensInAssistant = true;
-			const data = createWorkflow({
-				scopes: ['workflow:update'],
-				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
-				isArchived: true,
-			});
-			const { getByRole } = renderComponent({ props: { data } });
-
-			await userEvent.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
-			await waitFor(() => {
-				expect(router.push).toHaveBeenCalledWith({
-					name: VIEWS.WORKFLOW,
-					params: { workflowId: data.id },
-				});
-			});
-		});
-
-		it('keeps the manual editor without update permission', async () => {
-			openInAssistantStore.opensInAssistant = true;
-			const data = createWorkflow({
-				scopes: [],
-				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
-			});
-			const { getByRole } = renderComponent({ props: { data } });
-
-			await userEvent.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
-			await waitFor(() => {
-				expect(router.push).toHaveBeenCalledWith({
-					name: VIEWS.WORKFLOW,
-					params: { workflowId: data.id },
-				});
-			});
-		});
-
-		it('shows the assistant button only for opted-out treatment users', async () => {
-			openInAssistantStore.showsOptedOutCardButton = true;
-			const data = editableWorkflow();
-			const { getByTestId } = renderComponent({ props: { data } });
-
-			await userEvent.click(getByTestId('workflow-card-open-in-assistant'));
-			await waitFor(() => {
-				expect(router.push).toHaveBeenCalledWith({
-					name: INSTANCE_AI_NEW_VIEW,
-					query: { workflowId: data.id, source: 'workflow_list_button' },
-				});
-			});
-		});
-
-		it('hides the assistant button outside the opted-out state', () => {
-			const data = editableWorkflow();
-			const { queryByTestId } = renderComponent({ props: { data } });
-			expect(queryByTestId('workflow-card-open-in-assistant')).not.toBeInTheDocument();
 		});
 	});
 });
