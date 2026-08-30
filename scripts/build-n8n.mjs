@@ -209,12 +209,19 @@ echo(chalk.green('✅ Third-party source maps stripped'));
 echo(chalk.yellow('INFO: Stripping unusable agent-browser binaries...'));
 await $`find ${config.compiledAppDir}/node_modules/.pnpm -path "*agent-browser/bin/*" -type f -name "agent-browser-*" -not -name "*linux-musl*" -delete 2>/dev/null || true`;
 
-// The vendored launcher decides musl vs glibc by shelling out to `ldd`, and
-// swallows the failure (`|| true`) so its /lib/ld-musl-* fallback is
-// unreachable. The runtime base ships no `ldd`, so detection returns false and
-// the launcher asks for the glibc name — which cannot exec on musl regardless.
-// Hard-link the glibc name onto the musl build so the wrong answer still
-// resolves to a binary that runs. Links, so this costs no additional bytes.
+// Same class of bug as the isolated-vm rebuild in docker/images/n8n/Dockerfile:
+// the hardened base breaks a package's own musl detection. There it is
+// node-gyp-build reading /etc/alpine-release; here the agent-browser launcher
+// shells out to `ldd`, and swallows the failure (`|| true`) so its
+// /lib/ld-musl-* fallback never runs. The base ships no `ldd`, so detection
+// returns false and the launcher asks for the glibc build.
+//
+// libc6-compat does not save it: that provides the loader but not the full
+// symbol set, so the glibc binary gets past the loader and dies relocating
+// (`__res_init: symbol not found`, verified on a published image, native arm64).
+// isolated-vm is rebuilt from source instead; agent-browser ships prebuilt Rust
+// binaries, so hard-link the glibc name onto the musl build and let the wrong
+// answer resolve to something that runs. Links, so no additional bytes.
 echo(chalk.yellow('INFO: Aliasing glibc agent-browser names to the musl builds...'));
 await $`
   set -eu
