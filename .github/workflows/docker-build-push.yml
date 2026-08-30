@@ -608,8 +608,8 @@ jobs:
   # syft scans the image for OS and npm packages. enrich-sbom resolves first-party
   # and override licenses. check-sbom-licenses gates the npm components. cosign then
   # attests the result to the image digest, as it does for VEX and provenance.
-  # BuildKit keeps its own `sbom: true` output for the OCI manifest index format.
-  # This job supplies the enriched, gated license data.
+  # The build sets oci-mediatypes on the exporter to get the OCI index format,
+  # so BuildKit emits no SBOM. This job supplies the license data.
   sbom-attestation:
     name: SBOM Attestation
     needs:
