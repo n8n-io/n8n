@@ -1,6 +1,6 @@
 import basicAuth from 'basic-auth';
 import { UnexpectedError } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, IUser, IWebhookFunctions } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
 
 import { ChatTriggerAuthorizationError } from './error';
 import {
@@ -9,7 +9,7 @@ import {
 	readChatOAuthToken,
 	setChatOAuthToken,
 } from './shell';
-import type { AuthenticationChatOption } from './types';
+import type { AuthenticationChatOption, ChatFrameIdentity } from './types';
 
 export async function validateAuth(context: IWebhookFunctions) {
 	const authentication = context.getNodeParameter(
@@ -185,7 +185,7 @@ export async function establishChatSessionIdentity(
 export async function resolveInnerFrameIdentity(
 	context: IWebhookFunctions,
 	resourceUrl: string,
-): Promise<{ visitor: IUser; authToken: string } | null> {
+): Promise<ChatFrameIdentity | null> {
 	const req = context.getRequestObject();
 	const res = context.getResponseObject();
 

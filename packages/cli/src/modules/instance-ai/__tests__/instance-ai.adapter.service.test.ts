@@ -90,6 +90,20 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
 // ---------------------------------------------------------------------------
 
 /** Collaboration stub that reports no editor write lock and records broadcasts. */
+/**
+ * Partial GlobalConfig for constructing the adapter. Every branch the constructor
+ * reads eagerly has to be present: a missing one throws at construction time, far
+ * from whatever the test was actually about.
+ */
+function globalConfigStub(
+	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
+): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
+	return {
+		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
+		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
+}
+
 function createMockCollaborationService() {
 	return {
 		ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
@@ -1293,9 +1307,7 @@ function createNodeAdapterServiceForTests(
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		globalConfigStub(),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -1668,9 +1680,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		globalConfigStub(),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -1983,9 +1993,7 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		globalConfigStub(),
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2180,7 +2188,7 @@ describe('createWorkflowAdapter', () => {
 					credentials: {
 						googlePalmApi: {
 							id: null,
-							name: 'n8n credits',
+							name: 'Gateway credits',
 							__aiGatewayManaged: true,
 						},
 					},
@@ -2199,13 +2207,13 @@ describe('createWorkflowAdapter', () => {
 		expect(workflow.nodes[1].credentials).toEqual({
 			googlePalmApi: {
 				id: null,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				__aiGatewayManaged: true,
 			},
 		});
 		const code = generateWorkflowCode(workflow);
-		expect(code).toContain("newCredential('n8n credits')");
-		expect(code).not.toContain("newCredential('n8n credits', 'null')");
+		expect(code).toContain("newCredential('Gateway credits')");
+		expect(code).not.toContain("newCredential('Gateway credits', 'null')");
 	});
 
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
@@ -2687,6 +2695,38 @@ describe('createWorkflowAdapter', () => {
 		expect(AI_GATEWAY_MANAGED_TAG).toBe('__AI_GATEWAY_MANAGED__');
 	});
 
+	it('normalizes the managed tag written as a credential id into the runtime sentinel on save', async () => {
+		// The builder may write `newCredential('n8n credits', '__AI_GATEWAY_MANAGED__')`,
+		// which reaches update as `{ id: '__AI_GATEWAY_MANAGED__', name }`. It must be
+		// converted to the null-id sentinel so the runtime never treats the tag as a
+		// real, DB-resolvable credential id.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		const workflow = {
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Gemini',
+					type: 'n8n-nodes-base.lmChatGoogleGemini',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						googlePalmApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n credits' },
+					},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		await adapter.updateFromWorkflowJSON('wf-existing', workflow);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodes: INode[] };
+		expect(updateData.nodes[0].credentials).toEqual({
+			googlePalmApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+		});
+	});
+
 	it('removes the credentials object when every reference lacks an id during update', async () => {
 		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
 		const workflow = {
@@ -3095,9 +3135,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		globalConfigStub(),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -3359,10 +3397,10 @@ function createRunAdapterForTests(
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{
-			ai: { allowSendingParameterValues: options?.allowSendingParameterValues ?? false },
-			executions: { mode: options?.queueMode ? 'queue' : 'regular' },
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
+		globalConfigStub({
+			allowSendingParameterValues: options?.allowSendingParameterValues,
+			queueMode: options?.queueMode,
+		}),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -3928,6 +3966,18 @@ describe('createExecutionAdapter run()', () => {
 			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		it('rejects an empty trigger name instead of silently auto-detecting', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await expect(adapter.run('wf-1', undefined, { triggerNodeName: '' })).rejects.toThrow(
+				/Daily 8am.*Weekly 5pm/s,
+			);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
 		it('rejects a named node that is not a trigger', async () => {
 			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 				id: 'wf-1',
@@ -4062,9 +4112,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = { ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-		typeof InstanceAiAdapterService
-	>[1];
+	args[1] = globalConfigStub();
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService

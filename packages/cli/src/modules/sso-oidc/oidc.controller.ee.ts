@@ -137,9 +137,9 @@ export class OidcController {
 		if (stateInfo.testMode) {
 			try {
 				const result = await this.oidcService.processTestCallback(callbackUrl, state, nonce);
-				return res.send(renderOidcTestSuccess(result));
+				return res.send(renderOidcTestSuccess(result, res.locals.cspNonce));
 			} catch (error) {
-				return res.send(renderOidcTestFailure(error));
+				return res.send(renderOidcTestFailure(error, res.locals.cspNonce));
 			}
 		}
 

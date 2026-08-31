@@ -1181,11 +1181,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 								request: DelegateSubAgentResumeRequest,
 								helpersFromHandler: DelegateSubAgentRunnerHelpers,
 							) => {
-								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
-									return await runInlineSubAgent(request, helpersFromHandler.emitChunk, request);
-								}
 								if (hostResumeRunner !== undefined) {
 									return await hostResumeRunner(request, helpersFromHandler);
+								}
+								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+									return await runInlineSubAgent(request, helpersFromHandler.emitChunk, request);
 								}
 								return configuredSubAgentNotFound(request);
 							},
@@ -1193,12 +1193,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 								request: DelegateSubAgentCancelRequest,
 								helpersFromHandler: DelegateSubAgentRunnerHelpers,
 							) => {
-								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
-									await options.runState.cancel(request.childRunId);
-									return;
-								}
 								if (hostCancelRunner !== undefined) {
 									await hostCancelRunner(request, helpersFromHandler);
+									return;
+								}
+								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+									await options.runState.cancel(request.childRunId);
 									return;
 								}
 								throw new Error(

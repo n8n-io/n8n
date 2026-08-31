@@ -65,6 +65,29 @@ describe('PollContext', () => {
 		});
 	});
 
+	describe('getPollBudgetMs', () => {
+		it('returns a five-minute default when the engine provided no budget', () => {
+			expect(pollContext.getPollBudgetMs()).toBe(300_000);
+		});
+
+		it('returns the budget provided by the engine', () => {
+			const context = new PollContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => 36_000,
+			);
+			expect(context.getPollBudgetMs()).toBe(36_000);
+		});
+	});
+
 	describe('getCredentials', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
