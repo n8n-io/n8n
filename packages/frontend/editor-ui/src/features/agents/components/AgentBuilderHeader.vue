@@ -23,12 +23,15 @@ import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
+import AgentCollaborationPresence from './AgentCollaborationPresence.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import { useAgentCollaboration } from '../composables/useAgentCollaboration';
 import type { AgentResource } from '../types';
 
 const props = defineProps<{
@@ -62,12 +65,21 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const router = useRouter();
+const usersStore = useUsersStore();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 onMounted(() => {
 	if (props.artifactMode) return;
 	void ensureLoaded();
 });
+
+// Agent collaboration
+const {
+	isActive: isCollaborationActive,
+	activeUsers,
+	userCount,
+	hasActiveUsers,
+} = useAgentCollaboration(computed(() => props.agentId), computed(() => props.projectId));
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
 	name: PROJECT_AGENTS,
@@ -197,6 +209,12 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
+			<AgentCollaborationPresence
+				v-if="hasActiveUsers"
+				:active-users="activeUsers"
+				:user-count="userCount"
+				:current-user-id="usersStore.currentUserId || ''"
+			/>
 			<AgentValidationTooltip
 				:disabled="!isPreviewDisabled"
 				:fallback="previewDisabledTooltip"

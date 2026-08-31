@@ -27,3 +27,7 @@ export interface OnPushMessage {
 	userId: User['id'];
 	msg: unknown;
 }
+
+export type AgentCollaborationMessage =
+	| { type: 'agent-collaboration'; agentId: string; payload: { type: string; data: unknown; userId: User['id'] } }
+	| { type: 'agent-presence'; agentId: string; payload: { type: 'user-joined' | 'user-left' | 'cursor-update'; userId: string; userName?: string; position?: { x: number; y: number }; timestamp: number } };

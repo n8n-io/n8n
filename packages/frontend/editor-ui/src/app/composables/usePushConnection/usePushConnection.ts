@@ -4,27 +4,28 @@ import { pushHandlerRegistry } from '@n8n/frontend-module-sdk';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
+	agentCollaboration,
+	agentNodeProgress,
 	builderCreditsUpdated,
-	testWebhookDeleted,
-	testWebhookReceived,
-	reloadNodeType,
-	removeNodeType,
-	nodeDescriptionUpdated,
-	nodeExecuteBefore,
-	nodeExecuteAfter,
-	nodeExecuteAfterData,
-	executionStarted,
-	sendWorkerStatusMessage,
-	sendConsoleMessage,
-	workflowFailedToActivate,
-	workflowPartiallyActivated,
 	executionFinished,
 	executionRecovered,
+	executionStarted,
+	nodeDescriptionUpdated,
+	nodeExecuteAfter,
+	nodeExecuteAfterData,
+	nodeExecuteBefore,
+	reloadNodeType,
+	removeNodeType,
+	sendConsoleMessage,
+	sendWorkerStatusMessage,
+	testWebhookDeleted,
+	testWebhookReceived,
 	workflowActivated,
-	workflowDeactivated,
 	workflowAutoDeactivated,
+	workflowDeactivated,
+	workflowFailedToActivate,
+	workflowPartiallyActivated,
 	workflowSettingsUpdated,
-	agentNodeProgress,
 } from '@/app/composables/usePushConnection/handlers';
 import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -76,6 +77,9 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		}
 
 		switch (event.type) {
+			case 'agent-collaboration':
+			case 'agent-presence':
+				return await agentCollaboration(event, options);
 			case 'agentNodeProgress':
 				return await agentNodeProgress(event, options);
 			case 'testWebhookDeleted':
