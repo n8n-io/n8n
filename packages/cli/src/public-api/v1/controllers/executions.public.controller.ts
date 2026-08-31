@@ -42,10 +42,6 @@ function isCursorObject(
 	return typeof value === 'object' && value !== null;
 }
 
-/**
- * The accept/reject boundary deliberately matches the legacy handler, so tightening it would
- * break calls that work today. Bounding the limit is the one intended departure.
- */
 function resolveCursorPaging(
 	cursor: string | undefined,
 	queryLimit: number,

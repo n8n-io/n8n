@@ -14,7 +14,7 @@ export const executionFieldDocs = {
 		description: 'ID of the execution this one is a retry of.',
 	}),
 	retrySuccessId: alsoNullable({
-		description: 'ID of the execution that retried this one successfully.',
+		description: 'ID of the retry that succeeded, if this execution failed and a retry did not.',
 		example: '2',
 	}),
 	status: {
