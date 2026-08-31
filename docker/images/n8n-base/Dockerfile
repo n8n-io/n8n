@@ -13,15 +13,19 @@ RUN apk add --no-cache busybox-binsh && \
     find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
     # Install OS dependencies. No blanket `apk upgrade` — it floats the whole
     # world off the Alpine repos at build time and defeats the pinned base;
-    # patched bytes come from bumping the pinned DHI digest instead. git and
-    # openssl omitted: the base already provides git and the libssl3/libcrypto3
-    # libs Node uses (the openssl CLI binary isn't needed at runtime).
-    # The two version floors below are the narrow exception: they upgrade only
-    # the openssl runtime libs off the pinned Alpine release, leaving the rest
-    # of the base untouched. Drop them once the pinned DHI digest ships 3.5.8-r0.
+    # patched bytes come from bumping the pinned DHI digest instead. git is
+    # omitted (the base already provides it), as is the openssl CLI binary (not
+    # needed at runtime) — but the libssl3/libcrypto3 runtime libs Node uses are
+    # pinned below.
+    # Those two pins are the narrow exception to the no-upgrade rule: they take
+    # the openssl runtime libs from the pinned Alpine release, leaving the rest
+    # of the base untouched. Pinned exactly (=, not >=) so the version is
+    # reproducible across rebuilds despite `no-cache`; bump on each Alpine
+    # openssl release. Drop them once the pinned DHI digest ships
+    # libssl3/libcrypto3 >= 3.5.8-r0.
     apk add --no-cache \
-        'libcrypto3>=3.5.8-r0' \
-        'libssl3>=3.5.8-r0' \
+        'libcrypto3=3.5.8-r0' \
+        'libssl3=3.5.8-r0' \
         openssh \
         graphicsmagick \
         tini \
