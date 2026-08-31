@@ -399,8 +399,8 @@ const totalNodeCount = computed(() =>
 	color: var(--color--text--shade-1);
 
 	&:focus-visible {
-		outline: 2px solid var(--color--primary);
-		outline-offset: 2px;
+		outline: var(--spacing--5xs) solid var(--color--primary);
+		outline-offset: var(--spacing--5xs);
 	}
 }
 
