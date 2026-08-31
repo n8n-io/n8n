@@ -35,8 +35,6 @@ const config: StorybookConfig = {
 	framework: {
 		name: getAbsolutePath('@storybook/vue3-vite'),
 		options: {
-			// 10.5 defaults to vue-component-meta; keep the previous engine so
-			// autodocs tables stay consistent with existing stories.
 			docgen: 'vue-docgen-api',
 		},
 	},

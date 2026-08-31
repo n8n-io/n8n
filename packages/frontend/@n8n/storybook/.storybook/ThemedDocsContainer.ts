@@ -5,11 +5,6 @@ import { themes } from 'storybook/theming';
 
 import { applyN8nTheme } from './applyN8nTheme';
 
-/**
- * Docs pages are React (addon-docs) and stay on the light emotion theme unless
- * this container passes the dark theme. CSS cannot replace that — emotion sets
- * heading/body/code colors on the elements themselves.
- */
 export function ThemedDocsContainer(props: ComponentProps<typeof DocsContainer>) {
 	const isDark = useDarkMode();
 	applyN8nTheme(isDark);
