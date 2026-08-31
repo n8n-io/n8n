@@ -248,7 +248,7 @@ function classifyVerificationFailure(
 						lastNodeExecuted,
 						chatModelRecovery?.creditsCoveredNodeNames,
 					)
-					? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to Gateway credits or another provider they can run."
 					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
 				: '';
 		return createRemediation({
