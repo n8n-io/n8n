@@ -36,8 +36,8 @@ export class ExecutionNotFoundError extends Error {
 
 /** Persistence interface for executions. */
 export interface ExecutionStore {
-	/** Persist a new execution record; returns its generated id. */
-	createExecution(record: NewExecutionRecord): Promise<{ id: string }>;
+	/** Persist a new execution record under the caller-minted `record.id`. */
+	createExecution(record: NewExecutionRecord): Promise<void>;
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;

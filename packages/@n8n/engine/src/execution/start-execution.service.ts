@@ -39,8 +39,12 @@ export class StartExecutionService {
 			throw new AdmittanceRejectedError(decision.reason);
 		}
 
-		const { id } = await this.executionStore.createExecution({
-			id: request.executionId,
+		// The caller's id is authoritative: it already has a session registered
+		// against it, so the store never gets to rename the run.
+		const { executionId } = request;
+
+		await this.executionStore.createExecution({
+			id: executionId,
 			workflowId: request.workflowId,
 			// admitted; a worker flips this to 'running' when it starts
 			status: 'queued',
@@ -54,9 +58,9 @@ export class StartExecutionService {
 		// reconciliation sweep (not yet built) re-dispatches it.
 		await this.workQueue.publish({
 			type: 'execution:enqueued',
-			executionId: id,
+			executionId,
 		});
 
-		return { executionId: id };
+		return { executionId };
 	}
 }

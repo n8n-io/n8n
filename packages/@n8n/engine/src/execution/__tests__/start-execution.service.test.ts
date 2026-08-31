@@ -17,7 +17,7 @@ function makeQueue(): WorkQueue<OrchestrationMessage> {
 
 function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
-		createExecution: vi.fn().mockResolvedValue({ id: 'exec-id-1' }),
+		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),

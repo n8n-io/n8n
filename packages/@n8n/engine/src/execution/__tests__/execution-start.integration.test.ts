@@ -136,8 +136,9 @@ describe('execution start (integration)', () => {
 			noopLifecycleEventPublisher,
 		);
 
-		const { id: executionId } = await executionStore.createExecution({
-			id: generateId(),
+		const executionId = generateId();
+		await executionStore.createExecution({
+			id: executionId,
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',
