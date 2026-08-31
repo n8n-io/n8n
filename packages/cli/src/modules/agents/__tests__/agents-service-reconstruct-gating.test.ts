@@ -902,7 +902,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
 	});
 
-	it('injects only check/cancel when the flag is on without configured sub-agents', async () => {
+	it('injects all three tools when the flag is on without configured sub-agents — inline self-delegation is always available', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;
 		const service = makeReconstructionService();
 
@@ -912,9 +912,6 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			'production',
 		);
 
-		const toolNames = getInjectedToolNames();
-		expect(toolNames).toContain('check_background_jobs');
-		expect(toolNames).toContain('cancel_background_job');
-		expect(toolNames).not.toContain('spawn_background_subagent');
+		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
 	});
 });

@@ -1,5 +1,5 @@
 import { createChildSubAgentTaskPath } from '@n8n/agents';
-import type { SubAgentSource } from '@n8n/api-types';
+import type { SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -24,6 +24,8 @@ export interface BackgroundSpawnRequest {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	/** Self-delegation only: model tier override applied by the runner. */
+	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
 	parentResourceId: string;
 	parentSandboxPrincipalHash?: string;
@@ -124,6 +126,9 @@ export class SubAgentBackgroundRunner {
 					user: context.user,
 					instrumentation: context.instrumentation,
 					abortSignal: abortController.signal,
+					...(request.difficulty !== undefined
+						? { selfDelegationDifficulty: request.difficulty }
+						: {}),
 				},
 			)
 			.then((result) => settlementFor(result))

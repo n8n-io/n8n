@@ -883,24 +883,22 @@ export class AgentRuntimeReconstructionService {
 		);
 		const jobService = Container.get(AgentBackgroundJobService);
 
-		// check/cancel attach regardless of the roster — jobs of other kinds
-		// (waiting workflow executions) exist without configured sub-agents.
 		agent.tool(createCheckBackgroundJobsTool(jobService));
 		agent.tool(createCancelBackgroundJobTool(jobService));
 
-		if (delegation.availableSubAgents.length > 0) {
-			agent.tool(
-				createSpawnBackgroundSubAgentTool({
-					jobService,
-					backgroundRunner: Container.get(SubAgentBackgroundRunner),
-					sourcesById: delegation.sourcesById,
-					availableSubAgents: delegation.availableSubAgents,
-					projectId,
-					parentAgentId,
-					runContext,
-				}),
-			);
-		}
+		// Attached even with no configured sub-agents: inline self-delegation is
+		// always available.
+		agent.tool(
+			createSpawnBackgroundSubAgentTool({
+				jobService,
+				backgroundRunner: Container.get(SubAgentBackgroundRunner),
+				sourcesById: delegation.sourcesById,
+				availableSubAgents: delegation.availableSubAgents,
+				projectId,
+				parentAgentId,
+				runContext,
+			}),
+		);
 		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
 	}
 

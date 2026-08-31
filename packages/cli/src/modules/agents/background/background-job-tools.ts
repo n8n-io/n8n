@@ -1,6 +1,7 @@
 import type { BuiltTool, ToolContext } from '@n8n/agents';
+import { INLINE_SUB_AGENT_ID } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import type { SubAgentSource } from '@n8n/api-types';
+import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentSource } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
@@ -41,9 +42,10 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 
 	return new Tool('spawn_background_subagent')
 		.description(
-			'Dispatch a configured sub-agent as a detached background job. Returns a receipt ' +
-				'immediately; the sub-agent keeps working after your turn ends. Available sub-agents:\n' +
-				roster,
+			'Dispatch a sub-agent as a detached background job. Returns a receipt immediately; the ' +
+				'sub-agent keeps working after your turn ends. Pass "inline" as subAgentId to spawn a ' +
+				'copy of yourself for a self-contained subtask.' +
+				(roster ? ` Available configured sub-agents:\n${roster}` : ''),
 		)
 		.systemInstruction(
 			'Prefer spawn_background_subagent for independent pieces of work that can run in parallel ' +
@@ -55,7 +57,11 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 		)
 		.input(
 			z.object({
-				subAgentId: z.string().describe('Id of a configured sub-agent from the roster'),
+				subAgentId: z
+					.string()
+					.describe(
+						'Id of a configured sub-agent from the roster, or "inline" for a copy of yourself',
+					),
 				// min/max mirror the varchar(255) title column — an oversized value
 				// would otherwise surface as a raw DB error.
 				taskName: z
@@ -66,6 +72,10 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 				goal: z.string().describe('What the sub-agent should accomplish'),
 				context: z.string().optional().describe('Background information the sub-agent needs'),
 				expectedOutput: z.string().optional().describe('Shape of the answer to return'),
+				difficulty: z
+					.enum(SUB_AGENT_TASK_DIFFICULTIES)
+					.optional()
+					.describe('Inline spawns only: picks the model tier configured for this difficulty'),
 			}),
 		)
 		.output(
@@ -85,24 +95,32 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 				};
 			}
 
-			const source = options.sourcesById[input.subAgentId];
+			// Self-delegation runs a copy of this agent: the parent's own id is the
+			// source, resolved to its draft or published version by run type.
+			const isSelfDelegation = input.subAgentId === INLINE_SUB_AGENT_ID;
+			const source = isSelfDelegation
+				? { agentId: options.parentAgentId }
+				: options.sourcesById[input.subAgentId];
 			if (!source) {
-				const ids = options.availableSubAgents.map((agent) => agent.id).join(', ');
+				const ids = [...options.availableSubAgents.map((agent) => agent.id), 'inline'].join(', ');
 				return {
 					status: 'rejected',
-					note: `No configured sub-agent matched "${input.subAgentId}". Available: ${ids}.`,
+					note: `No sub-agent matched "${input.subAgentId}". Available: ${ids}.`,
 				};
 			}
 
 			const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
 			const receipt = await options.backgroundRunner.spawn(
 				{
-					subAgentId: input.subAgentId,
+					subAgentId: source.agentId,
 					source,
 					taskName: input.taskName,
 					goal: input.goal,
 					context: input.context,
 					expectedOutput: input.expectedOutput,
+					...(isSelfDelegation && input.difficulty !== undefined
+						? { difficulty: input.difficulty }
+						: {}),
 					parentThreadId,
 					parentResourceId,
 					...(sandboxScope?.projectId === options.projectId

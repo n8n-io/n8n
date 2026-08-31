@@ -108,6 +108,15 @@ describe('spawn', () => {
 		expect(runContext.onChunk).toBeUndefined();
 	});
 
+	it('forwards a self-delegation difficulty to the run context', async () => {
+		const { backgroundRunner, runner, context } = setup();
+
+		await backgroundRunner.spawn({ ...request, difficulty: 'high' }, context);
+		await flushDetachedRun();
+
+		expect(runner.run.mock.calls[0][1].selfDelegationDifficulty).toBe('high');
+	});
+
 	it('does not start a run when the receipt is limit-reached', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
 		jobService.registerSubAgentJob.mockResolvedValue({ status: 'limit-reached' });

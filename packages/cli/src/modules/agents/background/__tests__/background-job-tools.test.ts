@@ -140,6 +140,37 @@ describe('spawn_background_subagent', () => {
 		);
 	});
 
+	it('spawns a copy of the parent for inline self-delegation, with its difficulty', async () => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		const output = await tool.handler!(
+			{ subAgentId: 'inline', taskName: 'research', goal: 'find things', difficulty: 'high' },
+			{ persistence },
+		);
+
+		expect(output).toMatchObject({ status: 'started', jobId: 'job-1' });
+		expect(backgroundRunner.spawn.mock.calls[0][0]).toMatchObject({
+			subAgentId: 'agent-1',
+			source: { agentId: 'agent-1' },
+			difficulty: 'high',
+		});
+	});
+
+	it('ignores difficulty for configured sub-agents — it only applies to self-delegation', async () => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		await tool.handler!(
+			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things', difficulty: 'high' },
+			{ persistence },
+		);
+
+		expect(backgroundRunner.spawn.mock.calls[0][0]).not.toHaveProperty('difficulty');
+	});
+
 	it('echoes a limit-reached receipt in the tool output', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'limit-reached' });
