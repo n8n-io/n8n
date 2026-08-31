@@ -14,11 +14,11 @@ export class DummySystemTask implements SystemTask {
 	runCount = 0;
 
 	/** How a run settles. Replace it to make a run fail or to hold it open. */
-	onRun: () => Promise<void> = async () => {};
+	onRun: (signal: AbortSignal) => Promise<void> = async () => {};
 
-	async run(): Promise<void> {
+	async run(signal: AbortSignal): Promise<void> {
 		this.runCount++;
-		await this.onRun();
+		await this.onRun(signal);
 	}
 }
 

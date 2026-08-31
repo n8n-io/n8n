@@ -3,7 +3,8 @@ import type { SystemTask } from '@n8n/decorators';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 
 /**
- * Runs one durable occurrence of a system task.
+ * Runs one durable occurrence of a system task, handing it `shutdownSignal` so
+ * it can stop early when the instance shuts down.
  *
  * Errors propagate: the executor is what retries the occurrence or gives up on
  * it, following the attempt limit carried by the occurrence's job row.
@@ -11,6 +12,7 @@ import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } fro
 export class SystemTaskHandler implements TaskHandler {
 	constructor(
 		private readonly systemTask: SystemTask,
+		private readonly shutdownSignal: AbortSignal,
 		private readonly logger: Logger,
 		private readonly onRunError: (error: unknown) => void,
 	) {}
@@ -20,7 +22,7 @@ export class SystemTaskHandler implements TaskHandler {
 			this.systemTask.effects === 'non-idempotent' ? report.dispatched() : report.notDispatched();
 
 		try {
-			await this.systemTask.run();
+			await this.systemTask.run(this.shutdownSignal);
 		} catch (error) {
 			this.onRunError(error);
 			throw error;

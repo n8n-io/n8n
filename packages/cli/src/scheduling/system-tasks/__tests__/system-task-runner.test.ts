@@ -248,6 +248,47 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(1);
 		});
 
+		it('aborts the signal of the run in flight on stepdown', async () => {
+			const { runner, metadata } = setup();
+			let runSignal: AbortSignal | undefined;
+			let releaseRun = () => {};
+			dummy.onRun = async (signal) => {
+				runSignal = signal;
+				await new Promise<void>((resolve) => {
+					releaseRun = resolve;
+				});
+			};
+			metadata.register(DummySystemTask);
+			runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(runSignal?.aborted).toBe(false);
+
+			const stopping = runner.stopTimers();
+
+			expect(runSignal?.aborted).toBe(true);
+			releaseRun();
+			await stopping;
+		});
+
+		it('hands the runs of a later takeover a fresh signal', async () => {
+			const { runner, metadata } = setup();
+			const runSignals: AbortSignal[] = [];
+			dummy.onRun = async (signal) => {
+				runSignals.push(signal);
+			};
+			metadata.register(DummySystemTask);
+			runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			await runner.stopTimers();
+			runner.startTimers();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(runSignals).toHaveLength(2);
+			expect(runSignals[0].aborted).toBe(true);
+			expect(runSignals[1].aborted).toBe(false);
+		});
+
 		it('starts the timers again on a later takeover', async () => {
 			const { runner, metadata } = setup();
 			metadata.register(DummySystemTask);
@@ -341,6 +382,31 @@ describe('SystemTaskRunner', () => {
 				shouldBeLogged: false,
 				shouldIsolate: true,
 			});
+		});
+
+		it('aborts the signal of a durable run on shutdown', async () => {
+			dummy.durable = true;
+			const { runner, metadata, durableScheduler } = setup(durably);
+			let runSignal: AbortSignal | undefined;
+			let releaseRun = () => {};
+			dummy.onRun = async (signal) => {
+				runSignal = signal;
+				await new Promise<void>((resolve) => {
+					releaseRun = resolve;
+				});
+			};
+			metadata.register(DummySystemTask);
+			runner.init();
+
+			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
+			const executing = handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()));
+			expect(runSignal?.aborted).toBe(false);
+
+			await runner.shutdown();
+
+			expect(runSignal?.aborted).toBe(true);
+			releaseRun();
+			await executing;
 		});
 
 		it.each([

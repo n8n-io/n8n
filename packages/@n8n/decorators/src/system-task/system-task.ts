@@ -60,8 +60,13 @@ export interface SystemTask {
 	 */
 	readonly maxAttempts?: number;
 
-	/** Executes one occurrence of the task. */
-	run(): Promise<void>;
+	/**
+	 * Executes one occurrence of the task. `signal` aborts when the run should
+	 * stop early: the instance is shutting down or, for a run on the in-memory
+	 * timer, leadership was lost. Honoring it is optional, but a run that
+	 * ignores it delays stepdown and shutdown until it settles.
+	 */
+	run(signal: AbortSignal): Promise<void>;
 }
 
 /** How a task's occurrences are retried and how late they may still run. */

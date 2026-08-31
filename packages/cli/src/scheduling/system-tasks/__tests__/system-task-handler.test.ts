@@ -14,8 +14,9 @@ describe('SystemTaskHandler', () => {
 		task.effects = effects;
 		const report = mock<DispatchReporter>();
 		const onRunError = vi.fn();
-		const handler = new SystemTaskHandler(task, mockLogger(), onRunError);
-		return { task, report, handler, onRunError };
+		const shutdownSignal = new AbortController().signal;
+		const handler = new SystemTaskHandler(task, shutdownSignal, mockLogger(), onRunError);
+		return { task, report, handler, onRunError, shutdownSignal };
 	}
 
 	it('runs the task', async () => {
@@ -24,6 +25,18 @@ describe('SystemTaskHandler', () => {
 		await handler.execute(claimed, report);
 
 		expect(task.runCount).toBe(1);
+	});
+
+	it('hands the shutdown signal to the run', async () => {
+		const { task, report, handler, shutdownSignal } = setup('idempotent');
+		let seenSignal: AbortSignal | undefined;
+		task.onRun = async (signal) => {
+			seenSignal = signal;
+		};
+
+		await handler.execute(claimed, report);
+
+		expect(seenSignal).toBe(shutdownSignal);
 	});
 
 	it('leaves idempotent work retryable', async () => {
@@ -54,7 +67,12 @@ describe('SystemTaskHandler', () => {
 		const task = new DummySystemTask();
 		task.effects = effects;
 		const report = createDispatchReporter(vi.fn());
-		const handler = new SystemTaskHandler(task, mockLogger(), vi.fn());
+		const handler = new SystemTaskHandler(
+			task,
+			new AbortController().signal,
+			mockLogger(),
+			vi.fn(),
+		);
 
 		const returned = await handler.execute(claimed, report);
 

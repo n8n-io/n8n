@@ -51,6 +51,10 @@ export class SystemTaskRunner {
 
 	private isShuttingDown = false;
 
+	private inMemoryRunsController = new AbortController();
+
+	private readonly shutdownController = new AbortController();
+
 	constructor(
 		logger: Logger,
 		private readonly metadata: SystemTaskMetadata,
@@ -86,6 +90,7 @@ export class SystemTaskRunner {
 	startTimers(): void {
 		if (!this.isShuttingDown && !this.timersStarted) {
 			this.timersStarted = true;
+			this.inMemoryRunsController = new AbortController();
 			const from = new Date();
 			const timers = this.inMemoryTimers();
 			for (const timer of timers) {
@@ -98,6 +103,7 @@ export class SystemTaskRunner {
 	@OnLeaderStepdown()
 	async stopTimers(): Promise<void> {
 		this.timersStarted = false;
+		this.inMemoryRunsController.abort();
 		for (const timer of this.inMemoryTimers()) {
 			timer.stop();
 		}
@@ -118,6 +124,7 @@ export class SystemTaskRunner {
 	@OnShutdown()
 	async shutdown(): Promise<void> {
 		this.isShuttingDown = true;
+		this.shutdownController.abort();
 		await this.stopTimers();
 	}
 
@@ -148,7 +155,7 @@ export class SystemTaskRunner {
 		if (this.runsDurably(task)) {
 			this.durableScheduler.registerTaskHandler(
 				systemTaskType(task.name),
-				new SystemTaskHandler(task, this.logger, (error) =>
+				new SystemTaskHandler(task, this.shutdownController.signal, this.logger, (error) =>
 					this.reportFailure('A durable system task run failed', task, error),
 				),
 			);
@@ -226,7 +233,7 @@ export class SystemTaskRunner {
 
 	private async runOnce(task: SystemTask): Promise<void> {
 		try {
-			await task.run();
+			await task.run(this.inMemoryRunsController.signal);
 		} catch (error) {
 			this.reportFailure('A system task run failed', task, error);
 		}
