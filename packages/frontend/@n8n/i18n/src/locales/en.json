@@ -8202,10 +8202,6 @@
 	"tools.connection.categories.mcp": "MCP",
 	"tools.connection.categories.ai": "AI",
 	"tools.connection.categories.n8n": "n8n native",
-<<<<<<< HEAD
-=======
-	"tools.connection.categories.n8nConnect": "Gateway credits",
->>>>>>> 67183927 (feat(editor): Rename n8n credits and n8n Connect copy to Gateway credits in the UI (#37267))
 	"tools.connection.categories.appAction": "n8n nodes",
 	"tools.connection.categories.community": "Community",
 	"tools.connection.categories.workflows": "Workflows",
