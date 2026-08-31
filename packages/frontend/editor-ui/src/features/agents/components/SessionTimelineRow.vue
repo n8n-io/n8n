@@ -140,6 +140,20 @@ const label = computed((): string => {
 			>
 				{{ i18n.baseText(status.labelKey) }}
 			</N8nBadge>
+			<N8nTooltip
+				v-if="item.mocked"
+				:content="i18n.baseText('agents.builder.toolMock.badgeTooltip')"
+				placement="top"
+			>
+				<N8nBadge
+					theme="secondary"
+					size="xsmall"
+					:class="$style.statusBadge"
+					data-test-id="timeline-tool-mocked-badge"
+				>
+					{{ i18n.baseText('agents.builder.toolMock.badge') }}
+				</N8nBadge>
+			</N8nTooltip>
 			<N8nTooltip v-if="attachmentChip" :content="attachmentChip.tooltip" placement="top">
 				<span :class="$style.attachmentChip" data-testid="timeline-attachment-chip">
 					<N8nIcon icon="paperclip" size="xsmall" />

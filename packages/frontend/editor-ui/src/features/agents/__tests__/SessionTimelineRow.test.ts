@@ -36,9 +36,10 @@ const STUBS = {
 		template:
 			'<span :data-icon="icon" :data-testid="icon ? `icon-${icon}` : undefined"><slot /></span>',
 	},
+	// data-test-id falls through from the component, which sets it per badge kind.
 	N8nBadge: {
 		props: ['theme', 'size'],
-		template: '<span data-test-id="timeline-tool-error-badge"><slot /></span>',
+		template: '<span><slot /></span>',
 	},
 	SessionTimelinePill: {
 		props: ['kind'],
@@ -102,5 +103,15 @@ describe('SessionTimelineRow', () => {
 	it('does not render the failure icon for non-tool kinds', async () => {
 		const wrapper = await renderComponent(item({ kind: 'user', toolSuccess: false }));
 		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
+	});
+
+	it('renders the mocked badge for a node tool call served from mock items', async () => {
+		const wrapper = await renderComponent(item({ kind: 'node', toolSuccess: true, mocked: true }));
+		expect(wrapper.find('[data-test-id="timeline-tool-mocked-badge"]').exists()).toBe(true);
+	});
+
+	it('does not render the mocked badge for a real node tool call', async () => {
+		const wrapper = await renderComponent(item({ kind: 'node', toolSuccess: true }));
+		expect(wrapper.find('[data-test-id="timeline-tool-mocked-badge"]').exists()).toBe(false);
 	});
 });
