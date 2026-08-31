@@ -366,6 +366,33 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
+	// The failed-record exclusion above must not swallow this: a teardown failure is
+	// retryable, and reconciliation is its only recovery path.
+	test('retries an unpublish whose teardown failed, leaving the mapping in place', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('unpublish-failed');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
+
+		// The unpublish clears `activeVersionId` and enqueues, then its teardown
+		// fails, so the mapping is never removed.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const failing = (await outboxRepository.claimNextPendingRecord())!;
+		await outboxRepository.markFailed(failing.id, 'Trigger teardown failed');
+
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).toContain(workflow.id);
+
+		await reconciler.reconcile('reconcile');
+
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBeNull();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
 	test('removes a published-version mapping left behind by a missed unpublish', async () => {
 		const owner = await createOwner();
 

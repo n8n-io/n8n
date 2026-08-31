@@ -203,10 +203,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * processor writing the mapping after losing its lease), never a normal
 	 * mid-flight state.
 	 *
-	 * Workflows whose most recent record is terminal `failed` are excluded, as in
+	 * Workflows whose most recent record is a terminal `failed` for the version
+	 * that is currently active are excluded, as in
 	 * {@link findTriggerStatusDriftedWorkflowIds}: a publication failing before the
-	 * mapping advances leaves the skew forever, so this would loop every pass. This
-	 * is broader than needed: it drops retryable failures too.
+	 * mapping advances leaves the skew forever, so this would loop every pass.
+	 * Matching on the version keeps the unpublish direction healing — there the
+	 * active version is null, so a failed teardown never matches and is retried.
 	 */
 	async findVersionSkewedWorkflowIds(): Promise<string[]> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
@@ -216,6 +218,9 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// `(x IS NULL) <> (y IS NULL) OR x <> y` is the portable spelling of
 		// `activeVersionId IS DISTINCT FROM publishedVersionId`, which sqlite
 		// lacks; both-null (never published, no mapping) compares as equal.
+		//
+		// The failed-record match relies on plain `=`: an unpublished workflow has a
+		// null `activeVersionId`, so nothing matches and its skew stays detectable.
 		const rows: Array<{ workflowId: string }> = await this.query(
 			`SELECT w."id" AS "workflowId"
 			 FROM ${workflowTableName} w
@@ -229,11 +234,16 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 				 WHERE o."workflowId" = w."id"
 				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 )
-			 AND COALESCE((
-				 SELECT o."status" FROM ${outboxTableName} o
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${outboxTableName} o
 				 WHERE o."workflowId" = w."id"
-				 ORDER BY o."id" DESC LIMIT 1
-			 ), '') <> '${Status.Failed}'`,
+				 AND o."status" = '${Status.Failed}'
+				 AND o."publishedVersionId" = w."activeVersionId"
+				 AND o."id" = (
+					 SELECT MAX(latest."id") FROM ${outboxTableName} latest
+					 WHERE latest."workflowId" = w."id"
+				 )
+			 )`,
 		);
 
 		return rows.map((row) => row.workflowId);
