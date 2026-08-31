@@ -35,8 +35,8 @@ and a mistake look identical.
 
 Flag a hand-rolled control duplicating an `N8n*` component (icon button,
 tooltip, dialog, select), which arrives missing hover, focus and disabled
-states, and a NEW direct `element-plus` or `reka-ui` import in `editor-ui`:
-no lint rule enforces it and ~87 files predate the convention, so judge only
-the import being added.
+states, and a NEW direct `element-plus` or `reka-ui` import in `editor-ui`.
+No lint rule covers those and many files predate the convention, so judge
+only the import being added.
 
 Do NOT comment on Storybook story titles, args, or doc cross-references.

@@ -18,7 +18,8 @@ render. Index keys are fine on an append-only list.
 ## Reactivity
 
 - A `ref` or `computed` read without `.value` outside a template. Templates
-  unwrap, script does not, so the value silently becomes `undefined`.
+  unwrap, script does not, so you hold the wrapper: `activeNode?.type` reads
+  `undefined` instead of the type, without throwing.
 - A reactive object spread, cloned or deep-merged. `{ ...store }`,
   `structuredClone` and recursive merge helpers detach it, and a merge into a
   shared defaults object leaks one call into the next.
