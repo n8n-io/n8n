@@ -1734,6 +1734,56 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(tracing?.orchestratorRun.metadata)).not.toContain('sk-ant-secret');
 	});
 
+	it('records a model id for a pre-built AI SDK model instead of dumping the instance', async () => {
+		// What the proxy routes hand over: `modelId` + `config.provider`, no `id`.
+		// `provider` is a prototype getter on the real SDK model, hence the class.
+		class FakeChatLanguageModel {
+			readonly specificationVersion = 'v4';
+
+			readonly modelId = 'kimi-k3';
+
+			readonly config = {
+				provider: 'moonshotai.chat',
+				url: () => 'https://proxy.example.com/kimi/v1',
+				headers: function getHeaders() {
+					return {};
+				},
+				includeUsage: true,
+			};
+
+			readonly chunkSchema = { '~standard': { vendor: 'zod', version: 1 } };
+
+			get provider() {
+				return this.config.provider;
+			}
+		}
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			modelId: new FakeChatLanguageModel(),
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).toEqual(
+			expect.objectContaining({ model_id: 'moonshotai/kimi-k3' }),
+		);
+
+		await tracing?.finishRun(tracing.orchestratorRun, {
+			outputs: { result: 'done' },
+			metadata: { model_id: new FakeChatLanguageModel() },
+		});
+
+		expect(tracing?.orchestratorRun.metadata).toEqual(
+			expect.objectContaining({ model_id: 'moonshotai/kimi-k3' }),
+		);
+		const serialized = JSON.stringify(tracing?.orchestratorRun.metadata);
+		expect(serialized).not.toContain('chunkSchema');
+		expect(serialized).not.toContain('[function');
+	});
+
 	it('traces suspendable tools and HITL suspension spans', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
