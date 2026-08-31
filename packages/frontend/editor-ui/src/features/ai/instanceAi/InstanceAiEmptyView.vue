@@ -29,7 +29,6 @@ import {
 	isInstanceAiThreadSource,
 } from './constants';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
-import { stashPendingComposerDraft } from './composables/useInstanceAiHandoff';
 import {
 	InstanceAiProactiveStarterMessage,
 	useInstanceAiProactiveAgentExperiment,
@@ -460,7 +459,11 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+async function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -495,12 +498,27 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
-	// We navigate away without awaiting, so a refused send (e.g. a concurrency cap) would
-	// land the user on an empty thread with their message gone. Park it as that thread's
-	// composer draft for the destination view to pick up.
-	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef).then((sent) => {
-		if (!sent) stashPendingComposerDraft(threadId, finalMessage);
-	});
+	// Await admission before navigating. A refused send (e.g. a concurrency cap) must not
+	// drop the user into a blank thread, and handing the draft to the destination view is
+	// not an option: it reads its composer draft from localStorage once, synchronously, on
+	// mount, which always precedes this response. `sendMessage` has already surfaced the
+	// reason, so restore what was typed and stay put.
+	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	if (!sent) {
+		isStartingThread.value = false;
+		void nextTick(() => {
+			// `restoreDraft` puts back text *and* attachments, but the input only supplies it
+			// when files were attached; fall back to the text alone otherwise. Mirrors the
+			// thread-view composer.
+			if (!restoreDraft?.()) {
+				const input = chatInputRef.value;
+				if (input && !input.isDirty()) input.setText(message);
+			}
+			chatInputRef.value?.focus();
+		});
+		return;
+	}
+
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },

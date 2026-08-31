@@ -1311,6 +1311,49 @@ describe('RunStateRegistry', () => {
 			expect(registry.activeRunCountForUser('bob')).toBe(1);
 		});
 
+		// An inline approval card leaves the run in `activeRuns` (it is blocked on a Promise
+		// inside `waitForConfirmation`), so without this the user would be walled out of
+		// starting anything else until they answered or the card timed out.
+		it('excludes a run parked on an inline confirmation', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.registerPendingConfirmation('req-1', {
+				resolve: vi.fn(),
+				threadId: 'thread-1',
+				userId: 'alice',
+				createdAt: Date.now(),
+			});
+
+			expect(registry.activeRunCountForUser('alice')).toBe(0);
+			// The instance cap still counts it: parked or not, the run holds its memory.
+			expect(registry.activeRunCount()).toBe(1);
+		});
+
+		it('counts the run again once the confirmation resolves', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.registerPendingConfirmation('req-1', {
+				resolve: vi.fn(),
+				threadId: 'thread-1',
+				userId: 'alice',
+				createdAt: Date.now(),
+			});
+			registry.resolvePendingConfirmation('alice', 'req-1', { approved: true });
+
+			expect(registry.activeRunCountForUser('alice')).toBe(1);
+		});
+
+		it('only discounts the thread that is actually parked', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.startRun({ threadId: 'thread-2', user: alice });
+			registry.registerPendingConfirmation('req-1', {
+				resolve: vi.fn(),
+				threadId: 'thread-1',
+				userId: 'alice',
+				createdAt: Date.now(),
+			});
+
+			expect(registry.activeRunCountForUser('alice')).toBe(1);
+		});
+
 		it('keeps attribution across attachTracing', () => {
 			registry.startRun({ threadId: 'thread-1', user: alice });
 			registry.attachTracing('thread-1', {} as never);

@@ -272,15 +272,27 @@ export class RunStateRegistry<TUser = unknown> {
 	/**
 	 * Number of runs this user currently has executing, across all their threads.
 	 *
-	 * Suspended runs are deliberately excluded: they spend nothing while parked, and
-	 * counting them would lock a user out for the whole confirmation timeout after a few
-	 * abandoned HITL cards. A linear scan is fine -- the map is bounded by the
-	 * instance-wide concurrency cap.
+	 * Excludes everything parked on a human, because none of it is spending anything and
+	 * counting it would lock a user out for the whole confirmation timeout after a few
+	 * abandoned cards. That means two things, not one:
+	 *
+	 *  - suspended runs, which have left `activeRuns` entirely; and
+	 *  - runs blocked in `waitForConfirmation`, which stay in `activeRuns` while an inline
+	 *    approval card is open. `sweepTimedOut` skips these for the same reason.
+	 *
+	 * Contrast {@link activeRunCount}, which deliberately counts both: a parked run still
+	 * holds its heap, so it still occupies instance capacity even when it costs nothing.
+	 *
+	 * The scan is linear in concurrently-executing runs. That stays small in practice
+	 * regardless of the caps -- each run costs ~12-20MB, so a process cannot hold many --
+	 * and it is negligible next to the model call that follows.
 	 */
 	activeRunCountForUser(userId: string): number {
 		let count = 0;
-		for (const run of this.activeRuns.values()) {
-			if (run.userId === userId) count++;
+		for (const [threadId, run] of this.activeRuns) {
+			if (run.userId !== userId) continue;
+			if (this.hasPendingConfirmationForThread(threadId)) continue;
+			count++;
 		}
 		return count;
 	}

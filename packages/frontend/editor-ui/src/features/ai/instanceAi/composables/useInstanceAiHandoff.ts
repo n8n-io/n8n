@@ -212,10 +212,18 @@ export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
 }
 
+/** Drop a stashed opening message without sending it (e.g. its thread is gone). */
+export function clearPendingFirstMessage(threadId: string): void {
+	localStorage.removeItem(pendingFirstMessageKey(threadId));
+}
+
 export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingHandoffContext(threadId);
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
+	// Included so a thread that disappears before its opening message is replayed doesn't
+	// leave the payload behind forever.
+	clearPendingFirstMessage(threadId);
 }
 
 /** Resolve the personal project a launched thread binds to, loading it on first use. */

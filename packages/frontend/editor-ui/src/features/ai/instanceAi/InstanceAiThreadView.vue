@@ -742,10 +742,14 @@ function reconnectThreadAfterHydration(): void {
 			void thread
 				.sendMessage(pending.message, pending.attachments, rootStore.pushRef, pending.context)
 				.then((sent) => {
+					if (sent) return;
 					// Consuming already removed it, so a refused send (e.g. a concurrency cap)
 					// would otherwise discard a message the user typed in another tab. Put it
-					// back so the next mount replays it.
-					if (!sent) stashPendingFirstMessage(props.threadId, pending);
+					// back so the next mount replays it -- but only while there is still a
+					// thread to replay it into, otherwise the payload would be stranded in
+					// localStorage for a thread that no longer exists.
+					if (!store.threads.some((t) => t.id === props.threadId)) return;
+					stashPendingFirstMessage(props.threadId, pending);
 				});
 		}
 	});
