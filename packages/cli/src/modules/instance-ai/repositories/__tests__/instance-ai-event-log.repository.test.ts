@@ -118,9 +118,8 @@ describe('InstanceAiEventLogRepository', () => {
 					langsmithRunId: 'ls-other',
 					langsmithTraceId: 'trace-other',
 				}),
-				// The group's first sibling, unanchored — the shape the drop migration
-				// leaves behind (it stamps only the sibling the snapshot row was keyed to)
-				// and what an untraced segment leaves organically.
+				// The group's first sibling, unanchored — what a segment without
+				// tracing leaves behind.
 				runStartRow(2, 'run-1', { messageGroupId: 'mg-1' }),
 				runStartRow(3, 'run-2', {
 					messageGroupId: 'mg-1',

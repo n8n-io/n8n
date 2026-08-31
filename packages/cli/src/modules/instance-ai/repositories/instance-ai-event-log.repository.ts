@@ -152,12 +152,11 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * `messageGroupId ?? runId`). The ids ride on the run-start fact; prefer the
 	 * earliest run-start in the message group THAT CARRIES the ids, falling back
 	 * to the run whose id matches. Sibling runs of one turn share the
-	 * `message_turn` root, but not every sibling's run-start is anchored: the
-	 * drop migration's copy only stamped the sibling the snapshot row was keyed
-	 * to (the group's last), and organically a segment without tracing leaves
-	 * the ids to a later one — mirroring the snapshot store, which kept the
-	 * group's first non-null ids. A genuinely untraced run has no anchored
-	 * sibling and resolves undefined.
+	 * `message_turn` root, but not every sibling's run-start is anchored — a
+	 * segment without tracing leaves the ids to a later one — mirroring the
+	 * snapshot store, which kept the group's first non-null ids. Runs recorded
+	 * before the anchor rode on run-start (the snapshot table carried it and
+	 * dropped without a copy), and genuinely untraced runs, resolve undefined.
 	 */
 	async findLangsmithAnchor(
 		threadId: string,
