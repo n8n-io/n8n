@@ -14,7 +14,7 @@ export const executionFieldDocs = {
 		description: 'ID of the execution this one is a retry of.',
 	}),
 	retrySuccessId: alsoNullable({
-		description: 'ID of the retry that succeeded, if this execution failed and a retry did not.',
+		description: 'ID of the execution that retried this one successfully.',
 		example: '2',
 	}),
 	status: {
@@ -28,9 +28,8 @@ export const executionFieldDocs = {
 	stoppedAt: alsoNullable({
 		format: 'date-time',
 		description:
-			'The time at which the execution stopped. Null for the `new`, `running` and `unknown` ' +
-			'statuses, which have not stopped. A `waiting` execution has stopped its current run, ' +
-			'so it carries a value.',
+			'When the execution stopped. Null for the `new`, `running` and `unknown` statuses; a ' +
+			'`waiting` execution has stopped its current run, so it has a value.',
 	}),
 	deletedAt: alsoNullable({
 		format: 'date-time',

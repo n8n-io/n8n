@@ -59,8 +59,6 @@ export const deletedExecutionPublicSchema = z.object({
 
 export class DeletedExecutionPublicDto extends Z.class(deletedExecutionPublicSchema.shape) {}
 
-// The list item is much smaller than the single-execution response. Key order reaches both the
-// response body and the generated spec, so it mirrors what the endpoint already returns.
 export const executionListItemPublicSchema = executionPublicSchema
 	.pick({
 		id: true,
@@ -93,8 +91,6 @@ export class ExecutionListPublicDto extends Z.class({
 			description:
 				'Paginate through executions by setting the cursor parameter to a nextCursor attribute ' +
 				'returned by a previous request. Default value fetches the first "page" of the collection.',
-			// base64 of `{"lastId":"1000","limit":100}`. Master's example decoded to a bare
-			// truncated UUID, so feeding it back answered 400.
 			example: 'eyJsYXN0SWQiOiIxMDAwIiwibGltaXQiOjEwMH0=',
 		}),
 }) {}
