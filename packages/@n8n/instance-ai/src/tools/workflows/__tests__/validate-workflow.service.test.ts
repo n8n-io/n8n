@@ -82,7 +82,7 @@ function makeNode(overrides: Partial<NodeJSON> = {}): NodeJSON {
  */
 const MANAGED_NODE_CREDENTIAL = {
 	id: null,
-	name: 'n8n credits',
+	name: 'Gateway credits',
 	__aiGatewayManaged: true,
 } as unknown as NonNullable<NodeJSON['credentials']>[string];
 
@@ -242,7 +242,7 @@ describe('validateWorkflowConfig', () => {
 			const node = makeNode({
 				type: 'n8n-nodes-base.openAi',
 				credentials: {
-					openAiApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n Connect' } as unknown as {
+					openAiApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'Gateway credits' } as unknown as {
 						id: string;
 						name: string;
 					},
@@ -909,7 +909,7 @@ describe('validateWorkflowConfig', () => {
 			});
 			expect(
 				result.summary.some(
-					(line) => line.includes('unsupportedCredentialType') && line.includes('n8n credits'),
+					(line) => line.includes('unsupportedCredentialType') && line.includes('Gateway credits'),
 				),
 			).toBe(true);
 		});

@@ -438,7 +438,9 @@ List credentials accessible to the current user. Never exposes secrets.
 |-------|------|----------|-------------|
 | `type` | string | no | Filter by credential type (e.g., `notionApi`) |
 
-**Returns**: `{ credentials: [{ id, name, type, createdAt, updatedAt }] }`
+**Returns**: `{ credentials: [{ id, name, type }], total, hasMore, hint? }`.
+A Gateway credits managed entry can have `id: null` and
+`__aiGatewayManaged: true`.
 
 ### `get-credential`
 
@@ -466,9 +468,11 @@ Search available credential types by name or description.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | yes | Search query (e.g., "slack", "oauth") |
+| `query` | string | no | Search query. Required unless `gatewayCreditsOnly` is true |
+| `gatewayCreditsOnly` | boolean | no | Return credential types supported by Gateway credits |
 
-**Returns**: `{ credentialTypes: [{ name, displayName, description }] }`
+**Returns**: `{ results: [...] }`. Gateway-credits-only results have
+`{ type, gatewayCredits: true }`.
 
 ### `setup-credentials`
 
@@ -512,6 +516,7 @@ List available node types in the n8n instance.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `query` | string | no | Filter by name or description |
+| `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
 
 **Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
 

@@ -129,11 +129,11 @@ describe('resolveCredentials', () => {
 
 			// Managed marker persisted so the saved workflow runs zero-setup.
 			expect(json.nodes[0].credentials).toEqual({
-				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			// Reported as resolved (connected) — the agent must not route it to setup.
 			expect(result.resolvedCredentialsByNode).toEqual({
-				Slack: [{ type: 'slackApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				Slack: [{ type: 'slackApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true }],
 			});
 			// Still simulated during verification, but NOT flagged as needing a real credential.
 			expect(result.mockedNodeNames).toEqual(['Slack']);
@@ -174,7 +174,7 @@ describe('resolveCredentials', () => {
 			await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
 		});
@@ -215,11 +215,13 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
 			expect(result.resolvedCredentialsByNode).toEqual({
-				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				'PDF.co': [
+					{ type: 'pdfcoApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+				],
 			});
 			// Simulated during verification, but NOT flagged as needing a real credential.
 			expect(result.mockedNodeNames).toEqual(['PDF.co']);
@@ -260,11 +262,13 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
 			expect(result.resolvedCredentialsByNode).toEqual({
-				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				'PDF.co': [
+					{ type: 'pdfcoApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+				],
 			});
 			expect(result.mockedNodeNames).toEqual(['PDF.co']);
 		});
@@ -304,7 +308,7 @@ describe('resolveCredentials', () => {
 			await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKeyLegacy' });
 		});
@@ -335,10 +339,12 @@ describe('resolveCredentials', () => {
 
 			// Silently configured with n8n credits — no setup card will surface for it.
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(result.resolvedCredentialsByNode).toEqual({
-				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				'PDF.co': [
+					{ type: 'pdfcoApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+				],
 			});
 			expect(result.mockedNodeNames).toEqual(['PDF.co']);
 			expect(result.mockedCredentialsByNode).toEqual({});
@@ -372,11 +378,11 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				llamaParseApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				llamaParseApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(result.resolvedCredentialsByNode).toEqual({
 				'Parse PDF (LlamaParse)': [
-					{ type: 'llamaParseApi', id: null, name: 'n8n credits', __aiGatewayManaged: true },
+					{ type: 'llamaParseApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				],
 			});
 		});
@@ -561,7 +567,7 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				notionApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				notionApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
 			expect(result.mockedCredentialsByNode).toEqual({});
@@ -774,7 +780,7 @@ describe('resolveCredentials', () => {
 			const json = makeWorkflow({
 				nodes: [
 					makeNotionNode('Notion', {
-						notionApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+						notionApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 					}),
 					makeNotionNode('Notion 2', { notionApi: undefined }),
 				],
@@ -1495,13 +1501,14 @@ describe('buildCredentialResolutionNote', () => {
 		expect(note).toContain('do not ask the user to connect or create them');
 	});
 
-	it('surfaces the n8n credits label and BYOK guidance for gateway-managed credentials', () => {
+	it('surfaces the Gateway credits label and BYOK guidance for gateway-managed credentials', () => {
 		const note = buildCredentialResolutionNote({
-			Slack: [{ type: 'slackApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+			Slack: [{ type: 'slackApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true }],
 		});
 
-		expect(note).toContain('n8n credits');
+		expect(note).toContain('Gateway credits');
 		expect(note).not.toContain('n8n Connect');
+		expect(note).not.toContain('n8n credits');
 		expect(note).toContain('switch to their own key');
 	});
 });
