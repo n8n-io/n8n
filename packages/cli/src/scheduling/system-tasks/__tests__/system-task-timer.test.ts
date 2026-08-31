@@ -160,6 +160,17 @@ describe('SystemTaskTimer', () => {
 		expect(onFire).not.toHaveBeenCalled();
 	});
 
+	it('does not keep the process alive while waiting', () => {
+		const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+		const timer = createTimer({ kind: 'interval', intervalSeconds: 60 });
+
+		timer.start(new Date());
+
+		const pending = setTimeoutSpy.mock.results.at(-1)?.value as NodeJS.Timeout;
+		expect(pending.hasRef()).toBe(false);
+		setTimeoutSpy.mockRestore();
+	});
+
 	it('stops firing once stopped', () => {
 		const timer = createTimer({ kind: 'interval', intervalSeconds: 60 });
 

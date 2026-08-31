@@ -16,6 +16,8 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
  * Occurrences the process slept through are coalesced: the timer fires once and
  * resumes from now, rather than replaying the whole backlog.
  *
+ * The pending timeout is unref'd, so it never keeps the process alive on its own.
+ *
  * @remarks Temporary: removed once every task runs on the durable scheduler
  */
 export class SystemTaskTimer {
@@ -81,15 +83,16 @@ export class SystemTaskTimer {
 				() => this.waitFor(fireAt, fireAt.getTime() - this.now()),
 				MAX_TIMEOUT_MS,
 			);
-			return;
+		} else {
+			this.timer = setTimeout(
+				() => {
+					this.arm(fireAt, false);
+					this.onFire();
+				},
+				Math.max(0, delayMs),
+			);
 		}
 
-		this.timer = setTimeout(
-			() => {
-				this.arm(fireAt, false);
-				this.onFire();
-			},
-			Math.max(0, delayMs),
-		);
+		this.timer.unref();
 	}
 }
