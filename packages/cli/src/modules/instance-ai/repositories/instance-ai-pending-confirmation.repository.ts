@@ -82,6 +82,13 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 		return await this.find({ where: { threadId } });
 	}
 
+	async hasActionableForRun(runId: string, now: Date): Promise<boolean> {
+		const count = await this.count({
+			where: { runId, expiresAt: Or(IsNull(), MoreThanOrEqual(now)) },
+		});
+		return count > 0;
+	}
+
 	/** Of the given request IDs, return those still actionable (row exists and
 	 *  not past `expiresAt`). The complement is treated as expired by the UI. */
 	async findLiveRequestIds(requestIds: string[], now: Date): Promise<Set<string>> {
