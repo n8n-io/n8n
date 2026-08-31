@@ -29,7 +29,8 @@ beforeEach(() => {
 	ctx = {
 		emit: emitSpy as unknown as DataEmitterContext['emit'],
 		logger,
-		getNode: () => mock<INode>({ name: 'Kafka Trigger' }),
+		getNode: () => mock<INode>({ name: 'Kafka Trigger', id: 'node-1' }),
+		getWorkflow: () => ({ id: 'wf-1', name: 'wf', active: true }),
 		helpers: { createDeferredPromise },
 	};
 });
@@ -239,5 +240,49 @@ describe('createDataEmitter', () => {
 
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Retry Delay on Error'));
 		});
+	});
+});
+
+describe('deduplication key from chunk coordinates', () => {
+	const COORDS = { topic: 'topic-a', partition: 2, firstOffset: '41', lastOffset: '43' };
+	const EXPECTED_KEY = 'kafka:wf-1:node-1:topic-a:2:41-43';
+
+	it('immediate mode passes the key as the fourth emit argument', async () => {
+		const emitter = build({ resolveOffsetMode: 'immediately' });
+
+		await emitter(ITEMS, COORDS);
+
+		expect(emitSpy).toHaveBeenCalledWith([ITEMS], undefined, undefined, EXPECTED_KEY);
+	});
+
+	it('awaiting mode passes the key alongside the done promise', async () => {
+		const emitter = build({ resolveOffsetMode: 'onCompletion' });
+		const pending = emitter(ITEMS, COORDS);
+
+		await vi.waitFor(() => expect(emitSpy).toHaveBeenCalled());
+		expect(emitSpy.mock.calls[0][3]).toBe(EXPECTED_KEY);
+
+		const deferred = emitSpy.mock.calls[0][2] as { resolve: (value: IRun) => void };
+		deferred.resolve(run('success'));
+		await expect(pending).resolves.toStrictEqual({ mayAdvance: true });
+	});
+
+	it('a suppressed duplicate (done promise resolves undefined) advances the offset', async () => {
+		const emitter = build({ resolveOffsetMode: 'onSuccess' });
+		const pending = emitter(ITEMS, COORDS);
+
+		await vi.waitFor(() => expect(emitSpy).toHaveBeenCalled());
+		const deferred = emitSpy.mock.calls[0][2] as { resolve: (value: IRun | undefined) => void };
+		deferred.resolve(undefined);
+
+		await expect(pending).resolves.toStrictEqual({ mayAdvance: true });
+	});
+
+	it('without coordinates no key is sent', async () => {
+		const emitter = build({ resolveOffsetMode: 'immediately' });
+
+		await emitter(ITEMS);
+
+		expect(emitSpy).toHaveBeenCalledWith([ITEMS]);
 	});
 });

@@ -17,15 +17,46 @@ export interface OffsetVerdict {
 	readonly mayAdvance: boolean;
 }
 
-export type DataEmitter = (items: INodeExecutionData[]) => Promise<OffsetVerdict>;
+/**
+ * Where the chunk sits in its topic. Used to derive a per-chunk deduplication
+ * key, so a redelivery of an already-dispatched chunk (crash after execution,
+ * before offset commit — or a stale replica racing a handoff) is suppressed at
+ * execution insert. Best-effort: a redelivery re-chunked at different offsets
+ * gets a different key, which at-least-once tolerates.
+ */
+export interface ChunkCoordinates {
+	topic: string;
+	partition: number;
+	firstOffset: string;
+	lastOffset: string;
+}
+
+export type DataEmitter = (
+	items: INodeExecutionData[],
+	coords?: ChunkCoordinates,
+) => Promise<OffsetVerdict>;
 
 /**
  * The slice of the trigger context the emitter needs, so it can be exercised
  * without a node.
  */
-export type DataEmitterContext = Pick<ITriggerFunctions, 'emit' | 'logger' | 'getNode'> & {
+export type DataEmitterContext = Pick<
+	ITriggerFunctions,
+	'emit' | 'logger' | 'getNode' | 'getWorkflow'
+> & {
 	helpers: Pick<ITriggerFunctions['helpers'], 'createDeferredPromise'>;
 };
+
+/**
+ * Scoped to workflow + node so two triggers consuming the same topic (their
+ * own consumer groups, their own offsets) never suppress each other.
+ */
+function dedupKeyFor(ctx: DataEmitterContext, coords?: ChunkCoordinates): string | undefined {
+	if (!coords) return undefined;
+	const workflowId = ctx.getWorkflow().id ?? 'unknown';
+	const nodeId = ctx.getNode().id;
+	return `kafka:${workflowId}:${nodeId}:${coords.topic}:${coords.partition}:${coords.firstOffset}-${coords.lastOffset}`;
+}
 
 export interface DataEmitterOptions {
 	resolveOffsetMode: ResolveOffsetMode;
@@ -88,10 +119,12 @@ export function createDataEmitter(
 
 /** Hands the chunk over and advances at once, without waiting for the run. */
 function createImmediateEmitter(ctx: DataEmitterContext, closeSignal: AbortSignal): DataEmitter {
-	return async (items) => {
+	return async (items, coords) => {
 		// Never start an execution once the trigger is closing.
 		if (closeSignal.aborted) return HOLD_BACK;
-		ctx.emit([items]);
+		const deduplicationKey = dedupKeyFor(ctx, coords);
+		if (deduplicationKey) ctx.emit([items], undefined, undefined, deduplicationKey);
+		else ctx.emit([items]);
 		return ADVANCE;
 	};
 }
@@ -114,11 +147,22 @@ function createAwaitingEmitter(
 	const closedWithReason = rejectOnClose(closeSignal);
 	const closedQuietly = closedWithReason.catch(() => undefined);
 
-	return async (items) => {
+	return async (items, coords) => {
 		if (closeSignal.aborted) return HOLD_BACK;
 
 		try {
-			const run = await awaitExecution(ctx, items, deadlineSeconds, closedWithReason);
+			const run = await awaitExecution(
+				ctx,
+				items,
+				deadlineSeconds,
+				closedWithReason,
+				dedupKeyFor(ctx, coords),
+			);
+
+			// The execution settled without a run: a duplicate chunk was suppressed
+			// by its deduplication key, meaning this chunk already dispatched once.
+			// Advance so it is not redelivered forever.
+			if (run === undefined) return ADVANCE;
 
 			if (allowedStatuses && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -190,9 +234,13 @@ async function awaitExecution(
 	items: INodeExecutionData[],
 	deadlineSeconds: number,
 	closedWithReason: Promise<never>,
-): Promise<IRun> {
+	deduplicationKey?: string,
+): Promise<IRun | undefined> {
+	// Typed IRun to satisfy `emit`, but the runtime resolves it with `undefined`
+	// when a duplicate execution was suppressed (see the factory's
+	// settleDonePromise) — the caller must handle both.
 	const response = ctx.helpers.createDeferredPromise<IRun>();
-	ctx.emit([items], undefined, response);
+	ctx.emit([items], undefined, response, deduplicationKey);
 
 	const finished = Promise.race([response.promise, closedWithReason]);
 	if (deadlineSeconds <= 0) return await finished;

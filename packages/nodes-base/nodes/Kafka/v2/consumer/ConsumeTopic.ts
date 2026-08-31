@@ -275,7 +275,19 @@ async function processBatch(
 			return;
 		}
 
-		if (!(await emit(items)).mayAdvance) {
+		const firstMessage = chunk[0];
+		const lastChunkMessage = chunk[chunk.length - 1];
+		const coords =
+			firstMessage && lastChunkMessage
+				? {
+						topic: batch.topic,
+						partition: batch.partition,
+						firstOffset: firstMessage.offset,
+						lastOffset: lastChunkMessage.offset,
+					}
+				: undefined;
+
+		if (!(await emit(items, coords)).mayAdvance) {
 			logger.warn('Kafka chunk was not processed, leaving it unresolved');
 			return;
 		}

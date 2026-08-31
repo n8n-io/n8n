@@ -505,7 +505,12 @@ describe('KafkaTriggerV2 Node', () => {
 			messages: [{ value: Buffer.from('message') }],
 		});
 
-		expect(emit).toHaveBeenCalledWith([[{ json: { message: 'message', topic: 'test-topic' } }]]);
+		expect(emit).toHaveBeenCalledWith(
+			[[{ json: { message: 'message', topic: 'test-topic' } }]],
+			undefined,
+			undefined,
+			expect.stringMatching(/^kafka:/),
+		);
 
 		await close();
 		expect(consumer.disconnect).toHaveBeenCalled();
@@ -587,12 +592,20 @@ describe('KafkaTriggerV2 Node', () => {
 
 			// A 3-message library batch must not collapse into one 3-item execution.
 			expect(emit).toHaveBeenCalledTimes(3);
-			expect(emit).toHaveBeenNthCalledWith(1, [
-				[{ json: { message: 'message1', topic: 'test-topic' } }],
-			]);
-			expect(emit).toHaveBeenNthCalledWith(3, [
-				[{ json: { message: 'message3', topic: 'test-topic' } }],
-			]);
+			expect(emit).toHaveBeenNthCalledWith(
+				1,
+				[[{ json: { message: 'message1', topic: 'test-topic' } }]],
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
+			expect(emit).toHaveBeenNthCalledWith(
+				3,
+				[[{ json: { message: 'message3', topic: 'test-topic' } }]],
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
 		});
 
 		it('chunks into executions of Batch Size items when set above 1', async () => {
@@ -609,15 +622,25 @@ describe('KafkaTriggerV2 Node', () => {
 			});
 
 			expect(emit).toHaveBeenCalledTimes(2);
-			expect(emit).toHaveBeenNthCalledWith(1, [
+			expect(emit).toHaveBeenNthCalledWith(
+				1,
 				[
-					{ json: { message: 'message1', topic: 'test-topic' } },
-					{ json: { message: 'message2', topic: 'test-topic' } },
+					[
+						{ json: { message: 'message1', topic: 'test-topic' } },
+						{ json: { message: 'message2', topic: 'test-topic' } },
+					],
 				],
-			]);
-			expect(emit).toHaveBeenNthCalledWith(2, [
-				[{ json: { message: 'message3', topic: 'test-topic' } }],
-			]);
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
+			expect(emit).toHaveBeenNthCalledWith(
+				2,
+				[[{ json: { message: 'message3', topic: 'test-topic' } }]],
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
 		});
 	});
 
@@ -791,7 +814,12 @@ describe('KafkaTriggerV2 Node', () => {
 				messages: [{ value: Buffer.from(JSON.stringify(jsonData)) }],
 			});
 
-			expect(emit).toHaveBeenCalledWith([[{ json: jsonData }]]);
+			expect(emit).toHaveBeenCalledWith(
+				[[{ json: jsonData }]],
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
 		});
 
 		it('includes headers when returnHeaders is true', async () => {
@@ -808,17 +836,22 @@ describe('KafkaTriggerV2 Node', () => {
 				],
 			});
 
-			expect(emit).toHaveBeenCalledWith([
+			expect(emit).toHaveBeenCalledWith(
 				[
-					{
-						json: {
-							message: 'test-message',
-							topic: 'test-topic',
-							headers: { 'content-type': 'application/json' },
+					[
+						{
+							json: {
+								message: 'test-message',
+								topic: 'test-topic',
+								headers: { 'content-type': 'application/json' },
+							},
 						},
-					},
+					],
 				],
-			]);
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
 		});
 
 		it('keeps binary data when keepBinaryData is enabled', async () => {
@@ -856,9 +889,12 @@ describe('KafkaTriggerV2 Node', () => {
 
 			expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'http://localhost:8081' });
 			expect(mockDecode).toHaveBeenCalledWith(Buffer.from('avro-encoded'));
-			expect(emit).toHaveBeenCalledWith([
-				[{ json: { message: { data: 'decoded-data' }, topic: 'test-topic' } }],
-			]);
+			expect(emit).toHaveBeenCalledWith(
+				[[{ json: { message: { data: 'decoded-data' }, topic: 'test-topic' } }]],
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
 		});
 
 		it('activates anyway and warns when the registry is unreachable, same as v1', async () => {
@@ -883,9 +919,12 @@ describe('KafkaTriggerV2 Node', () => {
 			});
 
 			// No registry to decode with, so the raw message is emitted, as v1 does.
-			expect(emit).toHaveBeenCalledWith([
-				[{ json: { message: 'raw-message', topic: 'test-topic' } }],
-			]);
+			expect(emit).toHaveBeenCalledWith(
+				[[{ json: { message: 'raw-message', topic: 'test-topic' } }]],
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
 		});
 
 		it('fails activation when the registry credential is misconfigured, same as v1', async () => {
@@ -1098,7 +1137,12 @@ describe('KafkaTriggerV2 Node', () => {
 				messages: [{ value: Buffer.from('test') }],
 			});
 
-			expect(emit).toHaveBeenCalledWith([[{ json: { message: 'test', topic: 'test-topic' } }]]);
+			expect(emit).toHaveBeenCalledWith(
+				[[{ json: { message: 'test', topic: 'test-topic' } }]],
+				undefined,
+				undefined,
+				expect.stringMatching(/^kafka:/),
+			);
 			// Forced to immediately despite the node asking for onCompletion.
 			expect(emit.mock.calls[0][2]).toBeUndefined();
 		});

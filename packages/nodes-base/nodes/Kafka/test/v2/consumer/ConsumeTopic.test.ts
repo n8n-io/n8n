@@ -209,8 +209,18 @@ describe('consumeTopic', () => {
 			await consumer.deliverBatch({ topic: 'orders', messages: messages('a', 'b', 'c') });
 
 			expect(emit).toHaveBeenCalledTimes(3);
-			expect(emit).toHaveBeenNthCalledWith(1, [{ json: { message: 'a', topic: 'orders' } }]);
-			expect(emit).toHaveBeenNthCalledWith(3, [{ json: { message: 'c', topic: 'orders' } }]);
+			expect(emit).toHaveBeenNthCalledWith(1, [{ json: { message: 'a', topic: 'orders' } }], {
+				topic: 'orders',
+				partition: 0,
+				firstOffset: '0',
+				lastOffset: '0',
+			});
+			expect(emit).toHaveBeenNthCalledWith(3, [{ json: { message: 'c', topic: 'orders' } }], {
+				topic: 'orders',
+				partition: 0,
+				firstOffset: '2',
+				lastOffset: '2',
+			});
 		});
 
 		it('groups messages into executions of the chosen batch size', async () => {
@@ -219,12 +229,18 @@ describe('consumeTopic', () => {
 			await consumer.deliverBatch({ topic: 'orders', messages: messages('a', 'b', 'c') });
 
 			expect(emit).toHaveBeenCalledTimes(2);
-			expect(emit).toHaveBeenNthCalledWith(1, [
-				{ json: { message: 'a', topic: 'orders' } },
-				{ json: { message: 'b', topic: 'orders' } },
-			]);
+			expect(emit).toHaveBeenNthCalledWith(
+				1,
+				[{ json: { message: 'a', topic: 'orders' } }, { json: { message: 'b', topic: 'orders' } }],
+				{ topic: 'orders', partition: 0, firstOffset: '0', lastOffset: '1' },
+			);
 			// The trailing chunk is short rather than padded.
-			expect(emit).toHaveBeenNthCalledWith(2, [{ json: { message: 'c', topic: 'orders' } }]);
+			expect(emit).toHaveBeenNthCalledWith(2, [{ json: { message: 'c', topic: 'orders' } }], {
+				topic: 'orders',
+				partition: 0,
+				firstOffset: '2',
+				lastOffset: '2',
+			});
 		});
 
 		it('parses every message with the batch topic', async () => {
