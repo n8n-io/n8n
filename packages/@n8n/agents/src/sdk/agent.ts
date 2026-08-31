@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 
@@ -80,6 +81,7 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
+import { modelConfigToId } from '../utils/model';
 import type { Workspace } from '../workspace/workspace';
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
@@ -1414,29 +1416,10 @@ function resolveInlineSubAgentModelConfig(
 	return mappedModel ?? options.modelConfig;
 }
 
-function modelConfigToId(modelConfig: ModelConfig): string | undefined {
-	if (typeof modelConfig === 'string') return modelConfig;
-	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
-		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
-	}
-	if (
-		typeof modelConfig === 'object' &&
-		modelConfig !== null &&
-		'provider' in modelConfig &&
-		'modelId' in modelConfig
-	) {
-		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
-		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
-		return provider && modelId ? `${provider}/${modelId}` : undefined;
-	}
-	return undefined;
-}
-
 function modelConfigProvider(modelConfig: ModelConfig): string | undefined {
-	const modelId = modelConfigToId(modelConfig);
-	if (!modelId) return undefined;
-	const slashIndex = modelId.indexOf('/');
-	return slashIndex > 0 ? modelId.slice(0, slashIndex) : undefined;
+	const id = modelConfigToId(modelConfig);
+	if (id === undefined) return undefined;
+	return getProviderPrefix(id) || undefined;
 }
 
 function shouldInheritThinking(
