@@ -1923,6 +1923,28 @@ describe('WorkflowExecute', () => {
 				{ json: {}, error: { message: 'Test error' } as NodeApiError },
 			]);
 		});
+
+		test('should route the error item when the paired item cannot be resolved', () => {
+			// The recorded source data points at an item the previous node never
+			// emitted, so `$getPairedItem` throws instead of returning `null`
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: { error: 'Test error' },
+						pairedItem: { item: 99, input: 0 },
+					},
+				],
+			];
+
+			expect(() => {
+				workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+			}).not.toThrow();
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{ json: { error: 'Test error' }, pairedItem: { item: 99, input: 0 } },
+			]);
+		});
 	});
 
 	describe('AI tool continue-on-fail default', () => {

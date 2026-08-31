@@ -3003,11 +3003,19 @@ export class WorkflowExecute {
 
 						const sourceData = executionData.source[NodeConnectionTypes.Main][pairedItemInputIndex];
 
-						const constPairedItem = dataProxy.$getPairedItem(
-							sourceData!.previousNode,
-							sourceData,
-							pairedItemData,
-						);
+						// Resolving the input item only enriches the error item. If the lookup
+						// fails, still route the item to the error output instead of letting the
+						// error escape and leave the item on the success output.
+						let constPairedItem: INodeExecutionData | null = null;
+						try {
+							constPairedItem = dataProxy.$getPairedItem(
+								sourceData!.previousNode,
+								sourceData,
+								pairedItemData,
+							);
+						} catch {
+							constPairedItem = null;
+						}
 
 						if (constPairedItem === null) {
 							errorItems.push(item);
