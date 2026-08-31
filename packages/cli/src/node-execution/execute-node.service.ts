@@ -62,28 +62,20 @@ export type ExecuteNodeResult =
 	| { status: 'error'; error: ExecuteNodeError };
 
 /**
- * Executes a single node standalone, with real credentials and caller-supplied
- * parameters and input items.
+ * Executes a single node standalone with real credentials and caller-supplied
+ * input items.
  *
- * The node runs through `WorkflowRunner` — the same path as any other
- * execution — so the instance's configured isolation applies (queue mode
- * dispatches to a worker; `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS` is honored
- * for the manual mode used here). Node code must never run in a process the
- * engine would not run it in: task runners only isolate Code-node scripts, so
- * the worker process boundary is the only crash isolation arbitrary node code
- * gets. `WorkflowRunner` requires a persisted workflow row (hard FK on
- * `execution_entity.workflowId`), so an archived single-node workflow is
- * created per run — the pattern chat-hub uses — and deleted afterwards, which
- * cascades away the execution row.
+ * Runs through `WorkflowRunner` so the configured isolation applies — in queue
+ * mode node code runs on a worker, never in a process the engine would not run
+ * it in (task runners only isolate Code-node scripts). `WorkflowRunner`
+ * requires a persisted workflow row (FK on `execution_entity.workflowId`), so
+ * an archived single-node workflow is created per run — the chat-hub pattern —
+ * and deleted afterwards.
  *
- * Authorization: `findCredentialForUser` (per-user `credential:read`) is the
- * caller-facing gate; the engine's project-level credential check runs again
- * at execution start against the temp workflow's project (the user's personal
- * project). A credential the user can read only through a team project
- * therefore fails at run start — a conservative failure.
- *
- * Known limitations: expressions referencing other nodes cannot resolve (the
- * workflow really has one node); binary output is returned as metadata only.
+ * `findCredentialForUser` is the caller-facing authorization gate; nothing
+ * downstream re-checks per user. The engine's project-level check runs against
+ * the temp workflow's personal project, so a credential shared only via a team
+ * project fails at run start (fails closed).
  */
 @Service()
 export class ExecuteNodeService {
@@ -138,12 +130,8 @@ export class ExecuteNodeService {
 		}
 	}
 
-	/**
-	 * A node is runnable if it has an `execute` method or is declarative
-	 * (routable — the engine handles those itself). Trigger-only and
-	 * webhook-only nodes have neither and are rejected with a clear message
-	 * instead of failing deep inside execution.
-	 */
+	/** `requestDefaults` marks a declarative node, which the engine can route
+	 *  without an `execute` method; trigger/webhook-only nodes have neither. */
 	private assertExecutable(nodeType: INodeType, type: string) {
 		if (nodeType.execute) return;
 		if (nodeType.description.requestDefaults !== undefined) return;
@@ -153,11 +141,8 @@ export class ExecuteNodeService {
 		);
 	}
 
-	/**
-	 * Managed credentials (e.g. the AI Gateway) are minted per execution and
-	 * carry no stored row — force `id: null` regardless of what the caller sent,
-	 * so a stale or foreign id can never reach the node.
-	 */
+	/** Managed credentials (AI Gateway) are minted per execution and carry no
+	 *  stored row — force `id: null` so a stale or foreign id never reaches the node. */
 	private normalizeCredentials(credentials: INodeCredentials): INodeCredentials {
 		const normalized: INodeCredentials = {};
 		for (const [credentialType, credential] of Object.entries(credentials)) {
@@ -170,8 +155,6 @@ export class ExecuteNodeService {
 
 	private async checkCredentialAccess(user: User, credentials?: INodeCredentials) {
 		for (const [credentialType, credential] of Object.entries(credentials ?? {})) {
-			// Managed credentials (e.g. the AI Gateway) have no stored row to check
-			// access against — the engine's own credential checks skip them too.
 			if (credential.__aiGatewayManaged) continue;
 
 			if (!credential.id) {
@@ -221,12 +204,10 @@ export class ExecuteNodeService {
 			newWorkflow.connections = {};
 			newWorkflow.settings = {
 				executionOrder: 'v1',
-				// Force-save so the result can be read back from the execution row —
-				// the only channel that works in queue mode too.
+				// Force-save: the execution row is the only result channel that works in queue mode.
 				saveManualExecutions: true,
 				saveDataSuccessExecution: 'all',
 				saveDataErrorExecution: 'all',
-				// Engine-side bound, enforced on main and worker alike.
 				executionTimeout: Math.ceil(timeoutMs / 1000),
 			};
 
@@ -271,8 +252,7 @@ export class ExecuteNodeService {
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
-			// Top-level runData fields don't survive queue serialization — the
-			// worker reads the user id from here.
+			// Top-level runData fields don't survive queue serialization; the worker reads this.
 			manualData: { userId: user.id },
 		});
 
@@ -294,13 +274,12 @@ export class ExecuteNodeService {
 		return await this.extractResult(executionId, node.type);
 	}
 
-	/** Returns true when the execution was cancelled because of the fallback timeout. */
 	private async waitForCompletion(executionId: string, timeoutMs: number): Promise<boolean> {
 		if (!this.activeExecutions.has(executionId)) return false;
 
 		let timeoutId: NodeJS.Timeout | undefined;
-		// The engine's own executionTimeout (set on the temp workflow) is the
-		// primary bound; this race only catches an execution that never settles.
+		// The workflow's executionTimeout is the primary bound; this race only
+		// catches an execution that never settles.
 		const timeout = new Promise<never>((_, reject) => {
 			timeoutId = setTimeout(
 				() => reject(new TimeoutExecutionCancelledError(executionId)),

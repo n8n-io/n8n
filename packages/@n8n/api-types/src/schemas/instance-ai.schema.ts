@@ -53,12 +53,10 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 }
 
 /**
- * Builds the thread-level grant key for executing a node standalone
- * (`nodes(action="execute")`) without HITL. Scoped per node type + resource +
- * operation — the same split the generated node TS types use — so a future
- * per-operation destructiveness policy plugs into the approval flow without
- * changing the key format. Takes the node's parameters and extracts the
- * discriminators itself so backend and frontend cannot build diverging keys.
+ * Builds the thread-level grant key for `nodes(action="execute")`. Scoped per
+ * node type + resource + operation (the split the generated node TS types use).
+ * Extracts the discriminators from the parameters itself so backend and
+ * frontend cannot build diverging keys.
  */
 export function buildExecuteNodeSessionGrantKey(
 	nodeType: string,

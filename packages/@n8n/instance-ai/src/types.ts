@@ -473,9 +473,7 @@ export type ExecuteNodeResult =
 	| { status: 'error'; error: { message: string; description?: string; nodeErrorType?: string } };
 
 /** Executes a single node standalone through the regular execution engine.
- *  Optional on the context — presence gates `nodes(action="execute")`.
- *  The request mirrors a workflow-sdk node: `{ type, version, config }` with
- *  `config.parameters` in the exact workflow-sdk/workflow-JSON shape. */
+ *  The request mirrors a workflow-sdk node (`{ type, version, config }`). */
 export interface InstanceAiExecuteNodeService {
 	execute(request: {
 		type: string;

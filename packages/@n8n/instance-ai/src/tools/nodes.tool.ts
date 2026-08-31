@@ -136,10 +136,9 @@ const exploreResourcesAction = z.object({
 
 const MAX_EXECUTE_TIMEOUT_MS = 60_000;
 
-// The envelope mirrors a workflow-sdk node (`{ type, version, config }`) so the
-// agent can pass a node it is building verbatim. Credentials take the resolved
-// `{ id, name }` form — the SDK's placeholder/new-credential forms have no
-// stored row and could never execute.
+// Envelope mirrors a workflow-sdk node so the agent can pass a node it is
+// building verbatim. Credentials take the resolved `{ id, name }` form only —
+// the SDK's placeholder/new-credential forms have no stored row to execute with.
 const executeAction = z.object({
 	action: z
 		.literal('execute')
