@@ -143,8 +143,8 @@ options first. Never place credential secret data in Agent configuration or MCP 
 credential IDs returned by list_credentials.
 
 Skills and tasks have separately persisted bodies. Always manage them through mutate_agent instead
-of manually inventing their IDs. Saved sub-agents must be published Agents from the same project.
-Use discover_agent_assets with kind=subagents to obtain valid IDs.
+of manually inventing their IDs. Saved sub-agents must be Agents from the same project. Use
+discover_agent_assets with kind=subagents to obtain valid IDs.
 
 Chat integrations are conversation surfaces, not ordinary node tools. Use an integration when users
 should invoke and converse with the Agent in Slack, Telegram, or Linear. Use a node/workflow tool

@@ -151,6 +151,12 @@ export interface WorkflowToolContext {
 	activeExecutions: ActiveExecutions;
 	projectId: string;
 	executionMode: WorkflowToolExecutionMode;
+	/**
+	 * Run the published workflow version instead of the draft. Set for
+	 * production agent runs, matching how sub-workflows resolve referenced
+	 * workflows (draft for test runs, published version for production).
+	 */
+	usePublishedWorkflowVersion?: boolean;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
 	agentId?: string;
@@ -883,7 +889,9 @@ async function buildWorkflowTool(
 		workflowName,
 		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
 	};
-	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, initialReference);
+	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, initialReference, {
+		usePublishedVersion: context.usePublishedWorkflowVersion === true,
+	});
 	if (!workflow) {
 		throw new Error(`Workflow "${workflowName}" not found`);
 	}
@@ -1056,7 +1064,9 @@ async function loadCurrentWorkflow(
 	reference: WorkflowToolWorkflowReference,
 	expectedTriggerType: string,
 ) {
-	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, reference);
+	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, reference, {
+		usePublishedVersion: context.usePublishedWorkflowVersion === true,
+	});
 	if (!workflow) {
 		throw new Error(`Workflow "${reference.workflowName}" is no longer accessible`);
 	}

@@ -240,12 +240,20 @@ describe('router', () => {
 		expect(router.currentRoute.value.name).toBe(name);
 	});
 
-	test('should block n8n Connect settings for Cloud UBB', async () => {
+	test('should block Gateway credits settings for Cloud UBB', async () => {
 		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/gateway-credits');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
+	test('should redirect the old n8n-connect settings path to Gateway credits settings', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: false };
 
 		await router.push('/settings/n8n-connect');
 
-		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+		expect(router.currentRoute.value.name).toBe(VIEWS.AI_GATEWAY_SETTINGS);
 	});
 
 	describe('resource center route guard', () => {
