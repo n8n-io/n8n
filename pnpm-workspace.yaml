@@ -190,7 +190,6 @@ catalog:
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
   qs: 6.15.2
-  react-syntax-highlighter: 15.6.6
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   sanitize-html: 2.17.4

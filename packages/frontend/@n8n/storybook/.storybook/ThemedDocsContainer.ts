@@ -1,9 +1,9 @@
 import { DocsContainer } from '@storybook/addon-docs/blocks';
 import { useDarkMode } from '@vueless/storybook-dark-mode';
 import { createElement, type ComponentProps } from 'react';
+import { themes } from 'storybook/theming';
 
 import { applyN8nTheme } from './applyN8nTheme';
-import { n8nDarkTheme, n8nLightTheme } from './n8nThemes';
 
 /**
  * Docs pages are React (addon-docs) and stay on the light emotion theme unless
@@ -16,6 +16,6 @@ export function ThemedDocsContainer(props: ComponentProps<typeof DocsContainer>)
 
 	return createElement(DocsContainer, {
 		...props,
-		theme: isDark ? n8nDarkTheme : n8nLightTheme,
+		theme: isDark ? themes.dark : themes.light,
 	});
 }
