@@ -1,4 +1,5 @@
 import { BreakingChangeRule } from '@n8n/decorators';
+import { isInMemoryModeConfigured } from 'n8n-core';
 
 import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
@@ -24,9 +25,7 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		// read the env var directly - `default` is no longer a valid config value,
-		// so `BinaryDataConfig.mode` can never hold it
-		if (process.env.N8N_DEFAULT_BINARY_DATA_MODE !== 'default') {
+		if (!isInMemoryModeConfigured()) {
 			return { isAffected: false, instanceIssues: [], recommendations: [] };
 		}
 
