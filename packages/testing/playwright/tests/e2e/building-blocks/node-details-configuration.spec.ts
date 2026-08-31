@@ -10,8 +10,10 @@ test.describe(
 			await n8n.start.fromBlankCanvas();
 		});
 
-		test('should configure webhook node', async ({ n8n }) => {
+		test('should configure webhook node', async ({ n8n, a11y }) => {
+			await a11y.check('canvas');
 			await n8n.canvas.addNode('Webhook');
+			await a11y.check('ndv');
 
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'POST',

@@ -14,9 +14,10 @@ test.describe(
 		});
 
 		test.describe('Entry Point: Blank Canvas', () => {
-			test('should navigate from blank canvas', async ({ n8n }) => {
+			test('should navigate from blank canvas', async ({ n8n, a11y }) => {
 				await n8n.start.fromBlankCanvas();
 				await expect(n8n.canvas.canvasPane()).toBeVisible();
+				await a11y.check('canvas');
 			});
 		});
 

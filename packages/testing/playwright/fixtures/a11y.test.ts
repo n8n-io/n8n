@@ -24,6 +24,23 @@ describe('A11yChecker', () => {
 		expect(violations).toEqual([violation('label')]);
 	});
 
+	test('records results from each completed checkpoint', async () => {
+		const canvasViolation = violation('label');
+		const analyze = vi
+			.fn<A11yAnalyzer>()
+			.mockResolvedValueOnce({ violations: [canvasViolation] })
+			.mockResolvedValueOnce({ violations: [] });
+		const checker = new A11yChecker(page, analyze);
+
+		await checker.check('canvas');
+		await checker.check('ndv');
+
+		expect(checker.getResults()).toEqual([
+			{ bucket: 'canvas', violations: [canvasViolation] },
+			{ bucket: 'ndv', violations: [] },
+		]);
+	});
+
 	test('scopes the scan to the bucket selector and the default WCAG tags', async () => {
 		const analyze = vi.fn<A11yAnalyzer>().mockResolvedValue({ violations: [] });
 
@@ -63,10 +80,12 @@ describe('A11yChecker', () => {
 		const analyze = vi
 			.fn<A11yAnalyzer>()
 			.mockRejectedValue(new Error('No elements found for include'));
+		const checker = new A11yChecker(page, analyze);
 
-		const violations = await new A11yChecker(page, analyze).check('canvas');
+		const violations = await checker.check('canvas');
 
 		expect(violations).toEqual([]);
+		expect(checker.getResults()).toEqual([]);
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining('canvas'));
 		warn.mockRestore();
 	});

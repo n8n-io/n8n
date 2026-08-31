@@ -1,11 +1,18 @@
 import { AxeBuilder } from '@axe-core/playwright';
-import type { Fixtures, Page } from '@playwright/test';
+import type { Fixtures, Page, TestInfo } from '@playwright/test';
 import type { Result, TagValue } from 'axe-core';
 
 import type { n8nPage } from '../pages/n8nPage';
 
 /** A single axe-core violation, re-exported so callers don't depend on axe-core directly. */
 export type A11yViolation = Result;
+
+export const A11Y_RESULTS_ATTACHMENT = 'a11y-results';
+
+export type A11yScanResult = {
+	bucket: A11yBucket;
+	violations: A11yViolation[];
+};
 
 /**
  * Named slices of the UI an accessibility scan can be pointed at. Scoping keeps a
@@ -62,6 +69,8 @@ const analyzeWithAxe: A11yAnalyzer = async ({ page, include, tags, disableRules 
  * Callers decide what to do with the violations they get back.
  */
 export class A11yChecker {
+	private readonly results: A11yScanResult[] = [];
+
 	constructor(
 		private readonly page: Page,
 		private readonly analyze: A11yAnalyzer = analyzeWithAxe,
@@ -77,12 +86,17 @@ export class A11yChecker {
 				tags: options.tags ?? DEFAULT_A11Y_TAGS,
 				disableRules: options.disableRules ?? [],
 			});
+			this.results.push({ bucket, violations });
 			return violations;
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error);
 			console.warn(`[a11y] Scan of bucket "${bucket}" did not run: ${reason}`);
 			return [];
 		}
+	}
+
+	getResults(): A11yScanResult[] {
+		return this.results;
 	}
 }
 
@@ -98,7 +112,15 @@ type A11yFixtureDeps = {
  * Accessibility fixture. Spread into `test.extend()` to expose `a11y.check(bucket)`.
  */
 export const a11yFixtures: Fixtures<A11yTestFixtures & A11yFixtureDeps> = {
-	a11y: async ({ n8n }, use) => {
-		await use(new A11yChecker(n8n.page));
+	a11y: async ({ n8n }, use, testInfo: TestInfo) => {
+		const checker = new A11yChecker(n8n.page);
+		await use(checker);
+
+		if (checker.getResults().length > 0) {
+			await testInfo.attach(A11Y_RESULTS_ATTACHMENT, {
+				body: JSON.stringify(checker.getResults()),
+				contentType: 'application/json',
+			});
+		}
 	},
 };
