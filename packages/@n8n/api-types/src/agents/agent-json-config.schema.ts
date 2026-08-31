@@ -417,6 +417,31 @@ export const WorkflowToolJsonConfigSchema = z
 	})
 	.strict();
 
+/** Serialized `items` above this size are rejected — config travels on every agent read, mirrors pin-data limits. */
+export const MAX_TOOL_MOCK_ITEMS_SIZE = 256 * 1024;
+
+export const NodeToolMockConfigSchema = z
+	.object({
+		enabled: z.boolean(),
+		/** Output items returned verbatim (each becomes one `{ json }` item). */
+		items: z.array(z.record(z.string(), jsonValueSchema)).min(1).max(20),
+		generatedAt: z.string().datetime().optional(),
+		source: z.enum(['user', 'builder']).optional(),
+		// v1 is fixed stored responses only. Reserved for a future `mode: 'fixed' | 'live'`
+		// field to support argument-aware mocking — do not add it yet.
+	})
+	.strict()
+	.superRefine((mock, ctx) => {
+		const size = new TextEncoder().encode(JSON.stringify(mock.items)).length;
+		if (size > MAX_TOOL_MOCK_ITEMS_SIZE) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['items'],
+				message: `Mock items exceed the maximum size of ${MAX_TOOL_MOCK_ITEMS_SIZE} bytes`,
+			});
+		}
+	});
+
 export const NodeToolJsonConfigSchema = z
 	.object({
 		type: z.literal('node'),
@@ -425,6 +450,7 @@ export const NodeToolJsonConfigSchema = z
 		inputSchema: z.never().optional(),
 		node: NodeConfigSchema,
 		requireApproval: z.boolean().optional(),
+		mock: NodeToolMockConfigSchema.optional(),
 	})
 	.strict();
 
@@ -542,6 +568,7 @@ export type AgentJsonWorkflowToolInputField = NonNullable<
 	AgentJsonWorkflowToolConfig['inputs']
 >[string];
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
+export type AgentJsonNodeToolMockConfig = z.infer<typeof NodeToolMockConfigSchema>;
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
 export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;

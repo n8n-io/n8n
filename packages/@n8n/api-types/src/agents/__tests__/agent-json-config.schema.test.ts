@@ -2,6 +2,7 @@ import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
+	MAX_TOOL_MOCK_ITEMS_SIZE,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -139,6 +140,109 @@ describe('AgentJsonConfigSchema — tools', () => {
 			const result = AgentJsonConfigSchema.safeParse({ ...minimalConfig, tools: [] });
 			expect(result.success).toBe(true);
 		});
+	});
+});
+
+describe('AgentJsonConfigSchema — node tool mock', () => {
+	const nodeTool = {
+		type: 'node' as const,
+		name: 'send_email',
+		node: { nodeType: 'n8n-nodes-base.gmail', nodeTypeVersion: 1 },
+	};
+
+	it('accepts a node tool with no mock (backward compat)', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [nodeTool],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a valid mock config', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					...nodeTool,
+					mock: {
+						enabled: true,
+						items: [{ id: 1, subject: 'Hello' }],
+						generatedAt: '2026-08-31T00:00:00.000Z',
+						source: 'user',
+					},
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a mock config with only the required fields', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [{ ...nodeTool, mock: { enabled: false, items: [{ id: 1 }] } }],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a mock config with enabled but no items', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [{ ...nodeTool, mock: { enabled: true } }],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a mock config with an empty items array', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [{ ...nodeTool, mock: { enabled: true, items: [] } }],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 20 mock items', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					...nodeTool,
+					mock: {
+						enabled: true,
+						items: Array.from({ length: 21 }, (_, i) => ({ id: i })),
+					},
+				},
+			],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects mock items exceeding the size cap', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					...nodeTool,
+					mock: {
+						enabled: true,
+						items: [{ blob: 'a'.repeat(MAX_TOOL_MOCK_ITEMS_SIZE + 1) }],
+					},
+				},
+			],
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects unknown keys on the mock config (strict)', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					...nodeTool,
+					mock: { enabled: true, items: [{ id: 1 }], mode: 'live' },
+				},
+			],
+		});
+		expect(result.success).toBe(false);
 	});
 });
 
