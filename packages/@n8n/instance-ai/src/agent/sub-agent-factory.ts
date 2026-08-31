@@ -1,6 +1,6 @@
 import { Agent, type CheckpointStore, type RuntimeSkillSource, type Workspace } from '@n8n/agents';
 
-import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
+import { SECRET_ASK_GUARDRAIL, SECRET_PASTE_GUARDRAIL } from './credential-guardrails.prompt';
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import {
 	ASK_USER_FALLBACK,
@@ -63,7 +63,8 @@ Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded
 - You cannot delegate to other agents or create plans.
 - ${ASK_USER_FALLBACK}
 - ${UNTRUSTED_CONTENT_DOCTRINE}
-- ${SECRET_ASK_GUARDRAIL}`;
+- ${SECRET_ASK_GUARDRAIL}
+- ${SECRET_PASTE_GUARDRAIL}`;
 
 export { SUB_AGENT_PROTOCOL };
 

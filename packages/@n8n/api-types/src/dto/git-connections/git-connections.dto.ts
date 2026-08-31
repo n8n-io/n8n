@@ -13,6 +13,10 @@ const repositoryUrlSchema = z.string().trim().min(1);
 // branchName maps to a `varchar(255)` column — cap it so over-long input is a
 // 400 at validation time rather than a 500 at insert.
 const branchNameSchema = z.string().trim().min(1).max(255);
+// Trimmed like the other identifiers, so a padded username is never persisted.
+// The password is deliberately not trimmed — a token is stored exactly as
+// submitted; the service rejects a blank one.
+const usernameSchema = z.string().trim().min(1);
 
 export class CreateGitConnectionDto extends Z.class({
 	name: nameSchema,
@@ -20,7 +24,7 @@ export class CreateGitConnectionDto extends Z.class({
 	branchName: branchNameSchema.optional(),
 	connectionType: gitConnectionTypeSchema,
 	keyGeneratorType: gitKeyGeneratorTypeSchema.optional(),
-	username: z.string().min(1).optional(),
+	username: usernameSchema.optional(),
 	password: z.string().min(1).optional(),
 }) {}
 
@@ -30,7 +34,7 @@ export class UpdateGitConnectionDto extends Z.class({
 	branchName: branchNameSchema.optional(),
 	connectionType: gitConnectionTypeSchema.optional(),
 	keyGeneratorType: gitKeyGeneratorTypeSchema.optional(),
-	username: z.string().min(1).optional(),
+	username: usernameSchema.optional(),
 	password: z.string().min(1).optional(),
 }) {}
 

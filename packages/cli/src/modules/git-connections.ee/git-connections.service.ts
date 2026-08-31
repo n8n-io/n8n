@@ -60,6 +60,11 @@ export class GitConnectionsService {
 	}
 
 	async create(input: CreateGitConnectionDto) {
+		// First iteration: the single git connection row *is* the instance connection.
+		// Checked before any key generation so a rejected call does no work.
+		if ((await this.repository.count()) > 0) {
+			throw new ConflictError('A Git connection already exists');
+		}
 		this.gitService.validateRepositoryUrl(input.repositoryUrl, input.connectionType);
 		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
 
@@ -157,8 +162,9 @@ export class GitConnectionsService {
 	): Promise<GitConnectionPushResultDto> {
 		// Validates the connection exists (throws NotFound otherwise) before any export work.
 		await this.getEntity(connectionId);
-		const projectIds =
-			await this.gitConnectionProjectRepository.findProjectIdsByConnection(connectionId);
+		// The instance connection covers every team project; personal projects are
+		// out of scope for the first iteration.
+		const projectIds = await this.projectRepository.findTeamProjectIds();
 		const repositoryFolder = path.join(this.rootFolder(connectionId), 'repository');
 		const exportFolder = path.join(repositoryFolder, EXPORT_SUBFOLDER);
 
@@ -178,6 +184,8 @@ export class GitConnectionsService {
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
+					// personal projects are excluded, so a team workflow calling a personal
+					// sub-workflow blocks the whole push; intended for now, see LIGO-1089
 					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
 					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
 				},
@@ -343,6 +351,9 @@ export class GitConnectionsService {
 	private validateHttpsCredentials(username?: string, password?: string, required = false) {
 		if ((username === undefined) !== (password === undefined) || (required && !username)) {
 			throw new BadRequestError('HTTPS username and password must be provided together');
+		}
+		if ([username, password].some((value) => value !== undefined && value.trim().length === 0)) {
+			throw new BadRequestError('HTTPS username and password must not be blank');
 		}
 		if ([username, password].some((value) => value && /[\r\n\0]/.test(value))) {
 			throw new BadRequestError('HTTPS credentials contain unsupported characters');
