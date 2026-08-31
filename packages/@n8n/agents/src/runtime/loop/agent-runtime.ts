@@ -1137,7 +1137,11 @@ export class AgentRuntime {
 			return;
 		}
 
-		if (this.config.workspaceFilesystem) {
+		// Gated on this runtime instance having offloaded something: with lazy sandbox
+		// acquisition an unconditional cleanup would boot the sandbox just to find nothing.
+		// Runs resumed in a fresh process skip this (flag is per-instance); their orphaned
+		// run dirs are swept by reconcileToolResultRuns on a later acquisition.
+		if (this.config.workspaceFilesystem && this.toolExecutor.hasOffloadedToolResults) {
 			try {
 				await removeToolResultRun(this.config.workspaceFilesystem, this.runId);
 			} catch (error) {

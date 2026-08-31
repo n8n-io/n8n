@@ -134,6 +134,41 @@ describe('AgentRuntimeCacheService', () => {
 		}
 	});
 
+	it('keeps an actively accessed runtime cached past the absolute TTL and still evicts idle ones', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const runtime = makeRuntime();
+			const rebuiltRuntime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(runtime)
+				.mockResolvedValueOnce(rebuiltRuntime);
+
+			await service.getRuntime({ agentId, projectId });
+
+			// Access at t+20min slides the 30min TTL forward.
+			vi.setSystemTime(Date.now() + 20 * 60 * 1000);
+			await service.getRuntime({ agentId, projectId });
+
+			// t+40min — past the original t+30min deadline, still cached thanks to the slide.
+			vi.setSystemTime(Date.now() + 20 * 60 * 1000);
+			const stillCached = await service.getRuntime({ agentId, projectId });
+			expect(stillCached.agent).toBe(runtime.agent);
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+
+			// 30min without any access — evicted and reconstructed on next request.
+			vi.setSystemTime(Date.now() + 30 * 60 * 1000 + 1);
+			const fresh = await service.getRuntime({ agentId, projectId });
+			expect(fresh.agent).toBe(rebuiltRuntime.agent);
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('keeps draft runtimes separate by integration type', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();
