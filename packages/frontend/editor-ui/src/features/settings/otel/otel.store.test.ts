@@ -22,6 +22,7 @@ const testTraceMock = vi.mocked(otelApi.sendOtelTestTrace);
 
 const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettingsResponse => ({
 	enabled: false,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n',
@@ -115,6 +116,13 @@ describe('useOtelStore', () => {
 		fetchMock.mockReset();
 		saveMock.mockReset();
 		testTraceMock.mockReset();
+	});
+
+	describe('defaults', () => {
+		it('starts on the HTTP/protobuf exporter protocol', () => {
+			const store = useOtelStore();
+			expect(store.settings.exporterProtocol).toBe('http/protobuf');
+		});
 	});
 
 	describe('fetchSettings', () => {
@@ -301,12 +309,27 @@ describe('useOtelStore', () => {
 			await store.sendTestTrace();
 
 			expect(testTraceMock).toHaveBeenCalledWith(expect.anything(), {
+				exporterProtocol: 'http/protobuf',
 				exporterEndpoint: 'https://collector.io',
 				exporterTracingPath: '/custom',
 				exporterServiceName: 'n8n-prod',
 				exporterHeaders: 'auth=token',
 				startupConnectivityTimeoutMs: 3000,
 			});
+		});
+
+		it('sends the selected exporter protocol', async () => {
+			fetchMock.mockResolvedValueOnce(makeSettings({ exporterProtocol: 'grpc' }));
+			testTraceMock.mockResolvedValueOnce({ success: true });
+
+			const store = useOtelStore();
+			await store.fetchSettings();
+			await store.sendTestTrace();
+
+			expect(testTraceMock).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ exporterProtocol: 'grpc' }),
+			);
 		});
 
 		it('transitions to sent and records a timestamp on success', async () => {
