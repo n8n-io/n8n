@@ -166,7 +166,7 @@ describe('distributeShards', () => {
 	});
 	describe('shard-count limits', () => {
 		const MIN = 5 * 60_000;
-		const withLimit = { ...DEFAULT_CONFIG, minShardDuration: MIN };
+		const withLimit = { ...DEFAULT_CONFIG, targetShardDuration: MIN };
 		const evenSpecs = (n: number, each: number) => ({
 			specs: Array.from({ length: n }, (_, i) => spec(`s${i}.spec.ts`)),
 			metrics: Object.fromEntries(Array.from({ length: n }, (_, i) => [`s${i}.spec.ts`, each])),
@@ -183,13 +183,6 @@ describe('distributeShards', () => {
 			const result = distributeShards([spec('a.spec.ts')], 16, { 'a.spec.ts': 30_000 }, withLimit);
 
 			expect(result.shards).toHaveLength(1);
-		});
-
-		it('gives a 12-minute selection 3 shards at a 5-minute limit', () => {
-			const { specs, metrics } = evenSpecs(12, 60_000);
-			const result = distributeShards(specs, 16, metrics, withLimit);
-
-			expect(result.shards).toHaveLength(3);
 		});
 
 		it('still uses every shard for a full-suite selection', () => {
@@ -233,7 +226,7 @@ describe('distributeShards', () => {
 
 		it('applies the lower of the two limits', () => {
 			const { specs, metrics } = evenSpecs(9, 5 * 60_000);
-			const config = { ...DEFAULT_CONFIG, minShardDuration: MIN, minShardSpecs: 3 };
+			const config = { ...DEFAULT_CONFIG, targetShardDuration: MIN, minShardSpecs: 3 };
 
 			// by time: ceil(45/5) = 9 shards. by specs: floor(9/3) = 3 shards
 			expect(distributeShards(specs, 16, metrics, config).shards).toHaveLength(3);
@@ -253,6 +246,47 @@ describe('distributeShards', () => {
 				5 * 60_000,
 				5 * 60_000,
 			]);
+		});
+		it('never merges capability groups onto one shard', () => {
+			const specs = [
+				spec('proxy.spec.ts', ['proxy']),
+				spec('email.spec.ts', ['email']),
+				spec('oidc.spec.ts', ['oidc']),
+				spec('kafka.spec.ts', ['kafka']),
+			];
+			const metrics = Object.fromEntries(specs.map((s) => [s.path, 45_000]));
+
+			// 3 min total is far below the limit, but 4 capability groups need 4 shards
+			const result = distributeShards(specs, 16, metrics, withLimit);
+
+			expect(result.shards).toHaveLength(4);
+			expect(result.shards.every((s) => s.fixtureCount === 1)).toBe(true);
+		});
+
+		it('still collapses specs that share one capability group', () => {
+			const specs = Array.from({ length: 4 }, (_, i) => spec(`p${i}.spec.ts`, ['proxy']));
+			const metrics = Object.fromEntries(specs.map((s) => [s.path, 45_000]));
+			const result = distributeShards(specs, 16, metrics, withLimit);
+
+			expect(result.shards).toHaveLength(1);
+		});
+
+		it('never exceeds numShards when capability groups outnumber the shards', () => {
+			const specs = Array.from({ length: 6 }, (_, i) => spec(`c${i}.spec.ts`, [`cap${i}`]));
+			const metrics = Object.fromEntries(specs.map((s) => [s.path, 10_000]));
+			const result = distributeShards(specs, 2, metrics, withLimit);
+
+			expect(result.shards).toHaveLength(2);
+		});
+
+		it('treats the duration limit as a target, not a hard minimum', () => {
+			const { specs, metrics } = evenSpecs(12, 60_000);
+			const result = distributeShards(specs, 16, metrics, withLimit);
+
+			// ceil(12/5) = 3 shards of 4 min each — below MIN, and deliberately so:
+			// floor() would give 2 shards of 6 min and add 2 min of wall-clock.
+			expect(result.shards).toHaveLength(3);
+			expect(Math.min(...result.shards.map((s) => s.testTime))).toBeLessThan(MIN);
 		});
 	});
 });

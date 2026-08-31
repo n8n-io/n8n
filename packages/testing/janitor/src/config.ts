@@ -101,8 +101,8 @@ export interface JanitorConfig {
 		defaultDuration: number;
 		/** Max group duration before splitting into sub-groups (ms) @default 300_000 */
 		maxGroupDuration: number;
-		/** Minimum test time per shard. Limits the shard count on small selections (ms) @default 300_000 */
-		minShardDuration: number;
+		/** Test time to aim for per shard. Limits the shard count on small selections (ms) @default 300_000 */
+		targetShardDuration: number;
 		/** Minimum specs per shard. Limits the shard count. Set to 1 to disable. @default 1 */
 		minShardSpecs: number;
 		/** Only include specs with paths starting with this prefix @default undefined (all specs) */
@@ -194,7 +194,7 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 	orchestration: {
 		defaultDuration: 60_000,
 		maxGroupDuration: 5 * 60 * 1000,
-		minShardDuration: 5 * 60 * 1000,
+		targetShardDuration: 5 * 60 * 1000,
 		minShardSpecs: 1,
 	},
 

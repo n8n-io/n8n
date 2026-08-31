@@ -12,7 +12,7 @@ Capability-aware test distribution across CI shards.
 | 4. Group | Group specs by `@capability:xxx` tag for worker reuse |
 | 5. Effective Duration | Calculate actual time accounting for container reuse within groups |
 | 6. Split | If a group exceeds **5 min**, split into sub-groups |
-| 7. Limit | Keep at least **5 min** of tests on each shard |
+| 7. Limit | Aim for **5 min** of tests on each shard, one shard per capability |
 | 8. Bin Pack | Greedy assign groups + standard specs to lightest shard |
 
 ### Why Group by Capability?
@@ -21,7 +21,7 @@ Tests requiring containers (proxy, email, etc.) include ~20s startup overhead. W
 
 **Example:** 15 proxy tests across 8 shards = 8 container starts (160s). Grouped on 2 shards = 2 starts (40s). **Saves 120s.**
 
-### Why the Shard Count Has a Minimum
+### Why the Shard Count Has a Limit
 
 Each shard pays about 3.4 minutes of fixed setup: checkout, Setup Environment,
 browser install, and image load. This cost does not change with the size of the
@@ -29,17 +29,26 @@ workload. An impact-scoped PR selects only a few specs. Without a limit, the
 packer distributes those few minutes of tests over many runners, and each runner
 pays the full setup cost.
 
-`minShardDuration` (5 minutes) limits the bucket count to
-`ceil(totalTestTime / minShardDuration)`. The packer creates only the shards it
-can fill. `minShardSpecs` applies a second limit to the same count. Set it to
+`targetShardDuration` (5 minutes) limits the bucket count to
+`ceil(totalTestTime / targetShardDuration)`. The packer creates only the shards
+it can fill. `minShardSpecs` applies a second limit to the same count. Set it to
 `1` to disable it.
 
-The packer applies both limits before it fills the buckets. Bin-packing still
+The name says target, not minimum, because `ceil` divides the work evenly over
+the shards that remain. A 12-minute selection gets 3 shards of 4 minutes, not 2
+shards of 6 minutes. `floor` would enforce a true minimum, but it would also add
+about 2 minutes of wall-clock time to keep one more runner idle.
+
+The shard count never drops below the number of capability groups. One runner
+that starts every image set pays back in container startup what it saved in
+setup. Capability groups therefore stay on separate shards.
+
+The packer applies the limits before it fills the buckets. Bin-packing still
 balances the shards. This is not a merge step after the packer runs.
 
 Full-suite selections do not change: about 196 minutes of test time still fills
-all 16 shards. Over 7 days of PR CI, the 5-minute minimum removed about 9% of
-the E2E shard jobs, and the average wall-clock time did not increase.
+all 16 shards. Over 7 days of PR CI, the limit removed about 9% of the E2E shard
+jobs, and the average wall-clock time did not increase.
 
 Configure both values under `orchestration` in `janitor.config.mjs`.
 
@@ -171,7 +180,7 @@ shard. Against refreshed durations, the same shards took 8.6 to 18.5 minutes.
 **How to read the reported numbers:** Currents `avgDuration` is about 1.5 times
 the test time that a shard uses in CI. Use `Total test time` and
 `Expected wall-clock` to compare the shards with each other. Do not use them as
-absolute predictions. `minShardDuration` uses these same units.
+absolute predictions. `targetShardDuration` uses these same units.
 
 ## Architecture
 
