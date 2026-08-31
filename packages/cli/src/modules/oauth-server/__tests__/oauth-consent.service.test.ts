@@ -790,4 +790,85 @@ describe('OAuthConsentService', () => {
 			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('per-user grantable scopes', () => {
+		// A resource may narrow its scopes to what the caller's role can exercise.
+		// Every consent path must respect that, not just the one that renders the
+		// screen.
+		const ADMIN_ONLY = 'communityPackage:install';
+		const narrowingResource = {
+			scopes: [...INSTANCE_SCOPES, ADMIN_ONLY],
+			authorize: async () => true,
+			isFirstParty: true,
+			getGrantableScopes: async (user: User) =>
+				user.id === 'admin' ? [...INSTANCE_SCOPES, ADMIN_ONLY] : [...INSTANCE_SCOPES],
+		} as unknown as ProtectedResource;
+
+		const sessionPayload = {
+			clientId: 'client-123',
+			redirectUri: 'https://example.com/callback',
+			codeChallenge: 'challenge',
+			state: 'state',
+		};
+
+		beforeEach(() => {
+			protectedResourceRegistry.getDefaultResource.mockReturnValue(narrowingResource);
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(
+				mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isFirstParty: false }),
+			);
+		});
+
+		it('offers the narrowed scope to a user who may grant it', async () => {
+			const result = await service.getConsentDetails('t', mock<User>({ id: 'admin' }));
+
+			expect(result).toMatchObject({ ok: true, scopes: [...INSTANCE_SCOPES, ADMIN_ONLY] });
+		});
+
+		it('hides the narrowed scope from a user who may not grant it', async () => {
+			const result = await service.getConsentDetails('t', mock<User>({ id: 'member' }));
+
+			expect(result).toMatchObject({ ok: true, scopes: INSTANCE_SCOPES });
+		});
+
+		it('rejects a hand-crafted approval for a scope the user may not grant', async () => {
+			// The display filter alone would leave this open: the approve request
+			// carries its own scope list.
+			await expect(
+				service.handleConsentDecision('t', mock<User>({ id: 'member' }), true, [
+					'workflow:read',
+					ADMIN_ONLY,
+				]),
+			).rejects.toThrow(`Scopes cannot be granted: ${ADMIN_ONLY}`);
+		});
+
+		it('accepts the same approval from a user who may grant it', async () => {
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('code-1');
+
+			const result = await service.handleConsentDecision('t', mock<User>({ id: 'admin' }), true, [
+				'workflow:read',
+				ADMIN_ONLY,
+			]);
+
+			expect(result.redirectUrl).toContain('code=code-1');
+		});
+
+		it('does not reuse a stale consent to re-grant a scope the user may no longer grant', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(narrowingResource);
+			userConsentRepository.findOne.mockResolvedValue(
+				mock<UserConsent>({ scope: [...INSTANCE_SCOPES, ADMIN_ONLY] }),
+			);
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('code-2');
+
+			await service.tryReuseConsent(mock<User>({ id: 'member' }), {
+				...sessionPayload,
+				resource: 'https://n8n.example.com/mcp-server/http',
+			});
+
+			const [, grantedScopes] =
+				authorizationCodeService.createAuthorizationCode.mock.calls[0] ?? [];
+			expect(grantedScopes).not.toContain(ADMIN_ONLY);
+		});
+	});
 });

@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
@@ -125,6 +126,22 @@ export class McpProtectedResource implements ProtectedResource {
 
 	async getAllowedRedirectUris(): Promise<string[]> {
 		return await this.mcpSettingsService.getAllowedRedirectUris();
+	}
+
+	/**
+	 * Scopes narrowed to what this user's role can actually exercise.
+	 *
+	 * `communityPackage:install` is dropped for anyone without the matching
+	 * global scope. Installing a package is an admin-only operation in n8n's
+	 * RBAC, and `install_community_node` is not even registered without it, so
+	 * offering the scope to a member would record a grant that can never do
+	 * anything. Keyed off the global scope rather than a role name so a custom
+	 * role carrying it works too.
+	 */
+	async getGrantableScopes(user: User): Promise<string[]> {
+		const scopes = this.scopes;
+		if (hasGlobalScope(user, 'communityPackage:install')) return scopes;
+		return scopes.filter((scope) => scope !== 'communityPackage:install');
 	}
 
 	async authorize(_user: User): Promise<boolean> {

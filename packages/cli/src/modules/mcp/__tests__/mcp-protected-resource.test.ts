@@ -1,6 +1,15 @@
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import { User } from '@n8n/db';
+import * as permissions from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
+
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof permissions>()),
+	hasGlobalScope: vi.fn(),
+}));
+
+const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 
 import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
@@ -188,6 +197,52 @@ describe('McpProtectedResource', () => {
 		it('should collapse to a single resource URL when unset', () => {
 			mcpConfig.baseUrl = '';
 			expect(resource.getResourceUrls()).toEqual(['https://n8n.example.com/mcp-server/http']);
+		});
+	});
+
+	describe('getGrantableScopes', () => {
+		const user = Object.assign(new User(), { id: 'user-1' });
+
+		it('offers the install scope to a user whose role allows installing', async () => {
+			hasGlobalScope.mockReturnValue(true);
+
+			expect(await resource.getGrantableScopes(user)).toContain('communityPackage:install');
+		});
+
+		it('withholds the install scope from a user whose role does not allow installing', async () => {
+			// Otherwise a member could tick a box that records a grant which can
+			// never do anything, because install_community_node is never registered
+			// for them.
+			hasGlobalScope.mockReturnValue(false);
+
+			const scopes = await resource.getGrantableScopes(user);
+
+			expect(scopes).not.toContain('communityPackage:install');
+			expect(scopes.length).toBe(resource.scopes.length - 1);
+		});
+
+		it('keys off the global scope, not a role name, so custom roles work', async () => {
+			hasGlobalScope.mockReturnValue(false);
+
+			await resource.getGrantableScopes(user);
+
+			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'communityPackage:install');
+		});
+
+		it('narrows only the install scope, leaving every other scope grantable', async () => {
+			hasGlobalScope.mockReturnValue(false);
+
+			const scopes = await resource.getGrantableScopes(user);
+
+			expect(scopes).toEqual(resource.scopes.filter((s) => s !== 'communityPackage:install'));
+		});
+
+		it('still advertises the install scope in discovery, which is unauthenticated', () => {
+			hasGlobalScope.mockReturnValue(false);
+
+			// `scopes` describes what the resource supports; only the consent
+			// screen narrows to the caller.
+			expect(resource.scopes).toContain('communityPackage:install');
 		});
 	});
 });
