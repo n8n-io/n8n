@@ -36,12 +36,10 @@ const MAX_LIST_PAGES = 20;
 // Tracked-id count (pending + boundary ids) at which the poll stops holding
 // the cursor and accepts skipping any unlisted remainder.
 const MAX_TRACKED_BACKLOG_IDS = 5_000;
-// Consecutive failed fetches of the same queued message before the poll skips
-// it. Only failures that may be transient are counted, so the bound is generous:
-// a rate-limited or briefly failing message must survive the outage. The count
-// is per node, not per id, which is enough: the queue only moves on a success or
-// a skip, so the failing id stays at its head.
-export const MAX_PENDING_FETCH_ATTEMPTS = 20;
+// Attempts a single message gets before the poll gives up on it. Failures here
+// cannot be told apart from rate limits, which this node does not retry on its
+// own, so a message gets several polls to come back before it is skipped.
+export const MAX_PENDING_FETCH_ATTEMPTS = 10;
 
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -438,65 +436,98 @@ export class GmailTrigger implements INodeType {
 		try {
 			let budget = maxResults;
 
-			// Process pending messages from a previous poll first. These are IDs
+			// A message whose fetch failed waits in its own list rather than in the
+			// queue, so it can be retried without holding up everything behind it.
+			// Retry those first — they are the oldest — and give up on one only once
+			// it has used up its attempts. A failed fetch carries no message, so it
+			// costs no budget; only a success does.
+			const quarantined = nodeStaticData.failedFetches ?? [];
+			if (shouldLimitMessages && quarantined.length > 0) {
+				// Bounded per tick, and the untried tail moves to the front, so a long
+				// list cannot spend the whole poll on doomed requests or starve its own
+				// later entries.
+				const retryNow = quarantined.slice(0, maxResults);
+				const retryLater = quarantined.slice(maxResults);
+				const stillFailing: Array<[string, number]> = [];
+				const fetchQs = buildFetchQs();
+
+				for (const [id, attempts] of retryNow) {
+					try {
+						await fetchAndProcessMessage(id, fetchQs);
+						budget -= 1;
+					} catch (error) {
+						const attempted = attempts + 1;
+						if (attempted >= MAX_PENDING_FETCH_ATTEMPTS) {
+							this.logger.warn(
+								`Gmail Trigger cannot fetch message ${id} after ${attempted} attempts; skipping it`,
+								{ node: node.name },
+							);
+						} else {
+							stillFailing.push([id, attempted]);
+						}
+					}
+				}
+
+				nodeStaticData.failedFetches = [...retryLater, ...stillFailing];
+			}
+
+			// Process pending messages from a previous poll next. These are IDs
 			// listed but not fetched last time: beyond the maxResults budget, or left
 			// over when a fetch failed mid-poll.
 			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
-			if (shouldLimitMessages && pendingIds.length > 0) {
-				const idsToFetch = pendingIds.slice(0, budget);
+			if (shouldLimitMessages && pendingIds.length > 0 && budget > 0) {
 				const fetchQs = buildFetchQs();
+				const newlyFailed: Array<[string, number]> = [];
 
-				for (const [index, id] of idsToFetch.entries()) {
+				for (const [index, id] of pendingIds.entries()) {
+					// A delivery costs budget, a failure costs a request. Stop on either
+					// count, so a queue full of failures cannot spend the whole poll on
+					// doomed requests.
+					if (budget <= 0 || newlyFailed.length >= maxResults) break;
+
 					try {
 						await fetchAndProcessMessage(id, fetchQs);
+						budget -= 1;
 					} catch (error) {
-						// The queue is drained before any listing and nothing else evicts
-						// from it, so an id that can never be fetched — deleted since it was
-						// listed, or one that always breaks parsing — would block the queue
-						// and every new message behind it. Retry it across polls, since most
-						// failures here pass on their own, and skip it once the bound runs
-						// out. The tick fails either way, as it did before.
-						const attempts = (nodeStaticData.pendingFetchAttempts ?? 0) + 1;
-						if (attempts >= MAX_PENDING_FETCH_ATTEMPTS) {
-							this.logger.warn(
-								`Gmail Trigger cannot fetch message ${id} after ${attempts} attempts; skipping it`,
-								{ node: node.name },
-							);
-							nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
-							nodeStaticData.pendingFetchAttempts = 0;
-						} else {
-							nodeStaticData.pendingFetchAttempts = attempts;
-						}
-						throw error;
+						// Set the message aside instead of ending the tick: the rest of the
+						// queue, and the listing below, must still run. The error is logged
+						// here because it no longer reaches the catch at the end of poll().
+						this.logger.warn(`Gmail Trigger could not fetch message ${id}; will retry it`, {
+							node: node.name,
+							error,
+						});
+						newlyFailed.push([id, 1]);
 					}
 
-					// An id leaves the stored queue only after its fetch succeeded — a
-					// dropped id is in no state and can already sit behind an advanced
-					// cursor, so nothing would ever list it again.
+					// An id leaves the queue once it has been handled either way — it was
+					// delivered, or it now waits in failedFetches. Trimming per iteration
+					// keeps every unhandled id stored, since a later throw is swallowed by
+					// the catch below while the cursor can still advance.
 					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
-					// Only consecutive failures may add up to a skip.
-					nodeStaticData.pendingFetchAttempts = 0;
 				}
 
-				budget -= idsToFetch.length;
-
-				// Record drained IDs in possibleDuplicates so Gmail's boundary-inclusive
-				// `after:` query can't re-list a message we just emitted and push it back
-				// into pendingMessageIds as overflow. Also covers the early-return path,
-				// where the state update at the end of poll() is skipped.
-				if (allFetchedMessages.length > 0) {
-					const merged = new Set([
-						...(nodeStaticData.possibleDuplicates ?? []),
-						...allFetchedMessages.map((m) => m.id),
-					]);
-					nodeStaticData.possibleDuplicates = Array.from(merged);
+				if (newlyFailed.length > 0) {
+					nodeStaticData.failedFetches = [...(nodeStaticData.failedFetches ?? []), ...newlyFailed];
 				}
+			}
 
-				// If we still have pending IDs, don't list new messages yet.
-				if ((nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
-					await simplifyResponseData();
-					return responseData.length > 0 ? [responseData] : null;
-				}
+			// Record everything fetched so far in possibleDuplicates so Gmail's
+			// boundary-inclusive `after:` query can't re-list a message this tick
+			// already emitted — either below, when the listing repeats a retried id,
+			// or on a later poll. Also covers the early return just after, where the
+			// state update at the end of poll() is skipped.
+			if (shouldLimitMessages && allFetchedMessages.length > 0) {
+				const merged = new Set([
+					...(nodeStaticData.possibleDuplicates ?? []),
+					...allFetchedMessages.map((m) => m.id),
+				]);
+				nodeStaticData.possibleDuplicates = Array.from(merged);
+			}
+
+			// While queued IDs remain, don't list new messages yet.
+			if (shouldLimitMessages && (nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
+				await simplifyResponseData();
+				return responseData.length > 0 ? [responseData] : null;
 			}
 
 			// List new messages from Gmail.
@@ -654,7 +685,8 @@ export class GmailTrigger implements INodeType {
 		if (shouldLimitMessages && !windowFullyListed) {
 			const trackedIds =
 				(nodeStaticData.pendingMessageIds?.length ?? 0) +
-				(nodeStaticData.possibleDuplicates?.length ?? 0);
+				(nodeStaticData.possibleDuplicates?.length ?? 0) +
+				(nodeStaticData.failedFetches?.length ?? 0);
 			if (trackedIds < MAX_TRACKED_BACKLOG_IDS) {
 				// Unlisted older mail exists beyond the page cap. Hold the cursor so later
 				// polls can still list it. The possibleDuplicates update below keeps every
