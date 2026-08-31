@@ -30,6 +30,7 @@ import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
 import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
 import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
+import { NoTodoTestWithBodyRule } from './no-todo-test-with-body.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -63,4 +64,5 @@ export const rules = {
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
 	'require-public-api-controller': RequirePublicApiControllerRule,
 	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
+	'no-todo-test-with-body': NoTodoTestWithBodyRule,
 } satisfies Record<string, AnyRuleModule>;
