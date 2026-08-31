@@ -3,6 +3,7 @@ import type {
 	ClusterInfoResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiPermissions,
+	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
@@ -19,8 +20,10 @@ import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
+import { InstanceAiApiHelper } from './instance-ai-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
+import { MetricsApiHelper } from './metrics-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -69,6 +72,7 @@ export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
+	metrics: MetricsApiHelper;
 	mcp: McpApiHelper;
 	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
@@ -82,6 +86,7 @@ export class ApiHelpers {
 	sourceControl: SourceControlApiHelper;
 	securitySettings: SecuritySettingsApiHelper;
 	tokenExchange: TokenExchangeApiHelper;
+	instanceAi: InstanceAiApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -89,6 +94,7 @@ export class ApiHelpers {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
+		this.metrics = new MetricsApiHelper(this);
 		this.mcp = new McpApiHelper(this);
 		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
@@ -102,6 +108,7 @@ export class ApiHelpers {
 		this.sourceControl = new SourceControlApiHelper(this);
 		this.securitySettings = new SecuritySettingsApiHelper(this);
 		this.tokenExchange = new TokenExchangeApiHelper(this);
+		this.instanceAi = new InstanceAiApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
@@ -238,6 +245,47 @@ export class ApiHelpers {
 		return data.count;
 	}
 
+	async getPollerCursor(
+		workflowId: string,
+		nodeId: string,
+	): Promise<Record<string, unknown> | null> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller cursor: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { cursor: Record<string, unknown> | null };
+		};
+		return data.cursor;
+	}
+
+	async getPollerFailureState(
+		workflowId: string,
+		nodeId: string,
+	): Promise<{ consecutiveErrors: number; backoffUntil: string | null }> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller failure state: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { consecutiveErrors: number; backoffUntil: string | null };
+		};
+		return { consecutiveErrors: data.consecutiveErrors, backoffUntil: data.backoffUntil };
+	}
+
+	async clearWorkflowStaticData(workflowId: string): Promise<void> {
+		const response = await this.request.post('/rest/e2e/workflow-static-data/clear', {
+			data: { workflowId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to clear workflow static data: ${await response.text()}`);
+		}
+	}
+
 	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
 		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
 			data: { workflowId, nodeId },
@@ -293,6 +341,23 @@ export class ApiHelpers {
 	}> {
 		const response = await this.request.get('/rest/e2e/env-feature-flags');
 		return await response.json();
+	}
+
+	/**
+	 * The backend modules this instance started with. A module the license did not
+	 * cover at boot is missing here, and `enableFeature` cannot add it later.
+	 */
+	async getActiveModules(): Promise<string[]> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.activeModules ?? [];
 	}
 
 	// ===== CONVENIENCE METHODS =====
@@ -466,6 +531,15 @@ export class ApiHelpers {
 		const response = await this.request.put('/rest/instance-ai/settings', {
 			data: { permissions },
 		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async updateInstanceAiSettings(settings: InstanceAiAdminSettingsUpdateRequest): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', { data: settings });
 		if (!response.ok()) {
 			throw new TestError(
 				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,

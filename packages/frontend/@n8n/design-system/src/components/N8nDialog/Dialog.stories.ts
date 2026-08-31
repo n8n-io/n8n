@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import {
 	N8nDialog,
 	N8nDialogClose,
@@ -10,7 +9,8 @@ import {
 	N8nDialogDescription,
 	N8nDialogFooter,
 	type DialogProps,
-} from '@n8n/design-system/components/N8nDialog';
+} from './index';
+import N8nButton from '../N8nButton/Button.vue';
 
 const meta = {
 	title: 'Core/Dialog',
@@ -56,7 +56,7 @@ export const Default: Story = {
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
-						<N8nButton type="secondary" label="Cancel" />
+						<N8nButton label="Cancel" />
 					</N8nDialogClose>
 					<N8nButton label="Save changes" />
 				</N8nDialogFooter>
@@ -228,9 +228,9 @@ export const AccessibilityFallback: Story = {
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
-						<N8nButton type="secondary" label="Cancel" />
+						<N8nButton label="Cancel" />
 					</N8nDialogClose>
-					<N8nButton type="danger" label="Delete" />
+					<N8nButton label="Delete" />
 				</N8nDialogFooter>
 			</N8nDialog>
 		</div>
@@ -270,7 +270,7 @@ export const AccessibilityFallbackTitleOnly: Story = {
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
-						<N8nButton type="secondary" label="No" />
+						<N8nButton label="No" />
 					</N8nDialogClose>
 					<N8nButton label="Yes" />
 				</N8nDialogFooter>
@@ -320,7 +320,7 @@ export const CustomHeader: Story = {
 
 				<N8nDialogFooter>
 					<N8nDialogClose as-child>
-						<N8nButton type="secondary" label="Cancel" />
+						<N8nButton label="Cancel" />
 					</N8nDialogClose>
 					<N8nButton label="Save" />
 				</N8nDialogFooter>

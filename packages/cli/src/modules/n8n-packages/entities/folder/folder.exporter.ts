@@ -8,6 +8,7 @@ import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
 import type { WorkflowExportRequirements } from '../requirements.types';
@@ -19,6 +20,7 @@ export interface FolderExportRequest {
 	folderIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
 	 * export (`folders/...`); a project exporter passes `projects/<slug>` so the
@@ -135,7 +137,7 @@ export class FolderExporter {
 	): Promise<FolderExportResult> {
 		const { childrenByParent, workflowIdsByFolder, request } = context;
 
-		this.exportFolderShell(folder, target, effectiveParentId, request.writer);
+		await this.exportFolderShell(folder, target, effectiveParentId, request.writer);
 
 		const workflowIds = workflowIdsByFolder.get(folder.id) ?? [];
 		const contained = await this.exportContainedWorkflows(workflowIds, target, request);
@@ -158,15 +160,15 @@ export class FolderExporter {
 		return this.mergeFolderExportResults([own, descendants]);
 	}
 
-	private exportFolderShell(
+	private async exportFolderShell(
 		folder: Folder,
 		target: string,
 		effectiveParentId: string | null,
 		writer: PackageWriter,
-	): void {
+	): Promise<void> {
 		const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+		await writer.writeDirectory(target);
+		await writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
 	}
 
 	private async exportContainedWorkflows(
@@ -183,6 +185,7 @@ export class FolderExporter {
 			writer: request.writer,
 			workflowIds,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix,
 		});
 	}

@@ -50,11 +50,14 @@ import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { evaluateContentImportSafely } from '@/policy/evaluate-content-import-safely';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -149,10 +152,12 @@ export class SourceControlImportService {
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -196,6 +201,7 @@ export class SourceControlImportService {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
 					name: remote.name,
+					description: remote.description,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
@@ -217,6 +223,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -240,6 +247,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -262,6 +270,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -298,6 +307,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -848,6 +858,12 @@ export class SourceControlImportService {
 
 		this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
 
+		// The upsert below writes `isArchived` directly instead of going through
+		// `WorkflowService.archive()`, so detect the transition to run its
+		// side effects (e.g. closing open review requests) ourselves.
+		const archivedByPull =
+			!!existingWorkflow && !existingWorkflow.isArchived && !!importedWorkflow.isArchived;
+
 		const upsertResult = await this.workflowRepository.upsert(
 			{
 				...importedWorkflow,
@@ -859,6 +875,11 @@ export class SourceControlImportService {
 			throw new UnexpectedError('Failed to upsert workflow', {
 				extra: { workflowId: id ?? 'new' },
 			});
+		}
+
+		if (archivedByPull) {
+			// A pull is a system mutation: no acting user to attribute the archive to.
+			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
 		}
 
 		try {
@@ -878,13 +899,20 @@ export class SourceControlImportService {
 			(w) => w.workflowId === id && w.role === 'workflow:owner',
 		);
 
-		await this.syncResourceOwnership({
+		const targetOwnerProject = await this.syncResourceOwnership({
 			resourceId: id,
 			remoteOwner: owner,
 			localOwner,
 			fallbackProject: personalProject,
 			repository: this.sharedWorkflowRepository,
 		});
+
+		// Advisory only — never blocks the pull, per contentImport being `evaluate`, not `enforce`.
+		const contentImportPolicy = await evaluateContentImportSafely(
+			this.policyEnforcementService,
+			{ workflow: { id, name: importedWorkflow.name, nodes }, projectId: targetOwnerProject.id },
+			this.logger,
+		);
 
 		// Now publish the workflow if needed (after history is saved)
 		if (shouldPublishAfterImport) {
@@ -901,6 +929,9 @@ export class SourceControlImportService {
 			publishingError: finalPublishingError,
 			...(finalPublishingErrorDetails && {
 				publishingErrorDetails: finalPublishingErrorDetails,
+			}),
+			...((contentImportPolicy.violations.length || contentImportPolicy.checkErrors.length) && {
+				contentImportPolicy,
 			}),
 		};
 	}
@@ -1789,13 +1820,15 @@ export class SourceControlImportService {
 				select: ['id'],
 				where: { parentFolder: { id: In(folderIds) } },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				workflows.map((workflow) => workflow.id),
 			);
 
 			await this.folderRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('folder', candidates, error);
 		}
@@ -1816,13 +1849,15 @@ export class SourceControlImportService {
 				select: ['workflowId'],
 				where: { projectId: In(candidateIds), role: 'workflow:owner' },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				ownedWorkflows.map((sw) => sw.workflowId),
 			);
 
 			await this.projectRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('project', candidates, error);
 		}
@@ -1839,29 +1874,56 @@ export class SourceControlImportService {
 	 * pulling user holds `workflow:delete` on, and the pull already ran it for
 	 * those (see `deleteWorkflowsNotInWorkfolder`). Any workflow still standing
 	 * was skipped by that permission check, yet the FK cascade below deletes it
-	 * regardless — so we do the physical cleanup directly beforehand. Deletion
-	 * hooks (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
-	 * event don't fire for these workflows — a pre-existing gap for any
-	 * cascade-deleted workflow.
+	 * regardless — so we do the physical cleanup directly beforehand. The
+	 * `beforeWorkflowDeleted` mutation hook fires here so modules can run their
+	 * pre-delete side effects (e.g. closing open review requests), and the
+	 * caller fires `afterWorkflowsDeleted` once the cascade has run (see
+	 * {@link sweepAfterWorkflowCascade}) — but external hooks
+	 * (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
+	 * event still don't fire, a pre-existing gap for any cascade-deleted
+	 * workflow.
 	 *
 	 * REVIEW(question): should we instead extract the permission-free part of
 	 * `WorkflowService.delete` (deactivate + drain + delete row + hooks/events)
-	 * into an internal method and call it here? That would restore hook/event
-	 * parity, at the cost of refactoring a hot service for this edge path.
+	 * into an internal method and call it here? That would restore full
+	 * hook/event parity, at the cost of refactoring a hot service for this
+	 * edge path.
 	 */
 	private async deactivateWorkflowsAndHardDeleteExecutions(workflowIds: string[]) {
+		const workflows: WorkflowEntity[] = [];
 		for (const workflowId of workflowIds) {
 			const workflow = await this.workflowRepository.findOne({
 				select: ['id', 'active'],
 				where: { id: workflowId },
 			});
-			if (!workflow) continue;
+			if (workflow) workflows.push(workflow);
+		}
 
+		// Capture-only, before any destructive teardown, while the rows the deletes
+		// will cascade away still exist. A pull is a system mutation: no acting user.
+		for (const workflow of workflows) {
+			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id, null);
+		}
+
+		for (const workflow of workflows) {
 			if (workflow.active) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
 			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
 		}
+
+		return workflows.map((workflow) => workflow.id);
+	}
+
+	/**
+	 * Fire `afterWorkflowsDeleted` once the folder/project row delete has
+	 * cascaded the given workflows away, mirroring `WorkflowService.delete`:
+	 * the sweep behind the hook closes review requests opened after the
+	 * pre-delete hooks ran and now left without a workflow.
+	 */
+	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
+		if (cascadedWorkflowIds.length === 0) return;
+		await this.workflowMutationHooks.afterWorkflowsDeleted(cascadedWorkflowIds);
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */
@@ -1904,7 +1966,7 @@ export class SourceControlImportService {
 		repository: SharedWorkflowRepository | SharedCredentialsRepository;
 		transactionManager?: EntityManager;
 		targetOwnerProject?: Project;
-	}): Promise<void> {
+	}): Promise<Project> {
 		targetOwnerProject ??= await this.resolveTargetOwnerProject(remoteOwner, fallbackProject);
 
 		const trx = transactionManager ?? this.workflowRepository.manager;
@@ -1917,6 +1979,8 @@ export class SourceControlImportService {
 
 		// Set new ownership
 		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
+
+		return targetOwnerProject;
 	}
 
 	private async resolveTargetOwnerProject(

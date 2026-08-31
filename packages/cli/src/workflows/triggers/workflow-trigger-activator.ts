@@ -8,8 +8,8 @@ import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import { sleep } from '@n8n/utils/sleep';
 import type {
-	IConnections,
 	INode,
 	IWebhookData,
 	IWorkflowBase,
@@ -22,12 +22,17 @@ import {
 	ERROR_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	UserError,
 	Workflow,
 	WorkflowActivationError,
 } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
+import {
+	TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+	TRIGGER_TEARDOWN_MAX_ATTEMPTS,
+	TRIGGER_TEARDOWN_RETRY_INITIAL_DELAY_MS,
+} from '@/constants';
 import { EventService } from '@/events/event.service';
 import type {
 	PublicationOperationResult,
@@ -35,6 +40,8 @@ import type {
 } from '@/events/maps/workflow-publication-metrics.event-map';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { WorkflowTriggerVersion } from '@/workflows/triggers/enabled-trigger-nodes';
+import { getEnabledTriggerNodes } from '@/workflows/triggers/enabled-trigger-nodes';
 import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
@@ -43,7 +50,46 @@ import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-exe
 import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
+export type { WorkflowTriggerVersion };
+
+/**
+ * How callers request that trigger (de)activation be abortable. Node
+ * registration and teardown code cannot be cancelled, only abandoned, and an
+ * abandoned operation may still mutate this workflow's registrations when it
+ * eventually settles. `onDetached` hands every such orphan back to the caller,
+ * which must not release the workflow's lifecycle lock until they settle.
+ */
+export interface TriggerOperationAbort {
+	signal: AbortSignal;
+	onDetached: (work: Promise<unknown>) => void;
+}
+
+/**
+ * Resolves with `promise`, or rejects with the abort reason once the signal
+ * fires — reporting the abandoned promise through `onDetached`.
+ */
+async function raceAbort<T>(promise: Promise<T>, abort: TriggerOperationAbort): Promise<T> {
+	const { signal } = abort;
+	if (signal.aborted) {
+		abort.onDetached(promise);
+		throw ensureError(signal.reason);
+	}
+
+	let onAbort!: () => void;
+	const aborted = new Promise<never>((_resolve, reject) => {
+		onAbort = () => reject(ensureError(signal.reason));
+		signal.addEventListener('abort', onAbort, { once: true });
+	});
+	try {
+		return await Promise.race([promise, aborted]);
+	} catch (error) {
+		// Reporting a promise that lost to its own rejection is harmless.
+		if (signal.aborted) abort.onDetached(promise);
+		throw error;
+	} finally {
+		signal.removeEventListener('abort', onAbort);
+	}
+}
 
 // Their trigger() is a no-op — fired by the execution engine, never the
 // registry — so reconciling them against the registry would re-enqueue forever.
@@ -58,6 +104,23 @@ export type TriggerActivationFailure = {
 	nodeId: INode['id'];
 	nodeName: string;
 	error: Error;
+};
+
+/**
+ * A webhook node whose external deregistration kept failing during teardown.
+ * Local routing has already stopped (the node's `webhook_entity` rows are
+ * deleted before any external call), so this only means an orphaned
+ * third-party subscription may remain — the caller surfaces it instead of
+ * failing the operation.
+ */
+export type TriggerTeardownFailure = {
+	nodeName: string;
+	error: Error;
+};
+
+/** The result of deactivating a set of trigger nodes. */
+export type TriggerDeactivationOutcome = {
+	externalTeardownFailures: TriggerTeardownFailure[];
 };
 
 /**
@@ -101,26 +164,12 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Returns the enabled trigger-like nodes (active, poll, schedule and webhook
-	 * triggers) of a workflow version. Disabled nodes are excluded, so the result
-	 * is the set of nodes that actually drive trigger registration. Used to
-	 * compute the trigger-level diff during publication.
+	 * The enabled trigger-like nodes of a workflow version, used to compute the
+	 * trigger-level diff during publication. See `getEnabledTriggerNodes`, shared
+	 * with the publish-time node id check.
 	 */
 	getEnabledTriggerNodes(version: WorkflowTriggerVersion | null): INode[] {
-		if (!version) return [];
-
-		const workflow = new Workflow({
-			id: 'trigger-diff',
-			name: 'trigger-diff',
-			nodes: version.nodes,
-			connections: version.connections,
-			active: false,
-			nodeTypes: this.nodeTypes,
-		});
-
-		return workflow.queryNodes(
-			(nodeType) => !!nodeType.trigger || !!nodeType.poll || !!nodeType.webhook,
-		);
+		return getEnabledTriggerNodes(version, this.nodeTypes);
 	}
 
 	/**
@@ -244,10 +293,18 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
+		activationMode: WorkflowActivateMode,
+		abort: TriggerOperationAbort,
 	): Promise<TriggerActivationOutcome> {
 		const startedAt = Date.now();
 		try {
-			const outcome = await this.activateInternal(dbWorkflow, version, nodeIds);
+			const outcome = await this.activateInternal(
+				dbWorkflow,
+				version,
+				nodeIds,
+				activationMode,
+				abort,
+			);
 			this.emitTriggerOperation(
 				'activate',
 				outcome.failures.length === 0 ? 'success' : 'failure',
@@ -265,6 +322,8 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
+		activationMode: WorkflowActivateMode,
+		abort: TriggerOperationAbort,
 	): Promise<TriggerActivationOutcome> {
 		return await this.tracing.startSpan(
 			{
@@ -294,7 +353,14 @@ export class WorkflowTriggerActivator {
 					// The two phases share the single isolate acquired here and mutate
 					// `outcome` via synchronous pushes, so overlapping them is safe.
 					const phaseResults = await Promise.allSettled([
-						this.registerWebhookTriggers(workflow, additionalData, nodeIds, outcome),
+						this.registerWebhookTriggers(
+							workflow,
+							additionalData,
+							nodeIds,
+							outcome,
+							activationMode,
+							abort,
+						),
 						this.registerNonWebhookTriggers(
 							dbWorkflow,
 							workflow,
@@ -302,6 +368,8 @@ export class WorkflowTriggerActivator {
 							resolveWorkflowData,
 							nodeIds,
 							outcome,
+							activationMode,
+							abort,
 						),
 					]);
 					this.throwRejectedPhaseError(phaseResults);
@@ -332,19 +400,34 @@ export class WorkflowTriggerActivator {
 	 * Deregisters only the given trigger nodes (webhook and non-webhook) of the
 	 * given workflow version, leaving the rest active. The caller passes the
 	 * currently published version so the right webhooks are deregistered.
+	 *
+	 * The two teardown surfaces fail differently, because they differ in what
+	 * a failure leaves live:
+	 *
+	 * - A non-webhook trigger whose close fails stays tracked and possibly live
+	 *   in memory, so its failure rejects — the record must be retried until
+	 *   the local state is truly down.
+	 * - A webhook's external deregistration failure leaves only third-party
+	 *   garbage: local routing already stopped when the node's rows were
+	 *   deleted (before any external call). Such failures resolve into
+	 *   `externalTeardownFailures` for the caller to surface — retrying the
+	 *   operation forever would block the publication on a third party.
 	 */
 	async deactivate(
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
-	) {
-		if (nodeIds.size === 0) return;
+		abort: TriggerOperationAbort,
+	): Promise<TriggerDeactivationOutcome> {
+		if (nodeIds.size === 0) return { externalTeardownFailures: [] };
 
 		const startedAt = Date.now();
 		try {
-			await this.deactivateInternal(dbWorkflow, version, nodeIds);
+			const outcome = await this.deactivateInternal(dbWorkflow, version, nodeIds, abort);
+			const failed = outcome.externalTeardownFailures.length;
 			this.emitTriggerOperation('deactivate', 'success', startedAt);
-			this.emitTriggerNodeOperations('deactivate', nodeIds.size, 0);
+			this.emitTriggerNodeOperations('deactivate', nodeIds.size - failed, failed);
+			return outcome;
 		} catch (error) {
 			this.emitTriggerOperation('deactivate', 'failure', startedAt);
 			this.emitTriggerNodeOperations('deactivate', 0, nodeIds.size);
@@ -356,8 +439,9 @@ export class WorkflowTriggerActivator {
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
-	) {
-		await this.tracing.startSpan(
+		abort: TriggerOperationAbort,
+	): Promise<TriggerDeactivationOutcome> {
+		return await this.tracing.startSpan(
 			{
 				name: 'Trigger deactivation',
 				op: 'publication.trigger.deactivate',
@@ -377,19 +461,17 @@ export class WorkflowTriggerActivator {
 
 				// The non-webhook phase doesn't touch the expression isolate that the
 				// webhook deregister acquires, so the two phases can overlap.
-				const phaseResults = await Promise.allSettled([
-					this.deregisterWebhookTriggers(workflow, additionalData, nodeIds).then(
-						async (removedNodeNames) =>
-							await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
-								dbWorkflow.id,
-								removedNodeNames,
-							),
-					),
-					this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds),
+				const [webhookPhase, nonWebhookPhase] = await Promise.allSettled([
+					this.deregisterWebhookTriggers(workflow, additionalData, nodeIds, abort),
+					this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds, abort),
 				]);
-				this.throwRejectedPhaseError(phaseResults);
+				this.throwRejectedPhaseError([webhookPhase, nonWebhookPhase]);
 
 				span.setStatus({ code: SpanStatus.ok });
+
+				return {
+					externalTeardownFailures: webhookPhase.status === 'fulfilled' ? webhookPhase.value : [],
+				};
 			},
 		);
 	}
@@ -495,12 +577,21 @@ export class WorkflowTriggerActivator {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
 		outcome: TriggerActivationOutcome,
+		activationMode: WorkflowActivateMode,
+		abort: TriggerOperationAbort,
 	) {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
 		const tasks = [...webhooksByNode].map(
 			async ([nodeId, { nodeName, webhooks }]) =>
-				await this.registerWebhookTriggersForNode(workflow, nodeId, nodeName, webhooks),
+				await this.registerWebhookTriggersForNode(
+					workflow,
+					nodeId,
+					nodeName,
+					webhooks,
+					activationMode,
+					abort,
+				),
 		);
 
 		for (const result of await Promise.all(tasks)) {
@@ -519,18 +610,24 @@ export class WorkflowTriggerActivator {
 		nodeId: INode['id'],
 		nodeName: string,
 		webhooks: IWebhookData[],
+		activationMode: WorkflowActivateMode,
+		abort: TriggerOperationAbort,
 	): Promise<Result<{ nodeId: INode['id'] }, TriggerActivationFailure>> {
 		try {
 			for (const webhookData of webhooks) {
-				await retryTriggerActivation(
-					async () =>
-						await this.webhookTriggerRegistrar.register({
-							workflow,
-							webhookData,
-							mode: 'trigger',
-							activation: 'update',
-						}),
-					TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+				await raceAbort(
+					retryTriggerActivation(
+						async () =>
+							await this.webhookTriggerRegistrar.register({
+								workflow,
+								webhookData,
+								mode: 'trigger',
+								activation: activationMode,
+							}),
+						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+						abort.signal,
+					),
+					abort,
 				);
 			}
 			return createResultOk({ nodeId });
@@ -571,23 +668,56 @@ export class WorkflowTriggerActivator {
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
-	) {
-		const removedNodeNames: string[] = [];
+		abort: TriggerOperationAbort,
+	): Promise<TriggerTeardownFailure[]> {
+		// Keyed by node: a node can expose several webhooks, but failures are
+		// reported (and counted against the node metrics) per node, keeping the
+		// first error.
+		const failuresByNode = new Map<string, TriggerTeardownFailure>();
+
+		// We remove the local routing so executions stop firing, and THEN attempt to deregister any
+		// external state.
+		const targetNodeNames = Object.values(workflow.nodes)
+			.filter((node) => nodeIds.has(node.id))
+			.map((node) => node.name);
+		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(workflow.id, targetNodeNames);
 
 		await workflow.expression.acquireIsolate();
 		try {
-			const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
+			const webhooks = this.getNodeWebhooks(workflow, nodeIds, additionalData, failuresByNode);
 
 			const deregistrationResults = await Promise.allSettled(
 				webhooks.map(
 					async (webhookData) =>
-						await this.webhookTriggerRegistrar.deregister({ workflow, webhookData }),
+						await this.deregisterExternalWebhookWithRetry(workflow, webhookData, abort),
 				),
 			);
 
-			for (const result of deregistrationResults) {
-				if (result.status === 'rejected') throw ensureError(result.reason);
-				removedNodeNames.push(result.value);
+			for (const [index, result] of deregistrationResults.entries()) {
+				if (result.status !== 'rejected') continue;
+				const error = ensureError(result.reason);
+				// An abort is not a teardown outcome: it must fail the operation so
+				// the record is retried for the external cleanup it interrupted. Throw
+				// the abort reason itself — this iteration's error may be an earlier,
+				// unrelated failure (e.g. an abandoned UserError), and blaming it
+				// would mark the record failed with an error the policy ignores.
+				if (abort.signal.aborted) throw ensureError(abort.signal.reason);
+				const nodeName = webhooks[index].node;
+				// We don't add these to failuresByNode because we don't intend to retry them.
+				if (this.shouldAbandonFailedTeardown(error)) {
+					this.logger.warn('Abandoned webhook whose deregistration can never succeed', {
+						workflowId: workflow.id,
+						nodeName,
+						error: error.message,
+					});
+				} else {
+					this.logger.warn('Abandoned webhook whose external deregistration kept failing', {
+						workflowId: workflow.id,
+						nodeName,
+						error: error.message,
+					});
+					if (!failuresByNode.has(nodeName)) failuresByNode.set(nodeName, { nodeName, error });
+				}
 			}
 		} finally {
 			await workflow.expression.releaseIsolate();
@@ -595,7 +725,77 @@ export class WorkflowTriggerActivator {
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
-		return removedNodeNames;
+		return [...failuresByNode.values()];
+	}
+
+	// NOTE: acquire the expression evaluation isolate before calling this.
+	private getNodeWebhooks(
+		workflow: Workflow,
+		nodeIds: Set<INode['id']>,
+		additionalData: IWorkflowExecuteAdditionalData,
+		failuresByNode: Map<string, TriggerTeardownFailure>,
+	): IWebhookData[] {
+		const webhooks: IWebhookData[] = [];
+		for (const targetNode of Object.values(workflow.nodes)) {
+			if (!nodeIds.has(targetNode.id)) continue;
+			try {
+				webhooks.push(
+					...this.webhookTriggerRegistrar.getNodeWebhookTriggers(
+						workflow,
+						targetNode,
+						additionalData,
+					),
+				);
+			} catch (discoveryError) {
+				// NOTE: hitting an error can happen if the node's webhook expressions are invalid,
+				// but this is pretty rare. We still log but tolerate it and continue with teardown.
+				const error = ensureError(discoveryError);
+				this.logger.warn('Abandoned external webhook cleanup after failed discovery', {
+					workflowId: workflow.id,
+					nodeName: targetNode.name,
+					error: error.message,
+				});
+				failuresByNode.set(targetNode.name, { nodeName: targetNode.name, error });
+			}
+		}
+		return webhooks;
+	}
+
+	/**
+	 * Externally deregisters one webhook, retrying a plausibly transient
+	 * failure (e.g. an unreachable third party) with short exponential backoff
+	 * before giving up. A failure that can never succeed (see
+	 * {@link shouldAbandonFailedTeardown}) and an abort are not retried. The
+	 * `sleep` rejects with the abort reason as soon as the signal fires, so an
+	 * abandoned retry never sleeps out its backoff.
+	 *
+	 * Everything else is deliberately treated as retryable, including failures
+	 * that may turn out permanent: node `delete()` errors are heterogeneous
+	 * across integrations and carry no reliable transient/permanent signal
+	 * (e.g. a 429 is retryable while a 403 is not, and many errors carry no
+	 * status at all). Misclassifying a transient failure as permanent orphans
+	 * an external subscription that one retry would have cleaned up, while the
+	 * cost of retrying a permanent failure is a few bounded seconds inside the
+	 * record's abort deadline.
+	 */
+	private async deregisterExternalWebhookWithRetry(
+		workflow: Workflow,
+		webhookData: IWebhookData,
+		abort: TriggerOperationAbort,
+	): Promise<void> {
+		for (let attempt = 0; ; attempt++) {
+			try {
+				await raceAbort(this.webhookTriggerRegistrar.deregister({ workflow, webhookData }), abort);
+				return;
+			} catch (error) {
+				const isLastAttempt = attempt >= TRIGGER_TEARDOWN_MAX_ATTEMPTS - 1;
+				if (this.shouldAbandonFailedTeardown(error) || isLastAttempt || abort.signal.aborted) {
+					throw error;
+				}
+
+				await sleep(TRIGGER_TEARDOWN_RETRY_INITIAL_DELAY_MS * 2 ** attempt, abort.signal);
+			}
+		}
 	}
 
 	private getWebhookTriggersForNodeIds(
@@ -622,12 +822,14 @@ export class WorkflowTriggerActivator {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		nodeIds: Set<INode['id']>,
 		outcome: TriggerActivationOutcome,
+		activationMode: WorkflowActivateMode,
+		abort: TriggerOperationAbort,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 		if (triggerNodeIds.length === 0) return;
 
 		const registration = this.nonWebhookTriggerRegistrar.createRegistrationContext(dbWorkflow, {
-			activationMode: 'update',
+			activationMode,
 			executionMode: 'trigger',
 			additionalData,
 			resolveWorkflowData,
@@ -647,10 +849,16 @@ export class WorkflowTriggerActivator {
 		const results = await Promise.all(
 			triggerNodeIds.map(async (nodeId): Promise<Result<INode['id'], TriggerActivationFailure>> => {
 				try {
-					await retryTriggerActivation(
-						async () =>
-							await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
-						TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+					// NOTE: to abort the actual trigger operation, we would need to pass the signal all the way
+					// down to the node. This doesn't happen today, but could in the future.
+					await raceAbort(
+						retryTriggerActivation(
+							async () =>
+								await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
+							TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+							abort.signal,
+						),
+						abort,
 					);
 
 					return createResultOk(nodeId);
@@ -685,14 +893,42 @@ export class WorkflowTriggerActivator {
 		workflowId: WorkflowId,
 		workflow: Workflow,
 		nodeIds: Set<INode['id']>,
+		abort: TriggerOperationAbort,
 	) {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 
 		await Promise.all(
-			triggerNodeIds.map(
-				async (nodeId) => await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId),
-			),
+			triggerNodeIds.map(async (nodeId) => {
+				try {
+					await raceAbort(this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId), abort);
+				} catch (error) {
+					if (!this.shouldAbandonFailedTeardown(ensureError(error))) throw error;
+					this.logger.warn('Abandoned trigger whose deregistration can never succeed', {
+						workflowId,
+						nodeId,
+						error: ensureError(error).message,
+					});
+				}
+			}),
 		);
+	}
+
+	/**
+	 * A `UserError` from teardown (e.g. a delete hook whose credential was
+	 * deleted) can never succeed on retry, so the trigger is abandoned instead
+	 * of failing the deactivation — a retained registration would only make the
+	 * publication outbox retry a teardown that is permanently broken. An abort
+	 * rejects with the abort reason, never a `UserError`, so it is never
+	 * abandoned. Transient remote failures (network errors, API rejections)
+	 * are not `UserError`s and still fail for retry.
+	 *
+	 * The cause is checked too: a non-webhook trigger's close failure
+	 * arrives wrapped in a `WorkflowDeactivationError` with the node's error as
+	 * its `cause`.
+	 */
+	private shouldAbandonFailedTeardown(error: unknown): boolean {
+		if (error instanceof UserError) return true;
+		return error instanceof Error && error.cause instanceof UserError;
 	}
 
 	private getNonWebhookTriggerNodeIdsForNodeIds(workflow: Workflow, nodeIds: Set<INode['id']>) {
@@ -754,14 +990,19 @@ export class WorkflowTriggerActivator {
 			this.triggerExecutionContextFactory.executeErrorWorkflow(activationError, workflowData, mode);
 
 			// `addTriggers` does not own the expression isolate, so acquire it per attempt.
-			await retryTriggerActivation(async () => {
-				await workflow.expression.acquireIsolate();
-				try {
-					await this.nonWebhookTriggerRegistrar.register(workflow, registration, node.id);
-				} finally {
-					await workflow.expression.releaseIsolate();
-				}
-			}, TRIGGER_ACTIVATION_MAX_ATTEMPTS);
+			await retryTriggerActivation(
+				async () => {
+					await workflow.expression.acquireIsolate();
+					try {
+						await this.nonWebhookTriggerRegistrar.register(workflow, registration, node.id);
+					} finally {
+						await workflow.expression.releaseIsolate();
+					}
+				},
+				TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+				// Runtime reactivation has no abort context; never aborts.
+				new AbortController().signal,
+			);
 
 			await this.workflowStaticDataService.saveStaticData(workflow);
 

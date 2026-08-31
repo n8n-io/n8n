@@ -11,8 +11,10 @@ import {
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { stashPendingAgentAttachment } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { AGENTS_LIST_VIEW, PROJECT_AGENTS } from '../constants';
+import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '../constants';
 
 /** Shape `generateNanoId` produces, and the only shape the create API accepts. */
 const MINTED_AGENT_ID = /^[0-9A-Za-z]{16}$/;
@@ -21,14 +23,15 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
+// `Ready`, not merely available: this mints a thread and lands the user in it,
+// so before setup is done the manual builder is the working path.
+const instanceAiReady = useInstanceAiReady();
 const instanceAiStore = useInstanceAiStore();
 
 /**
- * Opens a new-agent artifact without persisting anything. The agent id is
- * minted here and carried on the thread so both paths that can create the
- * agent — a config edit in the artifact, or an agent-building chat request —
- * create it under the same id. Nothing reaches the database until one of them
- * happens, so abandoning the thread leaves no empty agent behind.
+ * Opens an unpersisted agent draft in Instance AI when available, or directly
+ * in the manual builder otherwise. Both paths persist only after the first
+ * configuration change and use the id minted by the entry point.
  */
 onMounted(async () => {
 	const projectId = route.query.projectId;
@@ -49,8 +52,17 @@ onMounted(async () => {
 		typeof clickedAgentId === 'string' && MINTED_AGENT_ID.test(clickedAgentId)
 			? clickedAgentId
 			: generateNanoId();
-	const threadId = uuidv4();
 	try {
+		if (!instanceAiReady.value) {
+			await router.replace({
+				name: AGENT_BUILDER_VIEW,
+				params: { projectId, agentId },
+				state: { [INSTANCE_AI_PENDING_AGENT_ID_STATE]: agentId },
+			});
+			return;
+		}
+
+		const threadId = uuidv4();
 		await instanceAiStore.syncThread(threadId, projectId, {
 			source: 'agent_builder_page',
 			origin: 'internal',
@@ -58,6 +70,13 @@ onMounted(async () => {
 		});
 		await instanceAiStore.updateThreadMetadata(threadId, {
 			[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: { projectId, agentId },
+		});
+		stashPendingAgentAttachment(threadId, {
+			type: 'agent',
+			id: agentId,
+			name: i18n.baseText('agents.new.defaultName'),
+			projectId,
+			pending: true,
 		});
 		await router.replace({
 			name: INSTANCE_AI_THREAD_VIEW,

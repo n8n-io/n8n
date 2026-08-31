@@ -33,8 +33,14 @@ export function throwOnErrorStatus(
 		data?: Array<{ status: string; message: string }>;
 	},
 ) {
-	if (responseData?.data?.[0].status === 'error') {
-		throw new NodeOperationError(this.getNode(), responseData as Error);
+	const errorRecord = responseData?.data?.[0];
+	if (errorRecord?.status === 'error') {
+		// Zoho returns per-record errors in a 2xx response, so surface the
+		// record's own message (e.g. "duplicate data") instead of a generic one.
+		throw new NodeOperationError(this.getNode(), errorRecord as unknown as Error, {
+			message: errorRecord.message,
+			description: JSON.stringify(errorRecord, null, 2),
+		});
 	}
 }
 

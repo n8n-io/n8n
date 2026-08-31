@@ -24,6 +24,8 @@ function createInstanceAiContext(): InstanceAiContext {
 		nodeService: service,
 		dataTableService: service,
 		workspaceService: service,
+		evaluationConfigService: service,
+		mcpService: service,
 		logger: {
 			debug: vi.fn(),
 			info: vi.fn(),

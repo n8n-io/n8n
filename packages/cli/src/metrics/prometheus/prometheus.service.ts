@@ -13,6 +13,7 @@ import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
 import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
+import { PrometheusPollTriggerMetricsService } from './poll-trigger-metrics.service';
 import { PrometheusPssMetricsService } from './pss-metrics.service';
 import { PrometheusQueueMetricsService } from './queue-metrics.service';
 import { PrometheusRouteMetricsService } from './route-metrics.service';
@@ -55,6 +56,7 @@ export class PrometheusMetricsService {
 		dbPool: PrometheusDbPoolMetricsService,
 		workflowPublication: PrometheusWorkflowPublicationMetricsService,
 		scheduler: PrometheusSchedulerMetricsService,
+		pollTrigger: PrometheusPollTriggerMetricsService,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -79,6 +81,7 @@ export class PrometheusMetricsService {
 			dbPool,
 			workflowPublication,
 			scheduler,
+			pollTrigger,
 		];
 	}
 

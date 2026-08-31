@@ -11,10 +11,8 @@ import {
 } from 'reka-ui';
 import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nLoading from '@n8n/design-system/components/N8nLoading';
-import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
-
+import Icon from '../N8nIcon/Icon.vue';
+import N8nLoading from '../N8nLoading';
 import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
@@ -22,6 +20,7 @@ import {
 	type DropdownMenuItemSlots,
 } from './DropdownMenu.types';
 import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
+import N8nText from '../N8nText/Text.vue';
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
@@ -424,7 +423,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/floating-item' as floating-item;
 @use '../../css/common/var';
+@use '../../css/mixins/mixins' as scrollbar-mixins;
 
 .wrapper {
 	display: contents;
@@ -434,17 +435,13 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--4xs);
 	max-height: inherit;
 	overflow-y: auto;
-	scrollbar-width: none;
+	@include scrollbar-mixins.hoverable-scroll-bar;
 	mask-image: linear-gradient(
 		to bottom,
 		black 0,
 		black calc(100% - var(--spacing--sm)),
 		transparent 100%
 	);
-
-	&::-webkit-scrollbar {
-		display: none;
-	}
 }
 
 .section-header {
@@ -455,18 +452,9 @@ onBeforeUnmount(() => {
 }
 
 .item {
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	border-radius: var(--radius--2xs);
-	display: flex;
-	align-items: center;
-	min-height: var(--spacing--xl);
-	padding: var(--spacing--2xs);
-	position: relative;
-	user-select: none;
+	@include floating-item.floating-item;
+
 	color: var(--text-color);
-	gap: var(--spacing--2xs);
-	outline: none;
 
 	&:not([data-disabled]) {
 		&:hover,
@@ -522,7 +510,7 @@ onBeforeUnmount(() => {
 	max-width: var(--n8n--dropdown-menu-width);
 	max-height: min(
 		var(--reka-dropdown-menu-content-available-height),
-		var(--n8n-dropdown-sub-max-height, var(--spacing--5xl))
+		var(--n8n-dropdown-sub-max-height, 75vh)
 	);
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
 	overflow: hidden;

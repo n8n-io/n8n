@@ -1,4 +1,9 @@
-import type { AgentJsonConfig, AgentSkill, EvaluationConfigDto } from '@n8n/api-types';
+import type {
+	AgentJsonConfig,
+	AgentSkill,
+	EvaluationConfigDto,
+	InstanceAiEvalSeedAgent,
+} from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 
 import {
@@ -219,5 +224,70 @@ describe('N8nClient — TRUST-229 artifact fetch methods', () => {
 			expect(result.count).toBe(1);
 			expect(result.data).toHaveLength(1);
 		});
+	});
+});
+
+describe('N8nClient.restoreThread — agent seeding contract', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	const AGENT: InstanceAiEvalSeedAgent = {
+		id: 'AgEnT12345678901',
+		config: {
+			name: 'Support Triage',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Triage tickets.',
+		} as AgentJsonConfig,
+	};
+
+	function restoreBody(over: Record<string, unknown> = {}) {
+		return {
+			data: {
+				ok: true,
+				threadId: 'thread-1',
+				restored: 1,
+				workflowIds: [],
+				dataTableIds: [],
+				...over,
+			},
+		};
+	}
+
+	it('fails when agents were requested but the response carries none', async () => {
+		// `agentIds` defaults to [] for older backends, which would otherwise read as
+		// "restored fine, zero agents" — running the case unseeded.
+		stubFetch(restoreBody());
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.restoreThread('thread-1', [], [], [], [AGENT])).rejects.toThrow(
+			/predates agent seeding/,
+		);
+	});
+
+	it('fails when fewer agents come back than were requested', async () => {
+		stubFetch(restoreBody({ agentIds: ['AgEnT12345678901'] }));
+		const client = new N8nClient(BASE_URL);
+
+		await expect(
+			client.restoreThread('thread-1', [], [], [], [AGENT, { ...AGENT, id: 'AgEnT99999999999' }]),
+		).rejects.toThrow(/asked to seed 2 agent\(s\)/);
+	});
+
+	it('passes when every requested agent comes back', async () => {
+		stubFetch(restoreBody({ agentIds: ['AgEnT12345678901'] }));
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.restoreThread('thread-1', [], [], [], [AGENT])).resolves.toMatchObject({
+			agentIds: ['AgEnT12345678901'],
+		});
+	});
+
+	it('still accepts a missing agentIds when no agents were requested', async () => {
+		// A workflow/data-table-only seed must keep working against any backend.
+		stubFetch(restoreBody());
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.restoreThread('thread-1', [], [])).resolves.toMatchObject({ agentIds: [] });
 	});
 });

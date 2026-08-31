@@ -1,9 +1,12 @@
+import { listAlibabaModels } from './providers/alibaba';
 import { listAnthropicModels } from './providers/anthropic';
 import { listCohereModels } from './providers/cohere';
 import { listDeepSeekModels } from './providers/deepseek';
 import { listGoogleModels } from './providers/google';
 import { listGroqModels } from './providers/groq';
+import { listMiniMaxModels } from './providers/minimax';
 import { listMistralModels } from './providers/mistral';
+import { listMoonshotAiModels } from './providers/moonshotai';
 import { listNvidiaModels } from './providers/nvidia';
 import { listOpenAiModels } from './providers/openai';
 import { listOpenRouterModels } from './providers/openrouter';
@@ -23,12 +26,15 @@ import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
  * When changing behavior here, keep the node in sync.
  */
 export const MODEL_DISCOVERY_PROVIDERS: Record<string, ListModelsFn> = {
+	alibaba: listAlibabaModels,
 	anthropic: listAnthropicModels,
 	cohere: listCohereModels,
 	deepseek: listDeepSeekModels,
 	google: listGoogleModels,
 	groq: listGroqModels,
+	minimax: listMiniMaxModels,
 	mistral: listMistralModels,
+	moonshotai: listMoonshotAiModels,
 	nvidia: listNvidiaModels,
 	openai: listOpenAiModels,
 	openrouter: listOpenRouterModels,
@@ -51,15 +57,28 @@ export async function listModelsForProvider(
 	return await listModels(options);
 }
 
+export {
+	classifyChatModelFailure,
+	type ChatModelFailureKind,
+} from './chat-model-errors';
+export { listAlibabaModels } from './providers/alibaba';
 export { listAnthropicModels } from './providers/anthropic';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
 export { listGoogleModels } from './providers/google';
 export { listGroqModels } from './providers/groq';
+export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';
+export { listMoonshotAiModels } from './providers/moonshotai';
 export { listNvidiaModels } from './providers/nvidia';
-export { listOpenAiModels, shouldIncludeOpenAiModel } from './providers/openai';
+export {
+	listOpenAiModels,
+	shouldIncludeOpenAiModel,
+	OFFICIAL_OPENAI_HOSTNAMES,
+	isOpenAiCustomEndpoint,
+} from './providers/openai';
 export { listOpenRouterModels } from './providers/openrouter';
 export { listVercelModels } from './providers/vercel';
 export { listXaiModels } from './providers/xai';
+export { ensureUrlPathSuffix } from './request';
 export type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';

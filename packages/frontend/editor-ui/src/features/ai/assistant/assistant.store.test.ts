@@ -16,7 +16,7 @@ import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { VIEWS } from '@/app/constants';
@@ -24,7 +24,7 @@ import { reactive, shallowRef } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import type { INodeUi } from '@/Interface';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({

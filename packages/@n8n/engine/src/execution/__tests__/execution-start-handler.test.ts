@@ -1,10 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowGraph } from '../../graph';
+import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import type { StepStore } from '../step-store';
+
+/** A publisher fake; tests that care assert on `publish`. */
+function makeLifecycleEventPublisher(): LifecycleEventPublisher {
+	return { publish: vi.fn(), stop: vi.fn() };
+}
+
+/** Handler with a throwaway publisher, for the tests that ignore it. */
+function makeHandler(
+	executionStore: ExecutionStore,
+	stepStore: StepStore,
+	queue: WorkQueue<OrchestrationMessage>,
+	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
+): ExecutionStartHandler {
+	return new ExecutionStartHandler(executionStore, stepStore, queue, lifecycleEventPublisher);
+}
 
 function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
@@ -28,21 +44,25 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		claimStep: vi.fn(),
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
-		loadStepOutputs: vi.fn(),
-		loadCompletedNodeIds: vi.fn(),
-		hasActiveSteps: vi.fn(),
+		cancelQueuedSteps: vi.fn(),
+		loadStepsByKeys: vi.fn().mockResolvedValue({}),
+		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
+		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
+		loadAllSteps: vi.fn().mockResolvedValue([]),
+		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
 	};
 }
 
-function record(graph: WorkflowGraph): ExecutionRecord {
+function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
 	return {
 		id: 'exec-1',
 		workflowId: 'wf-1',
 		status: 'running',
 		mode: 'production',
 		graph,
-		triggerPayload: null,
+		triggerOutputs: null,
+		...overrides,
 	};
 }
 
@@ -56,25 +76,83 @@ describe('ExecutionStartHandler', () => {
 			edges: [{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 }],
 		};
 		const executionStore = makeExecutionStore({
-			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue(record(graph, { triggerOutputs: [[{ json: { webhook: 'data' } }]] })),
 		});
 		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
 		const stepStore = makeStepStore(createSteps);
 		const queue = makeOrchestrationQueue();
-		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
+		const handler = makeHandler(executionStore, stepStore, queue);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'queued', 'running');
-		// only the trigger's row — planning is the step:completed handler's job
-		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+		// only the trigger's row — planning is the step:settled handler's job.
+		// Its payload rides along as output slots, read downstream like any
+		// other predecessor's outputs.
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{
+				nodeId: 'trigger',
+				iteration: 0,
+				status: 'completed',
+				outputs: [[{ json: { webhook: 'data' } }]],
+			},
 		]);
 		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-trigger',
 		});
+	});
+
+	it('records multi-slot trigger payloads verbatim, including dead slots', async () => {
+		const graph: WorkflowGraph = {
+			nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
+			edges: [],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(
+				record(graph, {
+					triggerOutputs: [[{ json: { i1: true } }], null, [{ json: { i2: true } }]],
+				}),
+			),
+		});
+		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
+		const stepStore = makeStepStore(createSteps);
+		const handler = makeHandler(executionStore, stepStore, makeOrchestrationQueue());
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{
+				nodeId: 'trigger',
+				iteration: 0,
+				status: 'completed',
+				outputs: [[{ json: { i1: true } }], null, [{ json: { i2: true } }]],
+			},
+		]);
+	});
+
+	it('records no slots at all when the trigger has no payload', async () => {
+		// No payload means no data on any slot — every successor edge reads
+		// undefined and is treated as dead, same as any other step producing nothing.
+		const graph: WorkflowGraph = {
+			nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
+			edges: [],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(record(graph, { triggerOutputs: null })),
+		});
+		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
+		const stepStore = makeStepStore(createSteps);
+		const handler = makeHandler(executionStore, stepStore, makeOrchestrationQueue());
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [] },
+		]);
 	});
 
 	it('is a no-op when the execution cannot be claimed (duplicate delivery)', async () => {
@@ -83,7 +161,7 @@ describe('ExecutionStartHandler', () => {
 		});
 		const stepStore = makeStepStore();
 		const queue = makeOrchestrationQueue();
-		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
+		const handler = makeHandler(executionStore, stepStore, queue);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
@@ -104,7 +182,7 @@ describe('ExecutionStartHandler', () => {
 		});
 		const stepStore = makeStepStore(vi.fn().mockResolvedValue([]));
 		const queue = makeOrchestrationQueue();
-		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
+		const handler = makeHandler(executionStore, stepStore, queue);
 
 		await expect(
 			handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' }),
@@ -122,7 +200,7 @@ describe('ExecutionStartHandler', () => {
 		});
 		const stepStore = makeStepStore();
 		const queue = makeOrchestrationQueue();
-		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
+		const handler = makeHandler(executionStore, stepStore, queue);
 
 		await expect(
 			handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' }),
@@ -131,5 +209,52 @@ describe('ExecutionStartHandler', () => {
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
+	});
+});
+
+describe('ExecutionStartHandler lifecycle events', () => {
+	const graph: WorkflowGraph = {
+		nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
+		edges: [],
+	};
+
+	it('announces execution:started once it wins the claim', async () => {
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(record(graph, { mode: 'manual' })),
+		});
+		const handler = makeHandler(
+			executionStore,
+			makeStepStore(vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }])),
+			makeOrchestrationQueue(),
+			lifecycleEventPublisher,
+		);
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'execution:started',
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			mode: 'manual',
+			at: expect.any(String) as string,
+		});
+	});
+
+	it('announces nothing when it loses the claim', async () => {
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const executionStore = makeExecutionStore({
+			transitionStatus: vi.fn().mockResolvedValue(false),
+		});
+		const handler = makeHandler(
+			executionStore,
+			makeStepStore(vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }])),
+			makeOrchestrationQueue(),
+			lifecycleEventPublisher,
+		);
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 });

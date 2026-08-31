@@ -2,7 +2,9 @@ import type {
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentConfigValidationResponse,
+	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
+	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -14,8 +16,6 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
-	CreateSlackAgentAppResponse,
-	SlackAgentAppManifestResponse,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
@@ -175,6 +175,11 @@ export const warmAgentKnowledgeSandbox = async (
 	);
 };
 
+/** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
+export interface ConnectIntegrationOptions {
+	replaces?: { credentialId: string };
+}
+
 export const connectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -182,12 +187,18 @@ export const connectIntegration = async (
 	type: string,
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
-): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> => {
-	return await makeRestApiRequest<Pick<AgentIntegrationStatusResponse, 'status'>>(
+	options?: ConnectIntegrationOptions,
+): Promise<AgentIntegrationConnectResponse> => {
+	return await makeRestApiRequest<AgentIntegrationConnectResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
-		{ type, credentialId, ...(settings ? { settings } : {}) },
+		{
+			type,
+			credentialId,
+			...(settings ? { settings } : {}),
+			...(options?.replaces ? { replaces: options.replaces } : {}),
+		},
 	);
 };
 
@@ -197,12 +208,13 @@ export const disconnectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
-): Promise<{ status: string }> => {
-	return await makeRestApiRequest(
+	deleteExternalResource?: boolean,
+): Promise<AgentDisconnectIntegrationResponse> => {
+	return await makeRestApiRequest<AgentDisconnectIntegrationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type, credentialId },
+		{ type, credentialId, deleteExternalResource },
 	);
 };
 
@@ -282,49 +294,6 @@ export const runAgentTask = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
-	);
-};
-
-// Backward-compatible aliases
-export const connectSlack = async (
-	ctx: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	credentialId: string,
-) => await connectIntegration(ctx, projectId, agentId, 'slack', credentialId);
-
-export const disconnectSlack = async (
-	ctx: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	credentialId: string,
-) => await disconnectIntegration(ctx, projectId, agentId, 'slack', credentialId);
-
-export const getSlackStatus = getIntegrationStatus;
-
-export const createSlackAgentApp = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	appConfigurationToken: string,
-): Promise<CreateSlackAgentAppResponse> => {
-	return await makeRestApiRequest<CreateSlackAgentAppResponse>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/app`,
-		{ appConfigurationToken },
-	);
-};
-
-export const getSlackAgentAppManifest = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<SlackAgentAppManifestResponse> => {
-	return await makeRestApiRequest<SlackAgentAppManifestResponse>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/manifest`,
 	);
 };
 

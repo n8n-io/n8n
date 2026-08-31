@@ -15,8 +15,10 @@ import type { Logger } from '../logger';
  * secret patterns plus credit-card numbers. Other PII categories (`email`,
  * `ssn-us`) are implemented but off by default until we decide which to enable.
  *
- * Instance AI always redacts matches. The SDK's `GuardrailStrategy` also defines
- * `block` and `warn`, but those are not implemented here.
+ * Instance AI's own streams pass `false` (raw-at-rest, INS-837), so this policy
+ * applies only to callers that opt in. When it does run it always redacts
+ * matches; the SDK's `GuardrailStrategy` also defines `block` and `warn`, but
+ * those are not implemented here.
  */
 export const DEFAULT_OUTPUT_REDACTION_OPTIONS: RedactionOptions = {
 	secrets: true,
@@ -29,10 +31,29 @@ interface OutputRedactorContext {
 	runId: string;
 	agentId: string;
 	/**
-	 * Redaction policy: omit for the safe default, pass options to customise, or
-	 * `false` to disable scanning entirely (events pass through untouched).
+	 * Redaction policy: omit for the default policy, pass options to customise,
+	 * or `false` to disable scanning entirely (events pass through untouched).
+	 * NOTE: omission means ENABLED — callers on a persistence path must pass
+	 * `false` explicitly or the stored text is redacted.
 	 */
 	options?: RedactionOptions | false;
+}
+
+const MAX_TARGET_APPROVAL_ARG_DEPTH = 8;
+const WITHHELD_TARGET_APPROVAL_ARG = '[REDACTED]';
+
+function withholdDeepTargetApprovalArgs(value: unknown, depth = 0): unknown {
+	if (value === null || typeof value !== 'object') return value;
+	if (depth >= MAX_TARGET_APPROVAL_ARG_DEPTH) return WITHHELD_TARGET_APPROVAL_ARG;
+	if (Array.isArray(value)) {
+		return value.map((item) => withholdDeepTargetApprovalArgs(item, depth + 1));
+	}
+	return Object.fromEntries(
+		Object.entries(value).map(([key, item]) => [
+			key,
+			withholdDeepTargetApprovalArgs(item, depth + 1),
+		]),
+	);
 }
 
 type DeltaType = 'text-delta' | 'reasoning-delta';
@@ -175,8 +196,8 @@ export class OutputRedactor {
 	}
 
 	/**
-	 * Redact the human-readable text of a HITL confirmation card (message, intro,
-	 * question/option labels, and task/plan-item descriptions). Control and
+	 * Redact the human-readable content of a HITL confirmation card (message, intro,
+	 * question/option labels, task/plan-item descriptions, and target-tool labels/args). Control and
 	 * identifier fields — `requestId`, `toolCallId`, `inputType`,
 	 * `credentialRequests`, task `id`/`status`, plan `kind`/`deps`, etc. — are
 	 * left untouched so suspend/resume routing keeps working.
@@ -207,6 +228,20 @@ export class OutputRedactor {
 			title: this.redactString(item.title),
 			spec: this.redactString(item.spec),
 		}));
+		let targetApproval = payload.targetApproval;
+		if (targetApproval) {
+			const boundedArgs = withholdDeepTargetApprovalArgs(targetApproval.args);
+			const { value, matches } = redactDeep(boundedArgs, this.options);
+			this.recordMatches(matches);
+			targetApproval = {
+				...targetApproval,
+				toolName: this.redactString(targetApproval.toolName),
+				...(targetApproval.displayName
+					? { displayName: this.redactString(targetApproval.displayName) }
+					: {}),
+				args: value,
+			};
+		}
 
 		return {
 			...event,
@@ -217,6 +252,7 @@ export class OutputRedactor {
 				...(questions ? { questions } : {}),
 				...(tasks ? { tasks } : {}),
 				...(planItems ? { planItems } : {}),
+				...(targetApproval ? { targetApproval } : {}),
 			},
 		};
 	}

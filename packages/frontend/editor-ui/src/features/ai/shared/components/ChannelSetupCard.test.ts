@@ -32,10 +32,17 @@ const mocks = vi.hoisted(() => {
 		setCatalog: vi.fn<(integrations: ChatIntegrationDescriptor[]) => void>(),
 		fetchStatus: vi.fn(),
 		connect: vi.fn(),
+		disconnect: vi.fn(),
 		isConnected: vi.fn(),
 		isConfigured: vi.fn(),
 		getAgent: vi.fn(),
 		createSlackAgentApp: vi.fn(),
+		createSlackManagerCredential: vi.fn(),
+		finalizeSlackManagerCredential: vi.fn(),
+		getSlackManagedSetup: vi.fn(),
+		installSlackManagedApp: vi.fn(),
+		authorizeNewCredential: vi.fn(),
+		fetchCredentials: vi.fn(),
 	};
 });
 
@@ -79,6 +86,7 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 		errorIsConflict: ref<Record<string, boolean>>({}),
 		fetchStatus: mocks.fetchStatus,
 		connect: mocks.connect,
+		disconnect: mocks.disconnect,
 		isConnected: mocks.isConnected,
 		isConfigured: mocks.isConfigured,
 	}),
@@ -86,7 +94,29 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
+}));
+
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		setCredentials: vi.fn(),
+		fetchUsableCredentials: mocks.fetchCredentials,
+		deleteCredential: vi.fn(),
+	}),
+}));
+
+vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({
+		authorize: vi.fn(),
+		authorizeNewCredential: mocks.authorizeNewCredential,
+	}),
+}));
+
+vi.mock('@/features/agents/channels/slack/api', () => ({
 	createSlackAgentApp: mocks.createSlackAgentApp,
+	createSlackManagerCredential: mocks.createSlackManagerCredential,
+	finalizeSlackManagerCredential: mocks.finalizeSlackManagerCredential,
+	getSlackManagedSetup: mocks.getSlackManagedSetup,
+	installSlackManagedApp: mocks.installSlackManagedApp,
 }));
 
 vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
@@ -129,7 +159,29 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/agents/components/AgentChannelLinearSetup.vue', () => ({
+vi.mock('@/features/agents/components/AgentChannelSlackManagedSetup.vue', () => ({
+	default: {
+		props: ['setup', 'connectManager', 'installApp'],
+		setup(props: {
+			connectManager?: (credentialId?: string) => Promise<boolean>;
+			installApp?: (managerCredentialId: string, workspaceId: string) => Promise<boolean>;
+		}) {
+			async function connectManager() {
+				await props.connectManager?.();
+			}
+			async function install() {
+				await props.installApp?.('manager-credential', 'T123');
+			}
+			return { connectManager, install };
+		},
+		template: `<div data-testid="mock-slack-managed-setup">
+			<button data-testid="mock-slack-manager-connect" @click="connectManager">Connect manager</button>
+			<button data-testid="mock-slack-managed-install" @click="install">Install</button>
+		</div>`,
+	},
+}));
+
+vi.mock('@/features/agents/channels/linear/AgentChannelLinearSetup.vue', () => ({
 	default: {
 		props: ['connectedDescription'],
 		template:
@@ -177,10 +229,35 @@ describe('ChannelSetupCard', () => {
 		mocks.reloadCatalog.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
 		mocks.fetchStatus.mockResolvedValue(undefined);
 		mocks.connect.mockResolvedValue({ status: 'connected' });
+		mocks.disconnect.mockResolvedValue(undefined);
 		mocks.isConnected.mockReturnValue(false);
 		mocks.isConfigured.mockReturnValue(false);
 		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
 		mocks.createSlackAgentApp.mockResolvedValue({ installUrl: 'https://slack.com/oauth/install' });
+		mocks.createSlackManagerCredential.mockResolvedValue({
+			id: 'manager-credential',
+			name: 'Slack manager',
+			type: 'slackManagerOAuth2Api',
+			isResolvable: false,
+		});
+		mocks.fetchCredentials.mockResolvedValue([
+			{
+				id: 'manager-credential',
+				name: 'Slack manager',
+				type: 'slackManagerOAuth2Api',
+			},
+		]);
+		mocks.authorizeNewCredential.mockResolvedValue(true);
+		mocks.finalizeSlackManagerCredential.mockResolvedValue(undefined);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: false,
+			managerCredentials: [],
+		});
+		mocks.installSlackManagedApp.mockResolvedValue({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'slack-credential',
+		});
 	});
 
 	it('renders the setup UI for the requested integration type', async () => {
@@ -190,6 +267,30 @@ describe('ChannelSetupCard', () => {
 		expect(wrapper.find('[data-testid="mock-slack-setup"]').attributes('data-setup-mode')).toBe(
 			'simple',
 		);
+	});
+
+	it('renders a loading skeleton until managed Slack setup availability is known', async () => {
+		let resolveManagedSetup: (value: {
+			managedSetupAvailable: boolean;
+			managerCredentials: [];
+		}) => void = () => {};
+		mocks.getSlackManagedSetup.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveManagedSetup = resolve;
+			}),
+		);
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(false);
+
+		resolveManagedSetup({ managedSetupAvailable: false, managerCredentials: [] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(true);
 	});
 
 	it('does not describe a configured draft integration as connected', async () => {
@@ -213,6 +314,110 @@ describe('ChannelSetupCard', () => {
 		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
 	});
 
+	it('uses managed Slack setup and resolves after the app installs', async () => {
+		mocks.getSlackManagedSetup.mockResolvedValueOnce({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'manager-credential',
+					name: 'Slack manager',
+					connected: true,
+					reconnectRequired: false,
+					workspaces: [{ id: 'T123', name: 'Workspace', connected: false }],
+				},
+			],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="mock-slack-managed-install"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.installSlackManagedApp).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			'manager-credential',
+			'T123',
+		);
+		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
+	it('keeps skip disabled while managed Slack authorization is in flight', async () => {
+		let resolveAuthorization: (connected: boolean) => void = () => {};
+		mocks.authorizeNewCredential.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveAuthorization = resolve;
+			}),
+		);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="mock-slack-manager-connect"]').trigger('click');
+		await flushPromises();
+
+		const skipButton = wrapper.get('[data-testid="channel-setup-card-skip"]');
+		expect(skipButton.attributes('disabled')).toBeDefined();
+		await skipButton.trigger('click');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
+
+		resolveAuthorization(true);
+		await flushPromises();
+
+		expect(skipButton.attributes('disabled')).toBeUndefined();
+	});
+
+	it('keeps skip disabled while managed Slack installation is in flight', async () => {
+		let resolveInstall: (result: {
+			status: 'connected';
+			appId: string;
+			credentialId: string;
+		}) => void = () => {};
+		mocks.installSlackManagedApp.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveInstall = resolve;
+			}),
+		);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'manager-credential',
+					name: 'Slack manager',
+					connected: true,
+					reconnectRequired: false,
+					workspaces: [{ id: 'T123', name: 'Workspace', connected: false }],
+				},
+			],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="mock-slack-managed-install"]').trigger('click');
+		await flushPromises();
+
+		const skipButton = wrapper.get('[data-testid="channel-setup-card-skip"]');
+		expect(skipButton.attributes('disabled')).toBeDefined();
+		await skipButton.trigger('click');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
+
+		resolveInstall({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'slack-credential',
+		});
+		await flushPromises();
+
+		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
 	it('notifies agent surfaces on the event bus after a successful connect', async () => {
 		const onAgentUpdated = vi.fn();
 		agentsEventBus.on('agentUpdated', onAgentUpdated);
@@ -232,7 +437,7 @@ describe('ChannelSetupCard', () => {
 		}
 	});
 
-	it('does not notify agent surfaces when the connect fails or setup is skipped', async () => {
+	it('does not notify agent surfaces when the connect fails', async () => {
 		mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
 		const onAgentUpdated = vi.fn();
 		agentsEventBus.on('agentUpdated', onAgentUpdated);
@@ -242,7 +447,6 @@ describe('ChannelSetupCard', () => {
 
 			await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
 			await flushPromises();
-			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
 
 			expect(onAgentUpdated).not.toHaveBeenCalled();
 		} finally {
@@ -250,13 +454,49 @@ describe('ChannelSetupCard', () => {
 		}
 	});
 
-	it('emits resolve({ approved: false }) when the user skips setup', async () => {
+	it('removes the draft integration before resolving skipped setup and refreshing the agent', async () => {
+		let finishDisconnect: () => void = () => {};
+		const onAgentUpdated = vi.fn();
+		agentsEventBus.on('agentUpdated', onAgentUpdated);
+		mocks.disconnect.mockReturnValueOnce(
+			new Promise<void>((resolve) => {
+				finishDisconnect = resolve;
+			}),
+		);
+		try {
+			const wrapper = mountCard();
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('slack', '');
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+			expect(onAgentUpdated).not.toHaveBeenCalled();
+
+			finishDisconnect();
+			await flushPromises();
+
+			expect(onAgentUpdated).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				source: 'channel-setup-card',
+			});
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
+		} finally {
+			agentsEventBus.off('agentUpdated', onAgentUpdated);
+		}
+	});
+
+	it('keeps setup pending when removing the draft integration fails', async () => {
+		mocks.disconnect.mockRejectedValueOnce(new Error('disconnect failed'));
 		const wrapper = mountCard();
 		await flushPromises();
 
 		await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+		await flushPromises();
 
-		expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
+		expect(mocks.disconnect).toHaveBeenCalledWith('slack', '');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
 	});
 
 	it('does not connect twice when setup emits connect twice synchronously', async () => {
@@ -305,6 +545,14 @@ describe('ChannelSetupCard', () => {
 		await flushPromises();
 
 		expect(wrapper.emitted('resolve')).toBeUndefined();
+	});
+
+	it('renders the safe fallback for an unknown catalog integration', async () => {
+		const wrapper = mountCard({ integrationType: 'unknown-channel' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(false);
 	});
 
 	it('shows a loading state until the integration catalog arrives', async () => {

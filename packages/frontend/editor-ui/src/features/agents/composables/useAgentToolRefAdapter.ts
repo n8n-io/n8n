@@ -121,15 +121,15 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 
 /**
  * Build a new `AgentJsonToolRef` of type `workflow` from the user's chosen
- * workflow. Persists the workflow's **name** (not id) on `ref.workflow`
- * because the backend's `buildWorkflowTool` looks workflows up by name scoped
- * to the project — see `cli/src/modules/agents/tools/workflow-tool-factory.ts`.
+ * workflow. The id is the stable lookup key; the name remains display data and
+ * the fallback for legacy refs.
  */
 export function workflowToNewToolRef(
 	workflow: IWorkflowDb,
 ): Extract<AgentJsonToolRef, { type: 'workflow' }> {
 	return {
 		type: 'workflow',
+		workflowId: workflow.id,
 		workflow: workflow.name,
 		name: workflow.name,
 		description: workflow.description ?? '',
@@ -162,14 +162,30 @@ export function getExistingMcpServerNames(
 /** Merge edits from the workflow config form back into the ref. */
 export function updateWorkflowToolRef(
 	original: AgentJsonToolRef,
-	edits: { name: string; description: string; allOutputs: boolean; workflow: string },
+	edits: {
+		name: string;
+		description: string;
+		allOutputs: boolean;
+		workflow: string;
+		workflowId?: string;
+		inputs?: Extract<AgentJsonToolRef, { type: 'workflow' }>['inputs'];
+	},
 ): AgentJsonToolRef {
 	if (original.type !== 'workflow') return original;
-	return {
+	const next: Extract<AgentJsonToolRef, { type: 'workflow' }> = {
 		...original,
 		name: edits.name,
 		description: edits.description,
 		allOutputs: edits.allOutputs,
 		workflow: edits.workflow,
+		...(edits.workflowId !== undefined ? { workflowId: edits.workflowId } : {}),
 	};
+	if ('inputs' in edits) {
+		if (edits.inputs && Object.keys(edits.inputs).length > 0) {
+			next.inputs = edits.inputs;
+		} else {
+			delete next.inputs;
+		}
+	}
+	return next;
 }

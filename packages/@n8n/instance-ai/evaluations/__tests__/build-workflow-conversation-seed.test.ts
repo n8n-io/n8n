@@ -78,6 +78,8 @@ function inlineSeed(): ConversationSeed {
 		],
 		workflows: [{ id: SEED_WF_ID, name: 'Batch loop', nodes: [], connections: {} }],
 		dataTables: [],
+		agents: [],
+		projects: [],
 	};
 }
 
@@ -110,9 +112,12 @@ const baseConfig = {
 
 describe('buildWorkflow with an inline seed', () => {
 	it('restores the inline seed before the live turn', async () => {
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread),
@@ -158,9 +163,12 @@ describe('buildWorkflow with an inline seed', () => {
 			{ id: 'leftover-1', name: 'Batch loop [seed aaaaaaaa]' },
 			{ id: 'leftover-2', name: 'Batch loop [seed bbbbbbbb]' },
 		]);
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		await buildWorkflow({
 			client: makeClient(restoreThread, { listWorkflows, deleteWorkflow }),
@@ -195,7 +203,7 @@ describe('buildWorkflow with an inline seed', () => {
 
 		await buildWorkflow({
 			client: makeClient(
-				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [] }),
+				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [], agentIds: [] }),
 				{ listWorkflows, deleteWorkflow },
 			),
 			...baseConfig,
@@ -220,7 +228,7 @@ describe('buildWorkflow with an inline seed', () => {
 
 		await buildWorkflow({
 			client: makeClient(
-				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [] }),
+				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [], agentIds: [] }),
 				{ listWorkflows, deleteWorkflow },
 			),
 			...baseConfig,
@@ -231,9 +239,12 @@ describe('buildWorkflow with an inline seed', () => {
 	});
 
 	it('still builds when eviction fails — it is best-effort, not a gate', async () => {
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread, {
@@ -261,9 +272,12 @@ describe('buildWorkflow with an inline seed', () => {
 			{ id: 'leftover-2', name: 'Batch loop [seed bbbbbbbb]' },
 			{ id: 'leftover-3', name: 'Batch loop [seed cccccccc]' },
 		]);
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		const build = await buildWorkflow({
 			client: makeClient(restoreThread, { listWorkflows, deleteWorkflow }),
@@ -284,9 +298,12 @@ describe('buildWorkflow with an inline seed', () => {
 	// and never hunts by name.
 	it('sends the attached seed workflow with the opening message, using the REMAPPED id', async () => {
 		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 		await buildWorkflow({
 			client: makeClient(restoreThread, { sendMessage }),
 			...baseConfig,
@@ -321,9 +338,12 @@ describe('buildWorkflow with an inline seed', () => {
 	// empty strings). The recorded turn names it instead.
 	it('names the attached workflow in the RECORDED turn, so judges can see the hand-off', async () => {
 		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 		vi.mocked(recordUserTurn).mockClear();
 
 		await buildWorkflow({
@@ -351,9 +371,12 @@ describe('buildWorkflow with an inline seed', () => {
 	// hand-off case with follow-ups would otherwise audit plans and decide follow-ups
 	// against a blank opening turn that never mentions the workflow.
 	it('names the attached workflow in the script the user proxy reads', async () => {
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 		proxyScripts.length = 0;
 
 		await buildWorkflow({
@@ -378,9 +401,12 @@ describe('buildWorkflow with an inline seed', () => {
 		// The schema refuses an `attach` the seed does not declare, so a miss here means
 		// the restore/remap lost it. Running on would silently downgrade the case to a
 		// find-it test and grade the wrong thing.
-		const restoreThread = vi
-			.fn()
-			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 1,
+			workflowIds: ['restored-wf-1'],
+			dataTableIds: [],
+			agentIds: [],
+		});
 
 		const result = await buildWorkflow({
 			client: makeClient(restoreThread, { sendMessage: vi.fn().mockResolvedValue({ runId: 'r' }) }),
@@ -399,7 +425,12 @@ describe('buildWorkflow with an inline seed', () => {
 		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
 		await buildWorkflow({
 			client: makeClient(
-				vi.fn().mockResolvedValue({ restored: 1, workflowIds: [], dataTableIds: [] }),
+				vi.fn().mockResolvedValue({
+					restored: 1,
+					workflowIds: [],
+					dataTableIds: [],
+					agentIds: [],
+				}),
 				{ sendMessage },
 			),
 			...baseConfig,
@@ -411,7 +442,7 @@ describe('buildWorkflow with an inline seed', () => {
 	it('does not restore anything for a case with no seed', async () => {
 		const restoreThread = vi
 			.fn()
-			.mockResolvedValue({ restored: 0, workflowIds: [], dataTableIds: [] });
+			.mockResolvedValue({ restored: 0, workflowIds: [], dataTableIds: [], agentIds: [] });
 
 		const build = await buildWorkflow({ client: makeClient(restoreThread), ...baseConfig });
 

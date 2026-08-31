@@ -107,6 +107,21 @@ describe('formatWorkflowLoopGuidance', () => {
 			);
 		});
 
+		it('should not send the user back to the setup card for credentials they skipped', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with mocks the user skipped',
+				mockedCredentialTypes: ['slackApi'],
+				hasUnresolvedPlaceholders: true,
+				workflowId: 'wf-skip-1',
+				setupSkippedByUser: true,
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).not.toContain('workflows(action="setup")');
+			expect(result).toContain('skipped earlier in this conversation');
+			expect(result).toContain('offer');
+		});
+
 		it('should trigger workflow setup guidance when both mocked credentials and placeholders exist', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',

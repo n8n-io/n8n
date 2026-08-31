@@ -5,6 +5,7 @@ import type { InstanceAiContext } from '../../../types';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
+	isN8nCreditsWalletDepleted,
 	resolveCredentials,
 	type CredentialEntry,
 	type CredentialMap,
@@ -53,6 +54,14 @@ function makeCredentialMap(credentials: CredentialEntry[]): CredentialMap {
 		map.set(credential.type, entries);
 	}
 	return map;
+}
+
+function makeManagedCredential(): {
+	id: null;
+	name: string;
+	__aiGatewayManaged: true;
+} {
+	return { id: null, name: 'Gateway credits', __aiGatewayManaged: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -129,16 +138,77 @@ describe('resolveCredentials', () => {
 
 			// Managed marker persisted so the saved workflow runs zero-setup.
 			expect(json.nodes[0].credentials).toEqual({
-				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			// Reported as resolved (connected) — the agent must not route it to setup.
 			expect(result.resolvedCredentialsByNode).toEqual({
-				Slack: [{ type: 'slackApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				Slack: [{ type: 'slackApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true }],
 			});
 			// Still simulated during verification, but NOT flagged as needing a real credential.
 			expect(result.mockedNodeNames).toEqual(['Slack']);
 			expect(result.mockedCredentialsByNode).toEqual({});
 			expect(result.mockedCredentialTypes).toEqual([]);
+		});
+
+		it("honors the managed tag written as the credential id, ahead of the user's own stored credential", async () => {
+			// The builder copied the n8n credits entry's id (the managed tag) from the
+			// credentials list, exactly as it copies a stored credential id. Even though
+			// the user owns a Slack credential, the explicit tag must win and n8n credits
+			// must be attached — not the stored credential.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						credentials: { slackApi: { id: '__AI_GATEWAY_MANAGED__', name: 'n8n credits' } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+			const ownCredentials = makeCredentialMap([
+				{ type: 'slackApi', id: 'own-slack-1', name: 'My Slack' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, ctx, ownCredentials);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+			});
+			expect(result.resolvedCredentialsByNode).toEqual({
+				Slack: [{ type: 'slackApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true }],
+			});
+			// n8n credits is connected — the own credential was not auto-attached over it.
+			expect(result.mockedCredentialsByNode).toEqual({});
+		});
+
+		it('does not attach an unusable managed credential when the tag is written for an unsupported type', async () => {
+			// The tag is written for a type the gateway can't serve and there's no
+			// supported sibling: don't persist an unusable n8n credits credential —
+			// fall through to normal resolution (here: mock / route to setup).
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						credentials: { slackApi: { id: '__AI_GATEWAY_MANAGED__', name: 'n8n credits' } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(false);
+
+			const result = await resolveCredentials(json, undefined, ctx, makeCredentialMap([]));
+
+			// Not attached as n8n credits; routed to setup instead.
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
 		});
 
 		it('switches the node auth to the attached n8n credits credential type', async () => {
@@ -174,7 +244,7 @@ describe('resolveCredentials', () => {
 			await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
 		});
@@ -215,11 +285,13 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
 			expect(result.resolvedCredentialsByNode).toEqual({
-				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				'PDF.co': [
+					{ type: 'pdfcoApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+				],
 			});
 			// Simulated during verification, but NOT flagged as needing a real credential.
 			expect(result.mockedNodeNames).toEqual(['PDF.co']);
@@ -260,11 +332,13 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
 			expect(result.resolvedCredentialsByNode).toEqual({
-				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				'PDF.co': [
+					{ type: 'pdfcoApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+				],
 			});
 			expect(result.mockedNodeNames).toEqual(['PDF.co']);
 		});
@@ -304,7 +378,7 @@ describe('resolveCredentials', () => {
 			await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKeyLegacy' });
 		});
@@ -335,10 +409,12 @@ describe('resolveCredentials', () => {
 
 			// Silently configured with n8n credits — no setup card will surface for it.
 			expect(json.nodes[0].credentials).toEqual({
-				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				pdfcoApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(result.resolvedCredentialsByNode).toEqual({
-				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+				'PDF.co': [
+					{ type: 'pdfcoApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+				],
 			});
 			expect(result.mockedNodeNames).toEqual(['PDF.co']);
 			expect(result.mockedCredentialsByNode).toEqual({});
@@ -372,11 +448,11 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, ctx);
 
 			expect(json.nodes[0].credentials).toEqual({
-				llamaParseApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				llamaParseApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 			});
 			expect(result.resolvedCredentialsByNode).toEqual({
 				'Parse PDF (LlamaParse)': [
-					{ type: 'llamaParseApi', id: null, name: 'n8n credits', __aiGatewayManaged: true },
+					{ type: 'llamaParseApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				],
 			});
 		});
@@ -475,6 +551,129 @@ describe('resolveCredentials', () => {
 		});
 	});
 
+	describe('managed OAuth auth preference', () => {
+		function makeNotionNode(withCredentialSlot = true) {
+			return {
+				id: '1',
+				name: 'Notion',
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 2,
+				position: [0, 0] as [number, number],
+				parameters: { authentication: 'apiKey' },
+				...(withCredentialSlot
+					? { credentials: { notionApi: undefined as unknown as { id: string; name: string } } }
+					: {}),
+			};
+		}
+
+		function mockNotionDescription(ctx: InstanceAiContext) {
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{ name: 'notionApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+						{ name: 'notionOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+					],
+				});
+		}
+
+		function setManagedOAuthTypes(ctx: InstanceAiContext, types: string[]) {
+			(
+				ctx.credentialService as unknown as { isManagedOAuthCredentialType: Mock }
+			).isManagedOAuthCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(types.includes(type)),
+			);
+		}
+
+		it('switches the node auth to a managed-OAuth sibling instead of mocking the written API-key type', async () => {
+			const json = makeWorkflow({ nodes: [makeNotionNode()] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			mockNotionDescription(ctx);
+			setManagedOAuthTypes(ctx, ['notionOAuth2Api']);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			// Auth switched so every setup surface derives the OAuth type.
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'oAuth2' });
+			// Nothing is attached — setup asks for the OAuth credential.
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.mockedNodeNames).toEqual(['Notion']);
+			expect(result.mockedCredentialTypes).toEqual(['notionOAuth2Api']);
+			expect(result.mockedCredentialsByNode).toEqual({ Notion: ['notionOAuth2Api'] });
+		});
+
+		it('keeps the written type when the user has stored credentials of it', async () => {
+			const json = makeWorkflow({ nodes: [makeNotionNode()] });
+			const ctx = createMockContext();
+			mockNotionDescription(ctx);
+			setManagedOAuthTypes(ctx, ['notionOAuth2Api']);
+			// Two stored credentials: the sole-credential fallback doesn't bind, and
+			// the stored-credential guard must keep the node on the API-key type.
+			const credentialMap = makeCredentialMap([
+				{ id: 'cred-1', name: 'Notion account 1', type: 'notionApi' },
+				{ id: 'cred-2', name: 'Notion account 2', type: 'notionApi' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, ctx, credentialMap);
+
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.mockedCredentialsByNode).toEqual({ Notion: ['notionApi'] });
+		});
+
+		it('prefers n8n credits over a managed-OAuth sibling', async () => {
+			const json = makeWorkflow({ nodes: [makeNotionNode()] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			mockNotionDescription(ctx);
+			setManagedOAuthTypes(ctx, ['notionOAuth2Api']);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(type === 'notionApi'),
+			);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				notionApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.mockedCredentialsByNode).toEqual({});
+		});
+
+		it('mocks the written type when no managed-OAuth sibling is available', async () => {
+			// The adapter method is absent (older adapter / self-hosted) — behave as before.
+			const json = makeWorkflow({ nodes: [makeNotionNode()] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			mockNotionDescription(ctx);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.mockedCredentialsByNode).toEqual({ Notion: ['notionApi'] });
+		});
+
+		it('switches auth for a credential-less node whose required type has a managed-OAuth sibling', async () => {
+			// The LLM omitted the credential slot entirely — the second pass still
+			// prefers the managed-OAuth auth option, without attaching anything.
+			const json = makeWorkflow({ nodes: [makeNotionNode(false)] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			mockNotionDescription(ctx);
+			setManagedOAuthTypes(ctx, ['notionOAuth2Api']);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'oAuth2' });
+			expect(json.nodes[0].credentials).toBeUndefined();
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.mockedNodeNames).toEqual([]);
+		});
+	});
+
 	describe('existing workflow restoration', () => {
 		it('restores credentials from existing workflow for updates', async () => {
 			const json = makeWorkflow({
@@ -510,6 +709,197 @@ describe('resolveCredentials', () => {
 			expect(json.nodes[0].credentials).toEqual({
 				slackApi: { id: 'existing-id', name: 'Existing Slack' },
 			});
+		});
+
+		it('restores a saved managed credential from a null placeholder', async () => {
+			const managedCredential = makeManagedCredential();
+			const workflow = makeWorkflow({
+				nodes: [
+					{
+						id: 'slack-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.2,
+						position: [0, 0],
+						credentials: {
+							slackApi: null as unknown as { id: string; name: string },
+						},
+					},
+				],
+			});
+			const existingWorkflow = makeWorkflow({
+				nodes: [
+					{
+						id: 'slack-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.2,
+						position: [0, 0],
+						credentials: { slackApi: managedCredential },
+					},
+				],
+			});
+
+			const result = await resolveCredentials(
+				workflow,
+				'wf-123',
+				createMockContext(existingWorkflow),
+				makeCredentialMap([]),
+			);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(workflow.nodes[0]?.credentials?.slackApi).toBe(managedCredential);
+		});
+	});
+
+	describe('sibling node credential reuse', () => {
+		function makeNotionNode(name: string, credentials: Record<string, unknown>) {
+			return {
+				id: name,
+				name,
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 2,
+				position: [0, 0] as [number, number],
+				credentials: credentials as unknown as { [key: string]: { id: string; name: string } },
+			};
+		}
+
+		const twoNotionCreds = makeCredentialMap([
+			{ id: 'cred-1', name: 'Notion main', type: 'notionApi' },
+			{ id: 'cred-2', name: 'Notion other', type: 'notionApi' },
+		]);
+
+		it('reuses the credential bound to a sibling node of the same type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } }),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[1].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+			expect(result.resolvedCredentialsByNode['Notion 2']).toEqual([
+				{ type: 'notionApi', id: 'cred-1', name: 'Notion main' },
+			]);
+		});
+
+		it('reuses a saved-workflow binding for a node the build added', async () => {
+			const json = makeWorkflow({
+				nodes: [makeNotionNode('Notion 2', { notionApi: undefined })],
+			});
+			const existingWorkflow = makeWorkflow({
+				nodes: [makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } })],
+			});
+
+			const result = await resolveCredentials(
+				json,
+				'wf-123',
+				createMockContext(existingWorkflow),
+				twoNotionCreds,
+			);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[0].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+		});
+
+		it('rebinds an unknown raw id to the sibling credential instead of mocking', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } }),
+					makeNotionNode('Notion 2', { notionApi: { id: 'fake-id', name: 'Made up' } }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[1].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+		});
+
+		it('does not reuse a sibling binding whose id is not stored', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-gone', name: 'Stale' } }),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toContain('Notion 2');
+			expect(json.nodes[1].credentials).toEqual({});
+		});
+
+		it('does not reuse a sibling Templated Custom Auth credential across nodes', async () => {
+			// One shared type serves every service — the sibling's key may belong to
+			// a different service, so the slot must route to setup instead.
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Call Pexels', {
+						httpTemplatedCustomAuth: { id: 'cred-pexels', name: 'Pexels API' },
+					}),
+					makeNotionNode('Call fal.ai', { httpTemplatedCustomAuth: undefined }),
+				],
+			});
+			const credentials = makeCredentialMap([
+				{ id: 'cred-pexels', name: 'Pexels API', type: 'httpTemplatedCustomAuth' },
+				{ id: 'cred-fal', name: 'fal.ai API', type: 'httpTemplatedCustomAuth' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), credentials);
+
+			expect(result.mockedNodeNames).toContain('Call fal.ai');
+			expect(json.nodes[1].credentials).toEqual({});
+		});
+
+		it.each(['httpBearerAuth', 'oAuth2Api'])(
+			'does not reuse a sibling %s credential across nodes',
+			async (credentialType) => {
+				// Same shared-type rule as Templated Custom Auth: the binding on one
+				// node may belong to a different service than the new node calls.
+				const json = makeWorkflow({
+					nodes: [
+						makeNotionNode('Call service A', {
+							[credentialType]: { id: 'cred-a', name: 'Service A auth' },
+						}),
+						makeNotionNode('Call service B', { [credentialType]: undefined }),
+					],
+				});
+				const credentials = makeCredentialMap([
+					{ id: 'cred-a', name: 'Service A auth', type: credentialType },
+					{ id: 'cred-b', name: 'Service B auth', type: credentialType },
+				]);
+
+				const result = await resolveCredentials(json, undefined, createMockContext(), credentials);
+
+				expect(result.mockedNodeNames).toContain('Call service B');
+				expect(json.nodes[1].credentials).toEqual({});
+			},
+		);
+
+		it('ignores gateway-managed sibling markers', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', {
+						notionApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+					}),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toContain('Notion 2');
+			expect(json.nodes[1].credentials).toEqual({});
 		});
 	});
 
@@ -553,7 +943,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [0, 0],
-						credentials: { gmailOAuth2Api: undefined as unknown as { id: string; name: string } },
+						credentials: { gmailOAuth2: undefined as unknown as { id: string; name: string } },
 					},
 				],
 			});
@@ -561,8 +951,8 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
-			expect(result.mockedCredentialsByNode).toEqual({ Gmail: ['gmailOAuth2Api'] });
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
+			expect(result.mockedCredentialsByNode).toEqual({ Gmail: ['gmailOAuth2'] });
 			expect(json.nodes[0].credentials).toEqual({});
 			// json.pinData must NOT be mutated
 			expect(json.pinData).toBeUndefined();
@@ -631,7 +1021,7 @@ describe('resolveCredentials', () => {
 		const availableCredentials = makeCredentialMap([
 			{ id: 'slack-1', name: 'Team Slack', type: 'slackApi' },
 			{ id: 'slack-2', name: 'Backup Slack', type: 'slackApi' },
-			{ id: 'gmail-1', name: 'Gmail', type: 'gmailOAuth2Api' },
+			{ id: 'gmail-1', name: 'Gmail', type: 'gmailOAuth2' },
 		]);
 
 		it('keeps a raw credential id that exists in the snapshot for the same type', async () => {
@@ -725,7 +1115,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [0, 0],
-						credentials: { gmailOAuth2Api: { id: 'mock-gmail-oauth2', name: 'Gmail' } },
+						credentials: { gmailOAuth2: { id: 'mock-gmail-oauth2', name: 'Gmail' } },
 					},
 				],
 			});
@@ -738,7 +1128,7 @@ describe('resolveCredentials', () => {
 			);
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
 			expect(json.nodes[0].credentials).toEqual({});
 		});
 
@@ -952,7 +1342,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [200, 0],
-						credentials: { gmailOAuth2Api: undefined as unknown as { id: string; name: string } },
+						credentials: { gmailOAuth2: undefined as unknown as { id: string; name: string } },
 					},
 				],
 				pinData: {
@@ -963,7 +1353,7 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
 			// Slack should be untouched
 			expect(json.nodes[0].credentials).toEqual({
 				slackApi: { id: 'real-id', name: 'Real Slack' },
@@ -1079,6 +1469,353 @@ describe('resolveCredentials', () => {
 			expect(result.resolvedCredentialsByNode).toEqual({});
 		});
 	});
+
+	// Templated Custom Auth ids are service-agnostic at the type level, so the
+	// resolver must never silently wire one the way it does dedicated types: a
+	// supplied id is trusted only when it matches the node's own prior wiring,
+	// and the sole-candidate fallback is skipped. Otherwise a Pexels key could
+	// land on fal.ai nodes.
+	describe('Templated Custom Auth', () => {
+		const templatedNode = (credential: unknown) => ({
+			id: '1',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4,
+			position: [0, 0] as [number, number],
+			parameters: { url: 'https://fal.run/v1/models' },
+			credentials: { httpTemplatedCustomAuth: credential as { id: string; name: string } },
+		});
+
+		it("keeps a supplied id that matches the node's prior wiring", async () => {
+			const wired = { id: 'cred-fal', name: 'fal.ai API Key' };
+			const json = makeWorkflow({ nodes: [templatedNode(wired)] });
+			// Prior wiring is read from the persisted workflow, so pass its id.
+			const ctx = createMockContext(makeWorkflow({ nodes: [templatedNode(wired)] }));
+
+			await resolveCredentials(json, 'wf-1', ctx, makeCredentialMap([]));
+
+			expect(json.nodes[0].credentials).toEqual({ httpTemplatedCustomAuth: wired });
+		});
+
+		it('routes a fresh supplied id to setup instead of trusting it', async () => {
+			// The model attached a stored templated credential the node was never
+			// wired to — could be another service's key, so mock and let setup ask.
+			const json = makeWorkflow({
+				nodes: [templatedNode({ id: 'cred-pexels', name: 'Pexels API' })],
+			});
+			const ctx = createMockContext();
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				ctx,
+				makeCredentialMap([
+					{ id: 'cred-pexels', name: 'Pexels API', type: 'httpTemplatedCustomAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('HTTP Request');
+		});
+
+		it('skips the sole-candidate fallback', async () => {
+			// One stored templated credential exists, but the node has no prior
+			// wiring — a dedicated type would auto-attach it; the shared type must not.
+			const json = makeWorkflow({ nodes: [templatedNode(null)] });
+			const ctx = createMockContext();
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				ctx,
+				makeCredentialMap([
+					{ id: 'cred-1', name: 'Some API Key', type: 'httpTemplatedCustomAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('HTTP Request');
+		});
+	});
+
+	// Bearer/header/query/basic/digest/custom/OAuth all share one type across
+	// every service, so the sole-candidate fallback must not wire them either —
+	// otherwise a build silently sends the user's only key to the node's URL.
+	describe('generic auth types', () => {
+		const bearerNode = () => ({
+			id: '1',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: { endpointUrl: 'http://localhost:5678/mcp-server/http' },
+			credentials: { httpBearerAuth: null as unknown as { id: string; name: string } },
+		});
+
+		it('skips the sole-candidate fallback for a bearer auth credential', async () => {
+			const json = makeWorkflow({ nodes: [bearerNode()] });
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				makeCredentialMap([
+					{ id: 'cred-bearer', name: 'Bearer Auth account', type: 'httpBearerAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('MCP Client');
+			expect(result.resolvedCredentialsByNode).toEqual({});
+		});
+
+		it('still auto-binds the sole candidate of a service-scoped type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2,
+						position: [0, 0],
+						credentials: { slackApi: null as unknown as { id: string; name: string } },
+					},
+				],
+			});
+
+			await resolveCredentials(
+				json,
+				undefined,
+				createMockContext(),
+				makeCredentialMap([{ id: 'cred-slack', name: 'My Slack', type: 'slackApi' }]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: 'cred-slack', name: 'My Slack' },
+			});
+		});
+	});
+});
+
+// The user asking for a new credential ("create a new Slack credential") must
+// beat every automatic attachment — otherwise the build silently answers the
+// request with a credential they already had and setup never opens (INS-361).
+describe('resolveCredentials with preferNewCredentialTypes', () => {
+	function makeSlackNode(name = 'Slack') {
+		return {
+			id: '1',
+			name,
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 2,
+			position: [0, 0] as [number, number],
+			credentials: { slackApi: undefined as unknown as { id: string; name: string } },
+		};
+	}
+
+	it('leaves the sole stored credential unbound and mocks the slot instead', async () => {
+		const json = makeWorkflow({ nodes: [makeSlackNode()] });
+		const map = makeCredentialMap([{ id: 'cred-1', name: 'Slack account', type: 'slackApi' }]);
+
+		const result = await resolveCredentials(json, undefined, createMockContext(), map, [
+			'slackApi',
+		]);
+
+		expect(json.nodes[0].credentials).toEqual({});
+		expect(result.resolvedCredentialsByNode).toEqual({});
+		expect(result.mockedNodeNames).toEqual(['Slack']);
+		expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+		expect(result.heldForNewCredentialTypes).toEqual(['slackApi']);
+	});
+
+	it('does not reuse a credential bound to a sibling node of the same type', async () => {
+		const json = makeWorkflow({
+			nodes: [
+				{
+					id: '0',
+					name: 'Existing Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2,
+					position: [0, 0],
+					credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+				},
+				{ ...makeSlackNode('New Slack'), id: '1' },
+			],
+		});
+		const map = makeCredentialMap([{ id: 'cred-1', name: 'Slack account', type: 'slackApi' }]);
+
+		const result = await resolveCredentials(json, undefined, createMockContext(), map, [
+			'slackApi',
+		]);
+
+		// The sibling keeps its own deliberate binding; only the fresh slot is held.
+		expect(json.nodes[0].credentials).toEqual({
+			slackApi: { id: 'cred-1', name: 'Slack account' },
+		});
+		expect(json.nodes[1].credentials).toEqual({});
+		expect(result.mockedNodeNames).toEqual(['New Slack']);
+	});
+
+	it('does not restore the credential saved on the node in the existing workflow', async () => {
+		const json = makeWorkflow({ nodes: [makeSlackNode()] });
+		const existingWorkflow = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2,
+					position: [0, 0],
+					credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+				},
+			],
+		});
+		const map = makeCredentialMap([{ id: 'cred-1', name: 'Slack account', type: 'slackApi' }]);
+
+		const result = await resolveCredentials(
+			json,
+			'wf-1',
+			createMockContext(existingWorkflow),
+			map,
+			['slackApi'],
+		);
+
+		expect(json.nodes[0].credentials).toEqual({});
+		expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+	});
+
+	it('does not answer the slot with n8n credits', async () => {
+		const json = makeWorkflow({ nodes: [makeSlackNode()] });
+		const ctx = createMockContext();
+		(
+			ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+		const result = await resolveCredentials(json, undefined, ctx, makeCredentialMap([]), [
+			'slackApi',
+		]);
+
+		expect(json.nodes[0].credentials).toEqual({});
+		expect(result.resolvedCredentialsByNode).toEqual({});
+		expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+	});
+
+	it('keeps resolving the types the user did not ask to recreate', async () => {
+		const json = makeWorkflow({
+			nodes: [
+				makeSlackNode(),
+				{
+					id: '2',
+					name: 'Telegram',
+					type: 'n8n-nodes-base.telegram',
+					typeVersion: 1,
+					position: [0, 0],
+					credentials: { telegramApi: undefined as unknown as { id: string; name: string } },
+				},
+			],
+		});
+		const map = makeCredentialMap([
+			{ id: 'cred-1', name: 'Slack account', type: 'slackApi' },
+			{ id: 'cred-2', name: 'Telegram account', type: 'telegramApi' },
+		]);
+
+		const result = await resolveCredentials(json, undefined, createMockContext(), map, [
+			'slackApi',
+		]);
+
+		expect(json.nodes[0].credentials).toEqual({});
+		expect(json.nodes[1].credentials).toEqual({
+			telegramApi: { id: 'cred-2', name: 'Telegram account' },
+		});
+		expect(result.mockedNodeNames).toEqual(['Slack']);
+	});
+
+	// The source can omit the credential slot altogether; the required-type pass
+	// then holds it, attaching — and so mocking — nothing. The held type still has to
+	// be reported, or the build result carries no trace of the request and the setup
+	// call can auto-apply an existing credential.
+	it('reports a held type when the source omitted the slot and a credential is stored', async () => {
+		const json = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Send Hello',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2,
+					position: [0, 0],
+				},
+			],
+		});
+		const ctx = createMockContext();
+		(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+			.fn()
+			.mockResolvedValue({ credentials: [{ name: 'slackApi' }] });
+		const map = makeCredentialMap([{ id: 'cred-1', name: 'Slack account', type: 'slackApi' }]);
+
+		const result = await resolveCredentials(json, undefined, ctx, map, ['slackApi']);
+
+		expect(result.heldForNewCredentialTypes).toEqual(['slackApi']);
+		expect(json.nodes[0].credentials).toBeUndefined();
+	});
+
+	it('reports a held type when the omitted slot would have taken Gateway credits', async () => {
+		const json = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Send Hello',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2,
+					position: [0, 0],
+				},
+			],
+		});
+		const ctx = createMockContext();
+		(ctx.credentialService.list as Mock).mockResolvedValue([]);
+		(
+			ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+			.fn()
+			.mockResolvedValue({ credentials: [{ name: 'slackApi' }] });
+
+		const result = await resolveCredentials(json, undefined, ctx, makeCredentialMap([]), [
+			'slackApi',
+		]);
+
+		expect(result.heldForNewCredentialTypes).toEqual(['slackApi']);
+		expect(json.nodes[0].credentials).toBeUndefined();
+	});
+
+	it('reports nothing held for a type no node in the workflow uses', async () => {
+		const json = makeWorkflow({ nodes: [makeSlackNode()] });
+
+		const result = await resolveCredentials(json, undefined, createMockContext(), undefined, [
+			'telegramApi',
+		]);
+
+		expect(result.heldForNewCredentialTypes).toEqual([]);
+	});
+
+	it('still honors a credential id the builder wrote deliberately', async () => {
+		const json = makeWorkflow({
+			nodes: [
+				{
+					...makeSlackNode(),
+					credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+				},
+			],
+		});
+		const map = makeCredentialMap([{ id: 'cred-1', name: 'Slack account', type: 'slackApi' }]);
+
+		const result = await resolveCredentials(json, undefined, createMockContext(), map, [
+			'slackApi',
+		]);
+
+		expect(json.nodes[0].credentials).toEqual({
+			slackApi: { id: 'cred-1', name: 'Slack account' },
+		});
+		expect(result.mockedNodeNames).toEqual([]);
+	});
 });
 
 describe('buildCredentialResolutionNote', () => {
@@ -1095,13 +1832,116 @@ describe('buildCredentialResolutionNote', () => {
 		expect(note).toContain('do not ask the user to connect or create them');
 	});
 
-	it('surfaces the n8n credits label and BYOK guidance for gateway-managed credentials', () => {
+	it('tells the agent to carry the fresh-credential request into setup', () => {
+		const note = buildCredentialResolutionNote({}, ['slackApi']);
+
+		expect(note).toContain('the user asked to create them fresh: slackApi');
+		expect(note).toContain('preferNewCredentials: ["slackApi"]');
+		// The "already set up, do not route to setup" line must not leak onto a
+		// type that is deliberately still pending.
+		expect(note).not.toContain('do not route them to credential setup');
+	});
+
+	it('keeps the attached-credential guidance scoped when both kinds are present', () => {
+		const note = buildCredentialResolutionNote(
+			{ Telegram: [{ type: 'telegramApi', id: 'cred-2', name: 'Telegram account' }] },
+			['slackApi'],
+		);
+
+		expect(note).toContain('"Telegram account" (telegramApi) on node "Telegram"');
+		expect(note).toContain('Those attached credentials are already set up');
+		expect(note).toContain('preferNewCredentials: ["slackApi"]');
+	});
+
+	it('surfaces the Gateway credits label and BYOK guidance for gateway-managed credentials', () => {
 		const note = buildCredentialResolutionNote({
-			Slack: [{ type: 'slackApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+			Slack: [{ type: 'slackApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true }],
 		});
 
-		expect(note).toContain('n8n credits');
+		expect(note).toContain('Gateway credits');
 		expect(note).not.toContain('n8n Connect');
+		expect(note).not.toContain('n8n credits');
 		expect(note).toContain('switch to their own key');
+		expect(note).toContain('work out of the box');
+	});
+
+	it('replaces the out-of-the-box sentence when Gateway credits are depleted', () => {
+		const note = buildCredentialResolutionNote(
+			{
+				Firecrawl: [
+					{ type: 'firecrawlApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+				],
+			},
+			[],
+			{ n8nCreditsDepleted: true },
+		);
+
+		expect(note).toContain('Gateway credits are depleted');
+		expect(note).toContain('top up Gateway credits');
+		expect(note).toContain('own key');
+		expect(note).toContain('Do not offer a live test');
+		expect(note).not.toContain('work out of the box');
+		expect(note).not.toContain('n8n Connect');
+		expect(note).not.toContain('n8n credits');
+	});
+});
+
+describe('isN8nCreditsWalletDepleted', () => {
+	const n8nCreditsByNode = {
+		Firecrawl: [
+			{
+				type: 'firecrawlApi',
+				id: null,
+				name: 'Gateway credits',
+				__aiGatewayManaged: true as const,
+			},
+		],
+	};
+
+	it('is false when no Gateway credits were attached', async () => {
+		const getAiGatewayWallet = vi.fn();
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = getAiGatewayWallet;
+
+		await expect(
+			isN8nCreditsWalletDepleted(context, {
+				Slack: [{ type: 'slackApi', id: 'cred-1', name: 'My Slack' }],
+			}),
+		).resolves.toBe(false);
+		expect(getAiGatewayWallet).not.toHaveBeenCalled();
+	});
+
+	it('is false when getAiGatewayWallet is missing', async () => {
+		await expect(isN8nCreditsWalletDepleted(createMockContext(), n8nCreditsByNode)).resolves.toBe(
+			false,
+		);
+	});
+
+	it('is false when the wallet fetch returns null', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue(null);
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(false);
+	});
+
+	it('is true when remaining credits are 0', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: 0 });
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(true);
+	});
+
+	it('is true when remaining credits are negative', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: -1 });
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(true);
+	});
+
+	it('is false when remaining credits are positive', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: 1 });
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(false);
 	});
 });

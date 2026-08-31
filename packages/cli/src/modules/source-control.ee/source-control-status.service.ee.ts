@@ -408,7 +408,7 @@ export class SourceControlStatusService {
 				continue;
 			}
 
-			if (!isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
+			if (!isWorkflowModified(localWorkflow, remoteWorkflowWithSameId, options.direction)) {
 				continue;
 			}
 
@@ -432,6 +432,12 @@ export class SourceControlStatusService {
 			const preferredFolderPath = this.buildFolderPath(
 				preferredParentFolderId,
 				options.preferLocalVersion ? localFoldersById : remoteFoldersById,
+			);
+			// A move keeps only its new folderPath; expose the prior/remote path too so a
+			// filter on the source folder doesn't hide the pending move.
+			const remoteFolderPath = this.buildFolderPath(
+				remoteWorkflowWithSameId.parentFolderId,
+				remoteFoldersById,
 			);
 
 			const wfModified: SourceControlWorkflowVersionId = {
@@ -462,6 +468,7 @@ export class SourceControlStatusService {
 				isRemoteArchived: archivedWorkflowIds.get(wfModified.id) ?? false,
 				parentFolderId: preferredParentFolderId,
 				folderPath: preferredFolderPath,
+				remoteFolderPath,
 				owner: wfModified.owner,
 			});
 		}

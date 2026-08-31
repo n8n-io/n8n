@@ -46,7 +46,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
@@ -164,7 +164,7 @@ export function matchesAliasForConnectBoost(query: string, aliases: string[]): b
 /**
  * Whether the node is eligible for n8n Connect (AI Gateway)
  */
-function isAiGatewayEligibleNode(nodeName: string): boolean {
+export function isAiGatewayEligibleNode(nodeName: string): boolean {
 	if (!useSettingsStore().isAiGatewayEnabled) return false;
 
 	const aiGatewayStore = useAiGatewayStore();
@@ -474,10 +474,11 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			text: i18n.baseText('generic.betaProper'),
 		};
 	} else if (isAiGatewayEligibleNode(element.properties.name)) {
-		element.properties.tag = {
-			text: i18n.baseText('generic.freeCredits'),
-			pill: true,
-		};
+		const creditsLabelKey = useAiGatewayStore().creditsLabelKey;
+		element.properties.tag =
+			creditsLabelKey === 'generic.freeCredits'
+				? { text: i18n.baseText(creditsLabelKey), pill: true }
+				: { text: i18n.baseText(creditsLabelKey), pill: true, type: 'info' };
 	}
 
 	return element;
@@ -485,10 +486,16 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 
 export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[] {
 	return items
-		.map((item) => ({
-			...item,
-			uuid: `${item.key}-${uuidv4()}`,
-		}))
+		.map((item) =>
+			item.type !== 'node'
+				? { ...item, uuid: `${item.key}-${uuidv4()}` }
+				: {
+						...item,
+						uuid: `${item.key}-${uuidv4()}`,
+						// Clone so applyNodeTags cannot stamp a stale credits tag onto baselineItems.
+						properties: { ...item.properties },
+					},
+		)
 		.map(applyNodeTags);
 }
 

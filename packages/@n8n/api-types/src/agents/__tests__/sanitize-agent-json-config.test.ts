@@ -96,7 +96,8 @@ describe('sanitizeAgentJsonConfig', () => {
 			tools: [
 				{
 					type: 'workflow',
-					workflow: 'wf-1',
+					workflowId: 'wf-1',
+					workflow: 'Run workflow',
 					name: 'Run workflow',
 					legacyWorkflowField: true,
 				},
@@ -130,7 +131,8 @@ describe('sanitizeAgentJsonConfig', () => {
 			tools: [
 				{
 					type: 'workflow',
-					workflow: 'wf-1',
+					workflowId: 'wf-1',
+					workflow: 'Run workflow',
 					name: 'Run workflow',
 				},
 				{

@@ -1,9 +1,7 @@
 import { buildContext } from '../context';
 
 function makeRef(impl: (args: unknown[]) => unknown) {
-	return {
-		applySync: (_thisArg: unknown, args: unknown[]) => impl(args),
-	};
+	return (...args: unknown[]) => impl(args);
 }
 
 describe('buildContext proxy', () => {

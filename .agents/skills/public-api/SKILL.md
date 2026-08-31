@@ -107,7 +107,7 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 | `@ApiErrorResponse(status)` | Declares an additional documented non-2xx status (e.g. `404`, `409`). Stack multiple for more than one. `400`/`401`/`403` are added automatically (body/query present, always, and `@ApiKeyScope` present, respectively) — don't declare those yourself. |
 | `@ApiSummary(text)` / `@ApiDescription(text)` / `@ApiTags([...])` | OpenAPI summary/description/tags. `@ApiTags` sorts alphabetically regardless of the order you pass. All optional but expected on every real route. |
 | `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. |
-| `@Licensed('feat')` | **Not yet enforced for `@PublicApiController` routes** — `PublicApiControllerRegistry` doesn't read `licenseFeature` (only the internal `@RestController` registry does). If the endpoint gates an EE feature, check the license manually in the handler (`Container.get(License).isLicensed(LICENSE_FEATURES.X)`, throwing `ForbiddenError` on failure) instead of relying on this decorator alone. |
+| `@Licensed('feat')` | Gates the route on a single `BooleanLicenseFeature`; `PublicApiControllerRegistry` runs its own license middleware (after auth/`@ApiKeyScope`/`@ProjectScope`|`@GlobalScope`, before the handler) and 403s unlicensed requests. Only takes one feature — if the gate is an any-of/all-of combination (e.g. `LicenseState.isProvisioningLicensed()`, which is `feat:saml` OR `feat:oidc`), `@Licensed` can't express that; check manually in the handler instead, same as the internal `provisioning.controller.ee.ts`/`role-mapping-rule.controller.ee.ts` do today (throwing `ForbiddenError` on failure). |
 
 ## Authorization (easy to get wrong)
 
@@ -133,11 +133,15 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 
 ## List endpoints (cursor pagination)
 
-Copy the cursor flow from `tags.public.controller.ts`. Use `publicApiPaginationSchema`
-plus `decodeCursor` / `encodeNextCursor` from the shared pagination service; the
+Copy the cursor flow from `tags.public.controller.ts`. The input DTO takes
+`limit: publicApiPaginationSchema.limit` plus `cursor: z.string().optional()` —
+pick `limit` off the schema, never spread the whole `publicApiPaginationSchema`
+(it also exports `offset`, which must never be a Public API query param). Use
+`decodeCursor` / `encodeNextCursor` from the shared pagination service; the
 cursor is opaque; return `{ data, nextCursor }` (never a bare array) with
 `nextCursor: null` on the last page; an invalid cursor is a `400`. Preserve an
-existing endpoint's pagination as-is. Detail:
+existing endpoint's cursor semantics as-is — but an `offset` param is a
+defect to remove, not a contract to preserve. Detail:
 [List endpoints and cursor pagination](reference.md#list-endpoints-and-cursor-pagination).
 
 ## Wiring checklist

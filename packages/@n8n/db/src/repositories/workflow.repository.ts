@@ -1,7 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
+import { assertClearedFor } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, Repository, In, Like, Not, IsNull } from '@n8n/typeorm';
+import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
 	UpdateResult,
@@ -11,8 +12,10 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
+import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
@@ -30,8 +33,11 @@ import type {
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
 } from '../entities/types-db';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
+import { chunkIds } from '../utils/chunk-ids';
 import { isStringArray } from '../utils/is-string-array';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 
 type ResourceType = 'folder' | 'workflow';
@@ -59,15 +65,16 @@ type WorkflowListResult = {
 };
 
 @Service()
-export class WorkflowRepository extends Repository<WorkflowEntity> {
+export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowEntity, dataSource.manager);
+		super(WorkflowEntity, dataSource.manager, transactionRunner);
 	}
 
 	async get(
@@ -77,6 +84,23 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.findOne({
 			where,
 			relations: options?.relations,
+		});
+	}
+
+	/**
+	 * Archived state of a workflow, or `null` if it no longer exists.
+	 *
+	 * Pass `ctx` when calling from inside a transaction — the read then runs on that
+	 * transaction's connection instead of checking out a second one, which would
+	 * deadlock a single-connection pool.
+	 */
+	async findArchivedState(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<{ isArchived: boolean } | null> {
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
+			select: { isArchived: true },
+			where: { id: workflowId },
 		});
 	}
 
@@ -143,6 +167,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const count = await qb.getCount();
 		return count > 0;
+	}
+
+	async updateContent(
+		id: string,
+		content: QueryDeepPartialEntity<WorkflowEntity>,
+		ctx: OperationContext,
+	) {
+		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
+		await this.managerFor(ctx).update(WorkflowEntity, id, content);
 	}
 
 	async findByCredentialResolverId(
@@ -218,13 +251,60 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			return [];
 		}
 
-		const options: FindManyOptions<WorkflowEntity> = {
-			where: { id: In(workflowIds) },
-		};
+		const workflows = new Map<string, WorkflowEntity>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const options: FindManyOptions<WorkflowEntity> = {
+				where: { id: In(chunk) },
+			};
 
-		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
+			if (fields?.length) {
+				options.select = [...new Set(['id', ...fields])] as FindOptionsSelect<WorkflowEntity>;
+			}
 
-		return await this.find(options);
+			for (const workflow of await this.find(options)) workflows.set(workflow.id, workflow);
+		}
+
+		return [...workflows.values()];
+	}
+
+	async findManyByAgentToolReferences(
+		projectId: string,
+		workflowIds: string[],
+		legacyWorkflowNames: string[],
+	) {
+		const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
+		if (workflowIds.length > 0) {
+			where.push({ id: In(workflowIds), shared: { projectId } });
+		}
+		if (legacyWorkflowNames.length > 0) {
+			where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
+		}
+		if (where.length === 0) return [];
+
+		return await this.find({
+			where,
+			// `connections` is needed so `getWorkflowToolIncompatibilityReason` can
+			// scope its check to nodes reachable from a supported trigger; without
+			// it the backend falls back to scanning every enabled node and
+			// disagrees with the frontend picker, which fetches connections.
+			select: ['id', 'name', 'nodes', 'connections'],
+		});
+	}
+
+	async findOneByAgentToolReference(
+		projectId: string,
+		reference: { workflowId?: string; workflowName: string },
+		options: { withActiveVersion?: boolean } = {},
+	) {
+		const workflowWhere: FindOptionsWhere<WorkflowEntity> =
+			reference.workflowId !== undefined
+				? { id: reference.workflowId }
+				: { name: reference.workflowName };
+
+		return await this.findOne({
+			where: { ...workflowWhere, shared: { projectId } },
+			relations: options.withActiveVersion ? ['shared', 'activeVersion'] : ['shared'],
+		});
 	}
 
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
@@ -232,12 +312,21 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			return [];
 		}
 
-		return await this.createQueryBuilder('workflow')
-			.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
-			.leftJoin('workflow.shared', 'shared', 'shared.role = :role', { role: 'workflow:owner' })
-			.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
-			.where('workflow.id IN (:...workflowIds)', { workflowIds })
-			.getMany();
+		const found = new Map<string, WorkflowEntity>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const workflows = await this.createQueryBuilder('workflow')
+				.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
+				.leftJoin('workflow.shared', 'shared', 'shared.role = :role', {
+					role: 'workflow:owner',
+				})
+				.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
+				.where('workflow.id IN (:...workflowIds)', { workflowIds: chunk })
+				.getMany();
+			for (const workflow of workflows) found.set(workflow.id, workflow);
+		}
+
+		return [...found.values()];
 	}
 
 	async getActiveTriggerCount() {
@@ -314,7 +403,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		// For union, we need to have the same columns, so add NULL as description for folders
 		const columnNames = [...Object.keys(workflowQueryParameters.select ?? {}), 'resource'];
 
-		const [sortByColumn, sortByDirection] = this.parseSortingParams(
+		const { column: sortByColumn, direction: sortByDirection } = parseListQuerySortBy(
 			options.sortBy ?? 'updatedAt:asc',
 		);
 
@@ -680,7 +769,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		// For union, we need to have the same columns, so add NULL as description for folders
 		const columnNames = [...Object.keys(workflowQueryParameters.select ?? {}), 'resource'];
 
-		const [sortByColumn, sortByDirection] = this.parseSortingParams(
+		const { column: sortByColumn, direction: sortByDirection } = parseListQuerySortBy(
 			options.sortBy ?? 'updatedAt:asc',
 		);
 
@@ -1383,13 +1472,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			return;
 		}
 
-		const [column, direction] = this.parseSortingParams(sortBy);
+		const { column, direction } = parseListQuerySortBy(sortBy);
 		this.applySortingByColumn(qb, column, direction);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
-		const [column, order] = sortBy.split(':');
-		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
 	}
 
 	private applySortingByColumn(

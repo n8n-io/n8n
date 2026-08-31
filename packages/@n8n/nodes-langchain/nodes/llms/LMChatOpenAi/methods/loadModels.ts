@@ -1,4 +1,4 @@
-import { getProxyAgent } from '@n8n/ai-utilities';
+import { proxyFetch } from '@n8n/ai-utilities';
 import { listOpenAiModels } from '@n8n/ai-utilities/model-discovery';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -24,11 +24,7 @@ export async function searchModels(
 		apiKey: credentials.apiKey as string,
 		baseURL,
 		headers,
-		fetch: async (url, init) =>
-			await fetch(url, {
-				...init,
-				dispatcher: getProxyAgent(baseURL),
-			} as RequestInit),
+		fetch: proxyFetch,
 	});
 
 	return {

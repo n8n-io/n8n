@@ -2,10 +2,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import Tooltip from './Tooltip.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
 
 const meta = {
 	title: 'Core/Tooltip',

@@ -1,31 +1,72 @@
 <script lang="ts" setup>
-import { onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { onBeforeRouteLeave, RouterView, useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { claimDocumentTitle, useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
 import { INSTANCE_AI_VIEW, isInstanceAiChatRoute } from './constants';
 import { SidebarStateKey } from './instanceAiLayout';
+import InstanceAiOnboardingView from './onboarding/InstanceAiOnboardingView.vue';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
+const appSettingsStore = useSettingsStore();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const { isCtrlKeyPressed } = useDeviceSupport();
+const setupCompletionState = computed(
+	() => appSettingsStore.moduleSettings['instance-ai']?.setupCompleted,
+);
+const setupWasIncomplete = setupCompletionState.value === false;
+let setupWasObservedIncomplete = setupWasIncomplete;
+const onboardingCompletionPending = useSessionStorage(
+	'instanceAi.onboarding.completionPending',
+	setupWasIncomplete,
+);
+if (setupCompletionState.value === true) onboardingCompletionPending.value = false;
+else if (setupWasIncomplete) onboardingCompletionPending.value = true;
+const onboardingActive = ref(
+	setupCompletionState.value !== true && (setupWasIncomplete || onboardingCompletionPending.value),
+);
+const showOnboarding = computed(
+	() =>
+		settingsStore.canManage &&
+		!settingsStore.isProxyEnabled &&
+		!settingsStore.isCloudManaged &&
+		onboardingActive.value,
+);
 
+watch(setupCompletionState, (setupCompleted) => {
+	if (setupCompleted === true) {
+		onboardingCompletionPending.value = false;
+		if (!setupWasObservedIncomplete) onboardingActive.value = false;
+	} else if (setupCompleted === false) {
+		setupWasObservedIncomplete = true;
+		onboardingCompletionPending.value = true;
+		onboardingActive.value = true;
+	}
+});
+
+// The tab is named after the conversation, by whichever inner view is mounted
+// (thread → its title, empty → the default below). Claiming the title keeps the
+// workflow canvas embedded in a thread from renaming the tab after its workflow.
+claimDocumentTitle();
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
 // --- Sidebar collapse & resize ---
@@ -45,6 +86,11 @@ function handleSidebarResize({ width }: { width: number }) {
 		return;
 	}
 	sidebarWidth.value = width;
+}
+
+function handleOnboardingCompleted() {
+	onboardingCompletionPending.value = false;
+	onboardingActive.value = false;
 }
 
 provide(SidebarStateKey, {
@@ -79,6 +125,12 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
 // These run once when the user enters the InstanceAi feature. Route changes
 // (empty ↔ thread) don't remount the layout, so the listeners persist.
 onMounted(() => {
+	if (showOnboarding.value && route.name !== INSTANCE_AI_VIEW) {
+		void router.replace({ name: INSTANCE_AI_VIEW });
+	}
+	// New owners land here instead of the homepage, so the signup modals
+	// (personalization survey → community registration) must trigger here too.
+	void usersStore.showPersonalizationSurvey();
 	// In-app navigations expose the previous route via history state; direct
 	// visits (bookmark, external link) fall back to the document referrer.
 	const previousRoute = router.options.history.state.back;
@@ -91,7 +143,6 @@ onMounted(() => {
 
 	void store.loadThreads();
 	void store.fetchCredits();
-	store.startCreditsPushListener();
 
 	// Subscribe to push + fetch backend gateway state. The backend keeps the
 	// pairing alive across reloads, so the client never contacts the daemon
@@ -138,7 +189,6 @@ onUnmounted(() => {
 	// Stopping the store-level push listeners on a remount would kill the ones the
 	// new instance relies on (its start calls no-op while the old one is registered).
 	if (!isInstanceAiChatRoute(route.name)) {
-		store.stopCreditsPushListener();
 		settingsStore.stopGatewayPushListener();
 	}
 });
@@ -146,27 +196,30 @@ onUnmounted(() => {
 
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-container">
-		<!-- Resizable sidebar -->
-		<Transition name="sidebar-slide">
-			<N8nResizeWrapper
-				v-if="!sidebarCollapsed"
-				:class="$style.sidebar"
-				:width="sidebarWidth"
-				:style="{ width: `${sidebarWidth}px` }"
-				:supported-directions="['right']"
-				:is-resizing-enabled="true"
-				:min-width="200"
-				:max-width="400"
-				@resize="handleSidebarResize"
-			>
-				<InstanceAiThreadList @collapse="toggleSidebarCollapse" />
-			</N8nResizeWrapper>
-		</Transition>
+		<InstanceAiOnboardingView v-if="showOnboarding" @completed="handleOnboardingCompleted" />
+		<template v-else>
+			<!-- Resizable sidebar -->
+			<Transition name="sidebar-slide">
+				<N8nResizeWrapper
+					v-if="!sidebarCollapsed"
+					:class="$style.sidebar"
+					:width="sidebarWidth"
+					:style="{ width: `${sidebarWidth}px` }"
+					:supported-directions="['right']"
+					:is-resizing-enabled="true"
+					:min-width="200"
+					:max-width="400"
+					@resize="handleSidebarResize"
+				>
+					<InstanceAiThreadList @collapse="toggleSidebarCollapse" />
+				</N8nResizeWrapper>
+			</Transition>
 
-		<!-- Inner route — Empty for `/assistant`, Thread for `/assistant/:threadId` -->
-		<RouterView v-slot="{ Component }">
-			<component :is="Component" :key="String(route.params.threadId ?? 'empty')" />
-		</RouterView>
+			<!-- Inner route — Empty for `/assistant`, Thread for `/assistant/:threadId` -->
+			<RouterView v-slot="{ Component }">
+				<component :is="Component" :key="String(route.params.threadId ?? 'empty')" />
+			</RouterView>
+		</template>
 	</div>
 </template>
 

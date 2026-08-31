@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { shallowMount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import AgentChannelSlackSetup from '../components/AgentChannelSlackSetup.vue';
@@ -29,13 +30,21 @@ vi.mock('../components/AgentChannelSlackSetupSnapshots.vue', () => ({
 	},
 }));
 
-vi.mock('../composables/useAgentApi', () => ({
+vi.mock('../channels/slack/api', () => ({
 	getSlackAgentAppManifest: vi.fn().mockResolvedValue({ manifest: { display_information: {} } }),
 }));
 
 const renderComponent = createComponentRenderer(AgentChannelSlackSetup);
 
 describe('AgentChannelSlackSetup', () => {
+	it('marks manually connected Slack apps for the Agent messaging experience', () => {
+		const wrapper = shallowMount(AgentChannelSlackSetup, {
+			props: { setupMode: 'simple' },
+		});
+
+		expect(wrapper.vm.currentSettings).toEqual({ messagingExperience: 'agent' });
+	});
+
 	it('hides manual configuration in simple setup mode', () => {
 		const { queryByTestId } = renderComponent({
 			props: {

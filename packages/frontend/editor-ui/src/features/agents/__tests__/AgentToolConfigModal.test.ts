@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
@@ -56,7 +57,13 @@ vi.mock('@n8n/design-system', async () => {
 
 function createToolSettingsStub(emitValid: boolean) {
 	return defineComponent({
-		props: ['initialNode', 'existingToolNames', 'projectId'],
+		props: [
+			'initialNode',
+			'existingToolNames',
+			'projectId',
+			'parameterIssues',
+			'fromAiDisabledParameters',
+		],
 		emits: ['update:valid', 'update:node-name', 'update:node'],
 		setup(props, { emit, expose }) {
 			// Expose what the modal reads from ref(...). The stub carries through
@@ -66,7 +73,7 @@ function createToolSettingsStub(emitValid: boolean) {
 				name: props.initialNode?.name ?? '',
 				type: props.initialNode?.type ?? '',
 				typeVersion: props.initialNode?.typeVersion ?? 1,
-				parameters: { edited: true },
+				parameters: { ...props.initialNode?.parameters, edited: true },
 				credentials: props.initialNode?.credentials,
 				position: [0, 0],
 			};
@@ -83,7 +90,15 @@ function createToolSettingsStub(emitValid: boolean) {
 			return {};
 		},
 		template: `
-			<div data-test-id="node-tool-settings-content" :data-project-id="projectId" />
+			<div data-test-id="node-tool-settings-content" :data-project-id="projectId">
+				<button
+					v-if="!fromAiDisabledParameters?.includes('url')"
+					data-test-id="from-ai-override-button"
+				/>
+				<div v-if="parameterIssues?.url?.length" data-test-id="agent-tool-http-url-error">
+					{{ parameterIssues.url[0] }}
+				</div>
+			</div>
 		`,
 	});
 }
@@ -98,6 +113,8 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 				getDescription: () => props.initialRef?.description ?? '',
 				getAllOutputs: () => props.initialRef?.allOutputs ?? false,
 				getWorkflow: () => props.initialRef?.workflow ?? '',
+				getWorkflowId: () => props.initialRef?.workflowId,
+				getInputs: () => props.initialRef?.inputs,
 				handleChangeName: vi.fn(),
 			});
 			onMounted(() => {
@@ -122,7 +139,7 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 const MODAL_NAME = 'AgentToolConfigModal';
 
 function toolRef(
-	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>> = {},
+	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
 ): Extract<AgentJsonToolRef, { type: 'node' }> {
 	return {
 		type: 'node',
@@ -145,6 +162,7 @@ function renderModal({
 	customTool,
 	projectId,
 	agentId,
+	validationIssues,
 }: {
 	valid?: boolean;
 	onConfirm?: (updated: AgentJsonToolRef) => void;
@@ -152,6 +170,7 @@ function renderModal({
 	customTool?: CustomToolEntry;
 	projectId?: string;
 	agentId?: string;
+	validationIssues?: AgentConfigValidationIssue[];
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentToolConfigModal, {
 		global: {
@@ -178,7 +197,15 @@ function renderModal({
 	return renderComponent({
 		props: {
 			modalName: MODAL_NAME,
-			data: { toolRef: ref, customTool, existingToolNames: [], projectId, agentId, onConfirm },
+			data: {
+				toolRef: ref,
+				customTool,
+				existingToolNames: [],
+				projectId,
+				agentId,
+				validationIssues,
+				onConfirm,
+			},
 		},
 	});
 }
@@ -257,8 +284,34 @@ describe('AgentToolConfigModal', () => {
 		expect(updated.description).toBe(initial.description);
 		expect(updated).not.toHaveProperty('inputSchema');
 		// Fields merged from the edited INode
-		expect(updated.node.nodeParameters).toEqual({ edited: true });
+		expect(updated.node.nodeParameters).toEqual({ channel: 'general', edited: true });
 		expect(updated.node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'Prod Slack' } });
+	});
+
+	it('shows the HTTP Request URL error and blocks Save for a model override', async () => {
+		const { getByTestId, queryByTestId } = renderModal({
+			valid: true,
+			ref: toolRef({
+				nodeType: 'n8n-nodes-base.httpRequestTool',
+				nodeParameters: {
+					url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+				},
+			}),
+			validationIssues: [
+				{
+					code: 'invalid_value',
+					path: 'tools.0.node.nodeParameters.url',
+					capability: { kind: 'tool', id: 'HTTP Request', index: 0, toolType: 'node' },
+				},
+			],
+		});
+		await nextTick();
+
+		expect(getByTestId('agent-tool-http-url-error')).toHaveTextContent(
+			'agents.builder.validation.issue.httpRequestUrlFromAi',
+		);
+		expect(queryByTestId('from-ai-override-button')).not.toBeInTheDocument();
+		expect(getByTestId('agent-tool-config-save')).toBeDisabled();
 	});
 
 	it('saves the approval requirement on node tool refs', async () => {
@@ -357,16 +410,34 @@ describe('AgentToolConfigModal', () => {
 		expect(updated).toEqual({ type: 'custom', id: 'custom-tool-1', requireApproval: true });
 	});
 
-	it('renders the workflow-tool config content for workflow refs', () => {
+	it('preserves the stable workflow id when saving a workflow tool', async () => {
+		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({
+			valid: true,
+			onConfirm,
 			ref: {
 				type: 'workflow',
-				workflow: 'w-1',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
 				name: 'My Workflow Tool',
 				description: 'Does something',
 			},
 		});
+
 		expect(getByTestId('workflow-tool-config-content')).toBeTruthy();
 		expect(queryByTestId('node-tool-settings-content')).toBeNull();
+
+		await waitFor(() => {
+			expect(getByTestId('agent-tool-config-save')).not.toBeDisabled();
+		});
+		await fireEvent.click(getByTestId('agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
+			}),
+		);
 	});
 });
