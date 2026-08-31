@@ -86,7 +86,11 @@ export function getDatabricksTokenProvider(
  */
 export function createDatabricksFetch(getToken: () => Promise<string>): typeof globalThis.fetch {
 	return async (input, init) => {
-		const headers = new Headers(init?.headers);
+		// Passing headers in init replaces a Request input's own headers, so
+		// carry those over when init doesn't set any
+		const headers = new Headers(
+			init?.headers ?? (input instanceof Request ? input.headers : undefined),
+		);
 		headers.set('authorization', `Bearer ${await getToken()}`);
 		return await fetch(input, { ...init, headers });
 	};

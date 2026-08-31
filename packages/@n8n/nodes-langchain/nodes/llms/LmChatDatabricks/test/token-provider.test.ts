@@ -259,6 +259,23 @@ describe('createDatabricksFetch', () => {
 		expect(init.method).toBe('POST');
 	});
 
+	it('should preserve the headers of a Request input when init sets none', async () => {
+		const mockFetch = vi.fn().mockResolvedValue(new Response('ok'));
+		globalThis.fetch = mockFetch;
+		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+
+		const request = new Request('https://my.databricks.com/serving-endpoints/chat/completions', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+		});
+		await wrappedFetch(request);
+
+		const [, init] = mockFetch.mock.calls[0] as [Request, RequestInit];
+		const sentHeaders = new Headers(init.headers);
+		expect(sentHeaders.get('content-type')).toBe('application/json');
+		expect(sentHeaders.get('authorization')).toBe('Bearer fresh-token');
+	});
+
 	it('should return the exact Response instance with an unread body', async () => {
 		const response = new Response('data: chunk\n\n');
 		globalThis.fetch = vi.fn().mockResolvedValue(response);
