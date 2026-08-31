@@ -1,32 +1,12 @@
-# Filesystem, database, network, and audit trails
+# Filesystem, database, and browser-facing responses
 
 Applies to: all backend packages.
 
-## Filesystem
-
-- Weakened file access restriction enforcement
-- File operations bypassing allowlist/blocklist patterns
-- Access to n8n internal directories
-- Unsanitized user input flowing into a file path
-
-## Database
-
-- Missing indexes on frequently queried columns in migrations
-- Resource-intensive queries without pagination or limits
-- Missing encryption for sensitive fields beyond credentials
+- Unsanitized user input reaching a file path, weakened file access restriction
+  enforcement, or access to n8n internal directories
 - Raw SQL that bypasses TypeORM protections
-
-## HTTP, webhooks, and network
-
-- SSRF risk in user-controlled URLs
-- CORS allowing all origins
-- CSP or iframe sandbox changes that weaken protections
-- Rate limiting changes that reduce protection
-- Disabled TLS certificate validation (`rejectUnauthorized: false`)
-- Bearer tokens forwarded across a redirect to a different host
-
-## Audit logging
-
-- Missing logging for security-relevant events
-- Sensitive data in logs or error messages
-- Incomplete audit trails for authentication and authorization events
+- CORS allowing all origins, weakened CSP or iframe sandboxing, reduced rate
+  limiting, or `rejectUnauthorized: false`
+- User-controlled bytes served from the n8n origin without
+  `Content-Disposition: attachment` or an equivalent inline-render guard, on the
+  binary-data and webhook/form response paths
