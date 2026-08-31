@@ -1,3 +1,4 @@
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import type {
 	INode,
 	IPinData,
@@ -26,8 +27,6 @@ const node = (id: string, name: string, type: string): INode => ({
 	position: [0, 0],
 	parameters: {},
 });
-
-const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const MANUAL_TRIGGER = node('trigger-id', 'When clicking Execute', 'n8n-nodes-base.manualTrigger');
 const SET_NODE = node('set-id', 'Edit Fields', 'n8n-nodes-base.set');
@@ -117,7 +116,7 @@ describe('EngineV2Dispatcher', () => {
 		it('mints the execution id and sends it to the data plane', async () => {
 			const executionId = await dispatcher.start(runData());
 
-			expect(executionId).toMatch(UUID_V7);
+			expect(executionId).toMatch(UUID_V7_PATTERN);
 			expect(proxy.startExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ executionId, workflowId: 'wf-1', mode: 'manual' }),
 			);
@@ -367,7 +366,7 @@ describe('EngineV2Dispatcher', () => {
 					registeredBeforeDispatch = pushRegistry.register.mock.calls.some(
 						([id]) => id === executionId,
 					);
-					return { executionId: executionId as string };
+					return { executionId };
 				});
 
 				await dispatcher.start(runData({ pushRef: 'push-1' }));

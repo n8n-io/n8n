@@ -12,6 +12,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import type {
 	User,
 	ListQueryDb,
@@ -4975,8 +4976,6 @@ describe('POST /workflows/:workflowId/run', () => {
 		const TRIGGER_NAME = 'When clicking Execute';
 		const SET_NAME = 'Edit Fields';
 
-		const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-
 		const startExecution = vi.fn();
 		const getExecution = vi.fn();
 
@@ -5031,7 +5030,7 @@ describe('POST /workflows/:workflowId/run', () => {
 			// The control plane mints the id, dispatches under it, and reports that
 			// same id — the data plane's response never renames the run.
 			const { executionId } = response.body.data;
-			expect(executionId).toMatch(UUID_V7);
+			expect(executionId).toMatch(UUID_V7_PATTERN);
 			expect(startExecution).toHaveBeenCalledWith(
 				objectContaining({
 					executionId,

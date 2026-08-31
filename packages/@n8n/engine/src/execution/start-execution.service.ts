@@ -11,10 +11,10 @@ export interface StartExecutionRequest {
 	triggerOutputs?: TriggerOutputs | null;
 	mode?: ExecutionMode;
 	/**
-	 * Caller-minted id, so a caller can record state against the run before it
-	 * starts. The engine mints one when absent.
+	 * Caller-minted, so the caller can record state against the run before it
+	 * starts. The engine never mints one.
 	 */
-	executionId?: string;
+	executionId: string;
 }
 
 export interface StartExecutionResult {

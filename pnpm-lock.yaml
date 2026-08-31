@@ -2290,6 +2290,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@n8n/di':
         specifier: workspace:*
         version: link:../di

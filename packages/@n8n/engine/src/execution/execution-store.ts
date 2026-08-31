@@ -3,8 +3,8 @@ import type { ExecutionMode, ExecutionStatus, TriggerOutputs } from './execution
 
 /** A new execution to persist. Timestamps are assigned by the store. */
 export interface NewExecutionRecord {
-	/** Caller-minted id. The store mints one when absent. */
-	id?: string;
+	/** Caller-minted id. The store never mints one. */
+	id: string;
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;

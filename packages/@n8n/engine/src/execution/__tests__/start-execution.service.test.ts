@@ -26,7 +26,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 }
 
 describe('StartExecutionService', () => {
-	it('admits, persists a queued execution, publishes execution:enqueued, returns id', async () => {
+	it('admits, persists a queued execution under the caller-minted id, publishes execution:enqueued', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
@@ -38,11 +38,13 @@ describe('StartExecutionService', () => {
 			workflowId: 'wf-1',
 			graph: sampleGraph,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			executionId: 'exec-id-1',
 		});
 
 		expect(result.executionId).toBe('exec-id-1');
 		expect(admittance.evaluate).toHaveBeenCalledWith({ workflowId: 'wf-1' });
 		expect(store.createExecution).toHaveBeenCalledWith({
+			id: 'exec-id-1',
 			workflowId: 'wf-1',
 			status: 'queued',
 			mode: 'production',
@@ -55,32 +57,6 @@ describe('StartExecutionService', () => {
 		});
 	});
 
-	it('persists and returns a caller-minted id', async () => {
-		const admittance: AdmittanceService = {
-			evaluate: vi.fn().mockResolvedValue({ accept: true }),
-		};
-		const store = makeStore({
-			createExecution: vi.fn().mockResolvedValue({ id: 'caller-id' }),
-		});
-		const queue = makeQueue();
-		const service = new StartExecutionService(admittance, store, queue);
-
-		const result = await service.start({
-			workflowId: 'wf-1',
-			graph: sampleGraph,
-			executionId: 'caller-id',
-		});
-
-		expect(result.executionId).toBe('caller-id');
-		expect(store.createExecution).toHaveBeenCalledWith(
-			expect.objectContaining({ id: 'caller-id' }),
-		);
-		expect(queue.publish).toHaveBeenCalledWith({
-			type: 'execution:enqueued',
-			executionId: 'caller-id',
-		});
-	});
-
 	it('defaults mode to production and triggerOutputs to null', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
@@ -89,10 +65,10 @@ describe('StartExecutionService', () => {
 		const queue = makeQueue();
 		const service = new StartExecutionService(admittance, store, queue);
 
-		await service.start({ workflowId: 'wf-1', graph: sampleGraph });
+		await service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' });
 
 		expect(store.createExecution).toHaveBeenCalledWith(
-			expect.objectContaining({ id: undefined, mode: 'production', triggerOutputs: null }),
+			expect.objectContaining({ mode: 'production', triggerOutputs: null }),
 		);
 	});
 
@@ -103,7 +79,7 @@ describe('StartExecutionService', () => {
 		const validateGraph = vi.fn();
 		const service = new StartExecutionService(admittance, makeStore(), makeQueue(), validateGraph);
 
-		await service.start({ workflowId: 'wf-1', graph: sampleGraph });
+		await service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' });
 
 		expect(validateGraph).toHaveBeenCalledExactlyOnceWith(sampleGraph);
 	});
@@ -120,7 +96,9 @@ describe('StartExecutionService', () => {
 		});
 		const service = new StartExecutionService(admittance, store, queue, validateGraph);
 
-		await expect(service.start({ workflowId: 'wf-1', graph: sampleGraph })).rejects.toBe(rejection);
+		await expect(
+			service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' }),
+		).rejects.toBe(rejection);
 
 		expect(store.createExecution).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
@@ -134,9 +112,9 @@ describe('StartExecutionService', () => {
 		const queue = makeQueue();
 		const service = new StartExecutionService(admittance, store, queue);
 
-		await expect(service.start({ workflowId: 'wf-1', graph: sampleGraph })).rejects.toBeInstanceOf(
-			AdmittanceRejectedError,
-		);
+		await expect(
+			service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' }),
+		).rejects.toBeInstanceOf(AdmittanceRejectedError);
 
 		expect(store.createExecution).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
