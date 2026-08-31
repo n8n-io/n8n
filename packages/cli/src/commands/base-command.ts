@@ -340,6 +340,12 @@ export abstract class BaseCommand<F = never> {
 				);
 				process.exit(1);
 			}
+			if (Container.get(ObjectStoreConfig).bucket.name === '') {
+				this.logger.error(
+					'S3 binary data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+				);
+				process.exit(1);
+			}
 		}
 
 		if (isAzureWriteMode) {
