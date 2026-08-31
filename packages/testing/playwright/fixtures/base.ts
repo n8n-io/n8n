@@ -356,7 +356,7 @@ export const test = base.extend<
 
 export { expect };
 export { A11Y_BUCKETS, DEFAULT_A11Y_TAGS } from './a11y';
-export type { A11yBucket, A11yCheckOptions, A11yViolation } from './a11y';
+export type { A11yBucket, A11yCheckOptions, A11yScan, A11yViolation } from './a11y';
 
 /*
 Fixture Dependency Graph:
