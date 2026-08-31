@@ -9,6 +9,9 @@ POC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 SEATS="${1:-2}"
 PARTITIONS="${2:-4}"
+TOPIC="${TOPIC:-poc-events}"
+GROUP="${GROUP:-poc-seats}"
+WF_NAME="${WF_NAME:-PoC Kafka Seats}"
 BASE="${N8N_BASE:-http://localhost:5678}"
 EMAIL="poc@n8n.io"
 PASSWORD="PocPassword1"
@@ -25,10 +28,10 @@ api() { # method path [json-body]
   fi
 }
 
-echo "[seed] ensuring kafka topic poc-events ($PARTITIONS partitions)"
+echo "[seed] ensuring kafka topic $TOPIC ($PARTITIONS partitions)"
 docker exec n8n-poc-kafka-1 /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server localhost:9092 --create --if-not-exists \
-  --topic poc-events --partitions "$PARTITIONS" --replication-factor 1 >/dev/null
+  --topic "$TOPIC" --partitions "$PARTITIONS" --replication-factor 1 >/dev/null
 
 echo "[seed] owner setup / login"
 SETUP=$(api POST /owner/setup "{\"email\":\"$EMAIL\",\"firstName\":\"Poc\",\"lastName\":\"Owner\",\"password\":\"$PASSWORD\"}" || true)
@@ -42,11 +45,12 @@ CRED_ID=$(echo "$CRED" | python3 -c 'import json,sys; print(json.load(sys.stdin)
 echo "[seed]   credential id: $CRED_ID"
 
 echo "[seed] demo workflow (seatCount=$SEATS)"
-WF_BODY=$(python3 - "$CRED_ID" "$SEATS" <<'EOF'
+WF_BODY=$(python3 - "$CRED_ID" "$SEATS" "$TOPIC" "$GROUP" "$WF_NAME" <<'EOF'
 import json, sys
 cred_id, seats = sys.argv[1], int(sys.argv[2])
+topic, group, wf_name = sys.argv[3], sys.argv[4], sys.argv[5]
 wf = {
-    "name": "PoC Kafka Seats",
+    "name": wf_name,
     "nodes": [
         {
             "id": "kafka-trigger-node",
@@ -55,8 +59,8 @@ wf = {
             "typeVersion": 2,
             "position": [0, 0],
             "parameters": {
-                "topic": "poc-events",
-                "groupId": "poc-seats",
+                "topic": topic,
+                "groupId": group,
                 "resolveOffset": "onCompletion",
                 "seatCount": seats,
                 "options": {},
