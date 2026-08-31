@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
+import type { IWorkflowDb, PollerCursor, PollLeaseFence, TriggerSeatFence } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -33,6 +33,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import { TriggerEmissionFencedError } from '@/errors/trigger-emission-fenced.error';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
@@ -108,10 +109,21 @@ export class TriggerExecutionContextFactory {
 
 	/**
 	 * Terminates the emit promise chains. Without it a failed triggered execution
-	 * surfaces as an unhandled rejection instead of a logged error.
+	 * surfaces as an unhandled rejection instead of a logged error. A fence
+	 * rejection is expected during seat handoffs and version bumps, so it logs
+	 * at debug — the rejection still reaches the node's donePromise, whose
+	 * offset/ack machinery holds the event back for redelivery.
 	 */
 	private logTriggerExecutionFailure(error: unknown, workflowData: IWorkflowBase, node: INode) {
 		const failure = ensureError(error);
+		if (failure instanceof TriggerEmissionFencedError) {
+			this.logger.debug(failure.message, {
+				workflowId: workflowData.id,
+				nodeName: node.name,
+				...failure.fence,
+			});
+			return;
+		}
 		this.logger.error(failure.message, {
 			error: failure,
 			workflowId: workflowData.id,
@@ -164,6 +176,9 @@ export class TriggerExecutionContextFactory {
 		// so the commit/discard that follows registration consumes the rules this
 		// attempt collected, never a concurrent attempt's.
 		scheduleCollectionSession: ScheduleTriggerCollectionSession,
+		// When set, the emission is admitted through the seat fence: the execution
+		// insert is guarded on the seat still being held at this epoch and version.
+		seatFence?: TriggerSeatFence,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const emit = (
@@ -179,17 +194,27 @@ export class TriggerExecutionContextFactory {
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData()
-					.then(
-						async (freshWorkflowData) =>
-							await this.workflowExecutionService.runWorkflow(
-								freshWorkflowData,
-								node,
-								data,
-								additionalData,
-								mode,
-								responsePromise,
-								deduplicationKey,
-							),
+					.then(async (freshWorkflowData) =>
+						seatFence
+							? await this.workflowExecutionService.runFencedTriggerWorkflow(
+									freshWorkflowData,
+									node,
+									data,
+									additionalData,
+									mode,
+									seatFence,
+									responsePromise,
+									deduplicationKey,
+								)
+							: await this.workflowExecutionService.runWorkflow(
+									freshWorkflowData,
+									node,
+									data,
+									additionalData,
+									mode,
+									responsePromise,
+									deduplicationKey,
+								),
 					)
 					.catch((error: unknown) => {
 						if (error instanceof DuplicateExecutionError) {

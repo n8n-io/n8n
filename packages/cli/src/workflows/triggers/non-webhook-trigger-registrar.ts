@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { WorkflowEntity } from '@n8n/db';
+import type { TriggerSeatFence, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	ActiveWorkflowTriggers,
@@ -30,6 +30,8 @@ export interface NonWebhookTriggerRegistrationContext {
 	additionalData: IWorkflowExecuteAdditionalData;
 	resolveWorkflowData: () => Promise<IWorkflowBase>;
 	onTriggerFailure: TriggerFailureHandler;
+	/** When set, emissions are admitted through the seat fence. Per-seat, so per-node registrations each carry their own. */
+	seatFence?: TriggerSeatFence;
 }
 
 export interface PreparedNonWebhookTriggerRegistration {
@@ -84,6 +86,7 @@ export class NonWebhookTriggerRegistrar {
 			additionalData,
 			resolveWorkflowData,
 			onTriggerFailure,
+			seatFence,
 		}: NonWebhookTriggerRegistrationContext,
 	) {
 		const scheduleCollectionSession = this.scheduleTriggerJobRegistrar.createSession();
@@ -96,6 +99,7 @@ export class NonWebhookTriggerRegistrar {
 			resolveWorkflowData,
 			onTriggerFailure,
 			scheduleCollectionSession,
+			seatFence,
 		);
 
 		const getPollFunctions = this.triggerExecutionContextFactory.getExecutePollFunctions(

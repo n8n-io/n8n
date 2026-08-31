@@ -127,6 +127,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		pollCursorService,
 		executionRepository,
+		mock(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -721,6 +722,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -794,6 +796,7 @@ describe('WorkflowExecutionService', () => {
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
 				pollCursorService,
+				mock(),
 				mock(),
 			);
 
@@ -968,6 +971,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 		});
 
@@ -1126,6 +1130,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1271,6 +1276,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1377,6 +1383,7 @@ describe('WorkflowExecutionService', () => {
 				workflowPublishedDataService,
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1432,6 +1439,7 @@ describe('WorkflowExecutionService', () => {
 				workflowPublishedDataService,
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1473,6 +1481,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				pollCursorService,
+				mock(),
 				mock(),
 			);
 

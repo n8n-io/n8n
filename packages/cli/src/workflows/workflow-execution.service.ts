@@ -6,6 +6,7 @@ import type {
 	CreateExecutionPayload,
 	WorkflowEntity,
 	PollLeaseFence,
+	TriggerSeatFence,
 } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -40,6 +41,7 @@ import {
 } from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { TriggerEmissionFencedError } from '@/errors/trigger-emission-fenced.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -51,6 +53,7 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
+import { TriggerSeatAdmissionService } from '@/workflows/triggers/seats/trigger-seat-admission.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
@@ -75,6 +78,7 @@ export class WorkflowExecutionService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly triggerSeatAdmissionService: TriggerSeatAdmissionService,
 	) {}
 
 	async runWorkflow(
@@ -119,6 +123,126 @@ export class WorkflowExecutionService {
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+	}
+
+	/**
+	 * Starts an execution for a seat-held trigger emission, committing its row in
+	 * the same transaction as the seat fence check, so an emission from a holder
+	 * whose seat was re-claimed or re-versioned never becomes an execution.
+	 */
+	async runFencedTriggerWorkflow(
+		workflowData: IWorkflowBase,
+		node: INode,
+		data: INodeExecutionData[][],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		fence: TriggerSeatFence,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		deduplicationKey?: string,
+	): Promise<string | undefined> {
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node,
+				data: {
+					main: data,
+				},
+				source: null,
+			},
+		];
+
+		const executionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack,
+			},
+		});
+
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflowData.id,
+		);
+
+		const runData: IWorkflowExecutionDataProcess = {
+			userId: additionalData.userId,
+			executionMode: mode,
+			executionData,
+			workflowData,
+			deduplicationKey,
+			projectId,
+			projectName,
+		};
+
+		// Mask the trigger items before the payload is committed, so the persisted row
+		// never holds raw header data. `run` below establishes the context again, which
+		// early-exits once it is in place.
+		const establishContextError = await this.workflowRunner.establishContextForPersistence(runData);
+
+		if (establishContextError) {
+			this.errorReporter.error(establishContextError, { shouldBeLogged: false });
+			this.logger.error('Failed to prepare a fenced trigger execution', {
+				workflowId: workflowData.id,
+				nodeName: node.name,
+				error: establishContextError,
+			});
+
+			responsePromise?.reject(ensureError(establishContextError));
+
+			return undefined;
+		}
+
+		const payload: CreateExecutionPayload = {
+			data: executionData,
+			mode,
+			finished: false,
+			workflowData,
+			status: 'new',
+			workflowId: workflowData.id,
+			deduplicationKey,
+			retryOf: runData.retryOf ?? undefined,
+			tracingContext: runData.tracingContext ?? null,
+		};
+
+		const commitResult = await this.triggerSeatAdmissionService.commitExecutionWithFence({
+			payload,
+			fence,
+		});
+
+		if (commitResult === null) {
+			this.logger.debug('Trigger emission fenced out: the seat is no longer held at this epoch', {
+				workflowId: workflowData.id,
+				nodeId: node.id,
+				nodeName: node.name,
+				seatId: fence.seatId,
+				leaseEpoch: fence.leaseEpoch,
+			});
+			responsePromise?.reject(
+				new OperationalError('Trigger emission fenced out: the seat is no longer held'),
+			);
+			throw new TriggerEmissionFencedError(workflowData.id, node.id, fence);
+		}
+
+		const { executionId } = commitResult;
+
+		// The row was committed at `new`; `expectedStatus` claims it and moves it to
+		// running, so a concurrent starter cannot run it a second time.
+		try {
+			await this.workflowRunner.run(
+				runData,
+				true,
+				undefined,
+				{ executionId, expectedStatus: 'new' },
+				responsePromise,
+			);
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) {
+				this.logger.debug('Fenced trigger execution was already claimed, leaving it to its owner', {
+					executionId,
+				});
+			} else {
+				await this.crashFailedPolledExecution(executionId, error, responsePromise);
+			}
+		}
+
+		return executionId;
 	}
 
 	/**
