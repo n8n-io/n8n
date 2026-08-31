@@ -7,6 +7,7 @@
 | baseCommit | varchar(64) |  | true |  |  | Last commit successfully reconciled for this connection; the base for three-way reconciliation. |
 | branchName | varchar(255) |  | true |  |  |  |
 | connectionType | varchar(16) |  | false |  |  | GitConnectionType enum: "ssh", "https" |
+| createBranchOnPromotion | boolean | false | false |  |  | When true, promotes land on a new branch for review instead of the target branch. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | encryptedPassword | text |  | true |  |  | Encrypted HTTPS password/token; set when connectionType is 'https', null for 'ssh'. |
 | encryptedPrivateKey | text |  | true |  |  | Encrypted SSH private key; set when connectionType is 'ssh', null for 'https'. |
@@ -16,7 +17,6 @@
 | name | varchar(128) |  | false |  |  |  |
 | publicKey | text |  | true |  |  | SSH public key; set when connectionType is 'ssh', null for 'https'. |
 | repositoryUrl | text |  | false |  |  |  |
-| requireBranchForPromotion | boolean | false | false |  |  | When true, promotes land on a new branch for review instead of the target branch. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -29,11 +29,11 @@
 | CHK_git_connection_ssh_auth | CHECK | CHECK (((("connectionType")::text <> 'ssh'::text) OR (("encryptedUsername" IS NULL) AND ("encryptedPassword" IS NULL)))) |
 | PK_92966b7ba4ce2cf61a62017a6ff | PRIMARY KEY | PRIMARY KEY (id) |
 | git_connection_connectionType_not_null | n | NOT NULL "connectionType" |
+| git_connection_createBranchOnPromotion_not_null | n | NOT NULL "createBranchOnPromotion" |
 | git_connection_createdAt_not_null | n | NOT NULL "createdAt" |
 | git_connection_id_not_null | n | NOT NULL id |
 | git_connection_name_not_null | n | NOT NULL name |
 | git_connection_repositoryUrl_not_null | n | NOT NULL "repositoryUrl" |
-| git_connection_requireBranchForPromotion_not_null | n | NOT NULL "requireBranchForPromotion" |
 | git_connection_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -53,6 +53,7 @@ erDiagram
   varchar_64_ baseCommit
   varchar_255_ branchName
   varchar_16_ connectionType
+  boolean createBranchOnPromotion
   timestamp_3__with_time_zone createdAt
   text encryptedPassword
   text encryptedPrivateKey
@@ -62,7 +63,6 @@ erDiagram
   varchar_128_ name
   text publicKey
   text repositoryUrl
-  boolean requireBranchForPromotion
   timestamp_3__with_time_zone updatedAt
 }
 "public.git_connection_project" {

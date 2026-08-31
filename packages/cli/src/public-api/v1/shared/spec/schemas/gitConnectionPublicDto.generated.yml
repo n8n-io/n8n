@@ -26,7 +26,7 @@ properties:
   baseCommit:
     type: string
     nullable: true
-  requireBranchForPromotion:
+  createBranchOnPromotion:
     type: boolean
   createdAt:
     type: string
@@ -43,6 +43,6 @@ required:
   - publicKey
   - keyGeneratorType
   - baseCommit
-  - requireBranchForPromotion
+  - createBranchOnPromotion
   - createdAt
   - updatedAt

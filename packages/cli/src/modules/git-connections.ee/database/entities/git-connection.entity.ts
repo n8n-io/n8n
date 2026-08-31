@@ -42,5 +42,5 @@ export class GitConnection extends WithTimestampsAndStringId {
 
 	/** When true, promotes land on a new branch for review instead of the target branch. */
 	@Column({ type: 'boolean', default: false })
-	requireBranchForPromotion: boolean;
+	createBranchOnPromotion: boolean;
 }

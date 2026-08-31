@@ -56,7 +56,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		repositoryUrl: 'git@github.com:o/r.git',
 		branchName: 'main',
 		baseCommit: null,
-		requireBranchForPromotion: false,
+		createBranchOnPromotion: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	});
@@ -151,13 +151,13 @@ describe('GitConnectionsService (credential state machine)', () => {
 			).rejects.toThrow(BadRequestError);
 		});
 
-		it('defaults requireBranchForPromotion to false and persists it when set', async () => {
+		it('defaults createBranchOnPromotion to false and persists it when set', async () => {
 			await service.create({
 				name: 'c',
 				repositoryUrl: 'git@github.com:o/r.git',
 				connectionType: 'ssh',
 			} as CreateGitConnectionDto);
-			expect((repository.save.mock.calls[0][0] as GitConnection).requireBranchForPromotion).toBe(
+			expect((repository.save.mock.calls[0][0] as GitConnection).createBranchOnPromotion).toBe(
 				false,
 			);
 
@@ -165,9 +165,9 @@ describe('GitConnectionsService (credential state machine)', () => {
 				name: 'c',
 				repositoryUrl: 'git@github.com:o/r.git',
 				connectionType: 'ssh',
-				requireBranchForPromotion: true,
+				createBranchOnPromotion: true,
 			} as CreateGitConnectionDto);
-			expect((repository.save.mock.calls[1][0] as GitConnection).requireBranchForPromotion).toBe(
+			expect((repository.save.mock.calls[1][0] as GitConnection).createBranchOnPromotion).toBe(
 				true,
 			);
 		});
@@ -248,11 +248,11 @@ describe('GitConnectionsService (credential state machine)', () => {
 			expect(gitService.resetWorkingCopy).not.toHaveBeenCalled();
 		});
 
-		it('persists requireBranchForPromotion without invalidating the working copy', async () => {
+		it('persists createBranchOnPromotion without invalidating the working copy', async () => {
 			repository.findOneBy.mockResolvedValue(sshEntity());
-			await service.update('1', { requireBranchForPromotion: true } as UpdateGitConnectionDto);
+			await service.update('1', { createBranchOnPromotion: true } as UpdateGitConnectionDto);
 
-			expect((repository.save.mock.calls[0][0] as GitConnection).requireBranchForPromotion).toBe(
+			expect((repository.save.mock.calls[0][0] as GitConnection).createBranchOnPromotion).toBe(
 				true,
 			);
 			expect(gitService.resetWorkingCopy).not.toHaveBeenCalled();

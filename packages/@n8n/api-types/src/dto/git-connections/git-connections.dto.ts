@@ -22,7 +22,7 @@ export class CreateGitConnectionDto extends Z.class({
 	keyGeneratorType: gitKeyGeneratorTypeSchema.optional(),
 	username: z.string().min(1).optional(),
 	password: z.string().min(1).optional(),
-	requireBranchForPromotion: z.boolean().optional(),
+	createBranchOnPromotion: z.boolean().optional(),
 }) {}
 
 export class UpdateGitConnectionDto extends Z.class({
@@ -33,7 +33,7 @@ export class UpdateGitConnectionDto extends Z.class({
 	keyGeneratorType: gitKeyGeneratorTypeSchema.optional(),
 	username: z.string().min(1).optional(),
 	password: z.string().min(1).optional(),
-	requireBranchForPromotion: z.boolean().optional(),
+	createBranchOnPromotion: z.boolean().optional(),
 }) {}
 
 export class CloneGitConnectionDto extends Z.class({
@@ -54,7 +54,7 @@ export const gitConnectionPublicSchema = z.object({
 	publicKey: z.string().nullable(),
 	keyGeneratorType: gitKeyGeneratorTypeSchema.nullable(),
 	baseCommit: z.string().nullable(),
-	requireBranchForPromotion: z.boolean(),
+	createBranchOnPromotion: z.boolean(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });

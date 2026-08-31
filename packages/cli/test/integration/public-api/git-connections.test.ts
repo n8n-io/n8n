@@ -72,7 +72,7 @@ describe('Git connections in Public API', () => {
 		expect(await Container.get(GitConnectionRepository).findOneBy({ id })).toBeNull();
 	});
 
-	it('defaults requireBranchForPromotion to false and round-trips it through create, update, and read', async () => {
+	it('defaults createBranchOnPromotion to false and round-trips it through create, update, and read', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const created = await agent.post('/git-connections').send({
 			name: 'Deployments',
@@ -82,17 +82,17 @@ describe('Git connections in Public API', () => {
 			password: 'secret',
 		});
 		expect(created.status).toBe(201);
-		expect(created.body.requireBranchForPromotion).toBe(false);
+		expect(created.body.createBranchOnPromotion).toBe(false);
 		const id = created.body.id as string;
 
 		const updated = await agent
 			.put(`/git-connections/${id}`)
-			.send({ requireBranchForPromotion: true });
+			.send({ createBranchOnPromotion: true });
 		expect(updated.status, JSON.stringify(updated.body)).toBe(200);
-		expect(updated.body.requireBranchForPromotion).toBe(true);
+		expect(updated.body.createBranchOnPromotion).toBe(true);
 
 		const read = await agent.get(`/git-connections/${id}`);
-		expect(read.body.requireBranchForPromotion).toBe(true);
+		expect(read.body.createBranchOnPromotion).toBe(true);
 	});
 
 	it('rejects a key without the source-control scope', async () => {

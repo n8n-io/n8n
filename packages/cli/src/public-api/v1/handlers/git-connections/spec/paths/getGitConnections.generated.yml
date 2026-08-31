@@ -46,7 +46,7 @@ responses:
                   baseCommit:
                     type: string
                     nullable: true
-                  requireBranchForPromotion:
+                  createBranchOnPromotion:
                     type: boolean
                   createdAt:
                     type: string
@@ -62,7 +62,7 @@ responses:
                   - connectionType
                   - keyGeneratorType
                   - baseCommit
-                  - requireBranchForPromotion
+                  - createBranchOnPromotion
                   - createdAt
                   - updatedAt
             nextCursor:

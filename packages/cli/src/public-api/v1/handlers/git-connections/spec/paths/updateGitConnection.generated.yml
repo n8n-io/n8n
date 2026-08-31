@@ -46,7 +46,7 @@ requestBody:
           password:
             type: string
             minLength: 1
-          requireBranchForPromotion:
+          createBranchOnPromotion:
             type: boolean
 responses:
   '200':

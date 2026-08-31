@@ -74,7 +74,7 @@ export class GitConnectionsService {
 			encryptedPassword: null,
 			keyGeneratorType: null,
 			baseCommit: null,
-			requireBranchForPromotion: input.requireBranchForPromotion ?? false,
+			createBranchOnPromotion: input.createBranchOnPromotion ?? false,
 		});
 		await this.applyNewAuthentication(connection, input);
 		return this.toPublic(await this.repository.save(connection));
@@ -113,10 +113,10 @@ export class GitConnectionsService {
 		if (input.name !== undefined) updated.name = input.name;
 		if (input.repositoryUrl !== undefined) updated.repositoryUrl = input.repositoryUrl;
 		if (input.branchName !== undefined) updated.branchName = input.branchName;
-		// requireBranchForPromotion only affects promote behaviour, not the working copy target,
+		// createBranchOnPromotion only affects promote behaviour, not the working copy target,
 		// so it is deliberately left out of `changesTarget`.
-		if (input.requireBranchForPromotion !== undefined)
-			updated.requireBranchForPromotion = input.requireBranchForPromotion;
+		if (input.createBranchOnPromotion !== undefined)
+			updated.createBranchOnPromotion = input.createBranchOnPromotion;
 
 		await this.applyUpdatedAuthentication(updated, current, input);
 
@@ -402,7 +402,7 @@ export class GitConnectionsService {
 			publicKey: connection.publicKey,
 			keyGeneratorType: connection.keyGeneratorType,
 			baseCommit: connection.baseCommit,
-			requireBranchForPromotion: connection.requireBranchForPromotion,
+			createBranchOnPromotion: connection.createBranchOnPromotion,
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
 		};

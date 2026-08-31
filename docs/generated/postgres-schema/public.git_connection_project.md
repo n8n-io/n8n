@@ -46,6 +46,7 @@ erDiagram
   varchar_64_ baseCommit
   varchar_255_ branchName
   varchar_16_ connectionType
+  boolean createBranchOnPromotion
   timestamp_3__with_time_zone createdAt
   text encryptedPassword
   text encryptedPrivateKey
@@ -55,7 +56,6 @@ erDiagram
   varchar_128_ name
   text publicKey
   text repositoryUrl
-  boolean requireBranchForPromotion
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {

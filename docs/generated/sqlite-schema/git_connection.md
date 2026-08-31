@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "repositoryUrl" text NOT NULL, "branchName" varchar(255), "connectionType" varchar(16) NOT NULL, "publicKey" text, "encryptedPrivateKey" text, "encryptedUsername" text, "encryptedPassword" text, "keyGeneratorType" varchar(16), "baseCommit" varchar(64), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "requireBranchForPromotion" boolean NOT NULL DEFAULT (false), CONSTRAINT "CHK_git_connection_ssh_auth" CHECK ("connectionType" <> 'ssh' OR ("encryptedUsername" IS NULL AND "encryptedPassword" IS NULL)), CONSTRAINT "CHK_git_connection_https_auth" CHECK ("connectionType" <> 'https' OR ("publicKey" IS NULL AND "encryptedPrivateKey" IS NULL AND "keyGeneratorType" IS NULL)), CONSTRAINT "CHK_git_connection_connectionType" CHECK ("connectionType" IN ('ssh', 'https')), CONSTRAINT "CHK_git_connection_keyGeneratorType" CHECK ("keyGeneratorType" IN ('ed25519', 'rsa')))
+CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "repositoryUrl" text NOT NULL, "branchName" varchar(255), "connectionType" varchar(16) NOT NULL, "publicKey" text, "encryptedPrivateKey" text, "encryptedUsername" text, "encryptedPassword" text, "keyGeneratorType" varchar(16), "baseCommit" varchar(64), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "createBranchOnPromotion" boolean NOT NULL DEFAULT 0, CONSTRAINT "CHK_git_connection_ssh_auth" CHECK ("connectionType" <> 'ssh' OR ("encryptedUsername" IS NULL AND "encryptedPassword" IS NULL)), CONSTRAINT "CHK_git_connection_https_auth" CHECK ("connectionType" <> 'https' OR ("publicKey" IS NULL AND "encryptedPrivateKey" IS NULL AND "keyGeneratorType" IS NULL)), CONSTRAINT "CHK_git_connection_connectionType" CHECK ("connectionType" IN ('ssh', 'https')), CONSTRAINT "CHK_git_connection_keyGeneratorType" CHECK ("keyGeneratorType" IN ('ed25519', 'rsa')))
 ```
 
 </details>
@@ -18,6 +18,7 @@ CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" var
 | baseCommit | varchar(64) |  | true |  |  |  |
 | branchName | varchar(255) |  | true |  |  |  |
 | connectionType | varchar(16) |  | false |  |  |  |
+| createBranchOnPromotion | boolean | 0 | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | encryptedPassword | TEXT |  | true |  |  |  |
 | encryptedPrivateKey | TEXT |  | true |  |  |  |
@@ -27,7 +28,6 @@ CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" var
 | name | varchar(128) |  | false |  |  |  |
 | publicKey | TEXT |  | true |  |  |  |
 | repositoryUrl | TEXT |  | false |  |  |  |
-| requireBranchForPromotion | boolean | false | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -58,6 +58,7 @@ erDiagram
   varchar_64_ baseCommit
   varchar_255_ branchName
   varchar_16_ connectionType
+  boolean createBranchOnPromotion
   datetime_3_ createdAt
   TEXT encryptedPassword
   TEXT encryptedPrivateKey
@@ -67,7 +68,6 @@ erDiagram
   varchar_128_ name
   TEXT publicKey
   TEXT repositoryUrl
-  boolean requireBranchForPromotion
   datetime_3_ updatedAt
 }
 "git_connection_project" {

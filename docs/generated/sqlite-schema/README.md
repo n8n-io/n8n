@@ -918,6 +918,7 @@ erDiagram
   varchar_64_ baseCommit
   varchar_255_ branchName
   varchar_16_ connectionType
+  boolean createBranchOnPromotion
   datetime_3_ createdAt
   TEXT encryptedPassword
   TEXT encryptedPrivateKey
@@ -927,7 +928,6 @@ erDiagram
   varchar_128_ name
   TEXT publicKey
   TEXT repositoryUrl
-  boolean requireBranchForPromotion
   datetime_3_ updatedAt
 }
 "git_connection_project" {

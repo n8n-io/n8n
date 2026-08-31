@@ -13,7 +13,7 @@ const form = (overrides: Partial<GitConnectionFormState> = {}): GitConnectionFor
 	keyGeneratorType: 'ed25519',
 	username: '',
 	password: '',
-	requireBranchForPromotion: false,
+	createBranchOnPromotion: false,
 	...overrides,
 });
 
@@ -26,7 +26,7 @@ const existing = (overrides: Partial<GitConnection> = {}): GitConnection => ({
 	publicKey: 'ssh-ed25519 AAAA',
 	keyGeneratorType: 'ed25519',
 	baseCommit: null,
-	requireBranchForPromotion: false,
+	createBranchOnPromotion: false,
 	createdAt: '2026-08-01T00:00:00.000Z',
 	updatedAt: '2026-08-01T00:00:00.000Z',
 	...overrides,
@@ -39,7 +39,7 @@ describe('buildCreatePayload', () => {
 			repositoryUrl: 'git@github.com:acme/workflows.git',
 			connectionType: 'ssh',
 			keyGeneratorType: 'rsa',
-			requireBranchForPromotion: false,
+			createBranchOnPromotion: false,
 		});
 	});
 
@@ -59,13 +59,13 @@ describe('buildCreatePayload', () => {
 			connectionType: 'https',
 			username: 'deploy-bot',
 			password: ' token-123 ',
-			requireBranchForPromotion: false,
+			createBranchOnPromotion: false,
 		});
 	});
 
-	it('sends requireBranchForPromotion when enabled', () => {
-		expect(buildCreatePayload(form({ requireBranchForPromotion: true }))).toMatchObject({
-			requireBranchForPromotion: true,
+	it('sends createBranchOnPromotion when enabled', () => {
+		expect(buildCreatePayload(form({ createBranchOnPromotion: true }))).toMatchObject({
+			createBranchOnPromotion: true,
 		});
 	});
 
@@ -119,17 +119,17 @@ describe('buildUpdatePayload', () => {
 		expect(buildUpdatePayload(form({ branchName: '' }), existing())).toEqual({});
 	});
 
-	it('sends requireBranchForPromotion only when it changed', () => {
+	it('sends createBranchOnPromotion only when it changed', () => {
 		expect(
 			buildUpdatePayload(
-				form({ branchName: 'main', requireBranchForPromotion: true }),
-				existing({ requireBranchForPromotion: false }),
+				form({ branchName: 'main', createBranchOnPromotion: true }),
+				existing({ createBranchOnPromotion: false }),
 			),
-		).toEqual({ requireBranchForPromotion: true });
+		).toEqual({ createBranchOnPromotion: true });
 		expect(
 			buildUpdatePayload(
-				form({ branchName: 'main', requireBranchForPromotion: false }),
-				existing({ requireBranchForPromotion: false }),
+				form({ branchName: 'main', createBranchOnPromotion: false }),
+				existing({ createBranchOnPromotion: false }),
 			),
 		).toEqual({});
 	});
