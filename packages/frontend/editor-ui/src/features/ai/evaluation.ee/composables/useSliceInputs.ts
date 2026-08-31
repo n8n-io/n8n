@@ -1,5 +1,10 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
-import { CHAT_TRIGGER_NODE_TYPE, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
