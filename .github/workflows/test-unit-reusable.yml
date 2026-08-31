@@ -75,8 +75,12 @@ jobs:
       - name: Test Unit (backend, except cli and nodes-base)
         run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
+      # Single package, so turbo's --concurrency has nothing to overlap and the
+      # default 50% cap leaves half the runner idle for the whole step.
       - name: Test Unit (cli, scoped)
         if: ${{ !cancelled() }}
+        env:
+          VITEST_MAX_WORKERS: '100%'
         run: pnpm turbo test:unit:changed --filter=n8n --summarize
 
       - name: Send Test Stats
@@ -181,7 +185,10 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      # Single package — see the note on "Test Unit (cli, scoped)".
       - name: Test Nodes
+        env:
+          VITEST_MAX_WORKERS: '100%'
         run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
 
       - name: Send Test Stats
