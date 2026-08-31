@@ -7,7 +7,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
 import { toN8nConnectCoverage } from '../mcp-ai-gateway.helper';
-import { LIST_N8N_CONNECT_SERVICES_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type {
 	N8nConnectCoverage,
 	ToolDefinition,
@@ -51,14 +51,14 @@ const n8nConnectSchema = z
 	.object({
 		credentialTypes: z
 			.array(z.string())
-			.describe('Credential type names that n8n credits can provide (e.g. "openAiApi").'),
+			.describe('Credential type names that Gateway credits can provide (e.g. "openAiApi").'),
 		nodes: z
 			.array(z.string())
-			.describe('Node types covered by n8n credits (e.g. "@n8n/n8n-nodes-langchain.openAi").'),
+			.describe('Node types covered by Gateway credits (e.g. "@n8n/n8n-nodes-langchain.openAi").'),
 	})
 	.optional()
 	.describe(
-		`Present when n8n credits is available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} for the authoritative contract.`,
+		`Present when Gateway credits are available for this instance. Omitted otherwise. Candidate coverage only — actual eligibility for a managed credential also depends on the node action, minimum type version, and hidden properties; call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} for the authoritative contract.`,
 	);
 
 const outputSchema = {
@@ -80,7 +80,7 @@ const outputSchema = {
 		)
 		.describe('List of credentials accessible to the current user'),
 	count: z.number().int().min(0).describe('Number of credentials returned'),
-	n8nConnect: n8nConnectSchema,
+	gatewayCredits: n8nConnectSchema,
 	error: z.string().optional().describe('Error message when the tool failed'),
 } satisfies z.ZodRawShape;
 
@@ -105,7 +105,7 @@ export type ListCredentialsItem = {
 export type ListCredentialsResult = {
 	data: ListCredentialsItem[];
 	count: number;
-	n8nConnect?: N8nConnectCoverage;
+	gatewayCredits?: N8nConnectCoverage;
 	error?: string;
 };
 
@@ -152,7 +152,7 @@ export const createListCredentialsTool = (
 			});
 
 			const coverage = toN8nConnectCoverage(await aiGatewayService.isAvailable());
-			if (coverage) payload.n8nConnect = coverage;
+			if (coverage) payload.gatewayCredits = coverage;
 
 			telemetryPayload.results = {
 				success: true,
