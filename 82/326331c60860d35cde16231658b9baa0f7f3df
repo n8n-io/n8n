@@ -1,0 +1,90 @@
+packages/@n8n/ai-utilities/src/utils/strip-non-x-headers.ts
+  s_1c45d18cf14868::t_7969e0318b3ec2 1-13
+packages/@n8n/ai-utilities/src/index.ts
+  s_1c45d18cf14868::t_419be640fb7260 87
+packages/@n8n/mcp-apps/src/telemetry/sanitize.ts
+  s_1c45d18cf14868::t_ba3a7b7fe650f4 2,14
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  s_1c45d18cf14868::t_a06f82a9703eac 551-552
+packages/@n8n/instance-ai/src/error-formatting.ts
+  s_1c45d18cf14868::t_c1d99898356089 2,54
+packages/frontend/editor-ui/src/features/ai/instanceAi/onboarding/sanitizeFailureDetail.ts
+  s_1c45d18cf14868::t_c474612001dd48 1,13
+packages/cli/src/modules/instance-ai/instance-ai-verification.service.ts
+  s_1c45d18cf14868::t_3dc92e99dcf73b 17,41
+packages/@n8n/utils/src/redaction/redact-text.ts
+  s_1c45d18cf14868::t_12f35f2eeea38c 3,179
+packages/@n8n/utils/src/redaction/redact-text.test.ts
+  s_1c45d18cf14868::t_490a8e17e3c43e 54-62
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/utils.ts
+  s_1c45d18cf14868::t_88483f153c466c 8,244,861
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_1c45d18cf14868::t_0062a60915589e 25
+  s_1c45d18cf14868::t_5a95b6c44239f8 16,32-33
+packages/@n8n/utils/src/redaction/sensitive-key.ts
+  s_1c45d18cf14868::t_3c395dca0586e1 1-6
+packages/@n8n/utils/src/redaction/sanitize-error-detail.ts
+  s_1c45d18cf14868::t_16ee201857b87f 1-7
+packages/@n8n/instance-ai/src/debug/__tests__/sanitize-debug-snapshot.test.ts
+  s_1c45d18cf14868::t_1685fed481d83d 1-16,18-35
+  s_1c45d18cf14868::t_72466da305660c 17
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_1c45d18cf14868::t_150f5671fdbb95 9,190
+packages/@n8n/ai-utilities/src/utils/__tests__/strip-non-x-headers.test.ts
+  s_1c45d18cf14868::t_008f12402c0b66 1-24
+packages/@n8n/nodes-langchain/nodes/llms/N8nNonEstimatingTracing.ts
+  s_1c45d18cf14868::t_ed25e412e5e80e 10,141
+packages/@n8n/ai-workflow-builder.ee/src/validation/checks/credentials.ts
+  s_1c45d18cf14868::t_98013292b46fe6 1,25
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/credentials.test.ts
+  s_1c45d18cf14868::t_48f9bf212026cd 118-137
+packages/@n8n/instance-ai/src/__tests__/error-formatting.test.ts
+  s_1c45d18cf14868::t_fb649ceaa5a79e 38-39,50-51,62
+packages/@n8n/ai-utilities/src/utils/n8n-llm-tracing.ts
+  s_1c45d18cf14868::t_1f942ffa3f6e49 17,255
+packages/@n8n/agents/src/skills/tools.ts
+  s_1c45d18cf14868::t_dd9b7ef1afaa72 1,293
+packages/@n8n/utils/src/redaction/sanitize-error-detail.test.ts
+  s_1c45d18cf14868::t_07f19f5628bb02 1-11
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_1c45d18cf14868::t_9b28da9b86fdde 1
+packages/cli/src/modules/agents/integrations/recording/channel-integration-recorder.ts
+  s_1c45d18cf14868::t_7d9be41bbd8446 1,43
+packages/@n8n/ai-utilities/src/utils/redact-headers.ts
+  s_1c45d18cf14868::t_4da33467c741aa 4,20
+packages/cli/src/modules/instance-ai/eval/request-sanitizer.ts
+  s_1c45d18cf14868::t_02b6beb18f8315 11
+packages/@n8n/instance-ai/src/debug/sanitize-debug-snapshot.ts
+  s_1c45d18cf14868::t_da05c8a45a4692 2,21,44
+packages/@n8n/utils/src/redaction/sensitive-headers.ts
+  s_1c45d18cf14868::t_3c81c12b2b56be 1-14
+packages/@n8n/ai-utilities/src/utils/__tests__/redact-headers.test.ts
+  s_1c45d18cf14868::t_ff9b85835c42b1 1-33
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_1c45d18cf14868::t_165b0b9564d416 21
+  s_1c45d18cf14868::t_b4a47c5da5e288 62,78-83,87-88
+  s_1c45d18cf14868::t_d15f475a02dd1b 89,169
+packages/@n8n/instance-ai/evaluations/harness/redact.ts
+  s_1c45d18cf14868::t_b1ab0ca96f2555 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "82326331c60860d35cde16231658b9baa0f7f3df",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1c45d18cf14868": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1f8b129e-d118-4a7d-af9b-a0c6cc1cd1f3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
