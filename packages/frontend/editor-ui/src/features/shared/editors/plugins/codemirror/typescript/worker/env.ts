@@ -7,7 +7,7 @@ import globalTypes from './type-declarations/globals.d.ts?raw';
 import n8nTypes from './type-declarations/n8n.d.ts?raw';
 
 import type { CodeExecutionMode } from 'n8n-workflow';
-import { wrapInFunction } from './utils';
+import { wrapInFunction, type EditorContext } from './utils';
 
 type EnvOptions = {
 	code: {
@@ -15,6 +15,7 @@ type EnvOptions = {
 		fileName: string;
 	};
 	mode: CodeExecutionMode;
+	context?: EditorContext;
 	cache: IndexedDbCache;
 };
 
@@ -32,7 +33,7 @@ export function removeUnusedLibs(fsMap: Map<string, string>) {
 	}
 }
 
-export async function setupTypescriptEnv({ cache, code, mode }: EnvOptions) {
+export async function setupTypescriptEnv({ cache, code, mode, context }: EnvOptions) {
 	const fsMap = await tsvfs.createDefaultMapFromCDN(
 		COMPILER_OPTIONS,
 		ts.version,
@@ -48,7 +49,7 @@ export async function setupTypescriptEnv({ cache, code, mode }: EnvOptions) {
 	fsMap.set(TYPESCRIPT_FILES.N8N_TYPES, n8nTypes);
 	fsMap.set(TYPESCRIPT_FILES.GLOBAL_TYPES, globalTypes);
 
-	fsMap.set(code.fileName, wrapInFunction(code.content, mode));
+	fsMap.set(code.fileName, wrapInFunction(code.content, mode, context));
 
 	const system = tsvfs.createSystem(fsMap);
 	return tsvfs.createVirtualTypeScriptEnvironment(

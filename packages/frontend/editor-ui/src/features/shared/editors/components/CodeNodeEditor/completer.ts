@@ -17,6 +17,7 @@ import { useJsonFieldCompletions } from './completions/jsonField.completions';
 import { useLuxonCompletions } from './completions/luxon.completions';
 import { usePrevNodeCompletions } from './completions/prevNode.completions';
 import { useRequireCompletions } from './completions/require.completions';
+import { useSnippetsCompletions } from '@/features/settings/snippets/completions/snippets.completions';
 import { useVariablesCompletions } from '@/features/settings/environments.ee/completions/variables.completions';
 import { useWorkflowCompletions } from './completions/workflow.completions';
 
@@ -55,6 +56,7 @@ export const useCompleter = (
 		const { prevNodeCompletions } = usePrevNodeCompletions();
 		const { requireCompletions } = useRequireCompletions();
 		const { variablesCompletions } = useVariablesCompletions();
+		const { snippetsCompletions } = useSnippetsCompletions();
 		const { workflowCompletions } = useWorkflowCompletions();
 
 		const completions = [];
@@ -80,6 +82,8 @@ export const useCompleter = (
 				prevNodeCompletions,
 				workflowCompletions,
 				variablesCompletions,
+				(context: CompletionContext) => snippetsCompletions(context, '$snippets'),
+				(context: CompletionContext) => snippetsCompletions(context, '$project'),
 				executionCompletions,
 
 				// luxon
@@ -200,6 +204,7 @@ export const useCompleter = (
 		const { matcherJsonFieldCompletions } = useJsonFieldCompletions();
 		const { dateTimeCompletions, nowCompletions, todayCompletions } = useLuxonCompletions();
 		const { variablesCompletions } = useVariablesCompletions();
+		const { snippetsCompletions } = useSnippetsCompletions();
 		const { workflowCompletions } = useWorkflowCompletions();
 
 		for (const [variable, value] of Object.entries(variablesToValueMap)) {
@@ -207,6 +212,8 @@ export const useCompleter = (
 
 			if (value === '$execution') return executionCompletions(context, variable);
 			if (value === '$vars') return variablesCompletions(context, variable);
+			if (value === '$snippets') return snippetsCompletions(context, variable, '$snippets');
+			if (value === '$project') return snippetsCompletions(context, variable, '$project');
 
 			if (value === '$workflow') return workflowCompletions(context, variable);
 			if (value === '$prevNode') return prevNodeCompletions(context);

@@ -731,6 +731,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		try {
 			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
+			// Host-transformed snippet programs, compiled inside the isolate by
+			// buildContext. JSON.stringify output is a valid JS literal to embed.
+			const snippets = options?.snippets ? JSON.stringify(options.snippets) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.
 			// Tournament generates: this.$json.email, this.$items(), etc.
@@ -748,7 +751,7 @@ var __ctx = buildContext({
   getValueAtPath: $0,
   getArrayElement: $1,
   callHost: $2,
-}, ${timezone});
+}, ${timezone}, ${snippets});
 try {
   var __result = (function() {
     ${code}

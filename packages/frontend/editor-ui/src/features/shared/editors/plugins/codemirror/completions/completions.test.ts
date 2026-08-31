@@ -108,7 +108,7 @@ describe('No completions', () => {
 describe('Top-level completions', () => {
 	test('should return dollar completions for blank position: {{ | }}', async () => {
 		const result = await completions('{{ | }}');
-		expect(result).toHaveLength(19);
+		expect(result).toHaveLength(21);
 
 		expect(result?.[0]).toEqual(
 			expect.objectContaining({
@@ -122,7 +122,7 @@ describe('Top-level completions', () => {
 				section: METADATA_SECTION,
 			}),
 		);
-		expect(result?.[15]).toEqual(
+		expect(result?.[17]).toEqual(
 			expect.objectContaining({ label: '$max()', section: METHODS_SECTION }),
 		);
 	});
@@ -155,7 +155,7 @@ describe('Top-level completions', () => {
 	});
 
 	test('should return dollar completions for: {{ $| }}', async () => {
-		expect(await completions('{{ $| }}')).toHaveLength(19);
+		expect(await completions('{{ $| }}')).toHaveLength(21);
 	});
 
 	test('should return node selector completions for: {{ $(| }}', async () => {

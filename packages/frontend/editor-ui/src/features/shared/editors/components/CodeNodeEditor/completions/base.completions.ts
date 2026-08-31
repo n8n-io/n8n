@@ -79,6 +79,14 @@ export function useBaseCompletions(
 				info: i18n.baseText('codeNodeEditor.completer.$vars'),
 			},
 			{
+				label: `${prefix}snippets`,
+				info: i18n.baseText('codeNodeEditor.completer.$snippets'),
+			},
+			{
+				label: `${prefix}project`,
+				info: i18n.baseText('codeNodeEditor.completer.$project'),
+			},
+			{
 				label: `${prefix}now`,
 				info: i18n.baseText('codeNodeEditor.completer.$now'),
 			},

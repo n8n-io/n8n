@@ -8,6 +8,8 @@ export const RESOURCES = {
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
+	snippet: [...DEFAULT_OPERATIONS] as const,
+	projectSnippet: [...DEFAULT_OPERATIONS] as const,
 	credential: [
 		'share',
 		'unshare',

@@ -1,6 +1,21 @@
-import { schemaToTypescriptTypes } from './dynamicTypes';
+import { getSnippetTypes, schemaToTypescriptTypes } from './dynamicTypes';
 
 describe('typescript worker dynamicTypes', () => {
+	describe('getSnippetTypes', () => {
+		it('emits sources for inference and skips invalid ones', () => {
+			const result = getSnippetTypes({
+				global: { double: '(n) => n * 2', broken: '(x =>' },
+				project: { TAX: '0.19' },
+			});
+
+			expect(result).toContain('double: ((n) => n * 2),');
+			expect(result).not.toContain('broken');
+			expect(result).toContain('TAX: (0.19),');
+			expect(result).toContain('const $snippets: typeof __n8nSnippetsGlobal;');
+			expect(result).toContain('const $project: typeof __n8nSnippetsProject;');
+		});
+	});
+
 	describe('schemaToTypescriptTypes', () => {
 		it('should convert a schema to a typescript type', () => {
 			expect(

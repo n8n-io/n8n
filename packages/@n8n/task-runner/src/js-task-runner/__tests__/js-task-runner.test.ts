@@ -133,6 +133,83 @@ describe('JsTaskRunner', () => {
 		});
 	};
 
+	describe('snippets', () => {
+		beforeEach(() => {
+			// Mentioning $snippets/$project switches the parser to needs-all-data,
+			// which also requests node types
+			vi.spyOn(defaultTaskRunner, 'requestNodeTypes').mockResolvedValue([]);
+		});
+
+		const executeWithSnippets = async (code: string, nodeMode: 'runOnceForAllItems') => {
+			const taskData = newDataRequestResponse([wrapIntoJson({ n: 5 })]);
+			taskData.additionalData.snippetSources = {
+				global: {
+					double: '(n) => n * 2',
+					TAX: '0.19',
+					fromJson: '() => $json.n + 1',
+					usesOther: '(n) => $snippets.double(n) + $snippets.TAX',
+					titled: '(s) => s.toTitleCase()',
+					broken: '(x =>',
+				},
+				project: { greet: "(name) => 'hi ' + name.toUpperCase()" },
+			};
+			return await execTaskWithParams({
+				task: newTaskParamsWithSettings({ code, nodeMode }),
+				taskData,
+			});
+		};
+
+		it('exposes $snippets and $project as frozen namespaces', async () => {
+			const outcome = await executeWithSnippets(
+				`return [{ json: {
+					double: $snippets.double(21),
+					tax: $snippets.TAX,
+					fromJson: $snippets.fromJson(),
+					usesOther: $snippets.usesOther(2),
+					titled: $snippets.titled('hello world'),
+					greet: $project.greet('bob'),
+					frozen: Object.isFrozen($snippets),
+				} }]`,
+				'runOnceForAllItems',
+			);
+
+			expect(outcome.result).toEqual([
+				wrapIntoJson({
+					double: 42,
+					tax: 0.19,
+					fromJson: 6,
+					usesOther: 4.19,
+					titled: 'Hello World',
+					greet: 'hi BOB',
+					frozen: true,
+				}),
+			]);
+		});
+
+		it('fails a broken block only when accessed', async () => {
+			const okOutcome = await executeWithSnippets(
+				'return [{ json: { d: $snippets.double(1) } }]',
+				'runOnceForAllItems',
+			);
+			expect(okOutcome.result).toEqual([wrapIntoJson({ d: 2 })]);
+
+			await expect(
+				executeWithSnippets('return [{ json: { b: $snippets.broken } }]', 'runOnceForAllItems'),
+			).rejects.toThrow('failed to compile');
+		});
+
+		it('leaves $snippets undefined when no blocks exist', async () => {
+			const outcome = await execTaskWithParams({
+				task: newTaskParamsWithSettings({
+					code: 'return [{ json: { type: typeof $snippets } }]',
+					nodeMode: 'runOnceForAllItems',
+				}),
+				taskData: newDataRequestResponse([wrapIntoJson({ n: 1 })]),
+			});
+			expect(outcome.result).toEqual([wrapIntoJson({ type: 'undefined' })]);
+		});
+	});
+
 	describe('Buffer security', () => {
 		it('should redirect Buffer.allocUnsafe to Buffer.alloc', async () => {
 			const outcome = await executeForAllItems({

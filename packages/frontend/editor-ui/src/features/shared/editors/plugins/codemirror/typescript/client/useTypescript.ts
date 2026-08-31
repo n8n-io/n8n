@@ -2,6 +2,7 @@ import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/features/shared/editors/plugins/codemirror/completions/utils';
+import { useSnippetsStore } from '@/features/settings/snippets/snippets.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -55,6 +56,9 @@ export function useTypescript(
 					toValue(targetNodeParameterContext),
 				),
 				variables: useEnvironmentsStore().scopedVariables.map((v) => v.key),
+				snippets: useSnippetsStore().sourcesForProject(
+					workflowDocumentStore.value.homeProject?.id,
+				),
 				inputNodeNames: activeNodeName
 					? (workflowDocumentStore?.value?.getParentNodes(
 							activeNodeName,

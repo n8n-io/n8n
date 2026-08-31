@@ -123,6 +123,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		try {
 			const result = bridge.execute(transformedCode, data, {
 				timezone: options?.timezone,
+				snippets: options?.snippets,
 			});
 			recordOutcome(observability, start, 'success');
 			return result;

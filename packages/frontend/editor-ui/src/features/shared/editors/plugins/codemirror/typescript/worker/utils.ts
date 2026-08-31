@@ -7,7 +7,26 @@ export const fnPrefix = (mode: CodeExecutionMode) => `(
 */
 () => {\n`;
 
-export function wrapInFunction(script: string, mode: CodeExecutionMode): string {
+/** What the edited file contains: a Code node script or a snippet expression */
+export type EditorContext = 'codeNode' | 'snippet';
+
+// Snippets are a single expression, so wrap as a returned expression
+// (no @returns contract — the snippet's type is whatever it infers to)
+export const snippetFnPrefix = `(
+() => {
+return (\n`;
+
+export const prefixForContext = (mode: CodeExecutionMode, context: EditorContext) =>
+	context === 'snippet' ? snippetFnPrefix : fnPrefix(mode);
+
+export function wrapInFunction(
+	script: string,
+	mode: CodeExecutionMode,
+	context: EditorContext = 'codeNode',
+): string {
+	if (context === 'snippet') {
+		return `${snippetFnPrefix}${script}\n)})()`;
+	}
 	return `${fnPrefix(mode)}${script}\n})()`;
 }
 

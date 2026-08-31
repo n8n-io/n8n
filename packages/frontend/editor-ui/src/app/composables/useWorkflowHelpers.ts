@@ -37,6 +37,7 @@ import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/
 
 import get from 'lodash/get';
 
+import { useSnippetsStore } from '@/features/settings/snippets/snippets.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -112,6 +113,7 @@ export async function resolveParameter<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
+		$__snippets: useSnippetsStore().sourcesForProject(workflowDocumentStore.homeProject?.id),
 		$tool: isHitlToolType(activeNode?.type)
 			? {
 					name: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
