@@ -186,22 +186,19 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const fullActions = [
-	listAction,
-	searchAction,
-	describeAction,
-	typeDefinitionAction,
-	suggestedAction,
-	exploreResourcesAction,
-] as const;
-
-const fullInputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...fullActions]));
-
-const fullInputSchemaWithExecute = sanitizeInputSchema(
-	z.discriminatedUnion('action', [...fullActions, executeAction]),
+const fullInputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [
+		listAction,
+		searchAction,
+		describeAction,
+		typeDefinitionAction,
+		suggestedAction,
+		exploreResourcesAction,
+		executeAction,
+	]),
 );
 
-type FullInput = z.infer<typeof fullInputSchemaWithExecute>;
+type FullInput = z.infer<typeof fullInputSchema>;
 
 interface SearchEngineCache {
 	nodeTypes?: SearchableNodeType[];
@@ -567,7 +564,7 @@ export function createNodesTool(
 		.description(
 			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
-		.input(context.executeNodeService ? fullInputSchemaWithExecute : fullInputSchema)
+		.input(fullInputSchema)
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input: FullInput, ctx) => {

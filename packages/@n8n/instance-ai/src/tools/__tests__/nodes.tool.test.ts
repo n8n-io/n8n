@@ -1,6 +1,5 @@
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
-import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
@@ -745,19 +744,6 @@ describe('nodes tool', () => {
 			);
 
 			expect(result).toMatchObject({ status: 'error' });
-		});
-
-		it('should omit the execute action from the input schema when the service is absent', () => {
-			const withService = createNodesTool(
-				createMockContext({ executeNodeService: { execute: vi.fn() } }),
-				'full',
-			);
-			const withoutService = createNodesTool(createMockContext(), 'full');
-
-			const parse = (tool: ReturnType<typeof createNodesTool>) =>
-				(tool.inputSchema as z.ZodTypeAny).safeParse(executeInput).success;
-			expect(parse(withService)).toBe(true);
-			expect(parse(withoutService)).toBe(false);
 		});
 	});
 });
