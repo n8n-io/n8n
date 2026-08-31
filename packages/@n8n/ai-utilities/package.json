@@ -31,6 +31,9 @@
       "json-schema": [
         "dist/esm/json-schema/index.d.ts"
       ],
+      "llm-output": [
+        "dist/esm/llm-output/index.d.ts"
+      ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
       ],
