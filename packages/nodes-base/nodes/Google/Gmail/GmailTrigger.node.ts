@@ -30,6 +30,13 @@ import type {
 	MessageListResponse,
 } from './types';
 
+// Bounds one poll's list requests. Hitting the cap does not lose mail: the
+// leftover page token makes the poll hold the cursor (see poll below).
+const MAX_LIST_PAGES = 20;
+// Tracked-id count (pending + boundary ids) at which the poll stops holding
+// the cursor and accepts skipping any unlisted remainder.
+const MAX_TRACKED_BACKLOG_IDS = 5_000;
+
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gmail Trigger',
@@ -389,6 +396,12 @@ export class GmailTrigger implements INodeType {
 			}
 		};
 
+		// A poll that never starts listing (early pending return) has no unlisted
+		// remainder, so the default keeps the cursor advance allowed. The list loop
+		// flips this to false on entry; from then on only an exhausted token proves
+		// the window complete.
+		let windowFullyListed = true;
+
 		try {
 			let budget = maxResults;
 
@@ -451,23 +464,41 @@ export class GmailTrigger implements INodeType {
 				}
 			}
 
-			const messagesResponse: MessageListResponse = await googleApiRequest.call(
-				this,
-				'GET',
-				'/gmail/v1/users/me/messages',
-				{},
-				qs,
-			);
+			let messages: ListMessage[] = [];
+			let pageToken: string | undefined;
+			let pagesListed = 0;
+			// From here on, an exception mid-loop must read as "not fully listed":
+			// the catch path continues to the cursor advance, and a stale `true`
+			// would skip everything the failed pages never showed.
+			windowFullyListed = false;
+			do {
+				const messagesResponse: MessageListResponse = await googleApiRequest.call(
+					this,
+					'GET',
+					'/gmail/v1/users/me/messages',
+					{},
+					pageToken ? { ...qs, pageToken } : qs,
+				);
+				messages.push(...(messagesResponse.messages ?? []));
+				pageToken = messagesResponse.nextPageToken;
+				pagesListed++;
+			} while (shouldLimitMessages && pageToken && pagesListed < MAX_LIST_PAGES);
+			// A leftover token means the cap cut the listing short. Gmail lists newest
+			// first, so the remainder is older mail; a cursor moved past it would
+			// never list it again.
+			windowFullyListed = !pageToken;
 
-			let messages: ListMessage[] = messagesResponse.messages ?? [];
+			// Pagination can repeat an id across pages when the mailbox shifts
+			// between page fetches; one id must map to one delivery.
+			messages = Array.from(new Map(messages.map((m) => [m.id, m])).values());
 
 			if (!messages.length && !allFetchedMessages.length) {
 				return null;
 			}
 
-			// For v1.4+, filter out boundary duplicates before fetching to save API calls.
-			// Gmail's `after:` query is inclusive at the second boundary, so messages at
-			// the lastTimeChecked timestamp can reappear.
+			// For v1.4+, filter out already-handled messages before fetching to save API
+			// calls. Gmail's `after:` query is inclusive at the second boundary, and a
+			// held cursor re-lists its whole window, so handled messages can reappear.
 			if (shouldLimitMessages) {
 				const possibleDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 				if (possibleDuplicates.size > 0) {
@@ -475,6 +506,18 @@ export class GmailTrigger implements INodeType {
 				}
 
 				if (!messages.length && !allFetchedMessages.length) {
+					// No-progress valve: the page cap cut the listing short, yet every
+					// reachable id is already tracked. Holding again would repeat this
+					// tick forever — no backlog progress and no new mail. Give up loudly:
+					// jump the cursor to now and skip what the cap keeps unreachable.
+					if (!windowFullyListed) {
+						this.logger.warn(
+							'Gmail Trigger backlog cannot progress past the page cap; advancing past unlisted older messages',
+							{ node: node.name },
+						);
+						nodeStaticData.lastTimeChecked = +now;
+						nodeStaticData.possibleDuplicates = [];
+					}
 					return null;
 				}
 			}
@@ -542,10 +585,29 @@ export class GmailTrigger implements INodeType {
 			}
 		}
 
-		const effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
+		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
+		if (shouldLimitMessages && !windowFullyListed) {
+			const trackedIds =
+				(nodeStaticData.pendingMessageIds?.length ?? 0) +
+				(nodeStaticData.possibleDuplicates?.length ?? 0);
+			if (trackedIds < MAX_TRACKED_BACKLOG_IDS) {
+				// Unlisted older mail exists beyond the page cap. Hold the cursor so later
+				// polls can still list it. The possibleDuplicates update below keeps every
+				// handled id filterable, so the held-cursor re-list cannot re-emit them.
+				effectiveLastTimeChecked = +startDate;
+			} else {
+				// Give-up valve: holding again would grow the tracked-id state without
+				// bound. Advance and accept skipping the unlisted older mail instead.
+				this.logger.warn(
+					`Gmail Trigger backlog exceeds ${MAX_TRACKED_BACKLOG_IDS} tracked ids; advancing past unlisted older messages`,
+					{ node: node.name },
+				);
+			}
+		}
 
-		// When lastTimeChecked didn't advance (e.g., only older pending messages were processed),
-		// preserve existing possibleDuplicates — they're still at the query boundary.
+		// When lastTimeChecked didn't advance (only older pending messages were
+		// processed, or the cursor is held), preserve existing possibleDuplicates —
+		// they're still at the query boundary.
 		if (effectiveLastTimeChecked === +startDate && nodeStaticData.possibleDuplicates?.length) {
 			const merged = new Set([...nodeStaticData.possibleDuplicates, ...nextPollPossibleDuplicates]);
 			nodeStaticData.possibleDuplicates = Array.from(merged);

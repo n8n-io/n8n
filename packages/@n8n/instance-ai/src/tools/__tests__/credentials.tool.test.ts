@@ -784,7 +784,7 @@ describe('credentials tool', () => {
 			expect(result).toEqual({ results: [] });
 		});
 
-		it('should enumerate n8n Connect types when n8nConnectOnly is set, ignoring query', async () => {
+		it('should enumerate Gateway credits types when gatewayCreditsOnly is set, ignoring query', async () => {
 			const context = createMockContext();
 			context.credentialService.listAiGatewayCredentialTypes = vi
 				.fn()
@@ -793,7 +793,7 @@ describe('credentials tool', () => {
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
 				tool,
-				{ action: 'search-types' as const, n8nConnectOnly: true },
+				{ action: 'search-types' as const, gatewayCreditsOnly: true },
 				noSuspendCtx(),
 			);
 
@@ -801,27 +801,27 @@ describe('credentials tool', () => {
 			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				results: [
-					{ type: 'openAiApi', n8nConnect: true },
-					{ type: 'anthropicApi', n8nConnect: true },
+					{ type: 'openAiApi', gatewayCredits: true },
+					{ type: 'anthropicApi', gatewayCredits: true },
 				],
 			});
 		});
 
-		it('should return empty results for n8nConnectOnly when the accessor is unavailable', async () => {
+		it('should return empty results for gatewayCreditsOnly when the accessor is unavailable', async () => {
 			const context = createMockContext();
 			context.credentialService.listAiGatewayCredentialTypes = undefined;
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
 				tool,
-				{ action: 'search-types' as const, n8nConnectOnly: true },
+				{ action: 'search-types' as const, gatewayCreditsOnly: true },
 				noSuspendCtx(),
 			);
 
 			expect(result).toEqual({ results: [] });
 		});
 
-		it('should error when query is omitted without n8nConnectOnly', async () => {
+		it('should error when query is omitted without gatewayCreditsOnly', async () => {
 			const context = createMockContext();
 
 			const tool = createCredentialsTool(context);

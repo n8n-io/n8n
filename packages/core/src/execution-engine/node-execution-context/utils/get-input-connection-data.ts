@@ -540,12 +540,18 @@ export async function getInputConnectionData(
 					currentNodeRunIndex = runExecutionData.resultData.runData[parentNode.name].length;
 				}
 
+				// The `subRun` entry is merged onto `runData[<name>][currentNodeRunIndex]` at the
+				// end of the execution, so it has to name a node that gets a record there. A
+				// top-level parent gets one appended right after this failure; a sub-node parent
+				// never does.
+				const subRunTarget = this instanceof SupplyDataContext ? undefined : parentNode.name;
+
 				// Display the error on the node which is causing it
 				await context.addExecutionDataFunctions(
 					'input',
 					error,
 					connectionType,
-					parentNode.name,
+					subRunTarget,
 					currentNodeRunIndex,
 				);
 
@@ -553,7 +559,7 @@ export async function getInputConnectionData(
 					'output',
 					error,
 					connectionType,
-					parentNode.name,
+					subRunTarget,
 					currentNodeRunIndex,
 				);
 
