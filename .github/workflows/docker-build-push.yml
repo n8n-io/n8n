@@ -565,6 +565,18 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
 
+      # An empty document still gets signed and attached, and trivy still loads
+      # it — so a statement lost to a typo'd purl or a stale pin degrades to a
+      # silent no-op. Warn rather than fail: empty is a legitimate state when
+      # nothing is currently suppressed.
+      - name: Report VEX statement count
+        run: |
+          COUNT=$(node -e "process.stdout.write(String((require('./security/vex.openvex.json').statements ?? []).length))")
+          echo "VEX statements: $COUNT"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::warning::VEX document has no statements - every published image will carry an attestation that suppresses nothing."
+          fi
+
       - name: Login to GHCR
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
@@ -605,11 +617,11 @@ jobs:
             ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
 
   # SBOM Attestation - one enriched, license-gated CycloneDX SBOM per image.
-  # cdxgen scans the image (OS + npm), enrich-sbom resolves first-party + override
-  # licenses, check-sbom-licenses gates the npm components, and the result is
-  # attested to the image digest via cosign (same mechanism as VEX/provenance).
-  # This replaces BuildKit's `sbom: true` so the image carries the same resolved
-  # license picture as the release SBOM rather than the un-enriched syft output.
+  # syft scans the image for OS and npm packages. enrich-sbom resolves first-party
+  # and override licenses. check-sbom-licenses gates the npm components. cosign then
+  # attests the result to the image digest, as it does for VEX and provenance.
+  # The build sets oci-mediatypes on the exporter to get the OCI index format,
+  # so BuildKit emits no SBOM. This job supplies the license data.
   sbom-attestation:
     name: SBOM Attestation
     needs:
@@ -637,12 +649,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup Node.js and install SBOM tooling
+      # Nothing to install: syft replaced cdxgen, and the two license scripts have
+      # no dependencies. This step only pins the Node version.
+      - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: ''
+          # Scope the cache key: the default is the root lockfile, which would
+          # restore the whole workspace pnpm store into a job that never runs pnpm.
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      # Pin the scanner, not just the action. cdxgen was pinned in a lockfile;
+      # syft's default version rides the action release, so a SHA bump would
+      # silently change what produces the signed SBOM. enrich-sbom.mjs depends
+      # on two syft specifics — the `syft:location:0:path` property name and the
+      # `UNKNOWN` version sentinel — so re-A/B against a real image when bumping.
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@43a17d6e7add2b5535efe4dcae9952337c479a93 # v0.20.11
+        with:
+          # Matches what this action SHA already defaults to, so pinning it
+          # records the current behaviour rather than changing it.
+          syft-version: v1.38.2
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
