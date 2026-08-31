@@ -1,0 +1,28 @@
+packages/cli/src/sso.ee/oidc/routes/oidc.controller.ee.ts
+  s_1e44d77fe168f0::t_ae2f12bf5266b9 96-100
+packages/cli/src/sso.ee/oidc/oidc.service.ee.ts
+  s_1e44d77fe168f0::t_6e6fa7c3079b3b 180-185,187
+  s_1e44d77fe168f0::t_78d76530b97932 222
+packages/cli/src/sso.ee/oidc/routes/__tests__/oidc.controller.ee.test.ts
+  s_1e44d77fe168f0::t_1b25bface0189b 151-174
+  s_1e44d77fe168f0::t_d5a543ce128741 10
+packages/cli/src/sso.ee/oidc/__tests__/oidc.service.ee.test.ts
+  s_1e44d77fe168f0::t_2c56634dedb823 56-61
+  s_1e44d77fe168f0::t_e4b82d98002dbe 97-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a49c2d08b6ccff48cd0d1949190d45d2d25f16f6",
+  "prompts": {},
+  "sessions": {
+    "s_1e44d77fe168f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c70f990a-548d-4ed0-b087-cd7370e2cd0e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
