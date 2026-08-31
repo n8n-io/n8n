@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const positiveIntSchema = z.number({ coerce: true }).int().positive();
+export const nonnegativeIntSchema = z.number({ coerce: true }).int().nonnegative();
 
 /**
  * A concurrency cap: a positive integer, or `-1` for unlimited — the convention already

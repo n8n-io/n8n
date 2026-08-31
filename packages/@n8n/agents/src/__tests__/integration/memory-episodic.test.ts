@@ -44,40 +44,55 @@ describe('episodic memory integration', () => {
 		}
 	});
 
-	function createEpisodicAgent(name: string): {
-		agent: Agent;
+	/**
+	 * Creates two agents sharing one memory store:
+	 * - `setupAgent` observes eagerly (1-token threshold) so every setup turn
+	 *   feeds the observation log and episodic capture immediately.
+	 * - `recallAgent` uses a production-like threshold so mid-run observation
+	 *   never masks the recall question between the recall_memory tool batch
+	 *   and the final answer.
+	 */
+	function createEpisodicAgents(name: string): {
+		setupAgent: Agent;
+		recallAgent: Agent;
 		memory: ReturnType<typeof createInMemoryAgentMemory>['memory'];
 	} {
 		const { memory, cleanup } = createInMemoryAgentMemory();
-		const memoryConfig = new Memory()
-			.storage(memory)
-			.observationalMemory({
-				observerThresholdTokens: 1,
-				reflectorThresholdTokens: 10_000,
-				observationLogTailLimit: 20,
-			})
-			.episodicMemory({ topK: EPISODIC_MEMORY_TEST_RECALL_LIMIT });
 
-		const agent = new Agent(name)
-			.model(EPISODIC_MEMORY_MODEL)
-			.instructions(
-				[
-					'You are a concise assistant.',
-					'When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering.',
-					'Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result.',
-					'Use exact identifiers verbatim.',
-					'If no relevant prior memory is available, say you do not have saved prior memory for that request.',
-					'When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations.',
-				].join(' '),
-			)
-			.memory(memoryConfig);
+		const instructions = [
+			'You are a concise assistant.',
+			'When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering.',
+			'Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result.',
+			'Use exact identifiers verbatim.',
+			'If no relevant prior memory is available, say you do not have saved prior memory for that request.',
+			'When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations.',
+		].join(' ');
+
+		const buildAgent = (observerThresholdTokens: number) =>
+			new Agent(name)
+				.model(EPISODIC_MEMORY_MODEL)
+				.instructions(instructions)
+				.memory(
+					new Memory()
+						.storage(memory)
+						.observationalMemory({
+							observerThresholdTokens,
+							reflectorThresholdTokens: 10_000,
+							observationLogTailLimit: 20,
+						})
+						.episodicMemory({ topK: EPISODIC_MEMORY_TEST_RECALL_LIMIT }),
+				);
+
+		const setupAgent = buildAgent(1);
+		const recallAgent = buildAgent(100_000);
 
 		cleanups.push(async () => {
-			await agent.close();
+			await setupAgent.close();
+			await recallAgent.close();
 			cleanup();
 		});
 
-		return { agent, memory };
+		return { setupAgent, recallAgent, memory };
 	}
 
 	function uniqueId(prefix: string): string {
@@ -85,11 +100,11 @@ describe('episodic memory integration', () => {
 	}
 
 	it('recalls exact artifacts across threads when explicitly asked for prior context', async () => {
-		const { agent, memory } = createEpisodicAgent('episodic-cross-thread');
+		const { setupAgent, recallAgent, memory } = createEpisodicAgents('episodic-cross-thread');
 		const resourceId = uniqueId('resource-cross-thread');
 
 		await generateSuccessfully(
-			agent,
+			setupAgent,
 			[
 				'IMPORTANT durable prior decision for future sessions.',
 				'Preserve this exact durable memory sentence for future recall:',
@@ -99,7 +114,7 @@ describe('episodic memory integration', () => {
 			{ persistence: { threadId: uniqueId('thread-acme-setup'), resourceId } },
 		);
 		await waitForEpisodicMemoryCapture();
-		await agent.close();
+		await setupAgent.close();
 
 		const entries = await searchEpisodicEntries(
 			memory,
@@ -114,7 +129,7 @@ describe('episodic memory integration', () => {
 		expect(storedText).toContain('#vendor-acme-harbor');
 
 		const result = await generateSuccessfully(
-			agent,
+			recallAgent,
 			'You must call recall_memory before answering. Use the recall query "Acme Harbor Vendor Intake - Pilot #vendor-acme-harbor Waiting on Vendor Info". From previous conversations, what tracker title, Slack channel, and Waiting on Vendor Info meaning did we decide for Acme Harbor?',
 			{ persistence: { threadId: uniqueId('thread-acme-recall'), resourceId } },
 		);
@@ -135,13 +150,13 @@ describe('episodic memory integration', () => {
 	});
 
 	it('keeps similar customer cases distinct during cross-session recall', async () => {
-		const { agent, memory } = createEpisodicAgent('episodic-distinct-cases');
+		const { setupAgent, recallAgent, memory } = createEpisodicAgents('episodic-distinct-cases');
 		const resourceId = uniqueId('resource-distinct-cases');
 		const redwoodThreadId = uniqueId('thread-redwood');
 		const cedarThreadId = uniqueId('thread-cedar');
 
 		await generateSuccessfully(
-			agent,
+			setupAgent,
 			[
 				'These are final durable Redwood Clinics details for future conversations.',
 				'Customer: Redwood Clinics.',
@@ -153,10 +168,10 @@ describe('episodic memory integration', () => {
 			{ persistence: { threadId: redwoodThreadId, resourceId } },
 		);
 		await waitForEpisodicMemoryCapture();
-		await agent.close();
+		await setupAgent.close();
 
 		await generateSuccessfully(
-			agent,
+			setupAgent,
 			[
 				'These are final durable Cedar Labs details for future conversations.',
 				'Customer: Cedar Labs.',
@@ -168,24 +183,30 @@ describe('episodic memory integration', () => {
 			{ persistence: { threadId: cedarThreadId, resourceId } },
 		);
 		await waitForEpisodicMemoryCapture();
-		await agent.close();
+		await setupAgent.close();
 
 		const redwoodEntries = await searchEpisodicEntries(
 			memory,
 			resourceId,
 			'Redwood Clinic Intake Board #redwood-intake Clinic Ops',
 		);
-		expect(redwoodEntries.length).toBeGreaterThan(0);
+		// Content checks (not just length): a search can match the *other*
+		// customer's entry on structural similarity, hiding a failed capture.
+		expect(normalizedText(redwoodEntries.map((entry) => entry.content).join('\n'))).toContain(
+			normalizedText('Redwood Clinic Intake Board'),
+		);
 
 		const cedarEntries = await searchEpisodicEntries(
 			memory,
 			resourceId,
 			'Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance',
 		);
-		expect(cedarEntries.length).toBeGreaterThan(0);
+		expect(normalizedText(cedarEntries.map((entry) => entry.content).join('\n'))).toContain(
+			normalizedText('Cedar Lab Partner Queue'),
+		);
 
 		const result = await generateSuccessfully(
-			agent,
+			recallAgent,
 			'You must call recall_memory before answering. Use the recall query "Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate.',
 			{ persistence: { threadId: uniqueId('thread-distinct-recall'), resourceId } },
 		);
@@ -202,25 +223,25 @@ describe('episodic memory integration', () => {
 	});
 
 	it('recalls corrected current state without treating stale values as current', async () => {
-		const { agent } = createEpisodicAgent('episodic-correction');
+		const { setupAgent, recallAgent } = createEpisodicAgents('episodic-correction');
 		const resourceId = uniqueId('resource-correction');
 
 		await generateSuccessfully(
-			agent,
+			setupAgent,
 			'Please remember this Orion Export setup for a future conversation: the initial tracker title is Orion Vendor Intake Draft. Repeat it back once.',
 			{ persistence: { threadId: uniqueId('thread-orion-setup'), resourceId } },
 		);
 		await waitForEpisodicMemoryCapture();
 		await generateSuccessfully(
-			agent,
+			setupAgent,
 			'Correction for Orion Export: please remember that the final tracker title is exactly Orion Vendor Command Center. Orion Vendor Intake Draft is outdated and must not be treated as current. Repeat the corrected value once.',
 			{ persistence: { threadId: uniqueId('thread-orion-setup'), resourceId } },
 		);
 		await waitForEpisodicMemoryCapture();
-		await agent.close();
+		await setupAgent.close();
 
 		const result = await generateSuccessfully(
-			agent,
+			recallAgent,
 			'You must call recall_memory before answering. From previous memory, what is the current final tracker title for Orion Export? If an earlier title existed, mention it only as outdated.',
 			{ persistence: { threadId: uniqueId('thread-orion-recall'), resourceId } },
 		);
@@ -234,18 +255,18 @@ describe('episodic memory integration', () => {
 	});
 
 	it('isolates episodic memory between resources for the same agent', async () => {
-		const { agent, memory } = createEpisodicAgent('episodic-resource-isolation');
+		const { setupAgent, recallAgent, memory } = createEpisodicAgents('episodic-resource-isolation');
 		const resourceA = uniqueId('resource-alpha');
 		const resourceB = uniqueId('resource-beta');
 		const privateIdentifier = 'QUARTZ-RIVER-91';
 
 		await generateSuccessfully(
-			agent,
+			setupAgent,
 			`Please remember this Resource Alpha detail for a future conversation, then repeat it back once: the exact deployment codename is ${privateIdentifier}.`,
 			{ persistence: { threadId: uniqueId('thread-alpha'), resourceId: resourceA } },
 		);
 		await waitForEpisodicMemoryCapture();
-		await agent.close();
+		await setupAgent.close();
 
 		const alphaEntries = await searchEpisodicEntries(
 			memory,
@@ -262,7 +283,7 @@ describe('episodic memory integration', () => {
 		expect(betaEntries).toEqual([]);
 
 		const result = await generateSuccessfully(
-			agent,
+			recallAgent,
 			'From previous memory, what deployment codename did I give you?',
 			{ persistence: { threadId: uniqueId('thread-beta-recall'), resourceId: resourceB } },
 		);
@@ -270,12 +291,12 @@ describe('episodic memory integration', () => {
 	});
 
 	it('keeps indexed entries source-backed with source thread evidence', async () => {
-		const { agent, memory } = createEpisodicAgent('episodic-source-backed');
+		const { setupAgent, memory } = createEpisodicAgents('episodic-source-backed');
 		const resourceId = uniqueId('resource-source-backed');
 		const threadId = uniqueId('thread-lumen');
 
 		await generateSuccessfully(
-			agent,
+			setupAgent,
 			[
 				'IMPORTANT durable prior decision for future sessions.',
 				'Please remember these final Lumen Trail details for future conversations.',
@@ -288,7 +309,7 @@ describe('episodic memory integration', () => {
 			{ persistence: { threadId, resourceId } },
 		);
 		await waitForEpisodicMemoryCapture();
-		await agent.close();
+		await setupAgent.close();
 
 		const observations = await memory.getActiveObservationLog({
 			observationScopeId: threadId,

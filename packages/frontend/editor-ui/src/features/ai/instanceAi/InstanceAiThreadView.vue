@@ -32,6 +32,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
@@ -87,6 +89,8 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
@@ -751,6 +755,8 @@ function reconnectThreadAfterHydration(): void {
 					if (!store.threads.some((t) => t.id === props.threadId)) return;
 					stashPendingFirstMessage(props.threadId, pending);
 				});
+			// Experiment cleanup: remove with openWorkflowInAssistant.
+			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
 		}
 	});
 }
@@ -1389,6 +1395,8 @@ async function dismissComposerContextChip() {
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
 </template>
 
