@@ -8,9 +8,9 @@ import type { BridgeConfig, RuntimeBridge } from '../types';
  * suite using this factory runs against both bridges.
  */
 const engine = process.env.N8N_EXPRESSION_ENGINE;
-if (!engine) {
+if (!engine || engine === 'legacy') {
 	throw new Error(
-		'test-bridge imported outside an engine project — add this test file to ENGINE_AWARE in vitest.config.ts',
+		`test-bridge requires an isolated engine, got '${engine ?? ''}' — add this test file to ENGINE_AWARE in vitest.config.ts`,
 	);
 }
 
