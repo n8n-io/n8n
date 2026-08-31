@@ -580,26 +580,54 @@ describe('GET /executions', () => {
 		expect(response.body.message).toBe('An invalid cursor was provided');
 	});
 
-	test('should return 400 for a cursor that decodes to an unusable shape', async () => {
+	// Statuses measured against the legacy handler on master. Anything that answered 200 there
+	// must still answer 200, or a call that works today breaks on upgrade.
+	test('should keep the legacy accept and reject boundary for odd cursor shapes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
 		const encode = (payload: unknown) => Buffer.from(JSON.stringify(payload)).toString('base64');
 
-		const unusable: unknown[] = [
-			{},
-			{ limit: 10 },
-			{ lastId: 123 },
-			{ lastId: { id: '1' } },
-			{ lastId: null },
-			[],
-			'a string',
-			42,
+		// An unusable `lastId` is ignored rather than rejected, so it yields the first page.
+		const tolerated: Array<[unknown, number]> = [
+			[{}, 3],
+			[{ limit: 2 }, 2],
+			[{ lastId: null }, 3],
+			[{ lastId: { id: '1' } }, 3],
+			[[], 3],
 		];
 
-		for (const payload of unusable) {
+		for (const [payload, rows] of tolerated) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: encode(payload) });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(rows);
+		}
+
+		// Legacy read `'offset' in decoded`, which throws on a scalar.
+		for (const payload of ['a string', 42]) {
 			const response = await authOwnerAgent.get('/executions').query({ cursor: encode(payload) });
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.message).toBe('An invalid cursor was provided');
 		}
+	});
+
+	test('should accept a numeric lastId, as the legacy handler did', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const first = await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const cursor = Buffer.from(
+			JSON.stringify({ lastId: Number(first.id) + 1, limit: 10 }),
+		).toString('base64');
+		const response = await authOwnerAgent.get('/executions').query({ cursor });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].id).toBe(first.id);
 	});
 
 	test('should accept both supported cursor shapes', async () => {

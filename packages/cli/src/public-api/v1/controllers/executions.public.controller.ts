@@ -36,18 +36,23 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 /** `deletedAt` is on the entity but missing from `IExecutionBase`, and the response carries it. */
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse> & { deletedAt?: Date | null };
 
+/**
+ * Mirrors what legacy accepted: it read `'offset' in decoded`, which throws on a scalar but
+ * tolerates any object or array. An unusable `lastId` was passed straight through, where it
+ * simply matched nothing and yielded the first page.
+ */
 function isCursorObject(
 	value: unknown,
 ): value is { lastId?: unknown; offset?: unknown; limit?: unknown } {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
+	return typeof value === 'object' && value !== null;
 }
 
 /**
  * Resolves the paging window from an optional cursor, falling back to the query's own limit.
  *
- * A cursor is unsigned, so its decoded fields are caller-supplied. Only the two shapes this
- * endpoint emits are accepted: the `lastId` form, and the offset form legacy also tolerated
- * here, whose `offset` is ignored and only its limit honoured.
+ * A cursor is unsigned, so its decoded fields are caller-supplied. The accept/reject boundary
+ * is deliberately the same as legacy, so no call that worked before now fails. The one
+ * departure is bounding the decoded limit, which legacy left unbounded.
  */
 function resolveCursorPaging(
 	cursor: string | undefined,
@@ -55,23 +60,26 @@ function resolveCursorPaging(
 ): { lastId?: string; limit: number } {
 	if (!cursor) return { limit: queryLimit };
 
-	const invalid = new BadRequestError('An invalid cursor was provided');
-
 	let decoded: unknown;
 	try {
 		decoded = decodeCursor(cursor);
 	} catch {
-		throw invalid;
+		throw new BadRequestError('An invalid cursor was provided');
 	}
 
-	if (!isCursorObject(decoded)) throw invalid;
+	if (!isCursorObject(decoded)) throw new BadRequestError('An invalid cursor was provided');
 
-	const lastId = typeof decoded.lastId === 'string' ? decoded.lastId : undefined;
-	if (lastId === undefined && !Number.isInteger(decoded.offset)) throw invalid;
+	// Legacy coerced nothing, so a numeric `lastId` reached the query and worked. Anything
+	// else is ignored rather than rejected, which yields the first page as it did before.
+	const lastId =
+		typeof decoded.lastId === 'string' || typeof decoded.lastId === 'number'
+			? String(decoded.lastId)
+			: undefined;
 
 	const limit =
 		typeof decoded.limit === 'number' && Number.isInteger(decoded.limit)
-			? // Floored at 1: TypeORM omits the SQL LIMIT clause for `take: 0`.
+			? // Bounded at 1 and MAX_ITEMS_PER_PAGE. Legacy applied neither, so `take: 0` or a
+				// negative value dropped the SQL LIMIT clause and scanned every visible row.
 				Math.min(Math.max(decoded.limit, 1), MAX_ITEMS_PER_PAGE)
 			: queryLimit;
 
