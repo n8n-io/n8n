@@ -38,6 +38,7 @@ import {
 } from '../instanceAiConnection.constants';
 import { getAllInstanceAiModelOptions, getInstanceAiModelOptions } from '../instanceAiModelCatalog';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { sanitizeFailureDetail } from './sanitizeFailureDetail';
 import type { InstanceAiOnboardingStep } from './useInstanceAiOnboarding';
 
 const DAYTONA_API_URL = 'https://app.daytona.io/api';
@@ -45,7 +46,8 @@ const N8N_SANDBOX_HEADER = 'x-api-key';
 const STATIC_SECRET_MASK = '••••••••••••';
 const SANDBOX_DOCS_URL =
 	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant#configure-a-sandbox-provider';
-const SEARCH_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
+const SEARCH_DOCS_URL =
+	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant#enable-web-search';
 const BRAVE_SEARCH_KEYS_URL = 'https://api-dashboard.search.brave.com/app/keys';
 const ENV_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
 const SUCCESS_PAUSE_MS = TIME.SECOND * 1.5;
@@ -94,6 +96,7 @@ const { credentialTestError, testSavedCredential } = useInstanceCredentialTest()
 
 const busy = ref(false);
 const failure = ref<InstanceAiVerificationFailure | null>(null);
+const failureDetail = ref<string | null>(null);
 const success = ref<VerificationSuccess | null>(null);
 const modelProvider = ref<InstanceAiModelProvider>('anthropic');
 const modelApiKey = ref('');
@@ -412,6 +415,7 @@ async function hydrateSearch(generation: number): Promise<void> {
 async function hydrate(): Promise<void> {
 	const generation = ++hydrationGeneration;
 	failure.value = null;
+	failureDetail.value = null;
 	success.value = null;
 	if (props.step === 'model') await hydrateModel(generation);
 	if (props.step === 'sandbox') await hydrateSandbox(generation);
@@ -449,6 +453,7 @@ watch(
 	],
 	() => {
 		failure.value = null;
+		failureDetail.value = null;
 		success.value = null;
 		credentialTestError.value = '';
 	},
@@ -594,7 +599,13 @@ async function verifyExistingCredential(): Promise<InstanceAiVerificationRespons
 	if (!credential) return { ok: false, failure: 'provider_error' };
 	return (await testSavedCredential(credential.id, credential.name, credential.type))
 		? { ok: true }
-		: { ok: false, failure: 'provider_error' };
+		: {
+				ok: false,
+				failure: 'provider_error',
+				error: credentialTestError.value
+					? sanitizeFailureDetail(credentialTestError.value)
+					: undefined,
+			};
 }
 
 async function runVerification(): Promise<InstanceAiVerificationResponse | null> {
@@ -635,11 +646,13 @@ async function handlePrimary(): Promise<void> {
 	}
 	busy.value = true;
 	failure.value = null;
+	failureDetail.value = null;
 	success.value = null;
 	try {
 		const result = await runVerification();
 		if (!result?.ok) {
 			failure.value = result?.failure ?? 'provider_error';
+			failureDetail.value = result?.ok === false ? (result.error ?? null) : null;
 			return;
 		}
 		let saved = true;
@@ -669,8 +682,10 @@ async function handlePrimary(): Promise<void> {
 			}
 			emit('advance');
 		}
-	} catch {
+	} catch (error) {
 		failure.value = 'provider_error';
+		failureDetail.value =
+			error instanceof Error && error.message ? sanitizeFailureDetail(error.message) : null;
 	} finally {
 		busy.value = false;
 	}
@@ -683,6 +698,14 @@ function handleOpenChange(value: boolean): void {
 
 function preventOutsideClose(event: Event): void {
 	event.preventDefault();
+}
+
+// Reka's focus trap otherwise focuses the first tabbable field, which makes a
+// filterable select open its dropdown as soon as the wizard appears. Focus the
+// dialog itself instead so keyboard navigation still starts inside it.
+function focusDialogInsteadOfFirstField(event: Event): void {
+	event.preventDefault();
+	if (event.target instanceof HTMLElement) event.target.focus();
 }
 
 const failureKey = computed(() => VERIFICATION_FAILURE_COPY[failure.value ?? 'provider_error']);
@@ -717,6 +740,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 		:data-test-id="dialogTestId"
 		@update:open="handleOpenChange"
 		@interact-outside="preventOutsideClose"
+		@open-auto-focus="focusDialogInsteadOfFirstField"
 	>
 		<div :class="$style.body">
 			<template v-if="step === 'model'">
@@ -853,6 +877,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							:model-value="modelName"
 							:teleported="true"
 							filterable
+							:disabled="readOnly"
 							:data-test-id="
 								surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
 							"
@@ -874,7 +899,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							id="assistant-model-name"
 							v-model="modelName"
 							class="ph-no-capture"
-							:disabled="modelNameLocked"
+							:disabled="modelNameLocked || readOnly"
 							:placeholder="modelNameLocked ? STATIC_SECRET_MASK : 'qwen3-coder'"
 							:spellcheck="false"
 							:data-test-id="
@@ -1285,7 +1310,20 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							: 'assistant-verification-error'
 					"
 				>
-					{{ i18n.baseText(failureKey) }}
+					<div>
+						{{ i18n.baseText(failureKey) }}
+						<div
+							v-if="failureDetail"
+							:class="$style.failureDetail"
+							data-test-id="assistant-verification-error-details"
+						>
+							{{
+								i18n.baseText('instanceAi.onboarding.verification.errorDetails', {
+									interpolate: { details: failureDetail },
+								})
+							}}
+						</div>
+					</div>
 				</N8nCallout>
 			</Transition>
 		</div>
@@ -1313,7 +1351,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 				@click="emit('back')"
 			/>
 			<div
-				v-if="step !== 'done' && !editMode"
+				v-if="step !== 'done' && !editMode && visibleSetupSteps.length > 1"
 				:class="$style.dots"
 				:data-test-id="progressTestId"
 				aria-hidden="true"
@@ -1533,6 +1571,11 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 
 .editFooter > :last-child {
 	margin-left: 0;
+}
+
+.failureDetail {
+	margin-top: var(--spacing--4xs);
+	overflow-wrap: anywhere;
 }
 
 .dots {

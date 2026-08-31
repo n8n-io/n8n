@@ -101,9 +101,10 @@ const loadEligibleReviewers = async () => {
 		});
 		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = data;
-	} catch {
+	} catch (error) {
 		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = [];
+		toast.showError(error, i18n.baseText('workflowReviews.submitForReview.error.loadReviewers'));
 	} finally {
 		if (sequence === loadReviewersSequence) isLoadingReviewers.value = false;
 	}
@@ -112,7 +113,11 @@ const loadEligibleReviewers = async () => {
 watch(
 	() => props.open,
 	(isOpen) => {
-		if (!isOpen) return;
+		if (!isOpen) {
+			// Invalidate any in-flight load so it can't toast after the dialog closes.
+			loadReviewersSequence++;
+			return;
+		}
 
 		step.value = 1;
 		reviewTitle.value = '';
@@ -204,7 +209,12 @@ const submit = async () => {
 
 		// install the response before clearing the local flag so the
 		// publish gate never opens while a refetch is in flight
-		reviewStatusStore.setOpenReview(workflowId, reviewRequest, trimmedDescription || null);
+		reviewStatusStore.setOpenReview(
+			workflowId,
+			reviewRequest,
+			trimmedDescription || null,
+			trimmedVersionName,
+		);
 		reviewRequiredStore.setReviewRequired(workflowId, false);
 		emit('update:open', false);
 		emit('submitted', reviewRequest.id);

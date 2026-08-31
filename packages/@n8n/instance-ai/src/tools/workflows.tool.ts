@@ -5,7 +5,8 @@
  */
 import { Tool } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { dropInvalidWorkflowJsonGroups, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -52,9 +53,11 @@ import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import {
 	grantSessionWorkflowUpdate,
 	canSkipWorkflowUpdateHitl,
+	formatWarning,
 } from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
-import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { ensureUniqueNodeIds, getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { nodeGroupDroppedWarnings } from './workflows/workflow-validation-warnings';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -168,6 +171,17 @@ const setupAction = z.object({
 		.describe(
 			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
 		),
+	preferNewCredentials: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
+				'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
+				'credential whose secret is invalid or rotated (e.g. pasted a new token in chat, which you ' +
+				'cannot store). Never pass as a default. The card opens with nothing preselected so the user ' +
+				'lands on credential creation; existing credentials of the type stay listed in case they ' +
+				'change their mind. Pass the same list you passed to build-workflow.',
+		),
 	reopenSkipped: z
 		.array(z.string())
 		.optional()
@@ -190,7 +204,17 @@ const validateAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	ignoreIssues: z
-		.array(z.enum(['parameters', 'credentials', 'input', 'execution', 'typeUnknown']))
+		.array(
+			z.enum([
+				'parameters',
+				'credentials',
+				'input',
+				'execution',
+				'typeUnknown',
+				'aiGateway',
+				'chatModel',
+			]),
+		)
 		.optional()
 		.describe('Issue categories to suppress from the result'),
 });
@@ -265,12 +289,12 @@ const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
 // Resume: setup-specific fields plus optional session scope for generic approvals
 // (e.g. update "always allow" → persist `workflows:update:<id>`).
-const resumeSchema = setupResumeSchema.extend({
+export const workflowsResumeSchema = setupResumeSchema.extend({
 	scope: z.enum(['once', 'session']).optional(),
 });
 
 interface WorkflowToolContext {
-	resumeData: z.infer<typeof resumeSchema> | undefined;
+	resumeData: z.infer<typeof workflowsResumeSchema> | undefined;
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
@@ -374,7 +398,7 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		'get-json': getJsonAction,
+		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
@@ -538,6 +562,35 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	}
 }
 
+/**
+ * Pinned-data summary for agent visibility. Pins live on the saved workflow but
+ * never inside the WorkflowJSON the agent round-trips (see
+ * `InstanceAiWorkflowService.getPinnedDataSummary`), so without this report the
+ * agent cannot tell that test runs feed nodes from saved pins instead of
+ * executing them. Failures degrade to "no report" — it must never break a read.
+ */
+async function getPinnedNodesReport(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<
+	| { pinnedNodes: Array<{ nodeName: string; itemCount: number }>; pinnedDataNote: string }
+	| undefined
+> {
+	try {
+		const pinnedNodes = await context.workflowService.getPinnedDataSummary?.(workflowId);
+		if (!pinnedNodes?.length) return undefined;
+		return {
+			pinnedNodes,
+			pinnedDataNote:
+				'These nodes have pinned data saved on the workflow (not part of the JSON). ' +
+				'Test executions output the pinned items instead of running these nodes, so such runs are not live tests of them. ' +
+				'If the pins are stale or AI-simulated sample data, ask the user to unpin them; rebuilding the workflow also clears them.',
+		};
+	} catch {
+		return undefined;
+	}
+}
+
 async function handleGetJson(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-json' }>,
@@ -549,7 +602,10 @@ async function handleGetJson(
 		if (!input.versionId) {
 			await rememberCurrentWorkflowChecksum(context, input.workflowId);
 		}
-		return json;
+		const pinnedReport = input.versionId
+			? undefined
+			: await getPinnedNodesReport(context, input.workflowId);
+		return pinnedReport ? { ...json, ...pinnedReport } : json;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -695,6 +751,42 @@ function collectCredentialTestFailures(
 	return failures;
 }
 
+/**
+ * Carry the "user asked for a fresh credential" types into every setup analysis
+ * of this call, so no re-analysis (trigger test, apply) quietly reinstates the
+ * auto-applied credential the first analysis withheld.
+ *
+ * Types the user has just applied a credential for are dropped: that ask is
+ * fulfilled, and keeping the flag would render the slot unbound again and
+ * report it as still needing configuration.
+ */
+function preferNewCredentialOptions(
+	input: Extract<Input, { action: 'setup' }>,
+	appliedCredentials?: SetupResumeData['credentials'],
+): {
+	preferNewCredentialTypes?: readonly string[];
+} {
+	const appliedTypes = new Set(
+		Object.values(appliedCredentials ?? {}).flatMap((byType) => Object.keys(byType)),
+	);
+	const remaining = (input.preferNewCredentials ?? []).filter((type) => !appliedTypes.has(type));
+	return remaining.length ? { preferNewCredentialTypes: remaining } : {};
+}
+
+/** Ids this resume applied — the analysis treats a slot bound to one as settled
+ *  even when its credential list view lags the just-created credential. Only
+ *  nodes the apply reported as successful vouch for their ids: a failed
+ *  application must not settle a stale binding elsewhere. */
+function appliedCredentialIdList(
+	applied: SetupResumeData['credentials'],
+	appliedNodeNames: readonly string[],
+): string[] {
+	const appliedNodes = new Set(appliedNodeNames);
+	return Object.entries(applied ?? {})
+		.filter(([nodeName]) => appliedNodes.has(nodeName))
+		.flatMap(([, byType]) => Object.values(byType));
+}
+
 /** Setup state 3: persist setup, run the trigger, and re-suspend with the refreshed requests. */
 async function handleSetupTestTrigger(
 	context: InstanceAiContext,
@@ -724,9 +816,15 @@ async function handleSetupTestTrigger(
 
 	const triggerTestResult = await runTriggerTest(context, input.workflowId, testTriggerNode);
 
-	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
-		[testTriggerNode]: triggerTestResult,
-	});
+	const refreshedRequests = await analyzeWorkflow(
+		context,
+		input.workflowId,
+		{ [testTriggerNode]: triggerTestResult },
+		{
+			...preferNewCredentialOptions(input, resumeData.credentials),
+			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, preTestApply.applied),
+		},
+	);
 	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
 	// builds the panel, and without it a trigger test mid-session puts back the cards state 1
 	// left out.
@@ -831,6 +929,8 @@ async function handleSetupApply(
 		// a bound credential is settled for routing even when its test fails.
 		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
 			includeSettled: true,
+			...preferNewCredentialOptions(input, resumeData.credentials),
+			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
 		});
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
@@ -964,7 +1064,12 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const allSetupRequests = await analyzeWorkflow(context, input.workflowId);
+		const allSetupRequests = await analyzeWorkflow(
+			context,
+			input.workflowId,
+			undefined,
+			preferNewCredentialOptions(input),
+		);
 
 		// The user asked to come back to something they skipped, so that decision no longer
 		// holds — drop it before partitioning so the card renders again. Scoped to what they
@@ -1169,10 +1274,14 @@ async function handleValidate(
 	input: Extract<Input, { action: 'validate' }>,
 ) {
 	try {
-		return await validateWorkflowConfig(context, {
+		const result = await validateWorkflowConfig(context, {
 			workflowId: input.workflowId,
 			ignoreIssues: input.ignoreIssues,
 		});
+		// Pins are not validity issues, but a "valid" report that hides them lets
+		// the agent misread pin-fed test runs as live ones (INS-1216).
+		const pinnedReport = await getPinnedNodesReport(context, input.workflowId);
+		return pinnedReport ? { ...result, ...pinnedReport } : result;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -1243,6 +1352,13 @@ async function handleUpdate(
 	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
 
 	try {
+		ensureUniqueNodeIds(input.workflow);
+		const droppedGroupWarnings = nodeGroupDroppedWarnings(
+			dropInvalidWorkflowJsonGroups(
+				input.workflow,
+				context.nodeTypesProvider ? makeGetNodeTypeForGrouping(context.nodeTypesProvider) : null,
+			),
+		);
 		const saved = expectedChecksum
 			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
 					expectedChecksum,
@@ -1254,7 +1370,17 @@ async function handleUpdate(
 		if (saved.checksum) {
 			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
 		}
-		return { success: true, workflowId: input.workflowId };
+		return {
+			success: true,
+			workflowId: input.workflowId,
+			...(droppedGroupWarnings.length > 0
+				? {
+						warnings: droppedGroupWarnings.map((warning) =>
+							formatWarning(warning.code, warning.message),
+						),
+					}
+				: {}),
+		};
 	} catch (error) {
 		if (error instanceof WorkflowSaveConflictError) {
 			return {
@@ -1615,7 +1741,7 @@ export function createWorkflowsTool(
 		.description(getToolDescription(context, options))
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(workflowsResumeSchema)
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
 			switch (workflowInput.action) {

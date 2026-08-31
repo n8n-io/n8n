@@ -19,8 +19,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
-import type { WorkflowReviewStatus } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 
@@ -1271,66 +1269,6 @@ describe('WorkflowCard', () => {
 			throw new Error('Actions menu not found');
 		}
 		expect(actions).not.toHaveTextContent('Duplicate');
-	});
-
-	describe('review badge', () => {
-		const cardStatus = (
-			overrides: Partial<WorkflowReviewStatus['summary']> = {},
-			viewerCanOpen = false,
-		): WorkflowReviewStatus => ({
-			summary: {
-				id: 'req-1',
-				state: 'open',
-				decision: 'pending',
-				workflowVersionId: 'ver-1',
-				createdAt: '2026-07-20T10:00:00.000Z',
-				updatedAt: '2026-07-20T10:00:00.000Z',
-				...overrides,
-			},
-			viewerCanOpen,
-		});
-
-		const seedCardStatus = (status: WorkflowReviewStatus | null) => {
-			const reviewStatusStore = mockedStore(useWorkflowReviewStatusStore);
-			reviewStatusStore.reviewStatus = vi.fn().mockReturnValue(status);
-			return reviewStatusStore;
-		};
-
-		it('renders no badge while the card status is unknown or null', () => {
-			seedCardStatus(null);
-
-			const { queryByTestId } = renderComponent({ props: { data: createWorkflow() } });
-
-			expect(queryByTestId('workflow-review-status-badge')).not.toBeInTheDocument();
-		});
-
-		it.each([
-			{ decision: 'pending' as const, label: 'Waiting for review' },
-			{ decision: 'changes_requested' as const, label: 'Changes requested' },
-		])('shows the open review as "$label" with the status dot', ({ decision, label }) => {
-			const data = createWorkflow();
-			const store = seedCardStatus(cardStatus({ decision }));
-
-			const { getByTestId } = renderComponent({ props: { data } });
-
-			expect(store.reviewStatus).toHaveBeenCalledWith(data.id);
-			expect(getByTestId('workflow-review-status-badge')).toHaveTextContent(label);
-			expect(getByTestId('workflow-review-request-status-dot')).toBeInTheDocument();
-		});
-
-		// Link/href behavior is covered by WorkflowReviewStatusBadge.test.ts with a
-		// real router; the global RouterLink stub here renders nothing, so this
-		// clicks the unlinked badge variant.
-		it('does not open the workflow when the badge area is clicked', async () => {
-			const data = createWorkflow();
-			seedCardStatus(cardStatus({}, false));
-
-			const { getByTestId } = renderComponent({ props: { data } });
-			await userEvent.click(getByTestId('workflow-review-status-badge'));
-
-			expect(router.push).not.toHaveBeenCalled();
-			expect(windowOpenSpy).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('Unpublish functionality', () => {

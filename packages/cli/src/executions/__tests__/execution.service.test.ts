@@ -27,6 +27,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
@@ -37,6 +38,8 @@ import type { Job } from '@/scaling/scaling.types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
+
+const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
 describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);
@@ -53,6 +56,7 @@ describe('ExecutionService', () => {
 	const executionStopService = mock<ExecutionStopService>();
 	const ownershipService = mock<OwnershipService>();
 	const eventService = mock<EventService>();
+	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -75,6 +79,7 @@ describe('ExecutionService', () => {
 		executionRedactionServiceProxy,
 		executionStopService,
 		ownershipService,
+		engineV2ExecutionReader,
 	);
 
 	beforeEach(() => {
@@ -163,6 +168,46 @@ describe('ExecutionService', () => {
 
 			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toBe(error);
 		});
+
+		it('should read an engine 2.0 id from the data plane, not the control plane', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: V2_EXECUTION_ID,
+				data: { resultData: {} },
+			});
+			engineV2ExecutionReader.findOne.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: V2_EXECUTION_ID },
+				query: {},
+			});
+
+			await executionService.findOne(req, ['workflow-1']);
+
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(V2_EXECUTION_ID, ['workflow-1']);
+			expect(executionPersistence.findOneInWorkflows).not.toHaveBeenCalled();
+		});
+
+		it('should redact a data-plane execution like any other', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: V2_EXECUTION_ID,
+				data: { resultData: {} },
+			});
+			engineV2ExecutionReader.findOne.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: V2_EXECUTION_ID },
+				query: { redactExecutionData: 'true' } as unknown as Record<string, string>,
+			});
+
+			await executionService.findOne(req, ['workflow-1']);
+
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				execution,
+				expect.objectContaining({ redactExecutionData: true }),
+			);
+		});
 	});
 
 	describe('retry', () => {
@@ -213,6 +258,7 @@ describe('ExecutionService', () => {
 				localExecutionRedactionProxy,
 				executionStopService,
 				ownershipService,
+				mock(),
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -298,6 +344,7 @@ describe('ExecutionService', () => {
 				redactionProxy,
 				mock(),
 				ownershipService,
+				mock(),
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');
@@ -905,6 +952,29 @@ describe('ExecutionService', () => {
 				undefined,
 			);
 			expect(activeExecutions.getActiveExecutions).not.toHaveBeenCalled();
+		});
+
+		it('should forward startedAfter and startedBefore to the query', async () => {
+			executionPersistence.findManyInWorkflows.mockResolvedValue([]);
+			executionRepository.countInWorkflows.mockResolvedValue(0);
+			const startedAfter = '2024-01-01T00:00:00.000Z';
+			const startedBefore = '2024-12-31T23:59:59.999Z';
+
+			await executionService.findManyAndCount(['wf-1'], {
+				limit: 10,
+				startedAfter,
+				startedBefore,
+			});
+
+			expect(executionPersistence.findManyInWorkflows).toHaveBeenCalledWith(
+				['wf-1'],
+				expect.objectContaining({ startedAfter, startedBefore }),
+				undefined,
+			);
+			expect(executionRepository.countInWorkflows).toHaveBeenCalledWith(
+				['wf-1'],
+				expect.objectContaining({ startedAfter, startedBefore }),
+			);
 		});
 	});
 

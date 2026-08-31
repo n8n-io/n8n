@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import { N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nActionPill,
+	N8nButton,
+	N8nIcon,
+	N8nSpinner,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	TOOL_CONNECTION_CREDITS_LABEL_KEY,
 	type ToolConnectionItem,
 } from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
@@ -27,6 +34,21 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const creditsLabelKey = inject(TOOL_CONNECTION_CREDITS_LABEL_KEY, null);
+
+/**
+ * Gateway-backed rows share the credits pill copy with the node creator and
+ * model selector: "Free credits" until a top-up or a depleted allowance flips
+ * it to a blue "n8n credits" pill. Defaults to "Free credits" when no consumer
+ * injects the store-backed key.
+ */
+const creditsPill = computed(() => {
+	const key = creditsLabelKey?.value ?? 'generic.freeCredits';
+	return {
+		text: i18n.baseText(key),
+		type: key === 'generic.freeCredits' ? ('default' as const) : ('info' as const),
+	};
+});
 
 /**
  * The picker needs both credential definitions and an injected adapter.
@@ -77,6 +99,8 @@ const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
 );
 
+const isDisabled = computed(() => Boolean(props.item.disabled));
+
 /**
  * For most rows the button only repeated what clicking the row already does.
  * What survives is the pair that goes somewhere the row body cannot: installing
@@ -88,6 +112,7 @@ const hasDirectAction = computed(
 );
 
 function handleRowClick() {
+	if (props.item.disabled) return;
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
@@ -102,14 +127,14 @@ function handleConnect() {
 
 <template>
 	<div
-		:class="[$style.row, $style[`row--${item.kind}`]]"
+		:class="[$style.row, $style[`row--${item.kind}`], { [$style.rowDisabled]: isDisabled }]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
 		<button
 			type="button"
 			:class="$style.mainAction"
-			:disabled="item.status === 'connecting'"
+			:disabled="isDisabled || item.status === 'connecting'"
 			data-test-id="tools-connection-row-main"
 			@click="handleRowClick"
 		>
@@ -130,13 +155,22 @@ function handleConnect() {
 							:content="i18n.baseText('communityNodeInfo.approved')"
 							placement="top"
 						>
-							<ShieldIcon
+							<N8nIcon
+								icon="shield-half"
+								:size="14"
 								:class="$style.verifiedIcon"
-								role="img"
 								:aria-label="i18n.baseText('communityNodeInfo.approved')"
 								data-test-id="tools-connection-row-verified-badge"
 							/>
 						</N8nTooltip>
+						<N8nActionPill
+							v-if="item.freeCredits"
+							size="small"
+							:type="creditsPill.type"
+							data-test-id="tools-connection-row-free-credits"
+						>
+							{{ creditsPill.text }}
+						</N8nActionPill>
 					</span>
 					<N8nText
 						v-if="item.description"
@@ -152,8 +186,24 @@ function handleConnect() {
 		</button>
 
 		<div :class="$style.action">
+			<N8nTooltip
+				v-if="isDisabled"
+				:content="item.disabledReason ?? ''"
+				:disabled="!item.disabledReason"
+				placement="top"
+			>
+				<span
+					:class="$style.disabledMarker"
+					role="img"
+					tabindex="0"
+					:aria-label="item.disabledReason"
+					data-test-id="tools-connection-row-disabled"
+				>
+					<N8nIcon icon="info" :size="14" color="text-light" />
+				</span>
+			</N8nTooltip>
 			<ToolCredentialPicker
-				v-if="shouldShowCredentialPicker"
+				v-else-if="shouldShowCredentialPicker"
 				:item="item"
 				:credentials="item.credentials ?? []"
 				connect-variant="outline"
@@ -170,7 +220,7 @@ function handleConnect() {
 				:class="$style.statusMarker"
 				data-test-id="tools-connection-row-connected"
 			>
-				<span :class="$style.statusDot" aria-hidden="true" />
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
 				{{ i18n.baseText('tools.connection.action.connected') }}
 			</span>
 			<span
@@ -207,9 +257,11 @@ function handleConnect() {
 					"
 					@click="handleConnect"
 				>
-					<span
+					<N8nIcon
 						v-if="!item.communityPreview && item.status === 'disconnected'"
-						:class="[$style.statusDot, $style.statusDotDisconnected]"
+						icon="circle-x"
+						:size="14"
+						:class="$style.statusIconDisconnected"
 						aria-hidden="true"
 					/>
 					{{ actionLabel }}
@@ -222,7 +274,12 @@ function handleConnect() {
 				data-test-id="tools-connection-row-disconnected"
 				@click="handleRowClick"
 			>
-				<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
+				<N8nIcon
+					icon="circle-x"
+					:size="14"
+					:class="$style.statusIconDisconnected"
+					aria-hidden="true"
+				/>
 				{{ i18n.baseText('tools.connection.action.reconnect') }}
 			</N8nButton>
 		</div>
@@ -245,6 +302,14 @@ function handleConnect() {
 	}
 }
 
+.rowDisabled {
+	opacity: 0.6;
+
+	&:hover {
+		background: transparent;
+	}
+}
+
 .mainAction {
 	display: flex;
 	align-items: center;
@@ -260,7 +325,7 @@ function handleConnect() {
 	cursor: pointer;
 
 	&:disabled {
-		cursor: default;
+		cursor: not-allowed;
 	}
 
 	&:focus-visible {
@@ -310,15 +375,15 @@ function handleConnect() {
 
 .verifiedIcon {
 	flex-shrink: 0;
-	width: 12px;
-	height: 12px;
+	vertical-align: middle;
 	color: var(--color--success);
 }
 
 .description {
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	// Wrap onto further lines rather than truncating; the virtual scroller
+	// measures each row's real height, so taller rows lay out correctly.
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .action {
@@ -340,15 +405,23 @@ function handleConnect() {
 	white-space: nowrap;
 }
 
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--color--success);
+.statusIconConnected,
+.statusIconDisconnected {
 	flex-shrink: 0;
 }
 
-.statusDotDisconnected {
-	background: var(--color--danger);
+.disabledMarker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--text--tint-2);
+}
+
+.statusIconConnected {
+	color: var(--color--success);
+}
+
+.statusIconDisconnected {
+	color: var(--color--danger);
 }
 </style>

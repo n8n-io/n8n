@@ -24,6 +24,7 @@ import {
 	workflowDeactivated,
 	workflowAutoDeactivated,
 	workflowSettingsUpdated,
+	agentNodeProgress,
 } from '@/app/composables/usePushConnection/handlers';
 import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -68,14 +69,15 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			suppressExecutionErrorToasts: !executionErrorToasts.value,
 		};
 
-		// A module can own (or override) a push message type via its descriptor.
-		// When none is registered, fall through to the built-in handlers below.
-		const moduleHandler = pushHandlerRegistry.get(event.type);
-		if (moduleHandler) {
-			return await moduleHandler(event, options);
+		// A module owns a push type via its descriptor. `useModulePushDispatcher`
+		// runs the handler at app scope, so this only yields the type.
+		if (pushHandlerRegistry.has(event.type)) {
+			return;
 		}
 
 		switch (event.type) {
+			case 'agentNodeProgress':
+				return await agentNodeProgress(event, options);
 			case 'testWebhookDeleted':
 				return await testWebhookDeleted(event, options);
 			case 'testWebhookReceived':

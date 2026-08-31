@@ -1,0 +1,58 @@
+{
+    "type": "object",
+    "properties": {
+        "details": {
+            "type": "object",
+            "properties": {
+                "arbn": {
+                    "type": "null"
+                },
+                "businessCategory": {
+                    "type": "string"
+                },
+                "businessSubCategory": {
+                    "type": "string"
+                },
+                "companyType": {
+                    "type": "string"
+                },
+                "descriptionOfBusiness": {
+                    "type": "string"
+                },
+                "localizedInformation": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "key": {
+                                "type": "string"
+                            },
+                            "localeScriptCode": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "primaryAddress": {
+                    "type": "integer"
+                },
+                "registrationNumber": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

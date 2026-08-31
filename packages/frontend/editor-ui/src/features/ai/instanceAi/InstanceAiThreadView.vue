@@ -169,8 +169,8 @@ watch(
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
-// slot (generic approvals + domain/web-search access). Drives the swap
-// between the input and the floating confirmation panel.
+// slot (questions, generic approvals, or domain/web-search access). Drives
+// the swap between the input and the floating confirmation panel.
 const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
@@ -437,7 +437,7 @@ const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
 const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-const previewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
+const preferredPreviewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
@@ -449,6 +449,11 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 });
 
 const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value * 0.7));
+// Preserve the default or manually selected width while temporarily
+// constraining it to the available space.
+const previewPanelWidth = computed(() =>
+	Math.min(preferredPreviewPanelWidth.value, previewMaxWidth.value),
+);
 const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
 const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
 const AGENT_PREVIEW_CHAT_MAX_RATIO = 0.5;
@@ -483,15 +488,8 @@ function handleAgentPreviewDockOpenChange(open: boolean) {
 	isAgentPreviewDockOpen.value = open;
 }
 
-/** Clamp preview width when a sidebar or window resize reduces the available area. */
-watch(previewMaxWidth, (max) => {
-	if (previewPanelWidth.value > max) {
-		previewPanelWidth.value = max;
-	}
-});
-
 function handlePreviewResize({ width }: { width: number }) {
-	previewPanelWidth.value = width;
+	preferredPreviewPanelWidth.value = width;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -516,7 +514,7 @@ watch(
 
 		if (visible) {
 			isArtifactsPanelRevealed.value = false;
-			previewPanelWidth.value = previewMaxWidth.value;
+			preferredPreviewPanelWidth.value = previewMaxWidth.value;
 		} else {
 			isAgentPreviewDockOpen.value = false;
 		}
@@ -527,8 +525,8 @@ watch(
 // Late-initialize if the panel became visible before the ResizeObserver
 // reported the container size (otherwise the panel would render at 0px).
 watch(threadAreaWidth, (width) => {
-	if (width > 0 && previewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
-		previewPanelWidth.value = previewMaxWidth.value;
+	if (width > 0 && preferredPreviewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
+		preferredPreviewPanelWidth.value = previewMaxWidth.value;
 	}
 });
 
@@ -1167,8 +1165,8 @@ async function dismissComposerContextChip() {
 										:agent-node="builder"
 									/>
 								</div>
-								<!-- Inline confirmations (questions, plan review, text, setup,
-									 credential, gateway resource-decision, continue) render in
+								<!-- Inline confirmations (plan review, text, setup, credential,
+									 gateway resource-decision, continue) render in
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
@@ -1199,7 +1197,7 @@ async function dismissComposerContextChip() {
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. The credit banner stays
+								 floating interaction is pending. The credit banner stays
 								 anchored above the slot in both states. The leaving child is
 								 positioned absolutely during the cross-fade so the in-flow child
 								 can size the slot to its natural height. -->
@@ -1229,7 +1227,6 @@ async function dismissComposerContextChip() {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
-											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											:amounts-hidden="quotaLocked"

@@ -1,19 +1,10 @@
-process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
-
-import {
-	createTeamProject,
-	createWorkflow,
-	linkUserToProject,
-	mockInstance,
-	testDb,
-} from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
 	UserRepository,
 	WorkflowRepository,
 	WorkflowReviewActivityCommentRepository,
 	WorkflowReviewActivityRepository,
-	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
@@ -21,12 +12,21 @@ import {
 import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { createMember, createOwner } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
+
+import {
+	type ActivityFeedEntry,
+	readActivityFeed,
+	REVIEW_TABLES,
+	seedReview,
+	seedReviewActors,
+	stubWorkflowValidation,
+} from './support/workflow-review-test-data';
 
 mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -47,7 +47,6 @@ let viewerAgent: SuperAgentTest;
 
 let requestRepository: WorkflowReviewRequestRepository;
 let workflowRepository: WorkflowReviewRequestWorkflowRepository;
-let authorRepository: WorkflowReviewRequestAuthorRepository;
 let activityRepository: WorkflowReviewActivityRepository;
 let activityCommentRepository: WorkflowReviewActivityCommentRepository;
 let userRepository: UserRepository;
@@ -58,7 +57,6 @@ beforeAll(async () => {
 	await utils.initNodeTypes();
 	requestRepository = Container.get(WorkflowReviewRequestRepository);
 	workflowRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
-	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
 	activityRepository = Container.get(WorkflowReviewActivityRepository);
 	activityCommentRepository = Container.get(WorkflowReviewActivityCommentRepository);
 	userRepository = Container.get(UserRepository);
@@ -67,42 +65,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 	testServer.license.enable('feat:workflowReviews');
-
-	await testDb.truncate([
-		'WorkflowReviewActivityComment',
-		'WorkflowReviewActivity',
-		'WorkflowReviewRequestAuthor',
-		'WorkflowReviewRequestReviewer',
-		'WorkflowReviewRequestWorkflow',
-		'WorkflowReviewRequest',
-		'SharedWorkflow',
-		'WorkflowPublishedVersion',
-		'WorkflowPublicationOutbox',
-		'WorkflowPublishHistory',
-		'WorkflowEntity',
-		'WorkflowHistory',
-		'ProjectRelation',
-		'Project',
-		'User',
-	]);
-
+	await testDb.truncate([...REVIEW_TABLES]);
 	await policyService.set(true);
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
-	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
-	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
+	stubWorkflowValidation(workflowValidationService);
 
-	owner = await createOwner();
-	member = await createMember();
-	viewer = await createMember();
-	teamProject = await createTeamProject('Reviews Project', owner);
-	await linkUserToProject(member, teamProject, 'project:editor');
-	await linkUserToProject(viewer, teamProject, 'project:viewer');
-
-	ownerAgent = testServer.authAgentFor(owner);
-	memberAgent = testServer.authAgentFor(member);
-	viewerAgent = testServer.authAgentFor(viewer);
+	({ owner, member, viewer, teamProject, ownerAgent, memberAgent, viewerAgent } =
+		await seedReviewActors(testServer.authAgentFor));
 });
 
 async function seedRequest(
@@ -111,25 +80,14 @@ async function seedRequest(
 	author: User,
 	projectId = teamProject.id,
 ) {
-	const request = await requestRepository.createRequest(
-		{
-			projectId,
-			title: 'Please review',
-			description: 'Some context',
-			createdById: author.id,
-		},
-		{},
-	);
-	await workflowRepository.createWorkflowRow(
-		{
-			workflowReviewRequestId: request.id,
-			workflowId,
-			workflowVersionId: versionId,
-		},
-		{},
-	);
-	await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id }, {});
-	return request;
+	return await seedReview({
+		projectId,
+		workflowId,
+		versionId,
+		author,
+		title: 'Please review',
+		description: 'Some context',
+	});
 }
 
 async function seedReviewInTeamProject(author: User) {
@@ -139,29 +97,13 @@ async function seedReviewInTeamProject(author: User) {
 	return { workflow, request };
 }
 
-type FeedEntry = {
-	id: string;
-	type: string;
-	data: unknown;
-	createdBy: unknown;
-	messages?: Array<{ body: string | null; createdBy: unknown; deletedAt: string | null }>;
-};
-
-async function getActivity(agent: SuperAgentTest, requestId: string, limit?: number) {
-	const response = await agent
-		.get(`/workflow-review-requests/${requestId}/activity`)
-		.query(limit === undefined ? {} : { limit })
-		.expect(200);
-	return response.body.data as {
-		data: FeedEntry[];
-		nextCursor: string | null;
-		hasMore: boolean;
-	};
-}
+const getActivity = readActivityFeed;
 
 describe('Commenting on a review', () => {
 	test('shows a comment in the feed the instant its writer posts it', async () => {
 		const { request } = await seedReviewInTeamProject(member);
+		// Spied rather than mocked: the real container's listeners must keep running.
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		const post = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
@@ -183,6 +125,11 @@ describe('Commenting on a review', () => {
 			data: null,
 			createdBy: expect.objectContaining({ id: member.id }),
 			messages: [expect.objectContaining({ body: 'Looks good to me' })],
+		});
+		// The comment body never leaves the feed.
+		expect(emit).toHaveBeenCalledWith('workflow-review-comment-created', {
+			user: expect.objectContaining({ id: member.id }),
+			workflowReviewRequestId: request.id,
 		});
 	});
 
@@ -280,26 +227,31 @@ describe('Commenting on a review', () => {
 			.expect(404);
 	});
 
-	test.each(['approved', 'closed'] as const)(
-		'keeps existing comments visible and still accepts new ones on a %s review',
-		async (settled) => {
+	// Whatever closed the review — an approval or a lifecycle close — the outcome is the
+	// same: the feed stays readable, new comments are refused with a conflict.
+	test.each([
+		['approved', { state: 'closed', decision: 'approved' }],
+		['lifecycle-closed', { state: 'closed' }],
+	] as const)(
+		'keeps existing comments visible but refuses new ones on a %s review',
+		async (_close, update) => {
 			const { request } = await seedReviewInTeamProject(owner);
 			await ownerAgent
 				.post(`/workflow-review-requests/${request.id}/comments`)
-				.send({ body: 'Before it settled' })
+				.send({ body: 'Before it closed' })
 				.expect(201);
-			await requestRepository.update(
-				request.id,
-				settled === 'approved' ? { decision: 'approved' } : { state: 'closed' },
-			);
+			await requestRepository.update(request.id, update);
 
 			const feed = await getActivity(ownerAgent, request.id);
 			expect(feed.data).toHaveLength(1);
 
 			await ownerAgent
 				.post(`/workflow-review-requests/${request.id}/comments`)
-				.send({ body: 'After it settled' })
-				.expect(201);
+				.send({ body: 'After it closed' })
+				.expect(409);
+
+			// Nothing was written: the refusal happened before the comment, not after.
+			expect((await getActivity(ownerAgent, request.id)).data).toHaveLength(1);
 		},
 	);
 
@@ -374,7 +326,7 @@ describe('Recording the review lifecycle in the feed', () => {
 		return response.body.data.id as string;
 	}
 
-	const entryTypes = (feed: { data: FeedEntry[] }) => feed.data.map((entry) => entry.type);
+	const entryTypes = (feed: { data: ActivityFeedEntry[] }) => feed.data.map((entry) => entry.type);
 
 	test('shows who opened the review and which version they submitted', async () => {
 		const workflow = await createReviewableWorkflow();
@@ -439,7 +391,8 @@ describe('Recording the review lifecycle in the feed', () => {
 			.expect(200);
 
 		const feed = await getActivity(ownerAgent, requestId);
-		expect(entryTypes(feed)).toEqual(['review.opened', 'review.approved']);
+		// The approval auto-publishes the pinned version, so its record follows.
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.approved', 'workflow.published']);
 		expect(feed.data[1].data).toEqual({
 			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
 			note: 'Ships as is',
@@ -501,17 +454,13 @@ describe('Recording the review lifecycle in the feed', () => {
 
 		const feed = await getActivity(memberAgent, requestId);
 		expect(entryTypes(feed)).toEqual(['review.opened', 'review.version_updated']);
+		// In `data`, never a column: a scoping column would cascade, so a workflow delete would
+		// take the entry with it.
 		expect(feed.data[1].data).toEqual({
 			workflowId: workflow.id,
 			fromWorkflowVersionId: 'version-1',
 			toWorkflowVersionId: 'version-2',
 		});
-
-		// The scoping column stays unwritten: its FK cascades, so a workflow delete would take
-		// the entry with it.
-		const rows = await activityRepository.findBy({ type: 'review.version_updated' });
-		expect(rows).toHaveLength(1);
-		expect(rows[0].workflowId).toBeNull();
 	});
 
 	test('keeps a version update in the feed after its workflow is deleted', async () => {
@@ -626,7 +575,7 @@ describe('Reading the activity feed', () => {
 		const pages: string[][] = [];
 		let cursor: string | null = null;
 		do {
-			const page: { data: FeedEntry[]; nextCursor: string | null } = (
+			const page: { data: ActivityFeedEntry[]; nextCursor: string | null } = (
 				await ownerAgent
 					.get(`/workflow-review-requests/${request.id}/activity`)
 					.query(cursor ? { limit: 2, cursor } : { limit: 2 })

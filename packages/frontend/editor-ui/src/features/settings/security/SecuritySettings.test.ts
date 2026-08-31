@@ -851,6 +851,16 @@ describe('SecuritySettings', () => {
 			});
 		});
 
+		it('should show a Preview tag on the workflow reviews toggle', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('security-workflow-reviews-preview-tag')).toHaveTextContent('Preview');
+		});
+
 		it('should persist workflow reviews toggle changes', async () => {
 			updateSecuritySettings.mockResolvedValue({
 				workflowReviews: { enabled: true },

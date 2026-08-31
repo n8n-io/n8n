@@ -12,7 +12,7 @@ const MAX_METADATA_VALUE_LENGTH = 160;
 const MAX_TOOL_CALLS_PER_ERROR = 8;
 const DIAGNOSTICS_TEMPLATE_SENTINEL = '__N8N_FIX_WITH_ASSISTANT_DIAGNOSTICS__';
 const UNTRUSTED_DATA_CLOSE_TAG_PATTERN = /<\/untrusted_data/gi;
-const CURRENT_DATE_TIME_TAG_PATTERN = /<(\/?current-date-time)/gi;
+const SERVICE_CONTEXT_TAG_PATTERN = /<(\/?(?:current-date-time|project-context))/gi;
 const INVISIBLE_UNICODE_PATTERN =
 	// eslint-disable-next-line no-misleading-character-class
 	/[\u200B-\u200F\u2028-\u202F\u2060-\u2064\u2066-\u206F\uFEFF\uFFF9-\uFFFB\u00AD\u034F\u061C\u180E\u{E0001}\u{E0020}-\u{E007F}]/gu;
@@ -82,7 +82,7 @@ function sanitizeDiagnosticText(value: string): string {
 		.replace(/<!--[\s\S]*?-->/g, '')
 		.replace(INVISIBLE_UNICODE_PATTERN, '')
 		.replace(UNTRUSTED_DATA_CLOSE_TAG_PATTERN, '&lt;/untrusted_data')
-		.replace(CURRENT_DATE_TIME_TAG_PATTERN, '&lt;$1');
+		.replace(SERVICE_CONTEXT_TAG_PATTERN, '&lt;$1');
 }
 
 function metadataValue(value: string): string {

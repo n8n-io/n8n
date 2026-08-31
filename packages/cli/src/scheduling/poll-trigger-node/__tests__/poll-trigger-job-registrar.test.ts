@@ -7,6 +7,8 @@ import type { CronDefinition } from '@n8n/scheduler';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
+
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
 import { PollTriggerJobRegistrar } from '../poll-trigger-job-registrar';
 import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
@@ -30,12 +32,14 @@ const pollNode = mock<INode>({ id: NODE_ID, type: 'n8n-nodes-base.rssFeedReadTri
 
 describe('PollTriggerJobRegistrar', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
+	const pollBackoffService = mock<PollBackoffService>();
 
 	const makeRegistrar = () =>
 		new PollTriggerJobRegistrar(
 			mockLogger(),
 			mock<GlobalConfig>({ generic: { timezone: TIMEZONE } }),
 			jobProvisioner,
+			pollBackoffService,
 		);
 
 	const lastDesired = () => jobProvisioner.provision.mock.calls.at(-1)![4];
@@ -143,6 +147,32 @@ describe('PollTriggerJobRegistrar', () => {
 				).resolves.toEqual({ inserted: expected });
 			},
 		);
+
+		it('clears backoff state when a job is newly inserted', async () => {
+			jobProvisioner.provision.mockResolvedValueOnce({
+				inserted: [{ id: 1, name: 'wf-1:node-1:abc:0' }],
+				redefined: [],
+				unchanged: [],
+				removed: [],
+			});
+
+			await makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE);
+
+			expect(pollBackoffService.reset).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
+		});
+
+		it('leaves backoff state untouched on a pure reconcile that inserts nothing', async () => {
+			jobProvisioner.provision.mockResolvedValueOnce({
+				inserted: [],
+				redefined: [{ id: 1, name: 'wf-1:node-1:abc:0' }],
+				unchanged: [],
+				removed: [],
+			});
+
+			await makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE);
+
+			expect(pollBackoffService.reset).not.toHaveBeenCalled();
+		});
 
 		it("spreads a generated cadence's seeded seconds across different nodes, to avoid a thundering herd", async () => {
 			const registrar = makeRegistrar();

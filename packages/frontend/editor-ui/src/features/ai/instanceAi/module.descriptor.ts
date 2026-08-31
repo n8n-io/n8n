@@ -12,7 +12,10 @@ import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
 } from './composables/useInstanceAiHandoff';
-import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
+import {
+	useInstanceAiAvailable,
+	useInstanceAiReady,
+} from './composables/useInstanceAiAvailability';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
@@ -49,8 +52,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 
 						// Same canonical gate as the button and website beacon, so the guard
 						// never refuses an entry point they advertise. Whoever can't use
-						// the assistant still gets the template.
-						if (!useInstanceAiAvailable().value) {
+						// the assistant — including an admin who hasn't finished setup, since
+						// the launched thread sends its kickoff on arrival — still gets the
+						// template.
+						if (!useInstanceAiReady().value) {
 							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };
 						}
 
@@ -150,6 +155,15 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	},
 	resources: [],
 	modals: INSTANCE_AI_MODALS,
+	pushHandlers: {
+		// Credits are instance-level state, so the module owns this push type through
+		// the SDK registry instead of a view-scoped store listener. The store is
+		// imported lazily so it stays out of the startup bundle.
+		updateInstanceAiCredits: async (event) => {
+			const { useInstanceAiStore } = await import('./instanceAi.store');
+			useInstanceAiStore().handleCreditsPush(event.data);
+		},
+	},
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',

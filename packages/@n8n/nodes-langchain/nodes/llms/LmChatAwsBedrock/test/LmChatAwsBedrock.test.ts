@@ -682,16 +682,35 @@ describe('LmChatAwsBedrock', () => {
 				logger: { warn: vi.fn() },
 			}) as unknown as ILoadOptionsFunctions;
 
+		const applicationProfilesResponse = {
+			inferenceProfileSummaries: [
+				{
+					inferenceProfileId: 'kqtghn90uu4g',
+					inferenceProfileName: 'Cost Centre Claude',
+					inferenceProfileArn:
+						'arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/kqtghn90uu4g',
+				},
+			],
+		};
+
 		const httpMockFor = (
 			foundation: Promise<unknown> | unknown,
 			profiles: Promise<unknown> | unknown,
+			applicationProfiles: Promise<unknown> | unknown = { inferenceProfileSummaries: [] },
 		) =>
 			vi.fn().mockImplementation(async (_credentialsType: string, options: { url: string }) => {
-				return options.url.startsWith('/foundation-models') ? await foundation : await profiles;
+				if (options.url.startsWith('/foundation-models')) return await foundation;
+				return options.url.includes('type=APPLICATION')
+					? await applicationProfiles
+					: await profiles;
 			});
 
 		it('merges foundation models and inference profiles into one sorted list', async () => {
-			const httpMock = httpMockFor(foundationResponse, profilesResponse);
+			const httpMock = httpMockFor(
+				foundationResponse,
+				profilesResponse,
+				applicationProfilesResponse,
+			);
 			const ctx = createLoadOptionsContext('iam', httpMock);
 
 			const options = await node.methods.loadOptions.listModels.call(ctx);
@@ -702,6 +721,13 @@ describe('LmChatAwsBedrock', () => {
 					value: 'anthropic.claude-3-haiku-20240307-v1:0',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
 					description: 'arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-3-haiku',
+				},
+				{
+					name: 'Cost Centre Claude',
+					value: 'kqtghn90uu4g',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
+					description:
+						'arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/kqtghn90uu4g',
 				},
 				{
 					name: 'EU Anthropic Claude Sonnet 4.6',
@@ -726,6 +752,12 @@ describe('LmChatAwsBedrock', () => {
 				'aws',
 				expect.objectContaining({ url: '/inference-profiles?maxResults=1000' }),
 			);
+			expect(httpMock).toHaveBeenCalledWith(
+				'aws',
+				expect.objectContaining({
+					url: '/inference-profiles?maxResults=1000&type=APPLICATION',
+				}),
+			);
 		});
 
 		it('uses the awsAssumeRole credential when authentication is assumeRole', async () => {
@@ -738,9 +770,13 @@ describe('LmChatAwsBedrock', () => {
 			expect(httpMock).toHaveBeenCalledWith('awsAssumeRole', expect.anything());
 		});
 
-		it('still lists foundation models and warns when the inference-profiles request fails', async () => {
+		it('still lists foundation models and warns when the inference-profiles requests fail', async () => {
 			const failure = new Error('AccessDenied');
-			const httpMock = httpMockFor(foundationResponse, Promise.reject(failure));
+			const httpMock = httpMockFor(
+				foundationResponse,
+				Promise.reject(failure),
+				Promise.reject(failure),
+			);
 			const ctx = createLoadOptionsContext('iam', httpMock);
 
 			const options = await node.methods.loadOptions.listModels.call(ctx);
@@ -771,10 +807,36 @@ describe('LmChatAwsBedrock', () => {
 
 		it('throws when both list requests fail', async () => {
 			const failure = new Error('AccessDenied');
-			const httpMock = httpMockFor(Promise.reject(failure), Promise.reject(new Error('other')));
+			const httpMock = httpMockFor(
+				Promise.reject(failure),
+				Promise.reject(new Error('other')),
+				Promise.reject(new Error('other')),
+			);
 			const ctx = createLoadOptionsContext('iam', httpMock);
 
 			await expect(node.methods.loadOptions.listModels.call(ctx)).rejects.toThrow('AccessDenied');
+		});
+
+		it('still lists application profiles when only the system-defined request fails', async () => {
+			const failure = new Error('Throttled');
+			const httpMock = httpMockFor(
+				foundationResponse,
+				Promise.reject(failure),
+				applicationProfilesResponse,
+			);
+			const ctx = createLoadOptionsContext('iam', httpMock);
+
+			const options = await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(options.map((o) => o.value)).toEqual([
+				'anthropic.claude-3-haiku-20240307-v1:0',
+				'kqtghn90uu4g',
+				'amazon.nova-pro-v1:0',
+			]);
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Bedrock model listing: inference-profiles request failed',
+				{ error: failure, profileType: 'SYSTEM_DEFINED' },
+			);
 		});
 
 		it('rejects an unsupported credential region before any request is made', async () => {
@@ -812,6 +874,42 @@ describe('LmChatAwsBedrock', () => {
 			// The legacy source toggle must not render on 1.2
 			const modelSource = node.description.properties.find((p) => p.name === 'modelSource');
 			expect(modelSource?.displayOptions?.show?.['@version']).toEqual([{ _cnd: { eq: 1.1 } }]);
+		});
+
+		describe('listInferenceProfiles (pre-1.2 picker)', () => {
+			it('lists system-defined and application profiles without foundation models', async () => {
+				const httpMock = httpMockFor(
+					foundationResponse,
+					profilesResponse,
+					applicationProfilesResponse,
+				);
+				const ctx = createLoadOptionsContext('iam', httpMock);
+
+				const options = await node.methods.loadOptions.listInferenceProfiles.call(ctx);
+
+				expect(options.map((o) => o.value)).toEqual([
+					'kqtghn90uu4g',
+					'eu.anthropic.claude-sonnet-4-6-v1:0',
+				]);
+				expect(httpMock).not.toHaveBeenCalledWith(
+					'aws',
+					expect.objectContaining({ url: expect.stringContaining('/foundation-models') }),
+				);
+			});
+
+			it('throws when both profile requests fail', async () => {
+				const failure = new Error('AccessDenied');
+				const httpMock = httpMockFor(
+					foundationResponse,
+					Promise.reject(failure),
+					Promise.reject(failure),
+				);
+				const ctx = createLoadOptionsContext('iam', httpMock);
+
+				await expect(node.methods.loadOptions.listInferenceProfiles.call(ctx)).rejects.toThrow(
+					'AccessDenied',
+				);
+			});
 		});
 	});
 });

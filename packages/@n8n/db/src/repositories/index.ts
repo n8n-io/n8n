@@ -10,7 +10,7 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
-export { CredentialsRepository } from './credentials.repository';
+export { CredentialsRepository, type CredentialSharingRelation } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,
@@ -58,6 +58,8 @@ export {
 	PollerStateRepository,
 	type PollerCursor,
 	type PollLeaseFence,
+	type PollerFailureState,
+	type PollerFullState,
 } from './poller-state.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
@@ -83,11 +85,14 @@ export {
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
-	type ClosedUnreviewableRequest,
-	type InboxCursor,
-	type InboxVisibility,
 	type WorkflowReviewRequestForWorkflowRow,
 } from './workflow-review-request.repository';
+export { WorkflowReviewLifecycleRepository } from './workflow-review-lifecycle.repository';
+export {
+	WorkflowReviewInboxRepository,
+	type InboxCursor,
+	type InboxVisibility,
+} from './workflow-review-inbox.repository';
 export {
 	WorkflowReviewRequestWorkflowRepository,
 	type WorkflowReviewRequestLinkedWorkflow,

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.35.0",
+  "version": "2.36.0",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,6 +13,10 @@
     "./icons/lucide": {
       "types": "./dist/icons/lucide/index.d.ts",
       "import": "./dist/icons/lucide/index.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.ts",
+      "import": "./dist/plugin.js"
     },
     "./style.css": "./dist/style.css",
     "./theme.css": "./dist/theme.css",
@@ -67,7 +71,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:frontend",
-    "autoprefixer": "^10.4.19",
+    "autoprefixer": "catalog:frontend",
     "emojibase-data": "^17.0.0",
     "eslint-plugin-storybook": "catalog:storybook",
     "pinia": "catalog:frontend",

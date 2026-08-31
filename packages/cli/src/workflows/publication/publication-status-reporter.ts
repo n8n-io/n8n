@@ -9,6 +9,7 @@ import {
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { Push } from '@/push';
@@ -16,8 +17,10 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type {
 	FailedTriggerPublicationStatus,
 	PublicationResult,
+	PublicationSkipReason,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
+import type { TriggerTeardownFailure } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
  * Turns a {@link PublicationResult} into terminal state. This is the only place
@@ -25,6 +28,12 @@ import type {
  * its side effects: persisting per-trigger status rows, clearing legacy activation
  * errors on success, and pushing publication status to the UI.
  */
+const SKIP_LOG_MESSAGE: Record<PublicationSkipReason, string> = {
+	'workflow-not-found': 'Workflow not found',
+	'node-ids-healed': 'Version was healed and republished; its own record applies it',
+	superseded: 'Version was superseded by a concurrent publication',
+};
+
 @Service()
 export class PublicationStatusReporter {
 	constructor(
@@ -42,7 +51,8 @@ export class PublicationStatusReporter {
 	async report(record: WorkflowPublicationOutbox, result: PublicationResult): Promise<void> {
 		switch (result.type) {
 			case 'completed': {
-				await this.complete(record, this.toRows(record, result.triggerStatuses));
+				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
+				await this.complete(record, this.toRows(record, result.triggerStatuses), warningMessage);
 				this.pushStatus({
 					type: 'workflowActivated',
 					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
@@ -51,7 +61,8 @@ export class PublicationStatusReporter {
 			}
 
 			case 'unpublished': {
-				await this.complete(record, /*triggerStatuses=*/ []);
+				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
+				await this.complete(record, /*triggerStatuses=*/ [], warningMessage);
 				this.pushStatus({
 					type: 'workflowDeactivated',
 					data: { workflowId: record.workflowId },
@@ -60,7 +71,7 @@ export class PublicationStatusReporter {
 			}
 
 			case 'skipped': {
-				this.logSkip(record);
+				this.logSkip(record, result.reason);
 				await this.complete(record);
 				return;
 			}
@@ -78,6 +89,9 @@ export class PublicationStatusReporter {
 			}
 
 			case 'failed': {
+				// The record's failure stays the activation error; the abandoned
+				// deregistrations (whose teardown already ran) get their own report.
+				this.surfaceTeardownFailures(result.teardownFailures);
 				const { triggerStatuses } = result;
 				await this.outboxRepository.manager.transaction(async (trx) => {
 					if (triggerStatuses) {
@@ -95,6 +109,8 @@ export class PublicationStatusReporter {
 			}
 
 			case 'partial': {
+				// As on 'failed': the stored/pushed message stays about activation.
+				this.surfaceTeardownFailures(result.teardownFailures);
 				await this.reportPartial(record, result.triggerStatuses);
 				return;
 			}
@@ -198,12 +214,39 @@ export class PublicationStatusReporter {
 	}
 
 	/**
+	 * Surfaces abandoned external webhook deregistrations carried on a
+	 * successful result: the publication itself succeeded (local routing has
+	 * stopped), but a third-party subscription may remain. Reports once at
+	 * error level — explicit, since `OperationalError` defaults to `warning`,
+	 * which the error reporter filters from Sentry — and returns the message
+	 * to store on the completed record for diagnostics.
+	 */
+	private surfaceTeardownFailures(
+		teardownFailures: TriggerTeardownFailure[] | undefined,
+	): string | undefined {
+		if (!teardownFailures?.length) return undefined;
+
+		const detail = teardownFailures
+			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
+			.join('; ');
+		const message = `External webhook deregistration failed for: ${detail}`;
+
+		this.errorReporter.error(
+			new OperationalError(message, { level: 'error', cause: teardownFailures[0].error }),
+			{ shouldBeLogged: true },
+		);
+
+		return message;
+	}
+
+	/**
 	 * Marks the record completed and clears any activation errors for the workflow.
 	 * If there are any per-trigger statuses passed in, they are persisted in the same transaction.
 	 */
 	private async complete(
 		record: WorkflowPublicationOutbox,
 		triggerStatuses?: TriggerStatusRow[],
+		warningMessage?: string,
 	): Promise<void> {
 		await this.outboxRepository.manager.transaction(async (trx) => {
 			if (triggerStatuses !== undefined) {
@@ -213,14 +256,14 @@ export class PublicationStatusReporter {
 					trx,
 				);
 			}
-			await this.outboxRepository.markCompleted(record.id, trx);
+			await this.outboxRepository.markCompleted(record.id, trx, warningMessage);
 		});
 		await this.activationErrorsService.deregister(record.workflowId);
 	}
 
-	private logSkip(record: WorkflowPublicationOutbox): void {
+	private logSkip(record: WorkflowPublicationOutbox, reason: PublicationSkipReason): void {
 		const context = { workflowId: record.workflowId, outboxId: record.id };
 
-		this.logger.warn('Workflow not found, marking outbox record as completed', context);
+		this.logger.warn(`${SKIP_LOG_MESSAGE[reason]}, marking outbox record as completed`, context);
 	}
 }

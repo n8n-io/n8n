@@ -11,7 +11,7 @@
 | encryptedPassword | text |  | true |  |  | Encrypted HTTPS password/token; set when connectionType is 'https', null for 'ssh'. |
 | encryptedPrivateKey | text |  | true |  |  | Encrypted SSH private key; set when connectionType is 'ssh', null for 'https'. |
 | encryptedUsername | text |  | true |  |  | Encrypted HTTPS username; set when connectionType is 'https', null for 'ssh'. |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [public.git_connection_project](public.git_connection_project.md) |  |  |
 | keyGeneratorType | varchar(16) |  | true |  |  | GitKeyGeneratorType enum: "ed25519", "rsa" |
 | name | varchar(128) |  | false |  |  |  |
 | publicKey | text |  | true |  |  | SSH public key; set when connectionType is 'ssh', null for 'https'. |
@@ -45,6 +45,7 @@
 ```mermaid
 erDiagram
 
+"public.git_connection_project" }o--|| "public.git_connection" : "FOREIGN KEY (#quot;gitConnectionId#quot;) REFERENCES git_connection(id) ON DELETE CASCADE"
 
 "public.git_connection" {
   varchar_64_ baseCommit
@@ -59,6 +60,12 @@ erDiagram
   varchar_128_ name
   text publicKey
   text repositoryUrl
+  timestamp_3__with_time_zone updatedAt
+}
+"public.git_connection_project" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ gitConnectionId FK
+  varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
 }
 ```

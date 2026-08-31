@@ -9,12 +9,17 @@ import type {
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 describe('WorkflowPublicationApplier', () => {
 	const logger = mock<Logger>();
@@ -24,6 +29,9 @@ describe('WorkflowPublicationApplier', () => {
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowTriggerActivator = mock<WorkflowTriggerActivator>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+	const nodeTypes = mock<NodeTypes>();
+	const workflowService = mock<WorkflowService>();
+	const telemetry = mock<Telemetry>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -32,6 +40,9 @@ describe('WorkflowPublicationApplier', () => {
 		workflowPublishedVersionRepository,
 		workflowTriggerActivator,
 		workflowPublishedDataService,
+		nodeTypes,
+		workflowService,
+		telemetry,
 	);
 
 	function makeRecord(
@@ -112,7 +123,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
 		workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockResolvedValue(new Set());
 		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
-		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
+		workflowTriggerActivator.deactivate.mockResolvedValue({ externalTeardownFailures: [] });
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
 		// The test nodes are scheduleTrigger nodes, so default every node to 'in-memory'.
 		workflowTriggerActivator.getTriggerKinds.mockImplementation(
@@ -195,6 +206,28 @@ describe('WorkflowPublicationApplier', () => {
 				'wf-1',
 			);
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		test('completes as unpublished carrying external teardown failures, still removing the mapping', async () => {
+			// Local routing already stopped inside `deactivate` (rows deleted before
+			// any external call), so an abandoned external deregistration must not
+			// keep the mapping alive — that would make the reconciler re-enqueue the
+			// unpublish forever and block deleting the workflow.
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(oldVersion),
+			);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([triggerNode('a')]);
+			const failure = { nodeName: 'a', error: new Error('remote unreachable') };
+			workflowTriggerActivator.deactivate.mockResolvedValue({
+				externalTeardownFailures: [failure],
+			});
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'unpublished', teardownFailures: [failure] });
+			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+			);
 		});
 
 		test('propagates a teardown failure and leaves the mapping in place', async () => {
@@ -520,6 +553,7 @@ describe('WorkflowPublicationApplier', () => {
 		const callOrder: string[] = [];
 		workflowTriggerActivator.deactivate.mockImplementation(async () => {
 			callOrder.push('remove');
+			return { externalTeardownFailures: [] };
 		});
 		workflowPublishedVersionRepository.setPublishedVersion.mockImplementation(async () => {
 			callOrder.push('advance');
@@ -560,6 +594,30 @@ describe('WorkflowPublicationApplier', () => {
 		// straight after, so the empty window never serves a stale version, all
 		// before the new triggers are added.
 		expect(callOrder).toEqual(['remove', 'invalidate', 'advance', 'refresh', 'add']);
+	});
+
+	test('completes carrying external teardown failures from removed triggers, still advancing', async () => {
+		setTriggerSets([triggerNode('a'), triggerNode('b')], [triggerNode('a')]);
+		const failure = { nodeName: 'b', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [failure],
+		});
+
+		const result = await applier.apply(makeRecord(), abort);
+
+		// The new version must not be blocked by a third party refusing to release
+		// an old trigger: the publication completes and the failures ride along.
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+			teardownFailures: [failure],
+		});
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
 	});
 
 	test('propagates without advancing when removing triggers throws', async () => {
@@ -620,6 +678,63 @@ describe('WorkflowPublicationApplier', () => {
 			'v-2',
 		);
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+	});
+
+	test('carries external teardown failures on a partial activation outcome', async () => {
+		// The teardown ran (and the version advanced) before activation classified
+		// the result: the abandoned deregistration must survive the classification
+		// so the reporter can still surface it.
+		setTriggerSets(
+			[triggerNode('a'), triggerNode('removed')],
+			[triggerNode('a'), triggerNode('b')],
+		);
+		const teardownFailure = { nodeName: 'removed', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [teardownFailure],
+		});
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error: new Error('third-party unavailable') }],
+		});
+
+		const result = await applier.apply(makeRecord(), abort);
+
+		expect(result).toMatchObject({ type: 'partial', teardownFailures: [teardownFailure] });
+	});
+
+	test('carries external teardown failures when adding triggers throws', async () => {
+		setTriggerSets(
+			[triggerNode('a'), triggerNode('removed')],
+			[triggerNode('a'), triggerNode('b')],
+		);
+		const teardownFailure = { nodeName: 'removed', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [teardownFailure],
+		});
+		workflowTriggerActivator.activate.mockRejectedValue(new Error('registration failed'));
+
+		const result = await applier.apply(makeRecord(), abort);
+
+		expect(result).toMatchObject({ type: 'failed', teardownFailures: [teardownFailure] });
+	});
+
+	test('carries external teardown failures when advancing the version throws', async () => {
+		// The teardown (and its abandoned deregistrations) already happened;
+		// an advance failure must not throw past them and lose the report.
+		setTriggerSets([triggerNode('a'), triggerNode('removed')], [triggerNode('a')]);
+		const teardownFailure = { nodeName: 'removed', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [teardownFailure],
+		});
+		workflowPublishedVersionRepository.setPublishedVersion.mockRejectedValue(new Error('db down'));
+
+		const result = await applier.apply(makeRecord(), abort);
+
+		expect(result).toMatchObject({
+			type: 'failed',
+			error: expect.objectContaining({ message: 'db down' }),
+			teardownFailures: [teardownFailure],
+		});
 	});
 
 	test('returns partial when a deterministic failure coexists with an activated trigger', async () => {
@@ -792,6 +907,7 @@ describe('WorkflowPublicationApplier', () => {
 			const controller = new AbortController();
 			workflowTriggerActivator.deactivate.mockImplementation(async () => {
 				controller.abort(new Error('deadline'));
+				return { externalTeardownFailures: [] };
 			});
 
 			const result = await applier.apply(makeRecord(), {
@@ -815,6 +931,124 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+		});
+	});
+	describe('node id healing', () => {
+		const dupTriggerVersion = (): WorkflowHistory =>
+			({
+				versionId: 'v-2',
+				workflowId: 'wf-1',
+				nodes: [
+					triggerNode('shared', { name: 'Trigger A' }),
+					triggerNode('shared', { name: 'Trigger B' }),
+				],
+				connections: {},
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['shared'] }],
+			}) as unknown as WorkflowHistory;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) =>
+				type.toLowerCase().includes('trigger')
+					? ({ trigger: async () => ({}) } as unknown as INodeType)
+					: ({} as INodeType),
+			);
+			workflowService.publishAsSystem.mockResolvedValue({
+				published: true,
+				versionId: 'v-healed',
+			});
+		});
+
+		it('publishes a healed system version instead of applying one with duplicate node ids', async () => {
+			const version = dupTriggerVersion();
+			workflowHistoryRepository.findOneBy.mockResolvedValue(version);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
+			expect(workflowService.publishAsSystem).toHaveBeenCalledTimes(1);
+			const [workflowId, versionData, expectedActiveVersionId] =
+				workflowService.publishAsSystem.mock.calls[0];
+			expect(workflowId).toBe('wf-1');
+			// Baseline = the version the healed copy was derived from, so a newer
+			// publish in flight resolves as superseded instead of being overwritten.
+			expect(expectedActiveVersionId).toBe('v-2');
+			expect(versionData.connections).toBe(version.connections);
+			expect(versionData.nodeGroups).toBe(version.nodeGroups);
+			const ids = versionData.nodes.map((node: INode) => node.id);
+			expect(new Set(ids).size).toBe(2);
+			// The contested id survives on one node, so state keyed on it stays valid.
+			expect(ids).toContain('shared');
+			// The broken version itself is never applied.
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.NODE_IDS_HEALED, {
+				workflow_id: 'wf-1',
+				filled_count: 0,
+				reassigned_count: 1,
+				dropped_count: 0,
+				superseded: false,
+			});
+		});
+
+		it('keeps the contested id on the trigger-like sharer, not the first sharer', async () => {
+			// Keeper preference needs real node-type resolution: poller_state rows and
+			// processed_data contexts follow the surviving id, so it must stay on the
+			// node that owns that state.
+			workflowHistoryRepository.findOneBy.mockResolvedValue({
+				versionId: 'v-2',
+				workflowId: 'wf-1',
+				nodes: [
+					triggerNode('shared', { name: 'Set', type: 'n8n-nodes-base.set' }),
+					triggerNode('shared', { name: 'Trigger' }),
+				],
+				connections: {},
+			} as unknown as WorkflowHistory);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
+			const [, versionData] = workflowService.publishAsSystem.mock.calls[0];
+			const byName = new Map(versionData.nodes.map((node: INode) => [node.name, node.id]));
+			expect(byName.get('Trigger')).toBe('shared');
+			expect(byName.get('Set')).not.toBe('shared');
+		});
+
+		it('skips as superseded when the system publish loses its race', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(dupTriggerVersion());
+			workflowService.publishAsSystem.mockResolvedValue({
+				published: false,
+				reason: 'superseded',
+			});
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'skipped', reason: 'superseded' });
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.NODE_IDS_HEALED,
+				expect.objectContaining({ superseded: true }),
+			);
+		});
+
+		it('does not publish anything for a healthy version', async () => {
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(workflowService.publishAsSystem).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
+			expect(result.type).toBe('completed');
+		});
+
+		it('heals even when a node type cannot be resolved', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('Unknown node type');
+			});
+			workflowHistoryRepository.findOneBy.mockResolvedValue(dupTriggerVersion());
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
 		});
 	});
 });

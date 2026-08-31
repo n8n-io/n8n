@@ -181,9 +181,24 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 
 		await resolveWorkflowTool({ type: 'workflow', workflow: 'Scoped Workflow' }, context);
 
-		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith('project-1', {
-			workflowName: 'Scoped Workflow',
-		});
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowName: 'Scoped Workflow' },
+			{ usePublishedVersion: false },
+		);
+	});
+
+	it('requests the published workflow version for production runtimes', async () => {
+		const workflow = makeWorkflow({ id: 'wf-published', name: 'Published Workflow' });
+		const context = { ...makeContext(workflow), usePublishedWorkflowVersion: true };
+
+		await resolveWorkflowTool({ type: 'workflow', workflow: 'Published Workflow' }, context);
+
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowName: 'Published Workflow' },
+			{ usePublishedVersion: true },
+		);
 	});
 
 	it('does not fall back to the cached name when an id is present', async () => {
@@ -196,10 +211,11 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			),
 		).rejects.toThrow('Workflow "Existing Workflow" not found');
 
-		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith('project-1', {
-			workflowId: 'missing-id',
-			workflowName: 'Existing Workflow',
-		});
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowId: 'missing-id', workflowName: 'Existing Workflow' },
+			{ usePublishedVersion: false },
+		);
 	});
 
 	it('throws when the workflow is not shared with the project', async () => {
@@ -252,18 +268,26 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await tool.handler?.({}, {});
 		await tool.handler?.({}, {});
 
-		expect(loadWorkflow).toHaveBeenNthCalledWith(1, 'project-1', {
-			workflowId: 'wf-current',
-			workflowName: 'Current Workflow',
-		});
-		expect(loadWorkflow).toHaveBeenNthCalledWith(2, 'project-1', {
-			workflowId: 'wf-current',
-			workflowName: 'Current Workflow',
-		});
-		expect(loadWorkflow).toHaveBeenNthCalledWith(3, 'project-1', {
-			workflowId: 'wf-current',
-			workflowName: 'Current Workflow',
-		});
+		const expectedReference = { workflowId: 'wf-current', workflowName: 'Current Workflow' };
+		const expectedOptions = { usePublishedVersion: false };
+		expect(loadWorkflow).toHaveBeenNthCalledWith(
+			1,
+			'project-1',
+			expectedReference,
+			expectedOptions,
+		);
+		expect(loadWorkflow).toHaveBeenNthCalledWith(
+			2,
+			'project-1',
+			expectedReference,
+			expectedOptions,
+		);
+		expect(loadWorkflow).toHaveBeenNthCalledWith(
+			3,
+			'project-1',
+			expectedReference,
+			expectedOptions,
+		);
 		expect(context.workflowRunner.run).toHaveBeenNthCalledWith(
 			1,
 			expect.objectContaining({
@@ -303,6 +327,47 @@ describe('workflow tool compatibility', () => {
 		});
 
 		expect(() => validateCompatibility(workflow)).not.toThrow();
+	});
+
+	// A Wait node parks the sub-execution, which the tool hands off to HITL.
+	it('allows a reachable Wait node in workflow tools', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeManualTriggerNode(),
+				{
+					id: 'wait-node-id',
+					name: 'Wait',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: { resume: 'webhook' },
+				},
+			],
+			connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
+		});
+
+		expect(() => validateCompatibility(workflow)).not.toThrow();
+	});
+
+	// The Form node has no equivalent path — it needs an interactive browser
+	// session part-way through the execution.
+	it('rejects a reachable Form node in workflow tools', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeManualTriggerNode(),
+				{
+					id: 'form-node-id',
+					name: 'Form',
+					type: 'n8n-nodes-base.form',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+		});
+
+		expect(() => validateCompatibility(workflow)).toThrow("aren't supported as agent tools");
 	});
 
 	it('attaches metadata with triggerType "webhook" for a webhook trigger workflow', async () => {

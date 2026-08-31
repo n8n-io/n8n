@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/instanceAiBrowserCredentialSetup';
@@ -27,6 +26,8 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
+import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
+import { AI_GATEWAY_MANAGED_TAG } from '../constants';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
@@ -46,6 +47,7 @@ const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
+const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 const settingsStore = useInstanceAiSettingsStore();
 
 const { isFeatureEnabled: isBrowserCredentialSetupEnabled } =
@@ -85,8 +87,9 @@ function initSelections() {
 	for (const req of props.credentialRequests) {
 		if (selections.value[req.credentialType] !== undefined) continue;
 
-		if (req.existingCredentials?.length === 1) {
-			// Auto-select when exactly one credential available
+		if (req.existingCredentials?.length === 1 && !req.preferNew) {
+			// Auto-select when exactly one credential available — unless the user
+			// asked to create a new one, which this card must not answer for them.
 			selections.value[req.credentialType] = req.existingCredentials[0].id;
 		} else {
 			selections.value[req.credentialType] = null;
@@ -126,7 +129,6 @@ const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 onBeforeUnmount(() => {
 	stopDeleteListener();
 	stopCreateListener();
-	stopWatchingBrowserConnect();
 });
 
 // ---------------------------------------------------------------------------
@@ -235,7 +237,7 @@ onMounted(async () => {
 	try {
 		await Promise.all([
 			props.projectId
-				? credentialsStore.fetchAllCredentialsForWorkflow({ projectId: props.projectId })
+				? credentialsStore.fetchUsableCredentials({ projectId: props.projectId })
 				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
@@ -354,10 +356,6 @@ function openCreateCredential() {
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */
 function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 	const selectedId = selections.value[req.credentialType];
-	const selectedCred = selectedId
-		? (req.existingCredentials?.find((c) => c.id === selectedId) ??
-			credentialsStore.getCredentialById(selectedId))
-		: undefined;
 
 	return {
 		id: req.credentialType,
@@ -366,10 +364,24 @@ function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
-		credentials: selectedCred
-			? { [req.credentialType]: { id: selectedCred.id, name: selectedCred.name } }
-			: {},
+		credentials: selectedCredentialsForNode(req, selectedId),
 	} as INodeUi;
+}
+
+/** Credentials passed to NodeCredentials for the current selection. */
+function selectedCredentialsForNode(
+	req: InstanceAiCredentialRequest,
+	selectedId: string | null,
+): INodeUi['credentials'] {
+	// Recreate the managed slot. n8n credits has no stored credential record.
+	if (selectedId === AI_GATEWAY_MANAGED_TAG) {
+		return { [req.credentialType]: { id: null, name: '', __aiGatewayManaged: true } };
+	}
+	const cred = selectedId
+		? (req.existingCredentials?.find((c) => c.id === selectedId) ??
+			credentialsStore.getCredentialById(selectedId))
+		: undefined;
+	return cred ? { [req.credentialType]: { id: cred.id, name: cred.name } } : {};
 }
 
 // ---------------------------------------------------------------------------
@@ -381,9 +393,16 @@ function onCredentialSelected(
 	updateInfo: INodeUpdatePropertiesInformation,
 ) {
 	const credentialData = updateInfo.properties.credentials?.[credentialType];
-	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
-	if (credentialId) {
-		selections.value[credentialType] = credentialId;
+	let selection: string | null = null;
+	if (credentialData && typeof credentialData !== 'string') {
+		// The managed option emits a null id. Store the sentinel tag.
+		selection =
+			credentialData.__aiGatewayManaged === true
+				? AI_GATEWAY_MANAGED_TAG
+				: (credentialData.id ?? null);
+	}
+	if (selection) {
+		selections.value[credentialType] = selection;
 		skippedTypes.value.delete(credentialType);
 	} else {
 		selections.value[credentialType] = null;
@@ -539,22 +558,6 @@ watch(
 	{ immediate: true },
 );
 
-let stopBrowserConnectWatch: (() => void) | undefined;
-
-function stopWatchingBrowserConnect() {
-	stopBrowserConnectWatch?.();
-	stopBrowserConnectWatch = undefined;
-}
-
-watch(
-	() => uiStore.modalsById[INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY]?.open,
-	(isOpen, wasOpen) => {
-		if (wasOpen && !isOpen && !settingsStore.browserConnected) {
-			stopWatchingBrowserConnect();
-		}
-	},
-);
-
 function onSetupChoiceSelected(choice: CredentialSetupChoice) {
 	if (choice === 'ai') {
 		void handleSetupAutomatically();
@@ -589,22 +592,8 @@ async function handleSetupAutomatically() {
 	const attemptId = uuidv4();
 	trackSetupChoiceClicked('ai', attemptId);
 
-	if (settingsStore.browserConnected) {
-		await submitAutoSetup(credentialType, attemptId);
-		return;
-	}
-
-	uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
-	stopWatchingBrowserConnect();
-	stopBrowserConnectWatch = watch(
-		() => settingsStore.browserConnected,
-		async (connected) => {
-			if (!connected) return;
-			stopWatchingBrowserConnect();
-			uiStore.closeModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
-			await submitAutoSetup(credentialType, attemptId);
-		},
-	);
+	if (!(await ensureBrowserConnected('credential_setup'))) return;
+	await submitAutoSetup(credentialType, attemptId);
 }
 </script>
 
@@ -647,7 +636,11 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							:instance-ai-credential-help="instanceAiCredentialHelp"
-							:skip-auto-select="GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType)"
+							:skip-auto-select="
+								GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType) ||
+								currentRequest.preferNew === true
+							"
+							:prefer-new-credential="currentRequest.preferNew === true"
 							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
@@ -761,9 +754,9 @@ async function handleSetupAutomatically() {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {
