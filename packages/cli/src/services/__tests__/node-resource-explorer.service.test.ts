@@ -159,43 +159,6 @@ describe('NodeResourceExplorerService', () => {
 		});
 	});
 
-<<<<<<< HEAD
-=======
-	test('accepts the n8n Connect managed tag and passes a gateway-managed credential', async () => {
-		mockNodeDescription({ properties: [] as never });
-		dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
-			results: [{ name: 'gpt-5-mini', value: 'gpt-5-mini' }],
-		} as never);
-
-		const result = await service.exploreResources(user, {
-			...baseParams,
-			nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			credentialType: 'openAiApi',
-			credentialId: '__AI_GATEWAY_MANAGED__',
-			methodName: 'searchModels',
-		});
-
-		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
-		expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledWith(
-			'searchModels',
-			'',
-			expect.anything(),
-			{ name: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 2.3 },
-			expect.any(Object),
-			{
-				openAiApi: {
-					id: null,
-					name: 'Gateway credits',
-					__aiGatewayManaged: true,
-				},
-			},
-			undefined,
-			undefined,
-		);
-		expect(result.results).toEqual([{ name: 'gpt-5-mini', value: 'gpt-5-mini', url: undefined }]);
-	});
-
->>>>>>> 035dfbd2 (feat(core): Rename n8n credits copy to Gateway credits in gateway and agent services (no-changelog) (#37269))
 	test('loadOptions path: calls getOptionsViaMethodName and maps description through', async () => {
 		mockCredentialOwned();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
