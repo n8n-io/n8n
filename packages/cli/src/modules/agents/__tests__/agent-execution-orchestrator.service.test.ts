@@ -110,6 +110,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		projectId,
 		agentId,
 		telemetryConfiguration: telemetryContext.configuration,
+		toolAccessCheckedAt: Date.now(),
 	};
 }
 

@@ -1,4 +1,3 @@
-import { UnsupportedTriggerError } from '@n8n/node-engine-compatibility';
 import type {
 	INode,
 	IPinData,
@@ -126,7 +125,11 @@ describe('EngineV2Dispatcher', () => {
 
 			const { graph } = proxy.startExecution.mock.calls[0][0];
 			expect(graph.nodes).toEqual([
-				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
 			expect(graph.edges).toEqual([
@@ -164,7 +167,11 @@ describe('EngineV2Dispatcher', () => {
 
 			const { graph } = proxy.startExecution.mock.calls[0][0];
 			expect(graph.nodes).toEqual([
-				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
 			expect(graph.edges).toEqual([
@@ -185,14 +192,34 @@ describe('EngineV2Dispatcher', () => {
 			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 
-		it('propagates a converter rejection for an unsupported trigger', async () => {
-			const scheduleTrigger = { ...MANUAL_TRIGGER, type: 'n8n-nodes-base.scheduleTrigger' };
+		it.each([
+			{ name: 'the selected trigger', triggerToStartFrom: { name: 'Schedule' } },
+			{ name: 'the only trigger', triggerToStartFrom: undefined },
+		])('rejects a production trigger, when it is $name', async ({ triggerToStartFrom }) => {
+			const scheduleTrigger = node('sched-id', 'Schedule', 'n8n-nodes-base.scheduleTrigger');
 			const data = runData({
-				workflowData: workflow({ nodes: [scheduleTrigger, SET_NODE] }),
+				triggerToStartFrom,
+				workflowData: workflow({ nodes: [scheduleTrigger, SET_NODE], connections: {} }),
 			});
 
-			await expect(dispatcher.start(data)).rejects.toThrow(UnsupportedTriggerError);
+			await expect(dispatcher.start(data)).rejects.toThrow(
+				'Engine 2.0 cannot run the "Schedule" trigger yet. Only the Manual Trigger is supported.',
+			);
 			expect(proxy.startExecution).not.toHaveBeenCalled();
+		});
+
+		it('lets the converter find the trigger when none was selected', async () => {
+			await dispatcher.start(runData({ triggerToStartFrom: undefined }));
+
+			const { graph } = proxy.startExecution.mock.calls[0][0];
+			expect(graph.nodes).toEqual([
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
+				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
+			]);
 		});
 
 		describe('rejections', () => {

@@ -13,6 +13,13 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+/** The v1 identity of a trigger node, kept so expressions can read it back. */
+export interface TriggerStepConfig {
+	nodeType: string;
+	typeVersion: number;
+	parameters: INodeParameters;
+}
+
 export interface V1NodeStepConfig {
 	nodeType: string;
 	typeVersion: number;
