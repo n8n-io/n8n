@@ -73,7 +73,11 @@ runs:
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'pnpm'
+        # A job that installs nothing must not participate in the pnpm-store
+        # cache. Its post step would save an empty store, and cache keys are
+        # write-once — so if it lost the race to a real installer, every other
+        # job on that key would restore nothing and silently re-download.
+        cache: ${{ inputs.install-command != '' && 'pnpm' || '' }}
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Fail fast if setup-node silently fell through to the runner's baked-in
@@ -284,7 +288,7 @@ runs:
     # build job stays green; Linux/Blacksmith jobs keep remote caching.
     - name: Configure Turborepo Cache
       if: steps.turbo-server.outputs.running != 'true' && runner.os != 'Windows'
-      uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+      uses: rharkor/caching-for-turbo@2238fae6eb9a9936f92356f54cb3660200d105e7 # v2.5.1
       with:
         server-port: 0
 
