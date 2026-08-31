@@ -3,6 +3,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
@@ -81,6 +82,39 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 describe('InstanceAiOnboardingWizard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(hasPermission).mockReturnValue(true);
+	});
+
+	it('does not auto-focus or auto-open the model dropdown when the wizard opens', async () => {
+		const { pinia } = setupStore({
+			modelName: 'claude-opus-5',
+			modelEnvConfigured: true,
+			envManaged: {
+				model: { provider: true, apiKey: true, baseUrl: false, model: false },
+				sandbox: { provider: false, serviceUrl: false, apiKey: false },
+				search: { provider: false, apiKey: false, url: false },
+			},
+		});
+		const { findByRole, findByTestId } = renderWizard({ pinia });
+
+		const modelField = inputFor(await findByTestId('assistant-model-name'));
+
+		expect(modelField).not.toHaveFocus();
+		expect(modelField).toHaveAttribute('aria-expanded', 'false');
+		// Focus still has to land inside the dialog so Tab and Escape work.
+		expect(document.activeElement).toBe(await findByRole('dialog'));
+	});
+
+	it('disables the model field when the user cannot manage instance credentials', async () => {
+		vi.mocked(hasPermission).mockImplementation(
+			(_types, options) => options?.rbac?.scope !== 'credential:manageInstance',
+		);
+		const { pinia } = setupStore();
+		const { findByTestId } = renderWizard({ pinia });
+
+		const modelField = inputFor(await findByTestId('assistant-model-name'));
+
+		expect(modelField).toBeDisabled();
 	});
 
 	it('loads and merges the model catalog without changing the selected model', async () => {

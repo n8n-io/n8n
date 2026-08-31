@@ -410,29 +410,6 @@ export function buildConflictBranch({
 	};
 }
 
-// Conflict PRs that were recently closed WITHOUT being merged — closing resolves nothing,
-// so the same conflict is about to come back; the new PR and Slack message call it out.
-export function recentAbandonedConflictPrs(
-	gh,
-	{ label = CONFLICT_LABEL, sinceDays = 14, now = Date.now() } = {},
-) {
-	const out = gh([
-		'pr',
-		'list',
-		'--state',
-		'closed',
-		'--label',
-		label,
-		'--json',
-		'number,url,mergedAt,closedAt',
-		'--limit',
-		'10',
-	]);
-	return JSON.parse(out || '[]').filter(
-		(pr) => !pr.mergedAt && pr.closedAt && now - Date.parse(pr.closedAt) < sinceDays * 86_400_000,
-	);
-}
-
 /**
  * Push the marker-carrying conflict branch and open a draft PR naming both ends of the
  * conflict: the authors of the breaking commits behind the conflicted files, and the master
@@ -469,13 +446,6 @@ export async function openConflictPr({
 		log,
 	});
 
-	let abandoned = [];
-	try {
-		abandoned = recentAbandonedConflictPrs(gh);
-	} catch (error) {
-		log(`warning: could not check for abandoned conflict PRs: ${error.message}`);
-	}
-
 	const { slack, body } = buildOutputs({
 		syncBranch: SYNC_BRANCH,
 		targetBranch: target,
@@ -485,7 +455,6 @@ export async function openConflictPr({
 		masterCommits,
 		preResolved,
 		lockfileDeferred,
-		abandoned,
 	});
 
 	git(['push', '--force', pushUrl, `HEAD:refs/heads/${SYNC_BRANCH}`]);

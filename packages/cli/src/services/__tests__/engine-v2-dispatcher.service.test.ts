@@ -1,4 +1,3 @@
-import { UnsupportedTriggerError } from '@n8n/node-engine-compatibility';
 import type {
 	INode,
 	IPinData,
@@ -17,6 +16,7 @@ import type { CredentialsPermissionChecker } from '@/executions/pre-execution-ch
 import type { ResumableExecution } from '@/interfaces';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import type { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
 const node = (id: string, name: string, type: string): INode => ({
 	id,
@@ -72,6 +72,7 @@ function runData(
 describe('EngineV2Dispatcher', () => {
 	const proxy = mock<EngineDataPlaneProxyService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const pushRegistry = mock<EngineV2PushRegistry>();
 
 	let dispatcher: EngineV2Dispatcher;
 
@@ -79,7 +80,7 @@ describe('EngineV2Dispatcher', () => {
 		vi.clearAllMocks();
 		proxy.isAvailable.mockReturnValue(true);
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
-		dispatcher = new EngineV2Dispatcher(proxy, credentialsPermissionChecker);
+		dispatcher = new EngineV2Dispatcher(proxy, credentialsPermissionChecker, pushRegistry);
 	});
 
 	describe('routesToEngineV2', () => {
@@ -124,7 +125,11 @@ describe('EngineV2Dispatcher', () => {
 
 			const { graph } = proxy.startExecution.mock.calls[0][0];
 			expect(graph.nodes).toEqual([
-				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
 			expect(graph.edges).toEqual([
@@ -162,7 +167,11 @@ describe('EngineV2Dispatcher', () => {
 
 			const { graph } = proxy.startExecution.mock.calls[0][0];
 			expect(graph.nodes).toEqual([
-				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
 			expect(graph.edges).toEqual([
@@ -183,14 +192,34 @@ describe('EngineV2Dispatcher', () => {
 			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 
-		it('propagates a converter rejection for an unsupported trigger', async () => {
-			const scheduleTrigger = { ...MANUAL_TRIGGER, type: 'n8n-nodes-base.scheduleTrigger' };
+		it.each([
+			{ name: 'the selected trigger', triggerToStartFrom: { name: 'Schedule' } },
+			{ name: 'the only trigger', triggerToStartFrom: undefined },
+		])('rejects a production trigger, when it is $name', async ({ triggerToStartFrom }) => {
+			const scheduleTrigger = node('sched-id', 'Schedule', 'n8n-nodes-base.scheduleTrigger');
 			const data = runData({
-				workflowData: workflow({ nodes: [scheduleTrigger, SET_NODE] }),
+				triggerToStartFrom,
+				workflowData: workflow({ nodes: [scheduleTrigger, SET_NODE], connections: {} }),
 			});
 
-			await expect(dispatcher.start(data)).rejects.toThrow(UnsupportedTriggerError);
+			await expect(dispatcher.start(data)).rejects.toThrow(
+				'Engine 2.0 cannot run the "Schedule" trigger yet. Only the Manual Trigger is supported.',
+			);
 			expect(proxy.startExecution).not.toHaveBeenCalled();
+		});
+
+		it('lets the converter find the trigger when none was selected', async () => {
+			await dispatcher.start(runData({ triggerToStartFrom: undefined }));
+
+			const { graph } = proxy.startExecution.mock.calls[0][0];
+			expect(graph.nodes).toEqual([
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
+				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
+			]);
 		});
 
 		describe('rejections', () => {
@@ -315,6 +344,49 @@ describe('EngineV2Dispatcher', () => {
 				await dispatcher.start(data);
 
 				expect(startedWith()).toBeNull();
+			});
+		});
+
+		describe('the push session', () => {
+			it('records the run against the data plane execution id', async () => {
+				await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+				expect(pushRegistry.register).toHaveBeenCalledExactlyOnceWith('dp-uuid', {
+					pushRef: 'push-1',
+					workflowId: 'wf-1',
+					trigger: { nodeName: MANUAL_TRIGGER.name, outputs: [[{ json: {} }]] },
+				});
+			});
+
+			it('records the trigger payload the engine was given', async () => {
+				const data = runData({
+					pushRef: 'push-1',
+					triggerToStartFrom: {
+						name: MANUAL_TRIGGER.name,
+						data: taskData([[{ json: { from: 'trigger' } }]]),
+					},
+				});
+
+				await dispatcher.start(data);
+
+				expect(pushRegistry.register.mock.calls[0][1].trigger).toEqual({
+					nodeName: MANUAL_TRIGGER.name,
+					outputs: [[{ json: { from: 'trigger' } }]],
+				});
+			});
+
+			it('records nothing when nothing is watching the run', async () => {
+				await dispatcher.start(runData());
+
+				expect(pushRegistry.register).not.toHaveBeenCalled();
+			});
+
+			it('records nothing when the data plane refused the run', async () => {
+				proxy.startExecution.mockRejectedValueOnce(new Error('down'));
+
+				await expect(dispatcher.start(runData({ pushRef: 'push-1' }))).rejects.toThrow('down');
+
+				expect(pushRegistry.register).not.toHaveBeenCalled();
 			});
 		});
 	});

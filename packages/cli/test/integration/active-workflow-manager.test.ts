@@ -25,6 +25,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -135,6 +136,21 @@ describe('init()', () => {
 		await activeWorkflowManager.init();
 
 		expect(validateWorkflowHasTriggerLikeNodeSpy).toHaveBeenCalledTimes(2);
+	});
+
+	// Startup reactivation is a publish in its own right. Spied rather than registered
+	// via `setImplementation`, which is single-shot and would leak; `restoreMocks` undoes
+	// a spy between tests.
+	it('should enforce the publish policy for each workflow it reactivates', async () => {
+		const policyEnforcementService = Container.get(PolicyEnforcementService);
+		vi.spyOn(policyEnforcementService, 'hasChecksFor').mockReturnValue(true);
+		const enforceSpy = vi.spyOn(policyEnforcementService, 'enforceWorkflowPublish');
+		await Promise.all([createActiveWorkflow(), createActiveWorkflow()]);
+
+		await activeWorkflowManager.init();
+
+		expect(enforceSpy).toHaveBeenCalledTimes(2);
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(2);
 	});
 });
 

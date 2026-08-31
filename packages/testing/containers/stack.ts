@@ -2,12 +2,17 @@ import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
-import { createElapsedLogger, pollContainerHttpEndpoint } from './helpers/utils';
+import {
+	createElapsedLogger,
+	pollContainerHttpEndpoint,
+	waitForContainerLogMessages,
+} from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
 import type { N8NStartupDiagnostics } from './services/n8n';
 import { createN8NInstances, N8NStartupError } from './services/n8n';
 import { helperFactories, services } from './services/registry';
+import type { TaskRunnerResult } from './services/task-runner';
 import type {
 	FileToMount,
 	HelperContext,
@@ -219,6 +224,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
+		// Earliest log line the readiness gate below may accept
+		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
 		const n8nStartupStart = performance.now();
 		const n8nResult = await createN8NInstances({
 			mains,
@@ -247,6 +254,26 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		if (lbResult) {
 			await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
 			log('Load balancer ready');
+		}
+
+		// The runner container starts before the instance whose broker it dials, so it
+		// can only register once that instance is up. Each launcher must have
+		// registered before a test executes code, otherwise the first execution races
+		// the registration. Which instance owns the broker varies by topology, so the
+		// runner's own log is the one place the signal is observable. Match each
+		// launcher separately, so one launcher reconnecting cannot stand in for the
+		// other, and only from this run, since a reused container keeps its old logs.
+		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
+		if (taskRunnerResult) {
+			await waitForContainerLogMessages(
+				taskRunnerResult.container,
+				[
+					/\[launcher:js\].*Received message `broker:runnerregistered`/,
+					/\[launcher:py\].*Received message `broker:runnerregistered`/,
+				],
+				{ since: n8nStartedAtSeconds },
+			);
+			log('Task runners registered with broker');
 		}
 
 		ctx.baseUrl = baseUrl;
