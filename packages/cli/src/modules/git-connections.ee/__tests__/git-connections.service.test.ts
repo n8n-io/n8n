@@ -673,7 +673,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			gitService.refreshWorkingCopy.mockResolvedValue({ head: 'remotesha' });
 			cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 			n8nPackagesService.importPackageFromDirectory.mockResolvedValue(importResult());
-			gitConnectionProjectRepository.findProjectIdsByConnection.mockResolvedValue(['p1', 'p2']);
+			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2']);
 		});
 
 		afterEach(async () => {
@@ -741,13 +741,9 @@ describe('GitConnectionsService (credential state machine)', () => {
 			});
 		});
 
-		it('deletes projects missing from the import and reconciles the connection links', async () => {
+		it('deletes team projects missing from the import', async () => {
 			await mkdir(exportFolder, { recursive: true });
-			gitConnectionProjectRepository.findProjectIdsByConnection.mockResolvedValueOnce([
-				'p1',
-				'p2',
-				'removed',
-			]);
+			projectRepository.findTeamProjectIds.mockResolvedValueOnce(['p1', 'p2', 'removed']);
 
 			const result = await importService.pull('1', actor);
 
@@ -758,10 +754,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 				projectId: 'removed',
 				removalType: 'delete',
 			});
-			expect(gitConnectionProjectRepository.syncConnectionProjects).toHaveBeenCalledWith('1', [
-				'p1',
-				'p2',
-			]);
 			expect(result.counts.projects.deleted).toBe(1);
 		});
 

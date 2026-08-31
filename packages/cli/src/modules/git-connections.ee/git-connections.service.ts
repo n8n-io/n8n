@@ -386,11 +386,7 @@ export class GitConnectionsService {
 			{ sourceDir: importFolder },
 		);
 		const importedProjectIds = result.projects.map((project) => project.localId);
-		const projectReconciliation = await this.reconcileConnectionProjects(
-			connectionId,
-			actor,
-			importedProjectIds,
-		);
+		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
 
 		// The working copy — and now the instance — match this remote commit.
 		connection.baseCommit = head;
@@ -403,15 +399,13 @@ export class GitConnectionsService {
 		};
 	}
 
-	private async reconcileConnectionProjects(
-		connectionId: string,
+	private async reconcileTeamProjects(
 		actor: User,
 		importedProjectIds: string[],
 	): Promise<ProjectReconciliationResult> {
 		const imported = new Set(importedProjectIds);
-		const linkedProjectIds =
-			await this.gitConnectionProjectRepository.findProjectIdsByConnection(connectionId);
-		const removedProjectIds = linkedProjectIds.filter((projectId) => !imported.has(projectId));
+		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
+		const removedProjectIds = teamProjectIds.filter((projectId) => !imported.has(projectId));
 
 		for (const projectId of removedProjectIds) {
 			await this.projectService.deleteProject(actor, projectId);
@@ -422,13 +416,6 @@ export class GitConnectionsService {
 				removalType: 'delete',
 			});
 		}
-
-		// Imported projects become managed by this connection. Deleting a missing project
-		// cascades its previous link before the remaining links are synchronized.
-		await this.gitConnectionProjectRepository.syncConnectionProjects(
-			connectionId,
-			importedProjectIds,
-		);
 
 		return { deletedProjectIds: removedProjectIds };
 	}

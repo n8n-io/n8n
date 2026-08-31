@@ -154,7 +154,7 @@ async function createConnection(repositoryUrl: string): Promise<GitConnection> {
 }
 
 describe('Git connection push and pull', () => {
-	it('exports linked projects, commits them, and pushes them to the remote branch', async () => {
+	it('exports all team projects, commits them, and pushes them to the remote branch', async () => {
 		const remote = await createRemote();
 		const connection = await createConnection(remote.bareDir);
 		await service.clone(connection.id);
@@ -164,10 +164,6 @@ describe('Git connection push and pull', () => {
 			{ name: 'Process order', nodes: [], connections: {} },
 			project,
 		);
-		await connectionProjectRepository.insert({
-			gitConnectionId: connection.id,
-			projectId: project.id,
-		});
 
 		const result = await service.push(connection.id, owner, {
 			commitMessage: 'Export orders',
@@ -203,6 +199,9 @@ describe('Git connection push and pull', () => {
 
 	it('pulls the remote snapshot and makes the managed target scope match it', async () => {
 		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
 		const sourceProject = await createTeamProject('Orders', owner);
 		const sourceWorkflow = await createWorkflow(
 			{ name: 'Process order', nodes: [], connections: {} },
@@ -237,13 +236,6 @@ describe('Git connection push and pull', () => {
 		);
 		const removedProject = await createTeamProject('Removed from Git', owner);
 
-		const connection = await createConnection(remote.bareDir);
-		await connectionProjectRepository.insert([
-			{ gitConnectionId: connection.id, projectId: targetProject.id },
-			{ gitConnectionId: connection.id, projectId: removedProject.id },
-		]);
-		await service.clone(connection.id);
-
 		const result = await service.pull(connection.id, owner);
 
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
@@ -257,9 +249,6 @@ describe('Git connection push and pull', () => {
 			await Container.get(WorkflowRepository).findOneBy({ id: targetOnlyWorkflow.id }),
 		).toBeNull();
 		expect(await Container.get(FolderRepository).findOneBy({ id: targetOnlyFolder.id })).toBeNull();
-		expect(await connectionProjectRepository.findProjectIdsByConnection(connection.id)).toEqual([
-			targetProject.id,
-		]);
 		expect(result.counts.projects.deleted).toBe(1);
 		expect(result.counts.workflows.deleted).toBe(1);
 		expect(result.counts.folders.removed).toBe(1);
