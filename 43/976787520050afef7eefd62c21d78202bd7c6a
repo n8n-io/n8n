@@ -1,0 +1,23 @@
+.github/workflows/test-credential-scopes-reusable.yml
+  s_a37fc6c52c4513::t_988c5c578d75d4 40-45
+.github/workflows/sbom-generation-callable.yml
+  s_a37fc6c52c4513::t_4d81f928426887 76-89,98-99,109
+packages/nodes-base/scripts/check-released-scopes.mjs
+  s_a37fc6c52c4513::t_93f10a55e17019 14-17,19,34-43,46-47,66-71,75,101,103,106,116,129-133,139,142,149,170,184,190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "43976787520050afef7eefd62c21d78202bd7c6a",
+  "prompts": {},
+  "sessions": {
+    "s_a37fc6c52c4513": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c39771d8-4c5d-4b56-ab4c-a2c8cb8676cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
