@@ -36,6 +36,10 @@ const MAX_LIST_PAGES = 20;
 // Tracked-id count (pending + boundary ids) at which the poll stops holding
 // the cursor and accepts skipping any unlisted remainder.
 const MAX_TRACKED_BACKLOG_IDS = 5_000;
+// Consecutive failed fetches of the same queued message before the poll skips
+// it. The count is per node, not per id, which is enough: the queue only moves
+// on a success or a skip, so the failing id stays at its head.
+const MAX_PENDING_FETCH_ATTEMPTS = 3;
 
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -427,12 +431,35 @@ export class GmailTrigger implements INodeType {
 				const fetchQs = buildFetchQs();
 
 				for (const [index, id] of idsToFetch.entries()) {
-					await fetchAndProcessMessage(id, fetchQs);
+					try {
+						await fetchAndProcessMessage(id, fetchQs);
+					} catch (error) {
+						// The queue is drained before any listing and nothing else evicts
+						// from it, so an id that can never be fetched — deleted since it was
+						// listed, or one that always breaks parsing — would block the queue
+						// and every new message behind it. Retry it a few times, then skip
+						// it and let the tick fail as before.
+						const attempts = (nodeStaticData.pendingFetchAttempts ?? 0) + 1;
+						if (attempts >= MAX_PENDING_FETCH_ATTEMPTS) {
+							this.logger.warn(
+								`Gmail Trigger cannot fetch message ${id} after ${attempts} attempts; skipping it`,
+								{ node: node.name },
+							);
+							nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
+							nodeStaticData.pendingFetchAttempts = 0;
+						} else {
+							nodeStaticData.pendingFetchAttempts = attempts;
+						}
+						throw error;
+					}
+
 					// An id leaves the stored queue only after its fetch succeeded. A
 					// mid-drain throw is swallowed by the catch below, and pending ids sit
 					// behind an already-advanced cursor — removing them up front would
 					// lose the unfetched ones for good.
 					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
+					// Only consecutive failures may add up to a skip.
+					nodeStaticData.pendingFetchAttempts = 0;
 				}
 
 				budget -= idsToFetch.length;

@@ -58,6 +58,8 @@ export type GmailWorkflowStaticData = {
 	possibleDuplicates?: string[];
 	/** v1.4+: Message IDs remaining from a previous poll that exceeded maxResults */
 	pendingMessageIds?: string[];
+	/** v1.4+: Consecutive failed fetches of the first pending ID; resets on success */
+	pendingFetchAttempts?: number;
 };
 export type GmailWorkflowStaticDataDictionary = Record<string, GmailWorkflowStaticData>;
 
