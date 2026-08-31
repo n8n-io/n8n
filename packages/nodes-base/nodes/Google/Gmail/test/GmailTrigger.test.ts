@@ -1922,6 +1922,33 @@ describe('GmailTrigger', () => {
 			);
 		});
 
+		it('should keep listed ids when the very first new-message fetch fails', async () => {
+			// A drain succeeded earlier in this tick, so the "nothing fetched" guard
+			// cannot save the listing: the cursor advances to the drained message's
+			// date. A listed id older than that date must therefore be queued before
+			// the first fetch, not after it, or it ends up behind the cursor and in
+			// no stored state.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					pendingMessageIds: ['P1'],
+				},
+			};
+
+			mockLabels();
+			mockGet('P1', 5_000_000_000_000);
+			mockList(listPage(['R1', 'R2']));
+			mockGetError('R1');
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['P1']);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['R1', 'R2']);
+		});
+
 		it('should count a failed drain fetch instead of dropping the id right away', async () => {
 			// A transient error must not cost the message: keep it queued and
 			// remember the attempt.

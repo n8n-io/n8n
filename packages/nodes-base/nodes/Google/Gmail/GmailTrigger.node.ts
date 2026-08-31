@@ -566,7 +566,18 @@ export class GmailTrigger implements INodeType {
 			if (shouldLimitMessages && messages.length > budget) {
 				messagesToProcess = messages.slice(0, budget);
 				beyondBudgetIds = messages.slice(budget).map((m) => m.id);
-				nodeStaticData.pendingMessageIds = beyondBudgetIds;
+			}
+
+			// Queue every listed id before fetching any of them, so a throw on the
+			// first fetch cannot leave ids in no stored state: the loop below trims
+			// this back down as each fetch succeeds. Stays gated on the version
+			// check, or a pre-1.4 node would store a queue its own drain path
+			// ignores until someone bumps its version.
+			if (shouldLimitMessages) {
+				nodeStaticData.pendingMessageIds = [
+					...messagesToProcess.map((m) => m.id),
+					...beyondBudgetIds,
+				];
 			}
 
 			if (messagesToProcess.length > 0) {
