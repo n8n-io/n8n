@@ -90,7 +90,7 @@ function hasActiveThinkingTrace(messages: InstanceAiMessage[]): boolean {
 // and while an active thinking block is the live activity surface.
 const isVisible = computed(
 	() =>
-		!thread.isAwaitingConfirmation &&
+		!thread.isAwaitingUserConfirmation &&
 		!hasActiveThinkingTrace(thread.messages) &&
 		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
 );

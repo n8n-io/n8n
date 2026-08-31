@@ -176,7 +176,7 @@ const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role
 // slot (questions, generic approvals, or domain/web-search access). Drives
 // the swap between the input and the floating confirmation panel.
 const hasFloatingConfirmation = computed(() =>
-	thread.pendingConfirmations.some(isPendingItemFloating),
+	thread.visibleConfirmations.some(isPendingItemFloating),
 );
 
 // --- Fix-with-AI offer (failure data emitted by the artifact host) ---

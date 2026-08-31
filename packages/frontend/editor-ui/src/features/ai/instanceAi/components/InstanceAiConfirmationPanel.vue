@@ -107,14 +107,14 @@ type ConfirmationChunk = FloatingChunk | StandaloneChunk;
 const chunks = computed((): ConfirmationChunk[] => {
 	if (props.kind === 'inline') {
 		const result: ConfirmationChunk[] = [];
-		for (const item of thread.pendingConfirmations) {
+		for (const item of thread.visibleConfirmations) {
 			if (isPendingItemFloating(item)) continue;
 			result.push({ type: 'standalone', item });
 		}
 		return result;
 	}
 
-	for (const item of thread.pendingConfirmations) {
+	for (const item of thread.visibleConfirmations) {
 		if (!isPendingItemFloating(item)) continue;
 		return [{ type: 'floating', item }];
 	}

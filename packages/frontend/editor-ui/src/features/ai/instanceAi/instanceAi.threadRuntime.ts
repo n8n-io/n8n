@@ -693,7 +693,16 @@ export function createThreadRuntime(
 	// `resolvedConfirmationIds` to skip duplicates here because we only mark
 	// resolved *after* `confirmAction` succeeds — otherwise a failed request
 	// would hide the card while the backend still waits for approval.
-	const autoApproveInFlight = new Set<string>();
+	const autoApproveInFlight = ref<Set<string>>(new Set());
+
+	// Auto-approved cards stay hidden while their request resolves. Failed
+	// requests become visible again so the user can resolve them manually.
+	const visibleConfirmations = computed(() =>
+		pendingConfirmations.value.filter(
+			(item) => !autoApproveInFlight.value.has(item.toolCall.confirmation.requestId),
+		),
+	);
+	const isAwaitingUserConfirmation = computed(() => visibleConfirmations.value.length > 0);
 
 	watch(
 		pendingConfirmations,
@@ -702,7 +711,7 @@ export function createThreadRuntime(
 			for (const item of items) {
 				const conf = item.toolCall.confirmation;
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
-				if (autoApproveInFlight.has(conf.requestId)) continue;
+				if (autoApproveInFlight.value.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
 				const key = buildAlwaysAllowKey(
 					item.toolCall.toolName,
@@ -711,7 +720,7 @@ export function createThreadRuntime(
 				);
 				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
 
-				autoApproveInFlight.add(conf.requestId);
+				autoApproveInFlight.value.add(conf.requestId);
 				try {
 					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
 					if (!ok) continue;
@@ -737,7 +746,7 @@ export function createThreadRuntime(
 						}),
 					);
 				} finally {
-					autoApproveInFlight.delete(conf.requestId);
+					autoApproveInFlight.value.delete(conf.requestId);
 				}
 			}
 		},
@@ -999,6 +1008,7 @@ export function createThreadRuntime(
 		resetFeedback();
 		resolvedConfirmationIds.clear();
 		sessionAlwaysAllowKeys.value = new Set();
+		autoApproveInFlight.value = new Set();
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;
@@ -1384,7 +1394,9 @@ export function createThreadRuntime(
 		currentTasks,
 		contextualSuggestion,
 		pendingConfirmations,
+		visibleConfirmations,
 		isAwaitingConfirmation,
+		isAwaitingUserConfirmation,
 
 		// actions
 		setPendingHandoff,

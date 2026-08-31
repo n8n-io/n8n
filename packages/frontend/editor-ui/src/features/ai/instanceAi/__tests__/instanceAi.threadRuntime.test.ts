@@ -1723,6 +1723,59 @@ describe('createThreadRuntime - session always-allow', () => {
 		mockPostConfirmation.mockResolvedValue({ ok: true });
 	});
 
+	it('never exposes an auto-approving confirmation to the UI', async () => {
+		let releasePost: (response: { ok: true }) => void = () => {};
+		mockPostConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<{ ok: true }>((resolve) => {
+					releasePost = resolve;
+				}),
+		);
+
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workspace', { action: 'moveWorkflowToFolder' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-hidden',
+			requestId: 'req-hidden',
+			toolName: 'workspace',
+			args: { action: 'moveWorkflowToFolder' },
+		});
+
+		await vi.waitFor(() => {
+			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-hidden', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.isAwaitingConfirmation).toBe(true);
+		expect(runtime.visibleConfirmations).toHaveLength(0);
+		expect(runtime.isAwaitingUserConfirmation).toBe(false);
+
+		releasePost({ ok: true });
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-hidden')).toBe('approved');
+		});
+		expect(runtime.visibleConfirmations).toHaveLength(0);
+	});
+
+	it('keeps non-granted confirmations visible', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workspace', { action: 'moveWorkflowToFolder' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-other',
+			requestId: 'req-other',
+			toolName: 'workspace',
+			args: { action: 'createFolder' },
+		});
+
+		expect(runtime.visibleConfirmations).toHaveLength(1);
+		expect(runtime.isAwaitingUserConfirmation).toBe(true);
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -1986,7 +2039,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
-	it('keeps the confirmation pending when auto-approve POST fails', async () => {
+	it('keeps the confirmation pending and visible when auto-approve POST fails', async () => {
 		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
@@ -2005,6 +2058,10 @@ describe('createThreadRuntime - session always-allow', () => {
 			});
 		});
 		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
+		await vi.waitFor(() => {
+			expect(runtime.visibleConfirmations).toHaveLength(1);
+		});
+		expect(runtime.isAwaitingUserConfirmation).toBe(true);
 	});
 });
 
