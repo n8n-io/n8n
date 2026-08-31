@@ -1919,6 +1919,215 @@ export class WorkflowExecute {
 		return { ...e, message: e.message, stack: e.stack };
 	}
 
+	/**
+	 * A node with `alwaysOutputData` that returned nothing gets one empty item, so the
+	 * nodes after it still run. The item keeps the lineage of all input items.
+	 */
+	private ensureAlwaysOutputData(
+		nodeSuccessData: INodeExecutionData[][] | null | undefined,
+		executionData: IExecuteData,
+	): INodeExecutionData[][] | null | undefined {
+		if (nodeSuccessData?.[0]?.[0]) return nodeSuccessData;
+		if (executionData.node.alwaysOutputData !== true) return nodeSuccessData;
+
+		// Get pairedItem from all input items
+		const pairedItem: IPairedItemData[] = [];
+		executionData.data.main.forEach((inputData, inputIndex) => {
+			if (!inputData) {
+				return;
+			}
+			inputData.forEach((_item, itemIndex) => {
+				pairedItem.push({ item: itemIndex, input: inputIndex });
+			});
+		});
+
+		nodeSuccessData ??= [];
+		nodeSuccessData[0] = [{ json: {}, pairedItem }];
+		return nodeSuccessData;
+	}
+
+	/** Build the task record for a finished node run. */
+	private createTaskData(
+		taskStartedData: ITaskStartedData,
+		executionData: IExecuteData,
+	): ITaskData {
+		return {
+			...taskStartedData,
+			executionTime: Date.now() - taskStartedData.startTime,
+			metadata: executionData.metadata,
+			executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
+			usedDynamicCredentials: this.additionalData.currentNodeUsedDynamicCredentials || undefined,
+			attemptedDynamicCredentials:
+				this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
+		};
+	}
+
+	/**
+	 * Record the n8n user a dynamically-resolved private credential belongs to onto the
+	 * execution context, so the redaction layer can grant that user access to their own
+	 * data. The identity is execution-scoped, so this is the same value across nodes.
+	 */
+	private recordDynamicCredentialsUser(): void {
+		if (
+			this.additionalData.currentNodeUsedDynamicCredentials &&
+			this.additionalData.dynamicCredentialsResolvedUserId &&
+			this.runExecutionData.executionData?.runtimeData
+		) {
+			this.runExecutionData.executionData.runtimeData.executedByUserId =
+				this.additionalData.dynamicCredentialsResolvedUserId;
+		}
+	}
+
+	/**
+	 * Record a node error on the task data and decide how the execution goes on.
+	 *
+	 * If the node continues on error, its input data passes through to the next node and
+	 * the loop continues. Otherwise the task data is stored, the node is pushed back onto
+	 * the stack so it can be restarted, and the loop must stop.
+	 */
+	private async handleNodeExecutionError({
+		executionNode,
+		executionData,
+		taskData,
+		executionError,
+		nodeSuccessData,
+		runIndex,
+		hooks,
+	}: {
+		executionNode: INode;
+		executionData: IExecuteData;
+		taskData: ITaskData;
+		executionError: ExecutionBaseError;
+		nodeSuccessData: INodeExecutionData[][] | null | undefined;
+		runIndex: number;
+		hooks: ExecutionLifecycleHooks;
+	}): Promise<{
+		continueExecution: boolean;
+		nodeSuccessData: INodeExecutionData[][] | null | undefined;
+	}> {
+		taskData.error = executionError;
+		taskData.executionStatus = 'error';
+
+		// Send error to the response if necessary
+		await hooks?.runHook('sendChunk', [
+			{
+				type: 'error',
+				content: executionError.description,
+				metadata: {
+					nodeId: executionNode.id,
+					nodeName: executionNode.name,
+					runIndex,
+					itemIndex: 0,
+				},
+			},
+		]);
+
+		// AI tools default to continue-on-fail so the agent receives the
+		// error as a tool response. Explicit `onError: 'stopWorkflow'`
+		// still wins.
+		const isAiToolExecution = executionNode.rewireOutputLogTo === NodeConnectionTypes.AiTool;
+		const aiToolDefaultsToContinue =
+			isAiToolExecution && executionData.node.onError !== 'stopWorkflow';
+
+		if (this.continuesOnError(executionData.node) || aiToolDefaultsToContinue) {
+			// Workflow should continue running even if node errors
+			if (isAiToolExecution) {
+				// Surface the error on the ai_tool channel so the agent receives it
+				nodeSuccessData = [[{ json: { error: executionError.message } }]];
+			} else if (Object.hasOwn(executionData.data, 'main') && executionData.data.main.length > 0) {
+				// Simply get the input data of the node if it has any and pass it through
+				// to the next node
+				if (executionData.data.main[0] !== null) {
+					nodeSuccessData = [executionData.data.main[0]];
+				}
+			}
+
+			return { continueExecution: true, nodeSuccessData };
+		}
+
+		// Node execution did fail so add error and stop execution
+		// TODO: Remove when AI-723 lands.
+		// For AI tool nodes with rewireOutputLogTo, preserve inputOverride and set correct output type
+		if (executionNode.rewireOutputLogTo) {
+			taskData.inputOverride =
+				this.runExecutionData.resultData.runData[executionNode.name][runIndex]?.inputOverride || {};
+			taskData.data = {
+				[executionNode.rewireOutputLogTo]: [[{ json: { error: executionError.message } }]],
+			} as ITaskDataConnections;
+		}
+
+		this.upsertTaskData(executionNode.name, runIndex, taskData);
+
+		// Add the execution data again so that it can get restarted
+		this.pushExecutionStack(executionData);
+		// Only execute the nodeExecuteAfter hook if the node did not get aborted
+		if (!this.isCancelled) {
+			await hooks.runHook('nodeExecuteAfter', [
+				executionNode.name,
+				taskData,
+				this.runExecutionData,
+			]);
+		}
+
+		return { continueExecution: false, nodeSuccessData };
+	}
+
+	/**
+	 * Store the task data for a node run.
+	 *
+	 * TODO: Remove when AI-723 lands. There is no need to merge anymore, because the only
+	 * reason to have this entry already is because of `inputOverride`.
+	 */
+	private upsertTaskData(nodeName: string, runIndex: number, taskData: ITaskData): void {
+		const nodeRunData = this.runExecutionData.resultData.runData[nodeName];
+		if (nodeRunData[runIndex]) {
+			Object.assign(nodeRunData[runIndex], taskData);
+		} else {
+			nodeRunData.push(taskData);
+		}
+	}
+
+	/**
+	 * Move the error a node reported in `$error` onto the standard `error` and `json`
+	 * fields of the item, so all nodes report errors the same way.
+	 */
+	private normalizeNodeErrors(nodeSuccessData: INodeExecutionData[][]): void {
+		for (const execution of nodeSuccessData) {
+			for (const lineResult of execution) {
+				if (
+					lineResult.json !== undefined &&
+					lineResult.json.$error !== undefined &&
+					lineResult.json.$json !== undefined
+				) {
+					lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
+					lineResult.json = { error: lineResult.error.message };
+				} else if (lineResult.error !== undefined) {
+					lineResult.json = { error: lineResult.error.message };
+				}
+			}
+		}
+	}
+
+	/**
+	 * Log the output of an AI tool node on its own connection type instead of `main`.
+	 * TODO: Remove when AI-723 lands.
+	 */
+	private rewireOutputLog(
+		executionNode: INode,
+		taskData: ITaskData,
+		nodeSuccessData: INodeExecutionData[][],
+		runIndex: number,
+	): void {
+		if (!executionNode.rewireOutputLogTo) return;
+
+		// Try to get inputOverride from existing run data
+		taskData.inputOverride =
+			this.runExecutionData.resultData.runData[executionNode.name]?.[runIndex]?.inputOverride || {};
+		taskData.data = {
+			[executionNode.rewireOutputLogTo]: nodeSuccessData,
+		} as ITaskDataConnections;
+	}
+
 	/** True while there are nodes queued for execution. */
 	private isExecutionStackNotEmpty(): boolean {
 		return this.runExecutionData.executionData!.nodeExecutionStack.length !== 0;
@@ -2148,32 +2357,7 @@ export class WorkflowExecute {
 								this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 							}
 
-							if (!nodeSuccessData?.[0]?.[0]) {
-								if (executionData.node.alwaysOutputData === true) {
-									const pairedItem: IPairedItemData[] = [];
-
-									// Get pairedItem from all input items
-									executionData.data.main.forEach((inputData, inputIndex) => {
-										if (!inputData) {
-											return;
-										}
-										inputData.forEach((_item, itemIndex) => {
-											pairedItem.push({
-												item: itemIndex,
-												input: inputIndex,
-											});
-										});
-									});
-
-									nodeSuccessData ??= [];
-									nodeSuccessData[0] = [
-										{
-											json: {},
-											pairedItem,
-										},
-									];
-								}
-							}
+							nodeSuccessData = this.ensureAlwaysOutputData(nodeSuccessData, executionData);
 
 							if (nodeSuccessData === null && !this.runExecutionData.waitTill) {
 								// If null gets returned it means that the node did succeed
@@ -2195,132 +2379,26 @@ export class WorkflowExecute {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
 
-					const taskData: ITaskData = {
-						...taskStartedData,
-						executionTime: Date.now() - taskStartedData.startTime,
-						metadata: executionData.metadata,
-						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
-						usedDynamicCredentials:
-							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
-						attemptedDynamicCredentials:
-							this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
-					};
-
-					// Record the n8n user a dynamically-resolved private credential
-					// belongs to onto the execution context, so the redaction layer
-					// can grant that user access to their own data. The identity is
-					// execution-scoped, so this is the same value across nodes.
-					if (
-						this.additionalData.currentNodeUsedDynamicCredentials &&
-						this.additionalData.dynamicCredentialsResolvedUserId &&
-						this.runExecutionData.executionData?.runtimeData
-					) {
-						this.runExecutionData.executionData.runtimeData.executedByUserId =
-							this.additionalData.dynamicCredentialsResolvedUserId;
-					}
+					const taskData = this.createTaskData(taskStartedData, executionData);
+					this.recordDynamicCredentialsUser();
 
 					if (executionError !== undefined) {
-						taskData.error = executionError;
-						taskData.executionStatus = 'error';
-
-						// Send error to the response if necessary
-						await hooks?.runHook('sendChunk', [
-							{
-								type: 'error',
-								content: executionError.description,
-								metadata: {
-									nodeId: executionNode.id,
-									nodeName: executionNode.name,
-									runIndex,
-									itemIndex: 0,
-								},
-							},
-						]);
-
-						// AI tools default to continue-on-fail so the agent receives the
-						// error as a tool response. Explicit `onError: 'stopWorkflow'`
-						// still wins.
-						const isAiToolExecution =
-							executionNode.rewireOutputLogTo === NodeConnectionTypes.AiTool;
-						const aiToolDefaultsToContinue =
-							isAiToolExecution && executionData.node.onError !== 'stopWorkflow';
-
-						if (this.continuesOnError(executionData.node) || aiToolDefaultsToContinue) {
-							// Workflow should continue running even if node errors
-							if (isAiToolExecution) {
-								// Surface the error on the ai_tool channel so the agent receives it
-								nodeSuccessData = [[{ json: { error: executionError.message } }]];
-							} else if (
-								Object.hasOwn(executionData.data, 'main') &&
-								executionData.data.main.length > 0
-							) {
-								// Simply get the input data of the node if it has any and pass it through
-								// to the next node
-								if (executionData.data.main[0] !== null) {
-									nodeSuccessData = [executionData.data.main[0]];
-								}
-							}
-						} else {
-							// Node execution did fail so add error and stop execution
-							// TODO: Remove when AI-723 lands.
-							// For AI tool nodes with rewireOutputLogTo, preserve inputOverride and set correct output type
-							if (executionNode.rewireOutputLogTo) {
-								taskData.inputOverride =
-									this.runExecutionData.resultData.runData[executionNode.name][runIndex]
-										?.inputOverride || {};
-								taskData.data = {
-									[executionNode.rewireOutputLogTo]: [
-										[{ json: { error: executionError.message } }],
-									],
-								} as ITaskDataConnections;
-							}
-
-							// TODO: Remove when AI-723 lands.
-							// Check if entry already exists (e.g., from requests-response.ts inputOverride)
-							const errorRunDataExists =
-								!!this.runExecutionData.resultData.runData[executionNode.name][runIndex];
-							if (errorRunDataExists) {
-								const currentTaskData =
-									this.runExecutionData.resultData.runData[executionNode.name][runIndex];
-								Object.assign(currentTaskData, taskData);
-							} else {
-								this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
-							}
-
-							// Add the execution data again so that it can get restarted
-							this.pushExecutionStack(executionData);
-							// Only execute the nodeExecuteAfter hook if the node did not get aborted
-							if (!this.isCancelled) {
-								await hooks.runHook('nodeExecuteAfter', [
-									executionNode.name,
-									taskData,
-									this.runExecutionData,
-								]);
-							}
-
+						const outcome = await this.handleNodeExecutionError({
+							executionNode,
+							executionData,
+							taskData,
+							executionError,
+							nodeSuccessData,
+							runIndex,
+							hooks,
+						});
+						nodeSuccessData = outcome.nodeSuccessData;
+						if (!outcome.continueExecution) {
 							break;
 						}
 					}
 
-					// Merge error information to default output for now
-					// As the new nodes can report the errors in
-					// the `error` property.
-					for (const execution of nodeSuccessData!) {
-						for (const lineResult of execution) {
-							if (
-								lineResult.json !== undefined &&
-								lineResult.json.$error !== undefined &&
-								lineResult.json.$json !== undefined
-							) {
-								lineResult.error = lineResult.json.$error as NodeApiError | NodeOperationError;
-								lineResult.json = {
-									error: (lineResult.json.$error as NodeApiError | NodeOperationError).message,
-								};
-							} else if (lineResult.error !== undefined) {
-								lineResult.json = { error: lineResult.error.message };
-							}
-						}
-					}
+					this.normalizeNodeErrors(nodeSuccessData!);
 
 					// Node executed successfully. So add data and go on.
 					taskData.data = {
@@ -2328,29 +2406,9 @@ export class WorkflowExecute {
 					} as ITaskDataConnections;
 
 					// Rewire output data log to the given connectionType
-					if (executionNode.rewireOutputLogTo) {
-						// TODO: Remove when AI-723 lands.
-						// Try to get inputOverride from existing run data
-						taskData.inputOverride =
-							this.runExecutionData.resultData.runData[executionNode.name]?.[runIndex]
-								?.inputOverride || {};
-						taskData.data = {
-							[executionNode.rewireOutputLogTo]: nodeSuccessData,
-						} as ITaskDataConnections;
-					}
+					this.rewireOutputLog(executionNode, taskData, nodeSuccessData!, runIndex);
 
-					const runDataAlreadyExists =
-						!!this.runExecutionData.resultData.runData[executionNode.name][runIndex];
-					if (runDataAlreadyExists) {
-						// TODO: Remove when AI-723 lands. There is no need to merge
-						// anymore, because the only reason to have this entry already is
-						// because of `inputOverride`.
-						const currentTaskData =
-							this.runExecutionData.resultData.runData[executionNode.name][runIndex];
-						Object.assign(currentTaskData, taskData);
-					} else {
-						this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
-					}
+					this.upsertTaskData(executionNode.name, runIndex, taskData);
 
 					if (this.runExecutionData.waitTill) {
 						await hooks.runHook('nodeExecuteAfter', [
