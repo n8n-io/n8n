@@ -1,4 +1,4 @@
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { isSafeObjectProperty, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
 type QueryParameterScalar = string | number | boolean | bigint | Date | null;
@@ -65,8 +65,8 @@ function parseQueryParameters(
  *
  * Placeholders are only substituted when they make up a complete string value or a complete
  * object key, so a parameter can never contribute structure (extra keys, operators, extra
- * clauses) to the resulting query. A parameter bound to a key must be a non-`$` string, so it
- * cannot turn into an operator either.
+ * clauses) to the resulting query. A parameter bound to a key must be a plain, non-`$` string, so
+ * it can neither turn into an operator nor shadow a reserved object property such as `constructor`.
  */
 export function parseAndResolveQueryParameters(
 	query: string,
@@ -105,12 +105,17 @@ export function parseAndResolveQueryParameters(
 		if (!match) return key;
 
 		const value = takeParameter(key, Number(match[1]) - 1);
-		if (typeof value !== 'string' || value.length === 0 || value.startsWith('$')) {
-			throw new NodeOperationError(
-				node,
-				`${label} placeholder ${key} is used as a field name, so its value must be a non-empty string that does not start with "$"`,
-				{ itemIndex },
-			);
+		if (
+			typeof value !== 'string' ||
+			value.length === 0 ||
+			value.startsWith('$') ||
+			!isSafeObjectProperty(value)
+		) {
+			throw new NodeOperationError(node, `${label} placeholder ${key} is not a valid field name`, {
+				itemIndex,
+				description:
+					'A placeholder used as a field name must resolve to a non-empty string that does not start with "$" and does not name a reserved object property',
+			});
 		}
 
 		return value;

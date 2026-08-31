@@ -50,11 +50,14 @@ describe('parseAndResolveQueryParameters', () => {
 		expect(result).toEqual({ _id: 0, 'name":1,"password_hash': 1 });
 	});
 
-	it.each(['$where', '', 30])('throws when %p is bound to a key', (parameter) => {
-		expect(() => parseAndResolveQueryParameters('{ "$1": 1 }', [parameter], mockNode, 0)).toThrow(
-			'Query placeholder $1 is used as a field name',
-		);
-	});
+	it.each(['$where', '', 30, 'constructor', '__proto__', 'prototype'])(
+		'throws when %p is bound to a key',
+		(parameter) => {
+			expect(() => parseAndResolveQueryParameters('{ "$1": 1 }', [parameter], mockNode, 0)).toThrow(
+				'Query placeholder $1 is not a valid field name',
+			);
+		},
+	);
 
 	it('uses the given label in error messages', () => {
 		expect(() => parseAndResolveQueryParameters('{', [], mockNode, 0, 'Sort')).toThrow(

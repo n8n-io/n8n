@@ -554,21 +554,23 @@ describe('MongoDB CRUD Node', () => {
 				expect(field === 'sort' ? applied.sort : applied.project).toEqual(expected);
 			});
 
-			it.each(['sort', 'projection'])(
-				'rejects a %s parameter that would become an operator',
-				async (field) => {
-					mockFindCursor();
+			it.each([
+				{ field: 'sort', parameter: '$where' },
+				{ field: 'sort', parameter: 'constructor' },
+				{ field: 'projection', parameter: '$where' },
+				{ field: 'projection', parameter: 'constructor' },
+			])('rejects $parameter bound to a $field field name', async ({ field, parameter }) => {
+				mockFindCursor();
 
-					await expect(
-						node.execute.call(
-							mockQueryOperation('find', {
-								[field]: '{ "$1": 1 }',
-								[`${field}Parameters`]: ['$where'],
-							}),
-						),
-					).rejects.toThrow('is used as a field name');
-				},
-			);
+				await expect(
+					node.execute.call(
+						mockQueryOperation('find', {
+							[field]: '{ "$1": 1 }',
+							[`${field}Parameters`]: [parameter],
+						}),
+					),
+				).rejects.toThrow('is not a valid field name');
+			});
 		});
 
 		it('groups insert items by collection and uses insertMany per group', async () => {
