@@ -592,7 +592,9 @@ describe('mapAgentChunkToEvent', () => {
 								serverSlug: 'brave',
 								title: 'Brave',
 								tagline: 'Search the web with Brave Search',
-								credentialType: 'braveMcpOAuth2Api',
+								usesCredentials: [
+									{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+								],
 							},
 						],
 					},
@@ -615,7 +617,9 @@ describe('mapAgentChunkToEvent', () => {
 							serverSlug: 'brave',
 							title: 'Brave',
 							tagline: 'Search the web with Brave Search',
-							credentialType: 'braveMcpOAuth2Api',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
 						},
 					],
 				},
