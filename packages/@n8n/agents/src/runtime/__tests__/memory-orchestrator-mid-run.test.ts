@@ -321,6 +321,47 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
 	});
 
+	it('budgets full tool payloads as the model sees them, not the truncated observer rendering', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi.fn(
+			async () => await Promise.resolve('* CRITICAL (14:30) Large fetch summarized.'),
+		);
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 5_000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('fetch the report')]);
+		// One large tool result dominates the window: the observer rendering
+		// truncates it to ~500 chars — far below every threshold — but the model
+		// receives all 20k chars. The budget must count the full payload, and the
+		// observer's own delta re-check must not skip the run as below-threshold.
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc1',
+						toolName: 'fetch_report',
+						input: { url: 'https://example.com/report' },
+						state: 'resolved',
+						output: 'x'.repeat(20_000),
+					},
+				],
+			},
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(observe).toHaveBeenCalledTimes(1);
+		expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(1);
+		expect(list.forLlm('base').messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+	});
+
 	it('latches mid-run observation off after repeated non-advancing observer runs', async () => {
 		const store = new InMemoryMemory();
 		// Runs but never yields a parseable observation, so the cursor never advances.

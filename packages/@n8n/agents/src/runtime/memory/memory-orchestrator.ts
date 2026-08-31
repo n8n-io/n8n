@@ -10,6 +10,7 @@ import {
 	renderObserverTranscript,
 	runObservationLogObserver,
 	type ObservationLogObserverMemory,
+	type RenderObserverTranscriptOptions,
 	type RunObservationLogObserverResult,
 } from './observation-log-observer';
 import { runObservationLogReflector } from './observation-log-reflector';
@@ -57,6 +58,27 @@ const MID_RUN_SOFT_THRESHOLD_RATIO = 0.7;
  * boundary. Post-turn observation is unaffected.
  */
 const MID_RUN_MAX_NON_ADVANCING_ATTEMPTS = 3;
+/**
+ * The mid-run budget must approximate the window as the primary model sees
+ * it, so per-message estimates render tool payloads untruncated. The
+ * observer's default rendering caps each payload (~2k chars) and would
+ * undercount a window dominated by large tool results by orders of magnitude,
+ * never triggering compaction exactly when it is needed most.
+ */
+const UNTRUNCATED_TRANSCRIPT_OPTIONS: RenderObserverTranscriptOptions = {
+	maxSerializedChars: Number.POSITIVE_INFINITY,
+	maxStringChars: Number.POSITIVE_INFINITY,
+	maxArrayItems: Number.POSITIVE_INFINITY,
+	maxObjectKeys: Number.POSITIVE_INFINITY,
+};
+/**
+ * Threshold handed to mid-run observer runs. The visible-window budget is the
+ * real mid-run gate; the observer's own re-check counts its truncated delta
+ * transcript, which can sit far below the configured threshold exactly when a
+ * large tool result bloats the window. 1 keeps the no-delta guard while
+ * disabling the observer-side token gate mid-run.
+ */
+const MID_RUN_OBSERVER_MIN_DELTA_TOKENS = 1;
 const logger = createFilteredLogger();
 
 function hasFunctionProperty<K extends PropertyKey>(
@@ -402,8 +424,9 @@ export class MemoryOrchestrator {
 	}
 
 	/**
-	 * Mid-run observation, called at clean loop boundaries. When the
-	 * unobserved-transcript token budget crosses a soft threshold
+	 * Mid-run observation, called at clean loop boundaries. When the visible
+	 * window's estimated token size (full content, as the primary model sees
+	 * it) crosses a soft threshold
 	 * (`MID_RUN_SOFT_THRESHOLD_RATIO` x `observerThresholdTokens`), persist the
 	 * turn-so-far (the Observer reads from the store) and start the Observer as
 	 * a background task without blocking the loop. A later boundary activates
@@ -516,6 +539,7 @@ export class MemoryOrchestrator {
 				options.persistence,
 				options.executionCounter,
 				telemetry,
+				MID_RUN_OBSERVER_MIN_DELTA_TOKENS,
 			);
 			if (!handle) return;
 			const result = await handle.done;
@@ -532,7 +556,7 @@ export class MemoryOrchestrator {
 			options.persistence,
 			options.executionCounter,
 			telemetry,
-			softThresholdTokens,
+			MID_RUN_OBSERVER_MIN_DELTA_TOKENS,
 		);
 		if (!handle) return;
 		const entry: MidRunObserverTask = { handle };
@@ -542,14 +566,20 @@ export class MemoryOrchestrator {
 		this.midRunObserverTask = entry;
 	}
 
-	/** Sum cached per-message observer-transcript token estimates for the visible window. */
+	/**
+	 * Sum cached per-message token estimates for the visible window, rendered
+	 * with full tool payloads so the budget tracks what the primary model
+	 * actually receives (non-text blocks such as files are still excluded).
+	 */
 	private async estimateVisibleBudget(list: AgentMessageList): Promise<number> {
 		const visible = list.llmVisibleMessages();
 		for (const message of visible) {
 			if (!this.midRunTokenCounts.has(message.id)) {
 				this.midRunTokenCounts.set(
 					message.id,
-					await this.tokenCounter(renderObserverTranscript([message])),
+					await this.tokenCounter(
+						renderObserverTranscript([message], UNTRUNCATED_TRANSCRIPT_OPTIONS),
+					),
 				);
 			}
 		}
@@ -621,9 +651,10 @@ export class MemoryOrchestrator {
 				await runObservationLogObserver({
 					memory,
 					...scope,
-					// The observer re-checks its delta against this threshold; a
-					// soft-threshold background run must pass the soft value or the
-					// re-check would skip it as below-threshold.
+					// The observer re-checks its (truncated) delta transcript against
+					// this threshold. Mid-run callers pass a minimal value because the
+					// visible-window budget already gated the run; post-turn callers
+					// omit it so the configured threshold filters trivial turns.
 					observerThresholdTokens: effectiveThresholdTokens ?? observerThresholdTokens,
 					observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 					observe,
