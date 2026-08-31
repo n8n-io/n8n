@@ -675,15 +675,8 @@ export class WorkflowTriggerActivator {
 		// first error.
 		const failuresByNode = new Map<string, TriggerTeardownFailure>();
 
-		// Local rows first: deleting a node's `webhook_entity` rows is what
-		// stops n8n routing (and executing) its webhooks, so it must not wait
-		// on external deregistration — a slow or failing third party would
-		// otherwise keep the workflow executing. The names come from the
-		// version's nodes, not from webhook discovery: discovery evaluates
-		// webhook expressions and can throw, and a discovery failure must not
-		// leave routing live. The external call below needs only the in-memory
-		// workflow + webhookData, never the row; clearing rows for nodes
-		// without webhooks is a no-op.
+		// We remove the local routing so executions stop firing, and THEN attempt to deregister any
+		// external state.
 		const targetNodeNames = Object.values(workflow.nodes)
 			.filter((node) => nodeIds.has(node.id))
 			.map((node) => node.name);
@@ -691,36 +684,7 @@ export class WorkflowTriggerActivator {
 
 		await workflow.expression.acquireIsolate();
 		try {
-			// Discovery re-evaluates each node's webhook expressions, which can
-			// throw when the expression context drifted since publish (rare by
-			// construction — registration evaluated the same expressions; e.g. a
-			// deleted variable). It runs per node so one node's failure cannot lose
-			// its siblings' external cleanup. A failing node's rows are already
-			// deleted above, so it follows the same rule as an unreachable third
-			// party: external cleanup is impossible, surface it and move on.
-			// Throwing instead would wedge retries — fatally on the publish path,
-			// where the old version's routing is already gone.
-			const webhooks: IWebhookData[] = [];
-			for (const targetNode of Object.values(workflow.nodes)) {
-				if (!nodeIds.has(targetNode.id)) continue;
-				try {
-					webhooks.push(
-						...this.webhookTriggerRegistrar.getNodeWebhookTriggers(
-							workflow,
-							targetNode,
-							additionalData,
-						),
-					);
-				} catch (discoveryError) {
-					const error = ensureError(discoveryError);
-					this.logger.warn('Abandoned external webhook cleanup after failed discovery', {
-						workflowId: workflow.id,
-						nodeName: targetNode.name,
-						error: error.message,
-					});
-					failuresByNode.set(targetNode.name, { nodeName: targetNode.name, error });
-				}
-			}
+			const webhooks = this.getNodeWebhooks(workflow, nodeIds, additionalData, failuresByNode);
 
 			const deregistrationResults = await Promise.allSettled(
 				webhooks.map(
@@ -739,6 +703,7 @@ export class WorkflowTriggerActivator {
 				// would mark the record failed with an error the policy ignores.
 				if (abort.signal.aborted) throw ensureError(abort.signal.reason);
 				const nodeName = webhooks[index].node;
+				// We don't add these to failuresByNode because we don't intend to retry them.
 				if (this.shouldAbandonFailedTeardown(error)) {
 					this.logger.warn('Abandoned webhook whose deregistration can never succeed', {
 						workflowId: workflow.id,
@@ -761,6 +726,39 @@ export class WorkflowTriggerActivator {
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
 		return [...failuresByNode.values()];
+	}
+
+	// NOTE: acquire the expression evaluation isolate before calling this.
+	private getNodeWebhooks(
+		workflow: Workflow,
+		nodeIds: Set<INode['id']>,
+		additionalData: IWorkflowExecuteAdditionalData,
+		failuresByNode: Map<string, TriggerTeardownFailure>,
+	): IWebhookData[] {
+		const webhooks: IWebhookData[] = [];
+		for (const targetNode of Object.values(workflow.nodes)) {
+			if (!nodeIds.has(targetNode.id)) continue;
+			try {
+				webhooks.push(
+					...this.webhookTriggerRegistrar.getNodeWebhookTriggers(
+						workflow,
+						targetNode,
+						additionalData,
+					),
+				);
+			} catch (discoveryError) {
+				// NOTE: hitting an error can happen if the node's webhook expressions are invalid,
+				// but this is pretty rare. We still log but tolerate it and continue with teardown.
+				const error = ensureError(discoveryError);
+				this.logger.warn('Abandoned external webhook cleanup after failed discovery', {
+					workflowId: workflow.id,
+					nodeName: targetNode.name,
+					error: error.message,
+				});
+				failuresByNode.set(targetNode.name, { nodeName: targetNode.name, error });
+			}
+		}
+		return webhooks;
 	}
 
 	/**
