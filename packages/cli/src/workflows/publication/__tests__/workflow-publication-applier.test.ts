@@ -17,6 +17,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import type { TriggerSeatProjector } from '@/workflows/triggers/seats/trigger-seat-projector';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -32,6 +33,7 @@ describe('WorkflowPublicationApplier', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowService = mock<WorkflowService>();
 	const telemetry = mock<Telemetry>();
+	const triggerSeatProjector = mock<TriggerSeatProjector>({ enabled: false });
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -43,6 +45,7 @@ describe('WorkflowPublicationApplier', () => {
 		nodeTypes,
 		workflowService,
 		telemetry,
+		triggerSeatProjector,
 	);
 
 	function makeRecord(

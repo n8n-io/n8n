@@ -104,6 +104,18 @@ export class WorkflowTriggerSeatRepository extends BaseRepository<WorkflowTrigge
 			.execute();
 	}
 
+	/** How many seats of the given nodes their holders still report as registered. */
+	async countRegisteredSeats(
+		workflowId: string,
+		nodeIds: string[],
+		ctx: OperationContext = {},
+	): Promise<number> {
+		if (nodeIds.length === 0) return 0;
+		return await this.managerFor(ctx).count(WorkflowTriggerSeat, {
+			where: { workflowId, nodeId: In(nodeIds), actualState: 'registered' },
+		});
+	}
+
 	async deleteSeatsForWorkflow(workflowId: string, ctx: OperationContext = {}): Promise<void> {
 		await this.managerFor(ctx).delete(WorkflowTriggerSeat, { workflowId });
 	}

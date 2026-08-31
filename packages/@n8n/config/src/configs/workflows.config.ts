@@ -32,6 +32,22 @@ export class WorkflowsConfig {
 	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
 	useWorkflowPublicationService: boolean = false;
 
+	/** Whether in-memory triggers run on leased seats across all mains (PoC). Requires the publication service. */
+	@Env('N8N_USE_TRIGGER_SEATS')
+	useTriggerSeats: boolean = false;
+
+	/** Seconds a trigger seat lease lasts before another runner may reclaim it. */
+	@Env('N8N_TRIGGER_SEAT_LEASE_SECONDS', positiveIntSchema)
+	triggerSeatLeaseSeconds: number = 30;
+
+	/** Seconds the publication applier waits for seat holders to ack teardown before advancing the version. Bounded: on timeout it proceeds and the fence covers stragglers. */
+	@Env('N8N_TRIGGER_SEAT_TEARDOWN_WAIT_SECONDS')
+	triggerSeatTeardownWaitSeconds: number = 10;
+
+	/** Seconds between trigger seat reconciler ticks on each main. */
+	@Env('N8N_TRIGGER_SEAT_RECONCILE_INTERVAL_SECONDS', positiveIntSchema)
+	triggerSeatReconcileIntervalSeconds: number = 5;
+
 	/** Interval in milliseconds between polls of the workflow publication outbox on the leader. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
 	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;

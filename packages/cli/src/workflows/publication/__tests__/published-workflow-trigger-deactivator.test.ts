@@ -29,6 +29,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 	function createDeactivator(useWorkflowPublicationService = true) {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
+			useTriggerSeats: false,
 			publicationReconcileIntervalSeconds: RECONCILE_INTERVAL_SECONDS,
 		});
 		return new PublishedWorkflowTriggerDeactivator(

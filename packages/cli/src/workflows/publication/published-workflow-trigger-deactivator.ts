@@ -58,6 +58,10 @@ export class PublishedWorkflowTriggerDeactivator {
 	@OnShutdown()
 	async deactivateAllNonWebhookTriggers(): Promise<void> {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
+		// Under trigger seats there is no leader-bound registry to mass-tear-down:
+		// the seat reconciler owns registration lifecycle on every main and
+		// releases its seats on shutdown.
+		if (this.workflowsConfig.useTriggerSeats) return;
 
 		this.outboxConsumer.stopPolling();
 
@@ -67,6 +71,9 @@ export class PublishedWorkflowTriggerDeactivator {
 	}
 
 	async sweepGhostTriggers(): Promise<number> {
+		// Under trigger seats, registrations on non-leaders are legitimate; the
+		// seat reconciler's own sweep tears down anything it holds no seat for.
+		if (this.workflowsConfig.useTriggerSeats) return 0;
 		if (this.instanceSettings.isLeader) return 0;
 
 		const ghosts: string[] = [];

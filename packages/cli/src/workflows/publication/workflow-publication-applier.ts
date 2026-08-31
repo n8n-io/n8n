@@ -22,6 +22,7 @@ import type {
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+import { TriggerSeatProjector } from '@/workflows/triggers/seats/trigger-seat-projector';
 import { isTriggerLikeNodeType } from '@/workflows/triggers/enabled-trigger-nodes';
 import { WorkflowService } from '@/workflows/workflow.service';
 import {
@@ -68,6 +69,7 @@ export class WorkflowPublicationApplier {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowService: WorkflowService,
 		private readonly telemetry: Telemetry,
+		private readonly triggerSeatProjector: TriggerSeatProjector,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -161,10 +163,38 @@ export class WorkflowPublicationApplier {
 			await this.workflowTriggerActivator.getNodesWithUnregisteredWebhooks(workflow, newVersion);
 		nodesWithUnregisteredWebhooks.forEach((nodeId) => toAdd.add(nodeId));
 
+		// Seat-managed nodes never (de)register through the activator: their
+		// desired state lives in workflow_trigger_seat and the per-runner seat
+		// reconciler converges toward it. Removed nodes are retired first with a
+		// bounded wait, preserving teardown-before-advance as operator courtesy —
+		// the version-scoped fence, not this wait, is what prevents stale
+		// emissions from landing.
+		const seatEligibleDesiredNodes = this.triggerSeatProjector.enabled
+			? this.triggerSeatProjector.getSeatEligibleNodes(desiredTriggerNodes)
+			: [];
+		if (this.triggerSeatProjector.enabled) {
+			const seatEligibleOldNodeIds = new Set(
+				this.triggerSeatProjector.getSeatEligibleNodes(oldTriggerNodes).map((node) => node.id),
+			);
+			const retiredSeatNodeIds = [...toRemove].filter((nodeId) =>
+				seatEligibleOldNodeIds.has(nodeId),
+			);
+			for (const nodeId of retiredSeatNodeIds) toRemove.delete(nodeId);
+			for (const node of seatEligibleDesiredNodes) toAdd.delete(node.id);
+
+			abort.signal.throwIfAborted();
+			await this.triggerSeatProjector.retireSeatsAndAwait(record.workflowId, retiredSeatNodeIds);
+		}
+
 		// No trigger changed: advance the published version and finish. Unchanged
 		// triggers keep running and re-read the new version on their next fire.
 		if (toAdd.size === 0 && toRemove.size === 0) {
 			await this.advancePublishedVersion(record);
+			await this.triggerSeatProjector.projectSeats(
+				record.workflowId,
+				newVersion.versionId,
+				seatEligibleDesiredNodes,
+			);
 			return {
 				type: 'completed',
 				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
@@ -189,6 +219,11 @@ export class WorkflowPublicationApplier {
 		}
 
 		await this.advancePublishedVersion(record);
+		await this.triggerSeatProjector.projectSeats(
+			record.workflowId,
+			newVersion.versionId,
+			seatEligibleDesiredNodes,
+		);
 
 		try {
 			abort.signal.throwIfAborted();
@@ -261,9 +296,17 @@ export class WorkflowPublicationApplier {
 		// If there is no oldVersion we may be retrying an unpublish that was
 		// interrupted after removing the mapping: nothing to tear down, but we
 		// still complete as `unpublished`.
-		const toRemove = new Set(
-			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
-		);
+		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
+		const toRemove = new Set(oldTriggerNodes.map((node) => node.id));
+
+		// Seat-managed nodes tear down via seat desired state, not the activator.
+		if (this.triggerSeatProjector.enabled) {
+			const retiredSeatNodeIds = this.triggerSeatProjector
+				.getSeatEligibleNodes(oldTriggerNodes)
+				.map((node) => node.id);
+			for (const nodeId of retiredSeatNodeIds) toRemove.delete(nodeId);
+			await this.triggerSeatProjector.retireSeatsAndAwait(record.workflowId, retiredSeatNodeIds);
+		}
 
 		if (oldVersion && toRemove.size > 0) {
 			abort.signal.throwIfAborted();
