@@ -86,6 +86,35 @@ describe('OTEL Workflow Tracing Integration', () => {
 		expect(workflowSpan.attributes['n8n.project.id']).toBe(personalProject.id);
 	});
 
+	it('should stamp workflow, execution and project identity onto every node span', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const nodeSpans = otel.getFinishedSpans().filter((s) => s.name === 'node.execute');
+		expect(nodeSpans).toHaveLength(workflow.nodes.length);
+		for (const nodeSpan of nodeSpans) {
+			expect(nodeSpan.attributes['n8n.execution.id']).toBe(executionId);
+			expect(nodeSpan.attributes['n8n.workflow.id']).toBe(workflow.id);
+			expect(nodeSpan.attributes['n8n.project.id']).toBe(project.id);
+		}
+	});
+
+	it('should stamp a personal project id onto node spans', async () => {
+		const owner = await createUser();
+		const personalProject = await getPersonalProject(owner);
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), personalProject);
+		const executionId = await executeWorkflow(workflowRunner, workflow, personalProject.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const nodeSpans = otel.getFinishedSpans().filter((s) => s.name === 'node.execute');
+		expect(nodeSpans.length).toBeGreaterThan(0);
+		for (const nodeSpan of nodeSpans) {
+			expect(nodeSpan.attributes['n8n.project.id']).toBe(personalProject.id);
+		}
+	});
+
 	it('should persist tracingContext to the execution entity after root span creation', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);

@@ -879,4 +879,107 @@ describe('ExecutionLevelTracer', () => {
 			expect(tracer.getActiveContext('non-existent', 'SomeNode')).toBeUndefined();
 		});
 	});
+	describe('workflow identity on node spans', () => {
+		const startExecution = (executionId: string, project?: { id: string }) =>
+			tracer.startWorkflow({ executionId, workflow: defaultWorkflow, project });
+
+		const runNode = (executionId: string) => {
+			const node = {
+				id: 'node-1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+			};
+			tracer.startNode({ executionId, node });
+			tracer.endNode({ executionId, node, inputItemCount: 1, outputItemCount: 1 });
+		};
+
+		it('should stamp workflow, execution and project identity onto node spans', () => {
+			startExecution('exec-identity', { id: 'project-1' });
+			runNode('exec-identity');
+
+			const nodeSpan = otel.getFinishedSpans().find((span) => span.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(nodeSpan.attributes['n8n.workflow.name']).toBe('Test');
+			expect(nodeSpan.attributes['n8n.execution.id']).toBe('exec-identity');
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('project-1');
+			// Node-level attributes are still present alongside the inherited identity.
+			expect(nodeSpan.attributes['n8n.node.name']).toBe('HTTP Request');
+		});
+
+		it('should omit the project id when the execution has no project', () => {
+			startExecution('exec-no-project');
+			runNode('exec-no-project');
+
+			const nodeSpan = otel.getFinishedSpans().find((span) => span.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(nodeSpan.attributes['n8n.project.id']).toBeUndefined();
+		});
+
+		it('should not copy workflow-level-only attributes onto node spans', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-root-only',
+				workflow: {
+					...defaultWorkflow,
+					customAttributes: { env: 'production' },
+				},
+				project: { id: 'project-1', customAttributes: { team: 'platform' } },
+			});
+			runNode('exec-root-only');
+
+			const nodeSpan = otel.getFinishedSpans().find((span) => span.name === 'node.execute')!;
+			// version_id / node_count are workflow-shaped, and custom attributes are
+			// license-gated - none of them belong on a per-node span.
+			expect(nodeSpan.attributes['n8n.workflow.version_id']).toBeUndefined();
+			expect(nodeSpan.attributes['n8n.workflow.node_count']).toBeUndefined();
+			expect(
+				Object.keys(nodeSpan.attributes).filter((key) => key.includes('.custom.')),
+			).toHaveLength(0);
+		});
+	});
+
+	describe('mid-execution export state', () => {
+		// A span is only exported once it ends, so `getFinishedSpans()` before `endWorkflow`
+		// models exactly what a collector holds while the execution is still running.
+		it('should export identifiable node spans before the workflow span ends', () => {
+			const nodeA = {
+				id: 'a',
+				name: 'Slow A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+			};
+			const nodeB = {
+				id: 'b',
+				name: 'Slow B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+			};
+
+			tracer.startWorkflow({
+				executionId: 'exec-live',
+				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
+			});
+			tracer.startNode({ executionId: 'exec-live', node: nodeA });
+			tracer.endNode({
+				executionId: 'exec-live',
+				node: nodeA,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			tracer.startNode({ executionId: 'exec-live', node: nodeB }); // still running
+
+			const exported = otel.getFinishedSpans();
+
+			// The root span has not ended, so monitoring cannot rely on it yet.
+			expect(exported.some((span) => span.name === 'workflow.execute')).toBe(false);
+
+			// ...but the finished node span already identifies its execution on its own.
+			const nodeSpan = exported.find((span) => span.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.node.name']).toBe('Slow A');
+			expect(nodeSpan.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(nodeSpan.attributes['n8n.execution.id']).toBe('exec-live');
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('project-1');
+		});
+	});
 });
