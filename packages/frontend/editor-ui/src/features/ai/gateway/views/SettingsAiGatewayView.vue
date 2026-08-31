@@ -4,8 +4,9 @@ import {
 	N8nEmptyState,
 	N8nButton,
 	N8nDataTableServer,
-	N8nHeading,
 	N8nLoading,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nText,
 	N8nTooltip,
 	N8nActionPill,
@@ -165,30 +166,30 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="settings-ai-gateway">
-		<header :class="$style.mainHeader" data-test-id="ai-gateway-settings-header">
-			<div :class="$style.headings">
-				<div :class="$style.headingRow">
-					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nConnect.title') }}</N8nHeading>
-					<N8nActionPill
-						v-if="walletBadgeText"
-						size="medium"
-						:text="walletBadgeText"
-						data-test-id="ai-gateway-header-credits-badge"
-					/>
-				</div>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.n8nConnect.description') }}
-				</N8nText>
-			</div>
-			<N8nButton
-				:label="i18n.baseText('settings.n8nConnect.wallet.topUp')"
-				icon="hand-coins"
-				variant="solid"
-				data-test-id="ai-gateway-topup-button"
-				@click="openTopUp({ source: 'settings_page' })"
-			/>
-		</header>
+	<N8nSettingsLayout size="wide" data-test-id="settings-ai-gateway">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.n8nConnect.title')"
+			:description="i18n.baseText('settings.n8nConnect.description')"
+			:show-docs-link="false"
+			data-test-id="ai-gateway-settings-header"
+		>
+			<template v-if="walletBadgeText" #titleTrailing>
+				<N8nActionPill
+					size="medium"
+					:text="walletBadgeText"
+					data-test-id="ai-gateway-header-credits-badge"
+				/>
+			</template>
+			<template #actions>
+				<N8nButton
+					:label="i18n.baseText('settings.n8nConnect.wallet.topUp')"
+					icon="hand-coins"
+					variant="solid"
+					data-test-id="ai-gateway-topup-button"
+					@click="openTopUp({ source: 'settings_page' })"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
 
 		<div :class="$style.usageTableContainer">
 			<div v-if="showUsageSectionSkeleton">
@@ -197,9 +198,9 @@ onMounted(async () => {
 			</div>
 			<div v-else>
 				<div :class="$style.usageTableHeader">
-					<N8nHeading size="medium" :bold="true">
+					<N8nText size="medium" :bold="true">
 						{{ i18n.baseText('settings.n8nConnect.usage.title') }}
-					</N8nHeading>
+					</N8nText>
 					<div :class="$style.usageTableActions">
 						<N8nTooltip :content="i18n.baseText('settings.n8nConnect.usage.refresh.tooltip')">
 							<N8nButton
@@ -266,44 +267,10 @@ onMounted(async () => {
 				</div>
 			</div>
 		</div>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	padding-bottom: var(--spacing--2xl);
-}
-
-.mainHeader {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: var(--spacing--md);
-
-	@media (max-width: 820px) {
-		flex-direction: column;
-		align-items: flex-start;
-	}
-}
-
-.headings {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-width: 0;
-}
-
-.headingRow {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--5xs);
-}
-
 .usageTableContainer {
 	:global(.table-pagination) {
 		display: none;

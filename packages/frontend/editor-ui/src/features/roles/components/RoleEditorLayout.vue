@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { N8nButton, N8nFormInput, N8nHeading, N8nInput, N8nTooltip } from '@n8n/design-system';
+import { computed } from 'vue';
+import {
+	N8nButton,
+	N8nFormInput,
+	N8nInput,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nTooltip,
+} from '@n8n/design-system';
 
 /**
  * Presentation shared by the project and instance role editors:
@@ -21,7 +29,7 @@ export type RoleEditorLabels = {
 	create: string;
 };
 
-defineProps<{
+const props = defineProps<{
 	/** Creating a brand-new role (no slug yet). */
 	isNew: boolean;
 	isReadOnly: boolean;
@@ -39,6 +47,10 @@ defineProps<{
 const displayName = defineModel<string>('displayName', { required: true });
 const description = defineModel<string | null | undefined>('description');
 
+const heading = computed(() =>
+	props.isNew ? props.labels.newRoleTitle : `Role "${displayName.value}"`,
+);
+
 const emit = defineEmits<{
 	back: [];
 	save: [];
@@ -48,39 +60,20 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<div class="pb-xl" :class="$style.container">
-		<N8nButton
-			variant="ghost"
-			icon="arrow-left"
-			:class="$style.backButton"
-			text
-			@click="emit('back')"
-		>
-			{{ backButtonText }}
-		</N8nButton>
-		<div class="mb-xl" :class="$style.headerContainer">
-			<div :class="$style.headingContainer">
-				<N8nHeading tag="h1" size="2xlarge" :class="$style.heading">
-					<template v-if="!isNew"
-						>Role "<N8nTooltip :content="displayName" placement="bottom"
-							><span>{{ displayName }}</span></N8nTooltip
-						>"</template
-					>
-					<template v-else>{{ labels.newRoleTitle }}</template>
-				</N8nHeading>
-			</div>
-			<div v-if="showEditButtons" :class="$style.headerActions">
+	<N8nSettingsLayout show-back :back-label="backButtonText" @back="emit('back')">
+		<N8nSettingsPageHeader :title="heading" :show-docs-link="false">
+			<template v-if="showEditButtons" #actions>
 				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="emit('discard')">
 					{{ labels.discardChanges }}
 				</N8nButton>
 				<N8nButton :disabled="!hasUnsavedChanges" @click="emit('save')">
 					{{ labels.save }}
 				</N8nButton>
-			</div>
-			<template v-else-if="showCreateButton">
+			</template>
+			<template v-else-if="showCreateButton" #actions>
 				<N8nButton @click="emit('create')">{{ labels.create }}</N8nButton>
 			</template>
-		</div>
+		</N8nSettingsPageHeader>
 
 		<div class="mb-l" :class="$style.formContainer">
 			<!-- Read-only: wrap inputs with a tooltip explaining why they are disabled -->
@@ -134,46 +127,10 @@ const emit = defineEmits<{
 		</div>
 
 		<slot />
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="css" module>
-.container {
-	max-width: 700px;
-	margin: 0 auto;
-	display: flex;
-	flex-direction: column;
-}
-
-.backButton {
-	position: absolute;
-	top: 10px;
-	left: 10px;
-}
-
-.headerContainer {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: var(--spacing--sm);
-}
-
-.headingContainer {
-	min-width: 0;
-}
-
-.heading {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.headerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-}
-
 .formContainer {
 	max-width: 415px;
 }

@@ -36,6 +36,8 @@ import {
 	N8nNotice,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -373,135 +375,142 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="personal-settings-container">
-		<div :class="$style.header">
-			<N8nHeading size="2xlarge">{{
-				i18n.baseText('settings.personal.personalSettings')
-			}}</N8nHeading>
-			<div v-if="currentUser" :class="$style.user">
-				<span :class="$style.username" data-test-id="current-user-name">
-					<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
-					<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
-						<template #content>{{ currentUserRole.description }}</template>
-						<N8nText :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
-							currentUserRole.name
-						}}</N8nText>
-					</N8nTooltip>
-				</span>
-				<N8nAvatar
-					:first-name="currentUser.firstName"
-					:last-name="currentUser.lastName"
-					size="large"
-				/>
-			</div>
-		</div>
-		<div>
-			<div class="mb-s">
-				<N8nHeading size="large">{{
-					i18n.baseText('settings.personal.basicInformation')
-				}}</N8nHeading>
-			</div>
-			<N8nNotice
-				v-if="isManagedByEnv"
-				:content="i18n.baseText('settings.personal.managedByEnv')"
-				data-test-id="managed-by-env-notice"
-			/>
-			<div data-test-id="personal-data-form">
-				<N8nFormInputs
-					v-if="formInputs"
-					:inputs="formInputs"
-					:event-bus="formBus"
-					@update="onInput"
-					@ready="onReadyToSubmit"
-					@submit="onSubmit"
-				/>
-			</div>
-		</div>
-		<div v-if="isSecuritySectionVisible">
-			<div class="mb-s">
-				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
-			</div>
-			<div v-if="isPersonalSecurityEnabled" class="mb-s">
-				<N8nInputLabel :label="i18n.baseText('auth.password')">
-					<N8nLink data-test-id="change-password-link" @click="openPasswordModal">{{
-						i18n.baseText('auth.changePassword')
-					}}</N8nLink>
-				</N8nInputLabel>
-			</div>
-			<div v-if="canConfigureMfa" data-test-id="mfa-section">
-				<div class="mb-xs">
-					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
-					<N8nText :bold="false" :class="$style.infoText">
-						{{
-							mfaDisabled
-								? i18n.baseText('settings.personal.mfa.button.disabled.infobox')
-								: i18n.baseText('settings.personal.mfa.button.enabled.infobox')
-						}}
-						<N8nLink :to="MFA_DOCS_URL" size="small" :bold="true">
-							{{ i18n.baseText('generic.learnMore') }}
-						</N8nLink>
-					</N8nText>
+	<N8nSettingsLayout data-test-id="personal-settings-container">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.personal.personalSettings')"
+			:show-docs-link="false"
+		>
+			<template v-if="currentUser" #actions>
+				<div :class="$style.user">
+					<span :class="$style.username" data-test-id="current-user-name">
+						<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
+						<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
+							<template #content>{{ currentUserRole.description }}</template>
+							<N8nText
+								:class="$style.tooltip"
+								color="text-light"
+								data-test-id="current-user-role"
+								>{{ currentUserRole.name }}</N8nText
+							>
+						</N8nTooltip>
+					</span>
+					<N8nAvatar
+						:first-name="currentUser.firstName"
+						:last-name="currentUser.lastName"
+						size="large"
+					/>
+				</div>
+			</template>
+		</N8nSettingsPageHeader>
+		<div :class="$style.container">
+			<div>
+				<div class="mb-s">
+					<N8nHeading size="large">{{
+						i18n.baseText('settings.personal.basicInformation')
+					}}</N8nHeading>
 				</div>
 				<N8nNotice
-					v-if="mfaDisabled && mfaEnforced"
-					:content="i18n.baseText('settings.personal.mfa.enforced')"
+					v-if="isManagedByEnv"
+					:content="i18n.baseText('settings.personal.managedByEnv')"
+					data-test-id="managed-by-env-notice"
 				/>
-
-				<N8nButton
-					variant="subtle"
-					v-if="mfaDisabled"
-					:class="$style.button"
-					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
-					data-test-id="enable-mfa-button"
-					@click="onMfaEnableClick"
-				/>
-				<N8nButton
-					variant="subtle"
-					v-else
-					:class="$style.disableMfaButton"
-					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
-					data-test-id="disable-mfa-button"
-					@click="onMfaDisableClick"
-				/>
+				<div data-test-id="personal-data-form">
+					<N8nFormInputs
+						v-if="formInputs"
+						:inputs="formInputs"
+						:event-bus="formBus"
+						@update="onInput"
+						@ready="onReadyToSubmit"
+						@submit="onSubmit"
+					/>
+				</div>
 			</div>
-		</div>
-		<div>
-			<div class="mb-s">
-				<N8nHeading size="large">{{
-					i18n.baseText('settings.personal.personalisation')
-				}}</N8nHeading>
+			<div v-if="isSecuritySectionVisible">
+				<div class="mb-s">
+					<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
+				</div>
+				<div v-if="isPersonalSecurityEnabled" class="mb-s">
+					<N8nInputLabel :label="i18n.baseText('auth.password')">
+						<N8nLink data-test-id="change-password-link" @click="openPasswordModal">{{
+							i18n.baseText('auth.changePassword')
+						}}</N8nLink>
+					</N8nInputLabel>
+				</div>
+				<div v-if="canConfigureMfa" data-test-id="mfa-section">
+					<div class="mb-xs">
+						<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
+						<N8nText :bold="false" :class="$style.infoText">
+							{{
+								mfaDisabled
+									? i18n.baseText('settings.personal.mfa.button.disabled.infobox')
+									: i18n.baseText('settings.personal.mfa.button.enabled.infobox')
+							}}
+							<N8nLink :to="MFA_DOCS_URL" size="small" :bold="true">
+								{{ i18n.baseText('generic.learnMore') }}
+							</N8nLink>
+						</N8nText>
+					</div>
+					<N8nNotice
+						v-if="mfaDisabled && mfaEnforced"
+						:content="i18n.baseText('settings.personal.mfa.enforced')"
+					/>
+
+					<N8nButton
+						variant="subtle"
+						v-if="mfaDisabled"
+						:class="$style.button"
+						:label="i18n.baseText('settings.personal.mfa.button.enabled')"
+						data-test-id="enable-mfa-button"
+						@click="onMfaEnableClick"
+					/>
+					<N8nButton
+						variant="subtle"
+						v-else
+						:class="$style.disableMfaButton"
+						:label="i18n.baseText('settings.personal.mfa.button.disabled')"
+						data-test-id="disable-mfa-button"
+						@click="onMfaDisableClick"
+					/>
+				</div>
 			</div>
 			<div>
-				<N8nInputLabel :label="i18n.baseText('settings.personal.theme')">
-					<N8nSelect
-						v-model="currentSelectedTheme"
-						:class="$style.themeSelect"
-						data-test-id="theme-select"
-						size="small"
-						filterable
-					>
-						<N8nOption
-							v-for="item in themeOptions"
-							:key="item.name"
-							:label="i18n.baseText(item.label)"
-							:value="item.name"
+				<div class="mb-s">
+					<N8nHeading size="large">{{
+						i18n.baseText('settings.personal.personalisation')
+					}}</N8nHeading>
+				</div>
+				<div>
+					<N8nInputLabel :label="i18n.baseText('settings.personal.theme')">
+						<N8nSelect
+							v-model="currentSelectedTheme"
+							:class="$style.themeSelect"
+							data-test-id="theme-select"
+							size="small"
+							filterable
 						>
-						</N8nOption>
-					</N8nSelect>
-				</N8nInputLabel>
+							<N8nOption
+								v-for="item in themeOptions"
+								:key="item.name"
+								:label="i18n.baseText(item.label)"
+								:value="item.name"
+							>
+							</N8nOption>
+						</N8nSelect>
+					</N8nInputLabel>
+				</div>
+			</div>
+			<div>
+				<N8nButton
+					float="right"
+					:label="i18n.baseText('settings.personal.save')"
+					size="large"
+					:disabled="!hasAnyChanges || !readyToSubmit"
+					data-test-id="save-settings-button"
+					@click="onSaveClick"
+				/>
 			</div>
 		</div>
-		<div>
-			<N8nButton
-				float="right"
-				:label="i18n.baseText('settings.personal.save')"
-				size="large"
-				:disabled="!hasAnyChanges || !readyToSubmit"
-				data-test-id="save-settings-button"
-				@click="onSaveClick"
-			/>
-		</div>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
@@ -510,15 +519,6 @@ onBeforeUnmount(() => {
 
 	> * {
 		margin-bottom: var(--spacing--2xl);
-	}
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	white-space: nowrap;
-	*:first-child {
-		flex-grow: 1;
 	}
 }
 

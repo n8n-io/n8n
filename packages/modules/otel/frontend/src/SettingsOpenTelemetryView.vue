@@ -338,7 +338,7 @@ watch(
 </script>
 
 <template>
-	<N8nSettingsLayout :class="$style.layout">
+	<N8nSettingsLayout>
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.opentelemetry.title')"
 			:description="i18n.baseText('settings.opentelemetry.description')"
@@ -697,10 +697,6 @@ watch(
 </template>
 
 <style lang="scss" module>
-.layout {
-	padding-top: 0;
-}
-
 .settingsContent {
 	display: flex;
 	flex-direction: column;

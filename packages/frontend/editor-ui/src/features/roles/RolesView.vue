@@ -6,7 +6,7 @@ import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants/urls';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { TabOptions } from '@n8n/design-system';
-import { N8nButton, N8nHeading, N8nLink, N8nTabs, N8nTag, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nSettingsLayout, N8nSettingsPageHeader, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -83,20 +83,14 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div class="pb-xl">
-		<div class="mb-m" :class="$style.headerTitle">
-			<N8nHeading tag="h1" size="2xlarge">
-				{{ i18n.baseText('settings.roles') }}
-			</N8nHeading>
-			<N8nTag :clickable="false" text="New" :class="$style.newTag" />
-		</div>
-
-		<N8nText color="text-base" class="mb-xl" tag="p">
-			{{ i18n.baseText('roles.description') }}
-			<N8nLink :href="CUSTOM_ROLES_DOCS_URL" target="_blank" new-window>{{
-				i18n.baseText('roles.description.docsLink')
-			}}</N8nLink>
-		</N8nText>
+	<N8nSettingsLayout size="wide">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.roles')"
+			:description="i18n.baseText('roles.description')"
+			:docs-url="CUSTOM_ROLES_DOCS_URL"
+			:docs-label="i18n.baseText('roles.description.docsLink')"
+			docs-leading-text=""
+		/>
 
 		<div :class="$style.tabsRow" class="mb-l">
 			<N8nTabs v-model="activeTab" :options="tabOptions" data-test-id="roles-tabs" />
@@ -112,32 +106,13 @@ onMounted(async () => {
 
 		<InstanceRolesView v-if="activeTab === 'instance' && canManageInstanceRoles" />
 		<ProjectRolesView v-else />
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="css" module>
-.headerTitle {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
 .tabsRow {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-}
-
-.newTag {
-	background-color: var(--color--foreground--shade-2);
-	color: var(--color--background);
-	border-color: var(--color--foreground--shade-2);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	border-radius: var(--spacing--sm);
-	min-height: auto;
-	height: auto;
-	line-height: 1;
 }
 </style>

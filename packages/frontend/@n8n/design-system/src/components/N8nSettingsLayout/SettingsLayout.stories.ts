@@ -12,18 +12,18 @@ import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
 const meta = {
-	title: 'Areas/Settings/Settings Layout',
+	title: 'Areas/Settings/SettingsLayout',
 	component: N8nSettingsLayout,
 	argTypes: {
 		showBack: { control: 'boolean' },
 		backLabel: { control: 'text' },
-		fullWidth: { control: 'boolean' },
+		size: { control: 'select', options: ['narrow', 'wide'] },
 	},
 	parameters: {
 		docs: {
 			description: {
 				component:
-					'Pads the settings page (24px sides/top, 48px bottom), centers the content and caps it at the content max-width (`--settings-content--max-width`, 45rem / 720px), and optionally renders the ghost back action pinned to the top-left. Set `fullWidth` to let wide content (e.g. a table) span the padded container; the page header always stays centered at 720px so its position is consistent across pages. The page-header → content gap is fixed at 48px (`--spacing--2xl`), enforced here via `.content > header + *` (owned by the following element so it never depends on margin-collapsing) and not configurable; other direct children fall back to a 24px (`--spacing--lg`) rhythm.',
+					'Optionally renders the ghost back action pinned to the top-left. `size="narrow"` (default) centers the content and caps it at `--settings-content--max-width` (45rem / 720px). `size="wide"` lets tables and lists span the container; the page header still caps itself at 720px and left-aligns with the table. Spacing between the header and the rest of the page is owned by `N8nSettingsPageHeader`.',
 			},
 		},
 	},
@@ -165,6 +165,6 @@ export const FullWidthTable: Story = {
 		template: `<N8nSettingsLayout v-bind="args" show-back back-label="Back">${tablePage}</N8nSettingsLayout>`,
 	}),
 	args: {
-		fullWidth: true,
+		size: 'wide',
 	},
 };

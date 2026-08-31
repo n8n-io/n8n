@@ -36,9 +36,7 @@ onMounted(() => {
 		</template>
 
 		<div :class="$style.contentContainer">
-			<div :class="$style.content">
-				<RouterView />
-			</div>
+			<RouterView />
 		</div>
 	</BaseLayout>
 </template>
@@ -48,18 +46,10 @@ onMounted(() => {
 	height: 100%;
 	width: 100%;
 	display: flex;
-	overflow: hidden;
-	justify-content: center;
-	padding-top: 70.5px;
+	flex-direction: column;
+	padding-top: 80px;
+	padding-bottom: 24px;
 	overflow: auto;
 	background-color: var(--color--background--light-2);
-	position: relative;
-}
-
-.content {
-	height: 100%;
-	width: 100%;
-	max-width: 1600px;
-	padding: 0 var(--spacing--2xl);
 }
 </style>

@@ -25,8 +25,9 @@ import {
 	N8nEmptyState,
 	N8nButton,
 	N8nFormInputs,
-	N8nHeading,
-	N8nInfoTip,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nSettingsSection,
 } from '@n8n/design-system';
 type TableRow = {
 	status: string;
@@ -627,137 +628,127 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div v-if="!isLDAPFeatureEnabled">
-		<div :class="[$style.header, 'mb-2xl']">
-			<N8nHeading size="2xlarge">
-				{{ i18n.baseText('settings.ldap') }}
-			</N8nHeading>
-		</div>
-
-		<N8nInfoTip type="note" theme="info" tooltip-placement="right" class="mb-l">
-			{{ i18n.baseText('settings.ldap.note') }}
-		</N8nInfoTip>
-		<N8nEmptyState
-			:description="i18n.baseText('settings.ldap.disabled.description')"
-			:button-text="i18n.baseText('settings.ldap.disabled.buttonText')"
-			@click:button="goToUpgrade"
-		>
-			<template #heading>
-				<span>{{ i18n.baseText('settings.ldap.disabled.title') }}</span>
-			</template>
-		</N8nEmptyState>
-	</div>
-	<div v-else>
-		<div :class="$style.container">
-			<div :class="$style.header">
-				<N8nHeading size="2xlarge">
-					{{ i18n.baseText('settings.ldap') }}
-				</N8nHeading>
-			</div>
-			<div :class="$style.docsInfoTip">
-				<N8nInfoTip theme="info" type="note">
-					<span v-n8n-html="i18n.baseText('settings.ldap.infoTip')"></span>
-				</N8nInfoTip>
-			</div>
-			<div :class="$style.settingsForm">
-				<N8nFormInputs
-					v-if="formInputs"
-					ref="ldapConfigFormRef"
-					:inputs="formInputs"
-					:event-bus="formBus"
-					:column-view="true"
-					vertical-spacing="l"
-					@update="onInput"
-					@ready="onReadyToSubmit"
-					@submit="onSubmit"
-				/>
-			</div>
-			<div :class="$style.buttonContainer">
-				<N8nButton
-					v-if="loginEnabled"
-					:label="
-						loadingTestConnection
-							? i18n.baseText('settings.ldap.testingConnection')
-							: i18n.baseText('settings.ldap.testConnection')
-					"
-					size="large"
-					class="mr-s"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingTestConnection"
-					@click="onTestConnectionClick"
-				/>
-				<N8nButton
-					:label="i18n.baseText('settings.ldap.save')"
-					size="large"
-					:disabled="!hasAnyChanges || !readyToSubmit"
-					@click="onSaveClick"
-				/>
-			</div>
-		</div>
-		<div v-if="loginEnabled">
-			<N8nHeading tag="h1" class="mb-xl mt-3xl" size="medium">{{
-				i18n.baseText('settings.ldap.section.synchronization.title')
-			}}</N8nHeading>
-			<div :class="$style.syncTable">
-				<ElTable
-					:key="tableKey"
-					v-loading="loadingTable"
-					:border="true"
-					:stripe="true"
-					:data="dataTable"
-					:cell-style="cellClassStyle"
-					style="width: 100%"
-					max-height="250"
-				>
-					<ElTableColumn
-						prop="status"
-						:label="i18n.baseText('settings.ldap.synchronizationTable.column.status')"
+	<N8nSettingsLayout size="wide">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.ldap')"
+			:description="i18n.baseText('settings.ldap.note')"
+			docs-url="https://docs.n8n.io/user-management/ldap/"
+		/>
+		<template v-if="!isLDAPFeatureEnabled">
+			<N8nEmptyState
+				:description="i18n.baseText('settings.ldap.disabled.description')"
+				:button-text="i18n.baseText('settings.ldap.disabled.buttonText')"
+				@click:button="goToUpgrade"
+			>
+				<template #heading>
+					<span>{{ i18n.baseText('settings.ldap.disabled.title') }}</span>
+				</template>
+			</N8nEmptyState>
+		</template>
+		<template v-else>
+			<div :class="$style.container">
+				<div :class="$style.settingsForm">
+					<N8nFormInputs
+						v-if="formInputs"
+						ref="ldapConfigFormRef"
+						:inputs="formInputs"
+						:event-bus="formBus"
+						:column-view="true"
+						vertical-spacing="l"
+						@update="onInput"
+						@ready="onReadyToSubmit"
+						@submit="onSubmit"
 					/>
-					<ElTableColumn
-						prop="endedAt"
-						:label="i18n.baseText('settings.ldap.synchronizationTable.column.endedAt')"
+				</div>
+				<div :class="$style.buttonContainer">
+					<N8nButton
+						v-if="loginEnabled"
+						:label="
+							loadingTestConnection
+								? i18n.baseText('settings.ldap.testingConnection')
+								: i18n.baseText('settings.ldap.testConnection')
+						"
+						size="large"
+						class="mr-s"
+						:disabled="hasAnyChanges || !readyToSubmit"
+						:loading="loadingTestConnection"
+						@click="onTestConnectionClick"
 					/>
-					<ElTableColumn
-						prop="runMode"
-						:label="i18n.baseText('settings.ldap.synchronizationTable.column.runMode')"
+					<N8nButton
+						:label="i18n.baseText('settings.ldap.save')"
+						size="large"
+						:disabled="!hasAnyChanges || !readyToSubmit"
+						@click="onSaveClick"
 					/>
-					<ElTableColumn
-						prop="runTime"
-						:label="i18n.baseText('settings.ldap.synchronizationTable.column.runTime')"
-					/>
-					<ElTableColumn
-						prop="details"
-						:label="i18n.baseText('settings.ldap.synchronizationTable.column.details')"
-					/>
-					<template #empty>{{
-						i18n.baseText('settings.ldap.synchronizationTable.empty.message')
-					}}</template>
-					<template #append>
-						<InfiniteLoading target=".el-table__body-wrapper" @infinite="getLdapSynchronizations">
-						</InfiniteLoading>
-					</template>
-				</ElTable>
+				</div>
 			</div>
-			<div :class="['pb-3xl', $style.buttonContainer]">
-				<N8nButton
-					variant="subtle"
-					:label="i18n.baseText('settings.ldap.dryRun')"
-					size="large"
-					class="mr-s"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingDryRun"
-					@click="onDryRunClick"
-				/>
-				<N8nButton
-					:label="i18n.baseText('settings.ldap.synchronizeNow')"
-					size="large"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingLiveRun"
-					@click="onLiveRunClick"
-				/>
+			<div v-if="loginEnabled">
+				<N8nSettingsSection :title="i18n.baseText('settings.ldap.section.synchronization.title')">
+					<div :class="$style.syncTable">
+						<ElTable
+							:key="tableKey"
+							v-loading="loadingTable"
+							:border="true"
+							:stripe="true"
+							:data="dataTable"
+							:cell-style="cellClassStyle"
+							style="width: 100%"
+							max-height="250"
+						>
+							<ElTableColumn
+								prop="status"
+								:label="i18n.baseText('settings.ldap.synchronizationTable.column.status')"
+							/>
+							<ElTableColumn
+								prop="endedAt"
+								:label="i18n.baseText('settings.ldap.synchronizationTable.column.endedAt')"
+							/>
+							<ElTableColumn
+								prop="runMode"
+								:label="i18n.baseText('settings.ldap.synchronizationTable.column.runMode')"
+							/>
+							<ElTableColumn
+								prop="runTime"
+								:label="i18n.baseText('settings.ldap.synchronizationTable.column.runTime')"
+							/>
+							<ElTableColumn
+								prop="details"
+								:label="i18n.baseText('settings.ldap.synchronizationTable.column.details')"
+							/>
+							<template #empty>{{
+								i18n.baseText('settings.ldap.synchronizationTable.empty.message')
+							}}</template>
+							<template #append>
+								<InfiniteLoading
+									target=".el-table__body-wrapper"
+									@infinite="getLdapSynchronizations"
+								>
+								</InfiniteLoading>
+							</template>
+						</ElTable>
+					</div>
+					<div :class="['pb-3xl', $style.buttonContainer]">
+						<N8nButton
+							variant="subtle"
+							:label="i18n.baseText('settings.ldap.dryRun')"
+							size="large"
+							class="mr-s"
+							:disabled="hasAnyChanges || !readyToSubmit"
+							:loading="loadingDryRun"
+							@click="onDryRunClick"
+						/>
+						<N8nButton
+							:label="i18n.baseText('settings.ldap.synchronizeNow')"
+							size="large"
+							:disabled="hasAnyChanges || !readyToSubmit"
+							:loading="loadingLiveRun"
+							@click="onLiveRunClick"
+						/>
+					</div>
+				</N8nSettingsSection>
 			</div>
-		</div>
-	</div>
+		</template>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
@@ -769,16 +760,6 @@ onMounted(async () => {
 
 .syncTable {
 	margin-bottom: var(--spacing--2xl);
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	white-space: nowrap;
-
-	*:first-child {
-		flex-grow: 1;
-	}
 }
 
 .enableFeatureContainer {
@@ -802,13 +783,6 @@ onMounted(async () => {
 .settingsForm {
 	:global(.form-text) {
 		margin-top: var(--spacing--xl);
-	}
-}
-
-.docsInfoTip {
-	&,
-	& > div {
-		margin-bottom: var(--spacing--xl);
 	}
 }
 

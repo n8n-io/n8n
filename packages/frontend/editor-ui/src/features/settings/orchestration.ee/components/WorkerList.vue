@@ -11,8 +11,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import WorkerCard from './WorkerCard.vue';
 
-import { N8nHeading, N8nSpinner } from '@n8n/design-system';
-import ConnectionTracker from '@/app/components/ConnectionTracker.vue';
+import { N8nSpinner } from '@n8n/design-system';
 withDefaults(
 	defineProps<{
 		autoRefreshEnabled?: boolean;
@@ -61,10 +60,6 @@ onBeforeUnmount(() => {
 
 <template>
 	<div>
-		<ConnectionTracker class="actions"></ConnectionTracker>
-		<div :class="$style.workerListHeader">
-			<N8nHeading tag="h1" size="2xlarge">{{ pageTitle }}</N8nHeading>
-		</div>
 		<div v-if="!initialStatusReceived">
 			<N8nSpinner />
 		</div>
@@ -80,13 +75,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
-.workerListHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	margin-bottom: var(--spacing--sm);
-}
-
 .card {
 	margin-bottom: var(--spacing--sm);
 }

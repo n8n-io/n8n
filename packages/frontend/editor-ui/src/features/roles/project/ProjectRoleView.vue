@@ -7,8 +7,8 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import {
 	N8nButton,
 	N8nFormInput,
-	N8nHeading,
 	N8nLoading,
+	N8nSettingsSection,
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
@@ -386,10 +386,10 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 				</div>
 			</div>
 
-			<div v-if="roleSlug && !isReadOnly" class="mt-xl">
-				<N8nHeading tag="h2" class="mb-2xs" size="large">
-					{{ i18n.baseText('projectRoles.dangerZone') }}
-				</N8nHeading>
+			<N8nSettingsSection
+				v-if="roleSlug && !isReadOnly"
+				:title="i18n.baseText('projectRoles.dangerZone')"
+			>
 				<N8nText tag="p" class="mb-s">
 					<template v-if="initialState?.usedByProjects">
 						{{ i18n.baseText('projectRoles.action.delete.useWarning.before') }}
@@ -414,7 +414,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 				>
 					{{ i18n.baseText('projectRoles.action.delete.button') }}
 				</N8nButton>
-			</div>
+			</N8nSettingsSection>
 		</div>
 
 		<RoleAssignmentsTab v-if="roleSlug && activeTab === 'assignments'" :role-slug="roleSlug" />

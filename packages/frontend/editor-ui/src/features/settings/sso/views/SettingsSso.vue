@@ -11,9 +11,10 @@ import {
 	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
-	N8nHeading,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
@@ -110,16 +111,22 @@ onMounted(() => {
 </script>
 
 <template>
-	<div class="pb-2xl">
-		<div :class="$style.heading">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</N8nHeading>
-		</div>
-		<p :class="$style.description">
-			{{ i18n.baseText('settings.sso.info') }}
-			<a :class="$style.docLink" href="https://docs.n8n.io/user-management/saml/" target="_blank">
-				{{ i18n.baseText('settings.sso.info.link') }}
-			</a>
-		</p>
+	<N8nSettingsLayout size="wide">
+		<N8nSettingsPageHeader :title="i18n.baseText('settings.sso.title')" :show-docs-link="false">
+			<template #description>
+				<N8nText size="medium" color="text-base">
+					{{ i18n.baseText('settings.sso.info') }}
+					<a
+						:class="$style.docLink"
+						href="https://docs.n8n.io/user-management/saml/"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						{{ i18n.baseText('settings.sso.info.link') }}
+					</a>
+				</N8nText>
+			</template>
+		</N8nSettingsPageHeader>
 		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning" class="mb-m">
 			{{
 				isRulesMappingInN8n
@@ -170,7 +177,6 @@ onMounted(() => {
 		<N8nEmptyState
 			v-if="!hasAnySsoEnabled"
 			data-test-id="sso-content-unlicensed"
-			:class="$style.actionBox"
 			:description="i18n.baseText('settings.sso.actionBox.description')"
 			:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
 			@click:button="goToUpgrade"
@@ -209,23 +215,12 @@ onMounted(() => {
 				</div>
 			</template>
 		</ElDialog>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module="shared" src="../styles/sso-form.module.scss" />
 
 <style lang="scss" module>
-.heading {
-	margin-bottom: var(--spacing--2xs);
-}
-
-.description {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
-	line-height: var(--line-height--xl);
-	margin: 0 0 var(--spacing--lg);
-}
-
 .docLink {
 	color: var(--color--text);
 	text-decoration: underline;
@@ -242,10 +237,6 @@ onMounted(() => {
 	border-bottom: none;
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
-}
-
-.actionBox {
-	margin-top: var(--spacing--lg);
 }
 
 .dialogFooter {

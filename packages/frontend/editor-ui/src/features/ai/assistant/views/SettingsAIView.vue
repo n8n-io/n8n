@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { N8nHeading, N8nCheckbox, N8nText } from '@n8n/design-system';
+import {
+	N8nCheckbox,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -78,33 +86,42 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="ai">
-		<div :class="$style.header">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.ai') }}</N8nHeading>
-			<N8nText v-n8n-html="aiSettingsDescription" size="small" color="text-light" />
-		</div>
-		<div :class="$style.content">
-			<div :class="$style.checkboxContainer">
-				<N8nCheckbox
-					v-model="allowSendingSchema"
-					:disabled="true"
-					:label="i18n.baseText('settings.ai.allowSendingSchema.label')"
-				/>
-				<N8nText :class="$style.checkboxDescription" color="text-base">
-					{{ i18n.baseText('settings.ai.allowSendingSchema.description') }}
-				</N8nText>
-			</div>
-			<div :class="$style.checkboxContainer">
-				<N8nCheckbox
-					:model-value="allowSendingParameterValues"
-					:label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
-					@update:model-value="onallowSendingParameterValuesChange"
-				/>
-				<N8nText :class="$style.checkboxDescription" color="text-base">
-					{{ i18n.baseText('settings.ai.allowSendingParameterValues.description') }}
-				</N8nText>
-			</div>
-		</div>
+	<N8nSettingsLayout data-test-id="ai">
+		<N8nSettingsPageHeader :title="i18n.baseText('settings.ai')" :show-docs-link="false">
+			<template #description>
+				<N8nText v-n8n-html="aiSettingsDescription" size="medium" color="text-base" />
+			</template>
+		</N8nSettingsPageHeader>
+
+		<N8nSettingsSection>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					:title="i18n.baseText('settings.ai.allowSendingSchema.label')"
+					:description="i18n.baseText('settings.ai.allowSendingSchema.description')"
+				>
+					<template #action>
+						<N8nCheckbox
+							v-model="allowSendingSchema"
+							:disabled="true"
+							:aria-label="i18n.baseText('settings.ai.allowSendingSchema.label')"
+						/>
+					</template>
+				</N8nSettingsRow>
+				<N8nSettingsRow
+					:title="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
+					:description="i18n.baseText('settings.ai.allowSendingParameterValues.description')"
+				>
+					<template #action>
+						<N8nCheckbox
+							:model-value="allowSendingParameterValues"
+							:aria-label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
+							@update:model-value="onallowSendingParameterValuesChange"
+						/>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+
 		<div :class="$style.privacyNote">
 			<N8nText :bold="true">{{ i18n.baseText('settings.ai.privacyNote.heading') }}</N8nText>
 			<N8nText
@@ -116,50 +133,10 @@ onMounted(async () => {
 				color="text-base"
 			/>
 		</div>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xl);
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.checkboxContainer {
-	display: flex;
-	flex-direction: column;
-	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
-	border-radius: var(--radius);
-	padding: var(--spacing--md) var(--spacing--md) var(--spacing--xs);
-
-	label {
-		font-weight: var(--font-weight--bold);
-		padding-bottom: var(--spacing--5xs);
-	}
-
-	.checkboxDescription {
-		padding: var(--spacing--2xs) var(--spacing--xl);
-	}
-
-	.notice {
-		margin-left: var(--spacing--xl);
-		margin-top: var(--spacing--2xs);
-	}
-}
-
 .privacyNote {
 	span + span {
 		margin-left: var(--spacing--4xs);

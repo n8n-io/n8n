@@ -33,12 +33,12 @@ import {
 	N8nAlert,
 	N8nEmptyState,
 	N8nButton,
-	N8nHeading,
 	N8nIcon,
 	N8nInput,
 	N8nLink,
 	N8nNotice,
-	N8nText,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useMessage } from '@/app/composables/useMessage';
@@ -437,18 +437,8 @@ const onSearch = (value: string) => {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<N8nHeading tag="h1" size="2xlarge" class="mb-xl">
-			{{ i18n.baseText('settings.users') }}
-			<N8nText v-if="!showUMSetupWarning" :class="$style.userCount" color="text-light">{{
-				i18n.baseText('settings.users.count', {
-					interpolate: {
-						count: usersStore.usersList.state.count,
-					},
-					adjustToNumber: usersStore.usersList.state.count,
-				})
-			}}</N8nText>
-		</N8nHeading>
+	<N8nSettingsLayout size="wide">
+		<N8nSettingsPageHeader :title="i18n.baseText('settings.users')" :show-docs-link="false" />
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
 			<N8nEmptyState
 				:heading="
@@ -522,10 +512,7 @@ const onSearch = (value: string) => {
 		</div>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
-		<div
-			v-if="usersStore.usersLimitNotReached || usersStore.usersList.state.count > 1"
-			:class="$style.usersContainer"
-		>
+		<div v-if="usersStore.usersLimitNotReached || usersStore.usersList.state.count > 1">
 			<SettingsUsersTable
 				v-model:table-options="usersTableState"
 				data-test-id="settings-users-table"
@@ -539,15 +526,10 @@ const onSearch = (value: string) => {
 				@action="onUsersListAction"
 			/>
 		</div>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.userCount {
-	display: block;
-	padding: var(--spacing--3xs) 0 0;
-}
-
 .buttonContainer {
 	display: flex;
 	justify-content: space-between;

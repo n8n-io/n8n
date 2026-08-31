@@ -24,23 +24,40 @@ const props = withDefaults(defineProps<SettingsSectionProps>(), {
 const slots = useSlots();
 
 const hasHeader = computed(() =>
-	Boolean(props.title || props.description || slots.title || slots.description),
+	Boolean(
+		props.title || props.description || slots.title || slots.description || slots.headerAction,
+	),
 );
 </script>
 
 <template>
 	<section :class="$style.section">
-		<div v-if="hasHeader" :class="$style.header">
-			<slot name="title">
-				<N8nHeading v-if="title" :tag="headingTag" step="md" color="text-dark">
-					{{ title }}
-				</N8nHeading>
-			</slot>
-			<slot name="description">
-				<N8nText v-if="description" size="small" color="text-base">
-					{{ description }}
-				</N8nText>
-			</slot>
+		<div
+			v-if="hasHeader"
+			:class="[$style.header, { [$style.headerWithAction]: Boolean(slots.headerAction) }]"
+		>
+			<div :class="$style.headerMain">
+				<slot name="title">
+					<N8nHeading
+						v-if="title"
+						:tag="headingTag"
+						:class="$style.title"
+						step="md"
+						color="text-dark"
+						bold
+					>
+						{{ title }}
+					</N8nHeading>
+				</slot>
+				<slot name="description">
+					<N8nText v-if="description" size="small" color="text-base">
+						{{ description }}
+					</N8nText>
+				</slot>
+			</div>
+			<div v-if="slots.headerAction" :class="$style.headerAction">
+				<slot name="headerAction" />
+			</div>
 		</div>
 		<div :class="$style.groups">
 			<slot />
@@ -57,11 +74,6 @@ const hasHeader = computed(() =>
 	width: 100%;
 }
 
-/*
- * Sections own the enforced vertical separation from a preceding sibling section (32px).
- * Higher specificity than the layout's generic inter-child spacing, so adjacent
- * sections sit 32px apart while the header→content gap stays untouched.
- */
 .section + .section {
 	margin-block-start: var(--spacing--xl); /* 32px */
 }

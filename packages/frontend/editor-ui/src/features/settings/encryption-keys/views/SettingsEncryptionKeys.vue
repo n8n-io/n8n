@@ -8,9 +8,10 @@ import {
 	N8nDataTableServer,
 	N8nDateRangePicker,
 	N8nHeading,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nIcon,
 	N8nIconButton,
-	N8nLink,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -259,21 +260,12 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style.page" data-testid="settings-encryption-keys">
-		<header :class="$style.header">
-			<N8nHeading tag="h1" size="2xlarge" bold>
-				{{ i18n.baseText('settings.encryptionKeys.title') }}
-			</N8nHeading>
-			<N8nText color="text-base">
-				{{ i18n.baseText('settings.encryptionKeys.description') }}
-				<N8nLink theme="text" :href="DOCS_URL" new-window underline>
-					<span :class="$style.docsLinkLabel">
-						{{ i18n.baseText('settings.encryptionKeys.description.docsLink') }}
-						<N8nIcon icon="arrow-up-right" size="small" />
-					</span>
-				</N8nLink>
-			</N8nText>
-		</header>
+	<N8nSettingsLayout size="wide" data-testid="settings-encryption-keys">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.encryptionKeys.title')"
+			:description="i18n.baseText('settings.encryptionKeys.description')"
+			:docs-url="DOCS_URL"
+		/>
 
 		<div :class="$style.controls">
 			<div :class="$style.sortControl">
@@ -409,23 +401,10 @@ onMounted(async () => {
 			@cancel="closeRotateConfirm"
 			@update:open="isConfirmRotateOpen = $event"
 		/>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.page {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	padding-bottom: var(--spacing--2xl);
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
 .controls {
 	display: flex;
 	flex-wrap: wrap;
@@ -471,12 +450,6 @@ onMounted(async () => {
 	border-radius: 50%;
 	background-color: var(--text-color--subtler);
 	flex-shrink: 0;
-}
-
-.docsLinkLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--5xs);
 }
 
 .rotateIcon {

@@ -15,11 +15,13 @@ import type { SecretProviderConnection } from '@n8n/api-types';
 import {
 	N8nEmptyState,
 	N8nButton,
-	N8nHeading,
 	N8nIcon,
-	N8nLink,
 	N8nLoading,
-	N8nText,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import * as externalSecretsApi from '@n8n/rest-api-client';
@@ -230,63 +232,45 @@ function goToUpgrade() {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div class="mb-xl" :class="$style.headerContainer">
-			<div :class="$style.headerTitle">
-				<N8nHeading tag="h1" size="2xlarge">
-					{{ i18n.baseText('settings.secretsProviderConnections.title') }}
-				</N8nHeading>
-				<N8nText
-					v-if="secretsProviders.isEnterpriseExternalSecretsEnabled.value && hasActiveProviders"
-					color="text-base"
-					size="medium"
-				>
-					{{ i18n.baseText('settings.secretsProviderConnections.description') }}
-					{{ i18n.baseText('credentialResolver.view.learnMore') }}
-					<N8nLink
-						theme="text"
-						:href="i18n.baseText('settings.externalSecrets.docs')"
-						size="medium"
-						new-window
-					>
-						<span :class="$style.link">
-							{{ i18n.baseText('generic.documentation') }}
-							<N8nIcon icon="arrow-up-right" />
-						</span>
-					</N8nLink>
-				</N8nText>
-				<div
-					v-if="isRoleBasedAccessEnabled"
-					:class="$style.systemRolesToggle"
-					class="mt-xl"
-					data-test-id="external-secrets-system-roles-toggle"
-				>
-					<div :class="$style.systemRolesToggleInfo">
-						<N8nText :bold="true" size="small">
-							{{ i18n.baseText('settings.externalSecrets.systemRoles.title') }}
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('settings.externalSecrets.systemRoles.description') }}
-						</N8nText>
-					</div>
-					<ElSwitch
-						:model-value="systemRolesEnabled"
-						:loading="systemRolesToggleLoading"
-						data-test-id="external-secrets-system-roles-switch"
-						@update:model-value="onSystemRolesToggle"
-					/>
-				</div>
-				<N8nButton
-					v-if="hasActiveProviders && secretsProviders.canCreate.value"
-					:class="$style.addButton"
-					variant="solid"
-					size="small"
-					@click="openConnectionModal()"
-					><N8nIcon icon="plus" />
+	<N8nSettingsLayout>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.secretsProviderConnections.title')"
+			:description="
+				secretsProviders.isEnterpriseExternalSecretsEnabled.value && hasActiveProviders
+					? i18n.baseText('settings.secretsProviderConnections.description')
+					: undefined
+			"
+			:docs-url="i18n.baseText('settings.externalSecrets.docs')"
+			:show-docs-link="
+				secretsProviders.isEnterpriseExternalSecretsEnabled.value && hasActiveProviders
+			"
+		>
+			<template v-if="hasActiveProviders && secretsProviders.canCreate.value" #actions>
+				<N8nButton variant="solid" size="small" @click="openConnectionModal()">
+					<N8nIcon icon="plus" />
 					{{ i18n.baseText('settings.secretsProviderConnections.buttons.addSecretsStore') }}
 				</N8nButton>
-			</div>
-		</div>
+			</template>
+		</N8nSettingsPageHeader>
+
+		<N8nSettingsSection v-if="isRoleBasedAccessEnabled">
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					:title="i18n.baseText('settings.externalSecrets.systemRoles.title')"
+					:description="i18n.baseText('settings.externalSecrets.systemRoles.description')"
+					data-test-id="external-secrets-system-roles-toggle"
+				>
+					<template #action>
+						<ElSwitch
+							:model-value="systemRolesEnabled"
+							:loading="systemRolesToggleLoading"
+							data-test-id="external-secrets-system-roles-switch"
+							@update:model-value="onSystemRolesToggle"
+						/>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
 		<div
 			v-if="secretsProviders.isEnterpriseExternalSecretsEnabled.value"
 			data-test-id="secrets-provider-connections-content-licensed"
@@ -343,51 +327,5 @@ function goToUpgrade() {
 				</I18nT>
 			</template>
 		</N8nEmptyState>
-	</div>
+	</N8nSettingsLayout>
 </template>
-
-<style lang="css" module>
-.container {
-	padding-bottom: var(--spacing--xl);
-	max-width: 702px;
-	margin: 0 auto;
-}
-
-.headerContainer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.headerTitle {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.addButton {
-	align-self: flex-end;
-	margin-top: var(--spacing--lg);
-}
-
-.link {
-	text-transform: lowercase;
-	display: inline-flex;
-	align-items: center;
-}
-
-.systemRolesToggle {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-}
-
-.systemRolesToggleInfo {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-</style>

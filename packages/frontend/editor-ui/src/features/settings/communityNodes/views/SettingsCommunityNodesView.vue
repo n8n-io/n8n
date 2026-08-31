@@ -19,7 +19,13 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
-import { N8nEmptyState, N8nButton, N8nHeading, N8nNotice } from '@n8n/design-system';
+import {
+	N8nEmptyState,
+	N8nButton,
+	N8nNotice,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+} from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);
@@ -157,19 +163,24 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div :class="$style.headingContainer">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</N8nHeading>
-			<N8nButton
+	<N8nSettingsLayout>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.communityNodes')"
+			:show-docs-link="false"
+		>
+			<template
 				v-if="canInstall && communityNodesStore.getInstalledPackages.length > 0 && !loading"
-				:label="i18n.baseText('settings.communityNodes.installModal.installButton.label')"
-				size="large"
-				@click="openInstallModal"
-			/>
-		</div>
+				#actions
+			>
+				<N8nButton
+					:label="i18n.baseText('settings.communityNodes.installModal.installButton.label')"
+					size="large"
+					@click="openInstallModal"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
 		<N8nNotice
 			v-if="isManagedByEnv"
-			class="mb-l"
 			:content="i18n.baseText('settings.communityNodes.managedByEnv')"
 			data-test-id="community-nodes-managed-by-env"
 		/>
@@ -201,28 +212,10 @@ onBeforeUnmount(() => {
 				:community-package="communityPackage"
 			></CommunityPackageCard>
 		</div>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.container {
-	height: 100%;
-	padding-right: var(--spacing--2xs);
-	> * {
-		margin-bottom: var(--spacing--2xl);
-	}
-}
-
-.headingContainer {
-	display: flex;
-	justify-content: space-between;
-}
-
-.loadingContainer {
-	display: flex;
-	gap: var(--spacing--xs);
-}
-
 .actionBoxContainer {
 	text-align: center;
 }

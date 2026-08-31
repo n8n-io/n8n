@@ -7,8 +7,8 @@ import {
 	N8nActionToggle,
 	N8nButton,
 	N8nDataTableServer,
-	N8nHeading,
 	N8nLoading,
+	N8nSettingsSection,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -125,88 +125,89 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 </script>
 
 <template>
-	<div :class="$style.tableContainer">
-		<div v-if="props.loading">
-			<N8nLoading :loading="props.loading" variant="h1" :class="$style.header" />
-			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
-		</div>
-		<div v-else>
-			<div :class="$style.header">
-				<N8nHeading size="medium" :bold="true">
-					{{ i18n.baseText('settings.chatHub.providers.table.title') }}
-				</N8nHeading>
-				<div :class="$style.actions">
-					<N8nTooltip :content="i18n.baseText('settings.chatHub.providers.table.refresh.tooltip')">
-						<N8nButton
-							variant="subtle"
-							iconOnly
-							size="small"
-							icon="refresh-cw"
-							:aria-label="i18n.baseText('generic.refresh')"
-							@click="$emit('refresh')"
-						/>
-					</N8nTooltip>
-				</div>
+	<N8nSettingsSection :title="i18n.baseText('settings.chatHub.providers.table.title')">
+		<template v-if="!props.loading" #headerAction>
+			<div :class="$style.actions">
+				<N8nTooltip :content="i18n.baseText('settings.chatHub.providers.table.refresh.tooltip')">
+					<N8nButton
+						variant="subtle"
+						iconOnly
+						size="small"
+						icon="refresh-cw"
+						:aria-label="i18n.baseText('generic.refresh')"
+						@click="$emit('refresh')"
+					/>
+				</N8nTooltip>
 			</div>
-			<N8nEmptyState
-				v-if="!props.settings"
-				:heading="i18n.baseText('settings.chatHub.providers.table.empty.title')"
-				:description="i18n.baseText('settings.chatHub.providers.table.empty.description')"
-			/>
-			<N8nDataTableServer
-				v-else
-				:class="$style.chatProvidersTable"
-				:headers="tableHeaders"
-				:items="settingItems"
-				:items-length="settingItems.length"
-			>
-				<template #[`item.provider`]="{ item }">
-					<div :class="$style.providerCell">
-						<CredentialIcon
-							v-if="item.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
-							:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.provider]"
-							:size="16"
-							:class="$style.menuIcon"
-						/>
-						<N8nText bold>
-							{{ providerDisplayNames[item.provider] }}
-						</N8nText>
-					</div>
-				</template>
-				<template #[`item.models`]="{ item }">
-					<N8nTooltip
-						v-if="item.allowedModels?.length && item.allowedModels?.length > TRUNCATE_MODELS_AFTER"
-						:content="
-							item.allowedModels
-								?.map((m: ChatProviderSettingsDto['allowedModels'][number]) => m.displayName)
-								.join(', ')
-						"
-					>
-						<N8nText :color="item.enabled ? 'text-base' : 'primary'">
+		</template>
+		<div :class="$style.tableContainer">
+			<div v-if="props.loading">
+				<N8nLoading :loading="props.loading" variant="h1" :class="$style.header" />
+				<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
+			</div>
+			<div v-else>
+				<N8nEmptyState
+					v-if="!props.settings"
+					:heading="i18n.baseText('settings.chatHub.providers.table.empty.title')"
+					:description="i18n.baseText('settings.chatHub.providers.table.empty.description')"
+				/>
+				<N8nDataTableServer
+					v-else
+					:class="$style.chatProvidersTable"
+					:headers="tableHeaders"
+					:items="settingItems"
+					:items-length="settingItems.length"
+				>
+					<template #[`item.provider`]="{ item }">
+						<div :class="$style.providerCell">
+							<CredentialIcon
+								v-if="item.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
+								:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.provider]"
+								:size="16"
+								:class="$style.menuIcon"
+							/>
+							<N8nText bold>
+								{{ providerDisplayNames[item.provider] }}
+							</N8nText>
+						</div>
+					</template>
+					<template #[`item.models`]="{ item }">
+						<N8nTooltip
+							v-if="
+								item.allowedModels?.length && item.allowedModels?.length > TRUNCATE_MODELS_AFTER
+							"
+							:content="
+								item.allowedModels
+									?.map((m: ChatProviderSettingsDto['allowedModels'][number]) => m.displayName)
+									.join(', ')
+							"
+						>
+							<N8nText :color="item.enabled ? 'text-base' : 'primary'">
+								{{ modelsText(item) }}
+							</N8nText>
+						</N8nTooltip>
+						<N8nText v-else :color="item.enabled ? 'text-base' : 'primary'">
 							{{ modelsText(item) }}
 						</N8nText>
-					</N8nTooltip>
-					<N8nText v-else :color="item.enabled ? 'text-base' : 'primary'">
-						{{ modelsText(item) }}
-					</N8nText>
-				</template>
-				<template #[`item.updatedAt`]="{ item }">
-					<span>
-						<TimeAgo v-if="item.updatedAt" :date="item.updatedAt" />
-						<N8nText v-else>-</N8nText>
-					</span>
-				</template>
-				<template #[`item.actions`]="{ item }">
-					<N8nActionToggle
-						placement="bottom"
-						:actions="tableActions"
-						theme="dark"
-						@action="onTableAction($event, item)"
-					/>
-				</template>
-			</N8nDataTableServer>
+					</template>
+					<template #[`item.updatedAt`]="{ item }">
+						<span>
+							<TimeAgo v-if="item.updatedAt" :date="item.updatedAt" />
+							<N8nText v-else>-</N8nText>
+						</span>
+					</template>
+					<template #[`item.actions`]="{ item }">
+						<N8nActionToggle
+							placement="bottom"
+							:actions="tableActions"
+							theme="dark"
+							@action="onTableAction($event, item)"
+						/>
+					</template>
+				</N8nDataTableServer>
+			</div>
 		</div>
-	</div>
+	</N8nSettingsSection>
 </template>
 
 <style lang="scss" module>
@@ -223,9 +224,6 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 }
 
 .header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
 	margin-bottom: var(--spacing--sm);
 }
 

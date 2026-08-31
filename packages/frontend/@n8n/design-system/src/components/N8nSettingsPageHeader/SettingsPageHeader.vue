@@ -55,15 +55,20 @@ if (import.meta.env.DEV) {
 
 <template>
 	<header :class="$style.header">
-		<div v-if="slots.titleTrailing" :class="$style.titleRow">
-			<N8nHeading :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
+		<div :class="[$style.top, { [$style.topWithActions]: Boolean(slots.actions) }]">
+			<div v-if="slots.titleTrailing" :class="$style.titleRow">
+				<N8nHeading :tag="headingTag" :class="$style.title" size="2xlarge" color="text-dark">
+					{{ title }}
+				</N8nHeading>
+				<slot name="titleTrailing" />
+			</div>
+			<N8nHeading v-else :tag="headingTag" :class="$style.title" size="2xlarge" color="text-dark">
 				{{ title }}
 			</N8nHeading>
-			<slot name="titleTrailing" />
+			<div v-if="slots.actions" :class="$style.actions">
+				<slot name="actions" />
+			</div>
 		</div>
-		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
-			{{ title }}
-		</N8nHeading>
 		<p v-if="hasDescription || showDocsLink" :class="$style.description">
 			<slot name="description">
 				<N8nText v-if="description" size="medium" color="text-base">{{ description }}</N8nText>
@@ -97,23 +102,16 @@ if (import.meta.env.DEV) {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	/* The header column stays capped even when the layout content is full-width. */
+	/* The header column stays capped even when the layout is wide. */
 	max-width: var(--settings-content--max-width, 45rem);
-	/*
-	 * The 48px gap to the content below is owned and enforced by N8nSettingsLayout
-	 * (`.content > header + *`), not by an external margin here, so it stays deterministic
-	 * and never relies on margin-collapsing.
-	 */
-}
-
-.title {
-	letter-spacing: var(--letter-spacing--tight);
+	margin-block-end: var(--spacing--2xl); /* 48px to the content below */
 }
 
 .titleRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .description {

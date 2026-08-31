@@ -297,7 +297,7 @@ function onOpenScopes(apiKey: ApiKey) {
 </script>
 
 <template>
-	<N8nSettingsLayout full-width :class="$style.layout">
+	<N8nSettingsLayout size="wide">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.api')"
 			:show-docs-link="false"
@@ -478,11 +478,6 @@ function onOpenScopes(apiKey: ApiKey) {
 </template>
 
 <style lang="scss" module>
-/* Collapse the layout's own top inset; the settings shell already pads the page top. */
-.layout {
-	padding-top: 0;
-}
-
 .docLink {
 	color: var(--text-color--subtle);
 	text-decoration: underline;

@@ -50,6 +50,7 @@ const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
 const exposeAllWorkflowsToMcpStore = useExposeAllWorkflowsToMcpStore();
 
 const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents'));
+const showMcpEnabled = computed(() => mcpStore.mcpAccessEnabled);
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
@@ -248,7 +249,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<N8nSettingsLayout :class="$style.layout">
+	<N8nSettingsLayout>
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.page.title')"
 			:description="i18n.baseText('settings.mcp.page.description')"
@@ -257,7 +258,7 @@ onMounted(async () => {
 		/>
 
 		<MCPEmptyState
-			v-if="!mcpStore.mcpAccessEnabled"
+			v-if="!showMcpEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
 			:managed-by-env="mcpStore.mcpManagedByEnv"
@@ -421,10 +422,3 @@ onMounted(async () => {
 		/>
 	</N8nSettingsLayout>
 </template>
-
-<style lang="scss" module>
-/* Collapse the layout's own top inset; the settings shell already pads the page top. */
-.layout {
-	padding-top: 0;
-}
-</style>

@@ -8,8 +8,9 @@ import {
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
-	N8nLink,
 	N8nLoading2,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -87,24 +88,21 @@ async function onAction(action: string, resolver: CredentialResolver) {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div class="mb-xl" :class="$style.headerContainer">
-			<div :class="$style.headerTitle">
-				<N8nHeading tag="h1" size="2xlarge">
-					{{ i18n.baseText('credentialResolver.view.title') }}
-				</N8nHeading>
-				<N8nText v-if="resolvers.length" color="text-base" size="medium">
-					{{ i18n.baseText('credentialResolver.view.description') }}
-					{{ i18n.baseText('credentialResolver.view.learnMore') }}
-					<N8nLink theme="text" :href="END_USER_CREDENTIALS_DOCS_URL" size="medium" new-window>
-						<span :class="$style.link">
-							{{ i18n.baseText('generic.documentation') }}
-							<N8nIcon icon="arrow-up-right" />
-						</span>
-					</N8nLink>
-				</N8nText>
-			</div>
-		</div>
+	<N8nSettingsLayout>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('credentialResolver.view.title')"
+			:description="
+				resolvers.length ? i18n.baseText('credentialResolver.view.description') : undefined
+			"
+			:docs-url="END_USER_CREDENTIALS_DOCS_URL"
+			:show-docs-link="resolvers.length > 0"
+		>
+			<template v-if="resolvers.length" #actions>
+				<N8nButton variant="solid" icon="plus" @click="createResolver">
+					{{ i18n.baseText('credentialResolver.addNew') }}
+				</N8nButton>
+			</template>
+		</N8nSettingsPageHeader>
 		<N8nLoading2 v-if="isLoading && resolvers.length === 0" :rows="5" :shrink-last="false" />
 		<div v-else-if="resolvers.length === 0">
 			<N8nEmptyState class="mt-2xl mb-l" description="yes">
@@ -137,11 +135,6 @@ async function onAction(action: string, resolver: CredentialResolver) {
 			</N8nEmptyState>
 		</div>
 		<div v-else>
-			<div :class="$style.actionBar">
-				<N8nButton variant="solid" class="ml-auto" icon="plus" @click="createResolver">
-					{{ i18n.baseText('credentialResolver.addNew') }}
-				</N8nButton>
-			</div>
 			<N8nCard
 				v-for="resolver in resolvers"
 				:key="resolver.id"
@@ -176,7 +169,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 				</template>
 			</N8nCard>
 		</div>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="css" module>

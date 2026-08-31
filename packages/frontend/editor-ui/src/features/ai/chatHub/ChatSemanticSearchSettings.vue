@@ -10,7 +10,14 @@ import {
 	type ChatHubSemanticSearchSettings,
 	type ChatHubVectorStoreProvider,
 } from '@n8n/api-types';
-import { N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nSettingsSection,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
@@ -213,10 +220,7 @@ watch(
 );
 </script>
 <template>
-	<div :class="$style.section">
-		<N8nHeading size="medium" :bold="true" :class="$style.sectionTitle">
-			{{ i18n.baseText('settings.chatHub.semanticSearch.title') }}
-		</N8nHeading>
+	<N8nSettingsSection :title="i18n.baseText('settings.chatHub.semanticSearch.title')">
 		<div :class="$style.semanticSearchCard">
 			<div :class="$style.semanticSearchRow">
 				<div :class="$style.rowInfo">
@@ -327,20 +331,10 @@ watch(
 				</div>
 			</div>
 		</div>
-	</div>
+	</N8nSettingsSection>
 </template>
 
 <style lang="scss" module>
-.section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.sectionTitle {
-	margin-bottom: var(--spacing--3xs);
-}
-
 .semanticSearchCard {
 	border: var(--border);
 	border-radius: var(--radius);

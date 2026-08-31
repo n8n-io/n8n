@@ -17,7 +17,16 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
-import { N8nEmptyState, N8nButton, N8nHeading, N8nInfoTip, N8nNotice } from '@n8n/design-system';
+import {
+	N8nEmptyState,
+	N8nButton,
+	N8nNotice,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
+} from '@n8n/design-system';
 const environment = process.env.NODE_ENV;
 
 const settingsStore = useSettingsStore();
@@ -175,24 +184,22 @@ async function onEdit(destinationId?: string) {
 </script>
 
 <template>
-	<div>
-		<div :class="$style.header">
-			<div class="mb-2xl">
-				<N8nHeading size="2xlarge">
-					{{ i18n.baseText(`settings.log-streaming.heading`) }}
-				</N8nHeading>
-				<template v-if="environment !== 'production'">
-					<span class="ml-m">Disable License ({{ environment }})&nbsp;</span>
-					<ElSwitch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
-				</template>
-			</div>
-		</div>
+	<N8nSettingsLayout size="wide">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.log-streaming.heading')"
+			:description="i18n.baseText('settings.log-streaming.description')"
+			docs-url="https://docs.n8n.io/log-streaming/"
+		/>
+		<N8nSettingsSection v-if="environment !== 'production'">
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow :title="`Disable License (${environment})`">
+					<template #action>
+						<ElSwitch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
 		<template v-if="isLicensed">
-			<div class="mb-l">
-				<N8nInfoTip theme="info" type="note">
-					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
-				</N8nInfoTip>
-			</div>
 			<N8nNotice
 				v-if="isManagedByEnv"
 				class="mb-l"
@@ -234,11 +241,6 @@ async function onEdit(destinationId?: string) {
 			</div>
 		</template>
 		<template v-else>
-			<div v-if="i18n.baseText('settings.log-streaming.infoText')" class="mb-l">
-				<N8nInfoTip theme="info" type="note">
-					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
-				</N8nInfoTip>
-			</div>
 			<div data-test-id="action-box-unlicensed">
 				<N8nEmptyState
 					:description="i18n.baseText('settings.log-streaming.actionBox.description')"
@@ -251,21 +253,10 @@ async function onEdit(destinationId?: string) {
 				</N8nEmptyState>
 			</div>
 		</template>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.header {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	white-space: nowrap;
-
-	*:first-child {
-		flex-grow: 1;
-	}
-}
-
 .destinationItem {
 	margin-bottom: 0.5em;
 }

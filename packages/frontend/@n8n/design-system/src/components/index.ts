@@ -83,7 +83,7 @@ export { default as N8nPagination } from './N8nPagination';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nSettingsLayout } from './N8nSettingsLayout';
-export type { SettingsLayoutProps } from './N8nSettingsLayout';
+export type { SettingsLayoutProps, SettingsLayoutSize } from './N8nSettingsLayout';
 export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
 export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';

@@ -9,7 +9,7 @@ import type { ExternalSecretsProvider } from '../externalSecrets.types';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
-import { N8nEmptyState, N8nCallout, N8nHeading } from '@n8n/design-system';
+import { N8nEmptyState, N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
 const i18n = useI18n();
 const externalSecretsStore = useExternalSecretsStore();
 const toast = useToast();
@@ -39,18 +39,16 @@ function goToUpgrade() {
 </script>
 
 <template>
-	<div class="pb-3xl">
-		<N8nHeading size="2xlarge">{{ i18n.baseText('settings.externalSecrets.title') }}</N8nHeading>
+	<N8nSettingsLayout>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.externalSecrets.title')"
+			:description="i18n.baseText('settings.externalSecrets.info')"
+			docs-url="https://docs.n8n.io/external-secrets/"
+		/>
 		<div
 			v-if="externalSecretsStore.isEnterpriseExternalSecretsEnabled"
 			data-test-id="external-secrets-content-licensed"
 		>
-			<N8nCallout theme="secondary" class="mt-2xl mb-l">
-				{{ i18n.baseText('settings.externalSecrets.info') }}
-				<a href="https://docs.n8n.io/external-secrets/" target="_blank">
-					{{ i18n.baseText('settings.externalSecrets.info.link') }}
-				</a>
-			</N8nCallout>
 			<ExternalSecretsProviderCard
 				v-for="provider in sortedProviders"
 				:key="provider.name"
@@ -59,7 +57,6 @@ function goToUpgrade() {
 		</div>
 		<N8nEmptyState
 			v-else
-			class="mt-2xl mb-l"
 			data-test-id="external-secrets-content-unlicensed"
 			:button-text="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
 			@click="goToUpgrade"
@@ -77,5 +74,5 @@ function goToUpgrade() {
 				</I18nT>
 			</template>
 		</N8nEmptyState>
-	</div>
+	</N8nSettingsLayout>
 </template>

@@ -918,7 +918,7 @@ export const ApiKeys: Story = {
 			return { onBack, headers, items, slotApiKey, slotActions };
 		},
 		template: `
-			<N8nSettingsLayout full-width show-back back-label="Back" @back="onBack">
+			<N8nSettingsLayout size="wide" show-back back-label="Back" @back="onBack">
 				<N8nSettingsPageHeader
 					title="API keys"
 					description="Use your API keys to control n8n programmatically."

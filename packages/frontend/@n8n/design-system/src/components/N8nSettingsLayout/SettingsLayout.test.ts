@@ -53,51 +53,50 @@ describe('N8nSettingsLayout', () => {
 		expect(emitted().back).toHaveLength(1);
 	});
 
-	it('caps the content at the content max-width by default', () => {
+	it('caps the content column when size is narrow', () => {
 		const { container } = render(N8nSettingsLayout, {
 			slots: { default: 'content' },
 		});
 
-		const content = container.querySelector('[class*="content"]') as HTMLElement;
-		expect(content.className).not.toContain('fullWidth');
+		const content = container.querySelector('[class*="narrow"]') as HTMLElement;
+		expect(content).toBeTruthy();
+		expect(content.className).not.toContain('wide');
 	});
 
-	it('lets the content fill the padded container when fullWidth is set', () => {
+	it('lets the content fill the container when size is wide', () => {
 		const { container } = render(N8nSettingsLayout, {
-			props: { fullWidth: true },
+			props: { size: 'wide' },
 			slots: { default: 'content' },
 		});
 
-		const content = container.querySelector('[class*="content"]') as HTMLElement;
-		expect(content.className).toContain('fullWidth');
+		const content = container.querySelector('[class*="wide"]') as HTMLElement;
+		expect(content).toBeTruthy();
+		expect(content.className).not.toContain('narrow');
 	});
 
-	it('keeps the header a direct child of the centered content region in both modes', () => {
-		// The content region applies `margin-inline: auto` to its children, so a capped
-		// header stays centered on the page whether or not the content is full-width.
-		for (const fullWidth of [false, true]) {
+	it('keeps the header a direct child of the content region in both modes', () => {
+		for (const size of ['narrow', 'wide'] as const) {
 			const { container } = render(N8nSettingsLayout, {
-				props: { fullWidth },
+				props: { size },
 				slots: { default: '<header data-test-id="page-header">title</header>' },
 			});
 
-			const content = container.querySelector('[class*="content"]') as HTMLElement;
+			const content = container.querySelector(`[class*="${size}"]`) as HTMLElement;
 			const header = content.querySelector('[data-test-id="page-header"]') as HTMLElement;
 
 			expect(header.parentElement).toBe(content);
 		}
 	});
 
-	it('renders the back action outside the centered content column', () => {
+	it('renders the back action outside the content column', () => {
 		const { container } = render(N8nSettingsLayout, {
 			props: { showBack: true },
 			slots: { default: 'content' },
 		});
 
-		const content = container.querySelector('[class*="content"]') as HTMLElement;
+		const content = container.querySelector('[class*="narrow"]') as HTMLElement;
 		const backButton = screen.getByTestId('settings-back-button');
 
-		// The back action lives in the full-width padded area, not inside the capped/centered content.
 		expect(backButton).toBeInTheDocument();
 		expect(content.contains(backButton)).toBe(false);
 	});

@@ -237,7 +237,7 @@ const sortedWorkflows = computed(() => {
 
 <template>
 	<N8nSettingsLayout
-		full-width
+		size="wide"
 		show-back
 		:back-label="i18n.baseText('generic.back')"
 		@back="router.push({ name: VIEWS.MIGRATION_REPORT })"

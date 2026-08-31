@@ -23,6 +23,8 @@ import {
 	N8nInfoTip,
 	N8nInput,
 	N8nNotice,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -220,10 +222,11 @@ const openCommunityRegisterModal = () => {
 </script>
 
 <template>
-	<div class="settings-usage-and-plan">
-		<N8nHeading tag="h2" size="2xlarge">{{
-			locale.baseText('settings.usageAndPlan.title')
-		}}</N8nHeading>
+	<N8nSettingsLayout class="settings-usage-and-plan">
+		<N8nSettingsPageHeader
+			:title="locale.baseText('settings.usageAndPlan.title')"
+			:show-docs-link="false"
+		/>
 		<div v-if="!usageStore.isLoading">
 			<N8nHeading tag="h3" :class="$style.title" size="large">
 				<I18nT keypath="settings.usageAndPlan.description" tag="span" scope="global">
@@ -350,7 +353,7 @@ const openCommunityRegisterModal = () => {
 				@cancel="onEulaCancel"
 			/>
 		</div>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
@@ -360,20 +363,10 @@ const openCommunityRegisterModal = () => {
 	justify-content: center;
 }
 
-.actionBox {
-	margin: var(--spacing--2xl) 0 0;
-}
-
-.spacedFlex {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
 .title {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--2xl) 0 var(--spacing--md);
+	margin-block-end: var(--spacing--md);
 }
 
 .quota {

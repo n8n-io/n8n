@@ -19,7 +19,6 @@ vi.mock('./useAiGatewayTopUp', () => ({
 	useAiGatewayTopUp: vi.fn(() => ({ openTopUp: openTopUpMock })),
 }));
 vi.mock('@n8n/i18n', () => ({ useI18n: vi.fn(() => ({ baseText: (key: string) => key })) }));
-vi.mock('../stores/ui.store', () => ({ useUIStore: vi.fn(() => ({ settingsSidebarItems: [] })) }));
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isAiAssistantEnabled: false,
@@ -37,6 +36,9 @@ vi.mock('@n8n/stores/settings.store', () => ({
 vi.mock('../utils/rbac/permissions', () => ({ hasPermission: vi.fn(() => false) }));
 vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
 	useEnvFeatureFlag: vi.fn(() => ({ check: computed(() => () => false) })),
+}));
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: vi.fn(() => ({ settingsSidebarItems: [] })),
 }));
 
 describe('useSettingsItems', () => {
@@ -73,15 +75,17 @@ describe('useSettingsItems', () => {
 		expect(item?.route).toBeUndefined();
 	});
 
-	it('hides n8n credits when AI Gateway is disabled', () => {
+	it('omits the n8n credits item from the flattened list when AI Gateway is disabled', () => {
 		isAiGatewayEnabled.value = false;
 		isAiGatewayCloudUbbEnabled.value = true;
 
-		const item = useSettingsItems().settingsItems.value.find(
-			({ id }) => id === 'settings-n8n-connect',
-		);
+		const { settingsEntries, settingsItems } = useSettingsItems();
+		const item = settingsEntries.value
+			.flatMap((group) => group.items)
+			.find(({ id }) => id === 'settings-n8n-connect');
 
-		expect(item).toBeUndefined();
+		expect(item?.available).toBe(false);
+		expect(settingsItems.value.some(({ id }) => id === 'settings-n8n-connect')).toBe(false);
 	});
 
 	it('opens the top-up flow only for the Cloud UBB credits item', async () => {
