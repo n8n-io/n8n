@@ -845,7 +845,8 @@ describe('GmailTrigger', () => {
 
 			// 1 message with maxResults=5, all fetched — advance normally
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(2000000000);
-			// No pending messages
+			// No pending messages left — the fetch loop always writes the (empty)
+			// remainder, so the key exists
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
 		});
 
@@ -1820,7 +1821,6 @@ describe('GmailTrigger', () => {
 			});
 
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
-			// Simplified shape: labelIds resolved into labels, not left raw.
 			expect(response?.[0]?.[0]?.json.labels).toEqual([
 				{ id: 'testLabelId', name: 'Test Label Name' },
 			]);

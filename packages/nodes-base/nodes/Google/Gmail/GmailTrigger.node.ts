@@ -413,18 +413,17 @@ export class GmailTrigger implements INodeType {
 			}
 		};
 
-		// May only permit a cursor advance when an exhausted page token proved the
-		// window complete. Every path that never completes a listing — the early
-		// pending return (which exits before the advance) or any thrown fetch/list
-		// — must leave it pessimistic, or a held cursor would advance past mail
-		// the failed poll never listed.
+		// Pessimistic default: poll() swallows non-manual errors and still runs the
+		// cursor advance below, so a throw before or during listing must leave the
+		// cursor held. Only an exhausted page token may set this true.
 		let windowFullyListed = false;
 
 		try {
 			let budget = maxResults;
 
-			// Process pending messages from previous poll first.
-			// These are IDs that were listed but not fetched last time due to maxResults.
+			// Process pending messages from a previous poll first. These are IDs
+			// listed but not fetched last time: beyond the maxResults budget, or left
+			// over when a fetch failed mid-poll.
 			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
 			if (shouldLimitMessages && pendingIds.length > 0) {
 				const idsToFetch = pendingIds.slice(0, budget);
@@ -453,10 +452,9 @@ export class GmailTrigger implements INodeType {
 						throw error;
 					}
 
-					// An id leaves the stored queue only after its fetch succeeded. A
-					// mid-drain throw is swallowed by the catch below, and pending ids sit
-					// behind an already-advanced cursor — removing them up front would
-					// lose the unfetched ones for good.
+					// An id leaves the stored queue only after its fetch succeeded — a
+					// dropped id is in no state and can already sit behind an advanced
+					// cursor, so nothing would ever list it again.
 					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
 					// Only consecutive failures may add up to a skip.
 					nodeStaticData.pendingFetchAttempts = 0;
@@ -505,10 +503,6 @@ export class GmailTrigger implements INodeType {
 			let messages: ListMessage[] = [];
 			let pageToken: string | undefined;
 			let pagesListed = 0;
-			// From here on, an exception mid-loop must read as "not fully listed":
-			// the catch path continues to the cursor advance, and a stale `true`
-			// would skip everything the failed pages never showed.
-			windowFullyListed = false;
 			do {
 				const messagesResponse: MessageListResponse = await googleApiRequest.call(
 					this,
@@ -588,10 +582,9 @@ export class GmailTrigger implements INodeType {
 				for (const [index, message] of messagesToProcess.entries()) {
 					await fetchAndProcessMessage(message.id, fetchQs);
 					if (shouldLimitMessages) {
-						// An id leaves persisted state only after its fetch succeeded. A
-						// mid-loop throw is swallowed by the catch below, and the cursor can
-						// still advance past every listed id — an unfetched within-budget id
-						// kept in no persisted structure would be lost for good.
+						// Trim what the queue write above seeded: keep only the ids this loop
+						// has not delivered yet, so a swallowed throw leaves every unfetched
+						// id stored while the cursor may still advance past all of them.
 						nodeStaticData.pendingMessageIds = [
 							...messagesToProcess.slice(index + 1).map((m) => m.id),
 							...beyondBudgetIds,
