@@ -4,7 +4,14 @@ import type { IDataObject } from 'n8n-workflow';
 import { JsonColumn, WithCreatedAt } from './abstract-entity';
 
 /**
- * Coarse grouping, chosen so a reader can cap and collapse per kind before rendering a feed.
+ * What kind of thing happened — distinct from `resourceType`, which is what the entry *points at*.
+ * The two coincide for `workflow` and `credential` and diverge for the rest: an execution and an
+ * eval run both point at a workflow, and only this column tells them apart from a save. `action`
+ * cannot stand in for it, since a real run and an eval run share `succeeded` / `failed`.
+ *
+ * The unit a reader caps and collapses per kind by, and half the key (with `action`) that
+ * `typeVersion` versions the shape of `data` against.
+ *
  * Only what is written today — widening is free, since nothing constrains these in the database.
  */
 export const activityEventCategories = ['workflow', 'execution', 'eval', 'credential'] as const;
@@ -12,7 +19,8 @@ export const activityEventCategories = ['workflow', 'execution', 'eval', 'creden
 export type ActivityEventCategory = (typeof activityEventCategories)[number];
 
 /**
- * What `resourceId` points at. Absent when an entry is about the instance rather than a resource.
+ * What `resourceId` points at — the pointer's type, not the entry's kind; see `category`.
+ * Absent when an entry is about the instance rather than a resource.
  * An execution entry points at its *workflow*, not the run: that is the thing a reader groups
  * repeated runs under, and the thing a user thinks in terms of. The run id lives in `data`.
  */

@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | action | varchar(64) |  | false |  |  | What happened, as a verb: created, saved, published, unpublished, deleted, archived, unarchived, version-updated, succeeded, failed, cancelled |
-| category | varchar(32) |  | false |  |  | Resource kind an entry is about; see ActivityEventCategory in @n8n/db. The unit a reader caps and collapses by: workflow, execution, eval, credential |
+| category | varchar(32) |  | false |  |  | Kind of happening, not kind of resource — see ActivityEventCategory in @n8n/db. The unit a reader caps and collapses by: workflow, execution, eval, credential. An execution or eval entry has resourceType `workflow`, so the two differ |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | json |  | true |  |  | Minimal detail that makes an entry meaningful unexpanded (a run status and failing node, a save node delta). Size-capped on write; no user ids |
 | id | integer |  | false |  |  |  |

@@ -20,8 +20,9 @@ export class CreateActivityEventTable1788190228940 implements ReversibleMigratio
 				column('category')
 					.varchar(32)
 					.notNull.comment(
-						'Resource kind an entry is about; see ActivityEventCategory in @n8n/db. ' +
-							'The unit a reader caps and collapses by: workflow, execution, eval, credential',
+						'Kind of happening, not kind of resource — see ActivityEventCategory in @n8n/db. ' +
+							'The unit a reader caps and collapses by: workflow, execution, eval, credential. ' +
+							'An execution or eval entry has resourceType `workflow`, so the two differ',
 					),
 				column('action')
 					.varchar(64)
