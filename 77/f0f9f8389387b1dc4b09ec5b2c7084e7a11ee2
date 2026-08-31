@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_34793b9d06c263::t_ee375cf9946551 283
+  s_34793b9d06c263::t_24c38188fced11 284-285
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_34793b9d06c263::t_24c38188fced11 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "77f0f9f8389387b1dc4b09ec5b2c7084e7a11ee2",
+  "prompts": {},
+  "sessions": {
+    "s_34793b9d06c263": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be5e5db0-91f3-4a0d-ad8e-92441178877c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
