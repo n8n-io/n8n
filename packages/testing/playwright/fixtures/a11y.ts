@@ -1,6 +1,8 @@
 import { AxeBuilder } from '@axe-core/playwright';
-import type { Fixtures, Page } from '@playwright/test';
+import type { Fixtures, Page, TestInfo } from '@playwright/test';
 import type { Result, TagValue } from 'axe-core';
+import { createHtmlReport } from 'axe-html-reporter';
+import { existsSync } from 'node:fs';
 
 import type { n8nPage } from '../pages/n8nPage';
 
@@ -88,6 +90,8 @@ export class A11yChecker {
 
 export type A11yTestFixtures = {
 	a11y: A11yChecker;
+	/** Per-test gate that pairs `a11y.check` with HTML reporting and an optional violation budget. */
+	a11yGate: A11yGate;
 };
 
 type A11yFixtureDeps = {
@@ -95,10 +99,123 @@ type A11yFixtureDeps = {
 };
 
 /**
- * Accessibility fixture. Spread into `test.extend()` to expose `a11y.check(bucket)`.
+ * Maximum number of violations an a11y-gated journey may accumulate before its
+ * test fails. Unset (the default) keeps journeys non-blocking so existing
+ * violations never break CI; set it to a non-negative integer to enforce a
+ * budget (the test fails once the running total exceeds it).
+ */
+export const A11Y_MAX_VIOLATIONS_ENV = 'A11Y_MAX_VIOLATIONS';
+
+export function getMaxA11yViolations(
+	env: Record<string, string | undefined> = process.env,
+): number | undefined {
+	const raw = env[A11Y_MAX_VIOLATIONS_ENV];
+	if (raw === undefined || raw.trim() === '') return undefined;
+
+	const parsed = Number(raw);
+	if (!Number.isInteger(parsed) || parsed < 0) {
+		console.warn(
+			`[a11y] Ignoring ${A11Y_MAX_VIOLATIONS_ENV}="${raw}": expected a non-negative integer. Accessibility checks stay non-blocking.`,
+		);
+		return undefined;
+	}
+	return parsed;
+}
+
+type A11yCheckpointRecord = { bucket: A11yBucket; violations: A11yViolation[] };
+
+/**
+ * Journey-facing counterpart to {@link A11yChecker}: runs `a11y.check` at a
+ * checkpoint, always writes an axe HTML report for the scan, and enforces the
+ * violation budget from {@link A11Y_MAX_VIOLATIONS_ENV}.
+ *
+ * The budget is cumulative across one gate's checkpoints (one gate per test),
+ * so a journey counts everything it found, not per-scan spikes. Reports live in
+ * the test's output directory and are attached to the test result, which means
+ * Playwright keeps them exactly when the run fails (`preserve-output:
+ * failures-only`) and they ride along in the CI `test-results/` artifact.
+ */
+export class A11yGate {
+	private readonly checkpoints: A11yCheckpointRecord[] = [];
+
+	constructor(
+		private readonly a11y: A11yChecker,
+		private readonly testInfo: TestInfo,
+		private readonly maxViolations?: number,
+	) {}
+
+	async checkpoint(bucket: A11yBucket, options: A11yCheckOptions = {}): Promise<void> {
+		const violations = await this.a11y.check(bucket, options);
+		this.checkpoints.push({ bucket, violations });
+
+		if (violations.length > 0) {
+			console.warn(
+				`[a11y] ${this.testInfo.title} — bucket "${bucket}" has ${violations.length} violation(s):\n${describeViolations(violations)}`,
+			);
+		}
+
+		await this.attachHtmlReport(bucket, violations);
+
+		const total = this.totalViolations();
+		if (this.maxViolations !== undefined && total > this.maxViolations) {
+			throw new Error(
+				`[a11y] "${this.testInfo.title}" found ${total} accessibility violation(s) across its checkpoints ` +
+					`(${this.checkpoints.map((c) => `${c.bucket}: ${c.violations.length}`).join(', ')}), exceeding the ` +
+					`${A11Y_MAX_VIOLATIONS_ENV} budget of ${this.maxViolations}. ` +
+					'HTML reports are attached to this test result.',
+			);
+		}
+	}
+
+	private totalViolations(): number {
+		return this.checkpoints.reduce((sum, checkpoint) => sum + checkpoint.violations.length, 0);
+	}
+
+	private async attachHtmlReport(bucket: A11yBucket, violations: A11yViolation[]): Promise<void> {
+		const reportFileName = `a11y-${bucket}-report.html`;
+		const reportPath = this.testInfo.outputPath('a11y', reportFileName);
+		createHtmlReport({
+			results: { violations },
+			options: {
+				reportFileName,
+				outputDir: 'a11y',
+				outputDirPath: this.testInfo.outputDir,
+				projectKey: this.testInfo.title,
+				customSummary: `Bucket: ${bucket}`,
+			},
+		});
+
+		// axe-html-reporter swallows its own errors and only warns, so the file
+		// may be missing - reporting must never turn a journey red.
+		if (!existsSync(reportPath)) {
+			console.warn(
+				`[a11y] No HTML report was written for bucket "${bucket}" in "${this.testInfo.title}"; skipping attachment.`,
+			);
+			return;
+		}
+
+		await this.testInfo.attach(`a11y-report-${bucket}`, {
+			path: reportPath,
+			contentType: 'text/html',
+		});
+	}
+}
+
+function describeViolations(violations: A11yViolation[]): string {
+	return violations
+		.map((violation) => `  - ${violation.id} (${violation.impact ?? 'unknown'}): ${violation.help}`)
+		.join('\n');
+}
+
+/**
+ * Accessibility fixture. Spread into `test.extend()` to expose `a11y.check(bucket)`
+ * plus the journey-facing `a11yGate.checkpoint(bucket)`.
  */
 export const a11yFixtures: Fixtures<A11yTestFixtures & A11yFixtureDeps> = {
 	a11y: async ({ n8n }, use) => {
 		await use(new A11yChecker(n8n.page));
+	},
+	a11yGate: async ({ a11y }, use, testInfo) => {
+		await use(new A11yGate(a11y, testInfo, getMaxA11yViolations()));
 	},
 };

@@ -1,6 +1,6 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { fixtures as currentsFixtures } from '@currents/playwright';
-import { test as base, expect, request } from '@playwright/test';
+import { test as base, request } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
@@ -354,8 +354,15 @@ export const test = base.extend<
 	},
 });
 
-export { expect };
-export { A11Y_BUCKETS, DEFAULT_A11Y_TAGS } from './a11y';
+export { expect } from '@playwright/test';
+export {
+	A11Y_BUCKETS,
+	A11Y_MAX_VIOLATIONS_ENV,
+	A11yChecker,
+	A11yGate,
+	DEFAULT_A11Y_TAGS,
+	getMaxA11yViolations,
+} from './a11y';
 export type { A11yBucket, A11yCheckOptions, A11yViolation } from './a11y';
 
 /*
@@ -369,4 +376,5 @@ Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls
 n8nStackConfig: Resolved N8NConfig (topology-neutral, always produced)
 n8nContainer:   Container lifecycle (stop, containers, mainUrls, etc.)
 services:       Type-safe helpers (mailpit, gitea, proxy, observability, etc.)
+n8n → a11y → a11yGate
 */

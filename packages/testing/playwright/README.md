@@ -400,6 +400,16 @@ node scripts/import-victoria-data.mjs --start victoria-metrics-export.jsonl vict
    - **Metrics UI:** http://localhost:8428/vmui/
    - **Logs UI:** http://localhost:9428/select/vmui/
 
+### Accessibility Reports
+
+Journeys that run a11y checkpoints (`a11yGate.checkpoint(bucket)`) generate an
+axe HTML report per checkpoint and attach it to the test result as
+`a11y-report-<bucket>`. Playwright only preserves test output for failing
+runs, so on a red CI run the reports are downloadable from the shard artifact
+under `test-results/<test>/attachments/`. Violations are non-blocking unless
+`A11Y_MAX_VIOLATIONS` is set to a budget — see
+[AGENTS.md - Accessibility Checks](./AGENTS.md).
+
 ## Janitor (Static Analysis)
 
 Janitor enforces test architecture patterns via static analysis. It runs as a **pre-commit hook** and blocks new violations from being introduced.

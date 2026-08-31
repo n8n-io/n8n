@@ -197,6 +197,32 @@ Buckets: `page` (whole document), `canvas`, `ndv`, `node-creator`, `sidebar`,
 `modal`. Defined in `fixtures/a11y.ts` (`A11Y_BUCKETS`). Scans run with WCAG 2.1
 A + AA rules; override per call with `a11y.check('modal', { tags, disableRules })`.
 
+### A11y-gated journeys
+
+Journeys don't assert on `a11y.check` directly. They use the `a11yGate`
+fixture, whose `checkpoint(bucket)` runs the scan, writes an
+`axe-html-reporter` HTML report for it, attaches that report to the test
+result, and enforces an optional violation budget:
+
+```typescript
+// composables/journeys/editor-opens-ndv.ts
+export async function editorOpensNdv(deps: { n8n: n8nPage; a11yGate: A11yGate }) {
+  await deps.n8n.start.fromBlankCanvas();
+  await deps.a11yGate.checkpoint('canvas'); // after canvas load
+  // ... interact ...
+  await deps.a11yGate.checkpoint('ndv'); // after NDV open
+}
+```
+
+- **Threshold:** `A11Y_MAX_VIOLATIONS` — unset (the default) means
+  non-blocking, so existing violations never break CI. Set it to a
+  non-negative integer to fail a test once its checkpoints have found more
+  violations in total than the budget.
+- **Reports:** each checkpoint writes `a11y/a11y-<bucket>-report.html` in the
+  test's output directory and attaches it as `a11y-report-<bucket>`. Playwright
+  only preserves test output for failing runs, so the reports appear in the
+  `test-results/` CI artifact exactly when a run fails.
+
 ## Test Isolation
 
 Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
