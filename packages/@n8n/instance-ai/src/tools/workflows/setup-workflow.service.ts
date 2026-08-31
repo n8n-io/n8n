@@ -735,10 +735,11 @@ async function buildRequestForCredentialType(
 			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
 				? existingOnNode.id
 				: undefined;
-		// A slot routed to fresh creation is never settled: its current binding is
-		// the credential the user is replacing. An id the resume just applied
-		// resolves even when the list view lags it (scoped discovery, e.g. eval
-		// allowlist pins) — the apply already resolved it before binding.
+		// A preferNewCredentials request un-settles a node that already has a working
+		// credential, so setup shows the card to change it instead of reporting
+		// "No nodes require setup". Otherwise, an id the resume just applied resolves
+		// even when the list view lags it (scoped discovery, e.g. eval allowlist
+		// pins) — the apply already resolved it before binding.
 		const isSettled =
 			!prefersNewCredential &&
 			(isAiGatewayManagedCredential(existingOnNode) ||

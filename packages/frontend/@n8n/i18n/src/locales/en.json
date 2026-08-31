@@ -6238,6 +6238,8 @@
 	"evaluation.listRuns.error.evaluationTriggerNotConfigured": "Evaluation trigger is not configured",
 	"evaluation.listRuns.error.evaluationTriggerDisabled": "Evaluation trigger is disabled",
 	"evaluation.listRuns.error.evaluationConfigNotFound": "Evaluation configuration not found",
+	"evaluation.listRuns.error.compilationFailed": "Couldn't compile the evaluation configuration{description}",
+	"evaluation.listRuns.error.compilationFailed.description": "Review your start/end nodes and dataset mapping in the evaluation setup, then try again.",
 	"evaluation.listRuns.error.setOutputsNodeNotConfigured": "'Set outputs' node is not configured",
 	"evaluation.listRuns.error.setMetricsNodeNotFound": "No 'Set metrics' node in workflow",
 	"evaluation.listRuns.error.setMetricsNodeNotConfigured": "'Set metrics' node is not configured",
