@@ -190,14 +190,20 @@ describe('episodic memory integration', () => {
 			resourceId,
 			'Redwood Clinic Intake Board #redwood-intake Clinic Ops',
 		);
-		expect(redwoodEntries.length).toBeGreaterThan(0);
+		// Content checks (not just length): a search can match the *other*
+		// customer's entry on structural similarity, hiding a failed capture.
+		expect(normalizedText(redwoodEntries.map((entry) => entry.content).join('\n'))).toContain(
+			normalizedText('Redwood Clinic Intake Board'),
+		);
 
 		const cedarEntries = await searchEpisodicEntries(
 			memory,
 			resourceId,
 			'Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance',
 		);
-		expect(cedarEntries.length).toBeGreaterThan(0);
+		expect(normalizedText(cedarEntries.map((entry) => entry.content).join('\n'))).toContain(
+			normalizedText('Cedar Lab Partner Queue'),
+		);
 
 		const result = await generateSuccessfully(
 			recallAgent,
