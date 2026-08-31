@@ -500,22 +500,23 @@ export class GmailTrigger implements INodeType {
 				}
 			}
 
-			// Record everything fetched so far in possibleDuplicates so Gmail's
-			// boundary-inclusive `after:` query can't re-list a message this tick
-			// already emitted — either below, when the listing repeats a retried id,
-			// or on a later poll. Also covers the early return just after, where the
-			// state update at the end of poll() is skipped.
-			if (shouldLimitMessages && allFetchedMessages.length > 0) {
-				const merged = new Set([
-					...(nodeStaticData.possibleDuplicates ?? []),
-					...allFetchedMessages.map((m) => m.id),
-				]);
-				nodeStaticData.possibleDuplicates = Array.from(merged);
-			}
-
 			// While queued IDs remain, don't list new messages yet.
 			if (shouldLimitMessages && (nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
 				await simplifyResponseData();
+
+				// This path returns before the state update at the end of poll(), so it
+				// records the boundary itself: Gmail's boundary-inclusive `after:` query
+				// would otherwise re-list what this poll just delivered. It runs after
+				// simplifying, because a poll that fails there delivers nothing and its
+				// ids must stay listable.
+				if (allFetchedMessages.length > 0) {
+					const merged = new Set([
+						...(nodeStaticData.possibleDuplicates ?? []),
+						...allFetchedMessages.map((m) => m.id),
+					]);
+					nodeStaticData.possibleDuplicates = Array.from(merged);
+				}
+
 				return responseData.length > 0 ? [responseData] : null;
 			}
 
@@ -576,6 +577,10 @@ export class GmailTrigger implements INodeType {
 				const alreadyTracked = new Set([
 					...(nodeStaticData.possibleDuplicates ?? []),
 					...(nodeStaticData.failedFetches ?? []).map(([id]) => id),
+					// Fetched earlier in this same poll. Kept in memory rather than read
+					// from the boundary set, which is only written once the poll is sure
+					// it can deliver.
+					...allFetchedMessages.map((m) => m.id),
 				]);
 				if (alreadyTracked.size > 0) {
 					messages = messages.filter((m) => !alreadyTracked.has(m.id));

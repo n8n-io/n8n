@@ -2054,7 +2054,7 @@ describe('GmailTrigger', () => {
 			// boundary ids plus that one id is exactly the bound, while the boundary
 			// ids alone are not.
 			const initialTimestamp = 1000000;
-			const handled = Array.from({ length: 4998 }, (_, i) => `dup${i}`);
+			const handled = Array.from({ length: 4999 }, (_, i) => `dup${i}`);
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': {
 					lastTimeChecked: initialTimestamp,
@@ -2142,6 +2142,34 @@ describe('GmailTrigger', () => {
 				['Q1', 2],
 				['Q2', 2],
 			]);
+		});
+
+		it('should not record ids at the boundary when the poll fails before delivering', async () => {
+			// The poll fetched a message and then failed while simplifying, so it
+			// delivers nothing. Its id must not join the boundary set: the cursor did
+			// not move, so the next poll re-lists that message, and a boundary entry
+			// would filter it out and lose it.
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					pendingMessageIds: ['P1', 'P2'],
+				},
+			};
+
+			nock.cleanAll();
+			nock(baseUrl).get('/gmail/v1/users/me/labels').reply(500, { error: 'transient' });
+			mockGet('P1', 2_000_000_000_000);
+
+			await expect(
+				testPollingTriggerNode(GmailTrigger, {
+					node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
+					workflowStaticData,
+				}),
+			).rejects.toThrow();
+
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates ?? []).not.toContain('P1');
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 		});
 
 		it('should deliver nothing when the output cannot be simplified', async () => {
