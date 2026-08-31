@@ -283,7 +283,7 @@ function buildFlatAgentTree(
 
 /**
  * Whether a snapshot tree carries anything worth rendering. An empty terminal tree —
- * e.g. a `cancelled` run whose events were evicted from the in-memory bus before the
+ * e.g. a `cancelled` run whose events were lost before the
  * snapshot was built — has none of these, so the message-derived flat tree is preferred.
  */
 function isRenderableTree(tree: InstanceAiAgentNode): boolean {

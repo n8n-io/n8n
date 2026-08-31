@@ -19,7 +19,6 @@ import type {
 	INodeInputConfiguration,
 	INodeExecutionData,
 	ITaskDataConnections,
-	IRunData,
 	IBinaryKeyData,
 	INode,
 	INodeCredentialsDetails,
@@ -747,19 +746,10 @@ export function useNodeHelpers() {
 	}
 
 	function getBinaryData(
-		workflowRunData: IRunData | null,
-		node: string | null,
-		runIndex: number,
+		runDataOfNode: ITaskDataConnections | undefined,
 		outputIndex: number,
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 	): IBinaryKeyData[] {
-		if (node === null) {
-			return [];
-		}
-
-		const runData: IRunData | null = workflowRunData;
-
-		const runDataOfNode = runData?.[node]?.[runIndex]?.data;
 		if (!runDataOfNode) {
 			return [];
 		}

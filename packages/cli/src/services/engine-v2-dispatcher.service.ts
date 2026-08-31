@@ -1,11 +1,7 @@
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
-import type {
-	INodeExecutionData,
-	IWorkflowBase,
-	IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
-import { getChildNodes, NodeConnectionTypes, UserError } from 'n8n-workflow';
+import type { INodeExecutionData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { isTriggerNodeType, MANUAL_TRIGGER_NODE_TYPE, UserError } from 'n8n-workflow';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -67,7 +63,7 @@ export class EngineV2Dispatcher {
 		// its dependencies into every n8n process, including ones with the module off.
 		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
 
-		const graph = new V1WorkflowConverter().convert(this.selectTriggerSubgraph(data));
+		const graph = new V1WorkflowConverter().convert(workflowData, data.triggerToStartFrom?.name);
 		const triggerMain = this.triggerMainOutputs(data);
 
 		const executionId = createExecutionIdV2();
@@ -115,32 +111,6 @@ export class EngineV2Dispatcher {
 		});
 	}
 
-	/** Keep only the branch that starts at the trigger selected for this manual run. */
-	private selectTriggerSubgraph(data: IWorkflowExecutionDataProcess): IWorkflowBase {
-		const { triggerToStartFrom, workflowData } = data;
-		if (triggerToStartFrom === undefined) return workflowData;
-
-		const includedNodeNames = new Set([
-			triggerToStartFrom.name,
-			...getChildNodes(
-				workflowData.connections,
-				triggerToStartFrom.name,
-				NodeConnectionTypes.Main,
-				-1,
-			),
-		]);
-
-		return {
-			...workflowData,
-			nodes: workflowData.nodes.filter((node) => includedNodeNames.has(node.name)),
-			connections: Object.fromEntries(
-				Object.entries(workflowData.connections).filter(([sourceNodeName]) =>
-					includedNodeNames.has(sourceNodeName),
-				),
-			),
-		};
-	}
-
 	/**
 	 * Rejects what the v2 path cannot do yet, in the order the user should hear
 	 * about it: the module being off comes first, so a workflow that would also
@@ -179,6 +149,19 @@ export class EngineV2Dispatcher {
 		}
 
 		const triggerName = data.triggerToStartFrom?.name;
+
+		// TODO(CAT-2920, CAT-2921): the webhook and scheduler paths deliver the real
+		// trigger payload. Until then only the Manual Trigger's payload is built here.
+		const liveNodes = data.workflowData.nodes.filter((node) => node.disabled !== true);
+		const firedTrigger = triggerName
+			? liveNodes.find((node) => node.name === triggerName)
+			: liveNodes.find((node) => isTriggerNodeType(node.type));
+		if (firedTrigger !== undefined && firedTrigger.type !== MANUAL_TRIGGER_NODE_TYPE) {
+			throw new UserError(
+				`Engine 2.0 cannot run the "${firedTrigger.name}" trigger yet. Only the Manual Trigger is supported.`,
+			);
+		}
+
 		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== triggerName);
 		if (pinnedNode !== undefined) {
 			throw new UserError(
