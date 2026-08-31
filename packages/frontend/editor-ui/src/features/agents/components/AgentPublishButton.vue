@@ -6,7 +6,7 @@ import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
-import type { AgentResource } from '../types';
+import type { AgentJsonConfig, AgentResource } from '../types';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 const props = withDefaults(
@@ -24,6 +24,8 @@ const props = withDefaults(
 		 */
 		configValidationStatus?: 'valid' | 'invalid' | null;
 		configValidationIssues?: AgentConfigValidationIssue[];
+		/** Current draft config, passed through to the tooltip for its mocked-tool hint. */
+		agentConfig?: AgentJsonConfig | null;
 		/**
 		 * Runs immediately before the publish request: flushes pending edits and
 		 * refreshes the readiness result. Returning `false` aborts the publish —
@@ -31,7 +33,7 @@ const props = withDefaults(
 		 */
 		beforePublish?: () => Promise<boolean>;
 	}>(),
-	{ configValidationStatus: 'valid', configValidationIssues: () => [] },
+	{ configValidationStatus: 'valid', configValidationIssues: () => [], agentConfig: null },
 );
 
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(() => props.projectId);
@@ -160,6 +162,7 @@ async function onDropdownSelect(action: string) {
 			:fallback="invalidConfigTooltip"
 			action="publish"
 			:issues="configValidationIssues"
+			:agent-config="agentConfig"
 		>
 			<N8nButton
 				:class="$style.groupButtonLeft"

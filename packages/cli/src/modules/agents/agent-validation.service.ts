@@ -290,7 +290,7 @@ export class AgentValidationService {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
-		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues);
+		await this.collectToolIssues(ctx, scope, findCredential, workflowsByReference, issues);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(issues);
@@ -510,6 +510,7 @@ export class AgentValidationService {
 
 	private async collectToolIssues(
 		ctx: ConfigurationValidationContext,
+		scope: AgentValidationScope,
 		findCredential: FindCredential,
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
@@ -538,7 +539,7 @@ export class AgentValidationService {
 			}
 
 			if (tool.type === 'node') {
-				await this.collectNodeToolIssues(tool, index, findCredential, issues);
+				await this.collectNodeToolIssues(tool, index, scope, findCredential, issues);
 			}
 		}
 	}
@@ -573,6 +574,7 @@ export class AgentValidationService {
 	private async collectNodeToolIssues(
 		tool: AgentJsonNodeToolConfig,
 		index: number,
+		scope: AgentValidationScope,
 		findCredential: FindCredential,
 		issues: AgentConfigValidationIssue[],
 	) {
@@ -590,6 +592,12 @@ export class AgentValidationService {
 			issues.push(issue('missing_reference', `tools.${index}.node.nodeType`, capabilityBase));
 			return;
 		}
+
+		// A mocked tool never executes in draft/test runs (it returns its stored
+		// items instead), so a missing/invalid credential there can't block
+		// Preview — only publish, where mocks are stripped and the tool must be
+		// able to run for real.
+		if (scope === 'runtime' && tool.mock?.enabled) return;
 
 		// Materialize parameter defaults the same way the Workflow constructor
 		// does, so validity mirrors how the tool will actually execute (e.g. an

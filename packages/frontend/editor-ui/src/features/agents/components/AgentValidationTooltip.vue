@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { AgentCapabilityKind, AgentConfigValidationIssue } from '@n8n/api-types';
+import type {
+	AgentCapabilityKind,
+	AgentConfigValidationIssue,
+	AgentJsonConfig,
+} from '@n8n/api-types';
 import { N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -10,8 +14,10 @@ const props = withDefaults(
 		fallback: string;
 		action: 'publish' | 'preview';
 		issues?: AgentConfigValidationIssue[];
+		/** Current draft config — flags a `missing_credential` on a mock-enabled tool with a mocking hint. */
+		agentConfig?: AgentJsonConfig | null;
 	}>(),
-	{ issues: () => [] },
+	{ issues: () => [], agentConfig: null },
 );
 
 const i18n = useI18n();
@@ -70,6 +76,26 @@ const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
 	vectorStore: 'agents.builder.vectorStores.panel.title' as BaseTextKey,
 };
 
+// Node tool names with mocking enabled in the current draft — a `missing_credential`
+// on one of these still blocks publish, but Preview already runs fine against the mock.
+const mockedNodeToolNames = computed(() => {
+	const names = new Set<string>();
+	for (const tool of props.agentConfig?.tools ?? []) {
+		if (tool.type === 'node' && tool.mock?.enabled) names.add(tool.name);
+	}
+	return names;
+});
+
+function isMockedCredentialIssue(issue: AgentConfigValidationIssue): boolean {
+	return (
+		props.action === 'publish' &&
+		issue.code === 'missing_credential' &&
+		issue.capability.toolType === 'node' &&
+		issue.capability.id !== undefined &&
+		mockedNodeToolNames.value.has(issue.capability.id)
+	);
+}
+
 function isPreviewIssue(issue: AgentConfigValidationIssue): boolean {
 	if (issue.capability.kind === 'channel' || issue.capability.kind === 'task') return false;
 
@@ -95,8 +121,11 @@ function issueMessage(issue: AgentConfigValidationIssue): string {
 		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
 		GENERIC_ISSUE_KEYS[issue.code];
 	const message = i18n.baseText(key, { interpolate: { id: id ?? '' } });
+	const hint = isMockedCredentialIssue(issue)
+		? ` ${i18n.baseText('agents.builder.validation.mockedToolCredentialHint')}`
+		: '';
 
-	return `${capabilityLabel(issue)}: ${message}`;
+	return `${capabilityLabel(issue)}: ${message}${hint}`;
 }
 
 const details = computed(() => {

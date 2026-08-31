@@ -169,7 +169,7 @@ export class AgentPublishService {
 						{
 							versionId: nextVersionId,
 							agentId: agent.id,
-							schema: agent.schema,
+							schema: this.stripNodeToolMocks(agent.schema),
 							tools: this.customToolsService.snapshotConfiguredTools(
 								agent.schema,
 								agent.tools ?? {},
@@ -691,6 +691,26 @@ export class AgentPublishService {
 			}),
 			trx,
 		);
+	}
+
+	/**
+	 * Published runs never honor mocks: `resolveNodeTool`'s `honorToolMocks`
+	 * gate is defense-in-depth, but a mock payload must never reach a live
+	 * snapshot in the first place, whatever that other guard does. Only the
+	 * key is dropped (not just `enabled: false`) so no stale mock items ride
+	 * along in a published config.
+	 */
+	private stripNodeToolMocks(config: AgentJsonConfig | null): AgentJsonConfig | null {
+		if (!config?.tools?.some((tool) => tool.type === 'node' && tool.mock)) return config;
+
+		return {
+			...config,
+			tools: config.tools.map((tool) => {
+				if (tool.type !== 'node' || !tool.mock) return tool;
+				const { mock, ...rest } = tool;
+				return rest;
+			}),
+		};
 	}
 
 	private pickConfiguredSkillBodies(

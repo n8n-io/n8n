@@ -1824,6 +1824,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:editing-locked="props.artifactEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
+			:agent-config="localConfig"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
 			@header-action="onHeaderAction"

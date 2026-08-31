@@ -428,6 +428,84 @@ describe('AgentPublishService', () => {
 		);
 	});
 
+	describe('mock hygiene on the published snapshot (AGENT-716)', () => {
+		function mockedNodeTool(withCredential: boolean) {
+			return {
+				type: 'node' as const,
+				name: 'send_message',
+				node: {
+					nodeType: 'n8n-nodes-base.slackTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					...(withCredential
+						? { credentials: { slackApi: { id: 'slack-1', name: 'Slack' } } }
+						: {}),
+				},
+				mock: { enabled: true, items: [{ ok: true }] },
+			};
+		}
+
+		it('blocks publishing a mocked tool that has no credential configured', async () => {
+			const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+				makeService();
+			const agent = makeAgent({
+				schema: { ...schema, tools: [mockedNodeTool(false)] },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
+				status: 'invalid',
+				issues: [
+					{
+						code: 'missing_credential',
+						path: 'tools.0.node.credentials.slackApi',
+						capability: { kind: 'tool', id: 'send_message', index: 0, toolType: 'node' },
+					},
+				],
+			});
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+				'Agent configuration has errors that must be resolved before publishing',
+			);
+
+			expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+			expect(agent.activeVersionId).toBeNull();
+		});
+
+		it('publishes a configured-but-mocked tool and strips the mock key from the snapshot', async () => {
+			const { service, agentRepository, agentHistoryRepository, agentValidationService, trx } =
+				makeService();
+			const agent = makeAgent({
+				schema: { ...schema, tools: [mockedNodeTool(true)] },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
+				status: 'valid',
+				issues: [],
+			});
+
+			await service.publishAgent(agentId, projectId, user, byUser);
+
+			expect(agentHistoryRepository.saveVersion).toHaveBeenCalledWith(
+				expect.objectContaining({
+					schema: {
+						...schema,
+						tools: [
+							{
+								type: 'node',
+								name: 'send_message',
+								node: mockedNodeTool(true).node,
+							},
+						],
+					},
+				}),
+				trx,
+			);
+			// The draft's own in-memory schema must be left untouched — only the
+			// published snapshot has the mock stripped.
+			expect(agent.schema).toEqual({ ...schema, tools: [mockedNodeTool(true)] });
+		});
+	});
+
 	it('marks setup complete when publishing an agent that never passed the config-save path', async () => {
 		// Explicit publish can be the first path to observe a complete setup, so
 		// the publish backstop must mark the agent before it becomes active.

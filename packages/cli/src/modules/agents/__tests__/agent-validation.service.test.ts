@@ -1139,6 +1139,159 @@ describe('AgentValidationService — structured issues', () => {
 	});
 });
 
+describe('AgentValidationService — mock-enabled node tools', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function makeMockedToolConfig(mockEnabled: boolean, withCredential: boolean): AgentJsonConfig {
+		return {
+			...runnableConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'send_message',
+					node: {
+						nodeType: 'n8n-nodes-base.slackTool',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						...(withCredential
+							? { credentials: { slackApi: { id: 'slack-1', name: 'Slack' } } }
+							: {}),
+					},
+					...(mockEnabled ? { mock: { enabled: true, items: [{ ok: true }] } } : {}),
+				},
+			],
+		};
+	}
+
+	function setUpSlackNodeType(nodeTypes: ReturnType<typeof makeService>['nodeTypes']) {
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'slackApi', required: true }], properties: [] },
+		} as never);
+	}
+
+	const credentials = () =>
+		makeCredentialProvider([
+			{ id: 'openai-main', type: 'openAiApi' },
+			{ id: 'slack-1', type: 'slackApi' },
+		]);
+
+	// Runtime/publish matrix (AGENT-716): a mock-enabled tool must never block
+	// Preview on a missing credential, but publish always requires the real
+	// thing — mocks are stripped from published snapshots (agent-publish.service.ts).
+	it('mocked + no credential: runnable (no runtime issue) but not publishable', async () => {
+		const { service, agentRepository, nodeTypes } = makeService();
+		setUpSlackNodeType(nodeTypes);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(makeMockedToolConfig(true, false)),
+		);
+
+		const runtimeResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials(),
+			'runtime',
+		);
+		expect(runtimeResult).toEqual({ status: 'valid', issues: [] });
+
+		const publishResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials(),
+			'publish',
+		);
+		expect(publishResult.status).toBe('invalid');
+		expect(publishResult.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_credential',
+				path: 'tools.0.node.credentials.slackApi',
+				capability: { kind: 'tool', id: 'send_message', index: 0, toolType: 'node' },
+			}),
+		]);
+	});
+
+	it('unmocked + no credential: neither runnable nor publishable', async () => {
+		const { service, agentRepository, nodeTypes } = makeService();
+		setUpSlackNodeType(nodeTypes);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(makeMockedToolConfig(false, false)),
+		);
+
+		const runtimeResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials(),
+			'runtime',
+		);
+		expect(runtimeResult.status).toBe('invalid');
+		expect(runtimeResult.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_credential',
+				path: 'tools.0.node.credentials.slackApi',
+			}),
+		]);
+
+		const publishResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials(),
+			'publish',
+		);
+		expect(publishResult.status).toBe('invalid');
+	});
+
+	it('mocked + credential configured: runnable and publishable', async () => {
+		const { service, agentRepository, nodeTypes } = makeService();
+		setUpSlackNodeType(nodeTypes);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(makeMockedToolConfig(true, true)),
+		);
+
+		const runtimeResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials(),
+			'runtime',
+		);
+		expect(runtimeResult).toEqual({ status: 'valid', issues: [] });
+
+		const publishResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials(),
+			'publish',
+		);
+		expect(publishResult).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('still flags a missing_reference for a mocked tool with an unknown node type, in runtime scope', async () => {
+		const { service, agentRepository, nodeTypes } = makeService();
+		nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('unknown node type');
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(makeMockedToolConfig(true, false)),
+		);
+
+		const runtimeResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials(),
+			'runtime',
+		);
+
+		expect(runtimeResult.status).toBe('invalid');
+		expect(runtimeResult.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_reference',
+				path: 'tools.0.node.nodeType',
+				capability: { kind: 'tool', id: 'send_message', index: 0, toolType: 'node' },
+			}),
+		]);
+	});
+});
+
 describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();

@@ -29,7 +29,7 @@ import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgent
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
-import type { AgentResource } from '../types';
+import type { AgentJsonConfig, AgentResource } from '../types';
 
 const props = defineProps<{
 	agent: AgentResource | null;
@@ -46,6 +46,8 @@ const props = defineProps<{
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	/** Current draft config, passed through to the publish tooltip for its mocked-tool hint. */
+	agentConfig?: AgentJsonConfig | null;
 	beforePublish?: () => Promise<boolean>;
 }>();
 
@@ -222,6 +224,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				:before-revert-to-published="beforeRevertToPublished"
 				:config-validation-status="configValidationStatus"
 				:config-validation-issues="props.configValidationIssues ?? []"
+				:agent-config="agentConfig"
 				:before-publish="beforePublish"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
