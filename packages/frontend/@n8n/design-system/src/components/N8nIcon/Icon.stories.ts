@@ -46,7 +46,8 @@ const meta = {
 } satisfies Meta<typeof N8nIcon>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+// Icon's name union is too large for StoryObj<typeof meta> in Storybook 10.5.
+type Story = StoryObj<typeof N8nIcon>;
 
 export const Default: Story = {
 	render: (args) => ({
@@ -133,6 +134,9 @@ export const WithStrokeWidth: Story = {
 };
 
 export const Sizes: Story = {
+	args: {
+		icon: 'info',
+	},
 	render: () => ({
 		components: { N8nIcon },
 		template: `
@@ -163,6 +167,9 @@ export const Sizes: Story = {
 };
 
 export const Variants: Story = {
+	args: {
+		icon: 'circle',
+	},
 	render: () => ({
 		components: { N8nIcon },
 		template: `
@@ -224,6 +231,9 @@ export const UserRoundKey: Story = {
 };
 
 export const CommonIcons: Story = {
+	args: {
+		icon: 'check',
+	},
 	render: () => ({
 		components: { N8nIcon },
 		template: `

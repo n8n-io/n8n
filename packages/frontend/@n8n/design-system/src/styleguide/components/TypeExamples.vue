@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue';
 
 import N8nInput from '../../components/N8nInput/Input.vue';
-import N8nInputLabel from '../../components/N8nInputLabel/InputLabel.vue';
 import N8nOption from '../../components/N8nOption/Option.vue';
 import N8nSelect from '../../components/N8nSelect/Select.vue';
 
@@ -107,34 +106,28 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 <template>
 	<div class="type-examples">
 		<div class="type-examples__controls">
-			<N8nInputLabel
+			<N8nInput
+				:id="sampleInputId"
+				v-model="sampleText"
 				class="type-examples__sample-control"
-				label="Sample"
 				size="small"
-				:input-name="sampleInputId"
-			>
-				<N8nInput
-					:id="sampleInputId"
-					v-model="sampleText"
-					size="small"
-					placeholder="Type a sample string"
-				/>
-			</N8nInputLabel>
-			<N8nInputLabel
+				placeholder="Type a sample string"
+				aria-label="Sample"
+			/>
+			<N8nSelect
+				:id="weightInputId"
+				v-model="selectedWeight"
 				class="type-examples__weight-control"
-				label="Weight"
 				size="small"
-				:input-name="weightInputId"
+				aria-label="Weight"
 			>
-				<N8nSelect :id="weightInputId" v-model="selectedWeight" size="small">
-					<N8nOption
-						v-for="weight in weights"
-						:key="weight.id"
-						:value="weight.id"
-						:label="`${weight.name} (${weight.value})`"
-					/>
-				</N8nSelect>
-			</N8nInputLabel>
+				<N8nOption
+					v-for="weight in weights"
+					:key="weight.id"
+					:value="weight.id"
+					:label="`${weight.name} (${weight.value})`"
+				/>
+			</N8nSelect>
 		</div>
 
 		<div class="type-examples__specimens" :style="{ fontFamily, fontWeight: selectedWeightToken }">
@@ -168,7 +161,7 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--sm);
-	align-items: flex-end;
+	align-items: center;
 }
 
 .type-examples__sample-control {
@@ -187,13 +180,21 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 .type-examples__specimens {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius);
+	overflow: hidden;
 }
 
 .type-examples__row {
 	display: flex;
 	gap: var(--spacing--lg);
 	align-items: baseline;
+	padding: var(--spacing--sm) var(--spacing--md);
+	border-bottom: var(--border);
+
+	&:last-child {
+		border-bottom: none;
+	}
 }
 
 .type-examples__size {

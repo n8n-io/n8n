@@ -12,7 +12,6 @@ const meta = {
 			control: 'select',
 			options: ['info', 'secondary', 'success', 'warning', 'danger', 'custom'],
 		},
-		message: { control: 'text' },
 		icon: { control: 'text' },
 		default: { control: 'text' },
 	},
@@ -51,6 +50,9 @@ export const Default: Story = {
 };
 
 export const Variants: Story = {
+	args: {
+		theme: 'info',
+	},
 	render: () => ({
 		components: { N8nCallout },
 		template: `

@@ -32,10 +32,20 @@ const config: StorybookConfig = {
 		getAbsolutePath('storybook-addon-vue-mdx'),
 		getAbsolutePath('@vueless/storybook-dark-mode'),
 	],
-	framework: getAbsolutePath('@storybook/vue3-vite'),
+	framework: {
+		name: getAbsolutePath('@storybook/vue3-vite'),
+		options: {
+			// 10.5 defaults to vue-component-meta; keep the previous engine so
+			// autodocs tables stay consistent with existing stories.
+			docgen: 'vue-docgen-api',
+		},
+	},
 	staticDirs: ['../../design-system/assets'],
 	core: {
 		disableTelemetry: true,
+	},
+	features: {
+		sidebarOnboardingChecklist: false,
 	},
 };
 export default config;

@@ -3,8 +3,6 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import N8nIcon from '../../components/N8nIcon/Icon.vue';
 import N8nInput from '../../components/N8nInput/Input.vue';
-import N8nTooltip from '../../components/N8nTooltip/Tooltip.vue';
-import { TOOLTIP_DELAY_MS } from '../../constants';
 import tokensSource from '../../css/_tokens.scss?raw';
 import { getSemanticColorTokenNames } from '../cssTokenSource';
 
@@ -16,13 +14,10 @@ type TokenGroup = {
 };
 
 const GROUP_ORDER = ['Text Color', 'Background', 'Border Color', 'Icon Color', 'Color', 'Focus'];
-const COPIED_FEEDBACK_MS = 2000;
 
 const query = ref('');
 const tokenValues = ref<Record<string, string>>({});
-const copiedToken = ref<string | null>(null);
 
-let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 let observer: MutationObserver | null = null;
 
 const groupLabelFor = (token: string) => {
@@ -91,27 +86,6 @@ const updateValues = () => {
 	tokenValues.value = nextValues;
 };
 
-const isCopied = (token: string) => Boolean(token) && copiedToken.value === token;
-
-const getTooltipContent = (token: string) => (isCopied(token) ? 'Copied' : 'Click to copy');
-
-const copyToken = async (token: string) => {
-	if (!token || !navigator.clipboard?.writeText) {
-		return;
-	}
-
-	await navigator.clipboard.writeText(token);
-	copiedToken.value = token;
-
-	if (copiedTimeout) {
-		clearTimeout(copiedTimeout);
-	}
-
-	copiedTimeout = setTimeout(() => {
-		copiedToken.value = null;
-	}, COPIED_FEEDBACK_MS);
-};
-
 onMounted(() => {
 	updateValues();
 
@@ -128,16 +102,13 @@ onMounted(() => {
 
 onUnmounted(() => {
 	observer?.disconnect();
-	if (copiedTimeout) {
-		clearTimeout(copiedTimeout);
-	}
 });
 </script>
 
 <template>
 	<div :class="$style.container">
 		<div :class="$style.search">
-			<N8nInput v-model="query" size="small" placeholder="Search named tokens" clearable>
+			<N8nInput v-model="query" size="small" placeholder="search" clearable>
 				<template #prefix>
 					<N8nIcon icon="search" :size="14" />
 				</template>
@@ -152,21 +123,13 @@ onUnmounted(() => {
 			<div :class="$style.groupLabel">{{ group.label }}</div>
 			<ul :class="$style.list">
 				<li v-for="token in group.tokens" :key="token" :class="$style.item">
-					<N8nTooltip as-child placement="top" :show-after="TOOLTIP_DELAY_MS">
-						<template #content>{{ getTooltipContent(token) }}</template>
-						<button
-							type="button"
-							:class="$style.row"
-							:aria-label="isCopied(token) ? `Copied ${token}` : `Copy ${token}`"
-							@click="copyToken(token)"
-						>
-							<span :class="$style.swatch" aria-hidden="true">
-								<span :class="$style.swatchFill" :style="{ background: `var(${token})` }" />
-							</span>
-							<span :class="$style.name">{{ token }}</span>
-							<span :class="$style.value">{{ tokenValues[token] }}</span>
-						</button>
-					</N8nTooltip>
+					<div :class="$style.row">
+						<span :class="$style.swatch" aria-hidden="true">
+							<span :class="$style.swatchFill" :style="{ background: `var(${token})` }" />
+						</span>
+						<span :class="$style.name">{{ token }}</span>
+						<span :class="$style.value">{{ tokenValues[token] }}</span>
+					</div>
 				</li>
 			</ul>
 		</section>
@@ -238,17 +201,6 @@ onUnmounted(() => {
 	align-items: center;
 	gap: var(--spacing--sm);
 	width: 100%;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	cursor: pointer;
-	text-align: left;
-	user-select: none;
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
-		outline-offset: var(--spacing--5xs);
-	}
 }
 
 .swatch {
