@@ -1,7 +1,7 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { NodeCatalogService } from '@/node-catalog';
+import type { NodeCatalogService, SearchNodesOptions } from '@/node-catalog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -75,6 +75,12 @@ export const createSearchWorkflowNodesTool = (
 	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
 	aiGatewayService: AiGatewayService,
+	/**
+	 * Offer verified community nodes that are not installed here, in a labelled
+	 * second section. Off by default: only surfaces that can follow up with an
+	 * install step should ask for it.
+	 */
+	includeUninstalled: boolean = false,
 ): SearchNodesToolDefinition => ({
 	name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
 	config: {
@@ -98,17 +104,20 @@ export const createSearchWorkflowNodesTool = (
 		};
 
 		try {
-			const options =
-				usage === 'agentTool'
-					? {
-							nodeFilter: (await import('@/modules/agents/agents-tools.service.js'))
-								.isAgentToolNodeType,
-						}
-					: {};
-			const [{ results, queriesWithNoResults }, availability] = await Promise.all([
-				nodeCatalogService.searchNodes(queries, options),
-				aiGatewayService.isAvailable(),
-			]);
+			// MCP is the only surface that opts into the verified-but-uninstalled
+			// tier: it can follow up with an install step, which Instance AI and
+			// the agents builder have no equivalent for.
+			const options: SearchNodesOptions = { includeUninstalled };
+			if (usage === 'agentTool') {
+				options.nodeFilter = (
+					await import('@/modules/agents/agents-tools.service.js')
+				).isAgentToolNodeType;
+			}
+			const [{ results, queriesWithNoResults, uninstalledOffered }, availability] =
+				await Promise.all([
+					nodeCatalogService.searchNodes(queries, options),
+					aiGatewayService.isAvailable(),
+				]);
 
 			telemetryPayload.results = {
 				success: true,
@@ -116,6 +125,12 @@ export const createSearchWorkflowNodesTool = (
 					queryCount: queries.length,
 					noResultQueryCount: queriesWithNoResults.length,
 					queriesWithNoResults,
+					// Front of the offered -> installed funnel, paired with the
+					// install_community_node event. Absent when discovery is off, so
+					// the payload stays identical to before on those instances.
+					...(includeUninstalled
+						? { uninstalledOfferedCount: uninstalledOffered?.length ?? 0 }
+						: {}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

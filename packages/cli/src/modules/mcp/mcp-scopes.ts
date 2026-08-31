@@ -90,6 +90,11 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// so the search tools ride along on a write-only grant.
 	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
+	// Installing a package changes what the instance can run, so it gets its own
+	// scope rather than riding along on a workflow write grant. The tool is also
+	// gated on the user's `communityPackage:install` global scope at
+	// registration, so granting this to a member still exposes nothing.
+	'communityPackage:install': ['install_community_node'],
 };
 
 /**
@@ -126,6 +131,16 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_folders',
 	...FOLDER_FEATURE_TOOLS,
 ]);
+
+/**
+ * Tools that additionally require the `community-packages` module to be active,
+ * verified packages to be enabled, and the caller to hold the
+ * `communityPackage:install` global scope. Excluded from the "every mapped tool
+ * is registered" drift guard for the same reason as {@link AGENT_TOOLS}: none of
+ * those conditions hold in a bare service under test. The gate itself is covered
+ * by `isCommunityNodeInstallAvailable` in mcp-tool-availability.test.ts.
+ */
+export const COMMUNITY_PACKAGE_TOOLS: ReadonlySet<string> = new Set(['install_community_node']);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['agent:read'],

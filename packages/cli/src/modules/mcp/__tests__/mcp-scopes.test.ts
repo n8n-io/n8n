@@ -32,7 +32,14 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 
-import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import {
+	AGENT_TOOLS,
+	BUILDER_TOOLS,
+	COMMUNITY_PACKAGE_TOOLS,
+	getAllowedToolNames,
+	TOOLS_BY_SCOPE,
+} from '../mcp-scopes';
+import { McpConfig } from '../mcp.config';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -137,6 +144,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ModuleRegistry),
 			mockInstance(EventService),
 			mockInstance(FolderService),
+			mockInstance(McpConfig),
 		);
 
 	beforeEach(() => {
@@ -156,9 +164,12 @@ describe('McpService scope enforcement', () => {
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts.
+		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// tools need that module plus a global scope; see
+		// install-community-node.registration.test.ts.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
-			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+			(name) =>
+				!registered.has(name) && !AGENT_TOOLS.has(name) && !COMMUNITY_PACKAGE_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
