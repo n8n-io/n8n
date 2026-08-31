@@ -390,11 +390,8 @@ export function setupResponseNodePromise(
  * Reads the start node's declared `triggerIdentity` capability (see
  * `TriggerIdentityCapability` in n8n-workflow), resolving the `establishes`
  * predicate against this node instance's parameters where it's a function
- * (e.g. the Webhook node's opt-in "n8n User Auth (OAuth2)" mode).
- *
- * TEMPORARY: Chat Trigger hasn't been migrated to declare this capability yet
- * (tracked separately, alongside IAM-1259) and keeps its historical hardcoded
- * treatment below wherever this returns `undefined` for it.
+ * (e.g. the Webhook node's opt-in "n8n User Auth (OAuth2)" mode, or Chat
+ * Trigger's n8nUserAuth + hostedChat combination).
  */
 function getTriggerIdentityCapability(nodeTypes: INodeTypes, workflowStartNode: INode) {
 	const { description } = nodeTypes.getByNameAndVersion(
@@ -418,8 +415,6 @@ function getTriggerIdentityCapability(nodeTypes: INodeTypes, workflowStartNode: 
  * declare bare `triggerExecutionSeeding` for the same stack-timing need
  * without establishing identity (e.g. Agent365, which authenticates the
  * caller via Bot Framework JWT rather than n8n's identity/credential system).
- *
- * TEMPORARY: Chat Trigger isn't migrated yet — see `getTriggerIdentityCapability`.
  */
 function getExecutionSeedingCapability(
 	nodeTypes: INodeTypes,
@@ -456,12 +451,6 @@ function reconcileSeededExecutionStack(
 ): void {
 	const executionData = runExecutionData?.executionData;
 	if (!executionData?.nodeExecutionStack) return;
-
-	// TEMPORARY: Chat Trigger isn't migrated to declare a capability yet.
-	if (workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE) {
-		merge(executionData.nodeExecutionStack, nodeExecutionStack);
-		return;
-	}
 
 	const seeding = getExecutionSeedingCapability(nodeTypes, workflowStartNode);
 	if (!seeding) return;
@@ -753,11 +742,7 @@ export async function executeWebhook(
 		await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
-		if (
-			// TEMPORARY: Chat Trigger isn't migrated to declare a capability yet.
-			workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE ||
-			getExecutionSeedingCapability(workflow.nodeTypes, workflowStartNode)
-		) {
+		if (getExecutionSeedingCapability(workflow.nodeTypes, workflowStartNode)) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
 			nodeExecutionStack.push({

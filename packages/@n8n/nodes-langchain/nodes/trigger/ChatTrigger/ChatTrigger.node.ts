@@ -14,6 +14,7 @@ import {
 } from 'n8n-workflow';
 import type {
 	IDataObject,
+	INode,
 	IWebhookFunctions,
 	IWebhookResponseData,
 	INodeTypeDescription,
@@ -39,7 +40,11 @@ import {
 	isShellInnerRequest,
 } from './shell';
 import { createPage, createShellPage } from './templates';
-import { assertValidLoadPreviousSessionOption, type ChatFrameIdentity } from './types';
+import {
+	assertValidLoadPreviousSessionOption,
+	type AuthenticationChatOption,
+	type ChatFrameIdentity,
+} from './types';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
@@ -277,6 +282,21 @@ export class ChatTrigger extends Node {
 			];
 		 })() }}`,
 		outputs: [NodeConnectionTypes.Main],
+		triggerIdentity: {
+			establishes: (node: INode) => {
+				const authentication = node.parameters?.authentication as
+					| AuthenticationChatOption
+					| undefined;
+				const mode =
+					(node.parameters?.mode as 'hostedChat' | 'webhook' | undefined) ?? 'hostedChat';
+				return authentication === 'n8nUserAuth' && mode === 'hostedChat';
+			},
+			mergeStrategy: 'index-merge',
+			gate: 'manual',
+		},
+		triggerExecutionSeeding: {
+			mergeStrategy: 'index-merge',
+		},
 		builderHint: {
 			searchHint:
 				"Pair with `@n8n/n8n-nodes-langchain.agent` for chatbot workflows. Reply delivery is controlled by `options.responseMode` — `streaming` (Agent streams directly to widget) is simplest and preferred. For `lastNode` mode, the workflow's last-executed node MUST output `{ output: '<reply>' }` — typically the Agent itself or a Set node re-shaping data; ending the chain with a Data Table insert, HTTP Request, or other side-effect node will fail. Put logging or persistence on a parallel branch, not inline after the Agent.",

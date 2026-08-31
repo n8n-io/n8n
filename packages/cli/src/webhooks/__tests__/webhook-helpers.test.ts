@@ -621,23 +621,32 @@ describe('prepareExecutionData', () => {
 	});
 
 	// Mirrors the real `triggerIdentity` / `triggerExecutionSeeding` declarations
-	// on Webhook.node.ts, McpTrigger.node.ts, and MicrosoftAgent365Trigger.node.ts.
-	// Chat Trigger isn't migrated yet, so it's deliberately absent here too —
-	// `reconcileSeededExecutionStack` still special-cases it directly.
+	// on Webhook.node.ts, McpTrigger.node.ts, MicrosoftAgent365Trigger.node.ts, and
+	// ChatTrigger.node.ts. Chat declares both: `triggerIdentity` (conditional on
+	// n8nUserAuth + hostedChat) and a sibling unconditional `triggerExecutionSeeding`,
+	// since every Chat execution needs stack pre-seeding regardless of auth mode.
 	const nodeTypes = {
 		getByNameAndVersion: vi.fn((type: string) =>
 			mock<INodeType>({
 				description: {
 					triggerIdentity:
-						type === WEBHOOK_NODE_TYPE || type === MCP_TRIGGER_NODE_TYPE
+						type === WEBHOOK_NODE_TYPE ||
+						type === MCP_TRIGGER_NODE_TYPE ||
+						type === CHAT_TRIGGER_NODE_TYPE
 							? {
-									establishes: (node: INode) => node.parameters?.authentication === 'n8nOAuth2',
+									establishes: (node: INode) =>
+										type === CHAT_TRIGGER_NODE_TYPE
+											? node.parameters?.authentication === 'n8nUserAuth' &&
+												(node.parameters?.mode ?? 'hostedChat') === 'hostedChat'
+											: node.parameters?.authentication === 'n8nOAuth2',
 									mergeStrategy: type === WEBHOOK_NODE_TYPE ? 'replace' : 'index-merge',
 									gate: type === WEBHOOK_NODE_TYPE ? 'reactive' : 'manual',
 								}
 							: undefined,
 					triggerExecutionSeeding:
-						type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE || type === MCP_TRIGGER_NODE_TYPE
+						type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE ||
+						type === MCP_TRIGGER_NODE_TYPE ||
+						type === CHAT_TRIGGER_NODE_TYPE
 							? { mergeStrategy: 'index-merge' }
 							: undefined,
 				},
