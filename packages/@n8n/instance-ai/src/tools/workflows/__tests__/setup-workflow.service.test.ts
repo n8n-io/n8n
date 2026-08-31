@@ -586,7 +586,7 @@ describe('buildSetupRequests', () => {
 		expect(result[0].isAutoApplied).toBe(true);
 		expect(result[0].node.credentials?.slackApi).toEqual({
 			id: null,
-			name: 'n8n credits',
+			name: 'Gateway credits',
 			__aiGatewayManaged: true,
 		});
 	});
