@@ -294,7 +294,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	getOAuth2Options(type: string) {
 		if (!this.credentialTypes.isOAuthCredentialType(type)) return undefined;
-		return this.credentialTypes.getByName(type).oauth2;
+
+		for (const credentialType of [type, ...this.credentialTypes.getParentTypes(type)]) {
+			const oauth2 = this.credentialTypes.getByName(credentialType).oauth2;
+			if (oauth2 !== undefined) return oauth2;
+		}
+
+		return undefined;
 	}
 
 	/**
