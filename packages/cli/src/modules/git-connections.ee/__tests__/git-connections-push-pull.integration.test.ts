@@ -169,6 +169,7 @@ describe('Git connection push and pull', () => {
 		await simpleGit().clone(remote.bareDir, inspectionDir, ['--branch', 'main', '--single-branch']);
 		const inspectionGit = simpleGit(inspectionDir);
 		const remoteHead = (await inspectionGit.revparse(['HEAD'])).trim();
+		const pushedCommit = (await inspectionGit.log({ maxCount: 1 })).latest;
 		const manifest = packageManifestSchema.parse(
 			jsonParse(await readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json'), 'utf-8')),
 		);
@@ -177,6 +178,15 @@ describe('Git connection push and pull', () => {
 
 		assert(projectEntry);
 		assert(workflowEntry);
+		assert(pushedCommit);
+		assert(owner.firstName);
+		assert(owner.lastName);
+		expect(pushedCommit).toMatchObject({
+			hash: remoteHead,
+			message: 'Export orders',
+			author_name: `${owner.firstName} ${owner.lastName}`,
+			author_email: owner.email,
+		});
 		await expect(readFile(path.join(inspectionDir, 'README.md'), 'utf-8')).resolves.toContain(
 			'n8n Git connection test',
 		);

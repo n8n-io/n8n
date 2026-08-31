@@ -289,26 +289,6 @@ describe('GitConnectionsGitService (git operations)', () => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
 		});
 
-		it('stages the export, commits, pushes, and returns the trimmed commit SHA', async () => {
-			const result = await call();
-
-			expect(mockGit.add).toHaveBeenCalledWith(['--all', '--', 'n8n-export']);
-			expect(mockGit.commit).toHaveBeenCalledWith('sync');
-			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main');
-			expect(result).toEqual({ commitSha: 'abc123', head: 'abc123' });
-		});
-
-		it('runs git in the repository folder and applies the author as process-local config', async () => {
-			await call();
-
-			expect(simpleGitMock).toHaveBeenCalledWith(
-				expect.objectContaining({
-					baseDir: path.join(rootFolder, 'repository'),
-					config: expect.arrayContaining(['user.name=Ada Lovelace', 'user.email=ada@example.com']),
-				}),
-			);
-		});
-
 		it('force-pushes when force is set', async () => {
 			await call({ force: true });
 			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main', ['-f']);
