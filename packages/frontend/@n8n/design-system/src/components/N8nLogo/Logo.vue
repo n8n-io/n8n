@@ -66,7 +66,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 .logoContainer {
-	display: inline-flex;
+	display: flex;
 	justify-content: center;
 	align-items: center;
 }
