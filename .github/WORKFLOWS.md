@@ -480,8 +480,17 @@ Composite actions in `.github/actions/`:
 inputs:
   node-version:        # default: '24.18.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
+  docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
+
+The Blacksmith layer cache lives on a sticky disk identified by
+`docker-cache-key`, and commits are last-writer-wins. Splitting the key per
+image would avoid that, but Blacksmith currently never populates a
+newly created sticky disk - it stays at 0 bytes however many runs commit to it,
+while the build reports a successful commit. Every job therefore shares the
+`n8n-io/n8n` key, which is the only disk that actually retains layers. Revisit
+once new-disk retention works.
 
 ### docker-registry-login
 
