@@ -10,6 +10,7 @@ import { join } from 'path';
 
 import { aggregateResults } from './aggregator';
 import type { McpBuildSpend } from './build-orchestrator';
+import { classifyContextOutcome } from './context-outcome';
 import { parseTargetOutput, reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
 import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
@@ -46,6 +47,22 @@ export function summarizeMcpBuildSpend(
 		totalCostUsd: Math.round(totalCost * 100) / 100,
 		avgTurns: Math.round((totalTurns / spend.length) * 10) / 10,
 	};
+}
+
+/**
+ * Per-iteration context/build cross, or `{}` when no iteration carried a gradable
+ * claim on both axes — a case with no context assertions then adds no key.
+ *
+ * Pure arithmetic over verdicts already in this file, so an existing run can be
+ * reclassified without re-running it.
+ */
+function contextOutcomeFields(runs: WorkflowTestCaseResult[]): {
+	contextOutcomePerRun?: Array<ReturnType<typeof classifyContextOutcome>>;
+} {
+	const classified = runs.map((run) => classifyContextOutcome(run.buildExpectationResults));
+	return classified.some((outcome) => outcome.outcome !== 'unclassified')
+		? { contextOutcomePerRun: classified }
+		: {};
 }
 
 interface AggregateMetrics {
@@ -421,6 +438,9 @@ export function writeEvalResults(
 				run.workflowChecks ? statusMap(run.workflowChecks) : null,
 			),
 			buildExpectationResultsPerRun: tc.runs.map((run) => run.buildExpectationResults ?? null),
+			// Which of the four context situations each iteration landed in, crossed from the
+			// verdicts above. Emitted only when at least one iteration could be classified.
+			...contextOutcomeFields(tc.runs),
 			buildExpectations: tc.buildExpectations.map((ea) => ({
 				expectation: ea.expectation,
 				passCount: ea.passCount,

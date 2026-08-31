@@ -117,3 +117,59 @@ describe('writeEvalResults — notVerified serialization', () => {
 		);
 	});
 });
+
+// The context/build cross is only worth computing if it survives into the file the
+// dispatcher and the cost report read. Exercised through the real writer, so removing
+// the persist wiring fails here rather than leaving a classifier nothing calls.
+describe('writeEvalResults — contextOutcomePerRun serialization', () => {
+	function caseWithVerdicts(
+		verdicts: WorkflowTestCaseResult['buildExpectationResults'],
+	): WorkflowTestCaseResult {
+		return { ...runResult(scenarioCase(), { success: true }), buildExpectationResults: verdicts };
+	}
+
+	function writeCases(runs: WorkflowTestCaseResult[]): Array<Record<string, unknown>> {
+		const evaluation = aggregateResults([runs], 1);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-context-'));
+		const { jsonPath } = writeEvalResults(
+			evaluation,
+			1234,
+			dir,
+			'exp-context',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		);
+		return jsonParse<{ testCases: Array<Record<string, unknown>> }>(readFileSync(jsonPath, 'utf8'))
+			.testCases;
+	}
+
+	it('emits the cross when a case graded both a context and a build claim', () => {
+		const [testCase] = writeCases([
+			caseWithVerdicts([
+				{ expectation: 'context contains "#ops"', pass: true, reason: 'r', kind: 'context' },
+				{ expectation: 'the workflow posts there', pass: false, reason: 'r' },
+			]),
+		]);
+
+		expect(testCase.contextOutcomePerRun).toEqual([
+			{
+				outcome: 'context-ignored',
+				contextPassed: 1,
+				contextGraded: 1,
+				buildPassed: 0,
+				buildGraded: 1,
+			},
+		]);
+	});
+
+	it('omits the key entirely for a case with no context claims', () => {
+		const [testCase] = writeCases([
+			caseWithVerdicts([{ expectation: 'the workflow posts there', pass: true, reason: 'r' }]),
+		]);
+
+		expect(testCase).not.toHaveProperty('contextOutcomePerRun');
+	});
+});
