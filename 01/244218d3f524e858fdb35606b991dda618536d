@@ -1,0 +1,23 @@
+packages/cli/test/migration/1787140858009-add-project-manage-members-scope-to-api-keys.test.ts
+  s_09a437b1b52fd1::t_384abe0e7782c2 13
+packages/@n8n/db/src/migrations/common/1787140858009-AddProjectManageMembersScopeToCustomRoles.ts
+  s_09a437b1b52fd1::t_e92c6e6b7f1084 29
+packages/cli/test/migration/1787140858009-add-project-manage-members-scope-to-custom-roles.test.ts
+  s_09a437b1b52fd1::t_314a86f66241a3 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "01244218d3f524e858fdb35606b991dda618536d",
+  "prompts": {},
+  "sessions": {
+    "s_09a437b1b52fd1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9fd515cb-a3e4-4fce-a9a8-6f84304c6e77",
+        "model": "grok-4.6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

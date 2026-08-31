@@ -1,0 +1,37 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_02bcb0e9f9d95d::t_2630d464cd5482 148
+  s_02bcb0e9f9d95d::t_1bf6909b74b882 130
+  s_02bcb0e9f9d95d::t_0b0951c5db656e 63-66,70-71,83,88,95,101
+  s_02bcb0e9f9d95d::t_d52b7624a6c659 399-407,451
+  s_02bcb0e9f9d95d::t_9b421c286b0f07 262-267,269-275
+  s_02bcb0e9f9d95d::t_eaebe76164f685 411-412,423-425,433-450
+  s_02bcb0e9f9d95d::t_84e6d42b7e4c32 268
+  s_02bcb0e9f9d95d::t_586e626e219504 463-468,475-479
+  s_02bcb0e9f9d95d::t_b5d0c76b6399a1 51
+  s_02bcb0e9f9d95d::t_49ee4767d0d9e8 27
+  s_02bcb0e9f9d95d::t_adea2c2d14c8bd 462
+  s_02bcb0e9f9d95d::t_a5beebab554233 510-525,529-530
+  s_02bcb0e9f9d95d::t_4d7204acda2670 483-491,500
+  s_02bcb0e9f9d95d::t_31d2f663d6cd15 240-242,248-250
+  s_02bcb0e9f9d95d::t_e0931e8f993b75 534
+  s_02bcb0e9f9d95d::t_f002f47fba6751 452
+  s_02bcb0e9f9d95d::t_877486f1eeb918 502
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_02bcb0e9f9d95d::t_4a51e54d87594c 29,88,147-148,183-231,244-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "67784f396c7cb05a57adb86c55da9d8fa6f9ec1c",
+  "prompts": {},
+  "sessions": {
+    "s_02bcb0e9f9d95d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b0c3c1b-ecd2-46d6-b426-20dc6754a1da",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

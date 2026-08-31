@@ -1,0 +1,86 @@
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_1d360ad69afd30::t_0f8f16416f3468 39-40
+  s_1d360ad69afd30::t_a49d13d3490035 225
+  s_1d360ad69afd30::t_46ec720ddcc884 296-341
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_1d360ad69afd30::t_fea7aa068a1a85 18
+  s_1d360ad69afd30::t_bd5b6368734271 549-573,575,577-580
+  s_1d360ad69afd30::t_397a8b5a13ce8b 574,576
+packages/cli/src/scaling/job-processor.ts
+  s_1d360ad69afd30::t_95929851bd0338 4
+  s_1d360ad69afd30::t_03b32d9c92e768 60
+  s_1d360ad69afd30::t_12cd443ce4073b 79
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_1d360ad69afd30::t_df3a05acdf0c31 66
+  s_1d360ad69afd30::t_fee3993d949d3a 330-334,336-338
+  ai_agent 335
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_1d360ad69afd30::t_80b8a324eb35cf 4-6,9-11,13-20,23-24,35-38,42,46-50,57,59-69,72,77-92,97-100,107,109-114,116-118,120,123-124,126-127,131-132,135-136,145-150,152,156-157,165-166,168-170,172-176,179-180,183-185,203,205-206,211,220-226,230-237,239-249,253-255,257-258,260,267,270-275,293-294,297,301-302,305,314-320,322-333,335-360,376,384-386,389-392,394-398,403-408
+  s_601386f61562ab::t_804f79763f9414 28,34
+  h_32d8cd6a0d6aad 29-33,58,94-96,134,141,182,193,377
+  s_601386f61562ab::t_dce6bdbc997a10 73-76
+  s_601386f61562ab::t_5ce1ed6c35054b 101-103
+  s_601386f61562ab::t_2e76994868efd5 119
+  s_601386f61562ab::t_114b1202bb11d9 133,137-140,142-144,151,160-164,167,171
+  s_601386f61562ab::t_c978bdb29837e7 190
+  s_601386f61562ab::t_1a5b4f7a4b2d79 207-208,210,217-218
+  s_1d360ad69afd30::t_602ffa21048f03 212-215
+  s_1d360ad69afd30::t_c503009a52626b 227-229
+  s_601386f61562ab::t_5f031373b32212 238
+  s_601386f61562ab::t_cb4a8055a66e15 268-269
+  s_601386f61562ab::t_c6af195787e899 292
+  s_1d360ad69afd30::t_5e903a4afc06e5 306-313
+  s_1d360ad69afd30::t_ce421216786b76 334
+  s_601386f61562ab::t_dc15e9d5da7618 378-380,382-383,393,399-400
+  s_601386f61562ab::t_176c8fddabc36b 387-388,401-402
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_1d360ad69afd30::t_102452510415d7 143-144,146,149-150,152-153
+  s_1d360ad69afd30::t_10505c5c916b61 145,147-148
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_1d360ad69afd30::t_dffbfa4f193d9c 5-10
+  s_1d360ad69afd30::t_fdbe3e420fb3e4 47
+  s_1d360ad69afd30::t_5d005a2d668ef2 2006-2022,2027,2029
+  s_1d360ad69afd30::t_adbda6b092b042 2052,2067
+  s_1d360ad69afd30::t_f8f146c67d52f5 2086,2088-2106,2145-2149,2157
+  s_1d360ad69afd30::t_ed9d6dd59fcd4a 2087
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_1d360ad69afd30::t_aac58defac9651 1-6,8,13-14,18,20,22-23,25-26,28-29,31-35,37-39,41-45,47-52,54-55,57-60,72,74-76,78-79,81-85,87-89,110,112-124,126-127,130-133,135,137-140,142-150,173-203,207-220,223,247-258,272,280-281,288,290,297-306,310-320,323,325-330,332-333,346-355,359-365,383-386,404-406,410-415,417-418,420-432,445-454,462-466
+  s_1d360ad69afd30::t_ed9d6dd59fcd4a 61,204-206,224-227,229-234,366-371,455-461
+  s_601386f61562ab::t_e51daa7b0e5d70 62-65,67-70
+  s_601386f61562ab::t_961a8b868d211e 109,111
+  s_601386f61562ab::t_b12f5d6fe744bb 151-153,164-170
+  s_1d360ad69afd30::t_528bed385ce4bc 154-163
+  s_601386f61562ab::t_3f8ae1e6d37fa3 372-382,387-403,407-409
+  s_601386f61562ab::t_f70c816df17435 416,419,433-444
+  s_601386f61562ab::t_4a6acc5085295a 467-473
+  s_601386f61562ab::t_5a3bfeb79b0d04 527-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cffc033a971643b1717bf853b503771a21bbadc1",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_601386f61562ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e77ca6f-9f18-4274-b1fe-9d4733d3ed88",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

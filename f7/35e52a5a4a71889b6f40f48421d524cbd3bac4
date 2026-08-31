@@ -1,0 +1,80 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPanel.test.ts
+  s_fe62292551adf8::t_4a8c96475c8180 1-40
+packages/frontend/editor-ui/src/features/ai/instanceAi/testAgentOffer.ts
+  s_fe62292551adf8::t_b44aca7d263318 1-25
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_fe62292551adf8::t_796f4a59885864 1343,1346,1351,1389,1392,1397
+  s_fe62292551adf8::t_c8c78c2e29e29b 1357-1388
+  s_fe62292551adf8::t_89b65385421946 415-416
+  s_fe62292551adf8::t_20cf7db669f0c2 1250-1257,1259,1261-1342,1344-1345,1347-1350,1352-1356,1390-1391,1393-1396,1398-1403
+  s_fe62292551adf8::t_f9f4eeb2616d0e 67-92
+  s_fe62292551adf8::t_4cf012d35992a9 24
+  s_fe62292551adf8::t_cc57b691f3d3f4 1258,1260
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fe62292551adf8::t_3a640c54f4f8fc 6967-6970
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_fe62292551adf8::t_b01163464e0272 2282-2286,2289
+  s_fe62292551adf8::t_69ae696fc35554 2296-2306,2310-2319,2322,2324,2330,2337,2339,2347,2349,2362,2364
+  s_fe62292551adf8::t_e19315b3cd1417 530-532
+  s_fe62292551adf8::t_47b6ab1df61ab0 333,338-339,354
+  s_fe62292551adf8::t_41a238a9fe627c 2307-2309
+  s_fe62292551adf8::t_c0c4130357dd03 2272,2277-2281,2287-2288,2290-2295,2320,2323,2325-2328,2331-2336,2338,2340-2345,2348,2350-2352,2368-2370,2379,2382,2384-2386
+  s_fe62292551adf8::t_f36c5bbbfb8482 2353-2361,2363,2365-2367
+  s_fe62292551adf8::t_0b98aab5af198b 2321,2329,2346,2380
+  s_fe62292551adf8::t_007b2c8105f4da 2371-2378
+  s_fe62292551adf8::t_21c0bc502dfb57 2381,2383
+  s_fe62292551adf8::t_0aa9f96571c184 153-161
+  s_fe62292551adf8::t_a111bb4da5f668 2273-2276
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_fe62292551adf8::t_425a160c523e36 1066
+  s_fe62292551adf8::t_d88a904efde1ad 1061-1065,1067,1078-1084
+  s_fe62292551adf8::t_f0846fb140e11b 1073-1075
+  s_fe62292551adf8::t_5e1abc62d9bca3 1076
+  s_fe62292551adf8::t_6f75e4f2b8e217 1068,1077
+  s_fe62292551adf8::t_0a9d0c8ea97530 1069-1072
+  s_fe62292551adf8::t_33832f92d167a5 1085
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_fe62292551adf8::t_06708510abdc2d 50-59
+  s_fe62292551adf8::t_f2c5b3ebd3b8af 124
+  s_fe62292551adf8::t_559890f3be2abc 27-49
+  s_fe62292551adf8::t_92afbe7d8b177c 121-123
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_fe62292551adf8::t_6eb39ae47bbb60 764-773,777,779-783,786,790,792-796
+  s_fe62292551adf8::t_1897dbf05dcf40 157,163,169
+  s_fe62292551adf8::t_7f6d2c0dd83983 778,784-785,787-789,791
+  s_fe62292551adf8::t_50f4b1dc78cb01 81
+  s_fe62292551adf8::t_30a711d1e67344 156
+  s_fe62292551adf8::t_e1101f0940ee80 944-951
+  s_fe62292551adf8::t_a96506048fc5ac 63
+  s_fe62292551adf8::t_c6f18d7e40906e 661-663
+  s_fe62292551adf8::t_693d1b186591a0 774-776
+  s_fe62292551adf8::t_78ab26a48963fe 74,78-80
+  s_fe62292551adf8::t_d3f767a8c641d5 158-162,164-168
+  s_fe62292551adf8::t_90a49dae425d6d 154-155,170-201
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPanel.vue
+  s_fe62292551adf8::t_3440435be53579 1-19,25-27,32-33,35-38,47,49-52,55,61,65-66,68-72,78-79,83-84
+  s_fe62292551adf8::t_9ba7f63c04d089 20-24,28-31,34,39-46,48,53-54,56-60,63-64,67,73-77,80-82
+  s_fe62292551adf8::t_0c4e6c4e66504c 62
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/testAgentOffer.test.ts
+  s_fe62292551adf8::t_4e52b99c082958 10,20-21
+  s_fe62292551adf8::t_9ac8482b3bfe28 1-9,11-19,22-50
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_fe62292551adf8::t_bcdd7dff3bc603 118-161,172
+  s_fe62292551adf8::t_a56977581284c2 162-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f735e52a5a4a71889b6f40f48421d524cbd3bac4",
+  "prompts": {},
+  "sessions": {
+    "s_fe62292551adf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcdf49db-29c9-47f8-91d3-ac72251be9a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

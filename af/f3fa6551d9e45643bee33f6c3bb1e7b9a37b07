@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_b95877f74b3149::t_6bd17e1d662631 528,531,533
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_b95877f74b3149::t_c551a65a1f2aeb 3351
+  s_b95877f74b3149::t_9888abfb555098 170,179
+packages/@n8n/api-types/src/dto/workflows/base-workflow.dto.ts
+  s_b95877f74b3149::t_127ec7dcb4988e 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aff3fa6551d9e45643bee33f6c3bb1e7b9a37b07",
+  "prompts": {},
+  "sessions": {
+    "s_b95877f74b3149": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba8d2351-850d-4e44-8c1d-9c51652bf09d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

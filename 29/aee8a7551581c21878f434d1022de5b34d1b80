@@ -1,0 +1,99 @@
+packages/@n8n/eslint-config/src/rules/misplaced-n8n-typeorm-import.ts
+  s_2b2954a4956f3a::t_0be160f95010ec 18-23
+packages/@n8n/eslint-config/src/rules/no-misplaced-typeorm-import-disable.ts
+  s_2b2954a4956f3a::t_8bcebef8ca5a18 4
+  s_2b2954a4956f3a::t_cd3e072a07d533 19
+  s_2b2954a4956f3a::t_2340d031cc2976 1-3,5-18,20-27,30-36
+  s_2b2954a4956f3a::t_14fe542a29572a 28-29
+packages/@n8n/db/AGENTS.md
+  s_2b2954a4956f3a::t_b3828cffa0484b 11
+  s_2b2954a4956f3a::t_5c0f9583bd66d4 5-10,12-18
+packages/@n8n/db/src/connection/db-connection.ts
+  s_0a030118333b72::t_e284ba74d80b42 18-19
+  s_0a030118333b72::t_2cc801e51bbc7b 46-48
+packages/cli/eslint.config.mjs
+  s_2b2954a4956f3a::t_8446acbbe23c4d 37-38
+  s_2b2954a4956f3a::t_431371f7028a78 100-101,104-107,115-201
+  s_2b2954a4956f3a::t_dfcd7005a249e7 202-206
+packages/@n8n/db/src/index.ts
+  s_0a030118333b72::t_0a1a801c73c638 48-49
+  s_0a030118333b72::t_1db16e6faf709d 50-51
+  s_0a030118333b72::t_7e921bac5fb9d9 52-54
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_0a030118333b72::t_8ee9e9aaba897d 6
+  s_0a030118333b72::t_1287dbb733b53b 94-101,103-105
+  s_0a030118333b72::t_f43de1d36431f9 44
+  s_0a030118333b72::t_acdddd1b60f29c 114,117-121,129-130,132-134,148-151,153-158,160-162
+  s_cc82a9af9fe865::t_d9a30e54068e07 159
+  s_cc82a9af9fe865::t_f230d42796a9db 102
+packages/@n8n/db/src/services/__tests__/typeorm-transaction.test.ts
+  s_0a030118333b72::t_efc15f2e6cdd61 26-29
+  s_0a030118333b72::t_8fea7d709924d7 1-25,30-116
+packages/@n8n/db/src/services/transaction.ts
+  s_0a030118333b72::t_3cfe657ddf4823 1-53
+packages/@n8n/db/src/repositories/base-repository.ts
+  s_0a030118333b72::t_b34cc4776f29f8 3-31
+  s_0a030118333b72::t_379892e919cff8 1-2
+packages/cli/src/modules/oauth-server/database/repositories/oauth-refresh-token.repository.ts
+  s_0a030118333b72::t_df9868dd3a8905 1,3,7-11,13-14,16,20-46
+  s_cc82a9af9fe865::t_80c5ee9b2ff00d 12
+packages/cli/AGENTS.md
+  s_2b2954a4956f3a::t_5dbf926620bd56 8-22,24-28,34-35
+  s_2b2954a4956f3a::t_595bd4fb09c5df 1-7,23,29-33
+packages/@n8n/db/src/services/typeorm-transaction.ts
+  s_0a030118333b72::t_3a3f33e64e2e79 40-45
+  s_0a030118333b72::t_0bba8e22409512 1-39,46-47
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_2b2954a4956f3a::t_83b15b38bb038b 38
+  s_2b2954a4956f3a::t_7296f1217068c9 11
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_0a030118333b72::t_e454ad447e2a92 54-59,68
+  s_0a030118333b72::t_b002f5c9358651 7
+  s_0a030118333b72::t_8a4c5c409b0269 153,155-158,160,168-169
+  s_0a030118333b72::t_c4be5a36a25132 185-186,198-203,217-218,257,272-273
+  s_0a030118333b72::t_9e611c49f8aca8 589
+  s_0a030118333b72::t_8a77e105215186 5
+  s_0a030118333b72::t_06195f9565db57 31
+  s_cc82a9af9fe865::t_d9ca57aab197e1 786
+  s_cc82a9af9fe865::t_f321cb16fab890 684-685
+  s_cc82a9af9fe865::t_f24ee2ab3ab8af 243-244,250,252
+  s_cc82a9af9fe865::t_db3fe683be8f36 671
+  s_cc82a9af9fe865::t_c2438b3075c0e5 161-167
+packages/cli/src/modules/oauth-server/database/repositories/oauth-access-token.repository.ts
+  s_0a030118333b72::t_063ab87b949a90 1,3,7-12,14,18-20
+  s_0a030118333b72::t_652ed46795ab6b 21
+packages/@n8n/db/src/repositories/index.ts
+  s_0a030118333b72::t_a91f1581dd7fa1 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "29aee8a7551581c21878f434d1022de5b34d1b80",
+  "prompts": {},
+  "sessions": {
+    "s_0a030118333b72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b75b67b-fe9e-4fe4-8d22-4eff97db9a41",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_2b2954a4956f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293ec869-ab9a-4cc9-a9cd-047924821740",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_cc82a9af9fe865": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5239f5cb-975b-44f5-b37a-73600ff9a538",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/__tests__/utils.ts
+  s_bc53479a49a22a::t_1b9e2dd7346d9e 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cfb6438d8096fbbf2e3272c5eb2e64e45209f82a",
+  "prompts": {},
+  "sessions": {
+    "s_bc53479a49a22a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11d24148-2eed-4785-9798-099e9262c9d3",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

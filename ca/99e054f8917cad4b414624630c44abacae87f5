@@ -1,0 +1,13 @@
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  ai_agent 2,45-59
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  ai_agent 3-4,9-10,24-26,126-128,137-138,141-143,147-151,237,240-251,256-257,260,262,265-448,513-533
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  ai_agent 4,15-16,19,67-68,72-85,88-90,95-96,99,101,112,116-119,128,133-146,325-326,329,331,338,343-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca99e054f8917cad4b414624630c44abacae87f5",
+  "prompts": {}
+}

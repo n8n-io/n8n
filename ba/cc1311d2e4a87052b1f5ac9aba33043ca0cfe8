@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/src/workflow-loop/verification-obligation.ts
+  s_a041819079c008::t_ba98622a87eddf 141
+  s_a041819079c008::t_099dc4243084cf 79-85,132-140
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/verification-obligation.test.ts
+  s_a041819079c008::t_61b6cb443f52b7 138-151,154-164
+  s_a041819079c008::t_66ed618ede9508 152-153
+  s_a041819079c008::t_d2f893410b8c49 322-344
+packages/@n8n/instance-ai/evaluations/data/workflows/workflow-verification-failed-loop-repro.json
+  s_a041819079c008::t_ba7cfd8655af14 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bacc1311d2e4a87052b1f5ac9aba33043ca0cfe8",
+  "prompts": {},
+  "sessions": {
+    "s_a041819079c008": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e19cef68-626c-4574-b27d-9881407c377f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

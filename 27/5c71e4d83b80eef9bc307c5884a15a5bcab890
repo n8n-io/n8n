@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  s_794a1be4bba94d::t_810f84e5c21e87 37,40
+  ai_agent 38-39
+  s_794a1be4bba94d::t_a587235b93fe64 210-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "275c71e4d83b80eef9bc307c5884a15a5bcab890",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

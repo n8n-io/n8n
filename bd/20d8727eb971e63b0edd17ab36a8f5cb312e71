@@ -1,0 +1,11 @@
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.ts
+  ai_agent 1-24
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.test.ts
+  ai_agent 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd20d8727eb971e63b0edd17ab36a8f5cb312e71",
+  "prompts": {}
+}

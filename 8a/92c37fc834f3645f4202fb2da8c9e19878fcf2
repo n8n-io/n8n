@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Microsoft/test/GenericFunctions.test.ts
+  s_622e6646e7b730::t_0c13837ab9af34 174-180
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.drive.perItem.test.ts
+  s_622e6646e7b730::t_87dd7646b3e91a 1-26
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItemContinueOnFail.test.ts
+  s_622e6646e7b730::t_6f45eddf8966a1 1-22
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItemContinueOnFail.workflow.json
+  s_622e6646e7b730::t_0de14bff40933f 1-105
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItemContinueOnFail.test.ts
+  s_622e6646e7b730::t_42bd20de45e02a 1-37
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItem.test.ts
+  s_622e6646e7b730::t_9b5d5e1db6e4f3 15,21
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItemContinueOnFail.workflow.json
+  s_622e6646e7b730::t_9ff0ab03ac3cab 1-75
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.drive.perItem.workflow.json
+  s_622e6646e7b730::t_ac6be0584c0220 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "8a92c37fc834f3645f4202fb2da8c9e19878fcf2",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

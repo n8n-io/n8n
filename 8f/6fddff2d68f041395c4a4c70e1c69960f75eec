@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyOwnerFilter.test.ts
+  s_b00f88b5d02ace::t_83726269e3ce5f 80-232
+  s_b00f88b5d02ace::t_5863869bef8849 233-268,270
+packages/frontend/@n8n/rest-api-client/src/api/__tests__/api-keys.test.ts
+  s_b00f88b5d02ace::t_4064851e8ff3ae 1-77
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_b00f88b5d02ace::t_c377ab8a6b45f2 40-50,52-66,68-78
+  s_b00f88b5d02ace::t_117829b50f8e61 500-530,532-539,541-548,550-558,560,583-588,590,592-600,602,604-609
+  s_b00f88b5d02ace::t_70721c00a7ed6a 565,567
+  s_b00f88b5d02ace::t_9918778037dd70 27-35
+  s_b00f88b5d02ace::t_217f274a42964b 18
+  s_b00f88b5d02ace::t_e760de9bc44316 36-39,79
+  s_b00f88b5d02ace::t_cfafc949f10da1 559,562,564,566,568-578,580
+  s_b00f88b5d02ace::t_4e9e22aec7017e 582
+  s_b00f88b5d02ace::t_d29d08e63b6749 2,4
+  s_b00f88b5d02ace::t_179eededfa9515 51,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "8f6fddff2d68f041395c4a4c70e1c69960f75eec",
+  "prompts": {},
+  "sessions": {
+    "s_b00f88b5d02ace": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2b7954-1b2a-4748-b82e-f3dc76c64fc3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

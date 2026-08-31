@@ -1,0 +1,25 @@
+packages/cli/src/modules/insights/__tests__/insights.module.test.ts
+  s_859b6818a63bd9::t_db633d479f1af6 9
+  s_859b6818a63bd9::t_858636b59aa3df 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "1e50e597eb6f8549f276a34cf2a080bd32bd6b6f",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_859b6818a63bd9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1968b940-5d60-4d4b-9fab-f47f524a10a5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

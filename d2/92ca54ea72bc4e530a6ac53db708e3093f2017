@@ -1,0 +1,80 @@
+docs/generated/postgres-schema/README.md
+  s_701c3478d6707a::t_f8082be5c9a826 449
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_29727e43ec3fd2::t_f8ffdce8f01be7 224,449
+docs/generated/sqlite-schema/agent_files.md
+  s_701c3478d6707a::t_f8082be5c9a826 9,24,31,58
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_701c3478d6707a::t_1543bef3b4d01c 621
+  s_701c3478d6707a::t_2d616557c112ca 106-109,119,138,148
+  s_701c3478d6707a::t_7e7c649c79c771 6,10
+  s_29727e43ec3fd2::t_9880c5d3370980 551,559,566,571,578,582,597,618-620,629,697,708-709,718,733,738
+docs/generated/sqlite-schema/agents.md
+  s_701c3478d6707a::t_f8082be5c9a826 148
+docs/generated/sqlite-schema/README.md
+  s_701c3478d6707a::t_f8082be5c9a826 436
+packages/cli/src/modules/agents/__tests__/agent-knowledge-commands.test.ts
+  s_701c3478d6707a::t_6e9b4d7882e38d 21-22
+packages/cli/src/modules/agents/entities/agent-file.entity.ts
+  s_701c3478d6707a::t_1381f78b8a8082 1,19-20,22-23,26-28
+packages/cli/src/modules/agents/agents.module.ts
+  s_701c3478d6707a::t_bfb7d268163ff0 37-42,45,50,54-56,60-62
+docs/generated/postgres-schema/public.agents.md
+  s_701c3478d6707a::t_f8082be5c9a826 144
+docs/generated/postgres-schema/public.agent_files.md
+  s_701c3478d6707a::t_f8082be5c9a826 13,20,29,54
+packages/cli/src/modules/agents/__tests__/agent-knowledge-file-store.test.ts
+  s_701c3478d6707a::t_0c6d91923f13dd 1-104
+packages/cli/src/modules/agents/agent-knowledge-file-store.ts
+  s_701c3478d6707a::t_a56e98ab088aa3 1-121
+packages/cli/src/modules/agents/agent-knowledge-storage.ts
+  s_701c3478d6707a::t_c1c7d742438612 9
+packages/@n8n/db/src/migrations/common/1784900752603-ReplaceAgentFileBinaryDataIdWithStoredAt.ts
+  s_701c3478d6707a::t_1f631a0c508a64 3-53
+  s_29727e43ec3fd2::t_8160d9fbbe0cf0 1-2,54-55
+packages/cli/src/modules/agents/agent-knowledge-retrieval.ts
+  s_701c3478d6707a::t_1306fe3dba2ce4 1,4
+  s_701c3478d6707a::t_e3ad47c6aa9a31 192
+  s_701c3478d6707a::t_96b077777b122d 191
+  s_29727e43ec3fd2::t_3191bb5fd7ee05 5
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_701c3478d6707a::t_cdf54afb3484ed 11,31-33,67,86,136,145-146,148,150,156,162,202-204,215-216,230,240,242,244,246,264-265,299,321,343,346,348,353-354,358,360-361,366,373-374,378,387-389,405
+packages/cli/test/migration/1784900752603-replace-agent-file-binary-data-id-with-stored-at.test.ts
+  s_701c3478d6707a::t_27f13aed843dc8 20,71-72,80-83,85-100,102-119,123-126,128-143
+  s_701c3478d6707a::t_f96f0d964a4e98 1-19,21-70,73-79,84,101,120-122,127,144
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_701c3478d6707a::t_57d0a82f412b46 8,19-20,51,106-113,123-130,132,146,152,154-155,158,160,172,177,202-203
+  s_701c3478d6707a::t_c8ebaf0d9d12de 204
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_29727e43ec3fd2::t_f8ffdce8f01be7 233,467
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_701c3478d6707a::t_36729107152a95 525-529,561-564,566-573
+  s_701c3478d6707a::t_953af24ce1febd 220
+  s_701c3478d6707a::t_b29ec7a5be7152 501-502
+  s_701c3478d6707a::t_408286c4a86929 651-652
+  s_701c3478d6707a::t_272597df2f86e1 8,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d292ca54ea72bc4e530a6ac53db708e3093f2017",
+  "prompts": {},
+  "sessions": {
+    "s_29727e43ec3fd2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0e173996-859d-4973-bcfa-4c89d0ec20b5",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_701c3478d6707a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff033f2c-41d7-434c-b328-ad4b53b50d81",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+docs/rfcs/README.md
+  s_bdce828891158f::t_375f9711664ce8 1-25
+docs/adrs/0001-defer-vue-flow-2-migration-spike-now.md
+  s_bdce828891158f::t_6760eb3c794ca2 1-133
+docs/rfcs/0001-vue-flow-2-migration.md
+  s_bdce828891158f::t_d6ffb6f974d7bc 1-226
+docs/adrs/README.md
+  s_bdce828891158f::t_66f5a7f955b668 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dc48a7cb2d5306a77fe1392d53c58229ac0575f7",
+  "prompts": {},
+  "sessions": {
+    "s_bdce828891158f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16624658-5ae7-42d7-815d-5c8cbcf51bcc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

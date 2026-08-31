@@ -1,0 +1,19 @@
+.github/actions/setup-nodejs/safe-chain.config.json
+  s_95ac70bdf5669f::t_a8069b4ab765bf 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "684c9d760347e14dfe794b35d358252d4eaaa53f",
+  "prompts": {},
+  "sessions": {
+    "s_95ac70bdf5669f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f7c23234-2ef0-49ad-9ba6-328db96e3e74",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

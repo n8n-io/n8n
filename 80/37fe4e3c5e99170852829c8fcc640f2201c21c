@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  ai_agent 3-9,13,107-157
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  ai_agent 18,71,107,376,414,447,483,596-625,627-631,638-644,646-648
+packages/cli/src/scaling/job-processor.ts
+  ai_agent 4,60,79,200-203,213,222,225
+packages/cli/src/scaling/scaling.service.ts
+  ai_agent 10-11,34,52,357-358,361
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  ai_agent 39-40,225,296-339,342-363,412-429
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  ai_agent 1-586
+packages/cli/src/webhooks/webhook-helpers.ts
+  ai_agent 68,327-329,332-338,341-343
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  ai_agent 2,5-10,47,134,165,200,244,293,343,382,436,484,544,595,657,745,820,923,1011,1147,1255,1350,1440,1540,1626,1718,1795,1834,1864,1914,1981,2004-2146,2148-2157
+packages/@n8n/config/src/configs/endpoints.config.ts
+  ai_agent 142-157
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  ai_agent 33,385-388
+packages/cli/src/scaling/webhook-response-relay.ts
+  ai_agent 1-11,13-107,109-204,214-219,221-223,226-270,272-488
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8037fe4e3c5e99170852829c8fcc640f2201c21c",
+  "prompts": {}
+}

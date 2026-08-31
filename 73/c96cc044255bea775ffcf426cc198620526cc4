@@ -1,0 +1,69 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_80d185abd37303::t_3be02b4515bab5 3,157-184,232-234,236-238,241-242,244
+  s_80d185abd37303::t_0b8bbfa46dd861 235,239-240,243
+  s_80d185abd37303::t_b67c96648c12c0 245
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_80d185abd37303::t_a6ba58839c2ea6 6717
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_80d185abd37303::t_2c94d04b9f5763 114-133,295-296,303-304,306-307,311-318,323
+  s_80d185abd37303::t_79f54889c70392 279-282
+  s_80d185abd37303::t_85703327d35225 289-294
+  s_80d185abd37303::t_128c7c3b1dc618 305,308-310,319-322
+  s_80d185abd37303::t_e64c701b42dcb2 30-34
+  s_80d185abd37303::t_8e97fce0001ff8 297-302
+packages/frontend/editor-ui/src/features/agents/styles/agent-panel.module.scss
+  s_80d185abd37303::t_188feac6fc62b6 7,10-15
+  s_80d185abd37303::t_c4d361cf3f1650 5-6,8-9,16
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_80d185abd37303::t_58a738b291f882 1-123
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_80d185abd37303::t_f07f7c5e0cfbe7 16,403-413,731-743,750-766
+  s_80d185abd37303::t_f4d5b69888b7e4 44
+  s_80d185abd37303::t_97e8c2350adedf 422,467,495,547,576,605,649,676,697
+  s_80d185abd37303::t_3bb62c0e8c2630 419,464,492,517,544,573,602,621,646,673,694
+  s_80d185abd37303::t_2caa46fa4417f7 767
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_80d185abd37303::t_35a57c02d07669 226-232
+  s_80d185abd37303::t_75cb54c954b6d1 238-239
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_80d185abd37303::t_cafcf8fcd91dc3 38-40,46,109-124
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_80d185abd37303::t_6ba6f7e91a6542 695,717
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_80d185abd37303::t_b5598fbf6de6b1 4-6,16-20,103-109
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_80d185abd37303::t_155fd952ad4d2e 184-185
+  s_80d185abd37303::t_3364a899e5b611 5-7,14-18,183
+  s_80d185abd37303::t_3c2a345545e2bc 186-187
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_80d185abd37303::t_3cfa8ea4947af3 192,195-199,216-217,221-225
+  s_80d185abd37303::t_3bb62c0e8c2630 167,187
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_80d185abd37303::t_3bb62c0e8c2630 256,281,309
+  s_80d185abd37303::t_41612e2360fffa 259,284,312
+  s_80d185abd37303::t_b070f6085e3974 35
+  s_80d185abd37303::t_76eeeb0fc62b8d 364
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_80d185abd37303::t_3bb62c0e8c2630 221,246
+  s_80d185abd37303::t_a02c0fe6981195 26
+  s_80d185abd37303::t_e2fa6c6531ed74 224,249
+  s_80d185abd37303::t_13012d260aa39d 294,297-302,314,332,335
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderTabPanel.vue
+  s_80d185abd37303::t_6b40939b4e9512 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "73c96cc044255bea775ffcf426cc198620526cc4",
+  "prompts": {},
+  "sessions": {
+    "s_80d185abd37303": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2231-958a-77f0-881a-1fca61d763de",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

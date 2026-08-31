@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/__tests__/stub-workspace.test.ts
+  s_bd443e062eee24::t_f2917fc0a1b1f4 31-59
+packages/@n8n/instance-ai/evaluations/harness/stub-workspace.ts
+  s_bd443e062eee24::t_265768c51efc96 7-11,66-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa56a7a5569de83ee44d8029e1bb44d429e3898d",
+  "prompts": {},
+  "sessions": {
+    "s_bd443e062eee24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09e25989-f012-465e-b300-4c876ca8ba31",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

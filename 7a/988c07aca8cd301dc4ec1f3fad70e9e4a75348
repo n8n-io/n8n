@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/App.vue
+  s_93bfa2eb2d7de3::t_def97b180aa2e2 14
+  s_93bfa2eb2d7de3::t_a4508925936860 69-70
+packages/frontend/editor-ui/src/experiments/trialIntroModal/useTrialIntroModalAutoOpen.ts
+  s_93bfa2eb2d7de3::t_59ba781306c6fa 1-31
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_93bfa2eb2d7de3::t_aeb7f88dfa44ec 97
+packages/frontend/editor-ui/src/experiments/trialIntroModal/useTrialIntroModalAutoOpen.test.ts
+  s_93bfa2eb2d7de3::t_83980de4108f75 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a988c07aca8cd301dc4ec1f3fad70e9e4a75348",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

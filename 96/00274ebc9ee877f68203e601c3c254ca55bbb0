@@ -1,0 +1,33 @@
+packages/cli/src/active-executions.ts
+  h_8fb27e0cdf6d1e 132-134
+  ai_agent 125-127
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_da50d216d2d35b::t_f3bd0e019fe487 590-612
+  s_da50d216d2d35b::t_071e8168ce29f8 1131-1132,1139,1144,1148
+packages/cli/src/executions/execution-persistence.ts
+  ai_agent 48
+  s_da50d216d2d35b::t_a41f713a5a4444 814-816
+packages/cli/src/__tests__/active-executions.test.ts
+  s_da50d216d2d35b::t_3c2758c4a7d93f 154,156-157,167-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9600274ebc9ee877f68203e601c3c254ca55bbb0",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_da50d216d2d35b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba8122a-2ccb-4437-8515-49cc17c28022",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

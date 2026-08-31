@@ -1,0 +1,22 @@
+packages/cli/test/integration/token-exchange/identity-resolution.service.test.ts
+  s_aeac65fc97e940::t_b91c639bb5c1ad 144
+  s_aeac65fc97e940::t_b8cd8661b3ba59 419
+  s_aeac65fc97e940::t_fb4383a113fe58 316
+  s_aeac65fc97e940::t_d3864169c6b2ef 297,299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3e7744121ae91245c06c79ca7c9fac68c89a733b",
+  "prompts": {},
+  "sessions": {
+    "s_aeac65fc97e940": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce6a8d16-666e-4e23-8065-70be62c8cf0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

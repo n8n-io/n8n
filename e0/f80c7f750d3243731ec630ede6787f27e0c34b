@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/tools/ToolWikipedia/ToolWikipedia.node.test.ts
+  s_81ff7848874f6b::t_4ed41f6c1ecfd3 167-225
+  s_81ff7848874f6b::t_580031906b8b05 2-7
+packages/@n8n/nodes-langchain/nodes/tools/ToolWikipedia/ToolWikipedia.node.ts
+  s_81ff7848874f6b::t_3214ecf26f7af2 4,6
+  s_81ff7848874f6b::t_4eec54fe49c968 75-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e0f80c7f750d3243731ec630ede6787f27e0c34b",
+  "prompts": {},
+  "sessions": {
+    "s_81ff7848874f6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bde48c0-8aa1-4e8c-b165-d85b8b792825",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,175 @@
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_fab2dbf5ded45d::t_cfd32ad5fe471d 216,247,273,300,368-369,371-389,394-395,400,428,430,439-440,443,466-467,504,513,523,532,543-565,571
+  s_fab2dbf5ded45d::t_9e74bf94d721f5 306,325-335,339-361,363-367
+  s_fab2dbf5ded45d::t_e4ab55ab5d944a 336-338
+  s_fab2dbf5ded45d::t_fef23f21e250b8 285,362,436
+  s_fab2dbf5ded45d::t_9332f1894847fd 423
+  s_fab2dbf5ded45d::t_f88f3a3952ef60 42-47,370
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_fab2dbf5ded45d::t_0f8984c90ae105 33,36-39,49,52-53,60
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_fab2dbf5ded45d::t_b5ed29b587f0b2 292,303,376-378,446,450-452,488-489
+  s_fab2dbf5ded45d::t_ce4321ead4cf8d 252
+  s_fab2dbf5ded45d::t_fef23f21e250b8 366,406,433,485
+  s_fab2dbf5ded45d::t_fed48e4ab507ef 51-59,134-143,384-389,393-405,407-432,434-444
+  s_fab2dbf5ded45d::t_e4ab55ab5d944a 390-392
+  s_fab2dbf5ded45d::t_ae4ca25c3662d0 144
+  s_fab2dbf5ded45d::t_8aa81773cb68ca 445
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_fab2dbf5ded45d::t_70af58b5f7eb58 261
+  s_fab2dbf5ded45d::t_aa66abb77074a5 258-260,263-264
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_fab2dbf5ded45d::t_6a76eb5a49ee87 192
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_fab2dbf5ded45d::t_6a76eb5a49ee87 75,893,1460-1470,1478
+  s_fab2dbf5ded45d::t_16263fc0068c86 955-956,996-997
+  s_fab2dbf5ded45d::t_70af58b5f7eb58 1458
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_fab2dbf5ded45d::t_6a76eb5a49ee87 6-7,48-49,53-57,140-145
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelListItem.test.ts
+  s_fab2dbf5ded45d::t_15bfe60e67d583 1-38,40-56
+  s_fab2dbf5ded45d::t_9c56b56ab9751e 39
+packages/cli/src/modules/agents/agent-setup-completion.service.ts
+  s_fab2dbf5ded45d::t_2ca12c77cb7f71 68-70
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_fab2dbf5ded45d::t_0f3771c01c458f 26,171-172,176,182-183
+  s_fab2dbf5ded45d::t_346ca505a78faf 120
+  s_fab2dbf5ded45d::t_ef4ed70b14d936 2,5-6,9,16-17,22,37-38,41,49-50,56-57,119,121-165,167-170,173-175,177-181,184
+  s_fab2dbf5ded45d::t_03bfcacf77eb21 166
+  s_fab2dbf5ded45d::t_cf821da9c2d691 185
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_fab2dbf5ded45d::t_30bb43044ba8f0 1382,1384-1385,1390-1393,1415,1417-1418,1423-1426
+  s_fab2dbf5ded45d::t_827ed4fea19e9e 199-209,1356-1359,1363,1371,1386,1389,1397-1409,1411-1414,1416,1419-1422,1427-1428,1430,1437,1440-1443
+  s_fab2dbf5ded45d::t_fef23f21e250b8 1369,1410
+  s_fab2dbf5ded45d::t_49739bf9f99ab9 1429
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationStatus.ts
+  s_fab2dbf5ded45d::t_7f5c2808cc380b 28
+  s_fab2dbf5ded45d::t_1607f07b3d2a16 103,120
+  s_fab2dbf5ded45d::t_c909a17bab0b7c 2-6,12-13,60,68,80,82,99,105,135,170-173,185
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_fab2dbf5ded45d::t_eddfd95d4f0d89 13,27,46,73-74,77,81-85,89-90,92-93
+  s_fab2dbf5ded45d::t_fbf47cb10f5a69 91
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_fab2dbf5ded45d::t_92540e94eebfb7 7,11-12,14,19,24,38-39,100-110,112
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_fab2dbf5ded45d::t_75941a89364ac1 188,315
+  s_fab2dbf5ded45d::t_bd8011156463fd 33,70,81,97-101,162,176-183
+  s_fab2dbf5ded45d::t_dc4b906fe254f5 20-25,28,32,55,69,119-126,158,161,184-187,189-205
+  s_fab2dbf5ded45d::t_efeef8457448e4 206
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_fab2dbf5ded45d::t_71b6ecd464de5e 30,216,249,258-259,264
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_fab2dbf5ded45d::t_827ed4fea19e9e 257,266-267,282,326,337-338,343
+  s_fab2dbf5ded45d::t_30bb43044ba8f0 268-273
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_fab2dbf5ded45d::t_6d050b8dcbc454 527
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_fab2dbf5ded45d::t_2ca12c77cb7f71 113
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_fab2dbf5ded45d::t_91bceaed34b3b0 292,312,317-320,322-325,327-329,331-334,336-342,409
+  s_fab2dbf5ded45d::t_9fb558c3564141 32,343,347,352,354-371,374,376-391,393-401,405-408
+packages/cli/src/modules/agents/builder/prompts/initial-build.prompt.ts
+  s_fab2dbf5ded45d::t_131994a5098085 17,31,35-37
+packages/@n8n/telemetry/src/events/agents.ts
+  s_fab2dbf5ded45d::t_58836c86e7f121 8,93
+  s_fab2dbf5ded45d::t_05fe76b3668dd5 387,391
+  s_fab2dbf5ded45d::t_6a76eb5a49ee87 7,9,123,277,280
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_fab2dbf5ded45d::t_3f6e061390b1f3 390-393
+  s_fab2dbf5ded45d::t_c2e7136471d776 1
+packages/cli/src/modules/agents/builder/interactive/__tests__/configure-channel.tool.test.ts
+  s_fab2dbf5ded45d::t_91bceaed34b3b0 98,110,116,124
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_fab2dbf5ded45d::t_ba33d0065b0ac4 235
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fab2dbf5ded45d::t_eddfd95d4f0d89 7892
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_fab2dbf5ded45d::t_27e7eac90dad1e 57,86,105,139,164,221,249,273
+  s_fab2dbf5ded45d::t_3b1ca137ab37c5 97
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_fab2dbf5ded45d::t_3b1ca137ab37c5 202
+  s_fab2dbf5ded45d::t_c877b8074993e2 61,117,181-185,314,420,434,459,483,536,552
+  s_fab2dbf5ded45d::t_a030cf581a7d8f 311
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_fab2dbf5ded45d::t_3f4bddbeed0f31 85,92-94,101-102,104,352
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChannelSetup.test.ts
+  s_fab2dbf5ded45d::t_9215adee4372ff 57,105,122,136,145
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_fab2dbf5ded45d::t_aa66abb77074a5 74-76,79-80,84,216-221
+  s_fab2dbf5ded45d::t_70af58b5f7eb58 77
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelSlackSetup.test.ts
+  s_fab2dbf5ded45d::t_e5b27fe16212ef 4,6,60-69
+  s_fab2dbf5ded45d::t_e39dfea2977c3e 70
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationStatus.test.ts
+  s_fab2dbf5ded45d::t_c7e051a410864a 67
+  s_fab2dbf5ded45d::t_2fa5ab06138afe 1-66,68-101
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_fab2dbf5ded45d::t_7eac057df41e9b 379
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_fab2dbf5ded45d::t_6a76eb5a49ee87 37,117,119-120,168,217,220-225
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_fab2dbf5ded45d::t_00a9554c507081 316,327-328
+  s_fab2dbf5ded45d::t_4d98260e801529 4-7,87,89,304,317-319,324-325
+  s_fab2dbf5ded45d::t_f24d8dd7d24a60 109
+  s_fab2dbf5ded45d::t_ee52cc05e92d8b 3
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelsSection.test.ts
+  s_fab2dbf5ded45d::t_0f139d47870ccd 57-67
+packages/@n8n/api-types/src/agents/types.ts
+  s_fab2dbf5ded45d::t_aa66abb77074a5 45
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_fab2dbf5ded45d::t_1607f07b3d2a16 182-183
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_fab2dbf5ded45d::t_4d5c18efe80a3e 97,102-107,206-226
+  s_fab2dbf5ded45d::t_6a88059ced647f 191,200
+  s_fab2dbf5ded45d::t_9f1f5348e6118a 25,61-62,147-151,177,189-190,192-199,201-205,227-233
+  s_fab2dbf5ded45d::t_b7a67aeb554f56 234
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentIntegrationCredentialConnection.test.ts
+  s_fab2dbf5ded45d::t_6e8499545fb320 73-78
+packages/frontend/editor-ui/src/features/agents/components/AgentIntegrationCredentialConnection.vue
+  s_fab2dbf5ded45d::t_fa0b0f65f83ab1 144
+  s_fab2dbf5ded45d::t_bc0d2989bdf960 63
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_fab2dbf5ded45d::t_6e0791416bef27 278-279
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_fab2dbf5ded45d::t_91bceaed34b3b0 6,265-274
+  s_fab2dbf5ded45d::t_34e97e7883a9e4 275-276
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_fab2dbf5ded45d::t_91bceaed34b3b0 2,23,26-32,49,54-57
+  s_fab2dbf5ded45d::t_0defe40515a08d 37
+  s_fab2dbf5ded45d::t_ac15af572bb683 33,38-40,48,50,52
+  s_fab2dbf5ded45d::t_6272a35b99fb5b 24-25,34-36,41-47,51,53
+  s_fab2dbf5ded45d::t_b8c76d0417fb6a 58-59
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelLinearSetup.vue
+  s_fab2dbf5ded45d::t_7eac057df41e9b 381
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_fab2dbf5ded45d::t_fab776a9e508ae 56,75-77,85,87-89,194-196,264-265
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderTelemetry.test.ts
+  s_fab2dbf5ded45d::t_9bc42765ad6eb7 13-16,21-22,247-259,264-293
+  s_fab2dbf5ded45d::t_fbf47cb10f5a69 260-263
+packages/cli/src/modules/mcp/__tests__/mcp-instructions.test.ts
+  s_fab2dbf5ded45d::t_43ff2ff10185e5 37-46
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_fab2dbf5ded45d::t_2c540a4d0e2e91 434-435
+  s_fab2dbf5ded45d::t_b17d36aa4146c0 101,103-105,116,147-149,151-157,401
+  s_fab2dbf5ded45d::t_9e5283f4d79ba5 436
+  s_fab2dbf5ded45d::t_78c66a841bc989 100
+  s_fab2dbf5ded45d::t_22d9789b4d5314 102,150
+  s_fab2dbf5ded45d::t_591ac1167bb44d 427,429-431,433,437-440
+  s_fab2dbf5ded45d::t_cdd13838e3ca10 74-75,193-194,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "de0e8f571ea30ee9e96bc134f1a7da90dee7e09a",
+  "prompts": {},
+  "sessions": {
+    "s_fab2dbf5ded45d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc83e-7c50-7f60-b884-4264bd2e1e15",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

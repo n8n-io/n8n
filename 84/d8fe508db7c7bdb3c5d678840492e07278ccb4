@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/src/tools/agent-builder/configure-channel.tool.ts
+  s_59b6b037df63e7::t_c743d7606d29ff 67-75,78-79,81-87
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_59b6b037df63e7::t_66a851f9720b5a 1365
+  s_59b6b037df63e7::t_472bfc01b4a94f 1336
+  s_59b6b037df63e7::t_739c0e89c99c94 1393-1409
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/configure-channel.tool.test.ts
+  s_59b6b037df63e7::t_5373652cff5172 70-80
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiChannelSetup.test.ts
+  s_59b6b037df63e7::t_d15dd7cee4872e 82-86,92-105
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_59b6b037df63e7::t_0d207669015852 556
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiChannelSetup.vue
+  s_59b6b037df63e7::t_7068ae22790299 29-30,33-38,43-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "84d8fe508db7c7bdb3c5d678840492e07278ccb4",
+  "prompts": {},
+  "sessions": {
+    "s_59b6b037df63e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c4162b94-0dd7-4031-8faa-741c07b82e5c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

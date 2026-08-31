@@ -1,0 +1,72 @@
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserCredentialSetup/index.ts
+  s_8521b223be2102::t_0cf3fee117af7b 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_8521b223be2102::t_6c07175efd9788 374-444,446-457
+  s_8521b223be2102::t_ca2e90be5b3505 356-358
+  s_8521b223be2102::t_eb5ed1b35e621e 41-47
+  s_8521b223be2102::t_aa750f528d3c9f 445
+  s_8521b223be2102::t_29075e8448a020 225-253
+  s_8521b223be2102::t_56034c5ce45e4b 501-520
+  s_8521b223be2102::t_c76e411685c400 2,5,7,11-12,15-16,21,25
+  s_8521b223be2102::t_2fd631c2ac820e 655-660
+  s_8521b223be2102::t_7896f021aeb4ce 120
+  s_8521b223be2102::t_d48dea4b75e927 181-184
+  s_8521b223be2102::t_81d8c12bd83f7d 26
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8521b223be2102::t_84ae00b9bdb56e 3833-3834,3839-3858,3861-3862
+  s_8521b223be2102::t_a7a78e1fb651be 373
+  s_8521b223be2102::t_96c7bb729a97ee 3806-3832,3835-3838,3859-3860,3910
+  s_8521b223be2102::t_e72fb4ff602d55 3805,3957-3989
+  s_8521b223be2102::t_0bac1fbf5aec53 4100,4112
+  s_8521b223be2102::t_82912be89fff21 4057
+  s_8521b223be2102::t_9791ff348bb2c9 4063-4065,4068,4071,4079
+  s_8521b223be2102::t_011b388ad82b79 374-378
+  s_8521b223be2102::t_bc713c30ae5e34 4060-4062,4066-4067,4069-4070
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8521b223be2102::t_857da9daa11a9d 1544
+  s_8521b223be2102::t_28c30be11ed7be 2037-2102
+  s_8521b223be2102::t_a4f51888a765b2 1545-1547
+  s_8521b223be2102::t_537191b5eca4b9 2103-2105
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_8521b223be2102::t_cc1f739bf418bf 80-84
+  s_8521b223be2102::t_b9705536cb77c7 78-79
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserCredentialSetup/useInstanceAiBrowserCredentialSetupExperiment.ts
+  s_8521b223be2102::t_1a26a2ea255949 1-16
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_8521b223be2102::t_64ea8db021a573 138-141
+  s_8521b223be2102::t_ef2b32d77b0b03 177
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_8521b223be2102::t_fc0492e8f44756 44-50
+  s_8521b223be2102::t_1c723876f427b4 100
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_8521b223be2102::t_ce04a0f2978ec1 57-61
+  s_8521b223be2102::t_6b2de9b4b44d12 150-154
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8521b223be2102::t_8654a66c0751a3 6064,6066-6068
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_8521b223be2102::t_5bbf542006300c 417-547
+  s_8521b223be2102::t_afa71b4adbd7c0 5,10,13-71
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserCredentialSetup/useInstanceAiBrowserCredentialSetupExperiment.test.ts
+  s_8521b223be2102::t_3632adb15599cd 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "f33dd743789e589fd12f033427cb7db59aeca81b",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8521b223be2102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab3d933a-19c0-4279-b0cf-7b0be38aeac8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

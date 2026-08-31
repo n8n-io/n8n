@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_fd4b8b6aa97b3d::t_c344dc63bbbf9f 207-218
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_fd4b8b6aa97b3d::t_75407d690c5648 174-178,1031,1038,1397-1399
+packages/frontend/editor-ui/src/Interface.ts
+  s_fd4b8b6aa97b3d::t_75407d690c5648 654
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_fd4b8b6aa97b3d::t_75407d690c5648 210,530,544,551
+packages/frontend/editor-ui/src/features/credentials/components/CredentialPicker/CredentialPicker.vue
+  s_fd4b8b6aa97b3d::t_75407d690c5648 120-122
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_fd4b8b6aa97b3d::t_a27ac9995f9e21 827
+  s_fd4b8b6aa97b3d::t_0c2e29f5ea82c0 15,832-836,860-864,884-947,953-955,976-1001,1008-1010,1041-1043,1065-1067,1083-1096
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a3a2660f8231da51bf8648fb5a972ebeb2c5d0bf",
+  "prompts": {},
+  "sessions": {
+    "s_fd4b8b6aa97b3d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea795-115a-7440-bb84-fd6cb163e382",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

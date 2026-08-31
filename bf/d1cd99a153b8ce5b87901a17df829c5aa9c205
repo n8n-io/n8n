@@ -1,0 +1,47 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_c740888df811ef::t_30187289d3fa9c 31,62
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-inbox.service.ts
+  s_c740888df811ef::t_d0f9aafeecad12 1-314,317-372
+  s_c740888df811ef::t_30a3339564a8e1 315-316
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-feature-gate.service.ts
+  s_c740888df811ef::t_f031b0035f4871 6
+  s_c740888df811ef::t_e44539b7c762b3 10-12
+  s_c740888df811ef::t_28b3b31f7207e6 1-5,7-9,13-31
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_c740888df811ef::t_30187289d3fa9c 30,60
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_c740888df811ef::t_d84e67cc018f5e 123
+  s_c740888df811ef::t_6cde744478e62a 97
+  s_c740888df811ef::t_81893f55636bc0 106
+  s_c740888df811ef::t_38c3a8639d7dc8 16,21-24
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.detail.service.test.ts
+  s_c740888df811ef::t_ed86ef1b244868 1-23
+  s_c740888df811ef::t_bfd759f82c037b 66-79
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_c740888df811ef::t_1467fd05eca292 73
+  s_c740888df811ef::t_f335f7bdd9c317 35
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_c740888df811ef::t_74d53eba09a585 90
+  s_c740888df811ef::t_ed765a84e9ac3d 121
+  s_c740888df811ef::t_bcbcb55e68cd7d 269,382
+  s_c740888df811ef::t_583901f816d02d 160
+  s_c740888df811ef::t_014c18adf2573b 12,42-49,54
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.list.service.test.ts
+  s_c740888df811ef::t_0db0689b39560d 2-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bfd1cd99a153b8ce5b87901a17df829c5aa9c205",
+  "prompts": {},
+  "sessions": {
+    "s_c740888df811ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2b790a1-8cec-4925-b70d-95a45108b143",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/@n8n/instance-ai/src/tools/workflows/preserve-node-positions.ts
+  s_efd3d83ecf6f14::t_421bfed394ffc4 255-257
+  s_efd3d83ecf6f14::t_52921c173da455 142
+  s_efd3d83ecf6f14::t_0c2da31aa9cf3f 24,27-35,39-40,55-62,73-79,82-83,85-86,90,92-93,97-104,106,113-120,124-127,129-130,132,134,136-141,143-148,150-152,154-168,171-176,179-182,184-206,208-214,216-248,250-254,258-260,262-263,266,269-306,308-365,377-380,410,413-418,422-423,425
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/preserve-node-positions.test.ts
+  s_efd3d83ecf6f14::t_7f53619ff83da1 15-22,88,104,108-109,111-130,135-214,230-234,236-237,242,245-261,263-285,290
+  s_efd3d83ecf6f14::t_e7bae95a059ccb 262
+  s_efd3d83ecf6f14::t_406248f8613a24 289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b10e2d3561d94c81e2433d20661b81585f4552e3",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_efd3d83ecf6f14": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54a9a35b-1a0a-4593-a1cd-329e1481a409",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

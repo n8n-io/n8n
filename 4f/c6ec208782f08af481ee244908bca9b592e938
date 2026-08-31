@@ -1,0 +1,20 @@
+single-instance-promotion-prototype/implementation-phase/PROMPT_DISCRIMINATOR_NODE_ID_DEV_CREDENTIAL.md
+  h_c63dce324dfc7b 1-5
+single-instance-promotion-prototype/implementation-phase/ANALYSIS_DISCIRIMINATOR_NODE_ID_DEV_CREDENTIAL.md
+  h_c63dce324dfc7b 1-79
+single-instance-promotion-prototype/implementation-phase/PROMPT_SWITCH_TO_NODEID_CRED_DISCRIMINATOR.md
+  h_c63dce324dfc7b 1-7
+single-instance-promotion-prototype/implementation-phase/PLAN_SWITCH_TO_NODEID_CRED_DISCRIMINATOR.md
+  h_c63dce324dfc7b 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "4fc6ec208782f08af481ee244908bca9b592e938",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli/src/modules/instance-ai/instance-ai-error-reporter.service.ts
+  s_cbce9fd8365bde::t_1caa6f0eeb6e0d 17,19-20
+  s_cbce9fd8365bde::t_4800008349e6ff 88
+  h_32d8cd6a0d6aad 18
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_cbce9fd8365bde::t_289c96fb7c0ae9 3873
+  s_cbce9fd8365bde::t_f84d97bcef918c 5182
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-error-reporter.service.test.ts
+  s_cbce9fd8365bde::t_3ae1807fa7698a 132,145-158,165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d672022b3726a4bca01c16dec4308a331f688a88",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_cbce9fd8365bde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89126fa2-48cf-4eac-a161-74479d670921",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

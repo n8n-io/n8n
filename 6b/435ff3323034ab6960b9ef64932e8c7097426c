@@ -1,0 +1,60 @@
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_5988cef02c9299::t_61517e08da6d3b 42
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_5988cef02c9299::t_8bbe93f59e2fe6 107-108,110
+packages/cli/src/modules/agents/__tests__/agent-secure-runtime.test.ts
+  s_5988cef02c9299::t_f65ec1f36f7f55 372-376
+  s_5988cef02c9299::t_dbb550b85945c4 54-74
+  s_5988cef02c9299::t_85815c498866c3 386-405
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_5988cef02c9299::t_945f71a4d78295 2-6
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_5988cef02c9299::t_50125c0e52ff51 146,179
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_5988cef02c9299::t_efea6d7b54d629 929
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_5988cef02c9299::t_101dcd5eedeba5 251
+packages/@n8n/instance-ai/src/workspace/lazy-runtime-workspace.ts
+  s_5988cef02c9299::t_ca3ef18f0be15d 326
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_5988cef02c9299::t_30d322e3e4549f 71
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_5988cef02c9299::t_e8630efd6b351a 448
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_5988cef02c9299::t_88b15512a45982 48
+packages/cli/src/modules/agents/runtime/agent-secure-runtime.ts
+  s_5988cef02c9299::t_3d7e64c9ac06a4 325
+  s_5988cef02c9299::t_8f4084f0fea40e 164-187
+  s_5988cef02c9299::t_5ecb2110ec3e26 294
+  s_5988cef02c9299::t_fa3bd6a291bacb 296,298,308,316,319,321,327-329,331-336,339,343,362,366,368,372,374-376
+  s_5988cef02c9299::t_daced039727394 350,359
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_5988cef02c9299::t_a571f1f462298e 1
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_5988cef02c9299::t_f1795fe66cf638 72-80
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_5988cef02c9299::t_a14e5283dd0ba0 72,454,456-457
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_5988cef02c9299::t_90d3616a53e7ae 52,606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6b435ff3323034ab6960b9ef64932e8c7097426c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5988cef02c9299": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6dd538ef-ba53-4958-ad46-e7296b82845c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

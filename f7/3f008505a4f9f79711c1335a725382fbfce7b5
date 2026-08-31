@@ -1,0 +1,66 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_02fa5a53ff6b07::t_6d72b682a926b9 11,28,137
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_02fa5a53ff6b07::t_d2ffae14e47fcd 41
+packages/cli/src/modules/agents/agent-sandbox.controller.ts
+  s_02fa5a53ff6b07::t_872172b79c161f 9,16,37
+packages/cli/src/services/sandbox-settings.service.ts
+  s_02fa5a53ff6b07::t_0f08a13b7e965c 5,86-87,98,103-104
+  s_02fa5a53ff6b07::t_6519e2593d44c7 105-106
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_02fa5a53ff6b07::t_7ece2eae38fa7b 78
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_02fa5a53ff6b07::t_43a07ce15a16c6 154-157,159
+packages/cli/src/modules/agents/__tests__/agent-knowledge.controller.test.ts
+  s_02fa5a53ff6b07::t_ecc216fefca538 11,19-21,25,31,132-134
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_02fa5a53ff6b07::t_8b0ca9bf9e127c 20,30
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_02fa5a53ff6b07::t_4fd1775ed4792a 116
+  s_02fa5a53ff6b07::t_6b8b2170405157 11,51,134
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_02fa5a53ff6b07::t_854aac15d2081c 765-767
+packages/cli/src/modules/agents/agent-knowledge.controller.ts
+  s_02fa5a53ff6b07::t_2563e2f095ac1d 29
+  s_02fa5a53ff6b07::t_4a1f7346cff4b8 12,25,31
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_02fa5a53ff6b07::t_300809195c4a18 1125,1133-1134
+packages/cli/src/modules/agents/__tests__/agent-sandbox.controller.test.ts
+  s_02fa5a53ff6b07::t_749720085fa96d 8,13-17,34-38
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_02fa5a53ff6b07::t_280608d88562dd 5147,5149
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_02fa5a53ff6b07::t_466c4782bbe01b 1,3,7,9,23-40,42-53,55-67,73
+packages/cli/src/services/__tests__/sandbox-settings.service.test.ts
+  s_02fa5a53ff6b07::t_e358d71e46200f 2,11,15-17,19,35,37
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_02fa5a53ff6b07::t_f3b3bbd90f9e14 515,558,588,608,783
+  s_02fa5a53ff6b07::t_bc807e71677d0f 24,40,96,124
+  s_02fa5a53ff6b07::t_3c56d8f98bfc21 266
+  s_02fa5a53ff6b07::t_cef2aa968a4e8c 268-270,275-276,293-295,299-300,317-319,321-322,348-350,353-354
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_02fa5a53ff6b07::t_3eb85bc3af284a 29,52-55,178,602
+packages/cli/src/modules/agents/agents.module.ts
+  s_02fa5a53ff6b07::t_89e34eb6f61291 159,165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f73f008505a4f9f79711c1335a725382fbfce7b5",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_02fa5a53ff6b07": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4b9ea011-0576-4291-8fcc-58ead87cde9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

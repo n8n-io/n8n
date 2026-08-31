@@ -1,0 +1,91 @@
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_f35e98570d6579::t_ce5ca0985a57ec 1-4,6,8,10,48-51,56-96
+  s_f35e98570d6579::t_e729d01cce38fc 97-107,109-136
+  s_f35e98570d6579::t_ce83fe83a4ccd4 5,7,9,11-47,52-55
+  s_f35e98570d6579::t_37cb15d11e9fcd 108
+packages/cli/src/modules/agents/integrations/__tests__/fixtures/discord/basic.json
+  s_f35e98570d6579::t_035794353de4e3 1-65
+packages/cli/src/modules/agents/integrations/__tests__/channel-integration-contract.test.ts
+  s_f35e98570d6579::t_3c213044f49ebd 102-133
+  s_f35e98570d6579::t_141d3796602507 7-9,25-26
+  s_f35e98570d6579::t_edb5816fd7ef8e 6
+  s_f35e98570d6579::t_a5a3b5955ecec4 27
+packages/cli/src/modules/agents/integrations/platforms/__tests__/discord/synthetic-integration.test.ts
+  s_f35e98570d6579::t_6fc7f942a97887 136-142
+  s_f35e98570d6579::t_d3320a8629703e 177
+  s_f35e98570d6579::t_00f049d431fb65 1-135,143-176,178-191
+packages/cli/src/modules/agents/integrations/CHANNEL_INTEGRATION_TESTS.md
+  s_f35e98570d6579::t_62d2c56722f3de 37
+  s_f35e98570d6579::t_c4ff8441e00c5b 59-66
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f35e98570d6579::t_45192b2b403702 7701-7703
+packages/cli/src/modules/agents/integrations/platforms/discord-operations.ts
+  s_f35e98570d6579::t_0fb4ba55d43c03 1-137
+packages/cli/src/modules/agents/integrations/recording/recording-adapter.ts
+  s_f35e98570d6579::t_a8cf2503969cac 29-39
+packages/cli/src/modules/agents/integrations/__tests__/helpers/discord/replay-test-context.ts
+  s_f35e98570d6579::t_0c1142450cbb5e 1-244
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelDiscordSetup.vue
+  s_f35e98570d6579::t_be1a716f7a6fe1 62-66,84-87
+  s_f35e98570d6579::t_45cea63d2526cd 152-184
+  s_f35e98570d6579::t_66177b3d21dba8 210-222
+  s_f35e98570d6579::t_2ba1568d95b282 294-296
+  s_f35e98570d6579::t_0b82b8231228dd 88
+packages/cli/src/modules/agents/integrations/__tests__/discord-operations.test.ts
+  s_f35e98570d6579::t_e62091f60b7a55 1-133
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_f35e98570d6579::t_f086f5d9d2812a 308-309
+packages/cli/src/modules/agents/integrations/platforms/typing-indicator.ts
+  h_b48525a15b2d62 24-25
+  s_f35e98570d6579::t_a17a7f132c7976 1-23,26-79
+packages/cli/src/modules/agents/builder/interactive/__tests__/configure-channel.tool.test.ts
+  s_f35e98570d6579::t_398a37c3f0886d 85
+  s_f35e98570d6579::t_90c99a04c796ea 75
+packages/cli/src/modules/agents/integrations/platforms/telegram-bridge-behavior.ts
+  s_f35e98570d6579::t_f7059a3773cddb 9,53-57
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_f35e98570d6579::t_9b39717a138710 15,18
+  s_f35e98570d6579::t_f0495150629cab 16,21-25
+  s_f35e98570d6579::t_54261572e5d0f4 42-44
+  s_f35e98570d6579::t_849815cd979f00 133,151
+  s_f35e98570d6579::t_179b1315aa9268 166,170
+  s_f35e98570d6579::t_07290d8fe5a734 247,279-310
+  s_f35e98570d6579::t_bf615c3af85eb0 62,64-71
+  s_f35e98570d6579::t_5cef93936817f7 12-14,26
+  s_f35e98570d6579::t_02dc2b9c096267 137-146,150
+  s_f35e98570d6579::t_c40713cf59085e 222-224,226,232,237-246
+  s_f35e98570d6579::t_fc1ba0591d5bc2 45-51
+  s_f35e98570d6579::t_c8c595d40f9e94 198,201-204
+  s_f35e98570d6579::t_df170112053f22 260-278
+  s_f35e98570d6579::t_03b44f39d43e70 469-486
+  s_6e1256df5a4e76::t_3f7b70017c18ca 248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "ecf76667196b9d76f160dec8c52b4c62bf201c58",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6e1256df5a4e76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "25424c56-9fd6-4807-8b9a-e880a7c5f9ba",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f35e98570d6579": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1c151d1f-ed33-443b-9372-01a177422d31",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

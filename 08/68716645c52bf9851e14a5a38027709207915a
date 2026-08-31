@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Elastic/Elasticsearch/Elasticsearch.node.ts
+  h_44f8d1c0f2f8c4 10-12,151,155-160
+packages/nodes-base/nodes/Elastic/Elasticsearch/descriptions/DocumentDescription.ts
+  h_44f8d1c0f2f8c4 398,405-419
+packages/nodes-base/nodes/Elastic/Elasticsearch/descriptions/placeholders.ts
+  h_44f8d1c0f2f8c4 33
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/document-getAll-queryParameters.workflow.json
+  h_44f8d1c0f2f8c4 1-69
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/document.getAll.test.ts
+  h_44f8d1c0f2f8c4 1-41
+packages/nodes-base/nodes/Elastic/Elasticsearch/types.ts
+  h_44f8d1c0f2f8c4 21
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/DocumentDescription.ts
+  h_44f8d1c0f2f8c4 626-628,631-651
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GoogleFirebaseCloudFirestore.node.ts
+  h_44f8d1c0f2f8c4 10-12,368-374,379
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/document-query-parameters.workflow.json
+  h_44f8d1c0f2f8c4 1-65
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/document.query-parameters.test.ts
+  h_44f8d1c0f2f8c4 1-48
+packages/nodes-base/nodes/MongoDb/GenericFunctions.ts
+  h_44f8d1c0f2f8c4 16,136
+packages/nodes-base/nodes/MongoDb/MongoDb.node.ts
+  h_44f8d1c0f2f8c4 22-23
+packages/nodes-base/utils/__tests__/query-parameters.test.ts
+  h_44f8d1c0f2f8c4 1-94
+packages/nodes-base/utils/query-parameters.ts
+  h_44f8d1c0f2f8c4 1-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0868716645c52bf9851e14a5a38027709207915a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

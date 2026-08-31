@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/vite/aliases.test.ts
+  s_8bbbd5448e3a00::t_f27776eccdbc20 5-11,14-44,46,52-101,103-117
+  s_8bbbd5448e3a00::t_70db76e896bc1d 12-13
+  s_8bbbd5448e3a00::t_ea86f697efc7d3 45,47-51
+  s_8bbbd5448e3a00::t_2b62c5f199cc70 1-4
+  s_8bbbd5448e3a00::t_36dc6a434f9722 102
+packages/frontend/editor-ui/vite/aliases.mts
+  s_8bbbd5448e3a00::t_19f8b333ca06c3 104
+  s_8bbbd5448e3a00::t_26728b5946c437 1-15,20-103,105
+  s_8bbbd5448e3a00::t_b3610720c5fd04 16-19
+packages/@n8n/vitest-config/package.json
+  s_8bbbd5448e3a00::t_05c4ab000a9a35 53
+  s_8bbbd5448e3a00::t_e6568671100e3a 31-35
+package.json
+  s_8bbbd5448e3a00::t_881439b39037b6 46
+  s_8bbbd5448e3a00::t_137807251d18b0 54-55
+packages/@n8n/vitest-config/bin/sync-frontend-aliases.mjs
+  s_8bbbd5448e3a00::t_bbe97d68aea264 1-82,91-171
+  s_8bbbd5448e3a00::t_78a036f4c4bcd5 83-90
+packages/@n8n/typescript-config/package.json
+  s_8bbbd5448e3a00::t_6bd30f113e8beb 9-10,17
+packages/frontend/editor-ui/vite.config.mts
+  s_8bbbd5448e3a00::t_28c7d5714aedc0 27
+  s_8bbbd5448e3a00::t_d489bb2d3db323 17
+packages/@n8n/vitest-config/frontend-aliases.ts
+  s_8bbbd5448e3a00::t_2f3fb7e612385b 1-156,158,165
+  s_8bbbd5448e3a00::t_c2dea73fd2b3b2 157,159-164
+biome.jsonc
+  s_8bbbd5448e3a00::t_fe52da24b1a52e 45-52
+packages/@n8n/typescript-config/tsconfig.frontend-module.json
+  s_8bbbd5448e3a00::t_8864d5a5569faf 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bb85e97af30fdd2faabdaedb7ed070c456da02ff",
+  "prompts": {},
+  "sessions": {
+    "s_8bbbd5448e3a00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5425f85-f308-48fc-96fa-abde9a9d1d2f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

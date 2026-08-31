@@ -1,0 +1,22 @@
+.claude/plugins/n8n/skills/qq-issue-resolution
+  ai_agent 1
+.agents/skills/qq-duty/SKILL.md
+  ai_agent 1-165
+.agents/skills/qq-issue-resolution/reference.md
+  ai_agent 1-123
+.agents/skills/qq-issue-resolution/SKILL.md
+  ai_agent 1-156
+.claude/plugins/n8n/skills/qq-duty
+  ai_agent 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "db1f7550e7c8df006003a5fa66f140ba70fa4290",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

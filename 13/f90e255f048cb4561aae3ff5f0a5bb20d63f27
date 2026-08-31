@@ -1,0 +1,1685 @@
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9,291,319
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 26-28,97,126
+packages/frontend/editor-ui/src/features/agents/components/model-selector/ModelSelectorTriggerIcon.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-14
+packages/nodes-base/nodes/Microsoft/Excel/v1/MicrosoftExcelV1.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 27,33,35
+scripts/typescript-migration/results/_n8n_codemirror-lang-html.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-41
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15-16,52,80
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-12,14-15,17,19-23,25-27,29-30,32-33,35,37-48,50-103,105-143,145
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 102-111,162,173-179,207,214,319-337,711-823
+packages/cli/src/metrics/prometheus/__tests__/scheduler-metrics.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-314
+.github/actions/setup-nodejs/safe-chain.config.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 13-15
+packages/cli/src/modules/agents/agent-vector-stores.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-213
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 8,15,22,25,38,48,51-52,62-63,830,841-857,871-884,896-1156
+packages/nodes-base/nodes/Notion/test/NotionTrigger.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,13-17,19,24,31,38-42,58,72,90,106,123,132-159,174,191
+packages/cli/src/workflow-helpers.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,564-601
+.github/workflows/test-unit-reusable.yml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 32
+packages/frontend/editor-ui/src/features/resolvers/composables/usePrivateCredentials.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6-7,15
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 80-104
+packages/@n8n/agents/src/__tests__/integration/vector-store-helpers.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-341
+packages/@n8n/scheduler/src/core/factory.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 12,21-26,68-73,101-102,165-175,177-219,221-222,235-254,256-323,325-355,427-429
+packages/core/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 26,51
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitySummary.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-205
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-272
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-99
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 78-79,96-107,314-317,382,575,628-658,877,917-918,920
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/ScoreChart.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-119
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 360-396
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 228-313
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 44-53,347-412
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 74-83,91-96
+packages/core/src/execution-engine/__tests__/workflow-execute-process-process-run-execution-data.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 232-337
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 176-200,1378-1400
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9,45-49,118,121-135,272-298,311,315-319,349-367,409,433
+packages/cli/src/modules/log-streaming.ee/__tests__/log-streaming-destination.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,15,162-214
+packages/core/src/execution-engine/node-execution-context/__tests__/supply-data-context.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 23,630-768
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/page/create.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/user/getAll.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-35
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRow/SettingsRow.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-468
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelSlackSetup.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-24,26-28,30,32-34,36,38-45,47-48,50-54,56-59
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 19-21,24-26
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,39-43,46-48,98-118,124-126,208-212,231,315,321,332,347,358,373,391,408,431
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/page/search.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/user/get.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-38
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 12-14,63-100,104,112-113,142,159-160,189,198,216-252
+packages/testing/performance/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18-19
+scripts/typescript-migration/README.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-79
+packages/frontend/editor-ui/src/features/agents/components/AgentFilesPanel.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 137-144,172,255-258,266-269,283
+packages/@n8n/instance-ai/evaluations/data/workflows/user-requests-post-build-change.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-35
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 79,121,134,158-175,182-185
+packages/@n8n/client-oauth2/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 33
+packages/@n8n/tournament/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 47
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-371
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 10-13,37,76-107
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 60,72,159-165,168,170,174-178,186,189-190,192-194,302-305,311,376-380,406,443-446,455,640-643,652
+packages/@n8n/scheduler/src/core/executor/tracing.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-39,42-45
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 8-13,21,44,60-62,161-169,176-182
+packages/@n8n/agents/src/__tests__/integration/agent-vector-store-pinecone.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-57
+.github/WORKFLOWS.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 413-414,421-434,474
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 212,425
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/programmatic.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 74-76,85-87,108-110,134-136,154-156,184-186,208-210,230-232,259-261,274-276
+packages/@n8n/instance-ai/evaluations/__tests__/bucket-from-evaluation.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-124
+packages/@n8n/scheduler/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 43
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-231
+packages/frontend/editor-ui/src/features/agents/components/EmbeddingModelSelector.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-199
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 768,784-787,924,979-980,984-991,996-1021
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsListSwitcher.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-29
+.github/workflows/ci-pr-quality.yml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 10-11,55-56,84-88,136-150,153
+packages/cli/src/telemetry/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 385-386
+packages/frontend/@n8n/design-system/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,55
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 382
+packages/frontend/@n8n/i18n/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31
+packages/@n8n/local-gateway/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40
+packages/cli/src/workflows/__tests__/workflow-finder.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-6,21,26,28,78-95
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Renderers/ItemsRenderer.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14,69-106
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.reducer.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 287-349
+packages/nodes-base/nodes/Notion/v3/actions/block/Block.resource.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-239
+packages/@n8n/agents/src/vector-stores/pinecone.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-223
+packages/nodes-base/nodes/Notion/v3/transport/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-94
+packages/@n8n/instance-ai/tsconfig.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-4
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useViewStacks.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 35,43,160-167
+packages/testing/playwright/tests/e2e/nodes/send-and-wait.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,108,110,154,177,268
+packages/nodes-base/nodes/Notion/shared/GenericFunctions.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 21,486-490,492-493,505,507-510,512-515,520,523,672-674,678,680,683-685,689,693-695,704-711,944-946,949-951,953
+packages/testing/playwright/tests/e2e/nodes/webhook.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 213-226
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSection/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2
+scripts/typescript-migration/results/_n8n_agents.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-56
+packages/testing/playwright/composables/DataTablesComposer.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 29,31,40
+packages/core/src/execution-engine/workflow-execute.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 60,1685-1694
+packages/@n8n/syslog-client/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 32
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowConfigure/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2
+packages/@n8n/typeorm/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 87
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoffCapability.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 69-71
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 55-57,412-418
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/apply-workflow-credentials.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 32-36
+packages/@n8n/instance-ai/evaluations/cli/reshape.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 35-45,57-58,70-71,139-172
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-196
+packages/@n8n/api-types/src/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 304,369
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 478-492
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-706
+packages/@n8n/ai-workflow-builder.ee/tsconfig.build.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/CategoryItem.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 35
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 26-28,42-49,51-55,58-62,179-181,185,460,499,559,580,598,618,653,698
+packages/@n8n/ai-node-sdk/tsconfig.build.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/no-forbidden-lifecycle-scripts.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 43
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9-12
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareData.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2,4-5,7-9,11-22,24-28,30-32,34-40,43-49,51-67,69-75,78-84,86-101,103-111,113-123,125-131,134-140,142-151
+packages/@n8n/agents/src/__tests__/integration/qdrant-vector-store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-287
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiMcp.telemetry.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2,7-8,13-37
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,10,12-18,31,33,38,43,56-70,87-101,105,114-119,124-129,131-134,136-150,152-165,168-169,171-175,178-179,181-186,189-193,195-197,199-203,205-207,209-213,215-217,219-220,222,224-229,231-255,258-322,325-353,355-359,361-379,382-383,385-388,390-435
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-147
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiChannelSetup.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-331
+packages/@n8n/instance-ai/src/tools/agent-builder/creation-tools.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-4,10,20-23,26-27,31-41,60-62,65-67,79,99,104-106,118,141-142,150,171-175,179,195,202-218,238
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 101-168
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 16,27,45,57,64,75-89,105,115-119,121-129,151,193,199,205,348-359,488-498,631-633,653,752-780,804-806,820-851,963-965,1008,1058,1073,1108-1116,1119-1120,1122,1126-1127,1132-1133,1135,1139-1147,1154-1165,1167,1169-1173,1239,1275,1287,1322-1324,1329,1336,1355,1357-1360,1363-1370
+packages/nodes-base/nodes/Notion/v3/actions/database/Database.resource.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-72
+packages/@n8n/cli/docs/commands/package.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40,52
+packages/@n8n/scheduler/src/observability/__tests__/executor-tracing.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-172
+packages/@n8n/scheduler/src/observability/materializer-tracing.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-38
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,27,35,262-270,323-328
+packages/testing/playwright/tests/e2e/building-blocks/workflow-entry-points.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31,42-43
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/UngroupedRunRow.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-155
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 158-160
+packages/@n8n/scheduler/src/core/materializer/transaction.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18-35,63-64,66
+packages/@n8n/api-types/src/agents/types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 140-188
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,6,8-9,39-40,50-159
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSaveBar/SettingsSaveBar.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-256
+packages/nodes-base/nodes/Notion/NotionTrigger.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18-55,63-64,194,200-244,262-265,272,309,324-327
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 86-109,119-126,129,132,141,181-196,340-360,419,484-489
+packages/cli/src/modules/agents/json-config/__tests__/vector-store-factory.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-397
+packages/cli/src/services/folder-finder.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 25-33
+packages/workflow/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40,64
+scripts/typescript-migration/add-import-extensions.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-176
+packages/@n8n/ai-utilities/src/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5-8
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-163
+packages/@n8n/agents/src/__tests__/integration/agent-vector-store-qdrant.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-60
+packages/nodes-base/nodes/Notion/v1/NotionV1.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18,298
+packages/@n8n/scheduler/src/core/materializer/materialize.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6-12,21-26,97,105,107,109,118-119
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1159
+packages/nodes-base/nodes/Notion/Notion.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,17,25
+.github/workflows/community-pr-close-stale.yml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-55
+packages/@n8n/instance-ai/evaluations/data/workflows/user-self-corrects.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-3,5-6,9-14,16-25,27-30,33-39
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,11-15,17,20-23,68-74,94-142,147,149-187
+packages/@n8n/backend-network/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 86
+packages/frontend/editor-ui/src/features/agents/agents.eventBus.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-9,11-12
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40-41,49,174-175,181,194-195,203,205-206,229-235,237,239
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 24,769-773,816-820,921-925
+packages/workflow/src/interfaces.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1690-1691,2073-2083,3079-3084
+packages/@n8n/instance-ai/skills/planned-task-runtime/SKILL.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22-23,80-81,91-92
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSection/SettingsSection.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-106
+packages/nodes-base/nodes/Notion/v3/actions/databasePage/DataSourceFilters.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-549
+scripts/mutation-health/pick-next.test.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 111
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner-langsmith.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 121,161,212,260,316,359,407,460,510,569,633,675,717
+packages/frontend/editor-ui/src/features/resolvers/composables/usePrivateCredentials.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 10,25-26,30-31
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31,36,39,43
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/SettingsLayout.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-115
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.api.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-143
+packages/@n8n/agents/tsconfig.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/@n8n/instance-ai/evaluations/__tests__/fetch-baseline.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5-10,79-269
+packages/@n8n/computer-use/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 64
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9-10,42-50,95,189-191,193-198,209,215-227,235,238-248,250-259,262-267
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1473-1579
+packages/cli/src/services/project.service.ee.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 718-726
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 56-66
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-385
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 124-127
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11-14,65,119-136
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 39,57,148-153,225,245,249,343-345
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useResourceLocatorModes.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 10-15,17,38,47
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-215
+packages/@n8n/ai-node-sdk/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40
+packages/@n8n/scheduler/src/core/executor/precision-timer.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 37-41
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 512-516
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpServer.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 578-580,588-611,691-884
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,169-170,172,726,741,754,767,780,795,945-987,990,994-996,1002-1003,1061-1083,1159-1161,1179-1180,1202-1215,1222-1224,1227-1233,1328-1333
+packages/nodes-base/nodes/Notion/v3/actions/databasePage/DatabasePage.resource.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-7,9-35,37-38,40-61,63-67,70-71,73-80,83-84,87-88,90-92,95-99,102-103,106-107,109-110,113-125,127-339,341-356,360-365,367-447,449-458,460-470,472-475,477-491,493-518,520-538,540-566,568-596,598-618,620-658,660-695
+packages/frontend/@n8n/design-system/src/components/N8nSettingsPageHeader/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2
+packages/nodes-base/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 27,922
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.module.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9-10
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/AiInsightsCard.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-121
+packages/@n8n/ai-node-sdk/tsconfig.build.cjs.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocator.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 60-63,168-169,197-198,282-297
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/helpers/mock-mcp-sdk.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14-16
+packages/nodes-base/nodes/DynamicCredentialCheck/DynamicCredentialCheck.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 17
+pnpm-lock.yaml
+  ai_agent 150-155,519-521,670-673,993-1001,1005-1007,1020-1028,1037,1054-1056,1068,1101,1154-1156,1165,1225,1286,1290-1292,1301,1333-1335,1409-1411,1494-1496,1546-1548,1577-1579,1596-1598,1618-1620,1646-1648,1680-1682,1741-1743,1781-1783,1854-1856,1888-1890,1906-1908,1925-1927,2033,2078-2080,2103-2105,2143-2145,2162-2164,2227,2279,2349,2382-2384,2431-2433,2567-2569,2578,2594-2596,2646-2648,2705,2792-2794,2826-2828,2909,3080,3083,3263-3265,3288-3290,3328,3368-3370,3409,3439-3441,3515-3517,3550,3689,3722,3736-3738,3794-3796,3968-3973,3980-3985,4422-4424,4612-4614,4661-4663,4752-4754,4811,5018-5020,5086,5150,5208,5323,5581,5831-5833,6231-6233,6262,6346,6363-6365,6474-6476,6500,6522,6657-6659,10490,12460,12467,12473,12489,12496,12506,12513,12519-12638,12642,12909,12917,12925,12953,13000,14256,14712,14718,17409,18996,19444,19835,19862,20952,20964,20972,21001,21028,21042,21179-21194,21201-21205,21502,21580,21661,21741,21754,24654,24657,25243-25256,25261,25716,25737,25760,25925-25936,25980,25984-26001,26437,27446-27451,28516,28518,29698-29706,29735-29738,29767-29782,29826-29885,30201,30212,30262-30268,31770-31779,32204,32262,32264,32267,32271,32279-32280,33583,35087,35090-35111,35491,35506,37712-37713,37717,38055-38069,38612,38616,40001-40004,40017-40020,40259-40264,40267-40289,40658-40663,40726,40729,40733,40837-40846
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/block/getAll.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-52
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 732-734
+packages/@n8n/ai-node-sdk/tsconfig.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-4
+packages/nodes-base/nodes/Form/test/FormTriggerV2.node.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 479-585
+packages/testing/playwright/tests/e2e/workflows/templates/templates.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 233,235,237
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-314
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/page/getMarkdown.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-27
+packages/frontend/@n8n/design-system/src/components/N8nIcon/node-icon-names.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-84
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/SettingsLayout.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-170
+packages/@n8n/errors/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,26-27
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowGroup/SettingsRowGroup.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-38
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/AiInsightsCard.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-256
+packages/frontend/editor-ui/src/features/execution/logs/composables/useLogsExecutionData.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 105,148
+packages/@n8n/json-schema-to-zod/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 72
+packages/@n8n/engine/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 38
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-115
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/databasePage/getAll.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/page/archive.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/@n8n/agents/src/vector-stores/postgres.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-261
+packages/@n8n/instance-ai/evaluations/data/workflows/user-impatient.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-36
+packages/cli/src/modules/agents/agent-upload.middleware.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 23-39
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 273-280
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,1966-1969,1972-1976,2029,2031,2067
+packages/frontend/@n8n/composables/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 23
+packages/frontend/@n8n/design-system/src/components/N8nSettingsPageHeader/SettingsPageHeader.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-113
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSection/SettingsSection.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-84
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22
+packages/nodes-base/nodes/Merge/test/v3/combineBtSql.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 61-75
+packages/@n8n/agents/src/__tests__/fixtures/generate-bulk-vector-fixture.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-146
+packages/@n8n/instance-ai/evaluations/__tests__/missing-workflow-error.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-50
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 19,57,81
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 662-678
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-375
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 456-541,846-857,944-973
+packages/nodes-base/nodes/Merge/test/v3/operations.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 126-253
+packages/testing/playwright/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 86
+scripts/typescript-migration/SUMMARY.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-107
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/__snapshots__/Datatable.test.ts.snap
+  ai_agent 6
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,8,16,123-193,243,264,285-288
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 7,27-28
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/SetupCollectionWizard.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-155
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 696-698
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 105-106,110,124-127,199,202,412-417,492-496,529,715-724,728-735,942,1019
+packages/@n8n/codemirror-lang-sql/tsconfig.build.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 23-26,28,38-45,520-582,627-629,632
+packages/@n8n/chat-hub/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 29
+packages/@n8n/scheduler/src/observability/executor-tracing.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-103
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 78,189,223
+packages/frontend/@n8n/storybook/.storybook/storybook.scss
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 41-50
+packages/frontend/editor-ui/src/features/agents/__tests__/agentReturnContext.store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-22
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelLinearSetup.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 33,44,215
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 21-23,25,36-37,105,108-113
+packages/cli/src/modules/agents/agents.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-7,13-14,20,33,75-142
+packages/frontend/editor-ui/src/features/agents/utils/agentNode.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-13
+packages/@n8n/instance-ai/src/tools/agent-builder/config-tools.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2-5,24,31,45-49,52-53,69,71,84-85,93,97,107,125,132-133,145-149,151-152,154,157-158,170,179,187-188
+packages/@n8n/agents/src/__tests__/integration/evaluate.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 207
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-build-remediation.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/frontend/@n8n/design-system/src/components/N8nSettingsPageHeader/SettingsPageHeader.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-137
+packages/@n8n/instance-ai/src/parsers/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRow/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2
+packages/frontend/editor-ui/src/features/agents/__tests__/BackToWorkflowBanner.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-20
+packages/@n8n/codemirror-lang-html/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 49
+packages/@n8n/instance-ai/skills/agent-builder/references/integrations.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,17-19,22-23,27-29,31-43,47-50,56-58
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 182,184-187,562,583-584
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2-30,1221,1223,2363-2397
+packages/@n8n/vitest-config/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 12
+packages/frontend/editor-ui/src/features/agents/__tests__/EmbeddingModelSelector.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-39,41-44,46-47,49-54,56-58
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 421,440
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 44,1534-1544
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 42,783,786,792,795
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,58,106-114,145-146
+packages/@n8n/ai-utilities/src/agent-config/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRow/SettingsRow.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-555
+packages/frontend/@n8n/design-system/src/components/N8nSettingsPageHeader/SettingsPageHeader.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,3,5-14,16-19,22-25,27-28,30-42,44-57,59-70,72-82,84-94,96
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/GroupedMetricChart.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-239
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 42
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 522-525
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolDetailView.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 20-22,82-84
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/versionDescription.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 10,16,18,78
+.github/workflows/clean-stale-branches.yml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 44-46
+packages/nodes-base/nodes/Notion/v3/methods/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-4
+packages/nodes-base/nodes/Slack/V1/MessageDescription.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 207,214
+packages/testing/playwright/services/user-api-helper.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2,70-78
+packages/frontend/editor-ui/src/features/credentials/components/CredentialIcon.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 7,34-39
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9,284-308
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/dataSource/search.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 94-95
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/pairwise.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 83,92,112,130,153,172,190,224,239,253,273
+packages/@n8n/instance-ai/src/tools/evals/eval-config.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-275
+packages/nodes-base/nodes/Notion/test/NotionV3.node.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-1397
+packages/workflow/test/dynamic-credentials-helpers.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-181
+scripts/grind.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 69,72,74,76-77,79-80,83-84,88
+scripts/typescript-migration/results/_n8n_ai-workflow-builder.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-61
+packages/@n8n/ai-utilities/src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 63-70
+packages/@n8n/decorators/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 30
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 26-28,75-76,174-176
+packages/frontend/@n8n/stores/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/page/updateMarkdown.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-27
+packages/testing/playwright/tests/e2e/workflows/editor/execution/execution.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 131,154
+packages/core/src/execution-engine/node-execution-context/supply-data-context.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 53-63,286-289,330-333,387-418
+.env.eval.example
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 27-28
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40
+packages/@n8n/ai-utilities/tsconfig.build.cjs.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/cli/src/events/maps/relay.event-map.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 20,114-126
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 164-169
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 160-161
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 207,209
+packages/@n8n/instance-ai/evaluations/__tests__/aggregator.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 99-181
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 302-366,447-456,499-500,520-548
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 864-869,872-874,876
+packages/frontend/editor-ui/src/features/agents/components/AgentIntegrationCredentialConnection.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 27-32,47,62-64,87-107,109
+packages/@n8n/agents/src/sdk/tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 381-396
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18,22,89-100
+packages/@n8n/db/vite.config.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 19-20
+packages/frontend/editor-ui/src/features/agents/vector-stores.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-64
+packages/@n8n/cli/src/commands/package/import.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,49-52,76
+.github/scripts/sync-master-to-3x.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,3,5-22,25-26,28,30-32,34-35,37-40,42-45,48-52,54-57,59,61-68,72-77,79-90,92-118,121,124-144,146-147,149-152,154-158,160-163,165-171
+packages/@n8n/codemirror-lang/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 44,46,51
+packages/@n8n/agents/src/skills/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 36
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 21,57,84,118,151
+packages/frontend/@n8n/design-system/src/components/N8nIcon/Icon.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,88-99
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 223-255
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,42-50,57-58
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSection/SettingsSection.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-41
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVectorStoresModal.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-401
+packages/@n8n/typescript-config/tsconfig.build.go.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-16
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 87
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Renderers/CategorizedItemsRenderer.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 131-133
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/pagination.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 139-191
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/block/getMarkdown.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-27
+packages/@n8n/eslint-config/src/rules/no-error-instance-in-to-throw.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 8
+.github/scripts/sync-master-to-3x.test.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-142
+packages/@n8n/instance-ai/skills/agent-builder/references/target-skills.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 66-68
+packages/testing/playwright/tests/e2e/settings/environments/source-control.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 109-110,117-118
+scripts/typescript-migration/results/_n8n_codemirror-lang.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-61
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,25-28,521-530,787-793,827
+scripts/typescript-migration/results/_n8n_instance-ai.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-61
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchema.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 635
+packages/@n8n/instance-ai/src/tools/orchestration/plan.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 111-113,125-127,141-142,153,331
+packages/@n8n/backend-common/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 47
+packages/@n8n/instance-ai/src/tools/evals/__tests__/evals.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 222-226
+packages/@n8n/instance-ai/src/tools/workflows/apply-workflow-credentials.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,88-92
+packages/nodes-base/nodes/Notion/v3/helpers/utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-438
+packages/@n8n/agents/src/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 108,110-117,152,228,230-239,242
+packages/@n8n/typescript-config/tsconfig.common.go.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-26
+packages/@n8n/instance-ai/src/workspace/lazy-runtime-workspace.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22-30,59,65-70
+packages/cli/src/modules/agents/instance-ai-agent-builder.adapter.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 24,150-153,201-205
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/versionRowKey.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-10
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-compare.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-8,12,17,23-28,38,50-54,58-108,120,133,145,246,252
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40-43,56-59,83,93,103-106
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 288-313
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/dataSource/get.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/frontend/@n8n/design-system/src/components/N8nFormInputs/FormInputs.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 17,174
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,210,480-493,1475
+packages/@n8n/instance-ai/src/types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 74-75,302,641-699,964-970,1028-1029
+packages/@n8n/typescript-config/modern/tsconfig.go.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-30
+packages/@n8n/task-runner/src/js-task-runner/__tests__/require-resolver-global-modules.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 16
+packages/cli/src/modules/agents/json-config/embedding-credential.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-45
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,213
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4,12,45-50
+packages/core/src/execution-engine/node-execution-context/__tests__/shared-tests.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 401-462
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupGroupCard.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 117-118
+packages/cli/src/modules/agents/agent-vector-stores.controller.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-26
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCreate.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-102
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/SectionHeaderCreditsTag.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-48
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-123
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 39-41,49,52,55-56,111,115,118,259-261,295-302,477,720,726,780,783-785,801,1618-1677,2736-2791,3411-3418
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 60-61,541,765
+packages/nodes-base/nodes/Notion/test/v3/loadOptions.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-110
+packages/@n8n/constants/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,24-25
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 7,240-254
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/message-event-bus-destination.ee.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4,22-24,204-228
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,8-10,31,33,37-42,48-50,85
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRow/SettingsRow.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-565
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/versionPalette.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-26
+packages/@n8n/agents/src/__tests__/supabase-filter-translation.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-253
+packages/@n8n/instance-ai/src/tools/agent-builder/resolve-llm.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5-7,90
+packages/@n8n/instance-ai/src/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 177,566-570
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 27,449-452,493,524,748,838,894,909,967,1033,1090
+packages/@n8n/agents/src/__tests__/integration/agent-vector-store-supabase.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-8,11-19,21-24,26,28,30-38,40-48,50-62,64-68,70,72
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 265
+.github/DEVELOPING_V3.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-161
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4,133-148
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9,50
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-412
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,137-144
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvReferencedControls.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-269
+packages/nodes-base/nodes/Form/v2/FormTriggerV2.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 96,262-267
+packages/@n8n/typescript-config/modern/tsconfig.cjs.go.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-10
+packages/@n8n/instance-ai/evaluations/comparison/bucket-from-evaluation.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-4,7-14,17-24,26-42,44-53,55-77
+packages/@n8n/ai-utilities/src/utils/log-wrapper.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 23,25,31-61,73-76,81-82,87-88,91-93,101
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2,19,156-162
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresPanel.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-265
+packages/@n8n/codemirror-lang/tsconfig.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/frontend/@n8n/rest-api-client/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/router.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18,46-51,53-58,91-126,143-144
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 186-232
+packages/testing/playwright/pages/SidebarPage.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22-26
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-59
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvBuilderBanner.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-124
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31,41,57,59,65,342,735,754,871-878,882,895-932
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 97-98,1005,1713
+packages/cli/src/interfaces.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 190-196
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 168
+packages/@n8n/instance-ai/evaluations/__tests__/reshape.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-7,324-420
+packages/testing/playwright/tests/e2e/workflows/editor/execution/inject-previous.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 34
+packages/@n8n/instance-ai/src/tools/agent-builder/configure-channel.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-106
+scripts/typescript-migration/results/_n8n_ai-node-sdk.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-60
+packages/@n8n/scheduler/src/core/materializer/__tests__/materialize.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 45,54,59,100,108,115,134,139,189,211,220
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 241-245,542-544
+packages/frontend/editor-ui/src/features/ndv/settings/composables/useNodeSettingsParameters.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 35,125-127
+packages/testing/playwright/pages/ProjectSettingsPage.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 131-134
+.github/workflows/build-v3-nightly.yml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-46
+packages/@n8n/agents/src/__tests__/qdrant-point-id.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-55
+packages/@n8n/agents/tsconfig.build.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/@n8n/instance-ai/skills/agent-builder/references/mcp.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 30-32,98,100-101
+packages/cli/src/modules/n8n-packages/__tests__/package-failure-classifier.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-30
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSaveBar/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFilesPanel.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 88,91-93
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/DatasetPicker.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-97
+packages/frontend/editor-ui/src/features/agents/components/AgentJsonEditor.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 113
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,84-141
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-162
+packages/nodes-base/nodes/MessageAnAgent/v2/MessageAnAgentV2.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-37
+packages/@n8n/agents/src/__tests__/integration/vector-store-bulk-supabase.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-10,12-20,22-24,26,28-47,49-56,58-59
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 37-38,147-169
+packages/frontend/editor-ui/src/features/agents/agentReturnContext.store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-32
+packages/nodes-base/nodes/Notion/shared/descriptions/Blocks.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 145-182,184-204,206-211,213-216,218-220,222-229,231-232,234-248,250-262,264-267,270-281,283-286,288-293,296,298-304,306-308,310-317,319-321,323-330,332-334,336-343,345-348,350-351,407-410,448,526,530-533,539-541,548-555,557-558,562,565,568-570,576-578,585-592,594-595,602-611,613-643,645-660
+packages/nodes-base/nodes/Microsoft/Excel/MicrosoftExcel.node.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSaveBar/SettingsSaveBar.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-221
+packages/@n8n/task-runner/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 62
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/databasePage/update.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 349,363,369-397,417-418,438,442,471,667-725
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3,7,18,445-456,574-583
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ApprovalOptionList.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 118
+packages/cli/test/integration/shared/types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 76
+packages/frontend/editor-ui/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 23
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/VersionAvatar.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2,4,6-20,22,24-25,27-43,45-54,57-61,63-67,69-71,74-77,79-81,83
+packages/cli/src/modules/agents/json-config/vector-store-factory.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-162
+packages/frontend/editor-ui/src/features/agents/components/model-selector/ModelSelectorItemLeadingIcon.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-17
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 52
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9,13,271-297
+packages/testing/playwright/.janitor-baseline.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-4,59,65,71,77-83,91,99,105,111,117,123,129,135,141,147-153
+packages/cli/src/modules/agents/agents.module.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 21
+packages/@n8n/instance-ai/evaluations/build-expectations/verifier.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 42-46
+packages/@n8n/agents/src/skills/registry.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 58-88
+packages/frontend/editor-ui/src/features/agents/__tests__/agentTelemetry.utils.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 29-38,54,63-82,145-176,194
+packages/frontend/editor-ui/src/features/resolvers/ResolversView.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 120
+packages/@n8n/agents/src/vector-stores/supabase.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-256
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 589
+packages/frontend/editor-ui/src/features/ndv/settings/composables/useNodeSettingsParameters.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3,5-8,17-22,118-224
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40-41,226
+scripts/mutation-health/build-matrix.test.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 87,331-332
+packages/nodes-base/nodes/Notion/v2/NotionV2.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18,178
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/ScoreChart.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-62
+scripts/typescript-migration/benchmark.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-227
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,334-340
+packages/@n8n/crdt/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/PlanReviewPanel.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 127,279-282
+packages/workflow/src/node-helpers.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1414-1416,1547-1549
+packages/@n8n/scheduler/src/core/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22-26
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,363-389
+packages/@n8n/workflow-sdk/src/validation/test-schema-setup.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 20,23
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/buildVersionEntries.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-83
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-telemetry.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 13-14
+packages/frontend/editor-ui/src/Interface.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 567-571
+packages/@n8n/instance-ai/evaluations/comparison/fetch-baseline.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 16-17,26-33,48-49,58-61,89,91-98,107,109,130-158,162-164,166,181,184
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-422
+packages/@n8n/scheduler/src/observability/metrics.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-41
+packages/frontend/editor-ui/src/features/agents/components/model-selector/search.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-92
+packages/frontend/editor-ui/src/app/components/forms/ResourceFiltersDropdown.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 175
+packages/frontend/editor-ui/src/features/ndv/parameters/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 21-22,108-119
+packages/@n8n/config/test/config.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 253-254
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareData.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-103
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowConfigure/SettingsRowConfigure.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,3,5-11,13-16,19,21-22,24-26,28-30,32
+packages/frontend/@n8n/storybook/.storybook/preview.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 86
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 10,18,27,38,40,44,74-93,111,113,135,144,148,157,159,169,171-183,230,261,321,347,370-384,386,389-409,416-417,420,427
+packages/frontend/editor-ui/src/features/resolvers/ResolversView.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 127,138
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 203,215-227,281-299
+packages/@n8n/instance-ai/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 99
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolSettingsView.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22-24,81-83
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 523,583
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 44,46-52,1207-1425
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentView.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-113
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/GroupedMetricChart.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-53
+packages/nodes-base/nodes/Notion/test/v3/utils.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-45
+packages/@n8n/instance-ai/src/errors/workflow-save-conflict.error.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-13
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/configure-channel.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-103
+packages/frontend/@n8n/design-system/src/components/TableBase/TableBase.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-30
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderTelemetry.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 103-138
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfig.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22-35,60
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCreate.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-164
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/agent-target-binding.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-116
+packages/nodes-base/nodes/Notion/v3/actions/node.type.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-10
+packages/@n8n/agents/src/__tests__/integration/vector-store-bulk-pinecone.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2-7,9-10,12-52
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 60,87,113,139,172,199,222,262,285,305,328,361,384,404,431
+packages/@n8n/instance-ai/src/event-bus/event-bus.interface.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 48-49,51
+packages/@n8n/instance-ai/src/tools/workflows/workflow-file-bindings.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,111-173
+packages/nodes-base/nodes/Merge/v3/actions/mode/combineBySql.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 24-25,28-29,46-52,76-80,82-90,92,125-169,174,184-188,224-226,237,294
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvalCollectionsListView.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-247
+packages/testing/playwright/tests/e2e/workflows/editor/tags.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 64,69
+.github/scripts/sync-conflict-owners.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-139
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 17-19,62-64,124-126
+package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 92
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 101
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-74,76-80,82-87,89-93,95-106,108-110,112-114,116-161
+packages/frontend/editor-ui/src/features/agents/composables/useAgentScopeProjectId.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-26
+packages/cli/src/modules/n8n-packages/entities/__tests__/package-export.errors.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-5,7-12,14-18,20-29,31-32,34-40
+packages/frontend/@n8n/stores/src/constants.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 37
+packages/frontend/editor-ui/src/features/agents/styles/agent-panel.module.scss
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,3
+packages/@n8n/instance-ai/skills/agent-builder/references/target-tasks.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 84-86
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 79-104
+packages/nodes-base/nodes/Notion/test/v3/transport.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-27
+packages/testing/playwright/pages/VersionsPage.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11-14
+packages/testing/playwright/tests/e2e/auth/password-reset.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 12
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/IconContent.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,54
+packages/@n8n/instance-ai/src/tools/agent-builder/agent-target-binding.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-8,10-11,13,15-18,20,22,24-32,34-43,45-53,55-57,59-82
+packages/@n8n/agents/src/__tests__/integration/agent-vector-store-postgres.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-51
+packages/cli/src/modules/mcp/__tests__/skills-used.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 59-91
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 72
+packages/@n8n/agents/src/__tests__/integration/pg-vector-store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-288
+packages/@n8n/instance-ai/src/workspace/__tests__/lazy-runtime-workspace.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 8-11,94-98
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 109-113
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 179-185
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2,135-136,140-152,447-454,457,460-462,477-516,591-598,613,676
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationKinds.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9,12-14,22
+packages/@n8n/agents/src/__tests__/fixtures/bulk-vector-fixture.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-6413
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 8-9,15,18,48,67,78,181-295
+packages/testing/playwright/pages/ChatHubPersonalAgentsPage.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,36-39
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 41-42,48,62,195,329,410
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 98-116
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 13-42,45-51,60,85,112,238
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-4,239-491
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,9-10,30,42,44,46,75-98
+packages/@n8n/agents/src/sdk/agent.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,263-270,733-745
+packages/@n8n/agents/src/__tests__/integration/step-checkpoint-crash-resume.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-220
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/ChatTrigger.node.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 8-9,301-388
+packages/@n8n/instance-ai/evaluations/data/workflows/user-gives-wrong-answer.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-36
+packages/cli/src/modules/agents/__tests__/agent-vector-stores.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-228
+packages/cli/src/modules/mcp/tools/workflow-builder/skills-used.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5-12,22
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 428
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 398-460,1399,1428,1456-1470
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 13,1077,1102,1125,1148,1167,1452,1474-1475,1481-1482,1486,1507-1508,1514-1515,1670-1672,1676,1703-1745,1787-1788,1914-1915,1962-2135,2290-2320
+packages/@n8n/api-types/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 30
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowGroup/SettingsRowGroup.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-35,38-59
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-59,61-66,70-244,246-249
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1236,1238-1239,1323,1422
+packages/@n8n/scheduler/src/observability/tracer.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-48
+packages/frontend/editor-ui/src/features/agents/views/AgentView.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4-8,12-24,29-45,50
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 26,60,412-439,448,461,499-501
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialTypeSelector.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3,33,49-52,56,58,62,66-67,74-77,81,83,87,91-92
+packages/testing/playwright/tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 90
+packages/workflow/src/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14
+packages/@n8n/backend-network/src/http/fake-outbound-http.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 109-111,123
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 252-253,278-279
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4-8,11,33-50,52,60,70,105,125,143-147,149-190,200,252,276,298,323,335,352,373,384,400,424-449,457,485,497-530
+packages/@n8n/extension-sdk/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 42,54
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/MessageFormatter.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5-16,103-132
+packages/@n8n/ai-utilities/src/agent-config/__tests__/model-id.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-43
+packages/@n8n/permissions/src/scope-information.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 99
+packages/cli/src/modules/agents/__tests__/agent-upload.middleware.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-4,21-41
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 79-92
+packages/@n8n/scheduler/src/core/scheduler.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 40,46,49,52
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowGroup/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2
+packages/@n8n/instance-ai/src/tools/agent-builder/router.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 17-18,24,43,52,101-103,105
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.reducer.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 160,259-263,276,291
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useResourceLocatorModes.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-18,20-60
+packages/frontend/editor-ui/src/features/ndv/parameters/utils/fromAIOverride.utils.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 10-11,13,341-520
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14,79,83-88
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-287
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/block/append.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-5,7-8,10-25,27-32,34-35
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 63,265
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2462-2483
+packages/nodes-base/nodes/Slack/V2/MessageDescription.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 688,695
+packages/testing/playwright/tests/e2e/ai/langchain-vectorstores.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 25-28
+packages/cli/src/modules/n8n-packages/entities/package-export.errors.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-41
+packages/workflow/test/node-helpers.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4399-4444
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelTelegramSetup.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31,42,99
+packages/nodes-base/nodes/Notion/v3/NotionV3.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-27
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 121-150
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,27-28,30-35,38,45,49-53,57,68
+packages/@n8n/ai-workflow-builder.ee/evaluations/harness/evaluation-helpers.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 16-18
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,60-65
+packages/cli/src/workflow-execute-additional-data.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 45-46,581-595,609-610,618-631
+packages/frontend/@n8n/design-system/src/components/N8nIcon/node-icons.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,164
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 618-686
+packages/frontend/@n8n/design-system/src/components/N8nFormInputs/FormInputs.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 7,442-490
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 269-464
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 236-245,444
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 23,25,360-366
+packages/cli/test/integration/database/repositories/workflow.repository.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 44
+packages/@n8n/instance-ai/src/tools/agent-builder/build-agent.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-74
+packages/nodes-base/nodes/Notion/v3/actions/dataSource/DataSource.resource.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-143
+packages/testing/playwright/tests/e2e/app-config/security-notifications.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 188
+packages/testing/playwright/tests/e2e/sharing/access-control.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 109
+packages/@n8n/agents/src/types/sdk/vector-store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,3-7,9-14,16-21,23-28,30,32,34-37,40-49
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 13-17,1328-1404
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvalCollectionsListView.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-187
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/similarity.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 51,58,79,101,123,145,175,216,239,263,288
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 85-88
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentNavigation.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-66
+packages/@n8n/typescript-config/tsconfig.backend.go.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-6
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/GatewayResourceDecision.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 132
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 616-617
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,30,51,71,122,124,130,135-147,150,156-167
+packages/nodes-base/credentials/GoogleBigQueryOAuth2Api.credentials.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 20-49,54
+packages/testing/janitor/src/cli/help.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 242,260
+scripts/typescript-migration/results/_n8n_codemirror-lang-sql.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-7
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2554-2576
+packages/@n8n/agents/src/runtime/state/run-state.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 52-70
+packages/@n8n/instance-ai/evaluations/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 55-57,61-64,69
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 35-38,48-49,57,211,214,265,292-294,370-375
+pnpm-workspace.yaml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 61-62,217-218,272-273
+packages/@n8n/workflow-sdk/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 97
+packages/@n8n/agents/src/sdk/__tests__/vector-store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-435
+packages/@n8n/ai-utilities/src/utils/loaders/n8n-pdf-loader.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 37
+packages/@n8n/cli/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 84
+packages/cli/src/constants.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 121
+packages/cli/src/modules/agents/json-config/__tests__/embedding-credential.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-58
+packages/frontend/editor-ui/src/app/components/BottomMenu.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,55
+packages/testing/playwright/tests/e2e/workflows/editor/execution/logs.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 262-265,285
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  ai_agent 4,50,59-60,62,75
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/cli.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 188,233,257,276,296,310,324,344,358,372,391,406,427,447,455,463,477,490,500,521,539,558,582,607,624
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 105,111
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/discovery-subgraph.integration.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 188
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 38,244-304,350-362,434,471-472,474-478
+packages/@n8n/scheduler/src/core/executor/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2-3
+packages/@n8n/cli/src/client.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 17
+packages/frontend/editor-ui/src/features/ndv/parameters/utils/fromAIOverride.utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4-6,153-156,164,182-243
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,108-116
+packages/@n8n/ai-utilities/tsconfig.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-4,9-15
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2,5-7,11,16-35,295,301,329,788-1263
+.github/workflows/util-sync-master-to-3x.yml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-9,11,13-16,18-21,23-24,26-47,49-54,56-60,62-105
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 109-129
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 56,66,1457,1498
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 142,225-227,322-325,372
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 101,152,166-221
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsViewV2.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 7,11-14,75-80,513-516
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiChannelSetup.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-320
+packages/@n8n/agents/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18-29,50-65,87-88,121-124,139-150,156-158,160,165-167
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 124-125
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useResourceLocatorDropdown.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4-8
+packages/nodes-base/nodes/MessageAnAgent/v1/MessageAnAgentV1.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-8,10,12-13,15-59,61-71,73-76,78-80,82-85,87,91-92,94
+packages/nodes-base/nodes/Notion/v3/methods/loadOptions.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-188
+packages/@n8n/mcp-browser-extension/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 32
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 30-34,1047-1051,1071-1075,1124-1128,1157-1161,1181-1185,1214-1218,1254-1258,1298-1301
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-8,278
+packages/frontend/editor-ui/src/app/router.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 101-102,105-106,394,403-406
+packages/nodes-base/nodes/Notion/v3/actions/common.descriptions.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,3-13,15-21,23-40,43-59,61-70,72-92,94-99,102-118,121-130,132-151,153-176,178-181,185-188,191-267,269-271,273-274,276-281,284-285,287-289,294-325
+.github/scripts/docker/docker-tags.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 12,45-58,75-77,84,89,125,142
+packages/@n8n/agents/src/__tests__/integration/supabase-vector-store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-288
+packages/@n8n/db/src/migrations/common/1784000000044-AddPartialIndexForGlobalCredentials.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-28
+packages/@n8n/instance-ai/evaluations/comparison/compare.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4-8,26-29,31-32,40,42,44,47,51-63,65-75,82-87,111-113,135-136,140-141,145-146,149-150,163,174-178,190-192,199-200,203,205,222-223,225,234-235,237,239,245,253,261,358,368,374-375
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14,52-57
+packages/@n8n/instance-ai/src/tools/evals/evals.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 29,532-541
+packages/extensions/insights/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 41,57
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowConfigure/SettingsRowConfigure.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-12,14,16-19,21-26,28-29,31-35,38-40,43-45,47
+packages/@n8n/mcp-browser/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 49
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-18
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 35,42,762-763,813-823,825,840-841,844-846,848-849,853-857,866,896,911-912,922,941-942,979-984,1261-1263,1634,1643
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 13,72-107,131-132,140,151,153,160-170,173-181,183,365-412
+packages/@n8n/instance-ai/evaluations/README.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 162,287,316,318
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/create-agent.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 19,51-56,59-64,90-117
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/plan.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 263
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-5,8-9,11-30,33-49,53-55,57-59,61-62
+packages/frontend/@n8n/chat/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14,69
+packages/@n8n/instance-ai/src/tools/n8n-docs.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 190
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-254
+packages/@n8n/scheduler/src/core/lifecycle/loop.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 8-13,175
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/databasePage/create.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/cli/src/modules/n8n-packages/__tests__/utils/import-package-upload.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 108
+packages/@n8n/instance-ai/docs/tools.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 17-18,684-693,708-709,713,715,718,724-728,730-738,742-743,762-763
+packages/@n8n/scheduler/src/core/materializer/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14-15
+packages/nodes-base/nodes/Notion/v3/methods/listSearch.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-90
+packages/nodes-base/nodes/Notion/v3/actions/page/Page.resource.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-339
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 25,249-295
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/config-tools.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,28
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 622-632
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 394-424
+packages/@n8n/ai-utilities/src/agent-config/model-id.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6-20
+packages/@n8n/instance-ai/src/tools/agent-builder/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 7-13,17,43
+packages/@n8n/instance-ai/src/tools/agent-builder/mcp-tools.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 37-38
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3,20-24,30-73,79-86,91-94,102-103,130-204,279-280,283,287-310,348-359,363,374,382-405,412-413,418,422,426-427,433,439-440,448,451,458,462-465,467-469,474-477,482-507
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSaveBar/SettingsSaveBar.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-135
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 220,443
+packages/frontend/editor-ui/src/features/agents/composables/agentTelemetry.utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 11,60-62,74,86
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-262
+packages/testing/janitor/src/core/test-scoped-runner.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,57
+packages/frontend/@n8n/design-system/src/components/N8nIcon/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 4-10
+packages/@n8n/agents/src/__tests__/integration/vector-store-bulk-postgres.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-46
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 17-18
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31,42,49,133-217,234-244,389-433,457-461
+packages/@n8n/instance-ai/evaluations/harness/in-memory-event-bus.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 44-45
+packages/@n8n/agents/src/sdk/vector-store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-192
+packages/cli/src/modules/source-control.ee/constants.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 23
+packages/@n8n/agents/src/vector-stores/qdrant.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-188
+packages/@n8n/nodes-langchain/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 231,288-289
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 207,232,616
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/Examples.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2142
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 62,70,77,80,82,87-89,149-167
+packages/@n8n/instance-ai/tsconfig.build.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Renderers/ItemsRenderer.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14,164-166
+packages/@n8n/agents/src/__tests__/pinecone-filter-translation.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-311
+packages/testing/playwright/tests/e2e/sharing/workflow-sharing.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 124
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-71
+packages/@n8n/benchmark/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,47-48
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 49-52,57-58,451-539
+packages/node-dev/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 45
+packages/@n8n/instance-ai/src/__tests__/index.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 192,209
+packages/@n8n/instance-ai/src/tools/evals/__tests__/eval-config.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,3-9,11,13,15-19,21,23-38,41-43,45-82,85-249
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3,16-24,34-57,63,66,72-80,83-96,100-103,105-134,137-203,206-207,209,217-235,240-241,247-250,259-261,265-269,271,284-288,296,300,302-313,316-328,335-337,339-350,353-354,358-360
+packages/@n8n/agents/src/types/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 106-116
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 13-16,650-761,1040,1053-1065,1085-1097
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 24,608-611,641-642,650,697-712,719
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitySummary.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-138
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 35,39,48,100-102
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-442
+packages/nodes-base/nodes/Merge/v3/helpers/sandbox-utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 138,141,150,156-160,168,175,182
+packages/@n8n/instance-ai/src/tools/agent-builder/create-agent.tool.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-6,11,19-23,48-55
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/buildVersionEntries.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-22
+scripts/mutation-health/pick-next.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 121-122,127-128
+.github/scripts/sync-conflict-owners.test.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-81
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 29,2011,2049,2120-2131
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSaveBar/__snapshots__/SettingsSaveBar.test.ts.snap
+  ai_agent 1-15
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 128
+packages/@n8n/imap/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 37
+packages/testing/playwright/pages/components/ResourceCards.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 30-33
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 71-73,100,198,223-226,281,324-325
+.github/workflows/docker-build-push.yml
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 32-41,65,69-76,109-111,116,130-132,134-138,143-144,239-242,281-287,292-293,328-342
+packages/@n8n/instance-ai/evaluations/__tests__/workspace-tool-contract.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3,36-72
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,72-79,162,191
+packages/@n8n/instance-ai/skills/agent-builder/references/sub-agents.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 49-51,53,61,63
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-file-bindings.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3,5-6,40-147
+packages/@n8n/agents/src/__tests__/integration/pinecone-vector-store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-262
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/build-agent.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-232
+packages/@n8n/agents/src/__tests__/integration/vector-store-bulk-qdrant.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-56
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/__tests__/MessageFormatter.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 348-375
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-5,8-9,11-29
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 117-140,309-321,333-334
+docs/generated/sqlite-schema/credentials_entity.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 42
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowGroup/SettingsRowGroup.stories.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-104
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 26
+scripts/typescript-migration/summarize.mjs
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-125
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/llm-judge.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 68,77,94,143,167,181
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 47-85
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 37
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-remediation.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2,52-59,64-67
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionsCard.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2,41,43,46-47,49,51-52,56-64,99-107,112-124,138,198-246
+packages/@n8n/ai-workflow-builder.ee/src/llm-config.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2,4-5,27-29,44-46,65-67,91-93,113-115,146-148
+packages/nodes-base/nodes/Microsoft/Excel/MicrosoftExcel.node.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 10,15
+packages/frontend/editor-ui/src/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 64
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ArtifactCard.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9,22-25,30,35-42,52,58-64
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 349,364
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/databasePage/get.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/workflow/src/dynamic-credentials-helpers.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-123
+packages/@n8n/backend-test-utils/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,39-40
+packages/@n8n/scheduler/src/observability/pass-tracing.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-48
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-364
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-gate.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 420-424,429-433
+packages/@n8n/scheduler/src/core/lifecycle/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1
+packages/@n8n/permissions/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 32
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 6,806,813,819-823,860-986
+packages/@n8n/di/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 31
+packages/cli/src/modules/n8n-packages/package-failure-classifier.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-30
+packages/@n8n/codemirror-lang-sql/tsconfig.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/nodes-base/nodes/Notion/v3/VersionDescription.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2,4-9,11-25,27-33,36-42,45,47-50,52-57,60-73,76-100,102-103,106,108-113,115
+packages/frontend/editor-ui/src/features/credentials/components/CredentialIcon.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 135-152
+packages/@n8n/db/src/repositories/index.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 45
+packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18-19,601,608
+packages/testing/playwright/tests/e2e/data-tables/tables.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 59,143
+packages/@n8n/api-types/src/agents/dto.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5,237-246
+packages/@n8n/instance-ai/src/tools/agent-builder/__tests__/resolve-llm.tool.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 18
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.eval-config.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-187
+packages/cli/src/load-nodes-and-credentials.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 458
+packages/testing/playwright/services/source-control-api-helper.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 37-46
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 98-103
+packages/@n8n/ai-utilities/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 72-76,120
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/lifecycle.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 52,65,85,111,144,155,165,176,189,200,231,268,305,354,383,403,415,424,454,474,492,502,529,551,586,620,650,678,702,718,735,754,771,795,819
+packages/@n8n/instance-ai/skills/agent-builder/references/resource-locators.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 15,70,76-77
+packages/testing/playwright/tests/e2e/workflows/editor/canvas/node-groups.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 27,250,280,298,348,370
+packages/@n8n/scheduler/src/observability/attributes.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-2,4-5,7-26,28-44,46-60
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.api.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 25-27
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 16-18,22,98-103,167,182,195-199,216,379-381,430-431,437
+packages/@n8n/agents/src/runtime/__tests__/crash-resume.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-349
+packages/@n8n/ai-utilities/src/utils/lazy-import.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-17
+packages/cli/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 27,29,120,181-182,185-186
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 46-47,151,159,164-176
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 148-166
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.types.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-26
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.utils.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 343
+scripts/typescript-migration/results/_n8n_ai-utilities.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-61
+packages/cli/src/modules/agents/agent-knowledge.controller.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14-18,68
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 51
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 54-66
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 43-45,243-245,260-262,332-334
+packages/@n8n/ai-workflow-builder.ee/tsconfig.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3-4
+packages/@n8n/codemirror-lang-sql/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 53
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 229-230
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination.ee.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 45-48,71-72,106
+packages/cli/src/scaling/job-processor.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 36-37,386,389-404
+packages/@n8n/agents/src/sdk/vector-store-filter.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-105
+packages/@n8n/agents/src/storage/base-vector-store.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-32
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 36-40,43-45,153-159
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 195
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-builder.adapter.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 9,198-214,216-217
+packages/@n8n/instance-ai/evaluations/comparison/format.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 20,23,25,29,31,131-173,228,232,243,253,592,594-598,606,609,615-616,620,623,626,628,641-642,645-646,648,655-656,659,778-780,782,785,787,789,795-796,800-802,925-937,978,980,983-986,988-989,1051,1059,1064,1069,1161,1176-1177,1296-1300,1307,1310,1317,1326
+packages/@n8n/codemirror-lang/tsconfig.build.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 2
+packages/frontend/@n8n/design-system/src/components/N8nSettingsRowConfigure/SettingsRowConfigure.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-28
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 294-299,313,397,405,471,1052-1205
+packages/frontend/editor-ui/src/features/agents/components/BackToWorkflowBanner.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-60
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/SetupCollectionWizard.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-528
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 70-85,213-233
+packages/frontend/editor-ui/src/features/agents/components/model-selector/menuItemId.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-19
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 22-23,145-165
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/VersionsTable.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-197
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 5-6,11,38-40,42-50,57,59,198,200,210,214,216,267,271,273,305,309,311,342,344,363,367-540
+.github/CLAUDE.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 12
+packages/testing/janitor/README.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 214,228,231
+packages/frontend/@n8n/design-system/src/components/TableBase/TableBase.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-31,35
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/VersionsTable.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-286
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 14,48,538-547,601-603,653
+packages/nodes-base/nodes/Notion/v3/actions/router.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-37
+packages/frontend/@n8n/design-system/src/components/N8nSettingsSaveBar/quickSaveNotification.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-19
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolCredentialPicker.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 24-26,62,81,83-87,185,197
+packages/nodes-base/credentials/test/GoogleBigQueryOAuth2Api.credentials.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-139
+packages/nodes-base/nodes/Notion/__schema__/v3.0.0/database/get.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-15
+packages/nodes-base/nodes/Notion/test/v3/listSearch.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-60
+packages/testing/playwright/tests/e2e/projects/projects.spec.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 111,188,193,233,270
+packages/@n8n/cli/README.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 7,29-35,246-342
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 288
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 766-802
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-170
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 135,140,144,164,172,180,182
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 745,819,845
+packages/@n8n/instance-ai/evaluations/harness/runner.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 128-172,753
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useEvalCollectionsFlag.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-21
+packages/@n8n/config/package.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 35
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolCredentialPicker.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 93-125
+packages/nodes-base/nodes/Notion/v3/actions/user/User.resource.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-78
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1008,1051,2116,5461-5475,5647-5732,6762,6922,6931-6932,6954-6993
+packages/testing/playwright/services/workflow-api-helper.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 212-220
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-format.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 3,6,25,28,32-37,434,440,659,665,675-713,793-808
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/SettingsLayout.test.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1-104
+AGENTS.md
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 25-27
+packages/cli/src/modules/agents/agents.controller.ts
+  s_c8a607d5f9da0e::t_b6b70f56e4ee23 1,75-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "13f90e255f048cb4561aae3ff5f0a5bb20d63f27",
+  "prompts": {},
+  "sessions": {
+    "s_c8a607d5f9da0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c297e62-ce10-4935-b40b-a092bee917aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

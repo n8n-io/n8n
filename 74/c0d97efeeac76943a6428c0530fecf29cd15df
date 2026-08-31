@@ -1,0 +1,31 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_8066436d27ed40::t_c94e4fbcd9d61d 81
+  s_8066436d27ed40::t_532db562ddd022 46,60-62
+  s_8066436d27ed40::t_903aef243f9c4d 271-296
+packages/cli/src/workflows/workflow.service.ts
+  s_8066436d27ed40::t_39f6f1ab7c5037 214-234
+  s_8066436d27ed40::t_7d4153f676e1cf 154-157
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_8066436d27ed40::t_39836a103d04a8 923,929,931
+  s_8066436d27ed40::t_95ec7e48fe0b50 957-961
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_8066436d27ed40::t_be71e2ff7f5495 1826-1838,1851-1852,1854
+  s_8066436d27ed40::t_4adb4dcd58a14a 1856-1888
+  s_8066436d27ed40::t_2121268b7f3d67 1811-1825,1839-1850,1853,1855
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "74c0d97efeeac76943a6428c0530fecf29cd15df",
+  "prompts": {},
+  "sessions": {
+    "s_8066436d27ed40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fac878d-07e7-4d8a-be0e-5c9f49c6dc8f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

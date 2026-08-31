@@ -1,0 +1,83 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/deleteTable.operation.ts
+  s_37e451fff42af7::t_41817a35bf6220 5,7,9
+  s_37e451fff42af7::t_26b0874c52099c 28,31
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/addTable.operation.ts
+  s_37e451fff42af7::t_20ff849884da2b 10,12
+  s_37e451fff42af7::t_babf4b78446ebb 76,79
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getRows.operation.ts
+  s_37e451fff42af7::t_036caae0616c5c 10,12
+  s_37e451fff42af7::t_32410556397a25 120,123
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/common.descriptions.test.ts
+  s_37e451fff42af7::t_320b2d73fafc11 22-25
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/getAll.operation.ts
+  s_37e451fff42af7::t_6ad2032e2401fd 10,12
+  s_37e451fff42af7::t_418c6aef754197 77,80
+packages/nodes-base/nodes/Microsoft/Excel/v2/helpers/utils.ts
+  s_37e451fff42af7::t_4f1e4914450634 11-17,19-27
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/update.operation.ts
+  s_37e451fff42af7::t_41133bd8cebc24 256,259
+  s_37e451fff42af7::t_cd0371051f7f4b 14,20
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/getAll.operation.ts
+  s_37e451fff42af7::t_047c40d70dc6e0 7,11-13,66-76,85-93,95-111,113-123,125-127,129-134
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/upsert.operation.ts
+  s_37e451fff42af7::t_35b2713adab6a0 15,21
+  s_37e451fff42af7::t_1ea9cd0d5ebea6 208,211
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/deleteWorksheet.operation.ts
+  s_37e451fff42af7::t_7be72042f1248a 5,7,9
+  s_37e451fff42af7::t_183e7194529632 28,31
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/append.operation.ts
+  s_37e451fff42af7::t_1efb1ccde58352 12,14
+  s_37e451fff42af7::t_74565f955818e6 148,151
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/append.operation.ts
+  s_37e451fff42af7::t_e1d5a773debe03 162,165
+  s_37e451fff42af7::t_27ac68b3b8ee1f 11,13
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/lookup.operation.ts
+  s_37e451fff42af7::t_8e5878217068f4 12,14
+  s_37e451fff42af7::t_f662ffc4592a72 76,79
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/convertToRange.operation.ts
+  s_37e451fff42af7::t_f675829d5e95a7 33,36
+  s_37e451fff42af7::t_c769a2fd566e3a 10,12,14
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/addWorksheet.operation.ts
+  s_37e451fff42af7::t_0025732c0b15ee 53,56
+  s_37e451fff42af7::t_eed3d4717bde4e 10,12
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/common.descriptions.ts
+  s_37e451fff42af7::t_253926400cbce6 27-30,32
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/deleteWorkbook.operation.ts
+  s_37e451fff42af7::t_3f4d03c2963427 28,31
+  s_37e451fff42af7::t_9d3d053a7bc199 6,8,10
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/listSearch.test.ts
+  s_37e451fff42af7::t_f53e5c43e8a540 4,11-37,46,52-58,62-70,73-86,88-93,97,102-103,110,117-118,125
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/workbook/getAll.test.ts
+  s_37e451fff42af7::t_aa2db2d07f036b 7-8,12-34
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/clear.operation.ts
+  s_37e451fff42af7::t_88b81c8f0ef7da 5,7
+  s_37e451fff42af7::t_8514e7b45e9b6c 75,78
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/readRows.operation.ts
+  s_37e451fff42af7::t_9fb9f3c5f74750 135,138
+  s_37e451fff42af7::t_9e238a13afd7c9 11,13
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_37e451fff42af7::t_ca9e00b77fa890 28-33
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/listSearch.ts
+  s_37e451fff42af7::t_214204bc113d5a 8,11-21,27-28,30-32,34-37,39-42,44-61,63-67,71,74,82,89,92,114,125,128,141
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/loadOptions.ts
+  s_37e451fff42af7::t_344e939042f46b 3,9-11,24,37,65-67,80
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getColumns.operation.ts
+  s_37e451fff42af7::t_3aa996b8207798 10,12
+  s_37e451fff42af7::t_624142bd0770e7 103,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "c0877ca249b7bfe7d3419a8b8d39e2fcbc2927b6",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

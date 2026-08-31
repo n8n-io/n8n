@@ -1,0 +1,21 @@
+packages/cli/src/workflows/triggers/enabled-trigger-nodes.ts
+  s_f0e6264a74d006::t_8b9fc837836d5a 1,6-14
+  s_f0e6264a74d006::t_75d6763f1d3857 43
+  s_f0e6264a74d006::t_e7d0a3b358c02d 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3ea8dc55745a640c4cdbecd345a4aed32b2762ec",
+  "prompts": {},
+  "sessions": {
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

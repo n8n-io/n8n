@@ -1,0 +1,25 @@
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_ca288cc23669db::t_bcce2e63343057 2,11-44,137,141,143-144
+  s_ca288cc23669db::t_89c077ddd5c288 142,145
+  s_ca288cc23669db::t_3a51c556740883 45-76,147
+  s_ca288cc23669db::t_fba33af362873e 4
+  s_ca288cc23669db::t_8a2dc994ba162d 146
+packages/frontend/@n8n/design-system/package.json
+  s_ca288cc23669db::t_09f411ccd73317 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5edef85a1281bf47bc59d28a5a87906a98aa278f",
+  "prompts": {},
+  "sessions": {
+    "s_ca288cc23669db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b2b093a-da40-458d-b266-ec1d70ed5291",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/GroupedMetricChart.test.ts
+  s_5d6be4e6bc70a6::t_76d241d0101f96 1-50,52-53
+  s_5d6be4e6bc70a6::t_47a7b45c0dbb03 51
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_5d6be4e6bc70a6::t_9ec7c1153bd6dd 1-6,8-17,19,40-52,54-111
+  s_5d6be4e6bc70a6::t_9e8ec6cca0c7b5 7
+  s_5d6be4e6bc70a6::t_825236dc79daa5 18
+  s_5d6be4e6bc70a6::t_63e0d2c11dff2a 20-22,27-32,37-39
+  ai_agent 23-26,33-36
+  s_5d6be4e6bc70a6::t_15d606cb0dd79a 53
+packages/testing/playwright/pages/EvaluationComparePage.ts
+  s_5d6be4e6bc70a6::t_a0b0b5c45410fb 1-9,20-62
+  s_5d6be4e6bc70a6::t_730589531e5cca 11-12,19
+  ai_agent 13-14,18
+  s_5d6be4e6bc70a6::t_7026cfa420b43d 10
+  s_5d6be4e6bc70a6::t_fc8025ec753bbc 15-17
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_5d6be4e6bc70a6::t_fb6442fbdffad0 2,5,7
+  s_5d6be4e6bc70a6::t_27163450b99af3 14
+  s_5d6be4e6bc70a6::t_36128d6b814d95 26,29-34
+  s_5d6be4e6bc70a6::t_433c4612ff7674 39,43-46,51-56,61-64
+  s_5d6be4e6bc70a6::t_b11e9f612ec667 40-41
+  ai_agent 47-50,57-60
+  s_5d6be4e6bc70a6::t_b6243e9392892d 70
+  s_5d6be4e6bc70a6::t_93730acada7824 130-140
+  s_5d6be4e6bc70a6::t_c495043bff9eb2 171-172
+  s_5d6be4e6bc70a6::t_c16a3cb7a29335 188-194
+  s_5d6be4e6bc70a6::t_41c7edb004968c 221-222
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_d3acadd8ec6514 6
+  s_5d6be4e6bc70a6::t_bdce3ebfd3e6e2 92,126-140,148-152,122
+  s_5d6be4e6bc70a6::t_5869071171b2fe 93-107
+  s_5d6be4e6bc70a6::t_88b0f18a41d2e8 113-114,124-125
+  s_5d6be4e6bc70a6::t_f982e5ef87029c 141-147
+  s_5d6be4e6bc70a6::t_d59b8b5120f1d1 108-112,115-121,123
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_5d6be4e6bc70a6::t_cdf87271d2baa3 1-3,5-8,11-14,19-29,33-36,63-64,105-113,116,118-132,140-156,161-170,175-184,192-209,86
+  s_5d6be4e6bc70a6::t_00b97071740df5 4
+  s_5d6be4e6bc70a6::t_3f4461eb305b43 9,15-16,18,30,37,45-49,51-62
+  s_5d6be4e6bc70a6::t_79a87ae635923b 10
+  s_5d6be4e6bc70a6::t_c6933d62b5f233 17
+  s_5d6be4e6bc70a6::t_154f704c49252c 31
+  s_5d6be4e6bc70a6::t_69bba2587ccc77 32
+  s_5d6be4e6bc70a6::t_35772f8ccaf38d 38-41,43-44
+  s_5d6be4e6bc70a6::t_7a298d9b21cb66 65-81,88
+  s_5d6be4e6bc70a6::t_24df30989c51bd 82,87
+  s_5d6be4e6bc70a6::t_a0f0f977d2a67f 89-90,97,114-115,117
+  s_5d6be4e6bc70a6::t_4bd06e12fecdd9 133
+  s_5d6be4e6bc70a6::t_f7aef7e8ed63e4 134-138
+  s_5d6be4e6bc70a6::t_3d4d8da8f0a742 157-159
+  ai_agent 160
+  s_5d6be4e6bc70a6::t_c69a0afae36d49 171,173-174
+  s_5d6be4e6bc70a6::t_105e29e2fc94c7 185-189,191
+  s_5d6be4e6bc70a6::t_223ec514af7ff9 42
+  s_5d6be4e6bc70a6::t_772012f8956b7c 50
+  s_5d6be4e6bc70a6::t_32545f72755a71 172
+  s_5d6be4e6bc70a6::t_9e0347c89b3f7b 190
+  s_5d6be4e6bc70a6::t_8ac90f476321d0 83-85,91-96,98-104
+  s_5d6be4e6bc70a6::t_a347ec3daa19c4 139
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/GroupedMetricChart.vue
+  s_5d6be4e6bc70a6::t_c101a9dc1a82cd 12-14,23-29,33-34,40-49,59-61,68-70,82-83,87,93-95,97-99,101-102,104,116,120,124-126,134-136,138-142,148,158-159,166-196,228-239
+  s_5d6be4e6bc70a6::t_5da34eeb8e0b07 50-52
+  ai_agent 103
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.test.ts
+  s_5d6be4e6bc70a6::t_ea078e67299ed2 1-7,11-58,75
+  s_5d6be4e6bc70a6::t_f2271f9fa9f5fc 8-10
+  s_5d6be4e6bc70a6::t_0ad48e93f657ad 59-74
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5d6be4e6bc70a6::t_f48d971d9cb70e 5675-5693
+  s_5d6be4e6bc70a6::t_8d4a8e1db5883e 5694-5705,5707-5710,5712
+  s_5d6be4e6bc70a6::t_1d2e3f3a5fad58 5706
+  s_5d6be4e6bc70a6::t_14c610612993fd 5711
+  s_5d6be4e6bc70a6::t_a90a1385e0c7b9 5658
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "58acaf3dd5c3cbe6dbaf1353c1b7b63b03b579b1",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

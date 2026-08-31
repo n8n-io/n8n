@@ -1,0 +1,21 @@
+packages/cli/src/modules/breaking-changes/rules/index.ts
+  s_8a11345a349517::t_2e75aa87301c90 23
+packages/cli/src/modules/breaking-changes/rules/v3/agent-node-version.rule.ts
+  s_8a11345a349517::t_5e65c099a36863 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "64643ae3a55a4c9b0d8ebf53feb76b37ef578f3d",
+  "prompts": {},
+  "sessions": {
+    "s_8a11345a349517": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ae12e7b-0477-4fcd-aaa2-2fe715f68a8d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

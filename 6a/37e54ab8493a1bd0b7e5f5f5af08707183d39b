@@ -1,0 +1,46 @@
+packages/@n8n/agents/src/sdk/agent.ts
+  s_6c8e99f341f276::t_d9c8baa29bac03 341-343
+  s_6c8e99f341f276::t_4688bb48c9be6a 66,161-162,338-340,982
+packages/@n8n/instance-ai/src/types.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 7,1371
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 1-6,732-746,3018,3715
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 188,224
+packages/@n8n/agents/src/index.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 73-74
+packages/@n8n/agents/src/types/index.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 41-42
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 1,29
+packages/@n8n/agents/src/types/sdk/agent.ts
+  h_2f80f0e06f710c 158
+  s_6c8e99f341f276::t_4688bb48c9be6a 154-157,159-167
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 22-26,109,113,118,120,122,198,202,208,210,212
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 198-200
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_6c8e99f341f276::t_4688bb48c9be6a 42,110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a37e54ab8493a1bd0b7e5f5f5af08707183d39b",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c8e99f341f276": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2a8ec98-cd4f-4793-8922-567af4131425",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

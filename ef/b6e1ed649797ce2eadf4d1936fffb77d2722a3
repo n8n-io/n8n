@@ -1,0 +1,73 @@
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_7de970a796cb99::t_5d720b300e05a0 118-121,123-127
+  s_7de970a796cb99::t_790e845bee2b47 122
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  ai_agent 84
+  s_7de970a796cb99::t_b23cd78aafa52e 238,245,249-251
+  s_7de970a796cb99::t_5c8ec439968902 239,246-248,252,254-255,278-279
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_7de970a796cb99::t_8aee44306e969b 149-154,156-172,174-182
+  s_7de970a796cb99::t_36baa927541407 155
+  s_7de970a796cb99::t_0dcd15a361e160 173
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_7de970a796cb99::t_f6a39e14e07981 10-13,15
+  s_7de970a796cb99::t_3fe0e26ae0ee87 267-268,271-272,275-321,323-324,326-331,333-357,359,365-366,368-378
+  s_7de970a796cb99::t_9d8371c0271e30 322,325
+  ai_agent 358
+  s_7de970a796cb99::t_cdaae14fff352e 360-364
+packages/cli/src/workflows/publication/publication-result.ts
+  ai_agent 35-37,39-40
+packages/@n8n/config/src/configs/workflows.config.ts
+  s_7de970a796cb99::t_cf5969852fec0f 35-38
+packages/@n8n/config/test/config.test.ts
+  s_7de970a796cb99::t_b0f0678bde6789 217
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_7de970a796cb99::t_13e808467f7259 816-817,819-849
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  ai_agent 48
+  s_7de970a796cb99::t_0a98f314d6521b 134,141,143-158
+  s_7de970a796cb99::t_dc6d7b13e3c6e4 136-137,140
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_7de970a796cb99::t_51e4d0bdf1794a 11,33
+  s_7de970a796cb99::t_b9acde3db56b08 24-32,34
+  s_7de970a796cb99::t_4e0842b1d87622 393-408
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_7de970a796cb99::t_0154d89826bddf 65-70,72-73
+  s_7de970a796cb99::t_c6d875ca645a10 71
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_7de970a796cb99::t_4b251c5bf50616 363-377,379,381,388
+packages/cli/src/active-workflow-manager.ts
+  s_7de970a796cb99::t_48462b35c7d720 495,504
+packages/cli/src/commands/start.ts
+  s_7de970a796cb99::t_1661112001987b 295,302,305
+  ai_agent 439
+  s_74661ad974e75a::t_139e7048a9f70e 444-450
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_7de970a796cb99::t_32eee78609c74e 10
+  s_7de970a796cb99::t_928d919d9fd2e6 38
+  s_7de970a796cb99::t_67004327998a21 110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "efb6e1ed649797ce2eadf4d1936fffb77d2722a3",
+  "prompts": {},
+  "sessions": {
+    "s_74661ad974e75a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "181fc362-bf3b-42d7-a15c-fe9849140e96",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_7de970a796cb99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62a054f-5d45-407f-925f-ca757e8963c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

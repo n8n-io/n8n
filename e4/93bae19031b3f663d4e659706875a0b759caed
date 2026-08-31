@@ -1,0 +1,30 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.test.ts
+  s_ffb7ac8df0495d::t_a2ccb6f4f0b88d 974-1014
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.vue
+  s_ffb7ac8df0495d::t_c5ec41e2af2005 389
+  s_ffb7ac8df0495d::t_e2c99b9966b711 34-36,38
+  s_ffb7ac8df0495d::t_504d227b5d537b 113
+  s_ffb7ac8df0495d::t_206fb4ed410395 281
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.stories.ts
+  s_ffb7ac8df0495d::t_693c3bb495bd8a 47
+  s_ffb7ac8df0495d::t_2970f99be42d81 21
+  s_ffb7ac8df0495d::t_1ca35fe6b21615 125-131
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewCommentComposer.vue
+  s_ffb7ac8df0495d::t_0533d553d4bf4d 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e493bae19031b3f663d4e659706875a0b759caed",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

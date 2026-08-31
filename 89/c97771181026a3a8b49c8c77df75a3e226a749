@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_dd8f226d4368c9::t_4a7ce4cc35757a 932-983
+  s_dd8f226d4368c9::t_eeffdbfe6b2707 1019-1020
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "89c97771181026a3a8b49c8c77df75a3e226a749",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

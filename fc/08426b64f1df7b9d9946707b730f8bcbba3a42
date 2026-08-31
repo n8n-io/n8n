@@ -1,0 +1,33 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_f0e6264a74d006::t_641c1506770564 1617
+  s_f0e6264a74d006::t_94dfb2f7e1ab82 1641,1652
+  s_f0e6264a74d006::t_d89d718245d0d3 28-34
+  s_f0e6264a74d006::t_716622c3d874b0 1116-1159
+  s_f0e6264a74d006::t_40e1db6b9e2cbc 883
+  s_f0e6264a74d006::t_9dca1decf0f555 1115
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_f0e6264a74d006::t_4d7cb5b54823f4 107
+  s_f0e6264a74d006::t_6a96b5d7ba3f08 38
+  s_f0e6264a74d006::t_fb16120ec70557 1215-1218
+  s_f0e6264a74d006::t_f90e9088681a6b 69
+  s_f0e6264a74d006::t_681eee018e93d6 15,19
+  s_f0e6264a74d006::t_bbd56c61ddb74d 1212-1214
+  s_f0e6264a74d006::t_4e4a182baab3fa 1219-1221
+  s_f0e6264a74d006::t_4a7bacab44f329 1173-1211,1222-1268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fc08426b64f1df7b9d9946707b730f8bcbba3a42",
+  "prompts": {},
+  "sessions": {
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/ai/ai.api.test.ts
+  s_4e3d3e4345da23::t_c748551ae230e0 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "4f4659e60bf319f96a8a49fd97c19c7a4f849d4c",
+  "prompts": {},
+  "sessions": {
+    "s_4e3d3e4345da23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a09d56-678f-4b6b-9440-b4810e176788",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

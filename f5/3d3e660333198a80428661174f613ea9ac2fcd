@@ -1,0 +1,23 @@
+packages/workflow/src/node-parameters/native-parameter-resolution.ts
+  s_c627789ff6aca2::t_49f7af53e101a7 105-106
+packages/workflow/src/workflow-expression.ts
+  s_c627789ff6aca2::t_312c183271157a 15,189-202,219,257
+packages/workflow/test/node-parameters/native-parameter-resolution-parity.test.ts
+  s_c627789ff6aca2::t_15803ce29ba250 316-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "f53d3e660333198a80428661174f613ea9ac2fcd",
+  "prompts": {},
+  "sessions": {
+    "s_c627789ff6aca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_c627789ff6aca2",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

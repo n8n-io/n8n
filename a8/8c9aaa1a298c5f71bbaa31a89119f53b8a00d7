@@ -1,0 +1,25 @@
+packages/frontend/@n8n/storybook/package.json
+  s_bf68401b8c4fe8::t_1fdf61f50959a2 30
+packages/nodes-base/test/node-description-parity.test.ts
+  s_bf68401b8c4fe8::t_253fa367108e44 17-24,135,145-177,180,182,184-187,191,195-214,220-221
+pnpm-lock.yaml
+  s_bf68401b8c4fe8::t_10f949e8b5e892 105-107,5674-5676,8946-8948,26232-26235
+pnpm-workspace.yaml
+  s_bf68401b8c4fe8::t_810641666e4db4 41-42,88,137,232,263-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "a88c9aaa1a298c5f71bbaa31a89119f53b8a00d7",
+  "prompts": {},
+  "sessions": {
+    "s_bf68401b8c4fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_bf68401b8c4fe8",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

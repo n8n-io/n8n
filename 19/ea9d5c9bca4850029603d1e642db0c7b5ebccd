@@ -1,0 +1,24 @@
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.ts
+  s_cf289f39ab832a::t_91ca301cdff92e 69
+  s_cf289f39ab832a::t_9e2bcad7fffcf8 238-244,246,248,250-255
+  s_cf289f39ab832a::t_e85ddf84d6865a 68,70-87
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.test.ts
+  s_cf289f39ab832a::t_bad9009011623d 1-4
+  s_cf289f39ab832a::t_8f7e15819d85f6 172-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "19ea9d5c9bca4850029603d1e642db0c7b5ebccd",
+  "prompts": {},
+  "sessions": {
+    "s_cf289f39ab832a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f4f3bff-f837-4c80-b095-a4151f89c765",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

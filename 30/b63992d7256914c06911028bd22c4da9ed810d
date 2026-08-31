@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/agentEvals.store.ts
+  s_92e20c68e51569::t_22bde911280261 2,8,56-58
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_92e20c68e51569::t_3b825eb267af69 168
+  s_92e20c68e51569::t_c14a71df515a7f 250,259-272
+  s_92e20c68e51569::t_e9a7176682ee60 5-6
+  s_92e20c68e51569::t_3a1779ff664b25 132,135,138
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/agentEvals.api.ts
+  s_92e20c68e51569::t_1d57471474aa5e 12-15,23
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/agentEvals.store.test.ts
+  s_92e20c68e51569::t_a35508800b0f2d 7-10,85,103-105
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_92e20c68e51569::t_83b322059783f8 82
+  ai_agent 265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30b63992d7256914c06911028bd22c4da9ed810d",
+  "prompts": {},
+  "sessions": {
+    "s_92e20c68e51569": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5963f094-8ebc-43fb-8bdc-b99959ea383a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

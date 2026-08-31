@@ -1,0 +1,20 @@
+packages/testing/playwright/pages/SettingsUsersPage.ts
+  s_4aef2e4e36c61b::t_ef6548111b839e 26
+  s_4aef2e4e36c61b::t_d88328fa347cba 76,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "448b2b43615dd4762a179f88b97194f125c068a7",
+  "prompts": {},
+  "sessions": {
+    "s_4aef2e4e36c61b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "785e3abd-cc90-41cd-9175-8fb381579aa0",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

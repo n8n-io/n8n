@@ -1,0 +1,22 @@
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_90019ba707b1e7::t_223d2feffdaf44 506-553
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_90019ba707b1e7::t_3a23f14bda2937 540-542
+  s_90019ba707b1e7::t_28d6ea9eabcf53 655
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "17c04ecdaa83efe9e5dc8dfe88b1b06e0e01040d",
+  "prompts": {},
+  "sessions": {
+    "s_90019ba707b1e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8afc84b1-4851-45fb-aeb6-72b1ea7e65f1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

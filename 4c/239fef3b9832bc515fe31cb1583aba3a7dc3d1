@@ -1,0 +1,27 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_fcd481f41350e5::t_2735a392192883 390
+  s_fcd481f41350e5::t_0bcaa75183560e 11
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_fcd481f41350e5::t_0209b5ef67b156 139
+  s_fcd481f41350e5::t_3e49b796743ca8 4
+packages/@n8n/nodes-langchain/utils/aws/test/resolveBedrockRegion.test.ts
+  s_fcd481f41350e5::t_82f57fb6f8e58d 1-9,11-29,31-34
+packages/@n8n/nodes-langchain/utils/aws/resolveBedrockRegion.ts
+  s_fcd481f41350e5::t_1627e6ab3fe82f 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c239fef3b9832bc515fe31cb1583aba3a7dc3d1",
+  "prompts": {},
+  "sessions": {
+    "s_fcd481f41350e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36513934-6063-4c33-b223-fca13c85b537",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

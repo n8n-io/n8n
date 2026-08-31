@@ -1,0 +1,42 @@
+packages/cli/src/services/tag.service.ts
+  s_66be2eb681ad3c::t_26c0b8ccc8ed77 131-135,141-142
+  s_46457fdbb606db::t_fe33c4b122bee9 144-145,147-166,140
+  s_66be2eb681ad3c::t_9ee6b4187bcc54 143
+  s_46457fdbb606db::t_1a4cf642966932 2-7
+  s_46457fdbb606db::t_f51de9c1113c83 51-53
+  s_66be2eb681ad3c::t_892669e60c3a5d 146,136-139
+packages/@n8n/cli/src/commands/package/import.ts
+  ai_agent 98-99,101-105,107-109,145-146
+  s_66be2eb681ad3c::t_2328eb86702348 100
+  s_46457fdbb606db::t_33452e47d13bee 106
+  s_66be2eb681ad3c::t_036d49840fa1ad 5
+packages/@n8n/cli/src/commands/package/export.ts
+  s_66be2eb681ad3c::t_036d49840fa1ad 4
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_66be2eb681ad3c::t_e1a00cea9ee374 69-97
+  s_66be2eb681ad3c::t_036d49840fa1ad 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "efe20b6942ee04e47ee90287c94a0adb3a889f9a",
+  "prompts": {},
+  "sessions": {
+    "s_46457fdbb606db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3c28356-f7a4-4aa1-baa1-0a7a42ab1b95",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

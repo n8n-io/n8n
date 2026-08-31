@@ -1,0 +1,30 @@
+packages/workflow/src/execution-context.ts
+  s_bad178d4852f6f::t_14c93ebebdb280 123-126,132-136,142
+packages/workflow/test/execution-context.test.ts
+  s_bad178d4852f6f::t_1ee51028a2dd18 28-50
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.test.ts
+  s_bad178d4852f6f::t_38feb0a635700e 76,84,92,97-105,110,115-120,122-128,130-136,138-144,146-152,154-160,162
+  s_bad178d4852f6f::t_0ba653a22604f6 27-32
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  s_bad178d4852f6f::t_34cb08fd5d5c0c 2,13
+  s_bad178d4852f6f::t_96efc1a273bede 97,102,106,111,115,120,124,129,133,138-157
+packages/cli/src/modules/redaction/redaction-context-hook.ts
+  s_bad178d4852f6f::t_4b33e2adf8a2c9 8
+  s_bad178d4852f6f::t_b92ac53db0b491 56-64,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "93a545ff8511c6f99aedbe81b919093ce632674c",
+  "prompts": {},
+  "sessions": {
+    "s_bad178d4852f6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1fc9f28-ab6a-4efa-b290-9ca1be50660e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

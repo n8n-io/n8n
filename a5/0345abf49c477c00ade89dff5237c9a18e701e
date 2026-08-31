@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/stream/output-redaction.ts
+  s_ffc8ebb0a46263::t_e18a5f72b64078 38-54,229-230
+packages/@n8n/instance-ai/src/stream/__tests__/output-redaction.test.ts
+  s_ffc8ebb0a46263::t_1444a637171acf 268-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a50345abf49c477c00ade89dff5237c9a18e701e",
+  "prompts": {},
+  "sessions": {
+    "s_ffc8ebb0a46263": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c33ff7d6-b2a1-4fda-bdb6-3846241baf96",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

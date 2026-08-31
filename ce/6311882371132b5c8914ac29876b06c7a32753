@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelDiscordSetup.vue
+  s_91be22023e65c8::t_ec9a7d9ca62010 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ce6311882371132b5c8914ac29876b06c7a32753",
+  "prompts": {},
+  "sessions": {
+    "s_91be22023e65c8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "82ddb11b-91cd-4e1c-a796-694f6baa9ec5",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

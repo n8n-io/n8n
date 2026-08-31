@@ -1,0 +1,33 @@
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  s_b8c51f278fe948::t_7ebb1bb9192318 18
+  s_b8c51f278fe948::t_71f2310b83e334 498-499
+  s_b8c51f278fe948::t_992df9c5fc2962 675-678
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_b8c51f278fe948::t_b84823b2aea235 12
+  s_b8c51f278fe948::t_3b7280d0fbc2a5 4
+  s_b8c51f278fe948::t_26f3a654aa586a 173-239,241-245,247-253,255-256,258-281
+  s_b8c51f278fe948::t_32e1556ff892da 240,246,254,257
+packages/cli/src/task-runners/task-broker/errors/task-runner-unreachable.error.ts
+  s_b8c51f278fe948::t_17f6a18d9f61f3 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fafa68e2fbdff1888ff63aafa9aecc6c855c7627",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b8c51f278fe948": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b4cb48f-4244-45c4-b642-707d92ad7a52",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

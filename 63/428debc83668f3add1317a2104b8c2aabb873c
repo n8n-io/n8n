@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_dd8f226d4368c9::t_2807f038addf6a 100,102-108,114
+  s_dd8f226d4368c9::t_bb7d333431c653 138,148-154
+  s_dd8f226d4368c9::t_7412b918f33ba3 2
+  s_dd8f226d4368c9::t_dac3eb9d66d5d1 252,262
+  s_dd8f226d4368c9::t_f3cc918c262ea9 39-49,52-53
+  s_dd8f226d4368c9::t_d0972a0688f253 184
+  s_dd8f226d4368c9::t_57a071e48b2f34 54,263-265
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_dd8f226d4368c9::t_d94abc69f81707 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "63428debc83668f3add1317a2104b8c2aabb873c",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

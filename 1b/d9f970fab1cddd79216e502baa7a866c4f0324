@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.stories.ts
+  s_ffb7ac8df0495d::t_077242306ca4e9 21,47
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.vue
+  s_ffb7ac8df0495d::t_077242306ca4e9 33,108,276,384
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1bd9f970fab1cddd79216e502baa7a866c4f0324",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

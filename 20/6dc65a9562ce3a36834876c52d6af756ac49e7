@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_9c25df37a9054c::t_ce235f1d4e19a7 9,51-56,63-64,66-67
+  s_9c25df37a9054c::t_6f111ab94a5a97 38-47
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_9c25df37a9054c::t_1e7e3c4927dd26 5,191-206
+  s_9c25df37a9054c::t_9a8804e6cd60e0 50,67-78,87-88,99,106-107,124-125,133-134,147,154-155,165-166,172-173,180,211
+  s_9c25df37a9054c::t_d92cd6baf8a16d 181-184
+  s_9c25df37a9054c::t_0f69a51d5308d1 114-118
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalResultsPanel.test.ts
+  s_9c25df37a9054c::t_d2fb8b767bfc7c 142-154
+  s_9c25df37a9054c::t_d92cd6baf8a16d 191,197
+  s_9c25df37a9054c::t_e018b0c87e9f1c 16-22,214-235
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalResultsPanel.vue
+  s_9c25df37a9054c::t_1790c821e65617 105,107-111
+  s_9c25df37a9054c::t_02488684d329fd 138-142,146-150
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9c25df37a9054c::t_5cbe273fb86aaa 7843,7847
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_9c25df37a9054c::t_e2f948ef31ec15 696-700,705-725
+  s_9c25df37a9054c::t_24c7ab849bf2be 303-325,331-334,339-350
+  s_9c25df37a9054c::t_d92cd6baf8a16d 326-330,335-338,701-704
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_9c25df37a9054c::t_3b76fdc8562a91 495,517-519
+  s_9c25df37a9054c::t_7025799f1782ec 233-236,238-244,246-251,259,267,278-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "206dc65a9562ce3a36834876c52d6af756ac49e7",
+  "prompts": {},
+  "sessions": {
+    "s_9c25df37a9054c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f128968-9989-4751-bf80-3aa4ad58d755",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

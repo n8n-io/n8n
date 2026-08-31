@@ -1,0 +1,24 @@
+packages/cli/vitest.config.integration.ts
+  s_9a33b006a57a4b::t_8d1f3ab1d94436 9-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ba5a32bc21bb1390075405549e5d23fbb9cc153",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9a33b006a57a4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd80b90d-aba0-4a9f-bc87-ccb49676f589",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

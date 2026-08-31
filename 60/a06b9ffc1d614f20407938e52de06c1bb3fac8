@@ -1,0 +1,13 @@
+packages/cli/src/scaling/job-processor.ts
+  ai_agent 4,60,79,200-203,213,222,225,383-386,388
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  ai_agent 2,5-10,48,135,166,201,245,294,344,383,437,485,545,596,658,746,821,924,1096,1232,1340,1435,1525,1625,1711,1803,1880,1919,1949,1999,2066,2089-2231,2233-2242
+packages/cli/src/scaling/webhook-response-relay.ts
+  ai_agent 1-11,13-209,211-213,225-269,271-487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "60a06b9ffc1d614f20407938e52de06c1bb3fac8",
+  "prompts": {}
+}

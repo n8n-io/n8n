@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_a29dd308faa95d::t_9ae54cc8a5d75f 1580-1617,1620-1709,1711-1904,1906-1910,1912-1981
+  s_a29dd308faa95d::t_03b426a635be64 1618-1619
+  s_a29dd308faa95d::t_9817eca9786bc2 26-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed0de07c8cb826c80a9ff9b606782934b2268f57",
+  "prompts": {},
+  "sessions": {
+    "s_a29dd308faa95d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b2e41c2-0501-48f5-a63d-2c06b78e556b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

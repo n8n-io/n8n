@@ -1,0 +1,55 @@
+packages/core/src/execution-engine/__tests__/scheduled-task-manager.test.ts
+  s_81ace5d2364452::t_a06d33e8aaba95 198-213
+packages/core/src/execution-engine/scheduled-task-manager.ts
+  s_81ace5d2364452::t_856e37166a6956 168-179
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_81ace5d2364452::t_018b29ecc781c5 448,450-453,481,505,529
+  s_81ace5d2364452::t_75861a1f7a39ec 315,330,346
+  s_81ace5d2364452::t_dd07cacefe016e 548-551
+  s_81ace5d2364452::t_890f896e6b729d 378
+  s_81ace5d2364452::t_e8444b21fe5371 498
+  s_81ace5d2364452::t_c1e5a5d920687c 194-197
+  s_81ace5d2364452::t_f2a03cdc93fe0b 164-165,167-170,199
+  s_81ace5d2364452::t_e8d60183952f10 141-142,147-149,152-153,166,181-183,185,202,204-205,215,222-224,226
+  s_81ace5d2364452::t_2afe1b26fc2069 29-32,76-77
+  s_81ace5d2364452::t_fb003236b671bd 203
+  s_81ace5d2364452::t_6115e9430bf56b 241-242,265
+  s_81ace5d2364452::t_ff675affe07ae8 278-279,283-284,287-293,298-299
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_81ace5d2364452::t_6d4ba9e23fd8b7 858
+  s_81ace5d2364452::t_7194137198069c 195-199
+  s_81ace5d2364452::t_89a33f65287695 983-991,993-1002,1004-1006
+  s_81ace5d2364452::t_3f44dae36ed764 307-308,327-334,364-371,379-380,405-412
+  s_81ace5d2364452::t_f5aefe411e9945 137-190
+  s_81ace5d2364452::t_466945f95341e2 975
+  s_81ace5d2364452::t_dd59afb690ed2a 841,850-854
+  s_81ace5d2364452::t_7cb4e33d02aac0 1033
+  s_81ace5d2364452::t_3d7e58e5724aa8 1112-1115,1148-1151,1183
+  s_81ace5d2364452::t_a18e2c0c8e2d5d 1144
+  s_81ace5d2364452::t_9670b7c9212311 707-762
+  s_81ace5d2364452::t_df7ec9dd54c0c5 47-48,61
+  s_81ace5d2364452::t_325880e87c46db 225-248
+  s_81ace5d2364452::t_517d8bf594dbf7 63
+packages/core/src/execution-engine/workflow-active-triggers-state.ts
+  s_81ace5d2364452::t_a8f6252a3c0c51 3-9,11-12,15-16,41,47,50,52-57,60,62,65,67,70,72,76-79
+  s_81ace5d2364452::t_5078b373cb1363 35,39
+  s_81ace5d2364452::t_bd0ae0cc4f73d9 38
+  s_81ace5d2364452::t_476eb91202bcab 18,20-27
+  s_81ace5d2364452::t_6cd6162f2e3b23 17,19,28,30-34,36-37,40,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6c70796ba10aada1eeba1b8023b288fee0a7ac75",
+  "prompts": {},
+  "sessions": {
+    "s_81ace5d2364452": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef613-fd83-76a3-a799-9a5f479f0b9d",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

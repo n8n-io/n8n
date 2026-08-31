@@ -1,0 +1,24 @@
+packages/cli/test/integration/executions.controller.test.ts
+  s_05d5c15120e21e::t_cbcfb0b510adc8 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ecb27f37b7e59069183f0bdb16cd2333c3dd440d",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05d5c15120e21e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00bd33c2-462c-4055-b4a8-587d5d7a4757",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

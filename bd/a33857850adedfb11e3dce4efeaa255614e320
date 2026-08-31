@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/fix-with-assistant.test.ts
+  s_a3a1bb25f6cdb8::t_79682a36d11555 232-255
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_a3a1bb25f6cdb8::t_8ed84b4493c3a4 51,191-192
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_a3a1bb25f6cdb8::t_c63f949a00c08b 71-73
+packages/frontend/editor-ui/src/features/agents/utils/fix-with-assistant.ts
+  s_a3a1bb25f6cdb8::t_946cd4af064060 103
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_a3a1bb25f6cdb8::t_dd8892b7ca47f6 376,653-655
+  s_a3a1bb25f6cdb8::t_4a32905de0f321 2,21,30,160,168,213,353-375
+  s_a3a1bb25f6cdb8::t_71501f54d42801 194-212,214-216,392
+  s_a3a1bb25f6cdb8::t_7db2a33d24016f 647-648,650-651,658-659,661-670,672-673,677-682,684-692
+  s_a3a1bb25f6cdb8::t_40f83fcbf58bed 649,652,656-657,660,671,674-676,683
+  s_a3a1bb25f6cdb8::t_7f88ec52ea8947 377-379
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_a3a1bb25f6cdb8::t_b01efd97a09545 302,308-311,328,336-338,343-363
+  s_a3a1bb25f6cdb8::t_aa4890ebf9a78b 364-365
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_a3a1bb25f6cdb8::t_97909f727a6809 1546-1557,1560-1573,1575-1577,1585
+  s_a3a1bb25f6cdb8::t_1eb76b882ed269 1533-1534,1536-1537,1558-1559,1574,1578
+  s_a3a1bb25f6cdb8::t_e004cae0cd4c7a 1535
+  s_a3a1bb25f6cdb8::t_304ddedf4ec5b6 1579
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_a3a1bb25f6cdb8::t_fb3854bb14a253 399,406
+  s_a3a1bb25f6cdb8::t_c63f949a00c08b 351,388-389,393,398,400-405,407-411,417,422-435
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_a3a1bb25f6cdb8::t_9b56bd6b843983 963-964,966-974,994
+  s_a3a1bb25f6cdb8::t_97909f727a6809 142,291,579-580,965,975-993,995-1002
+  s_a3a1bb25f6cdb8::t_c7f78d99bcf495 1527-1529
+  s_a3a1bb25f6cdb8::t_bd478053361a86 1003
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bda33857850adedfb11e3dce4efeaa255614e320",
+  "prompts": {},
+  "sessions": {
+    "s_a3a1bb25f6cdb8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fec4d-56b4-7281-b272-8e642a1691f9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

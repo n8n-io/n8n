@@ -1,0 +1,35 @@
+packages/cli/src/public-api/v1/handlers/folders/folders.handler.ts
+  s_3ecb1dab626be3::t_8956d8500196b8 37
+  s_3ecb1dab626be3::t_dda34bab94b154 15
+  s_3ecb1dab626be3::t_df316c9c894190 65-91
+packages/cli/test/integration/public-api/folders.test.ts
+  s_3ecb1dab626be3::t_f946a13d0f6d02 197
+  s_3ecb1dab626be3::t_7392232e2874aa 8
+  s_3ecb1dab626be3::t_3b7a6b37498769 191-196,198-218
+  s_3ecb1dab626be3::t_a255fab25a4cfb 219-220
+packages/cli/src/public-api/v1/openapi.yml
+  s_3ecb1dab626be3::t_c87980f87bfd7b 172-173
+packages/cli/src/public-api/v1/handlers/folders/spec/paths/folders.personal.yml
+  s_3ecb1dab626be3::t_e95bded380346b 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f6290b65e4decb2e43c76e8927a42ac41c289fe1",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_3ecb1dab626be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33090c05-1d02-49d5-9d8b-e98e122e0e02",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

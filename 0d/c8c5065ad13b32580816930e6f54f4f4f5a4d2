@@ -1,0 +1,22 @@
+packages/cli/src/modules/mcp/tools/publish-workflow.tool.ts
+  s_e1e4b3d27a43c7::t_f1c2c8eea8a218 53-61
+  s_e1e4b3d27a43c7::t_300d082d2706fd 19-23
+  s_e1e4b3d27a43c7::t_595ed96c4ddc35 137
+  s_e1e4b3d27a43c7::t_39fddc470a6d03 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0dc8c5065ad13b32580816930e6f54f4f4f5a4d2",
+  "prompts": {},
+  "sessions": {
+    "s_e1e4b3d27a43c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5077ca3-5832-47d5-aa3e-d844ee003686",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

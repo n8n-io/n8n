@@ -1,0 +1,21 @@
+packages/workflow/src/webhook-description-fields.ts
+  s_0a1c89f6f6eec2::t_6994e138ec9e1a 62-69
+packages/workflow/test/webhook-description-fields.test.ts
+  s_0a1c89f6f6eec2::t_bea957d4f1b220 135-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9238a2a9a31e57ef6094d18b8dcde93fae37843b",
+  "prompts": {},
+  "sessions": {
+    "s_0a1c89f6f6eec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_0a1c89f6f6eec2",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

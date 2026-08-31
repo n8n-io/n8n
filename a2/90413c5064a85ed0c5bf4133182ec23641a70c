@@ -1,0 +1,22 @@
+packages/cli/src/scaling/job-processor.ts
+  s_1d360ad69afd30::t_ba765078657ec1 200-202,204-206,217
+  s_1d360ad69afd30::t_1ade5a9a0816b1 203
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_1d360ad69afd30::t_13e88567cf23a7 2229-2244,2248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a290413c5064a85ed0c5bf4133182ec23641a70c",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

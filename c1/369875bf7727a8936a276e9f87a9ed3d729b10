@@ -1,0 +1,33 @@
+packages/cli/src/workflows/publication/publication-trigger-deactivator.ts
+  s_7de970a796cb99::t_0c99cd62911620 8,15,26
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_7de970a796cb99::t_0c99cd62911620 11,39,135
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_7de970a796cb99::t_0c99cd62911620 28,269,273
+packages/cli/src/workflows/publication/__tests__/workflow-publication-lifecycle-lock.test.ts
+  s_7de970a796cb99::t_0c99cd62911620 1,5,8,14,40,54,69,94,112
+packages/cli/src/active-workflow-manager.ts
+  s_7de970a796cb99::t_0c99cd62911620 503
+packages/cli/src/workflows/publication/workflow-publication-lifecycle-lock.ts
+  s_7de970a796cb99::t_0c99cd62911620 23
+packages/cli/src/workflows/publication/__tests__/publication-trigger-deactivator.test.ts
+  s_7de970a796cb99::t_0c99cd62911620 7,14
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_7de970a796cb99::t_0c99cd62911620 9,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c1369875bf7727a8936a276e9f87a9ed3d729b10",
+  "prompts": {},
+  "sessions": {
+    "s_7de970a796cb99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62a054f-5d45-407f-925f-ca757e8963c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

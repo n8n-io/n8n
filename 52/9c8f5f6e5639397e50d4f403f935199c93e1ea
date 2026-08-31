@@ -1,0 +1,25 @@
+.agents/specs/ligo-768-data-table-reconciliation.md
+  s_e3ef433840c658::t_60ddca543c6043 141-143
+  s_e3ef433840c658::t_76f8afcbeb6ffe 146-151
+  s_e3ef433840c658::t_648592a71852d6 154-164
+CONTEXT.md
+  ai_agent 1-58
+docs/adr/0001-data-table-sync-identity-converges-to-git-id.md
+  ai_agent 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "529c8f5f6e5639397e50d4f403f935199c93e1ea",
+  "prompts": {},
+  "sessions": {
+    "s_e3ef433840c658": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c3281be-1b6c-489f-bba8-2cea3dffa537",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

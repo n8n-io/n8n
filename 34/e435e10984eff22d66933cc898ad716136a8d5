@@ -1,0 +1,21 @@
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  ai_agent 147-155,190-191
+packages/cli/src/workflows/workflow-trigger-activation.service.ts
+  s_e95b35fb409eb7::t_0377f7b1820b5e 185-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "34e435e10984eff22d66933cc898ad716136a8d5",
+  "prompts": {},
+  "sessions": {
+    "s_e95b35fb409eb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21609de-fc2d-47b9-ba4f-e0166bea0bf9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

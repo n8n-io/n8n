@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_5e6f76689cfb12::t_52c6b3e5406680 200-203,212-220,222-225
+  s_5e6f76689cfb12::t_6df3d8fbf88745 140-143,154
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_5e6f76689cfb12::t_677d5d958b5fb0 158-161
+  s_5e6f76689cfb12::t_698d1c35413bbd 329
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_5e6f76689cfb12::t_4e9173aa701b78 290
+  s_5e6f76689cfb12::t_70c8b4e009ca58 80-97
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_5e6f76689cfb12::t_0ef788c4228656 50,60-65
+  s_5e6f76689cfb12::t_3eb9d7d55be7ed 100-103
+packages/frontend/editor-ui/src/features/agents/components/settings/AgentBuilderModelSection.vue
+  s_5e6f76689cfb12::t_4791ba3cc3ea68 64-68
+  s_5e6f76689cfb12::t_8ad3114b506fe3 214
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_5e6f76689cfb12::t_4731992374882a 200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "bac771d61e7f16e00050556abd8b40eaf9e69135",
+  "prompts": {},
+  "sessions": {
+    "s_5e6f76689cfb12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "37c8f369-6a0a-4bbf-b83b-9af7e7ae5798",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

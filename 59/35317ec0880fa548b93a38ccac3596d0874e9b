@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  h_435b1d7d3e52c0 25,62,242-244
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.test.ts
+  s_f76d5384d236b1::t_6a7fb87711eca5 718-763
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5935317ec0880fa548b93a38ccac3596d0874e9b",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f76d5384d236b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afb7fbb2-5840-493a-a894-b30042001f22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

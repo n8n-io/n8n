@@ -1,0 +1,25 @@
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-provider-connection-manager.ee.test.ts
+  s_03d9af273e6788::t_d4df7ecc97b693 565,582,591
+  s_03d9af273e6788::t_4611cc39bf93c7 399,403
+  s_03d9af273e6788::t_96af63fb75c00d 533-535
+packages/cli/src/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee.ts
+  s_03d9af273e6788::t_e883702a0f1e6d 305-307,309
+  s_03d9af273e6788::t_476515e3c9b1dc 203-209,217,234,246-247,251-255,257-259
+  s_03d9af273e6788::t_987700ba7c3cd7 345-348,352,354-355,372-373,376,380,382,384-389,391-392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0005a1662d78f7ba96ae778af0d680152a8b3cf",
+  "prompts": {},
+  "sessions": {
+    "s_03d9af273e6788": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62054d8-729b-454c-87bc-c6bc6c776f23",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

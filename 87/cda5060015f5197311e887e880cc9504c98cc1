@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_dbbf27942dba3e::t_4ffbd89aedec6c 52-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "87cda5060015f5197311e887e880cc9504c98cc1",
+  "prompts": {},
+  "sessions": {
+    "s_dbbf27942dba3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_dbbf27942dba3e",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

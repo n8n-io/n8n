@@ -1,0 +1,24 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_33f1c3f31455e1::t_a47996250575c9 279,302,325,348,371
+packages/cli/src/workflows/workflow.service.ts
+  s_33f1c3f31455e1::t_4f898bd3c66a1e 406-408
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_33f1c3f31455e1::t_7e6293c734e183 570,572-574
+  s_33f1c3f31455e1::t_51b05b6258166f 569,571
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e83ebd78857d707f1541c6faf1164fbf6f587bec",
+  "prompts": {},
+  "sessions": {
+    "s_33f1c3f31455e1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5bb860db-67e3-471f-82c0-f4142071df23",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

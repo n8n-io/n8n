@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodePlaceholder.vue
+  s_82029241289295::t_b3110dc3581ebf 40
+  s_82029241289295::t_8f1486c9f43d92 101-115
+  s_82029241289295::t_1ab634bccf7396 8
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_82029241289295::t_3fef087bf8ad57 456-460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "37b0226e657a277230badef7c50275f43fea279d",
+  "prompts": {},
+  "sessions": {
+    "s_82029241289295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff8bef7-44df-43fc-b7fe-52a1f3a099b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

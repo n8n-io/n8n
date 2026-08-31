@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  ai_agent 281
+  s_98cf123401c046::t_bdbf5362197b6e 273-280,282-295
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_98cf123401c046::t_412e29e9830270 201-205,212,217-218,222,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c9e6156b6e765245acc598b21a361f567b493ccb",
+  "prompts": {},
+  "sessions": {
+    "s_98cf123401c046": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bd44f34-8e05-442d-aa1b-26697eaed220",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

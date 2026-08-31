@@ -1,0 +1,34 @@
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_66be2eb681ad3c::t_093c3184be9b17 29,31-36,20-21
+  s_66be2eb681ad3c::t_9ee6b4187bcc54 30
+  s_46457fdbb606db::t_9abb379cfd111a 3
+  s_46457fdbb606db::t_b72abda8be03b0 6,9,12,17-19
+packages/@n8n/db/src/repositories/folder-tag-mapping.repository.ts
+  s_46457fdbb606db::t_b0974ed3b31f9f 2,21-25
+packages/@n8n/db/src/repositories/workflow-tag-mapping.repository.ts
+  s_46457fdbb606db::t_f351958437969e 2,4,6,9,23-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0c7ab4e9f4ce0caf964a4ae6729d79f47fad7a53",
+  "prompts": {},
+  "sessions": {
+    "s_46457fdbb606db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3c28356-f7a4-4aa1-baa1-0a7a42ab1b95",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

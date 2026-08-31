@@ -1,0 +1,1653 @@
+packages/testing/playwright/expectations/instance-ai/should-create-new-thread-via-sidebar-button/0000-1782152802160-unknown-host-POST-_v1_messages-869e2f20.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0003-1782153178456-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0005-1782146888776-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+scripts/mutation-health/build-matrix.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-314
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0009-1782156983552-unknown-host-POST-_v1_messages-ec41fb8e.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-peer-dependencies.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8-10,18,27
+packages/@n8n/instance-ai/src/tools/filesystem/create-tools-from-mcp-server.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 16
+packages/@n8n/instance-ai/evaluations/outcome/event-parser.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5-6,16
+docs/generated/postgres-schema/README.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 76,241-242,943-948
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,9-15,17-18,20,31,34-37,40,43-44,72-82,89,94-97,101,108,118-119,466,470-479,482-487,490-562
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 226
+packages/cli/src/controllers/telemetry.controller.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,12-15,127-140,142-143,147
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0002-1782153036690-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/db/src/migrations/common/1784000000036-CreateInstanceAiThreadGrantTable.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-35
+packages/cli/src/modules/n8n-packages/entities/credential/id-based-credential-matcher.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,37,53,58
+packages/cli/src/modules/agents/integrations/integration-context-query-executor.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 33-58,61,65,73
+packages/testing/playwright/tests/e2e/workflows/editor/workflow-actions/settings.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 33,35,38-39,42-43,46-47,50-51,54-55,68-69,73-74
+packages/cli/src/security-audit/risk-reporters/__tests__/instance-risk-reporter.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-59
+packages/@n8n/mcp-apps/src/apps/workflow-preview/type-guards.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/testing/playwright/pages/components/CredentialModal.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 228-248
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22-26,28,31,110,116-117,119,124-125,216-223,358-364,371-375,382-386,393-395,405,604,613-616,619,631,633,668-674,682-683,686-687
+packages/@n8n/instance-ai/src/knowledge-base/__tests__/materialize-knowledge-base.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 112,120,175,227,233-234
+packages/@n8n/ai-workflow-builder.ee/src/utils/stream-processor.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 21
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,13,92,127-134,201-206,209-210,265-274
+packages/cli/src/modules/quick-connect/handlers/firecrawl.handler.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2,11-12,21-28,35-41,43-45,48
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodeGroups.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 143-148,210
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5,7-16,28,41-51,128,135,143,150,174-196,226,326-337
+packages/frontend/editor-ui/src/experiments/instanceAiMcpConnections/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 136
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2-3,36-48,77,82-85,90-93,102,108-111,115,121,130,136,158,166,181,186,190,199,205,210,222,227,230-231,236,249,254,260,265,270,277,281,293,303,305,319,332,334,344,354,356,366,379,396,412,428,460-462,493-495,522-524,552-554,572-574,589-591,600-602,607,611-620,626-628,634-636,654-656,665-667,672-680,684-686,692-694,702,708,713,718,744-746,761,765,777-778
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0003-1782152998323-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/workspace/template-telemetry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5,18,25,99
+packages/cli/src/evaluation.ee/test-runner/workflow-compiler.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 48-51,134-190
+packages/cli/src/public-api/v1/handlers/data-tables/data-tables.handler.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,85,87,98
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 354-367
+packages/cli/src/executions/execution-persistence.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 20-24,31,189-190,209,219,236,240-251,265,292,307,315,329-330,333-334,336,338,345,352-355,358,380-383,434-439,445,449,454,460,465-475,494,834-938
+packages/@n8n/instance-ai/evaluations/cli/pairwise.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22
+packages/cli/src/modules/mcp/mcp.settings.controller.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 12,63-78
+packages/cli/src/modules/agents/tracing/__tests__/builder-telemetry.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22-25,34-40,48,57-62,68-91
+packages/cli/src/modules/agents/agent-knowledge-storage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-113
+packages/nodes-base/nodes/LoneScale/actions/contact.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-113
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 38,40,45
+packages/frontend/@n8n/design-system/src/components/N8nInlineTextEdit/InlineTextEdit.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 138,141
+packages/testing/playwright/composables/WorkflowComposer.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 66,68,71,77,83
+packages/cli/src/workflows/workflow-entity-mapper.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-33
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useWorkflowResourcesLocator.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8,25,38,241-274
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0001-1782152917092-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0007-1782153139743-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0002-1782152959532-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0005-1782152417836-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/src/mcp/mcp-client-manager.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 32-35,45,54,122-126,130-132,139-145,215,219
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 257-259,261,299-301,303,470-472,474
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/cli/src/license/__tests__/license.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2-3,6,20-22,30,147,157-168,176-196,205
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18-32,982-994,1009-1010,1045,1070,1125,1141,1318-1325
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/workflow/secureScore.get.genericOAuth2.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-47
+packages/@n8n/instance-ai/evaluations/utils/safe-extract.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10,27
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0010-1782156983555-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0005-1782156983534-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/evaluations/harness/chat-loop.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5-6,15,33,129-131,216-271
+packages/@n8n/utils/src/validation.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/cli/src/modules/agents/integrations/__tests__/linear-integration.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,19-20,24-28,36-39,100-102,125
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0005-1782152787930-unknown-host-POST-_v1_messages-b744b5ea.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/pages/components/NodeCreator.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 104-107
+.github/workflows/mutation-health-nightly.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 17-20,25-30,39-44,50-79,84-87,89-103,107-111,117-124,126,136-137,152-153,155,184
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 55-56,61
+packages/@n8n/agents/src/skills/validator.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 69-88
+packages/frontend/editor-ui/src/features/agents/composables/agentChatMessages.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-30
+packages/@n8n/agents/src/workspace/sandbox/lazy-daytona.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,8
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/interactionRegistry.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-36
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0007-1782156983541-unknown-host-POST-_v1_messages-18726485.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/app/models/history.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,17-19,328-419
+packages/frontend/editor-ui/src/app/composables/useImportCurlCommand.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 481-493
+packages/cli/src/modules/agents/integrations/__tests__/integration-context-query-executor.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,26
+packages/frontend/editor-ui/src/app/models/history.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-116
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0000-1782152959527-unknown-host-POST-_v1_messages-36f8b967.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+pnpm-lock.yaml
+  ai_agent 96-98,252-254,261-263,544-545,615,631-637,822,824,860,885,888,904,910,982-983,992,995,1023-1025,1042-1043,1110,1113,1147,1150,1208,1211,1231-1232,1262,1284,1287,1335-1336,1374,1393,1398-1399,1415,1418,1443,1489,1526,1596,1624,1627,1652,1655,1756,1759,1796,1818,1821,1855,1938,1984,2048,2061,2079,2125,2129,2131,2246,2249,2271,2274,2282-2283,2317,2354,2372,2375,2381,2448,2470,2479,2485,2558,2561,2606,2612,2728-2729,2734-2735,2865,2868,2887,2890,2901-2902,2921,2958,2961,2983,2986,3041,3044,3081,3084,3120,3123,3132,3135,3142-3144,3184,3351-3352,3589,3715-3716,3811-3812,3927,3930,3952,3964,4013,4016,4025,4028,4031,4068,4080,4083,4207,4234,4261,4264,4267,4307,4322,4325,4345-4346,4386,4389,4429,4441,4444,4493,4502,4508,4511,4532,4541,4547,4684-4685,4848,4908,4911,4944,4947,4950,4956,4959,5040-5041,5049-5050,5336,5339,5370,5406,5443,5449,5458,5566,5591,5613,5698,5722,5725,7170-7171,7173-7174,7176-7177,7200-7203,7217-7220,7267-7268,7273-7274,7279-7280,7285-7286,7291-7292,7297-7298,7303-7304,7309-7310,7315-7316,7321-7322,7327-7328,7333-7334,7339-7340,7345-7346,7351-7352,7357-7358,7363-7364,7369-7370,7375-7376,7381-7382,7387-7388,7393-7394,7399-7400,7405-7406,7411-7412,7417-7418,10641,11142-11143,11152-11153,11162-11163,12557,12559-12560,13008-13010,14117-14119,14210-14213,14281-14282,18151-18152,18160-18162,19137,20631-20632,20928,21375,21587,24155,24159,24259,24267,24271-24272,24324-24325,24372,24374,24379,24383-24384,24394,24410-24416,24445-24446,24459,24473,24476-24477,24482,24567,24570,24573,24576,24579,24582,24585,24588,24591,24594,24597,24600,24603,24606,24609,24612,24615,24618,24621,24624,24627,24630,24633,24636,24639,24642,25328,25341,25363,25411,25415,25446,26015,26137,26194,27361-27362,27635,28047,28050,28075,28077,28082,28084-28085,28088,28095,28100,28102,28121,28123,28128,28204,28211,28674,28680,28686,28928,29436,29451,29455,29457,29460,29462-29463,29466,29473,29475,29482,29502,29521,29527,29529,29535,29537,29543,30356,30358,30361,30935,30941-30943,30945,30951-30957,32147,32149-32150,32243-32244,32394,32396-32421,33920,33930,34796,37261,37264,37268,37274-37277,38401,38403,39091,39268,39270-39271,39286,39786,40074,40089,40091,40093,40233,40506,40519,40525,40529,40533,40536,40538,40544,40551,40560,40569,40573,40575,40579,40581,40584,40601,40606
+packages/frontend/editor-ui/src/app/constants/modals.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 49
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2,115-138,166-169,173
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0006-1782156983537-unknown-host-POST-_v1_messages-affb883c.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/eslint.config.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8
+packages/@n8n/agents/src/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 219
+packages/cli/src/modules/instance-ai/observability.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22,25
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0002-1782152998321-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/tests/e2e/projects/folders-advanced.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 60
+scripts/mutation-health/mutate.test.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-202
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0004-1782152998324-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,30
+packages/cli/src/controllers/__tests__/telemetry.controller.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,45,52,177-183,190-199
+.github/scripts/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4
+packages/nodes-base/nodes/Microsoft/GraphSecurity/GenericFunctions.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10-26,35-36,42,48-53
+packages/@n8n/instance-ai/docs/configuration.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 72
+docs/generated/sqlite-schema/README.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 76,225-226,931-936
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 71,85
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowCreate.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 45-49
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 143
+packages/testing/playwright/expectations/instance-ai/should-extract-text-from-an-html-attachment-and-answer-from-it/0000-1782152471852-unknown-host-POST-_v1_messages-74b04bc1.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0012-1782156983560-unknown-host-POST-_v1_messages-7d3b0e5e.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/evaluations/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 17-18
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiMcp.telemetry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-16
+packages/@n8n/ai-workflow-builder.ee/src/tools/get-node-context.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3
+packages/@n8n/instance-ai/skills/planned-task-runtime/SKILL.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 120-122
+packages/cli/src/modules/agents/agent-sandbox.controller.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-58
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0000-1782152459589-unknown-host-POST-_v1_messages-7f6a2ee7.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/utils/__tests__/eval-agents.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 72
+packages/@n8n/instance-ai/evaluations/__tests__/runner-prebuilt.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 78,110
+packages/cli/src/modules/agents/agents.controller.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6,8,65-66,457-464,477,484-485,496,673,692,704,706,709-716,731,733-734,751,756-760
+packages/cli/src/services/dynamic-templates.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,12-13,17-22,29-36
+packages/frontend/editor-ui/src/features/agents/utils/toolDisplayName.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4-6,9-11,17-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5,445-450
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3
+packages/cli/src/services/protected-resource.registry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 43-50
+packages/cli/src/public-api/v1/shared/spec/schemas/_index.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9-10
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodeGroups.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 104-161
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 27-29,39,54-76,91-94,96,98,112-119,131-132,282-364,371-372,411-427,491-523,570-585
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0004-1782152874783-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1352,1368
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 44,177
+packages/frontend/editor-ui/src/features/agents/__tests__/N8nChatActionCard.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-246
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 261,272
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,14,37,99-107,128,130-141,146,151-156,412,471-472,586,600,733-770,790-818,1691,1694,2574,2592-2603,3598-3612,3867-3868,4558-4559,4669,5233-5238
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 211-212,426-427
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0008-1782156983550-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,13-16,43-70,195-231
+docs/generated/sqlite-schema/agent_files.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 40-41
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 39-47
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 199
+packages/cli/src/modules/mcp/mcp.settings.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9,23,82-104
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0022-1782156983587-unknown-host-POST-_v1_messages-788cde68.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 35-40
+packages/@n8n/instance-ai/src/tools/orchestration/eval-setup-agent.prompt.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,27,227
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/components/InteractionRenderer.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-50
+packages/nodes-base/credentials/test/GoogleSheetsOAuth2Api.credentials.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-137
+packages/testing/playwright/tests/e2e/workflows/editor/ndv/paired-item.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 101,105,110,114
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 509
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,22-24,27-47,74-75,95-99,165-207,243-246
+packages/testing/playwright/tests/e2e/workflows/editor/workflow-actions/archive.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 130-131,133-134,145-148,163-166,177-180,194-196,213-214,226-227,229-230,244-246,257-259
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,44-47,91-92,112-114,117,201-203
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-27
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useWorkflowResourcesLocator.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2-3,15,77-90,96
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/constants.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-25
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11-13,27,37,41,62,65-66,69-70,102,116-117,210-213,219,233,361,367-383,385,387-388,393,403-420,449
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 42,145,544-546
+packages/cli/src/services/project.service.ee.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,78,238-246
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-336
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0004-1782152417835-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0002-1782152526112-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/agents/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 73
+packages/@n8n/mcp-apps/src/telemetry/sanitize.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 177-183,206-211
+packages/@n8n/nodes-langchain/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 284,300
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,323-372,1145,1148,1159,1162-1163,1177,1179,1183-1197,1206,1209,1217-1480
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowVersion.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 31-36
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 45-46
+packages/cli/src/modules/agents/entities/agent-file.entity.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-38
+packages/nodes-base/nodes/Google/Ads/__test__/node/GoogleAds.node.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22,64,93,124
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 169-286
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0003-1782152917100-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/cli/src/modules/community-packages/__tests__/npm-utils.ssrf.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-4,6,8-13,15-19,21-22,24,26-27,29-63
+packages/cli/src/modules/quick-connect/handlers/__tests__/firecrawl.handler.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,3,15,23-26
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/delegateTool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-145
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 19
+packages/cli/src/services/ai-workflow-builder.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5,10,18,28,56,156-157,161-167,180-181
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,16,20-21,23,75-78,88,526-617
+packages/nodes-base/nodes/Webhook/description.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 302-310
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0001-1782156983522-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0004-1782156983531-unknown-host-POST-_v1_messages-f0769297.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+scripts/mutation-health/ledger.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-50
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,22,24,86,167,193,224,248,276,364,387
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0001-1782153139730-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 89-110
+packages/cli/src/modules/agents/integrations/platforms/slack-operations.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2
+scripts/mutation-health/signals.test.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-211
+packages/testing/playwright/scripts/sizing-matrix-topologies.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-118
+packages/@n8n/instance-ai/evaluations/harness/runner.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 32-33,47,149-150,191-192,386-387,401-404,445,457-482,599,631,646
+packages/@n8n/instance-ai/src/agent/__tests__/apply-agent-thinking.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-44
+packages/testing/playwright/tests/e2e/workflows/executions/list.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 51
+packages/testing/playwright/expectations/instance-ai/should-persist-messages-after-page-reload/0001-1782152512545-unknown-host-POST-_v1_messages-c6ff9924.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 47-53,703,712,715-743,749-752,754-756,758-805,1784-1964,5200-5259
+packages/nodes-base/nodes/LoneScale/LoneScale.node.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11-24,26,35,57-58,62-63,66-68,71-73,76,78-79,81-88,96-104,115,121,123-132,135
+packages/@n8n/api-types/src/agents/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9
+packages/cli/src/modules/agents/agent-knowledge-retrieval.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-320
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1937-1977
+packages/testing/playwright/pages/n8nPage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 20,117,204
+packages/testing/playwright/scripts/sizing-matrix-topologies.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-111
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 52,121-130,370-373,382
+packages/frontend/editor-ui/src/features/agents/components/RichInteractionCard.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 27-28,104,113
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/item-flow-independent-source-execute-once.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2
+packages/cli/src/interfaces.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 108-109
+packages/frontend/editor-ui/src/features/execution/executions/executions.types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 66-67,81-82
+packages/cli/src/utils/auth-fetch.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,4-5,24-25,34,41,52
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-4,115-174
+packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10
+packages/cli/src/modules/oauth-server/oauth-consent.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 13,61,69
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,20,48,62-65,83,112,139,166,193,196-298,305,315,334,441,446-453,455-460,462-510,1216-1306
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsOverviewPanel.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 135-148
+docs/generated/postgres-schema/public.agent_files.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 36-37
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0000-1782152526110-unknown-host-POST-_v1_messages-420a7980.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/cli/src/modules/agents/agent-knowledge-gate.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-11
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10-15,114-204
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 177,202
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,5-7,10-11,15,23,36-37,45-123,374-376,420-434,436,501-514,522-544,638-639,646
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 20-21,112,132-133,135-137,141-143,311,326-338,343,347
+packages/nodes-base/nodes/LoneScale/descriptions/ListDescription.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-71
+packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22,47-51
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0009-1782153139749-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/nodes-base/nodes/NextCloud/NextCloud.node.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 480-484,885-887,890-907,947,984-1020,1022,1026,1140,1178-1188,1190-1214,1216-1259,1262-1268,1270-1323,1483-1485,1488
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0015-1782156983569-unknown-host-POST-_v1_messages-788cde68.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0001-1782152841574-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/pages/components/NodeCredentials.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-4,6,8-10,12-14,16-22,24-25,27-29,31-34,36-39,41-44,46-49,51-53,55-58,61-119
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/alibaba.svg
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/instance-ai/src/workspace/workspace-manifest.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/public-api/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 38,50
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 38-90
+packages/nodes-base/credentials/GoogleCalendarOAuth2Api.credentials.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 19-48,53
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0001-1782153036689-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-peer-dependencies.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15-18
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0001-1782153178451-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10,187-225
+packages/nodes-base/nodes/LoneScale/loneScale.svg
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/cli/src/modules/mcp/__tests__/mcp.settings.controller.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 12,371-480
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 19-20,42,205-215,233-235
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/parse-validate-handler.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 250-255,257
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 54-58
+packages/cli/src/executions/execution-data/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 28-33,46-56
+packages/cli/src/utils/__tests__/auth-fetch.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2,5-6,18,21-22,24,28-29,34,36,40,44,48,56,60,64,71-72,79-80,84,87,95,107,119
+packages/cli/src/modules/agents/tracing/builder-telemetry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6-17,20-21,23-31,63,78-79,86-94
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0005-1782152998326-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0001-1782153077335-unknown-host-POST-_v1_messages-0a701781.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0003-1782153139734-unknown-host-POST-_v1_messages-18726485.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0004-1782146888774-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15
+packages/@n8n/agents/src/runtime/tools/deferred-tool-manager.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,30
+packages/nodes-base/nodes/LoneScale/descriptions/ItemDescription.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-231
+packages/cli/src/modules/agents/integrations/integration-tools.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2-9,13,61-69,72,168-182,819-822,918-925,929,1305,1334,1341,1344
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 73-80,99,104
+packages/nodes-base/credentials/GoogleCloudStorageOAuth2Api.credentials.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22-51,56
+packages/nodes-base/credentials/test/GoogleCloudStorageOAuth2Api.credentials.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-133
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0002-1782153139732-unknown-host-POST-_v1_messages-affb883c.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0005-1782152959540-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/pages/DemoPage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 25-64
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner-langsmith.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11
+packages/cli/src/license/license.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2-3,15-16,28-29,37-42,70-81,99-102,108-110,114-116
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 246-247,250-251,257,597,686,786-788,1214,1218,1498-1509,3172-3181,3240
+packages/cli/src/modules/instance-ai/repositories/instance-ai-thread-grant.repository.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-32
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 12-14,20,23,28-29,34-35
+packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 524-530,532
+packages/testing/playwright/tests/e2e/api/waiting-endpoint-security.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,94,96-97,99-100
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/displayGroups.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-45
+packages/testing/playwright/tests/e2e/workflows/demo-diff.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 119,121,125,128,131,134,137,140,144,147,150,153,156,160,163,166,169,172,176,179,182,185,188,191,195,198,201,204,208,211,214,217,221-222,226-227
+scripts/mutation-health/signals.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-233
+packages/cli/src/security-audit/risk-reporters/instance-risk-reporter.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,4,22-23,26-27,32-37,163-165,167-169,171
+packages/testing/playwright/tests/e2e/nodes/form-trigger-node.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,108,111,115-116,120-121,124,197,200,203-204,308,311,314-315,318-319
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0017-1782156983575-unknown-host-POST-_v1_messages-b744b5ea.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/app/composables/canvasConnectionReplacement.utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 65,228
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0002-1782152417833-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/pages/components/CodeNodeEditor.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-127
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-142
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 30-35
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/TestRunDetailView.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 363-364,373-427
+packages/testing/playwright/tests/e2e/projects/project-settings.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 66,83-84,87,92,107-108,111-113,180-181,254-255
+packages/@n8n/instance-ai/src/tools/evals/evals.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3
+packages/testing/playwright/tests/e2e/workflows/editor/ndv/ndv-core.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 121
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 164,834-835,884,900,1109-1130
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0001-1782152526111-unknown-host-POST-_v1_messages-a4f4daba.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-5
+scripts/mutation-health/pick-next.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-5,15-16,21-25,29,32-43,46-54,57,66-67,119-181,193,201,205,220,222-225,227,231-232,237-286,288-289,291-312,314-335,337-338,340-344,346-347,349-358,360-362,364-374,376-383,385-483,486-625
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/workflow/secureScore.get.genericOAuth2.workflow.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-83
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 13-24,110,150
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 87,308,322-325,492-503,1416-1418,1430-1432,1977
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-7,9-10,12-13,16-28,31-48,51-56,62,66-93,101-102,105,107-266,269-336
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 160
+packages/cli/src/modules/mcp/mcp.typeguards.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4-5
+packages/cli/src/workflow-helpers.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9,11,13,18,20,146-212,216-221,226,231-236,260-275
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-schemas.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/10.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-69
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-16
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 44,144-154
+packages/@n8n/workflow-sdk/src/codegen/codegen-roundtrip.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2751-2766
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0004-1782153077338-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/agents/src/runtime/memory/observation-log-store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 21
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 248
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 61-65,77,167-212,223-240
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 757-759
+packages/nodes-base/nodes/LoneScale/descriptions/ContactDescription.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-360
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0020-1782156983580-unknown-host-POST-_v1_messages-788cde68.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/tests/e2e/ai/langchain-memory.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 107,114-115
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 32,55,59-60,75-76,94-98,106,110,116-118,120-126,132,162,209,213
+scripts/mutation-health/ledger.test.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-140
+packages/@n8n/api-types/src/dto/workflows/base-workflow.dto.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 123-127
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10,60-61,72,83-85,501-525,560-561,1362-1363
+packages/cli/src/modules/mcp/__tests__/mcp.settings.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 99-137,763-792
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0005-1782153139739-unknown-host-POST-_v1_messages-ec41fb8e.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 42,90-91,160-161,230,270-273,275,282,287,304,309-310,402,409,439,928
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0002-1782156983525-unknown-host-POST-_v1_messages-9c6a250a.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/tests/e2e/projects/projects-move-resources.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 108,125,142
+packages/@n8n/instance-ai/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 55
+packages/testing/playwright/utils/benchmark/sizing-matrix.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22-27
+scripts/mutation-health/pick-next.test.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-415
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,18,22,28,30,32-33,38,44,56-62,255,623
+packages/@n8n/agents/src/runtime/memory/title-generation.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9,234-235,254
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0002-1782153178454-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/nodes-base/nodes/LoneScale/test/LoneScale.node.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-345
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 83,103-105,184,215,222,238-239,425-429,640-641,668
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8,24-35,691-1071
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 21,24,26-30,143,146-147,155-165
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/n8nChatInteraction.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-226
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/binary-checks/checks/no-empty-set-nodes.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,3
+packages/cli/src/modules/community-packages/npm-utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3,252,270-282
+packages/@n8n/instance-ai/src/tools/evals/detect-tool-refs.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/agents/integrations/integration-message-context.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 63-78
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 45,102,130,136
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-296
+packages/cli/src/middlewares/list-query/dtos/workflow.filter.dto.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 55-73
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 12,34-37,176-177,227,260-289,291-296,298,308-310
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoffCapability.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,16,94-112,115
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/GenericFunctions.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 32-38,203,209-214,217,223-225,227-231,278-280,282-283,312-314,316-317,332-334,336-337,574-748,858,860-862
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0004-1782153139736-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/ai-workflow-builder.ee/evaluations/langsmith/trace-filters.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/events/maps/relay.event-map.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15,91,93
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0003-1782152959535-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+scripts/mutation-health/README.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 56,60-62,75-94,96-102,116-119,121,123-125,167,188,201-202,221,266,271-282
+packages/@n8n/eslint-plugin-community-nodes/src/rules/ai-node-package-json.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15-18
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-292
+packages/nodes-base/nodes/LoneScale/loneScale.dark.svg
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/@n8n/workflow-sdk/src/workflow-builder/workflow-import.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 33-39,50-52,129-132,178-190,199
+packages/frontend/editor-ui/src/app/composables/useImportCurlCommand.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 151-153,272-279
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,195-291,535-567
+packages/@n8n/api-types/src/agents/rich-card.schema.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-157
+packages/frontend/editor-ui/src/app/composables/useWorkflowExtraction.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,377-389
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,14,24,32-50,71-83,85-88,91-94,96-99,152,163-169,174-175,178,181,201-249,404-407
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 20-27,1489-1558,2576-2641,3788-3789,3811,4779-4812,6010-6065,6989-6991,7060-7073
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 20-21,69,199,201
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0003-1782152787927-unknown-host-POST-_v1_messages-2ff660d1.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/tests/e2e/sharing/credential-visibility.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 52-54,95-96,155-156,210,240
+packages/testing/playwright/expectations/instance-ai/should-create-new-thread-via-sidebar-button/0002-1782152802161-unknown-host-POST-_v1_messages-c9c10e2c.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 39-47,1581,1600,1612,1644-1645,1681,1692,1704
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-22,69-84,98-100,508-511
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 42,525
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0002-1782153077336-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+pnpm-workspace.yaml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 39,93,99,103-104,151,215-218
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/valid-peer-dependencies.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-json-utils.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,34-100
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 153
+packages/testing/playwright/tests/e2e/regression/AI-1401-sub-nodes-input-panel.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 27-29
+packages/@n8n/instance-ai/evaluations/data/workflows/schema.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-4,34-53
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 29-34,126-131
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/memory-session-key-validator.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8-9
+packages/@n8n/workflow-sdk/src/ast-interpreter/validators.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 85
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 70,223-230
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 218-219
+packages/@n8n/instance-ai/src/debug/sanitize-debug-snapshot.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/set-node-validator.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8-9
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0003-1782152417834-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0006-1782153077340-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2
+docs/generated/sqlite-schema/instance_ai_thread_grants.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-87
+packages/@n8n/api-types/src/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 272,318-319,391-393
+packages/@n8n/instance-ai/evaluations/data/workflows/mocks-node-with-one-credential.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-27
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15,81,94,106
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0003-1782146888771-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-151
+scripts/mutation-health/build-matrix.test.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-347
+packages/@n8n/api-types/src/agents/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 196-207
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0001-1782146888767-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-mcp-update-connection-request.dto.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6
+packages/cli/src/workflows/workflows.controller.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 34,42,101,311,664
+packages/@n8n/instance-ai/src/workspace/create-workspace.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 63,100-108
+packages/cli/src/modules/oauth-server/oauth-consent.controller.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 41
+packages/nodes-base/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 925
+packages/core/src/observability/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9-13
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-249
+packages/@n8n/instance-ai/src/runtime/__tests__/memory-task-registry.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-97
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,6-7,9-15,17-19,25-31,34,52-136,139-142,146-147,149-161,164-165,167-227,230-234,237-242,244-259,262-274,276-303,306,308-315,317-332,335,337-344,347-384,386-405,408,410-420,422-427,430-467
+packages/cli/src/modules/agents/agents.module.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 12,41,46,83,87,93,123
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8,117
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,58-63,163-165,195-196
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/n8nChatInteraction.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-131
+packages/@n8n/instance-ai/evaluations/data/workflows/dont-reask-answered-question.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-38
+packages/@n8n/instance-ai/src/tools/evals/describe-metric-for-workflow.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,4
+packages/@n8n/instance-ai/src/tools/evals/generate-sample-rows.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/utils/__tests__/strapi-utils.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3,7-21,23-31,37,40,43-45,47-49,54,58,66,68,78,80,85-86,88-94,97-98,100,102-110,114,124,128-129,137-139,148,150,155-157,166-167,172-173,183,185,191-201,203-271,279,285,291
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 137,167
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2-3,53-60,72-78,107,119,267-304
+packages/@n8n/local-gateway/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 27
+packages/testing/playwright/expectations/instance-ai/should-persist-messages-after-page-reload/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15,99-108,187-190,481-492,616-619
+packages/testing/playwright/tests/e2e/auth/token-exchange.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 46,62,78,84,105,111-123,140,150,173,183,193,206,220-222,230,244
+packages/cli/src/modules/mcp/__tests__/workflow-operations.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6,874-931
+packages/testing/playwright/tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 121,148
+packages/@n8n/mcp-apps/src/server/register-mcp-app-tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6
+packages/@n8n/instance-ai/src/tools/evals/column-ref-utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,10,24-25,27-28,53-57,69
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5,76-78,80,104-118,222-223,231-232,267-270
+packages/testing/playwright/scripts/sizing-matrix-aggregate.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9-13,20,23,27-32,41,113-115,124,127,228,236,247-300,327-332,387-392
+packages/@n8n/instance-ai/src/workspace/template-telemetry.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 34-47
+packages/testing/playwright/tests/e2e/workflows/editor/ndv/resource-locator.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 134-135,146-147
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0000-1782146888764-unknown-host-POST-_v1_messages-d4fcbf88.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/workspace/__tests__/create-workspace.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 249-289
+packages/frontend/editor-ui/src/experiments/instanceAiMcpConnections/useInstanceAiMcpConnectionsExperiment.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-39
+packages/nodes-base/nodes/LoneScale/descriptions/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-4
+packages/@n8n/workflow-sdk/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 100
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiMcp.store.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-50,53-75,77-79,81,83-85,87-89,91-95,97-175
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0011-1782156983558-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/tests/e2e/settings/environments/source-control.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 82,101-105
+packages/@n8n/workflow-sdk/src/node-groups.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-287
+packages/testing/playwright/tests/e2e/ai/hitl-for-tools.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 37,117
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 27,505,525-536,563,566-571,597,605,627,676,799,801-806,830,848-862,884-959
+packages/frontend/editor-ui/src/experiments/instanceAiMcpConnections/useInstanceAiMcpConnectionsExperiment.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-16
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 513-537
+packages/cli/src/modules/instance-ai/entities/instance-ai-thread-grant.entity.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-40
+packages/@n8n/db/src/migrations/common/1784000000035-AddUniqueAgentFileNames.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-13
+packages/@n8n/instance-ai/src/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 478
+packages/cli/src/modules/otel/otel.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,36,204-206
+packages/core/src/errors/error-reporter.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11-17,41-43,151,242-247
+packages/cli/test/integration/evaluation/test-runs.api.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 352-371
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8,51,185-190
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,171-182,513-514,525-526
+packages/@n8n/workflow-sdk/src/validation/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/agents/src/types/sdk/provider.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 30-38
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/LmChatAlibabaCloud.node.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22,30,81
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 208-236
+packages/frontend/editor-ui/src/features/agents/utils/interactive-summary.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/executions/execution-data/db-store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 78-104
+packages/@n8n/ai-utilities/src/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1236-1240,1642-1645,1647,1835
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionPreviewDocument.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 33,57,251-254
+packages/testing/playwright/expectations/instance-ai/should-display-user-and-assistant-messages-in-timeline/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-874
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0006-1782153139741-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/frontend/editor-ui/src/features/core/auth/views/SetupView.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4-5,8,65-82
+packages/testing/playwright/pages/components/ChatHubToolsModal.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,7-11,27
+packages/@n8n/instance-ai/src/tools/evals/metric-catalog.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 638-639,641-642,644,665,678,686,693,739
+packages/@n8n/instance-ai/src/runtime/memory-task-registry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-50
+docs/generated/sqlite-schema/user.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22,65,196-201
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/node-class-description-name-camelcase.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-41
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 15
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 24,276-290
+packages/cli/src/executions/__tests__/execution-persistence.integration.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,7,221-396
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 160-161,173-175
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 103-104
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-83
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0003-1782153077337-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-create-new-thread-via-sidebar-button/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/utils/strapi-utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,8,16-27,42,50,54-75,85,87-99,112,118-119
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0002-1782152917095-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat-integration.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-139
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/alibaba.svg
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 76,139,167,198
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 48
+packages/testing/playwright/expectations/instance-ai/should-extract-text-from-an-html-attachment-and-answer-from-it/0001-1782152471853-unknown-host-POST-_v1_messages-63e59df9.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0000-1782152841572-unknown-host-POST-_v1_messages-4f9d97af.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 207
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0003-1782156983526-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0004-1782152841578-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/utils.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 287,293-294,329-334,478-479,507-508,585-586,633-638,775-776,838-839,910-911
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 52-54,205-207,239-243,262,265
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9,13,138,386-401
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6,73-143
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/@n8n/instance-ai/src/tools/evals/eval-data-requirements.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+scripts/mutation-health/emit-payload.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9-12,51-67,69-75,77-78,80-83,85-86,88-92,97-118,121-122,124-160
+packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-43
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,292
+packages/@n8n/instance-ai/evaluations/data/workflows/dont-reask-skipped-question.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-39
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 51,101
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 58-61
+packages/cli/src/modules/instance-ai/entities/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 31,41,50,67,94,236-237,270-271,283-451,543
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 456,462,468-474,480-486,492-498,504-513,519-528,531-594
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11-16
+packages/frontend/editor-ui/src/app/composables/useWorkflowExtraction.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 14,31,49-53,81,108,138,140-142,208-240
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/@n8n/instance-ai/src/stream/output-redaction.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/cli/src/workflows/workflow.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 152-156,164,173,212-232,422-423,426,438-449,1038-1042
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 26-27,32-33,37-40,46,52-55,65-69,129-130,132-133,135-137,150-154,174-177
+packages/cli/src/credentials/credentials.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1010,1034,1036
+.github/workflows/ci-pull-requests.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 111
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 245,251-255
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0002-1782152459592-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/mcp-apps/src/utils/post-message.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-settings.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,8-9,16-21,32,40-42,49,85-88,92,99-108
+packages/@n8n/instance-ai/src/utils/__tests__/stream-helpers.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/nodes-base/nodes/LoneScale/actions/company.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-41
+packages/@n8n/workflow-sdk/src/workflow-builder.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11,955-1054
+packages/frontend/editor-ui/src/features/agents/utils/delegate-tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6,28
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 194-284
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,8,10-11,14
+packages/cli/test/integration/public-api/executions.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 184-224
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 47,51,54,539-546,552-566,782,784-795,2043-2044,2049,2060-2062,2064-2075,2077,2103-2108,2114,2117-2119,2131-2134,2283-2286,2508-2512,2515,2546,2612,2876-2878,2994-2997,3008,3011-3014,3028-3030,3108-3111,3130,3134-3136
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 13
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflow.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 49-53
+packages/cli/src/modules/agents/tools/knowledge/__tests__/search-knowledge.tool.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-75
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 49,52,69-74,107-108,555
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2,4-6
+packages/testing/playwright/pages/components/BuilderSetupWizard.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-4,16-19,59
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,17-23,107-108,130,235,240,252
+packages/@n8n/instance-ai/src/knowledge-base/build-templates-index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 33-55,78,100
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22-28,462-470,472-485
+packages/@n8n/mcp-apps/src/apps/workflow-preview/composables/use-workflow-preview.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3
+packages/@n8n/instance-ai/src/utils/stream-helpers.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0013-1782156983562-unknown-host-POST-_v1_messages-7d3b0e5e.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/cli/src/modules/agents/agents.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 13,32,71,86,233,269-272,303,315,368,771,781,951-956,966,1172-1191,1364-1368
+packages/@n8n/agents/src/skills/registry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 407-408,667,686
+packages/@n8n/eslint-plugin-community-nodes/src/rules/node-class-description-name-camelcase.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-114
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowNodeGroup.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-20
+packages/@n8n/db/src/entities/types-db.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 118-122
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1244-1267
+packages/cli/src/modules/agents/agent-knowledge-commands.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-551
+packages/nodes-base/nodes/LoneScale/test/LoneScale.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-38
+packages/testing/playwright/scripts/sizing-matrix-aggregate.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-129
+packages/testing/playwright/tests/e2e/nodes/send-and-wait.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6,220,222-223,225-227,229,231
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.id.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 12-17
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1175,1420,1740,2451-2452,3056,3098-3108,4732-4733,4757,5378,5482,5897-5905,6469-6471,6498,6662,6667-6668
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.store.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8-16,23,59,105-126
+packages/@n8n/instance-ai/evaluations/README.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 542,581,583-593
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.api.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 24
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0018-1782156983578-unknown-host-POST-_v1_messages-788cde68.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 67
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,4-5,63-68,99-101,147-149,151-152,164-168,268-293
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 25,1145,1148-1188
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 259-263
+packages/frontend/editor-ui/src/app/components/WorkflowPreviewHost.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 52
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0000-1782152787920-unknown-host-POST-_v1_messages-28ad2287.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10
+packages/nodes-base/nodes/LoneScale/actions/list.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-17
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,38,48,622-631
+packages/testing/playwright/tests/e2e/credentials/global.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 39,48,63,90-92,95-97,123,126,134
+.github/workflows/test-e2e-infrastructure-reusable.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 47-91
+packages/frontend/editor-ui/src/features/agents/components/interactive/N8nChatActionCard.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-292
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0000-1782152998316-unknown-host-POST-_v1_messages-69ef34e1.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0005-1782153077339-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1603-1667
+packages/cli/src/services/ai-gateway.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,8,52,55-84,205-212,229-236,238,294-300,360-375
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0004-1782152787929-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/ssrf-guard.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,4-10,12-13,17-20
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/parse-validate-handler.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 279-311
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsView.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11,66,206-320
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-350
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 250,386-388
+packages/testing/playwright/pages/components/RunDataPanel.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 94-101,166-167
+packages/@n8n/config/src/configs/executions.config.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 157-165
+packages/cli/src/services/__tests__/ai-workflow-builder.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,9,15,54,103-106,134,176,223,848-852,869
+packages/core/src/observability/tracing/span-sampling.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-90
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,188-203,213-214,240,613-621,676
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11-18,42-43,255-261,269
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0003-1782152874780-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/ai-workflow-builder.ee/src/utils/token-usage-tracking-handler.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0002-1782152787926-unknown-host-POST-_v1_messages-2ff660d1.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/cli/src/modules/agents/__tests__/agent-sandbox.controller.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-37
+packages/@n8n/instance-ai/src/tools/workflows/workflow-json-utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,98-129
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0004-1782152959538-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-73
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 592
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 294-424
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 67-75,171-174
+packages/cli/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 96,103,105,180,210
+packages/cli/src/modules/instance-ai/eval/thread-credential-allowlist.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,4-7,9-11,13-14,17-23
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0008-1782153139746-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/TestRunDetailView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 97-106
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.mcp.api.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-55
+packages/testing/playwright/pages/components/InlineExpressionEditor.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-139
+packages/testing/playwright/services/api-helper.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 30,84,104
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0002-1782152841575-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/eslint-plugin-community-nodes/src/rules/ai-node-package-json.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 16,18,52-53
+packages/testing/playwright/services/token-exchange-api-helper.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-96
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 70-72
+packages/cli/src/modules/agents/integrations/platforms/linear-integration.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,12,84-87,92,101,171-186
+packages/cli/src/evaluation.ee/llm-judge-provider-registry.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 93-94
+packages/cli/src/modules/mcp/mcp.utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5-6,8
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,104-105,120,136
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-122
+packages/nodes-base/nodes/LoneScale/descriptions/CompanyDescription.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-96
+packages/nodes-base/nodes/HtmlExtract/HtmlExtract.node.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2,13,31-35
+packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-950
+packages/@n8n/instance-ai/src/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10,766-772,1376-1378
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0000-1782153178448-unknown-host-POST-_v1_messages-18aad3e1.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0005-1782153178459-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 14,28-31,35-36,48,60,86,88
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0001-1782152874776-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/workflow-sdk/src/codegen/code-generator.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1449-1464
+packages/@n8n/instance-ai/src/error-formatting.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2
+packages/nodes-base/nodes/LoneScale/actions/item.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-72
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/manifest.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 107-111
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0021-1782156983583-unknown-host-POST-_v1_messages-788cde68.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/nodes-langchain/credentials/AlibabaCloudApi.credentials.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 16,56-57,71
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 17,42,102,673,683-700
+packages/cli/src/constants.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 118-120
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 334-335,337,340,345
+packages/@n8n/agents/src/workspace/sandbox/daytona-auth-manager.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/instance-ai/repositories/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11
+packages/cli/src/modules/token-exchange/services/__tests__/jwks-resolver.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,82
+packages/@n8n/instance-ai/src/tools/nodes/node-search-engine.types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 97-102
+packages/core/src/execution-engine/node-execution-context/__tests__/webhook-context.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8,83-125
+packages/frontend/editor-ui/src/app/components/DuplicateWorkflowDialog.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 105-107
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 143-147
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/MicrosoftGraphSecurity.node.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-23
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0002-1782146888769-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2896-3073
+packages/testing/playwright/tests/e2e/api/wait-form-resume.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,75,78,80-81,87-88,90
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsOverviewPanel.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 126-132
+packages/cli/src/modules/token-exchange/services/jwks-resolver.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5,127-130,141-147
+packages/nodes-base/nodes/LoneScale/test/LoneScale.workflow.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-136
+packages/frontend/editor-ui/data/node-popularity.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-29,32,36,44,48,52,56,60,63-64,67-68,72,76,80,83-84,87-88,91-92,95-96,100,104,108,111-112,115-116,120,124,128,131-132,135-136,139-140,144,147-148,151-152,155-156,159-160,163-164,167-168,171-172,176,180,184,187-188,191-192,195-196,199-200,204,207-208,211,215-216,219-220,223-224,227-228,231-232,235-236,239-244,248,251-252,255-256,259-260,263-264,267-268,271-272,275-276,279-280,283-284,288,291-292,295,299,303-304,307-308,311-312,316,320,323-328,332-340,344,347-348,351-352,355-356,359-360,363,367-368,371-372,375-376,379-380,383-384,391-392,395-396,399,403-404,407,411,415-416,419-420,423-424,427-428,431-432,436,439-440,443-444,447-448,451-452,455-456,459-460,463,468,471-472,475-476,479-480,483-484,487-488,491,495-496,499-500,503-504,507,511-512,516,519-520,523-524,527-528,531-532,535-536,539-540,544,547-548,551-552,555-556,559-560,563-564,567-568,575,579-580,583,587,591-592,595-596,599-600,603,607-608,611-612,615-616,619-620,623-624,627-628,631,635-643,647-652,656,660,664,668,675-676,679-680,688,696,700,703-704,707-708,712,715-716,720,723-728,732-736,740-744,748,751-752,755-756,759-760,763-764,767-768,771-772,775-776,779-780,783-784,787-788,791-792,795-796,799-800,803-804,807-808,811-812,815-816,819-820,823-824,827-828,831-832,835-836,839-840,843-844,847-848,851-852,855-856,859-860,863-864,867-868,871-872,875-876,879-880,883-884,887-888,891-892,895-896,899-900,903-904,907-908,911,915,919,923,927,935,939,943,947,951,955,959,963,967,971,975-976,979-980,983-984,987-988,991-992,995-996,999-1000,1003-1004,1007-1008,1011-1012,1015-1016,1019-1020,1023-1024,1027-1028,1031-1032,1035-1036,1039-1040,1043-1044,1047-1048,1051-1052,1055-1056,1059-1060,1063,1067-1068,1071-1072,1075-1076,1079-1080,1083-1084,1087-1088,1091-1092,1095-1096,1099,1103-1104,1107-1108,1111,1115,1119,1123-1124,1127-1128,1131-1132,1135-1136,1139-1140,1143-1144,1147-1148,1151-1152,1155-1156,1159-1160,1163-1164,1167,1171-1172,1175-1176,1179-1180,1183-1184,1187-1188,1191-1192,1195,1199,1203,1207,1211,1215,1219,1223-1224,1227-1228,1231-1232,1235-1236,1239-1240,1243-1244,1247-1248,1251-1252,1255-1256,1259-1260,1263-1264,1267-1268,1271-1272,1275-1276,1279,1283-1284,1287,1291-1292,1295-1296,1299-1300,1303-1304,1307-1308,1311-1312,1315-1316,1319-1320,1323-1324,1327-1328,1331-1332,1335-1336,1339-1340,1343-1344,1347-1348,1351-1352,1355-1356,1359-1360,1363-1364,1367-1368,1371-1372,1375-1376,1379-1380,1383-1384,1387-1388,1391-1392,1395-1396,1399-1400,1403-1404,1407-1408,1411-1412,1415-1416,1419-1420,1423-1424,1427-1428,1431-1432,1435-1436,1439-1440,1443-1444,1447-1448,1451-1452,1455-1456,1459-1460,1463-1464,1467-1468,1471-1472,1475-1476,1479-1480,1483-1484,1487-1488,1491-1492,1495-1496,1499-1500,1503-1504,1507-1508,1511-1512,1515-1516,1519-1520,1523-1524,1527-1528,1531-1532,1535-1536,1539-1540,1543-1544,1547-1548,1551-1552,1555-1556,1559-1560,1563-1564,1567-1568,1571-1572,1575-1576,1579-1580,1583-1584,1587-1588,1591-1592,1595-1596,1599-1600,1603-1604,1607-1608,1611-1612,1615-1616,1619-1620,1623-1624,1627-1628,1631-1632,1635-1636,1639-1640,1643-1644,1647-1648,1651-1652,1655-1656,1659-1660,1663-1664,1667-1668,1671-1672,1675-1676,1679-1680,1683-1684,1687-1688,1691-1692,1695-1696,1699-1700,1703-1704,1707-1708,1711-1712,1715-1716,1719-1720,1723-1724,1727-1728,1731-1732,1735-1736,1739-1740,1743-1744,1747-1748,1751-1752,1755-1756,1759-1760,1763-1764,1767-1768,1771-1772,1775-1776,1779-1780,1783-1784,1787-1788,1791-1792,1795-1796,1799-1800,1803-1804,1807-1808,1811-1812,1816,1819-1820,1823-1824,1827-1828,1831-1832,1835-1836,1839-1840,1843-1844,1847-1848,1851-1852,1855-1856,1859-1860,1863-1864,1867-1868,1871-1872,1875-1876,1879-1880,1883-1884,1887-1888,1891-1892,1895-1896,1899-1900,1903-1904,1907-1908,1911-1912,1915-1916,1919-1920,1923-1924,1927-1928,1931-1932,1935,1939-1940,1943-1944,1947-1948,1951-1952,1955-1956,1959-1960,1963-1964,1967-1968,1971-1972,1975,1979-1980,1983-1984,1987-1988,1991-1992,1995-1996,1999-2000,2003-2004,2007-2008,2011-2012,2015-2016,2019-2020,2023-2024,2027-2028,2031-2032,2035-2036,2039-2040,2044,2047-2048,2051-2052,2055-2056,2059-2060,2063-2064,2067-2068,2071-2072,2075-2076,2079-2080,2083-2084,2087-2088,2091-2092,2095-2096,2099-2100,2103-2104,2107-2108,2111-2112,2115-2116,2119-2120,2123-2124,2127-2128,2131-2132,2135,2139-2140,2143-2144,2147-2148,2151-2152,2155-2156,2159,2163-2164,2167-2168,2171-2172,2175-2176,2179-2180,2183-2184,2187-2188,2191-2192,2195-2196,2199-2200,2203-2204,2207-2208,2211-2212,2215-2216,2219-2220,2223-2224,2227-2228,2231-2232,2235-2236,2239-2240,2243-2244,2247-2248,2251-2252,2255-2256,2259-2260,2263-2264,2267-2268,2271-2272,2275-2276,2279-2280,2283-2284,2287-2288,2291-2292,2295-2296,2299-2300,2303-2304,2307-2308,2311-2312,2315-2316,2319-2320,2323-2324,2327-2328,2331-2332,2335-2336,2339-2340,2343-2344,2347-2348,2351-2352,2355-2356,2359-2360,2363-2364,2367-2368,2371-2372,2375-2376,2379-2380,2383-2384,2387-2388,2391-2392,2395-2396,2399-2400,2403-2404,2407-2408,2411-2412,2415-2416,2419-2420,2423-2424,2427-2428,2431-2432,2435-2436,2439-2440,2443-2444,2447-2448,2451-2452,2455-2456,2459-2460,2463-2464,2467-2468,2471-2472,2475-2476,2479-2480,2483-2484,2487-2488,2491-2492,2495-2496,2499-2500,2503-2504,2507-2508,2511-2512,2515-2516,2519-2520,2523-2524,2527-2528,2531-2532,2535-2536,2539-2540,2543-2544,2547-2548,2551-2552,2555-2556,2559-2560,2563-2564,2567-2568,2571-2572,2575-2576,2579-2580,2583-2584,2587-2588,2591-2592,2595-2596,2599-2600,2603-2604,2607-2608,2611-2612,2615-2616,2619-2620,2623-2624,2627-2628,2631-2632,2635-2636,2639-2640,2643-2644,2647-2648,2651-2652,2655-2656,2659-2660,2663-2664,2667-2668,2671-2672,2675-2676,2679-2680,2683-2684,2687-2688,2691-2692,2695-2696,2699-2700,2703-2704,2707-2708,2711-2712,2715-2716,2719-2720,2723-2724,2727-2728,2731-2732,2735-2736,2739-2740,2743-2744,2747-2748,2751-2752,2755-2756,2759-2760,2763-2764,2767-2768,2771-2772,2775-2776,2779-2780,2783-2784,2787-2788,2791-2792,2795-2796,2799-2800,2803-2804,2807-2808,2811-2812,2815-2816,2819-2820,2823-2824,2827-2828,2831-2832,2835-2836,2839-2840,2843-2844,2847-2848,2851-2852,2855-2856,2859-2860,2863-2864,2867-2868,2871-2872,2875-2876,2879-2880,2883-2884,2887-2888,2891-2892,2895-2896,2899-2900,2903-2904,2907-2908,2911-2912,2915-2916,2919-2920,2923-2924,2927-2928,2931-2932,2935-2936,2939-2940,2943-2944,2947-2948,2951-2952,2955-2956,2959-2960,2963-2964,2967-2968,2971-2972,2975-2976,2979-2980,2983-2984,2987-2988,2991-2992,2995-2996,2999-3000,3003-3004,3007-3008,3011-3012,3015-3016,3019-3020,3023-3024,3027-3028,3031-3032,3035-3036,3039-3040,3043-3044,3047-3048,3051-3052,3055-3056,3059-3060,3063-3064,3067-3068,3071-3072,3075-3076,3079-3080,3083-3084,3087-3088,3091-3092,3095-3096,3099-3100,3103-3104,3107-3108,3111-3112,3115-3116,3119-3120,3123-3124,3127-3128,3131-3132,3135-3136,3139-3140,3143-3144,3147-3148,3151-3152,3155-3159,3163-3164,3167-3168,3171-3172,3175-3176,3179-3183,3187-3188,3191-3192,3195-3196,3199-3200,3203-3204,3207-3208,3211-3212,3215-3216,3219-3220,3223-3224,3227-3228,3231-3232,3235-3236,3239-3240,3243-3244,3247-3248,3251-3252,3255-3256,3259-3260,3263-3264,3267-3268,3271-3272,3275-3276,3279-3280,3283-3284,3287-3288,3291-3292,3295-3296,3299-3300,3303-3304,3307-3308,3311-3312,3315-3316,3319-3320,3323-3324,3327-3340,3344,3347-3348,3351-3352,3355-3356,3359-3360,3363-3364,3367-3368,3371-3372,3375-3376,3379-3380,3383-3384,3387-3388,3391-3392,3395-3396,3399-3400,3403-3404,3407-3408,3411-3412,3415-3416,3419-3420,3423-3424,3427-3428,3431-3432,3435-3436,3439-3440,3443-3444,3447-3448,3451-3452,3455-3456,3459-3460,3463-3464,3467-3468,3471-3472,3475-3476,3479-3480,3483-3484,3487-3488,3491-3492,3495-3496,3499-3500,3503-3504,3507-3508,3511-3512,3515-3516,3519-3520,3523-3524,3527-3528,3531-3532,3535-3536,3539-3540,3543-3544,3547-3548,3551-3552,3555-3567,3571-3572,3575-3576,3579-3580,3583-3584,3587-3588,3591-3592,3595-3596,3599-3600,3603-3604,3607-3608,3611-3612,3615-3616,3619-3620,3623-3624,3627-3628,3631-3632,3635-3636,3639-3640,3643-3644,3647-3648,3651-3652,3655-3656,3659-3660,3663-3664,3667-3668,3671-3672,3675-3676,3679-3680,3683-3684,3687-3688,3691-3692,3695-3696,3699-3700,3703-3704,3707-3708,3711-3712,3715-3716,3719-3720,3723-3724,3727-3728,3731-3732,3735-3736,3739-3740,3743-3744,3747-3748,3751,3755-3756,3759-3760,3763-3764,3767-3768,3771-3772,3775-3776,3779-3780,3783-3784,3787-3788,3791-3792,3795-3796,3799-3800,3803-3804,3807-3808,3811-3812,3815-3816,3819-3820,3823-3824,3827-3828,3831-3832,3835-3836,3839-3840,3843-3844,3847-3848,3851-3852,3855-3856,3859-3860,3863-3864,3867-3868,3871-3872,3875-3876,3879-3880,3883-3884,3887-3888,3891-3892,3895-3896,3899-3900,3903-3904,3907-3908,3912,3915-3916,3919-3920,3923-3924,3927-3928,3931-3932,3935-3936,3939-3940,3943-3944,3947-3948,3951,3955-3956,3959-3960,3963-3964,3967-3968,3971-3972,3975-3980,3983-3984,3987-3988,3991-3992,3995-4000
+packages/@n8n/config/src/configs/agents.config.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 60-63,68-70
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,116-122,127,164,196-199
+packages/@n8n/agents/src/sdk/agent.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 13-14,139-140,159-160,228-236,330-335,954,973
+packages/cli/src/modules/agents/__tests__/agents-builder.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-96
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 64,104
+packages/frontend/editor-ui/src/app/composables/canvasConnectionReplacement.utils.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 80-97
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10,12,14-18,20,23-25,30-32,38-40,47-53,56,59-83,85,93-96,102-110,126-141,147,152-167,182,197,199,205-219,221-222,234
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionPreviewDocument.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 27,122-155
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0003-1782152841576-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-extract-text-from-an-html-attachment-and-answer-from-it/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/nodes-base/nodes/Google/Ads/GoogleAds.node.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 28
+packages/@n8n/instance-ai/src/tools/workflows/classify-node-destructiveness.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 19
+packages/cli/src/modules/community-packages/__tests__/community-packages.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,71-74,83,275-285,289,299
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2-3,46-47,66-67,76-81,205-213
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 130-136,142
+packages/@n8n/instance-ai/evaluations/data/workflows/mocks-node-with-two-credentials.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-27
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0000-1782152417831-unknown-host-POST-_v1_messages-9ac5de38.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0001-1782152459590-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0016-1782156983572-unknown-host-POST-_v1_messages-7d3b0e5e.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6-9,149-151,253-260,282-284
+packages/cli/src/modules/agents/repositories/agent-file.repository.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-28
+packages/@n8n/agents/src/__tests__/integration/agent-runtime-conversion.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 96-125
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,4-8,15,17-20,26-28,30,32-33,35,37-38,40,42-43,45,47-48,50,55-57,59-61,63,69-77,81-83,85-87,89,91-103,106-117,120,124
+packages/nodes-base/credentials/test/GoogleCalendarOAuth2Api.credentials.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-132
+docs/generated/postgres-schema/public.user.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11,59,190-193
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6-12,33,130,315-331,533-550,849
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 50,54-65
+packages/@n8n/agents/src/runtime/__tests__/scoped-memory-task-runner.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 105
+packages/@n8n/instance-ai/src/tools/evals/extract-rows-from-history.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-157
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,13,52,128-130,145,157-161,177
+packages/cli/src/utils/ai-proxy-fetch.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-44
+packages/testing/playwright/expectations/instance-ai/should-allow-re-running-workflow-after-initial-execution/0001-1782152998319-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0000-1782156983520-unknown-host-POST-_v1_messages-d7fb1f1d.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/pages/components/ResourceCards.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 36-39
+packages/testing/playwright/tests/e2e/workflows/editor/expressions/mapping.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 159
+packages/cli/src/modules/mcp/dto/update-allowed-redirect-uris.dto.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-39
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,15
+packages/nodes-base/nodes/Html/Html.node.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/services/__tests__/dynamic-templates.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,15-17,22-31,41,46-48,50,56,65,77
+packages/testing/playwright/pages/ExecutionsPage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 117-120
+packages/@n8n/instance-ai/src/knowledge-base/__tests__/build-templates-index.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-14,47-70
+packages/@n8n/workflow-sdk/src/workflow-builder/string-utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 322-323,325-326,337-358
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 19,57,191-196
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 204-205,410-411
+packages/cli/src/evaluation.ee/test-runner/__tests__/workflow-compiler.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 559-628
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-thread-grant.repository.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-51
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0014-1782156983565-unknown-host-POST-_v1_messages-6fbca5f0.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-10
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/cli/src/modules/agents/integrations/integration-helpers.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2,84-107
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,187,252
+packages/cli/src/public-api/v1/handlers/workflows/workflows.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,10,15,47,68
+packages/nodes-base/nodes/Html/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,3
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0003-1782152459595-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-send-message-and-receive-assistant-response/0000-1782152491560-unknown-host-POST-_v1_messages-b1d74922.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/pages/PublicFormPage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-63
+packages/@n8n/api-types/src/agents/agent-files.constants.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4-6
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 471-513
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10,34-35,102,106,115,127,154,168,197,227,252,268-282,307-314
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-3
+scripts/mutation-health/mutate.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 27-31,70,72-73,76,84,97,103-119,123-124,127-138,140-191,193-204,207,210-331,333,335-383,385-387,389-393,395-407,409-410,412-422,424-437
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 38
+package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 175,190-197
+packages/@n8n/config/test/config.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 307,332,390,477,603,605,622-639,656-657,711-714
+packages/@n8n/eslint-plugin-community-nodes/src/rules/node-class-description-name-camelcase.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-121
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/item-flow-paired-item-references.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 244-254
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionRow.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9,14,20-26,70-79,127-131
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ToolResultRenderer.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4-5
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,22
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/activeVersion.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 25-30
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 45,107,109-115
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0004-1782153178458-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/package.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 19
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0000-1782152917088-unknown-host-POST-_v1_messages-3fbcd76b.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/instance-ai/src/tools/nodes/__tests__/preferred-chat-model.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-23
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 9-14,20-23,30,74-96,105-106
+packages/testing/playwright/pages/WorkflowSettingsModal.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,4,7-13,92
+packages/@n8n/utils/src/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 17
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 29,72
+packages/testing/playwright/tests/e2e/sharing/access-control.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 143-144
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 57-106
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/web-fetch.utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 133-148
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,9,22,132,224-227,244-246,291,410-438
+packages/@n8n/api-types/src/dto/workflows/__tests__/update-workflow.dto.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 63-66,81-87
+packages/@n8n/workflow-sdk/src/types/base.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7-8,12-13,337-343,1010-1015,1021-1026,1099-1116
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 8,10-14,20,48-126,133-135,137
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiMcp.store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-115
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowCommands.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 286-287
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 12-17,28,84-98,142-241
+packages/testing/playwright/.janitor-baseline.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-4,79,85,149,155,161,183,189,201,286,289-291,295-300,303-305,309-311,393,399,532,535-537,543,916-923,932-945,1035
+packages/testing/playwright/tests/e2e/workflows/editor/canvas/node-groups.spec.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 70-83
+packages/@n8n/permissions/src/constants.ee.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 74
+packages/testing/playwright/pages/components/WorkflowMenu.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-127
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-258
+packages/testing/playwright/expectations/instance-ai/should-display-user-and-assistant-messages-in-timeline/0001-1782152499405-unknown-host-POST-_v1_messages-06711198.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0005-1782152917108-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0001-1782152787923-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+scripts/mutation-health/stryker.default.mjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 21-28
+packages/@n8n/instance-ai/src/mcp/__tests__/mcp-client-manager.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 385-411
+packages/testing/playwright/pages/CanvasPage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 197-206,1184-1199
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0004-1782152459596-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,10-11,44-48
+packages/testing/playwright/expectations/instance-ai/should-send-message-and-receive-assistant-response/trace.jsonl
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 13-17,31-34,185,225-226,228-232
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-2,11-17
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0000-1782153139729-unknown-host-POST-_v1_messages-2c55f833.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,9-11,13,23-27,37,41,45,49,53,57,61,83,123,127,200,220,228,232,298,302,306,310,314,318,322,326,330,334,338,342,346,354,358,362,454,458,462,466,470,474,478,482,486,490,494,548,618,622,733,792,796,800,804,808,812,816,820,824,832,836,840,848,852,867-874,876,919,923,931
+packages/@n8n/workflow-sdk/src/workflow-builder/workflow-import.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 391-470
+packages/cli/src/modules/agents/integrations/platforms/slack-integration.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 2,12,53,82,91
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,10,16-17
+packages/@n8n/ai-workflow-builder.ee/src/ai-workflow-builder-agent.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,52-53,69,86,128,147
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-288
+packages/@n8n/ai-workflow-builder.ee/src/llm-config.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,14-20,33,48,70,91,111,146
+packages/nodes-base/nodes/Html/utils.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 29-33
+packages/testing/playwright/pages/OAuthConsentPage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18-26,28
+packages/@n8n/instance-ai/src/tools/nodes/preferred-chat-model.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-27
+packages/cli/src/modules/agents/__tests__/agent-knowledge-commands.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-246
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 113-116,123
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6,18,139-144,209,225
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 24,64-68,81-83,119-133,200,203
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0000-1782153036688-unknown-host-POST-_v1_messages-302c00c6.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/cli/src/modules/agents/integrations/platforms/linear-operations.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-4,9
+packages/frontend/editor-ui/src/app/stores/workflows.store.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 169-172
+packages/frontend/editor-ui/src/features/agents/components/AgentFilesPanel.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,52-56
+packages/frontend/@n8n/design-system/src/components/N8nInlineTextEdit/__snapshots__/InlineTextEdit.test.ts.snap
+  ai_agent 6-7
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 85
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11,13,191-219,221-222
+packages/frontend/@n8n/rest-api-client/src/api/consent.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-settings.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,4,169-240,273-282
+packages/@n8n/instance-ai/evaluations/outcome/workflow-discovery.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 201,207
+packages/nodes-base/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 41-54,58-76
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow.dto.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 91-109,115-124
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-4,6-8,12,16-21,23,25,28,31,35,42-45,50,54,96-99,103,117-118,198,224,241-243,1551-1609,3263,3275,3277-3281,3291,3301
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,28-32,70-100,103,116-117,131,241-242,245
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0001-1782152417832-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/testing/playwright/pages/components/ResourceLocator.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-111
+packages/@n8n/agents/src/runtime/memory/scoped-memory-task-runner.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 42,119
+packages/cli/src/modules/agents/builder/agents-builder-settings.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,5,11,20,24,26-27,44-49,69,154,167,215,217-218,223-226,229,240,243,251-261
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0002-1782152874778-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  ai_agent 118-121,156
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/test/LmChatAlibabaCloud.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 24,63
+packages/cli/src/workflows/workflow-history/__tests__/workflow-history.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 506,525
+packages/nodes-base/nodes/LoneScale/types.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-26
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,64-73,138,236,304-305
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1,33-34,50-58,62-63,75-78,117,122,131,133,141,230,240-241,246,279,283,312-317,323,382,432
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 50-62
+packages/testing/playwright/pages/ProjectSettingsPage.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 65-80,82-92
+docs/generated/postgres-schema/public.instance_ai_thread_grants.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-78
+packages/@n8n/instance-ai/src/utils/eval-agents.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 5-6,111,124
+packages/@n8n/workflow-sdk/src/workflow-builder/string-utils.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 12,280-306
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,9-16,46-49,61-63
+packages/frontend/editor-ui/src/features/core/auth/views/SetupView.vue
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 99-100
+packages/nodes-base/credentials/GoogleSheetsOAuth2Api.credentials.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 22-51,56
+packages/testing/playwright/pages/components/ChatHubCredentialModal.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 4,7-8,11,19
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram-integration.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-4,53,67-72,78-80,82-90,96,102,119,132,292-306,309-317,320-322,324-326,329-335,338-340,342-357,360-361,365-368,374,378,384-385,395-396,407-408
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 26,52,137,144,155
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6,15,78,96-98,110-113,257-260,264-272,451-456,512-547,610-628,723-727
+packages/cli/src/public-api/v1/handlers/data-tables/__tests__/data-tables.handler.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 14,37-40,122-134
+packages/cli/src/modules/agents/__tests__/agents-service-sync.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 68
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0004-1782152917104-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-108
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/versionDescription.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 10,17,19,23
+packages/nodes-base/nodes/Google/Ads/CampaignDescription.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 44,92
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-model.service.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3,8,35,42-49
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 14,36,193-229,535-574
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18-20
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 17-20,23-27,39-43,58-67,121-469
+packages/frontend/editor-ui/src/app/composables/useEditorContext.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 60
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 198-201,208-210,213-215
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 255-269
+packages/@n8n/instance-ai/scripts/build-snapshot.cjs
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 29
+.github/workflows/release-build-daytona-snapshot.yml
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 11,13-19,35,38-45,56-61
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 215-282
+packages/@n8n/instance-ai/src/workspace/__tests__/snapshot-manager.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 6
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolIcons.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 1-21
+packages/testing/playwright/expectations/instance-ai/should-show-execution-results-in-ndv-output-panel-when-opening-node-after-execution/0001-1782152959530-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0000-1782152874773-unknown-host-POST-_v1_messages-86cfcfa8.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/knowledge-base/materialize-knowledge-base.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 105,111,243-245
+packages/cli/src/commands/base-command.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 98,114
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.threadPushRef.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 28,77,81,99-100,104,113
+packages/cli/src/executions/execution.service.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 163,193,204,215
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 3-19,31,63,105-106,113,498-535
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0003-1782153036692-unknown-host-POST-_v1_messages-77bad225.json
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 32,47,73-78,90
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 20-21,32-37,136-141,151-163,190,209,221-248,490-504,695-704,974-1000,1614-1659
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 50
+packages/testing/playwright/pages/components/ResourceMoveModal.ts
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 29-32
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_0ecd32d98e3b48::t_a54c1b58350d9a 47-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2fba34ec19bd734c61d17fb2cfe5c437fd98c47a",
+  "prompts": {},
+  "sessions": {
+    "s_0ecd32d98e3b48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ef8fce-68b7-4ab7-9259-b6efca1e0c07",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

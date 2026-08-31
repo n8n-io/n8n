@@ -1,0 +1,116 @@
+packages/cli/src/modules/insights/__tests__/insights.controller.test.ts
+  s_75c6052c0a2e5a::t_c44b4f9dc3c330 38-39
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 38-39
+  s_75c6052c0a2e5a::t_cf04af3626cc8f 38-39
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_75c6052c0a2e5a::t_28fadd742a38ea 5,12,21,23,43,45,47,154-156,211,241,309,324-450,807-937,946-948,968,987,1052,1131,1212,1267-1382
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 5,12,21,23,43,45,47,154-156,211,241,309,324-450,807-937,946-948,968,987,1052,1131,1212,1267-1381
+  s_75c6052c0a2e5a::t_d93b9aa13dc563 1382
+  s_75c6052c0a2e5a::t_ed8f87ca6a5681 324-424,450
+  s_75c6052c0a2e5a::t_6cbe84b0772dfc 1267-1382
+  s_75c6052c0a2e5a::t_2f451dd2065a4e 21,23
+  s_75c6052c0a2e5a::t_ffa1896cf28f3a 211,241,309
+  s_75c6052c0a2e5a::t_6b4fdc80a34070 946-948
+  s_75c6052c0a2e5a::t_9248be40778e5d 43,45,47
+  s_75c6052c0a2e5a::t_655ced5137579e 968,987,1052,1131,1212
+  s_75c6052c0a2e5a::t_acba68ecdd2652 5
+  s_75c6052c0a2e5a::t_8a94b9ee55adc1 12
+  s_75c6052c0a2e5a::t_b887237b7fcdc6 154-156
+  s_75c6052c0a2e5a::t_191af0afa6bf57 425-449
+  s_75c6052c0a2e5a::t_2f7c9e000cb477 807-937
+packages/cli/src/modules/insights/__tests__/insights.service.test.ts
+  s_75c6052c0a2e5a::t_748b2e1731ec13 8-9,18-23,43,73,207,230,253,275,300,321,343,368,395,418,443,466,489,509,532,555,579,602,625,648,672,695,718,741,765,788,810,833,843-915,939-946,949-950,955,958,961-962,967-1018,1021,1023-1035,1038-1039,1041-1080
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 8-9,18-23,43,73,207,230,253,275,300,321,343,368,395,418,443,466,489,509,532,555,579,602,625,648,672,695,718,741,765,788,810,833,843-915,939-946,949-950,955,958,961-962,967-1018,1021,1023-1035,1038-1039,1041-1080
+  s_75c6052c0a2e5a::t_b35aef5f210ced 43
+  s_75c6052c0a2e5a::t_ba00356e5bfef8 939-946,949-950,955,958,961-962,967-1018,1021,1023-1035,1038-1039,1041-1080
+  s_75c6052c0a2e5a::t_1cf8eea6e4fd2e 73
+  s_75c6052c0a2e5a::t_04e6f619cda1c3 207,230,253,275,300,321,343,368,395,418,443,466,489,509,532,555,579,602,625,648,672,695,718,741,765,788,810,833
+  s_75c6052c0a2e5a::t_8af7d76bc6ebda 23
+  s_75c6052c0a2e5a::t_fe71b3456bdc03 843-915
+  s_75c6052c0a2e5a::t_80db9a2316b35f 8
+  s_75c6052c0a2e5a::t_9086dc3137767f 9,18-22
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_75c6052c0a2e5a::t_4e532b7c3e1fa4 2-3,8,77-86,91-94,102-125,302-308,339-343,345-349,382,390,432-435,456,463,480-484,486-490
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 2-3,8,77-86,91-94,102-125,302-308,339-343,345-349,382,390,432-435,456,463,480-484,486-490
+  s_75c6052c0a2e5a::t_a8f9e322d57807 77-82,85-86,91-94
+  s_75c6052c0a2e5a::t_3f34205b213ce7 434-435
+  s_75c6052c0a2e5a::t_3888a7d0cfb560 8
+  s_75c6052c0a2e5a::t_f945b9991f5362 345-347
+  s_75c6052c0a2e5a::t_6fa5378f11f0ea 433
+  s_75c6052c0a2e5a::t_874b354f634ebd 456,463,480-484,486-488
+  s_75c6052c0a2e5a::t_27be4b81c2521e 102-110,115-125
+  s_75c6052c0a2e5a::t_846cc72fe28cd7 432
+  s_75c6052c0a2e5a::t_f8f0c5ae7fb0a7 111-114
+  s_75c6052c0a2e5a::t_927f770bbd1d29 2-3
+  s_75c6052c0a2e5a::t_56b86025aa0486 349
+  s_75c6052c0a2e5a::t_0305988bd4ee96 489
+  s_75c6052c0a2e5a::t_96296371d62eca 83-84
+  s_75c6052c0a2e5a::t_2ad0b98faba448 490
+  s_75c6052c0a2e5a::t_7804b689d5e77c 302-308
+  s_75c6052c0a2e5a::t_cb3f8647b59af6 348
+  s_75c6052c0a2e5a::t_54279de9f74ddd 339-343
+  s_75c6052c0a2e5a::t_b4a80a23bcf997 382,390
+packages/cli/src/modules/insights/insights.controller.ts
+  s_75c6052c0a2e5a::t_d813e1aa0fea41 27,34,66,75,89,98
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 27,34,66,75,89,98
+  s_75c6052c0a2e5a::t_a0e987e106bacd 89,98
+  s_75c6052c0a2e5a::t_91e349b9cbd0c9 66,75
+  s_75c6052c0a2e5a::t_e087c706afec5e 27,34
+packages/cli/src/modules/insights/insights.service.ts
+  s_75c6052c0a2e5a::t_14a7bfbd36baa6 10-11,16,76-104,106,111,116-117,122,221-222,230,233,236,246,253,259,267
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 10-11,16,76-104,106,111,116-117,122,221-222,230,233,236,246,253,259,267
+  s_75c6052c0a2e5a::t_4041c7c545aab5 246,253,259,267
+  s_75c6052c0a2e5a::t_991599a51fcfdf 88-91
+  s_75c6052c0a2e5a::t_0f6e40fec0ff21 76-87,93,95-104,106,111,116-117,122
+  h_5d40c27a8fdfd1 92,94,233
+  s_75c6052c0a2e5a::t_30b009de283c1f 10-11,16
+  s_75c6052c0a2e5a::t_5866a04fd21d91 221-222,230,236
+packages/cli/src/public-api/v1/handlers/insights/insights.handler.ts
+  s_75c6052c0a2e5a::t_45209c23760de2 70
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 70
+  s_75c6052c0a2e5a::t_e51dde58fc0564 70
+packages/cli/src/workflows/workflow-sharing.service.ts
+  s_75c6052c0a2e5a::t_8d5bed18cfe115 127-149
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 127-148
+  s_75c6052c0a2e5a::t_c36763b8c0751b 149
+  h_5d40c27a8fdfd1 127-149
+packages/cli/test/integration/insights/insights.api.test.ts
+  s_75c6052c0a2e5a::t_a822c6724900dd 2-9,16,55-185
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 2-9,16,55-184
+  s_75c6052c0a2e5a::t_cf6b554a3b0921 185
+  s_75c6052c0a2e5a::t_2c947e9e9d2025 171-183
+  s_75c6052c0a2e5a::t_ce89a426f69ced 104-170,184-185
+  s_75c6052c0a2e5a::t_35380504b6e3cc 2-9,16
+  s_75c6052c0a2e5a::t_82d6b30f644fc5 55-103
+packages/cli/test/integration/public-api/insights.test.ts
+  s_75c6052c0a2e5a::t_65f6d0c96b77fc 2-8,13-14,183-239
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 2-8,13-14,183-238
+  s_75c6052c0a2e5a::t_47887ffb450f3a 239
+  s_75c6052c0a2e5a::t_367c4782aa9cf8 183-239
+  s_75c6052c0a2e5a::t_df6d56864f1a52 2-8,13-14
+packages/cli/test/integration/workflows/workflow-sharing.service.test.ts
+  s_75c6052c0a2e5a::t_28ceb9c166b1fd 119-140
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 119-140
+  s_75c6052c0a2e5a::t_eeb9a700411eb2 119-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ca6702cb490ac01ae38f4d82d3b50a20911fb9a3",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_75c6052c0a2e5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5afab556-446e-456d-8c68-e81478bb836b",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

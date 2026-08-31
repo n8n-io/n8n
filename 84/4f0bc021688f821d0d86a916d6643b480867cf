@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Kafka/v2/transport/consumer.ts
+  s_bc83fb448b2fad::t_7a5809c1462582 39-44
+packages/nodes-base/nodes/Kafka/test/v2/transport/consumer.test.ts
+  s_bc83fb448b2fad::t_2c6b729198c3bd 77,92-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "844f0bc021688f821d0d86a916d6643b480867cf",
+  "prompts": {},
+  "sessions": {
+    "s_bc83fb448b2fad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb78bb6a-b140-4f08-b6bf-9dc97db6e22d",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

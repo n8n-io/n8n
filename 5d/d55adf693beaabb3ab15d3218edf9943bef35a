@@ -1,0 +1,100 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_52a1faf17ec533::t_5dbc19d7b6fa5f 150
+  s_52a1faf17ec533::t_265bf25320f75e 7
+  s_52a1faf17ec533::t_e8466c5f851dd0 48
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_639fd670808f20::t_c5f2c32055ab82 1185-1199
+  s_3e2d8ed80137bd::t_d62dd06ef078b0 1200,1203
+  s_639fd670808f20::t_f640c401180ec9 1314-1316,1319-1328
+  s_639fd670808f20::t_0fc8ca7bc523c4 4
+  s_3e2d8ed80137bd::t_a4a2e2baef7d1a 647,1317-1318,1329
+  s_639fd670808f20::t_e8d4e09dd517b5 5-7
+  s_3e2d8ed80137bd::t_02e20c64ddbc36 644-646
+  s_3e2d8ed80137bd::t_0e17f301fb6628 648-650
+  s_3e2d8ed80137bd::t_8f4d59f7404987 1201-1202
+  s_3e2d8ed80137bd::t_3842ee4de30543 1204-1205
+  s_3e2d8ed80137bd::t_031951057b9d13 1330-1332
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_52a1faf17ec533::t_3218cb92a9c528 423
+  s_52a1faf17ec533::t_6c51da197c9f2d 14
+  s_e26c76bddfcb5e::t_d08795f2558a69 421-422
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_52a1faf17ec533::t_8cec61c7b88409 1124-1148
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_52a1faf17ec533::t_d036743ee655d2 2908-2914
+  s_52a1faf17ec533::t_64632e0a4315b3 3135
+  s_e26c76bddfcb5e::t_f10b2293b5e3d0 181-183
+  s_52a1faf17ec533::t_f6f542e500cff2 8,10
+  s_52a1faf17ec533::t_0629f0f4115ee7 3111
+  s_52a1faf17ec533::t_263543d81f2703 188-190,192-194,201-203,205,213
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AttachmentPreview.vue
+  s_52a1faf17ec533::t_8ec36b23c738b0 85-92
+  s_52a1faf17ec533::t_051548d352204c 24-26
+packages/@n8n/api-types/src/index.ts
+  s_52a1faf17ec533::t_bfd65f8eee9e9e 402
+  s_52a1faf17ec533::t_bd89ca4b281ef0 345,348
+  s_52a1faf17ec533::t_908835e0a19a73 438
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_52a1faf17ec533::t_f3295e48e13b4d 838-857,862
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_52a1faf17ec533::t_1d11a00d009b6f 306-308,312-325
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_52a1faf17ec533::t_e7b32890dc8162 116-117,120,123,129,132
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_52a1faf17ec533::t_14d23ec7189d4a 101,106,111-125,127,132
+  s_52a1faf17ec533::t_16a45b860700dd 3
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3e2d8ed80137bd::t_1e8423f6ad5994 269-278
+  s_3e2d8ed80137bd::t_1eca66978145dd 469-473
+  s_3e2d8ed80137bd::t_9e8488f81c7b97 884-885
+  s_3e2d8ed80137bd::t_3566bc953ffb59 919-957
+  s_3e2d8ed80137bd::t_d65066edff0a7c 534-535
+  s_3e2d8ed80137bd::t_31ab7b25a05ce4 4
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_52a1faf17ec533::t_961b39b89a9a3b 229-256
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_e26c76bddfcb5e::t_bdaa1629cd4912 163
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_52a1faf17ec533::t_c562a6aabf7dfd 71-74,76,78,82
+  s_52a1faf17ec533::t_b857f5629d0085 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5dd55adf693beaabb3ab15d3218edf9943bef35a",
+  "prompts": {},
+  "sessions": {
+    "s_3e2d8ed80137bd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f522819a-076b-47d9-b972-7483a31b5d33",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_52a1faf17ec533": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6f9be169-c10c-4fa8-8043-e1d4b08c652e",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_639fd670808f20": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a6a6b621-ac37-42c2-81f5-aba04eb2f57f",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e26c76bddfcb5e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f3f8572a-5b89-4ab3-9619-abdb4c3d87eb",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

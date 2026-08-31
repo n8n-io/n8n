@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_ad945a1fe73750::t_acbf07b4d2142b 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "e0fb7edf2d952dec55e28e133a7ecbff969cd9a6",
+  "prompts": {},
+  "sessions": {
+    "s_ad945a1fe73750": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8c7a2131-2de1-4777-ac37-e58df6fe9fb5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

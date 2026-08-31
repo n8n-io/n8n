@@ -1,0 +1,27 @@
+packages/@n8n/api-types/src/agents/inline-agent-config.schema.ts
+  h_7555c3ee6524cf 14,39
+  s_6615a7cad0865b::t_ba35b04ff81f20 26-33
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  h_7555c3ee6524cf 998
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fca73505d7998b78f5e1657f777df13b05da4664",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6615a7cad0865b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88080833-95f0-4af6-befe-780e1a12767c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

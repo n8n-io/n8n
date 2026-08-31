@@ -1,0 +1,72 @@
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_d68b4d4fcd8583::t_8d0b1e2098b4c8 65-66
+  s_d68b4d4fcd8583::t_1a01f37ac0e3f7 972-975
+  s_d68b4d4fcd8583::t_9585d46ed70528 947,971,1213-1296,1304-1308,1310-1314,1316-1317,1333-1342,1344-1346,1374-1394
+  s_d68b4d4fcd8583::t_b51aa6f1ba621b 1297-1303,1309,1315,1318-1332,1343,1347-1373
+  s_d68b4d4fcd8583::t_f5254574f589a5 388
+  s_d68b4d4fcd8583::t_2638cd7efdf122 381-387,389-422
+  s_d68b4d4fcd8583::t_f354c3c58d5f72 949
+  s_d68b4d4fcd8583::t_3d4af10ecad61a 946
+  s_d68b4d4fcd8583::t_8db658a31b72b7 970
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_d68b4d4fcd8583::t_40e241b2dd8b89 182-193
+  s_d68b4d4fcd8583::t_60a2dca953b951 640
+  s_d68b4d4fcd8583::t_b1f4f4ccb276fc 40
+  s_d68b4d4fcd8583::t_1df0b647f58fea 349,352-361,505,637,815,820
+  s_d68b4d4fcd8583::t_0f92d708b0dae6 23
+  s_d68b4d4fcd8583::t_dfdfc4cd315ccc 42
+  s_d68b4d4fcd8583::t_0d356fce7f24b0 219-228
+  s_d68b4d4fcd8583::t_1ad8d4c85ce77e 275-278,284-313,627
+  s_d68b4d4fcd8583::t_8f099255406bd4 111,128,135-139,141,143-157,161,179,181
+  s_d68b4d4fcd8583::t_83d8d0a92897e2 41
+  s_d68b4d4fcd8583::t_32409c5c41c7cd 162
+  s_d68b4d4fcd8583::t_a2f541eb62c3d4 216-218
+  s_d68b4d4fcd8583::t_975b2cefb8f118 274
+  s_d68b4d4fcd8583::t_3c1f66f764c0c3 350
+packages/cli/src/modules/agents/agents-config.controller.ts
+  s_d68b4d4fcd8583::t_dcb2b2bbef3101 53-54
+packages/cli/src/modules/agents/__tests__/agent-runnable-state.service.test.ts
+  s_d68b4d4fcd8583::t_dca92433c346f0 72-90
+  s_d68b4d4fcd8583::t_d93725d6b52321 33
+  s_d68b4d4fcd8583::t_fd08026d68b1cb 47
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_d68b4d4fcd8583::t_c665fe37ca7391 262-282,284-289,291-292,294-297,302-304
+  s_d68b4d4fcd8583::t_ec313fe56c10e2 2
+  s_d68b4d4fcd8583::t_f3a2adec9121ad 15
+  s_d68b4d4fcd8583::t_566b9732411613 283
+  s_d68b4d4fcd8583::t_e0fdb57470fedd 290,293,298-301
+  s_d68b4d4fcd8583::t_9ff3d2c87f34a5 16-18
+  s_d68b4d4fcd8583::t_91150be0ef5c30 305-307
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_d68b4d4fcd8583::t_abcd7f6d39d304 81-91
+  s_d68b4d4fcd8583::t_a1e35844dfc761 3
+packages/cli/src/modules/agents/__tests__/agents-config.controller.test.ts
+  s_d68b4d4fcd8583::t_85afc2ade0844c 60-61,65-66
+  s_d68b4d4fcd8583::t_9847dc9e7f35ac 87
+  s_d68b4d4fcd8583::t_51af8d1ba40317 34
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-resolver.ts
+  s_d68b4d4fcd8583::t_2e8460b3ed425f 2-18
+packages/cli/src/modules/agents/agent-runnable-state.service.ts
+  s_d68b4d4fcd8583::t_40cb5c88103b94 51-52,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a899d648b9b4c18e02327d3e6bf04c3f305a8704",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d68b4d4fcd8583": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6147c248-8efd-4f19-99e7-01320d3cc796",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

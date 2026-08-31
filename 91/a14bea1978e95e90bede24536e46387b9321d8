@@ -1,0 +1,19 @@
+packages/workflow/test/node-parameters/native-parameter-resolution-parity.test.ts
+  s_266ece46eae7f9::t_be273cceb7dc8b 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "91a14bea1978e95e90bede24536e46387b9321d8",
+  "prompts": {},
+  "sessions": {
+    "s_266ece46eae7f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_266ece46eae7f9",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

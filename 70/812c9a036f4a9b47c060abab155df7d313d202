@@ -1,0 +1,81 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_eb98dc68a3c418::t_60101532e9cf49 1177-1181
+  s_eb98dc68a3c418::t_0ecd39986df2ab 704-715,718,720-738,742-744
+  s_eb98dc68a3c418::t_05cee20e1186e3 716-717,719
+  s_eb98dc68a3c418::t_e174a948c77258 51,60
+  s_eb98dc68a3c418::t_cd225876f3404e 986-1005
+  s_eb98dc68a3c418::t_7b578c0bed4bfe 745
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_eb98dc68a3c418::t_cfacdac1efc500 84-85
+  s_eb98dc68a3c418::t_82d52f7c7620a8 115-117
+  s_eb98dc68a3c418::t_2d017deebdffef 68-71
+  s_eb98dc68a3c418::t_ebc3ef78930927 47-51
+  s_eb98dc68a3c418::t_7d0e238f1b2f55 5
+packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.ts
+  s_eb98dc68a3c418::t_ab0e9665b43e63 112-115
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_eb98dc68a3c418::t_43f91790f927a9 270-275
+packages/core/src/execution-engine/node-execution-context/utils/get-additional-keys.ts
+  s_eb98dc68a3c418::t_b888e7b38e9917 27-28,30
+  s_eb98dc68a3c418::t_22cbe405e2bbc6 2,8,15-26,29,31-34
+  s_eb98dc68a3c418::t_f0214610c8523b 35-37
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts
+  s_eb98dc68a3c418::t_8e62bf6768e428 185-222
+packages/core/src/execution-engine/node-execution-context/__tests__/node-execution-context.test.ts
+  s_eb98dc68a3c418::t_bdd2943b22839a 338-401
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_eb98dc68a3c418::t_e5d26bd7e75c99 441-448
+  s_eb98dc68a3c418::t_2ff97b93a83314 465-467,469-470,474-478,483
+  s_eb98dc68a3c418::t_88191ec2efe199 440
+  s_eb98dc68a3c418::t_43b9b4bd8f54c1 520
+  s_eb98dc68a3c418::t_20368414eb7935 464,468,471-473,479-482,484-519,521-522
+  s_eb98dc68a3c418::t_f6c8bc2f4f44b7 523-524
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_eb98dc68a3c418::t_313e74ec20ad15 31
+  s_eb98dc68a3c418::t_c50866531ce036 1947-1960
+  s_eb98dc68a3c418::t_cb9bddfe90ee18 107
+  s_eb98dc68a3c418::t_d474101c089392 1205-1269
+  s_eb98dc68a3c418::t_c2446d4031be75 64
+  s_eb98dc68a3c418::t_67ac8b9cfe1dbc 206-257
+  s_eb98dc68a3c418::t_ba07950c6c3308 258-260
+  s_eb98dc68a3c418::t_716e2f32d588e6 1270-1272
+  s_eb98dc68a3c418::t_1fd641e267524e 1961-1963
+packages/workflow/src/interfaces.ts
+  s_eb98dc68a3c418::t_d41a436cec7953 2913
+  s_eb98dc68a3c418::t_d71bdb1d574135 3551-3553,3555
+  s_eb98dc68a3c418::t_06a1adfe94fc6e 3575
+  s_eb98dc68a3c418::t_d6394114e38779 3545-3550,3554
+  s_eb98dc68a3c418::t_ef38d357e92804 3574
+  s_eb98dc68a3c418::t_291588eb4713eb 2914
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/datatype.completions.ts
+  s_eb98dc68a3c418::t_17a51792af4a7d 101-102
+  s_eb98dc68a3c418::t_407968705df301 841-869
+  s_eb98dc68a3c418::t_6441ce3a387eab 70
+packages/cli/src/workflow-helpers.ts
+  s_eb98dc68a3c418::t_c39eb91f295b63 400-402
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_eb98dc68a3c418::t_6784f90ccf8837 2180-2181
+  s_eb98dc68a3c418::t_2cb105fbf112d6 750-752
+  s_eb98dc68a3c418::t_349a052f94dc03 4250-4256
+packages/cli/src/workflow-runner.ts
+  s_eb98dc68a3c418::t_894eb24fc7002a 246-250
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/constants.ts
+  s_eb98dc68a3c418::t_e1dafe72428bc8 226-233
+  s_eb98dc68a3c418::t_7874f3476b4646 225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "70812c9a036f4a9b47c060abab155df7d313d202",
+  "prompts": {},
+  "sessions": {
+    "s_eb98dc68a3c418": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "769996b9-b5a7-485a-a5a1-5e0c2894c942",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

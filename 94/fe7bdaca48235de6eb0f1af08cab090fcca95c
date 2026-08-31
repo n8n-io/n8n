@@ -1,0 +1,29 @@
+packages/cli/src/credentials-helper.ts
+  h_c63dce324dfc7b 525-527
+packages/core/src/execution-engine/node-execution-context/utils/get-additional-keys.ts
+  h_c63dce324dfc7b 24,45
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts
+  s_e60478b0f69e84::t_68b5f95f7b27d7 7
+  s_e60478b0f69e84::t_7536c26db20cbf 76-77,83-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "94fe7bdaca48235de6eb0f1af08cab090fcca95c",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e60478b0f69e84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65f4e399-83e1-4cd7-8a14-5c4518158b81",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

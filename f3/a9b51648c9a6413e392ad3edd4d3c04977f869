@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_e2504e875a073c::t_1bb9b5aff0603b 22-27,32,53-54
+  s_e2504e875a073c::t_7c21f2fd5a530f 5,18,56,62-66
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e2504e875a073c::t_ab80aaf18bbc84 617
+  s_e2504e875a073c::t_d8dd952952a9cf 53-55,187-188,774-778,781-796
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_e2504e875a073c::t_66ea6205732ba7 11,72,91-92,106,294,360,775,936,957-961
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_e2504e875a073c::t_972a9ea52401a5 43,57,137-138,322
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e2504e875a073c::t_504fc8483e5790 16,109,451
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_e2504e875a073c::t_66545498933a39 4,22,40,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f3a9b51648c9a6413e392ad3edd4d3c04977f869",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

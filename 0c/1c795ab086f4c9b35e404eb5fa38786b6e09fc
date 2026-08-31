@@ -1,0 +1,217 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_5b46ef6d9188b2::t_6575182d34e793 311-316
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_5b46ef6d9188b2::t_04a5ff0fe4c295 2-6,16-49
+packages/@n8n/api-types/src/index.ts
+  s_5b46ef6d9188b2::t_e6035d0c5a71dd 588,600,610
+packages/@n8n/api-types/src/schemas/__tests__/agent-evals.schema.test.ts
+  s_5b46ef6d9188b2::t_0f51eb9d6f43a3 161,166-177,184,189-196
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_5b46ef6d9188b2::t_49926ead98e6ed 1,78-79,101-102,110-120,126,199-206
+packages/@n8n/db/src/repositories/__tests__/agent-eval-dataset.repository.test.ts
+  s_5b46ef6d9188b2::t_d04efe58ebd4cd 90-165
+packages/@n8n/db/src/repositories/__tests__/agent-eval-rating.repository.test.ts
+  s_5b46ef6d9188b2::t_00a30e53041fe3 69-115
+packages/@n8n/db/src/repositories/__tests__/agent-eval-run.repository.test.ts
+  s_5b46ef6d9188b2::t_b526dbe5226359 155-181
+packages/@n8n/db/src/repositories/__tests__/workflow-publish-history.repository.test.ts
+  s_5b46ef6d9188b2::t_bbd75a92ef7262 1-78
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_5b46ef6d9188b2::t_7df039e499488d 95,103,110,142-171
+packages/@n8n/db/src/repositories/agent-eval-dataset.repository.ee.ts
+  s_5b46ef6d9188b2::t_7a0c9d377a1844 4,19-26,54-89
+packages/@n8n/db/src/repositories/agent-eval-rating.repository.ee.ts
+  s_5b46ef6d9188b2::t_797b5d4b351c78 2,5,8-10,40-78
+packages/@n8n/db/src/repositories/agent-eval-result.repository.ee.ts
+  s_5b46ef6d9188b2::t_b9211c531659ad 109-112
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_5b46ef6d9188b2::t_10eb7368bc7ee5 83-96
+packages/@n8n/db/src/repositories/index.ts
+  s_5b46ef6d9188b2::t_2b6deb648d04d7 82
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_5b46ef6d9188b2::t_146dc80cf5b641 1,3,6,43-113
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_5b46ef6d9188b2::t_69e49a799ed2fe 35,37,106,116-120,146
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_5b46ef6d9188b2::t_7dd20721403fe9 6,43-51,59,66,70,72-74,79-107,115,121,129-229
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_5b46ef6d9188b2::t_b2799092044207 11,13,17,31-36
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_5b46ef6d9188b2::t_a0c27e2120d423 16-28,43-49
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_5b46ef6d9188b2::t_10b69ea5aee77e 12-17,24-27
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_5b46ef6d9188b2::t_7e449e2ed57a29 1,4-12,18-75
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_5b46ef6d9188b2::t_bed9ab3cf4b95a 22-33,61,63-64,71-77,95,102,111,118,130-131,140-143
+packages/@n8n/engine/src/execution/execution-start-handler.ts
+  s_5b46ef6d9188b2::t_424f2a0f1933e9 38,40-42,45-50
+packages/@n8n/engine/src/execution/index.ts
+  s_5b46ef6d9188b2::t_bf918d95e11fb0 9-10
+packages/@n8n/engine/src/execution/step-store.ts
+  s_5b46ef6d9188b2::t_ed6a7fb651cc5d 1,11-43,46-90
+packages/@n8n/engine/src/index.ts
+  s_5b46ef6d9188b2::t_42b34a3e744b7f 38-43,51-52
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.ts
+  s_5b46ef6d9188b2::t_0d6b8dccb80495 104
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_5b46ef6d9188b2::t_a8652bafdc9c13 20,476-485,487,595-596,621,690,697-780
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_5b46ef6d9188b2::t_64c2355fa26401 17,77,87,97,109,115
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-rating.repository.integration.test.ts
+  s_5b46ef6d9188b2::t_c1285fe3696aa8 1-151
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-rating.service.test.ts
+  s_5b46ef6d9188b2::t_160a4ff2775045 1-293
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_5b46ef6d9188b2::t_63f662ef10892a 24,58-62,149,212
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_5b46ef6d9188b2::t_8c48cb31b9fc6b 14,24,105,132,161,178-185,533-545,549-551,556
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-scoped-reads.integration.test.ts
+  s_5b46ef6d9188b2::t_1886c4c9a7c649 1-161
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  s_5b46ef6d9188b2::t_cde5660a2ddf7c 1-408
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  s_5b46ef6d9188b2::t_d62f6c1e6a3f99 1-216
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_5b46ef6d9188b2::t_830428f0883a9b 20,84,100
+packages/cli/src/modules/agent-evals/agent-eval-rating.service.ts
+  s_5b46ef6d9188b2::t_845464d13f37b1 1-182
+packages/cli/src/modules/agent-evals/agent-eval-record-mappers.ts
+  s_5b46ef6d9188b2::t_861f2755256d19 1-97
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_5b46ef6d9188b2::t_6f80598dbf7418 1,4,33-34,85,99-101,183-186
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  s_5b46ef6d9188b2::t_2a4f712af1b123 1-224
+packages/cli/src/modules/agent-evals/agent-evals-flag-gate.ts
+  s_5b46ef6d9188b2::t_34d5b33eff11f2 1-30
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_5b46ef6d9188b2::t_66faf8eafbf8c9 1-156
+packages/cli/src/modules/agent-evals/agent-evals.module.ts
+  s_5b46ef6d9188b2::t_19141ef1625967 6-10,15-16
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_5b46ef6d9188b2::t_796c855e15373e 170-174
+packages/cli/src/modules/mcp/__tests__/create-workflow-from-code.tool.test.ts
+  s_5b46ef6d9188b2::t_56c60c23d2f1fa 56,128,131,133-135,984-990,1015-1038,1041-1045,1047-1275
+packages/cli/src/modules/mcp/__tests__/mcp-instructions.test.ts
+  s_5b46ef6d9188b2::t_3ae51bf387055d 72-73
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_5b46ef6d9188b2::t_234ff93c3aa7dc 29,146,149,151-153,254-275,502-1302
+packages/cli/src/modules/mcp/__tests__/validate-workflow-code.tool.test.ts
+  s_5b46ef6d9188b2::t_93faa65ecd6f41 384,388
+packages/cli/src/modules/mcp/__tests__/workflow-operations.test.ts
+  s_5b46ef6d9188b2::t_a24c98ab32b44d 1398-1423,1444-1667
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_5b46ef6d9188b2::t_934b84f758e162 31-35,46-50,147-155,304-314,423
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_5b46ef6d9188b2::t_47d92edb26df52 29,33,35,49-53,292-325,329-338,348-350,371-376,407-426,626,702,709-754,763,775-778,791,802,826,834,866,885-887,889,1030-1034,1040,1046-1047
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_5b46ef6d9188b2::t_20fcebe62666cc 367-378,392-403,415-429,630-636,642-644,649,772-778,956,975-978,982,998,1003-1004,1008,1021,1024,1029,1043-1046,1052,1055-1065,1079,1130-1131,1139-1144,1149,1151-1152,1160-1162,1172,1174-1177,1192-1193
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_5b46ef6d9188b2::t_faf4a942de4c6f 10,46,66
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_5b46ef6d9188b2::t_7c68e001bf8527 15,19,60,80,419-446,457-609
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_5b46ef6d9188b2::t_8bc853fa4da2b5 10,48,68
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_5b46ef6d9188b2::t_2d278c7d527bf8 14,57,69,1276-1413
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_5b46ef6d9188b2::t_489c0734b1045f 7-8,10,21,28,63,112,116-215
+packages/cli/src/workflow-helpers.ts
+  s_5b46ef6d9188b2::t_0445fd1a88494c 25,200-241
+packages/cli/test/integration/database/repositories/workflow-publish-history.repository.test.ts
+  s_5b46ef6d9188b2::t_a39c91e7df0571 209-324
+packages/frontend/@n8n/frontend-constants/src/urls.ts
+  s_5b46ef6d9188b2::t_012735eb663ac9 1-2
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5b46ef6d9188b2::t_41b18403a7e41f 4591-4611
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.test.ts
+  s_5b46ef6d9188b2::t_df957c722647d3 1,4-6,8-12,30-36,48-50,119,148,168,207,224,230-232,242-244
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.ts
+  s_5b46ef6d9188b2::t_13ef1238f25fe2 2-8,19-25
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_5b46ef6d9188b2::t_1ec40f676fc933 78-97,242-267,345-359
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_5b46ef6d9188b2::t_732aac03c6c78a 77,79,86-87,102
+packages/frontend/@n8n/stores/src/types/pageRedirection.ts
+  s_5b46ef6d9188b2::t_01c506efcea983 1-73
+packages/frontend/editor-ui/src/Interface.ts
+  s_5b46ef6d9188b2::t_ae717ca4c58ffe 878-881
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_5b46ef6d9188b2::t_b3852e13bc3996 1-2,34,42-44,53,65,78,239-242,568-569,1169-1359
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_5b46ef6d9188b2::t_d2f61a9b1b6b1e 59,64-67,89-91,116,120-124,132,226-235,307-344,535-552,776-788,858,873,932-943
+packages/frontend/editor-ui/src/app/composables/useExternalHooks.test.ts
+  s_5b46ef6d9188b2::t_0a25011bcfcc06 1-61
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_5b46ef6d9188b2::t_5f51871760ac86 12
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.test.ts
+  s_5b46ef6d9188b2::t_39f5a0eb455bca 1-2,6
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.ts
+  s_5b46ef6d9188b2::t_46ab64bae462c8 1-2,5,11-13
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_5b46ef6d9188b2::t_cf1ec90a3ad085 7-10,12-13,15,28-29
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_5b46ef6d9188b2::t_951d80b4aee7db 6-10
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_5b46ef6d9188b2::t_73cea284720cf3 1-4
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_5b46ef6d9188b2::t_b5112801848819 24,33-36,100-114
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_5b46ef6d9188b2::t_030072e84c8969 6,52-54
+packages/frontend/editor-ui/src/app/init/toastNotifier.test.ts
+  s_5b46ef6d9188b2::t_c23a3c0a264cb7 1-95
+packages/frontend/editor-ui/src/app/init/toastNotifier.ts
+  s_5b46ef6d9188b2::t_f37296c5b073d3 1-29
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.test.ts
+  s_5b46ef6d9188b2::t_ef4a9e71ca826c 2,195-200
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.test.ts
+  s_5b46ef6d9188b2::t_31a6ac90bce974 11,27-31
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.test.ts
+  s_5b46ef6d9188b2::t_a6718f06aca6fa 8
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_5b46ef6d9188b2::t_830b158abe8cf9 6-7
+packages/frontend/editor-ui/src/features/shared/banners/components/BannersStack.test.ts
+  s_5b46ef6d9188b2::t_ab0478259e3631 15,54-58
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_5b46ef6d9188b2::t_7da4ec9d358978 117-118
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.test.ts
+  s_5b46ef6d9188b2::t_017d835abe745d 1-283
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.vue
+  s_5b46ef6d9188b2::t_afc2c65e20b8c2 1-308
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusDot.vue
+  s_5b46ef6d9188b2::t_66c4f8de8fc5c6 48,52
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_5b46ef6d9188b2::t_ec229cb4d9d920 34-35
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_5b46ef6d9188b2::t_e94a1a4d3b9d6a 1,14-16,23-28,30,48,54,59,64-130,137,183,199,205,218,250
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.ts
+  s_5b46ef6d9188b2::t_f0db80331e3d61 1-4,13-15,20,24-34,51-52,58,66,75-79,82-86,92-93
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_5b46ef6d9188b2::t_f73a308835807a 24
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_5b46ef6d9188b2::t_88897d80c64e17 21,112-116
+packages/nodes-base/nodes/Notion/v3/actions/databasePage/DatabasePage.resource.ts
+  s_5b46ef6d9188b2::t_eb8ee72bd13ab5 411
+packages/testing/playwright/composables/CanvasComposer.ts
+  s_5b46ef6d9188b2::t_e99dc8eb523352 79-99,105-112
+packages/workflow/src/node-grouping-validation.ts
+  s_5b46ef6d9188b2::t_010a1f6eb47f3a 341
+packages/workflow/test/node-grouping-validation.test.ts
+  s_5b46ef6d9188b2::t_f97853f5f257c5 740,788,816,835,840-858
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "0c1c795ab086f4c9b35e404eb5fa38786b6e09fc",
+  "prompts": {},
+  "sessions": {
+    "s_5b46ef6d9188b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60eeb129-0c05-4f19-89ae-2e56f00f5d8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/testing/playwright/tests/e2e/chat-hub/fixtures.ts
+  s_d187a68a363af6::t_07482c550c28b6 17
+  s_d187a68a363af6::t_16b5fe83047f38 69-75,77-83
+  ai_agent 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5eba5e00c602f993382c56df29cd49429e9ca2f6",
+  "prompts": {},
+  "sessions": {
+    "s_d187a68a363af6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a657a77-c0d7-401e-b08b-5f7d646d3582",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

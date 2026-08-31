@@ -1,0 +1,34 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5e1597e8ea25b2::t_5634a232d00c08 5025
+packages/frontend/editor-ui/src/features/catalog/catalog.store.ts
+  s_5e1597e8ea25b2::t_b36ef76991dcda 47-48
+packages/frontend/editor-ui/src/features/catalog/CatalogView.vue
+  s_5e1597e8ea25b2::t_d76a00c3c8b318 19,21
+  s_5e1597e8ea25b2::t_05e61ef5bcc53d 297-306
+  s_5e1597e8ea25b2::t_13afdc1750c6b1 152-159
+  s_5e1597e8ea25b2::t_c7ba9c6a8a3666 37
+  s_5e1597e8ea25b2::t_0ca73fe895d7ff 85
+packages/frontend/editor-ui/src/features/catalog/catalog.store.test.ts
+  s_5e1597e8ea25b2::t_60626ec5062be4 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "49235035260079a9008e71a9e1dcd867dbbc4fc5",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,104 @@
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_1c76cca71f3f7a::t_3389b844505497 202-203
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useGenerateMockData.test.ts
+  s_1c76cca71f3f7a::t_9b39828466cf87 137
+  s_1c76cca71f3f7a::t_5687ce70941236 84-95,98,102-106,108-111,114-115
+  s_1c76cca71f3f7a::t_72af07960f9d14 6,36-42
+  s_1c76cca71f3f7a::t_f6ed458bcf78e8 55-62,66,68-69,71-79,81,100-101,107,112-113,116-123,131,146
+  s_1c76cca71f3f7a::t_4e71cec901c819 1-5,7-35,43-54,63-65,67,70,80,82-83,96-97,99,124-130,132-136,138-145,147-155
+packages/frontend/editor-ui/src/__tests__/defaults.ts
+  s_1c76cca71f3f7a::t_ca573c9fdbfc94 156
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_1c76cca71f3f7a::t_192a635dc5dc12 502
+  s_1c76cca71f3f7a::t_b174ae3fc41d36 124-128
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_1c76cca71f3f7a::t_02c014a05d9cd4 51,58
+  s_1c76cca71f3f7a::t_501783abdc875a 1061-1069
+  s_1c76cca71f3f7a::t_6a7a800f8cca9e 264-267,269-270
+  s_1c76cca71f3f7a::t_2901f9c117628a 1813
+  s_1c76cca71f3f7a::t_4f8500c1fe9eaa 268
+  s_1c76cca71f3f7a::t_8a7335f0bbc547 1812,1814-1820
+packages/frontend/editor-ui/src/features/ndv/runData/generateMockData.utils.test.ts
+  s_1c76cca71f3f7a::t_5ffd642e981fcb 25
+  s_1c76cca71f3f7a::t_5faae592933be4 1-3,6-8,23-24,26-68,97-108,130-141
+  s_1c76cca71f3f7a::t_706b39f41adca9 5
+  s_1c76cca71f3f7a::t_4d2b3db10c2695 69-96
+  s_1c76cca71f3f7a::t_907f8d8b5e110c 109-129
+  s_1c76cca71f3f7a::t_c8d1292583b05d 4,9-22
+packages/frontend/editor-ui/src/features/ndv/runData/generateMockData.utils.ts
+  s_1c76cca71f3f7a::t_cba7eeda6d2fa7 1,9-18
+  s_1c76cca71f3f7a::t_5474f0e5114f51 85-133,135-136,139-141,143-152,168
+  s_1c76cca71f3f7a::t_9630acaae38dfa 2,4-7,19-29,54-61,67-68,71-72,80-81,83-84,134,137-138,142,153-167,169
+  s_1c76cca71f3f7a::t_5c30afdcfcaf03 3,8
+  s_1c76cca71f3f7a::t_3bc9b1b29fcb06 30-53,62-64,66,69-70,73-79,82
+  h_760178ed151f13 65
+packages/frontend/editor-ui/src/features/ndv/runData/components/GenerateMockDataHeader.test.ts
+  s_1c76cca71f3f7a::t_99e0381571e554 2
+  s_1c76cca71f3f7a::t_c3562ca6426627 29,43-44,46
+  s_1c76cca71f3f7a::t_42f149e2da5bea 1,3-28,49-60,89-113
+  s_1c76cca71f3f7a::t_8d412e3adcec77 42,45
+  s_1c76cca71f3f7a::t_21832a2be8c048 39
+  s_1c76cca71f3f7a::t_f29f580ad4e9c1 61-88
+  s_1c76cca71f3f7a::t_26350d14a1f242 30-38,40-41,47-48
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_760178ed151f13 1986
+  s_1c76cca71f3f7a::t_6cd6f89b00fb00 1979-1982,1984,1988-1990
+  s_1c76cca71f3f7a::t_29ca399702259c 1983,1985,1987
+packages/cli/src/services/frontend.service.ts
+  s_1c76cca71f3f7a::t_c45833093e2aea 595-596
+  s_1c76cca71f3f7a::t_4a137531416d96 389
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useGenerateMockData.ts
+  s_1c76cca71f3f7a::t_1282e78ff838b6 117-118
+  s_1c76cca71f3f7a::t_9f2e5e56373918 1-7,9,11-20,22-24,26-58,60-66,79-116,119-163,165-168
+  s_1c76cca71f3f7a::t_b9b01565add573 164
+  s_1c76cca71f3f7a::t_6f392521f1e214 59,67-78
+  s_1c76cca71f3f7a::t_37fbf66f0e8803 25
+  s_1c76cca71f3f7a::t_b33b3d59e58585 10,21
+  s_1c76cca71f3f7a::t_cfdbe96f0446ff 8
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_1c76cca71f3f7a::t_9a055ea13549c8 114-117
+  s_1c76cca71f3f7a::t_31a8e812def3af 118-124,127-128
+  s_1c76cca71f3f7a::t_9a7c3402d9ebbd 466
+  s_1c76cca71f3f7a::t_b2ccb3f87918f3 27
+  s_1c76cca71f3f7a::t_bf0c3f80b225fc 31
+  s_1c76cca71f3f7a::t_a2795c0dc22a1d 85,125-126
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_1c76cca71f3f7a::t_c572e4108ef6ae 236
+  s_1c76cca71f3f7a::t_93457d71994973 288,292,294-298,300-302,304
+  s_1c76cca71f3f7a::t_c72ebcb994ea1b 289-291,293,299,303,305-306
+packages/frontend/editor-ui/src/features/ndv/runData/components/GenerateMockDataHeader.vue
+  s_1c76cca71f3f7a::t_37eca95af31aae 43-44,68-70,78-81,94-104,113,124-125
+  s_1c76cca71f3f7a::t_f477f936a928ec 2
+  s_1c76cca71f3f7a::t_55afb5dce7092a 72,76
+  s_1c76cca71f3f7a::t_58141048580675 85
+  s_1c76cca71f3f7a::t_8f0f2fb841ef34 89
+  s_1c76cca71f3f7a::t_d1373619dd5518 93
+  s_1c76cca71f3f7a::t_eb0cb3091362f9 120-123
+  s_1c76cca71f3f7a::t_8e987ed8fbd86e 22-37,41
+  s_1c76cca71f3f7a::t_61cb233dc59b00 4
+  s_1c76cca71f3f7a::t_a1d3c259316fa5 58-63
+  s_1c76cca71f3f7a::t_2b281afca725c8 46-57
+  s_1c76cca71f3f7a::t_adeb06463d4718 1,3,5-20,38,45,64-67,71,73-75,77,82-84,86-88,90-92,105-112,114-119,126-127
+  s_1c76cca71f3f7a::t_d5116e8addb6e2 21,39-40,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bfbfa80e3283b3d32a4535d07f431c7692ec437c",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1c76cca71f3f7a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4f9a6ce0-4bb9-4876-8334-ca0068e31a1f",
+        "model": "auto-smart"
+      },
+      "human_author": null
+    }
+  }
+}

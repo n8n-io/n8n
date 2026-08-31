@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_442b113d88c721::t_a98adaa86ec5f0 217
+  s_442b113d88c721::t_7888203877eab4 241-242
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_442b113d88c721::t_0ca0969c64677c 225-229
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_442b113d88c721::t_edbb64c8a82d16 810-811,817
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_442b113d88c721::t_cf635349e3fa3c 127-128
+  s_442b113d88c721::t_00934a9ee9b5d8 74-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "238bf099f8195e65c0374084f0c82b575beb5470",
+  "prompts": {},
+  "sessions": {
+    "s_442b113d88c721": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "607b7981-53e5-4851-ba95-f417c3acadff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

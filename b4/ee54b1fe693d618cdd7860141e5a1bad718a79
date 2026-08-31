@@ -1,0 +1,38 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-auto-close.service.ts
+  s_6cf45e0861d8a7::t_cc8ba787e4a4f4 45-48,50,60,67
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_6cf45e0861d8a7::t_1f1d3ba5eaee76 1850,1856,1858,1860,1864,1873
+packages/cli/src/workflows/workflow.service.ts
+  s_6cf45e0861d8a7::t_2f8e3e9216e2c6 1201
+packages/cli/src/workflows/__tests__/workflow-mutation-hooks-proxy.service.test.ts
+  s_6cf45e0861d8a7::t_2111cc48edc08c 15
+  s_6cf45e0861d8a7::t_f8ff79a67352fe 34-37
+  s_6cf45e0861d8a7::t_37c2e0b701f333 26
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_6cf45e0861d8a7::t_78d5c2c8562fbb 2983,2992-2993,2996,3007
+  s_6cf45e0861d8a7::t_9479b228bba3e7 3643,3660-3664,3666,3676
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_6cf45e0861d8a7::t_eec63c2832d939 1861
+  s_6cf45e0861d8a7::t_4c5249abe20272 1901,1904,1908
+packages/cli/src/workflows/workflow-mutation-hooks-proxy.service.ts
+  s_6cf45e0861d8a7::t_bbaae593453e83 28,30-31,33
+  s_6cf45e0861d8a7::t_c91df9210e0faf 56-57
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.service.test.ts
+  s_6cf45e0861d8a7::t_a86ee1a2f05e95 135,139,151,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b4ee54b1fe693d618cdd7860141e5a1bad718a79",
+  "prompts": {},
+  "sessions": {
+    "s_6cf45e0861d8a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13143f7e-d2b7-44be-baa9-7f5c93be8e77",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

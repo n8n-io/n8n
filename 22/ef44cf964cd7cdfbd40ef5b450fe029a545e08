@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/reconcileOnReconnect.test.ts
+  s_f939a8b93c40dc::t_7372251dd7b893 147-167
+  s_f939a8b93c40dc::t_4b5d6f88942844 98-115
+  s_f939a8b93c40dc::t_857866277af4fb 139
+  s_9f30e357c1bf9d::t_ebd01f50c59c88 144-146
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/reconcileOnReconnect.ts
+  s_f939a8b93c40dc::t_54bf4b4a97b66b 51
+  s_f939a8b93c40dc::t_f517f4174d6b61 10-15,17,23-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "22ef44cf964cd7cdfbd40ef5b450fe029a545e08",
+  "prompts": {},
+  "sessions": {
+    "s_9f30e357c1bf9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86539bcf-af50-43ad-a4ae-f42388f0e524",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "palette <palette@nightshift.local>"
+    },
+    "s_f939a8b93c40dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7704da18-8851-4e22-933b-1a8d3e74fe7b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "palette <palette@nightshift.local>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/@n8n/api-types/src/dto/evaluations/__tests__/evaluation-config.dto.test.ts
+  s_09a5e5f505f496::t_f61469a469f7fc 89-110
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 3592-3594
+  s_09a5e5f505f496::t_b94bf5aab523c4 68,72
+  s_09a5e5f505f496::t_01cbb51497ab5f 1219,1225-1226
+  s_09a5e5f505f496::t_5ed9861ed84a9d 3555-3591,3595-3648
+packages/@n8n/api-types/src/dto/evaluations/index.ts
+  s_09a5e5f505f496::t_897db569d425bd 4
+packages/cli/src/evaluation.ee/llm-judge-provider-registry.ts
+  s_09a5e5f505f496::t_dc1bb440218771 1,4-6,8-11,16,22-25
+packages/@n8n/instance-ai/src/types.ts
+  s_09a5e5f505f496::t_e37eb353c6132d 672-674
+packages/cli/src/evaluation.ee/__tests__/llm-judge-provider-registry.test.ts
+  ai_agent 84-86
+  s_09a5e5f505f496::t_849beb53c33c27 70-83,87-103
+packages/@n8n/api-types/src/dto/evaluations/llm-judge-providers.ts
+  s_09a5e5f505f496::t_860f06e4751365 1-123
+packages/@n8n/instance-ai/skills/config-evals/SKILL.md
+  s_09a5e5f505f496::t_7111604c742676 59-67
+packages/@n8n/instance-ai/src/tools/evals/eval-config.tool.ts
+  ai_agent 11-14
+  s_09a5e5f505f496::t_42dae4137d9b1c 33-44
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_09a5e5f505f496::t_a145429744c357 125
+  s_09a5e5f505f496::t_dfd8f1779c8722 272
+  s_09a5e5f505f496::t_68f2c67e892464 114
+  s_09a5e5f505f496::t_0fea28e765e778 1706,1720-1723
+  s_09a5e5f505f496::t_75b30f375a9c21 2851-2897
+  s_09a5e5f505f496::t_62e6dc7473b307 1745,1750,1757,1763
+  s_09a5e5f505f496::t_c97b372fe3b130 1724-1729
+packages/@n8n/instance-ai/skills/config-evals/references/config-eval-playbook.md
+  s_09a5e5f505f496::t_f5edeb88b65aea 28,35
+  s_09a5e5f505f496::t_20bcdd9fc88a0e 89
+  s_09a5e5f505f496::t_e767dc83dd0495 63
+packages/@n8n/api-types/src/dto/evaluations/evaluation-config.dto.ts
+  s_09a5e5f505f496::t_502e9b5bcd2dd3 27-31
+  s_09a5e5f505f496::t_82cfa3025c896e 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f01351ac8f7792367a4cad420de92d5c6c4d1e4",
+  "prompts": {},
+  "sessions": {
+    "s_09a5e5f505f496": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e84f2b02-e2a2-457e-b181-159419e9f0ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

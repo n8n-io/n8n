@@ -1,0 +1,43 @@
+packages/@n8n/instance-ai/evaluations/checklist/verifier.ts
+  s_80b46b026ad886::t_3f37900564c338 2
+packages/@n8n/instance-ai/src/workspace/sandbox-fs.ts
+  s_80b46b026ad886::t_a883a31ae6e337 99
+  s_80b46b026ad886::t_7179de2ff15aa9 60
+packages/@n8n/node-cli/src/commands/dev/utils.ts
+  s_80b46b026ad886::t_4b9dcaf6b481b6 140,376,389,394
+packages/cli/test/integration/scheduling/scheduler-benchmarks.test.ts
+  s_80b46b026ad886::t_d6ee2ef490c92b 13
+packages/cli/src/utils/ai-service-retry.ts
+  s_80b46b026ad886::t_750332819870cb 1
+packages/testing/containers/pull-test-images.ts
+  s_80b46b026ad886::t_b5f032de4773a8 30,54
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.ts
+  s_80b46b026ad886::t_ddd0fe1b73c337 6
+  s_80b46b026ad886::t_1c36ca7042e677 24-25
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-input-connection-data.test.ts
+  s_80b46b026ad886::t_ca9bae1bf81a82 46,49,881,956,1029,1069
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-durable.spec.ts
+  s_80b46b026ad886::t_b5f032de4773a8 8,53,71,74
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.test.ts
+  s_80b46b026ad886::t_a2b05f86223112 16-19
+packages/@n8n/node-cli/src/commands/dev/utils.test.ts
+  s_80b46b026ad886::t_4b9dcaf6b481b6 3,8,18
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-multimain.spec.ts
+  s_80b46b026ad886::t_b5f032de4773a8 5,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1945b320527042c4861f1b47f826ed6a60d7bfea",
+  "prompts": {},
+  "sessions": {
+    "s_80b46b026ad886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9a5a8d2-a316-4511-ab5b-1e3e5ec8b3ee",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/@n8n/client-oauth2/test/client-assertion.test.ts
+  s_3fb9e438e2e368::t_e17ec349bc17f9 1
+packages/nodes-base/utils/utilities.ts
+  s_3fb9e438e2e368::t_ce9fc404328e04 18-19
+packages/nodes-base/package.json
+  s_3fb9e438e2e368::t_67dfe24a87b892 918
+pnpm-lock.yaml
+  ai_agent 1400-1402,5030-5032
+packages/@n8n/client-oauth2/package.json
+  s_3fb9e438e2e368::t_76cdf221026adf 26
+packages/@n8n/utils/src/index.ts
+  s_3fb9e438e2e368::t_967c0cfbbb2fa3 15
+packages/@n8n/utils/src/format-private-key.test.ts
+  s_3fb9e438e2e368::t_60e9b7fdb76f69 1-3,45-53,86-96,103-113
+packages/@n8n/client-oauth2/src/client-assertion.ts
+  s_3fb9e438e2e368::t_8a69044835f5c1 16
+  s_3fb9e438e2e368::t_e17ec349bc17f9 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b8ef5f424321a29a9e2459524f1a02aee2e60f4a",
+  "prompts": {},
+  "sessions": {
+    "s_3fb9e438e2e368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4029c5d-d005-4e47-a12d-661c855664ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

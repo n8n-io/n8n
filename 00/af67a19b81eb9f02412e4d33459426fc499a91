@@ -1,0 +1,328 @@
+packages/cli/src/modules/data-table/__tests__/data-table.service.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 5,480-546
+  s_20d7140ca33a5b::t_d0abe542956392 547-548
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 16,296
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-263
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-respects-stored-key.json
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-21
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/validate-workflow.service.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1,78-88,235-257,872-1078
+  s_20d7140ca33a5b::t_c5d4eefe925f9e 1079
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 17
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.serializer.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-25
+packages/cli/src/public-api/v1/handlers/security-policy/spec/paths/security-policy.yml
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-57
+packages/cli/src/public-api/v1/handlers/security-policy/security-policy.handler.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-59
+packages/@n8n/api-types/src/index.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 204,286
+packages/@n8n/instance-ai/src/tools/workflows/resolved-credential.schema.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-26
+packages/cli/src/public-api/v1/handlers/security-policy/spec/schemas/security-policy.update.yml
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-23
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 12-13,16-17,76-77,80-82,85-97,122-134,197-227,236,253-256
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 48-61
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-45
+packages/@n8n/nodes-langchain/utils/aws/createBedrockRuntimeClient.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-46
+packages/cli/src/services/security-settings.service.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1,13,15-17,20-49,60-61,64-156,207-217
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 4,427-475
+  s_20d7140ca33a5b::t_9dc6c974234b46 476
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 12-13,37,57,77,80
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 30,54,130,285-290,324-344,361-377,404-413,1313-1314,1630-1638,2168-2170,2191-2194,2199,2207-2208,2214-2222,2226,2244-2245,2290,2308-2309,2347
+packages/cli/src/controllers/security-settings.controller.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 26-27,56-63,73
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 10-34,39-43,47
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 222
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 4,337-345,388,408-413,418,421-428,599-602
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 33-38,152
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 17-18,42-46,115-119
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 67-71
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 15-17
+packages/@n8n/instance-ai/src/tools/workflows/credential-utils.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 12-18,26-32,58,97,100
+packages/@n8n/instance-ai/src/index.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 617
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 332-405,629-675
+packages/cli/templates/form-trigger-completion.handlebars
+  s_20d7140ca33a5b::t_0cd390009b29c1 204,206,208-211
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 11,18,64-74,119-133,136-137
+  s_20d7140ca33a5b::t_35d14c13a99b37 134-135,138
+packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 77-109
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_20d7140ca33a5b::t_0cd390009b29c1 156,291-317
+packages/@n8n/permissions/src/constants.ee.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 92
+packages/@n8n/instance-ai/docs/configuration.md
+  s_20d7140ca33a5b::t_0cd390009b29c1 11,211
+packages/cli/src/modules/n8n-packages/entities/project/project-import.types.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-18
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-207
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 9,12,26-31,40,44,101-108,120-124,133,158,168-170,178-192
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 131,153-159,237
+packages/cli/src/public-api/types.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 10,382-389
+  s_20d7140ca33a5b::t_8cbb8bae174da6 390
+packages/cli/src/services/__tests__/security-settings.service.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 13-14,24-25,32-33,36-43,277-436
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_20d7140ca33a5b::t_fac0c10d414508 10
+  s_20d7140ca33a5b::t_bae8e6d68e0a47 809-810,812,825,840,853-870,1037,1043,1052,1058,1069,1078
+  s_20d7140ca33a5b::t_43982e9cf2fd22 1-2,4,6-9,11-12,781-808,811,813-824,826-839,841-852,1031-1036,1038-1042,1044-1051,1053-1057,1059-1068,1070-1077,1079
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 107-177
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_20d7140ca33a5b::t_0cd390009b29c1 27-28,30-33,36-37
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-requirements.extractor.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-42
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 146
+packages/@n8n/instance-ai/src/tools/workflows/validate-workflow.service.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 7,20,23-24,215-219,297-404,557-564,603
+packages/cli/src/public-api/v1/handlers/security-policy/spec/schemas/security-policy.yml
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-44
+.github/workflows/community-pr-close-stale.yml
+  s_20d7140ca33a5b::t_0cd390009b29c1 40
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 16-17,297-302,337-363,366-374,406,408-422,455-465,507,550,890-931,939,943,947-953,956-961,1013-1016
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1,9,21,315-319,350
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-prefers-supported-node.json
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-23
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 2,14-17,21-25,29,33-37,40,44
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 120-134
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-510
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 10-11,36-40,47-48,247-268
+  s_20d7140ca33a5b::t_b70eb7a3954904 269
+packages/cli/src/public-api/v1/openapi.yml
+  s_20d7140ca33a5b::t_0cd390009b29c1 23-24,57-58
+packages/cli/src/controllers/__tests__/security-settings.controller.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 2,7,28-38,42-44,47-76,79-88,90,92,95-110,112-116,118-122,124-128,130-141,144-145,147-151,153-163,165-178
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 133-164
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 85-97
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-4
+packages/cli/src/services/project.service.ee.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 67-71,361,373-378,387-391,395
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 7
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 12,86-95,267-279,281,285-308,310-311,322-326,377-382,387-392
+  s_20d7140ca33a5b::t_b4dba2cdeb7722 393
+packages/@n8n/instance-ai/src/types.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 228-246,269,462-463,501,560
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 3220-3504
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 21-29,39,48,53,57,60-61,65,68-69,84-87,92,97-98,101-107,111,114-115,117,120,122,125,128-129,131,142,163,171-173
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-default-when-clean-slate.json
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-24
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 16-17,42,774-799
+  s_20d7140ca33a5b::t_6f89e49a272eb5 800-801
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 289-373,490-492
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 402-505,1186-1300
+  s_20d7140ca33a5b::t_1229454bd453d0 1301
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 2,12,106-109,112
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 4,6,131-169
+  s_20d7140ca33a5b::t_2aebe8d510ca82 170
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-respects-named-provider.json
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-22
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 30-31
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_20d7140ca33a5b::t_0cd390009b29c1 261-265,272-277,284-322
+  s_20d7140ca33a5b::t_f9353f988ee1ea 323
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.serializer.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-57
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-129
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1058
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 72
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-103
+packages/cli/test/integration/public-api/security-policy.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-226
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 86
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-requirements.extractor.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-141
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 2,6,13
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 3-4,274
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 8,29,46
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 2284,2295
+packages/cli/src/modules/n8n-packages/spec/serialized/data-table.schema.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-21
+packages/@n8n/api-types/src/dto/index.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 243-246
+packages/@n8n/api-types/src/dto/security-settings/security-policy.dto.ts
+  s_20d7140ca33a5b::t_0cd390009b29c1 1-31
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_20d7140ca33a5b::t_72e7698f9007ed 2116,2196-2197,2202,2206,6239
+packages/frontend/editor-ui/src/app/components/AiGatewaySelector.test.ts
+  s_20d7140ca33a5b::t_a3038c7def2d94 18,27-32,50,66,70-86,132,154
+packages/frontend/editor-ui/src/app/components/AiGatewaySelector.vue
+  s_20d7140ca33a5b::t_01b4886313f03a 10-12,30-31,34-36,90-112,115-128,130-153,156-157
+packages/frontend/editor-ui/src/app/composables/useEditorContext.ts
+  s_20d7140ca33a5b::t_d1f88d2e48432d 61
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_20d7140ca33a5b::t_ea6a14b2749983 150-153,190,194
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_20d7140ca33a5b::t_10bd02ca61201d 58-60,68
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.test.ts
+  s_20d7140ca33a5b::t_f25fe6fcd5626b 158-186
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_20d7140ca33a5b::t_b4a2e58d968c18 34,44-46,48
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_20d7140ca33a5b::t_f6e0c400e74460 309-317,2060
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/index.ts
+  s_20d7140ca33a5b::t_95202412cf49ec 1
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/useN8nCreditsCredentialSelectionExperiment.test.ts
+  s_20d7140ca33a5b::t_df14a63dc82828 1-39
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/useN8nCreditsCredentialSelectionExperiment.ts
+  s_20d7140ca33a5b::t_a085bdf334e8b1 1-16
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_20d7140ca33a5b::t_b59c992061666c 17,387-445
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_20d7140ca33a5b::t_5255109cfeced6 398,401,404,415-434
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_20d7140ca33a5b::t_d7bf34a6f37793 136-140,148
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_20d7140ca33a5b::t_21c238f3ab6f39 3,47,137-140
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_20d7140ca33a5b::t_71c6c833c99e44 6,635-672
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_20d7140ca33a5b::t_4170aa704d4e5e 35-37,76,84,156,202-224
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_20d7140ca33a5b::t_f85dfe281a52c8 98-101,106
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupWizardFooter.test.ts
+  s_20d7140ca33a5b::t_2a204e1aba13b2 1-111
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupWizardFooter.vue
+  s_20d7140ca33a5b::t_690c487baccb31 34-43,125
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupInputs.test.ts
+  s_20d7140ca33a5b::t_c3bfda7f583c29 100-148
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupSections.test.ts
+  s_20d7140ca33a5b::t_7cbb51cbc73ccd 96-155
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupSections.ts
+  s_20d7140ca33a5b::t_57e118bd169aba 6,40-43,87-112
+packages/frontend/editor-ui/src/features/credentials/__tests__/credentials.store.test.ts
+  s_20d7140ca33a5b::t_a3c5bb56e44c16 43-55
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_20d7140ca33a5b::t_286184f72d5b6d 34,63-68,185,566-590,1599-1649,1839-1845,1849-1853,1873-1899,1915-1930
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_20d7140ca33a5b::t_cd967712053578 51,137-138,319-320,561-574,684-687,690,703,716-726
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialTestInBackground.test.ts
+  s_20d7140ca33a5b::t_519d4c7faff8c4 1,18-53
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialTestInBackground.ts
+  s_20d7140ca33a5b::t_9d093c56441411 44,46-49,51-58,60-65,68-71,73-80,88
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_20d7140ca33a5b::t_b5b39a01968637 437-451
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_20d7140ca33a5b::t_7e08d6aebd3b0b 790,941,949,959
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_20d7140ca33a5b::t_64d633ef9c3cfe 425
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_20d7140ca33a5b::t_9aaeb96ba56fc5 31-34,37,40
+packages/nodes-base/credentials/common/aws/descriptions.ts
+  s_20d7140ca33a5b::t_1592fc6aac9730 119-146
+packages/nodes-base/credentials/common/aws/index.ts
+  s_20d7140ca33a5b::t_0d912b0ec05462 4
+packages/nodes-base/credentials/common/aws/types.ts
+  s_20d7140ca33a5b::t_4d973de49c24ef 13-14
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_20d7140ca33a5b::t_f7f9bfd0785886 233,244-245
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_20d7140ca33a5b::t_84cf311aec8ea2 242,258,271,735
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_20d7140ca33a5b::t_2533a88b49a634 136,223,255,333-339,389-395,531-611,613-627
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_20d7140ca33a5b::t_04f06fa40709ae 22,24,26-42,44-47,49-67,70,94
+packages/nodes-base/nodes/Microsoft/SharePoint/MicrosoftSharePoint.node.ts
+  s_20d7140ca33a5b::t_155cc823ea989d 1-2,4-6,8-15,17-20,22-29,31-32
+packages/nodes-base/nodes/Microsoft/SharePoint/test/MicrosoftSharePoint.node.test.ts
+  s_20d7140ca33a5b::t_fabd53ed0b6397 1-26
+packages/nodes-base/nodes/Microsoft/SharePoint/test/helpers/utils.test.ts
+  s_20d7140ca33a5b::t_1710b945d68564 5
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/listSearch.test.ts
+  s_20d7140ca33a5b::t_02a3076c26c477 5,13,22
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/resourceMapping.test.ts
+  s_20d7140ca33a5b::t_75957bad02b9ab 5
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/authentication.test.ts
+  s_20d7140ca33a5b::t_f30e4945e3b1c3 1-48
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/MicrosoftSharePointV1.node.ts
+  s_20d7140ca33a5b::t_c47ded6e577ad9 1-77
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/MicrosoftSharePointV2.node.ts
+  s_20d7140ca33a5b::t_97ae3becf1c31a 1-79
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_20d7140ca33a5b::t_f1d5058394c923 189-194,196,198-199
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_20d7140ca33a5b::t_20fc68b604ee83 17,770-809
+packages/nodes-base/nodes/Odoo/test/v2/node/custom/getAll.test.ts
+  s_20d7140ca33a5b::t_9dc710b4cb3b10 1-2,7,137-160
+packages/nodes-base/nodes/Odoo/v2/actions/custom/getAll.operation.ts
+  s_20d7140ca33a5b::t_e82489c62d616d 9-10,47-88,108,120
+packages/testing/playwright/pages/components/CommandBar.ts
+  s_20d7140ca33a5b::t_2d151ff9a97814 31-35
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-confirmations.spec.ts
+  s_20d7140ca33a5b::t_95452141b65c87 238-242,276-277
+packages/testing/playwright/tests/e2e/workflows/executions/list.spec.ts
+  s_20d7140ca33a5b::t_cb307c4b71d846 111-120
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_20d7140ca33a5b::t_ac68eb8257ad2a 217-242,386-397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "00af67a19b81eb9f02412e4d33459426fc499a91",
+  "prompts": {},
+  "sessions": {
+    "s_20d7140ca33a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c20dbb9-fb34-4993-a37f-0f2222020a8a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

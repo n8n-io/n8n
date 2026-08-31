@@ -1,0 +1,39 @@
+packages/frontend/@n8n/composables/src/useTelemetry.test.ts
+  s_495f8152979774::t_96937f3bbc69c5 1,3-78
+  s_495f8152979774::t_48081b76cc6a17 2
+packages/frontend/@n8n/composables/src/useTelemetry.ts
+  s_495f8152979774::t_bf30b754e87fb7 1-88
+packages/frontend/@n8n/composables/package.json
+  s_495f8152979774::t_04b9e770e7fbf9 31,34-36
+packages/frontend/editor-ui/src/features/workflows/templates/utils/templateActions.test.ts
+  s_495f8152979774::t_cc448841d95fc0 9,45
+packages/frontend/editor-ui/src/app/plugins/telemetry.test.ts
+  s_495f8152979774::t_cc448841d95fc0 2,15
+  s_495f8152979774::t_af29b8937cb50c 7
+packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts
+  s_495f8152979774::t_8d7e54f871c6ba 284-286,291
+  s_495f8152979774::t_a232630f421f8d 15-17,19-20
+  s_495f8152979774::t_193a1b23b0cbe7 282
+  s_495f8152979774::t_cf57fe5362c518 18,26-28,30
+  s_495f8152979774::t_28a654b872f460 283
+packages/frontend/editor-ui/src/app/composables/useTelemetry.ts
+  s_495f8152979774::t_0ad2f70e965aac 1-9
+pnpm-lock.yaml
+  s_495f8152979774::t_2c798c61011f19 4900-4902,4909-4911,4915-4917
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ea9f2cb45ac21f76bf3a93e70937781f5d5f9ac3",
+  "prompts": {},
+  "sessions": {
+    "s_495f8152979774": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "450f2223-609a-4015-9ba7-a433acca763a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

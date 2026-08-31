@@ -1,0 +1,27 @@
+docker/images/n8n/Dockerfile
+  s_1739a602f91847::t_6e64bf6dc21494 10-13
+  s_1739a602f91847::t_78999d5885e3ea 46
+docker/images/n8n/docker-entrypoint.sh
+  s_1739a602f91847::t_259fe6bfee443e 2-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c3c0c6bf61b0557f91184943b9c5f2686e2b7714",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_1739a602f91847": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "accac1dd-c45e-4836-9c02-e419844f9cfd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

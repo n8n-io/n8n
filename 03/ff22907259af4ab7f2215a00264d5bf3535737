@@ -1,0 +1,52 @@
+packages/@n8n/api-types/src/agents/inline-agent-config.schema.ts
+  s_9fa10492ef2960::t_2325b915124396 34-40
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_9fa10492ef2960::t_7ea0647ecbd5ce 331-357
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsModal.vue
+  s_9fa10492ef2960::t_4ea769344b33fe 61-62
+  s_9fa10492ef2960::t_a3cfa327c134a4 537,565,658,683
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  s_9fa10492ef2960::t_374df9bfff9df2 1-114
+packages/cli/src/modules/agents/utils/node-tool-validation.ts
+  h_7555c3ee6524cf 11
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_9fa10492ef2960::t_2552d05b505931 243
+  s_9fa10492ef2960::t_e17b911fb512fe 414
+  s_9fa10492ef2960::t_a3999e7f2f11be 142-145
+  s_9fa10492ef2960::t_3ef8dbb6f5f477 228-231
+  s_9fa10492ef2960::t_59b4ece87ba3d2 38-39,52-53
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useInlineAgentConfig.ts
+  s_9fa10492ef2960::t_f52b1e233b0c4d 120-122
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  ai_agent 809
+  s_9fa10492ef2960::t_1fe1dfa7bfd78a 805-808,810-825
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  h_7555c3ee6524cf 916
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_9fa10492ef2960::t_86cfbf148e651d 108
+  s_9fa10492ef2960::t_c783a44f5e6d33 154
+  s_9fa10492ef2960::t_04845048d043a9 86
+  s_9fa10492ef2960::t_4540048eec1871 62-67
+  s_9fa10492ef2960::t_5ef78bf173123a 197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "03ff22907259af4ab7f2215a00264d5bf3535737",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9fa10492ef2960": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c366ff8-c020-4541-a1e3-899d51d5e3ae",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

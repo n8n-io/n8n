@@ -1,0 +1,43 @@
+packages/frontend/@n8n/composables/src/htmlUtils.test.ts
+  s_88fa5ba1d64bde::t_cd9e0b9490ac9f 2
+packages/frontend/@n8n/composables/src/htmlUtils.ts
+  s_88fa5ba1d64bde::t_5289556a746936 1-3
+  s_88fa5ba1d64bde::t_b33877c9ec73db 4
+  s_aab543acc87728::t_30193b4cbbbd5e 5-128
+packages/frontend/@n8n/composables/package.json
+  s_88fa5ba1d64bde::t_87271cd40314eb 33-34
+packages/frontend/@n8n/composables/eslint.config.mjs
+  s_88fa5ba1d64bde::t_29a36483025761 7-8,10-11
+packages/frontend/editor-ui/src/app/constants/sanitization.ts
+  s_88fa5ba1d64bde::t_9e850df6320559 1-8
+packages/frontend/editor-ui/src/app/utils/htmlUtils.ts
+  s_88fa5ba1d64bde::t_fb05d1e3bc2654 2-5,7-16
+packages/frontend/@n8n/composables/src/sanitization.ts
+  s_88fa5ba1d64bde::t_c047f8fb13e7ad 1-18
+pnpm-lock.yaml
+  s_aab543acc87728::t_bcf715655939c4 4817-4819
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "96f6e250bd22f7dcf4d43d27db99f74e6d88a39b",
+  "prompts": {},
+  "sessions": {
+    "s_88fa5ba1d64bde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd918bd6-747b-499a-a6d5-29e76dc58cd8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    },
+    "s_aab543acc87728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29b55fdb-2727-4d19-b1c8-9b47ea4b8b06",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  h_8fb27e0cdf6d1e 16,261-264,266,268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "32afeea583707ef7da7de2fe5e80d723f87c91e7",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

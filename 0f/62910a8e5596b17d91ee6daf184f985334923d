@@ -1,0 +1,31 @@
+packages/@n8n/config/src/configs/workflows.config.ts
+  s_02bcb0e9f9d95d::t_5bad00b4e74c26 41
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_02bcb0e9f9d95d::t_5f90b950303573 4,11,26
+  s_02bcb0e9f9d95d::t_34aa33b4f182dc 72
+  s_02bcb0e9f9d95d::t_34ed960fe880c1 49
+  s_02bcb0e9f9d95d::t_e85a34146a9f3d 251-306
+packages/cli/src/workflows/publication/workflow-publication-activation-limiter.ts
+  s_02bcb0e9f9d95d::t_07a65944bdf561 5-28
+  s_02bcb0e9f9d95d::t_ee124b998bc442 2-4
+  s_02bcb0e9f9d95d::t_9f5b49f4e9f6c7 29-31
+  s_02bcb0e9f9d95d::t_b44ada900d39a3 1,32
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_02bcb0e9f9d95d::t_4dbf8e7d4fa753 19,51,173-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0f62910a8e5596b17d91ee6daf184f985334923d",
+  "prompts": {},
+  "sessions": {
+    "s_02bcb0e9f9d95d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b0c3c1b-ecd2-46d6-b426-20dc6754a1da",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

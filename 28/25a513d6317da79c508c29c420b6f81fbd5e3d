@@ -1,0 +1,26 @@
+packages/cli/src/events/maps/relay.event-map.ts
+  s_55477a6b3578c6::t_44a1062f1df778 108
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_55477a6b3578c6::t_33822e20cf2f2c 97
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_55477a6b3578c6::t_fdb1705944b6b6 139-160
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_55477a6b3578c6::t_9b54a2e2f48965 5-7
+  s_55477a6b3578c6::t_609317f66ec7b8 74-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2825a513d6317da79c508c29c420b6f81fbd5e3d",
+  "prompts": {},
+  "sessions": {
+    "s_55477a6b3578c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b00223c2-23f7-41bb-89c2-ad12364a3fdd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

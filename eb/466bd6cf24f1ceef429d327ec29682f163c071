@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_56bde62e56d3b1::t_758814cf800445 82-87,97
+  s_56bde62e56d3b1::t_797932084519be 438
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_56bde62e56d3b1::t_4c38bdd92b3f64 284-295
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_56bde62e56d3b1::t_19e708a30bde58 423
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eb466bd6cf24f1ceef429d327ec29682f163c071",
+  "prompts": {},
+  "sessions": {
+    "s_56bde62e56d3b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47f70e36-dfda-42d7-823e-0114e1b2de01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

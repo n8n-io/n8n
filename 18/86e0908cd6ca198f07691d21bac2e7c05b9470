@@ -1,0 +1,47 @@
+packages/cli/src/modules/slack-comms/slack-install.provider.ts
+  s_60dfaf9586b4e7::t_88b057d8604abe 1-29
+packages/cli/src/modules/slack-comms/__tests__/slack-socket.service.test.ts
+  s_60dfaf9586b4e7::t_0ccf2ff24b371d 15-19,26
+  s_60dfaf9586b4e7::t_5125ec909cf108 20-21,23-25
+  s_60dfaf9586b4e7::t_c9e70636cca402 22,29
+  ai_agent 53-60
+  s_60dfaf9586b4e7::t_876afd640c1044 1-3,5-13,27-28,31-52,61-89,91-100,102-198
+  s_60dfaf9586b4e7::t_ea94825c8e34fa 14,30,90,101
+  s_60dfaf9586b4e7::t_a6d951ae656752 4
+packages/cli/src/modules/slack-comms/slack-comms.config.ts
+  s_60dfaf9586b4e7::t_fcfdf49d78fe50 1-23
+pnpm-lock.yaml
+  ai_agent 1198,1270,1498,1614,1762,3332,3544,4283-4285,4688,4908,5572,5968,6396,7056,15220,15264,20395,25802,25926,25946,25964,27686,28940,29234,32353,39979,40734
+packages/cli/src/modules/slack-comms/slack-comms.module.ts
+  s_60dfaf9586b4e7::t_fbe9addb7d2581 20-21
+  s_60dfaf9586b4e7::t_301e9ddea64ada 1-19,22-37
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_60dfaf9586b4e7::t_44c785701e34b9 38
+packages/cli/src/modules/slack-comms/slack-socket.service.ts
+  ai_agent 72-77
+  s_60dfaf9586b4e7::t_4d216e52b53b1e 1-2,4-71,79-133
+  s_60dfaf9586b4e7::t_d6be41b30edfbd 78
+  s_60dfaf9586b4e7::t_b50125a4b54355 3
+packages/cli/package.json
+  s_60dfaf9586b4e7::t_a7061970641d20 193
+packages/cli/src/modules/slack-comms/__tests__/slack-install.provider.test.ts
+  s_60dfaf9586b4e7::t_7ee9b09ea7346d 1,3-28,32-39
+  ai_agent 29-31
+  s_60dfaf9586b4e7::t_0d66869e31f7cd 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1886e0908cd6ca198f07691d21bac2e7c05b9470",
+  "prompts": {},
+  "sessions": {
+    "s_60dfaf9586b4e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc0705c0-a9e7-42d1-901f-f21c693be3e3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

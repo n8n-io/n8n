@@ -1,0 +1,20 @@
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_667b5ce1fedc78::t_69910553e75937 17-18
+  s_667b5ce1fedc78::t_f4e54c0fb09fa2 229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9cecf59f5ab3409e58d15dc0c6a2ab2de8e4e6ab",
+  "prompts": {},
+  "sessions": {
+    "s_667b5ce1fedc78": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfde787b-c41b-4adb-af4f-3bbff63a3f6c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

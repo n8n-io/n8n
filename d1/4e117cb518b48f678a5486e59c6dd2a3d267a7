@@ -1,0 +1,42 @@
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItemContinueOnFail.workflow.json
+  s_622e6646e7b730::t_22cfc63d95d639 1-33,35-38,40-83
+  s_622e6646e7b730::t_e5ec61596f71f0 34,39
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/table/append.sp.batch.workflow.json
+  s_622e6646e7b730::t_adb5fed211219f 1-36,38-41,43-46,48-91
+  s_622e6646e7b730::t_e5ec61596f71f0 37,42,47
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItem.workflow.json
+  s_622e6646e7b730::t_6efa3c189681a9 1-33,35-38,40-82
+  s_622e6646e7b730::t_e5ec61596f71f0 34,39
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.drive.perItem.workflow.json
+  s_622e6646e7b730::t_dd62320bdbeabc 1-34,36-39,41-83
+  s_622e6646e7b730::t_e5ec61596f71f0 35,40
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItem.test.ts
+  s_622e6646e7b730::t_240508600e9070 13-15,20-22
+  s_622e6646e7b730::t_ff08c93be03ade 1-12,16-19,23-30
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/table/append.sp.batch.test.ts
+  s_622e6646e7b730::t_3889dee480cbe8 1-12,16-19,26-32,34-40,45-52
+  s_622e6646e7b730::t_e5ec61596f71f0 33
+  s_622e6646e7b730::t_240508600e9070 13-15,20-25,41-44
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItemContinueOnFail.test.ts
+  s_622e6646e7b730::t_45ea7421510c43 1-12,16-23
+  s_622e6646e7b730::t_240508600e9070 13-15
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.drive.perItem.test.ts
+  s_622e6646e7b730::t_d19d6ac4c18197 1-12,16-19,23-30
+  s_622e6646e7b730::t_240508600e9070 13-15,20-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "d14e117cb518b48f678a5486e59c6dd2a3d267a7",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

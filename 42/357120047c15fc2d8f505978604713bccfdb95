@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.test.ts
+  s_27bf8a929ab032::t_f529547f3aed26 28,34-36,39,41-42,46-47,55
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_8fa5f8db399b81::t_4baaf422852692 301-304
+  s_8fa5f8db399b81::t_38ec6c91918552 323-329
+  s_8fa5f8db399b81::t_fd587df95d4279 283-289
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_8fa5f8db399b81::t_2228ac78e90486 624
+  s_8fa5f8db399b81::t_edcc4f4f75b3ad 1
+  s_8fa5f8db399b81::t_98d8b0d346c0e1 549-552,558-580
+  s_8fa5f8db399b81::t_36325783360683 581-583
+packages/@n8n/api-types/src/push/execution.ts
+  s_8fa5f8db399b81::t_856fd878a89578 62-70
+  s_8fa5f8db399b81::t_eb355f1a7a05f6 84-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "42357120047c15fc2d8f505978604713bccfdb95",
+  "prompts": {},
+  "sessions": {
+    "s_27bf8a929ab032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57771f1a-68b5-48e6-a727-09b13409333e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    },
+    "s_8fa5f8db399b81": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1af0f0c-39d9-4644-b626-3fcc1399c403",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

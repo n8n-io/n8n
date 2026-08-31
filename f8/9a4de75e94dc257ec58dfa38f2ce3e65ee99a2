@@ -1,0 +1,60 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_015232f2db3e42::t_566aea8fe01d9c 489
+  s_015232f2db3e42::t_856529231b83b5 119
+  s_015232f2db3e42::t_a31fffb9855aba 3,7,49-53,60-69,441,450-474,477-484
+  s_015232f2db3e42::t_4906c48a39a1d9 253,260-273,300-304,440,442-449,475-476,485-488
+  s_015232f2db3e42::t_ca8e80f266671d 254-259
+  s_015232f2db3e42::t_36fa228dde0d66 8-11,274-299
+  s_015232f2db3e42::t_010d0bd1c91471 490
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_015232f2db3e42::t_ce47ec837a2e48 74-80,193-195,213-218
+  s_015232f2db3e42::t_03efcc734439f4 219
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_015232f2db3e42::t_721d64e3a9c11b 340-354
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_015232f2db3e42::t_38de12f4c7c1aa 39
+  s_015232f2db3e42::t_dad0953b5f3b4f 163,352,398
+  s_015232f2db3e42::t_c7e135775c0195 233,238,338,351,353
+  s_015232f2db3e42::t_9a9bff197ae5ca 27-32
+  s_015232f2db3e42::t_cd2db2b833bcf4 47-48,165-170,173,234-237,240-245
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_015232f2db3e42::t_0a9577456c8623 129,250-254,260-264,304
+  s_015232f2db3e42::t_7d93f2c7840436 255-259,265,271-274
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_015232f2db3e42::t_9544a755b9e0f5 979-990
+  s_015232f2db3e42::t_9f879c9b86cd07 1160-1174,1176-1177,1315-1336,1339-1340,1342
+  s_015232f2db3e42::t_3c3c5bce324ce8 1337-1338
+  s_015232f2db3e42::t_ca8e80f266671d 1175
+  s_015232f2db3e42::t_42fc6d1fa6faed 1341
+  s_015232f2db3e42::t_ccd246fd896215 1343
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_015232f2db3e42::t_235ae36a9ff8bb 58-61,63,155-197
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_015232f2db3e42::t_235ae36a9ff8bb 2,27-35,110-133,137-143
+  s_015232f2db3e42::t_03597d45575698 134-136
+  s_015232f2db3e42::t_cbafef269bd520 144
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_015232f2db3e42::t_9544a755b9e0f5 1407-1416
+  s_015232f2db3e42::t_0a9577456c8623 697,703-709,719,904-909
+  s_015232f2db3e42::t_ffa863c2b8af8c 902
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_015232f2db3e42::t_dad0953b5f3b4f 81-89,120-127,192-197,199,201-203,233,269
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_015232f2db3e42::t_0a9577456c8623 7766
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f89a4de75e94dc257ec58dfa38f2ce3e65ee99a2",
+  "prompts": {},
+  "sessions": {
+    "s_015232f2db3e42": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff028-39c8-7de3-89b1-ce6a7855fc67",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

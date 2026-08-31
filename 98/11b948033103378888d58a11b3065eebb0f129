@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_2df5bb80907049::t_9384626e098907 369-554
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_2df5bb80907049::t_3b93cea2763196 60,66,82-91
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_2df5bb80907049::t_3b93cea2763196 3-4,42-47,53,121-123,196-233,298-299
+  s_77a32fd9603843::t_66d4a1171e57fe 300-301
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_2df5bb80907049::t_9384626e098907 92-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9811b948033103378888d58a11b3065eebb0f129",
+  "prompts": {},
+  "sessions": {
+    "s_2df5bb80907049": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa973-8fa0-7ea0-97af-f07c3b2abc9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

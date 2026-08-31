@@ -1,0 +1,34 @@
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.test.ts
+  s_bad178d4852f6f::t_0ba653a22604f6 27-32
+  s_bad178d4852f6f::t_38feb0a635700e 76,84,92,97-105,110,116-155,157-162
+  s_bad178d4852f6f::t_0768d9082e6229 115
+  s_bad178d4852f6f::t_d86e7b3bb09135 156
+  s_bad178d4852f6f::t_a4f7e10987b1cf 53
+packages/workflow/test/execution-context.test.ts
+  s_bad178d4852f6f::t_1ee51028a2dd18 28-50
+packages/workflow/src/execution-context.ts
+  s_bad178d4852f6f::t_14c93ebebdb280 123-126,132-136,142
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  s_bad178d4852f6f::t_54004428742692 143
+  s_bad178d4852f6f::t_96efc1a273bede 97,102,106,111,115,120,124,129,133,138-142,144-157
+  s_bad178d4852f6f::t_34cb08fd5d5c0c 2,13
+packages/cli/src/modules/redaction/redaction-context-hook.ts
+  s_bad178d4852f6f::t_b92ac53db0b491 56-64,71
+  s_bad178d4852f6f::t_4b33e2adf8a2c9 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9cd721f688dec049103c0e9bfdbf890f9ed0e4d6",
+  "prompts": {},
+  "sessions": {
+    "s_bad178d4852f6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1fc9f28-ab6a-4efa-b290-9ca1be50660e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": null
+    }
+  }
+}

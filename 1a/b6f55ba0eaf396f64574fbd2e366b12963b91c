@@ -1,0 +1,14 @@
+packages/cli/src/webhooks/live-webhooks.ts
+  h_ba1c90e6b641fa 146,211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1ab6f55ba0eaf396f64574fbd2e366b12963b91c",
+  "prompts": {},
+  "humans": {
+    "h_ba1c90e6b641fa": {
+      "author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

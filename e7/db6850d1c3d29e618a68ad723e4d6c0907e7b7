@@ -1,0 +1,22 @@
+packages/@n8n/utils/src/json/json-size-exceeds.test.ts
+  ai_agent 1-112,115,117,120-178
+packages/@n8n/utils/src/json/json-size-exceeds.ts
+  ai_agent 1-19,22,32-41,43-47,49-50,52-54,56-61,63-69,75-83,85-95,97-105,107-147
+  s_e5d1e3f565ab47::t_012f26041bddad 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e7db6850d1c3d29e618a68ad723e4d6c0907e7b7",
+  "prompts": {},
+  "sessions": {
+    "s_e5d1e3f565ab47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda7886d-c714-464f-ac3c-018fd3195773",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

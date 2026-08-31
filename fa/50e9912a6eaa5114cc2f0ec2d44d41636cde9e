@@ -1,0 +1,23 @@
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_8c0bb2d06aee91::t_fe2f5a5496a6d7 236
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_8c0bb2d06aee91::t_fe2f5a5496a6d7 228
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_8c0bb2d06aee91::t_f4f6a38b0b021c 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa50e9912a6eaa5114cc2f0ec2d44d41636cde9e",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

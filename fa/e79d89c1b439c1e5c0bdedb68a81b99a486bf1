@@ -1,0 +1,29 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/http-url-expression-delimiters-not-url-encoded.json
+  s_e261f072c3b6bd::t_1fb73061a6da5e 129
+  s_e261f072c3b6bd::t_15d43a49351309 36
+  s_e261f072c3b6bd::t_3e07aaf7570f7e 2,5
+  s_e261f072c3b6bd::t_37fe63a2dd06cf 27
+packages/@n8n/instance-ai/evaluations/data/workflows/verifies-node-output-not-just-the-endpoint.json
+  s_e261f072c3b6bd::t_eff4be4ef068f6 2,5
+  s_e261f072c3b6bd::t_83d05719319c62 36
+packages/@n8n/instance-ai/evaluations/data/workflows/does-not-overclaim-verification-of-a-fix.json
+  s_e261f072c3b6bd::t_9e2b759a279aff 2,5
+  s_e261f072c3b6bd::t_10c4a960b0393e 36
+  s_e261f072c3b6bd::t_37e41d5c1d8efa 126-127,129-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fae79d89c1b439c1e5c0bdedb68a81b99a486bf1",
+  "prompts": {},
+  "sessions": {
+    "s_e261f072c3b6bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba8bff36-5d40-4efa-9b57-d49a4365067c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

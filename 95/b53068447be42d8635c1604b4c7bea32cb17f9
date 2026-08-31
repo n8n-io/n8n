@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_92e20c68e51569::t_9f4ce2b9c332e1 107-109,112,114
+  s_92e20c68e51569::t_6970d9230be254 111
+  s_92e20c68e51569::t_a94719826f0142 88-92,94-97
+  s_92e20c68e51569::t_9f54b1191a3b3b 7,10,12-17,23,29-31,39
+  s_92e20c68e51569::t_3c0612eb56a1d6 93
+  s_92e20c68e51569::t_816a0099a483f9 53
+  s_92e20c68e51569::t_3f03a9dcfdceb7 69
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_92e20c68e51569::t_6b23e5580d924d 59-60,65,78,88-89,92
+  s_92e20c68e51569::t_cf5dd331ab0240 1-27,29,31-32,34-37,39-58,61-64,66-77,79-87,90-91,93-94
+  s_92e20c68e51569::t_fd558d3a9dc687 28,30,33,38
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/agentEvals.store.ts
+  s_92e20c68e51569::t_e76a088395a027 1-144
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_92e20c68e51569::t_ec17e1c0ae961e 259-265
+  s_92e20c68e51569::t_cd442d37cb7f4b 28
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/agentEvals.store.test.ts
+  s_92e20c68e51569::t_580e32fcfa102e 1-33,46-102,106-164
+  s_92e20c68e51569::t_36cb9733ddee64 34-45
+  s_92e20c68e51569::t_0105f5c745005c 103-105
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_92e20c68e51569::t_471aa805ea1670 2,7-9
+  s_92e20c68e51569::t_0663ecbcc35ca6 1,3-6,10-43
+packages/frontend/@n8n/stores/src/constants.ts
+  s_92e20c68e51569::t_b77d42b70a2b7f 39
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/agentEvals.api.ts
+  s_92e20c68e51569::t_ef2bc0cd952a46 1-19,21-97
+  s_92e20c68e51569::t_6970d9230be254 20
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_92e20c68e51569::t_4922939b27cbf3 7734
+  s_92e20c68e51569::t_17c45e38b22246 7773-7775
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/agentEvals.types.ts
+  s_92e20c68e51569::t_40bb73ba5fcda2 1-16
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.test.ts
+  s_92e20c68e51569::t_9a7dbe0cbe720f 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "95b53068447be42d8635c1604b4c7bea32cb17f9",
+  "prompts": {},
+  "sessions": {
+    "s_92e20c68e51569": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5963f094-8ebc-43fb-8bdc-b99959ea383a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

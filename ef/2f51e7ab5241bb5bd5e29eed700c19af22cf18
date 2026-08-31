@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_aac3c659ad6281::t_e96ea501920000 306-307,311-316
+  s_aac3c659ad6281::t_8051d8dcb9dab6 64-67
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_aac3c659ad6281::t_5a749c6f312992 34,44,53,1271-1294
+  s_aac3c659ad6281::t_623d158a9d0dd4 42-43,241-242
+  s_aac3c659ad6281::t_6b88ae727a9bee 1295-1296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ef2f51e7ab5241bb5bd5e29eed700c19af22cf18",
+  "prompts": {},
+  "sessions": {
+    "s_aac3c659ad6281": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b55cd66-8737-4967-89c3-4c0fed532b74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

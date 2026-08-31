@@ -1,0 +1,31 @@
+packages/cli/test/integration/execution-redaction.test.ts
+  s_c38c4c6573686d::t_11425089e39f0e 198-212
+  s_c38c4c6573686d::t_21953084fceb21 70-80,85-88,100-120,131,136-139,148-149,155-156
+  s_c38c4c6573686d::t_c828c627c77f24 10-17
+  s_c38c4c6573686d::t_beb5e3b44f6390 1067-1226
+packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
+  h_435b1d7d3e52c0 56-71
+packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
+  s_c38c4c6573686d::t_eca0fa278d2b11 443-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "37aa917808423cd2e5c668310e0fe593a7f52a57",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c38c4c6573686d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab83be4a-dfb9-4ea6-8c91-b7946edab831",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

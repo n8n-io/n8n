@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_44f93aaa53cc22::t_76967d32a09448 286,290,313
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_44f93aaa53cc22::t_1f6893fa8a99d6 182
+  s_44f93aaa53cc22::t_63f355dd4f48f9 173-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3adeb297156d82e025f077721ab6f83269b6f904",
+  "prompts": {},
+  "sessions": {
+    "s_44f93aaa53cc22": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "26e68124-0784-4aa1-bcf3-ea0500f2271f",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

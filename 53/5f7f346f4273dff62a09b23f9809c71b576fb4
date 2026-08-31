@@ -1,0 +1,22 @@
+packages/cli/src/controllers/__tests__/posthog.controller.test.ts
+  s_5d406704ab5b79::t_a49efd05c84f95 1-6,14-18,20-22,25-27,29-31,33-35,37-40,43-44
+  s_5d406704ab5b79::t_42ea882c19d3b1 7-13,19,23-24,28,32,36,41-42
+packages/cli/src/controllers/posthog.controller.ts
+  s_5d406704ab5b79::t_b771a8c5b68d56 8-33,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "535f7f346f4273dff62a09b23f9809c71b576fb4",
+  "prompts": {},
+  "sessions": {
+    "s_5d406704ab5b79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e58e4213-75a4-4584-952f-1fc4195b1624",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
