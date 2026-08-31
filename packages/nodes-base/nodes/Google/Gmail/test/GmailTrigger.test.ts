@@ -2144,12 +2144,15 @@ describe('GmailTrigger', () => {
 			]);
 		});
 
-		it('should still deliver messages when the labels lookup for simplifying fails', async () => {
-			// Simplifying needs a labels request of its own. If that fails, the poll
-			// must not stall: a failure that repeats would otherwise block delivery
-			// on every tick. Fall back to the raw shape instead.
+		it('should deliver nothing when the output cannot be simplified', async () => {
+			// The workflow asked for simplified output. If the labels request that
+			// simplifying needs fails, the poll must not hand over the raw shape:
+			// downstream nodes read fields that only the simplified shape has. Fail
+			// the poll instead and leave the cursor alone, so the next poll delivers
+			// these messages in the shape the workflow expects.
+			const initialTimestamp = 1000000;
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': { lastTimeChecked: 1000000 },
+				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
 			};
 
 			// Earlier tests can leave unconsumed interceptors behind, and this test
@@ -2159,15 +2162,14 @@ describe('GmailTrigger', () => {
 			mockList(listPage(['1']));
 			mockGet('1', 2_000_000_000_000);
 
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
-				workflowStaticData,
-			});
+			await expect(
+				testPollingTriggerNode(GmailTrigger, {
+					node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+					workflowStaticData,
+				}),
+			).rejects.toThrow();
 
-			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
-			// Unsimplified shape: raw labelIds survive because simplifying failed.
-			expect(response?.[0]?.[0]?.json.labelIds).toEqual(['testLabelId']);
-			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(2_000_000_000);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 		});
 
 		it('should emit a message only once when pages return an overlapping id', async () => {

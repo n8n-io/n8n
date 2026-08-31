@@ -402,28 +402,17 @@ export class GmailTrigger implements INodeType {
 
 		// Applied on every path that returns items — including a tick whose error
 		// was swallowed by the catch below, which skips the end of the try block.
-		// Simplifying needs a labels request of its own, and it runs after the
-		// messages are already fetched: a failure there must not cost the tick its
-		// messages or its state update, or a labels outage would stall delivery on
-		// every poll. Deliver the raw shape instead, on the same terms as the poll
-		// body — a manual run or a first poll still fails loudly.
+		// A failure here is deliberately not swallowed: the workflow asked for the
+		// simplified shape, and handing it the raw shape instead would break the
+		// fields it reads. The poll fails, the cursor stays put, and the next poll
+		// delivers these messages in the shape that was asked for.
 		const simplifyResponseData = async (): Promise<void> => {
-			if (!simple || responseData.length === 0) return;
-
-			try {
+			if (simple && responseData.length > 0) {
 				responseData = this.helpers.returnJsonArray(
 					await simplifyOutput.call(
 						this,
 						responseData.map((item) => item.json),
 					),
-				);
-			} catch (error) {
-				if (this.getMode() === 'manual' || !nodeStaticData.lastTimeChecked) {
-					throw error;
-				}
-				this.logger.error(
-					`Gmail Trigger could not simplify the output of '${node.name}': '${error.description}'`,
-					{ node: node.name, error },
 				);
 			}
 		};
