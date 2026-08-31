@@ -124,7 +124,7 @@ describe('get-workflow-details MCP tool', () => {
 						disabled: false,
 						parameters: {},
 						credentials: {
-							openAiApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							openAiApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 						},
 					},
 					{
@@ -167,6 +167,31 @@ describe('get-workflow-details MCP tool', () => {
 			});
 		});
 
+		test('reports the parent folder of a workflow inside a folder', async () => {
+			const workflow = createWorkflow({
+				parentFolder: { id: 'folder-1' } as WorkflowEntity['parentFolder'],
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+
+			expect(payload.workflow.parentFolderId).toBe('folder-1');
+		});
+
 		test("omits graph fields when detailLevel is 'execution'", async () => {
 			const workflow = createWorkflow({ activeVersionId: uuid() });
 			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
@@ -189,12 +214,13 @@ describe('get-workflow-details MCP tool', () => {
 			);
 
 			// The published version stays loaded: its graph is omitted, but its
-			// triggers still feed activeVersionTriggerInfo
+			// triggers still feed activeVersionTriggerInfo. The parent folder must
+			// be requested too — without it parentFolderId is silently always null.
 			expect(findWorkflowForUser).toHaveBeenCalledWith(
 				'wf-1',
 				user,
 				['workflow:read'],
-				expect.objectContaining({ includeActiveVersion: true }),
+				expect.objectContaining({ includeActiveVersion: true, includeParentFolder: true }),
 			);
 
 			expect(payload.workflow.nodes).toBeUndefined();

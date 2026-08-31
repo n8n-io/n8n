@@ -3,6 +3,7 @@ import {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	getInlineDelegateSubAgentToolOptions,
 	WRITE_TODOS_TOOL_NAME,
+	Workspace,
 } from '@n8n/agents';
 import type * as agents from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
@@ -14,13 +15,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -34,8 +29,11 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
@@ -87,12 +85,14 @@ function getInjectedToolNames(): string[] {
 }
 
 function makeReconstructionService(
-	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
 		agentRepository?: AgentRepository;
-		agentsConfig?: Partial<AgentsConfig>;
+		agentSandboxRuntimeService?: AgentSandboxRuntimeService;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
+		agentFileRepository?: AgentFileRepository;
+		agentWorkspaceService?: AgentWorkspaceService;
+		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -101,10 +101,13 @@ function makeReconstructionService(
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
+	const defaultAgentWorkspaceService = mock<AgentWorkspaceService>();
+	defaultAgentWorkspaceService.getAgentWorkspace.mockResolvedValue(new Workspace({}));
+	const agentWorkspaceService = overrides.agentWorkspaceService ?? defaultAgentWorkspaceService;
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		overrides.agentRepository ?? mock<AgentRepository>(),
-		mock<AgentFileRepository>(),
+		overrides.agentFileRepository ?? mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<UrlService>(),
@@ -113,15 +116,11 @@ function makeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
-		{
-			modules,
-			...(overrides.agentsConfig ?? {}),
-		} as unknown as AgentsConfig,
+		overrides.agentSandboxRuntimeService ?? mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
+		agentWorkspaceService,
+		overrides.agentKnowledgeMirrorService ?? mock<AgentKnowledgeMirrorService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
@@ -248,6 +247,137 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			modelToolName: 'Linear_Prod_read_file_12345678',
 			success: true,
 		});
+	});
+});
+
+describe('AgentRuntimeReconstructionService — workspace attachment', () => {
+	const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+	const reconstructWithWorkspace = async (service: AgentRuntimeReconstructionService) =>
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			principalHash,
+		);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+	});
+
+	it('attaches a workspace when the effective sandbox setting is enabled', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => true,
+		});
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		const workspace = new Workspace({});
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(false);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue(workspace);
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService,
+			agentFileRepository,
+			agentWorkspaceService,
+		});
+
+		await reconstructWithWorkspace(service);
+
+		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
+		expect(agentWorkspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			principalHash,
+		);
+		expect(getInjectedToolNames()).not.toContain('find_file');
+	});
+
+	it('keeps knowledge tools gated by uploaded files', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => true,
+		});
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue(new Workspace({}));
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService,
+			agentFileRepository,
+			agentWorkspaceService,
+		});
+
+		await reconstructWithWorkspace(service);
+
+		expect(getInjectedToolNames()).toEqual(
+			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
+		);
+	});
+
+	it('does not attach a workspace to inline runtimes', async () => {
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => true,
+		});
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService,
+			agentWorkspaceService,
+		});
+
+		await service.reconstructFromResolvedSource({
+			config: {
+				name: 'Inline',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help',
+			},
+			memoryOwnerAgentId: 'agent-1',
+			projectId: 'project-1',
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills: {},
+			runtimeProfile: 'inline',
+			runType: 'production',
+			parentAgentIdForDelegation: 'parent-agent-1',
+		});
+
+		expect(agentWorkspaceService.getAgentWorkspace).not.toHaveBeenCalled();
+		expect(builtAgent.workspace).not.toHaveBeenCalled();
+	});
+
+	it('continues reconstruction when the workspace is unavailable', async () => {
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => true,
+		});
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		agentWorkspaceService.getAgentWorkspace.mockRejectedValue(new Error('sandbox unavailable'));
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService,
+			agentWorkspaceService,
+		});
+
+		await expect(reconstructWithWorkspace(service)).resolves.toEqual(
+			expect.objectContaining({ agent: builtAgent }),
+		);
+		expect(builtAgent.workspace).not.toHaveBeenCalled();
+	});
+
+	it('rejects a first-class runtime without a workspace principal', async () => {
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({
+				isEnabled: () => true,
+			}),
+		});
+
+		await expect(
+			service.reconstructFromAgentEntity(
+				makeAgentEntity(),
+				mock<CredentialProvider>(),
+				'production',
+			),
+		).rejects.toThrow('workspace scope is missing');
 	});
 });
 
@@ -397,7 +527,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				name: 'Research Agent',
 				activeVersionId: 'version-2',
 			} as Agent);
-			const service = makeReconstructionService([], { agentRepository });
+			const service = makeReconstructionService({ agentRepository });
 			const entity = makeAgentEntity(undefined, {
 				subAgents: { agents: [{ agentId: 'agent-2' }] },
 			});
@@ -440,7 +570,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
 		} as Agent);
-		const service = makeReconstructionService([], { agentRepository });
+		const service = makeReconstructionService({ agentRepository });
 		const entity = makeAgentEntity(undefined, {
 			subAgents: {
 				agents: [
@@ -463,14 +593,14 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		]);
 	});
 
-	it('references a published sub-agent by id only, with no versionId pin', async () => {
+	it('references a saved sub-agent by id only, with no versionId pin', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
 		} as Agent);
-		const service = makeReconstructionService([], { agentRepository });
+		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
 			model: 'anthropic/claude-sonnet-4-5',
@@ -483,14 +613,14 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		expect(sourcesById).toEqual({ 'agent-billing': { agentId: 'agent-billing' } });
 	});
 
-	it('omits an unpublished sub-agent from sourcesById and availableSubAgents', async () => {
+	it('includes an unpublished sub-agent in sourcesById and availableSubAgents', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: null,
 		} as Agent);
-		const service = makeReconstructionService([], { agentRepository });
+		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
 			model: 'anthropic/claude-sonnet-4-5',
@@ -503,8 +633,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			'project-1',
 		);
 
-		expect(sourcesById).toEqual({});
-		expect(availableSubAgents).toEqual([]);
+		expect(sourcesById).toEqual({ 'agent-billing': { agentId: 'agent-billing' } });
+		expect(availableSubAgents).toEqual([{ id: 'agent-billing', name: 'Billing Agent' }]);
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
@@ -665,7 +795,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 		const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		n8nCheckpointStorage.getStorage.mockReturnValue(scopedStorage);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService([], { n8nCheckpointStorage });
+		const service = makeReconstructionService({ n8nCheckpointStorage });
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'production');
 

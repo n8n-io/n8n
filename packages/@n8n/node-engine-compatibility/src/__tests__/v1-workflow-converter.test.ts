@@ -6,6 +6,7 @@ import {
 	UnsupportedCycleError,
 	UnsupportedTriggerError,
 	UnsupportedLoopEntryError,
+	UnsupportedWorkflowError,
 } from '../errors';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 
@@ -168,6 +169,45 @@ describe('V1WorkflowConverter', () => {
 					}),
 				),
 			).toThrow(UnsupportedTriggerError);
+		});
+
+		const mergeNode = (parameters: INode['parameters']): INode =>
+			node('merge-uuid', 'Merge', { type: 'n8n-nodes-base.merge', typeVersion: 3.2, parameters });
+
+		it('rejects a Merge in chooseBranch mode', () => {
+			expect(() =>
+				converter.convert(
+					workflow({ nodes: [manualTrigger, mergeNode({ mode: 'chooseBranch' })] }),
+				),
+			).toThrow(UnsupportedWorkflowError);
+		});
+
+		it.each([2.1, 3.2])('rejects a Merge v%s whose mode is an expression', (typeVersion) => {
+			// unknowable at conversion time; v3's noDataExpression only binds the
+			// UI, so a hand-authored workflow can still carry one
+			expect(() =>
+				converter.convert(
+					workflow({
+						nodes: [manualTrigger, { ...mergeNode({ mode: '={{ $json.mode }}' }), typeVersion }],
+					}),
+				),
+			).toThrow(UnsupportedWorkflowError);
+		});
+
+		it('accepts a Merge in a literal non-chooseBranch mode', () => {
+			expect(() =>
+				converter.convert(workflow({ nodes: [manualTrigger, mergeNode({ mode: 'append' })] })),
+			).not.toThrow();
+		});
+
+		it('accepts an expression mode on Merge v1, which predates chooseBranch', () => {
+			expect(() =>
+				converter.convert(
+					workflow({
+						nodes: [manualTrigger, { ...mergeNode({ mode: "={{ 'append' }}" }), typeVersion: 1 }],
+					}),
+				),
+			).not.toThrow();
 		});
 	});
 
@@ -478,16 +518,13 @@ describe('V1WorkflowConverter', () => {
 				}),
 			);
 
+			// the engine runs a batch node itself, so its config is the batch size, not
+			// the v1 node identity the shim carries for every other type
 			expect(graph.nodes).toContainEqual({
 				id: 'loop-uuid',
 				name: 'Loop',
 				type: 'batch',
-				config: {
-					nodeType: 'n8n-nodes-base.splitInBatches',
-					typeVersion: 3,
-					parameters: {},
-					continueOnFail: false,
-				},
+				config: { batchSize: 1 },
 			});
 			expect(graph.edges).toEqual([
 				{ from: 'trigger-uuid', to: 'loop-uuid', outputIndex: 0, inputIndex: 0 },

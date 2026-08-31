@@ -132,12 +132,12 @@ describe('nodes tool', () => {
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
 				query: 'http',
-				n8nConnectOnly: undefined,
+				gatewayCreditsOnly: undefined,
 			});
 			expect(result).toEqual({ nodes });
 		});
 
-		it('should forward n8nConnectOnly to nodeService.listAvailable', async () => {
+		it('should forward gatewayCreditsOnly to nodeService.listAvailable', async () => {
 			const nodes = [
 				{
 					name: 'n8n-nodes-base.openAi',
@@ -154,13 +154,13 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'list', n8nConnectOnly: true } as never,
+				{ action: 'list', gatewayCreditsOnly: true } as never,
 				{} as never,
 			);
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
 				query: undefined,
-				n8nConnectOnly: true,
+				gatewayCreditsOnly: true,
 			});
 			expect(result).toEqual({ nodes });
 		});

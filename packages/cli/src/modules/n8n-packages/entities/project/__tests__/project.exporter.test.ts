@@ -97,7 +97,13 @@ describe('ProjectExporter', () => {
 		const { exporter, projectService } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
-		await exporter.export({ user, projectIds: [project.id], writer, includeTags: true });
+		await exporter.export({
+			user,
+			projectIds: [project.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(projectService.findProjectsByIdsForUser).toHaveBeenCalledWith(
 			user,
@@ -112,7 +118,13 @@ describe('ProjectExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, projectIds: [project.id], writer, includeTags: true }),
+			exporter.export({
+				user,
+				projectIds: [project.id],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toThrow('1 project(s) not found or not accessible. Export aborted.');
 	});
 
@@ -122,7 +134,13 @@ describe('ProjectExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, projectIds: ['missing'], writer, includeTags: true }),
+			exporter.export({
+				user,
+				projectIds: ['missing'],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
 
@@ -132,7 +150,13 @@ describe('ProjectExporter', () => {
 		const writer = new CapturingWriter();
 
 		await expect(
-			exporter.export({ user, projectIds: ['denied-1'], writer, includeTags: true }),
+			exporter.export({
+				user,
+				projectIds: ['denied-1'],
+				writer,
+				includeTags: true,
+				workflowVersionPolicy: 'latest',
+			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
@@ -146,6 +170,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(entries).toEqual([
@@ -185,6 +210,7 @@ describe('ProjectExporter', () => {
 			projectIds: [newerProject.id, olderProject.id],
 			writer,
 			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(entries).toEqual([
@@ -211,6 +237,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
+			workflowVersionPolicy: 'latest',
 		});
 
 		expect(entries).toEqual([

@@ -39,6 +39,8 @@ tags:
     description: Operations about executions
   - name: Folders
     description: Operations about folders
+  - name: GitConnections
+    description: Operations about Git connections
   - name: Insights
     description: Operations about insights
   - name: LogStreaming
@@ -49,6 +51,8 @@ tags:
     description: Operations about projects
   - name: Role
     description: Operations about roles
+  - name: RoleMappingRule
+    description: Operations about identity-provider role-mapping rules
   - name: SecurityPolicy
     description: Operations about the instance security policy settings
   - name: SettingsLdap
@@ -113,28 +117,10 @@ paths:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
-  /workflows:
-    $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
     $ref: './handlers/workflows/spec/paths/workflows.id.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/activate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
-  /workflows/{id}/deactivate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
-  /workflows/{id}/publish:
-    $ref: './handlers/workflows/spec/paths/workflows.id.publish.yml'
-  /workflows/{id}/unpublish:
-    $ref: './handlers/workflows/spec/paths/workflows.id.unpublish.yml'
-  /workflows/{id}/archive:
-    $ref: './handlers/workflows/spec/paths/workflows.id.archive.yml'
-  /workflows/{id}/unarchive:
-    $ref: './handlers/workflows/spec/paths/workflows.id.unarchive.yml'
-  /workflows/{id}/transfer:
-    $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /workflows/{id}/tags:
-    $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /workflows/{id}/test-runs:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:
@@ -221,7 +207,13 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      # Must match AUTH_COOKIE_NAME in packages/cli/src/constants.ts
+      name: n8n-auth
 
 security:
   - ApiKeyAuth: []
   - BearerAuth: []
+  - CookieAuth: []

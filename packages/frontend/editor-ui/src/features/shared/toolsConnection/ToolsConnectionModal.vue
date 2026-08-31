@@ -8,7 +8,7 @@ import {
 	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system';
+import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -19,6 +19,7 @@ import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
 import {
 	CATEGORY_BY_KIND,
+	hasToolConnection,
 	type FlattenedRow,
 	type ToolCategoryKey,
 	type ToolConnectionItem,
@@ -31,14 +32,23 @@ const props = withDefaults(
 		items: ToolConnectionItem[];
 		/** Tabs to render, in order. Declared categories show even while empty. */
 		categories: ToolCategoryKey[];
+		title?: string;
+		searchPlaceholder?: string;
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
 		hideBackButton?: boolean;
+		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
+		size?: DialogSize;
+		allowWorkflowCreation?: boolean;
+		workflowCreationLoading?: boolean;
 	}>(),
 	{
 		open: false,
 		detailItem: null,
 		detailMode: 'detail',
+		size: 'xlarge',
+		allowWorkflowCreation: false,
+		workflowCreationLoading: false,
 	},
 );
 
@@ -54,9 +64,14 @@ const emit = defineEmits<{
 	'new-credential-connect': [item: ToolConnectionItem];
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
+	'create-workflow': [];
 }>();
 
 const i18n = useI18n();
+const modalTitle = computed(() => props.title ?? i18n.baseText('tools.connection.title'));
+const searchPlaceholder = computed(
+	() => props.searchPlaceholder ?? i18n.baseText('tools.connection.search.placeholder'),
+);
 
 const ITEM_HEIGHT = 58;
 
@@ -125,11 +140,24 @@ function categoryOf(item: ToolConnectionItem): ToolCategoryKey {
 	return item.category ?? CATEGORY_BY_KIND[item.kind];
 }
 
+/**
+ * "All" ranks connected tools first, then those backed by n8n credits, then the
+ * rest — so the most immediately usable tools sit on top. Lower rank sorts first.
+ */
+function allSortRank(item: ToolConnectionItem): number {
+	if (hasToolConnection(item.status)) return 0;
+	if (item.freeCredits) return 1;
+	return 2;
+}
+
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
-	if (category === 'all') return props.items;
-	if (category === 'connected') return props.items.filter((item) => item.isConnected);
+	// Stable sort keeps each bucket in its original order (Array.sort is stable).
+	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
+	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
 	return props.items.filter(
-		(item) => categoryOf(item) === category && (hasConnectedTab.value ? !item.isConnected : true),
+		(item) =>
+			categoryOf(item) === category &&
+			(hasConnectedTab.value ? !hasToolConnection(item.status) : true),
 	);
 }
 
@@ -192,6 +220,7 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	mcp: 'tools.connection.categories.mcp',
 	ai: 'tools.connection.categories.ai',
 	n8n: 'tools.connection.categories.n8n',
+	'n8n-connect': 'tools.connection.categories.n8nConnect',
 	'app-action': 'tools.connection.categories.appAction',
 	community: 'tools.connection.categories.community',
 	workflows: 'tools.connection.categories.workflows',
@@ -253,10 +282,10 @@ function handleOpenChange(value: boolean) {
 <template>
 	<N8nDialog
 		:open="open"
-		size="xlarge"
-		:header="detailItem ? '' : i18n.baseText('tools.connection.title')"
+		:size="size"
+		:header="detailItem ? '' : modalTitle"
 		:show-close-button="!detailItem"
-		:aria-label="i18n.baseText('tools.connection.title')"
+		:aria-label="modalTitle"
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
@@ -302,7 +331,7 @@ function handleOpenChange(value: boolean) {
 				<N8nInput
 					ref="searchInputRef"
 					v-model="searchQuery"
-					:placeholder="i18n.baseText('tools.connection.search.placeholder')"
+					:placeholder="searchPlaceholder"
 					clearable
 					data-test-id="tools-connection-search"
 					:class="$style.searchInput"
@@ -323,6 +352,32 @@ function handleOpenChange(value: boolean) {
 					data-test-id="tools-connection-tabs"
 					@update:model-value="selectCategory"
 				/>
+
+				<button
+					v-if="activeCategory === 'workflows' && allowWorkflowCreation"
+					type="button"
+					:class="$style.createWorkflowRow"
+					:disabled="workflowCreationLoading"
+					:aria-busy="workflowCreationLoading"
+					data-test-id="tools-connection-create-workflow"
+					@click="emit('create-workflow')"
+				>
+					<span :class="$style.createWorkflowIcon" aria-hidden="true">
+						<N8nIcon
+							:icon="workflowCreationLoading ? 'loader-circle' : 'plus'"
+							:size="20"
+							:spin="workflowCreationLoading"
+						/>
+					</span>
+					<span :class="$style.createWorkflowText">
+						<N8nText tag="span" bold>
+							{{ i18n.baseText('generic.create.workflow') }}
+						</N8nText>
+						<N8nText tag="span" size="small" color="text-light">
+							{{ i18n.baseText('projectRoles.workflow:create.tooltip') }}
+						</N8nText>
+					</span>
+				</button>
 
 				<div v-if="isListEmpty" :class="$style.empty" data-test-id="tools-connection-empty">
 					<N8nText color="text-light">{{ emptyMessage }}</N8nText>
@@ -377,6 +432,52 @@ function handleOpenChange(value: boolean) {
 .tabs {
 	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
+}
+
+.createWorkflowRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	width: 100%;
+	min-height: 58px;
+	padding: var(--spacing--2xs);
+	border: 0;
+	border-radius: var(--radius--2xs);
+	background: none;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	flex-shrink: 0;
+
+	&:hover:not(:disabled) {
+		background: var(--color--background--light-1);
+	}
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
+	}
+
+	&:disabled {
+		cursor: default;
+	}
+}
+
+.createWorkflowIcon {
+	flex-shrink: 0;
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--primary);
+}
+
+.createWorkflowText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
 }
 
 // Runs past the dialog's own bottom padding so the list ends at the dialog

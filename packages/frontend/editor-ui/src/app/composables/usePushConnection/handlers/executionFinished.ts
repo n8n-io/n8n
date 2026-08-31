@@ -21,6 +21,7 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -107,6 +108,11 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	if (!belongsToThisDocument) {
 		return;
 	}
+
+	// A run using an n8n-managed credential consumes credits; invalidate the wallet
+	// cache so any balance pill reflects them. Gated on managed credentials so
+	// ordinary runs don't trigger a refetch.
+	refreshWalletAfterBilledRun(documentId);
 
 	const telemetry = useTelemetry();
 
@@ -195,6 +201,26 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	setRunExecutionData(execution, runExecutionData, documentId);
 
 	continueEvaluationLoop(execution, options);
+}
+
+/**
+ * Force-refreshes the AI gateway wallet when the finished run used an n8n-managed
+ * credential. No-op when the gateway is disabled or no managed credential is present.
+ */
+export function refreshWalletAfterBilledRun(documentId: WorkflowDocumentId) {
+	const settingsStore = useSettingsStore();
+	if (!settingsStore.isAiGatewayEnabled) {
+		return;
+	}
+
+	const aiGatewayStore = useAiGatewayStore();
+	const { nodes } = useWorkflowDocumentStore(documentId).getSnapshot();
+	const usedManagedCredential = nodes.some((node) =>
+		aiGatewayStore.hasGatewayManagedCredential(node),
+	);
+	if (usedManagedCredential) {
+		void aiGatewayStore.fetchWallet({ force: true });
+	}
 }
 
 /**

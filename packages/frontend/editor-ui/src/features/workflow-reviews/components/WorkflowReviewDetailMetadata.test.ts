@@ -33,10 +33,25 @@ function makeWorkflowDetail(
 		workflowName: 'Payment Handler',
 		workflowVersionId: 'version-1',
 		pinnedVersion: null,
+		publishedVersionId: null,
 		baselineVersion: null,
 		...overrides,
 	};
 }
+
+const requester = {
+	id: 'requester-1',
+	email: 'requester@example.com',
+	firstName: 'Rita',
+	lastName: 'Requester',
+};
+
+const laterAuthor = {
+	id: 'author-2',
+	email: 'author@example.com',
+	firstName: 'Ada',
+	lastName: 'Author',
+};
 
 function makeDetail(
 	overrides: Partial<WorkflowReviewRequestDetail> = {},
@@ -45,9 +60,9 @@ function makeDetail(
 		id: 'req-1',
 		projectId: 'proj-1',
 		title: 'Update Payment Handler',
-		workflowName: 'Payment Handler',
-		workflowVersionId: 'version-1',
-		requester: null,
+		requester,
+		// The backend always carries the requester in `authors` too.
+		authors: [{ ...requester }, laterAuthor],
 		reviewers: [
 			{
 				id: 'reviewer-1',
@@ -64,6 +79,7 @@ function makeDetail(
 		workflows: [makeWorkflowDetail()],
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: true,
 		...overrides,
 	};
 }
@@ -73,17 +89,56 @@ describe('WorkflowReviewDetailMetadata', () => {
 		createTestingPinia();
 	});
 
-	it('renders the status, reviewers, and workflows', () => {
+	it('renders the status, people, and workflows', () => {
 		const { getByTestId, getByText, queryByText } = renderComponent({
 			props: { review: makeDetail() },
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Open • Waiting for review',
+			'Open | Waiting for review',
 		);
 		expect(getByText('Riley Reviewer')).toBeInTheDocument();
 		expect(queryByText('reviewer@example.com')).not.toBeInTheDocument();
 		expect(getByText('Payment Handler')).toBeInTheDocument();
+	});
+
+	it('lists requested by, other authors, and reviewers in that order', () => {
+		const { getByTestId } = renderComponent({
+			props: { review: makeDetail() },
+		});
+
+		expect(getByTestId('workflow-review-detail-people-card').textContent).toMatch(
+			/^Requested by.*Rita Requester.*Other authors.*Ada Author.*Reviewers.*Riley Reviewer/s,
+		);
+	});
+
+	it('excludes the requester from other authors by id, not object identity', () => {
+		const { getByTestId } = renderComponent({
+			props: { review: makeDetail() },
+		});
+
+		expect(getByTestId('workflow-review-detail-other-authors')).not.toHaveTextContent(
+			'Rita Requester',
+		);
+	});
+
+	it('hides other authors when the requester is the only author', () => {
+		const { queryByTestId } = renderComponent({
+			props: { review: makeDetail({ authors: [{ ...requester }] }) },
+		});
+
+		expect(queryByTestId('workflow-review-detail-other-authors')).not.toBeInTheDocument();
+	});
+
+	it('falls back to a deleted-user message when the requester no longer exists', () => {
+		const { getByTestId } = renderComponent({
+			props: { review: makeDetail({ requester: null, authors: [laterAuthor] }) },
+		});
+
+		expect(getByTestId('workflow-review-detail-requester-deleted')).toHaveTextContent(
+			'Deleted user',
+		);
+		expect(getByTestId('workflow-review-detail-other-authors')).toHaveTextContent('Ada Author');
 	});
 
 	it('pairs the closed state with an approval decision', () => {
@@ -92,17 +147,38 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • Approved',
+			'Closed | Approved',
 		);
 	});
 
-	it('pairs the closed state with a pending decision', () => {
+	// Nobody is waiting on a closed review, so an undecided close reads "No decision".
+	it('pairs the closed state with a pending decision as No decision', () => {
 		const { getByTestId } = renderComponent({
 			props: { review: makeDetail({ state: 'closed', decision: 'pending' }) },
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • Waiting for review',
+			'Closed | No decision',
+		);
+	});
+
+	it('pairs the closed state with a changes-requested decision', () => {
+		const { getByTestId } = renderComponent({
+			props: { review: makeDetail({ state: 'closed', decision: 'changes_requested' }) },
+		});
+
+		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
+			'Closed | Changes requested',
+		);
+	});
+
+	it('pairs the open state with a changes-requested decision', () => {
+		const { getByTestId } = renderComponent({
+			props: { review: makeDetail({ state: 'open', decision: 'changes_requested' }) },
+		});
+
+		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
+			'Open | Changes requested',
 		);
 	});
 

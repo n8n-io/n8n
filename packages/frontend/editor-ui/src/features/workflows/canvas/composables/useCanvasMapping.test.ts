@@ -23,6 +23,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
+import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -276,12 +277,51 @@ describe('useCanvasMapping — mapped nodes', () => {
 	});
 });
 
+describe('useCanvasMapping — node display sizes', () => {
+	it('uses the agent card width and measured height for Message an Agent nodes', () => {
+		const agent = createTestNode({
+			id: 'agent',
+			name: 'Message an Agent',
+			type: CanvasNodeRenderType.Agent,
+		}) as INodeUi;
+		const measuredHeight = ref<number | undefined>();
+		const rd = createEmptyCanvasRenderData();
+		const render: CanvasNodeData['render'] = {
+			type: CanvasNodeRenderType.Agent,
+			options: {},
+		};
+		rd.renderTypeByNodeId.set(
+			agent.id,
+			computed(() => render),
+		);
+
+		const { nodeDisplaySizeById } = useCanvasMapping({
+			nodes: ref([agent]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+			getAgentNodeHeight: () => measuredHeight.value,
+		});
+
+		expect(nodeDisplaySizeById.value[agent.id]).toEqual({
+			width: AGENT_NODE_SIZE[0],
+			height: AGENT_NODE_SIZE[1],
+		});
+
+		measuredHeight.value = 224;
+
+		expect(nodeDisplaySizeById.value[agent.id]).toEqual({
+			width: AGENT_NODE_SIZE[0],
+			height: 224,
+		});
+	});
+});
+
 describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
-	it('reads hasExecutionError from executionIssuesByNodeName (single-node parity)', () => {
+	it('reads hasExecutionError from executionIssuesByNodeId (single-node parity)', () => {
 		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
 		const rd = createEmptyCanvasRenderData();
-		rd.executionIssuesByNodeName.set(
-			'Alpha',
+		rd.executionIssuesByNodeId.set(
+			'a',
 			computed(() => ['Boom']),
 		);
 
@@ -344,6 +384,49 @@ describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
 		});
 
 		expect(getNodeExecutionSnapshot('a').hasExecutionError).toBe(true);
+	});
+
+	describe('iterations', () => {
+		function getIterations(tasks: ITaskData[] | null | undefined) {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData();
+			if (tasks !== undefined) {
+				setRunData(rd, 'a', tasks);
+			}
+
+			const { getNodeExecutionSnapshot } = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+			});
+
+			return getNodeExecutionSnapshot('a').iterations;
+		}
+
+		function task(executionStatus: ITaskData['executionStatus']) {
+			return { executionStatus } as ITaskData;
+		}
+
+		it('is 0 when the node has no run data', () => {
+			expect(getIterations(undefined)).toBe(0);
+			expect(getIterations(null)).toBe(0);
+		});
+
+		it('is 0 for an empty task list', () => {
+			expect(getIterations([])).toBe(0);
+		});
+
+		it('counts every task when none was canceled', () => {
+			expect(getIterations([task('success'), task('success'), task('error')])).toBe(3);
+		});
+
+		it('is 0 when every task was canceled', () => {
+			expect(getIterations([task('canceled'), task('canceled'), task('canceled')])).toBe(0);
+		});
+
+		it('skips only the canceled tasks', () => {
+			expect(getIterations([task('success'), task('canceled'), task('error')])).toBe(2);
+		});
 	});
 });
 
@@ -434,7 +517,10 @@ describe('useCanvasMapping — mapped connections', () => {
 			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
 		});
 		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-		rd.executionPinDataByNodeName.Alpha = [{ json: { ok: true } }];
+		rd.executionPinDataByNodeId.set(
+			'a',
+			computed(() => [{ json: { ok: true } }]),
+		);
 		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
 
 		const { connections: mapped } = useCanvasMapping({

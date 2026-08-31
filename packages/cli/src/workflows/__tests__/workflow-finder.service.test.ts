@@ -86,16 +86,42 @@ describe('WorkflowFinderService', () => {
 			const result = await service.findExistingWorkflowIds([]);
 
 			expect(result.size).toBe(0);
-			expect(workflowRepository.find).not.toHaveBeenCalled();
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
 		});
 
 		it('returns the ids that exist in the database, unscoped by access', async () => {
 			const { service, workflowRepository } = makeService();
-			workflowRepository.find.mockResolvedValue([{ id: 'wf-1' }] as never);
+			workflowRepository.findByIds.mockResolvedValue([{ id: 'wf-1' }] as never);
 
 			const result = await service.findExistingWorkflowIds(['wf-1', 'wf-missing']);
 
 			expect(result).toEqual(new Set(['wf-1']));
+			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-1', 'wf-missing'], {
+				fields: ['id'],
+			});
+		});
+	});
+
+	describe('findOwnedWorkflowsBySourceWorkflowIds', () => {
+		it('merges workflows returned from different chunks', async () => {
+			const { service, sharedWorkflowRepository } = makeService();
+			sharedWorkflowRepository.find
+				.mockResolvedValueOnce([{ workflow: { id: 'first' } }] as never)
+				.mockResolvedValueOnce([{ workflow: { id: 'last' } }] as never);
+			const sourceWorkflowIds = Array.from({ length: 10_001 }, (_, index) => `source-${index}`);
+
+			const result = await service.findOwnedWorkflowsBySourceWorkflowIds(
+				'project-1',
+				sourceWorkflowIds,
+			);
+
+			expect(sharedWorkflowRepository.find).toHaveBeenCalledTimes(2);
+			expect(result.map(({ id }) => id)).toEqual(['first', 'last']);
+			const secondChunkWhere = sharedWorkflowRepository.find.mock.calls[1][0]?.where as Array<{
+				workflow: { id?: { value: string[] }; sourceWorkflowId?: { value: string[] } };
+			}>;
+			expect(secondChunkWhere[0].workflow.sourceWorkflowId?.value).toEqual(['source-10000']);
+			expect(secondChunkWhere[1].workflow.id?.value).toEqual(['source-10000']);
 		});
 	});
 

@@ -29,6 +29,7 @@ const props = withDefaults(
 		isPublished: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
+		ensureAgentPersisted: undefined,
 	},
 );
 
@@ -41,10 +42,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
-const { connectedCredentials, fetchStatus } = useAgentIntegrationStatus(
-	props.projectId,
-	props.agentId,
-);
+const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } =
+	useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
@@ -83,11 +82,20 @@ const channelIssueMessages = computed(() => {
 	return messages;
 });
 
+function channelRuntimeErrorMessage(channel: string): string {
+	return runtimeErrors.value[channel] || i18n.baseText('agents.channels.modal.notRunning.tooltip');
+}
+
 const channelRows = computed(() =>
 	props.connectedTriggers.map((channel) => {
 		const integration = catalog.value?.find(({ type }) => type === channel);
 		const credentialId = connectedCredentials.value[channel];
-		const invalidReasons = channelIssueMessages.value.get(channel) ?? [];
+		// A channel that is configured correctly but failed to start is just as
+		// broken from here as a misconfigured one, so it uses the same affordance.
+		const invalidReasons = [
+			...(channelIssueMessages.value.get(channel) ?? []),
+			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+		];
 		return {
 			type: channel,
 			label: integration?.label ?? channel,
@@ -109,7 +117,7 @@ async function loadChannelDetails() {
 
 	try {
 		credentialsStore.setCredentials([]);
-		const credentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
 		});
 		credentialNamesById.value = Object.fromEntries(
@@ -122,6 +130,7 @@ async function loadChannelDetails() {
 
 onMounted(() => {
 	void loadChannelDetails();
+	agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
 });
 
 function onChannelSetup(event: { agentId?: string; source?: string } | undefined) {
@@ -135,6 +144,17 @@ onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onChannelSetup));
 
 watch([() => props.projectId, () => props.agentId], () => {
 	void loadChannelDetails();
+});
+
+// After IAI builds an agent we shold refetch credentials and channels
+function onExternalAgentUpdated(event?: { agentId?: string; source?: string }) {
+	if (event?.source === 'agent-builder') return;
+	if (event?.agentId && event.agentId !== props.agentId) return;
+	void loadChannelDetails();
+}
+
+onBeforeUnmount(() => {
+	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 });
 
 function openChannelModal() {

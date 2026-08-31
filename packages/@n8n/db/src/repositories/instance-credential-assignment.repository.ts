@@ -4,11 +4,12 @@ import { DataSource, In, QueryFailedError, type EntityManager } from '@n8n/typeo
 import { CredentialsEntity, InstanceCredentialAssignment } from '../entities';
 import { BaseRepository } from './base-repository';
 import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 @Service()
 export class InstanceCredentialAssignmentRepository extends BaseRepository<InstanceCredentialAssignment> {
-	constructor(dataSource: DataSource) {
-		super(InstanceCredentialAssignment, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(InstanceCredentialAssignment, dataSource.manager, transactionRunner);
 	}
 
 	async findAvailableCredentials(

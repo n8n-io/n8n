@@ -64,6 +64,11 @@ const canUpdateProject = computed(
 	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
 );
 
+/** Changing the membership list is gated separately from editing project details. */
+const canManageMembers = computed(
+	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.manageMembers,
+);
+
 const showSaveError = (error: Error) => {
 	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
 };
@@ -116,7 +121,7 @@ const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
 const shouldFetchAllUsers = computed(
-	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canUpdateProject.value,
+	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canManageMembers.value,
 );
 
 const usersList = computed(() =>
@@ -132,7 +137,9 @@ const firstLicensedRole = computed(
 );
 
 const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => {
-	if (rolesManaged.value) {
+	// Removing a member is part of managing the membership list, so it needs the
+	// same scope as adding one — otherwise the action 403s from the API.
+	if (rolesManaged.value || !canManageMembers.value) {
 		return [];
 	}
 	return [
@@ -559,7 +566,7 @@ const searchUsers = async (query: string) => {
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 onBeforeMount(async () => {
-	if (!canUpdateProject.value) return;
+	if (!canManageMembers.value) return;
 	await searchUsers('');
 });
 
@@ -568,7 +575,7 @@ const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 
-	if (!canUpdateProject.value) return;
+	if (!canUpdateProject.value && !canManageMembers.value) return;
 
 	selectProjectNameIfMatchesDefault();
 	await rolesStore.fetchRoles();
@@ -653,7 +660,7 @@ onMounted(async () => {
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
 
-			<template v-if="canUpdateProject">
+			<template v-if="canUpdateProject || canManageMembers">
 				<fieldset id="projectMembers">
 					<h3>
 						<label for="projectMembers">{{
@@ -672,7 +679,7 @@ onMounted(async () => {
 							remote
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
-							:disabled="rolesManaged"
+							:disabled="rolesManaged || !canManageMembers"
 							@update:model-value="onAddMember"
 						>
 							<template #prefix>
@@ -707,7 +714,7 @@ onMounted(async () => {
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"
-							:can-edit-role="!rolesManaged"
+							:can-edit-role="!rolesManaged && canManageMembers"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
 							@show-role-upgrade-dialog="upgradeDialogVisible = true"
@@ -715,6 +722,9 @@ onMounted(async () => {
 						/>
 					</div>
 				</fieldset>
+			</template>
+
+			<template v-if="canUpdateProject">
 				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
 					<h3>
 						<label>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</label>

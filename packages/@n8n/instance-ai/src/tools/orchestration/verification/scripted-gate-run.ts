@@ -8,6 +8,7 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
 } from './analyze-result';
 import type { PreparedVerificationRun } from './prepare-run';
@@ -29,11 +30,14 @@ export interface ScriptedGateRunArgs {
 	executionService: VerificationExecutionService;
 	workflowId: string;
 	inputData?: Record<string, unknown>;
+	triggerNodeName?: string;
 	timeout?: number;
 	abortSignal?: AbortSignal;
 	buildOutcome: WorkflowBuildOutcome;
 	stateBefore: WorkflowLoopState | undefined;
 	runId: string;
+	chatModelRelatedNodeNames?: ReadonlySet<string>;
+	chatModelRecovery?: ChatModelRecoveryOptions;
 }
 
 interface DecisionPass {
@@ -45,13 +49,24 @@ interface DecisionPass {
 export async function runScriptedGateVerification(
 	args: ScriptedGateRunArgs,
 ): Promise<{ result: ExecutionRunResult; analysis: VerificationAnalysis }> {
-	const { script, prepared, executionService, workflowId, buildOutcome, stateBefore, runId } = args;
+	const {
+		script,
+		prepared,
+		executionService,
+		workflowId,
+		buildOutcome,
+		stateBefore,
+		runId,
+		chatModelRelatedNodeNames,
+		chatModelRecovery,
+	} = args;
 	const basePins = prepared.verificationPinData ?? {};
 
 	const passes: DecisionPass[] = [];
 	for (const decision of script.decisions) {
 		const result = await executionService.run(workflowId, args.inputData, {
 			timeout: args.timeout,
+			triggerNodeName: args.triggerNodeName,
 			verificationPinData: { ...basePins, [script.nodeName]: decision.items },
 			omitConnections: [script.cutEdge],
 			isVerificationRun: true,
@@ -61,8 +76,11 @@ export async function runScriptedGateVerification(
 			result,
 			buildOutcome,
 			simulatedNodes: prepared.simulatedNodes,
+			triggerNodeName: args.triggerNodeName,
 			stateBefore,
 			runId,
+			chatModelRelatedNodeNames,
+			chatModelRecovery,
 		});
 		passes.push({ label: decision.label, result, analysis });
 	}

@@ -1,4 +1,4 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,18 +19,21 @@ describe('McpProtectedResource', () => {
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpConfig = mock<McpConfig>();
 	const moduleRegistry = mock<ModuleRegistry>();
+	const licenseState = mock<LicenseState>();
 	const resource = new McpProtectedResource(
 		urlService,
 		mcpSettingsService,
 		mcpConfig,
 		makeGlobalConfig(),
 		moduleRegistry,
+		licenseState,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
+		licenseState.isFoldersLicensed.mockReturnValue(true);
 	});
 
 	describe('getScopeTools', () => {
@@ -52,6 +55,7 @@ describe('McpProtectedResource', () => {
 				mcpConfig,
 				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
 				moduleRegistry,
+				licenseState,
 			);
 
 			const scopeTools = limitedResource.getScopeTools();
@@ -67,6 +71,19 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:write']).toBeUndefined();
 			// list_workflow_tags is hidden when tags are disabled
 			expect(scopeTools['tag:read']).toEqual([]);
+		});
+
+		it('should drop folder tools when folders are not licensed', () => {
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+
+			const scopeTools = resource.getScopeTools();
+
+			expect(scopeTools['project:write']).not.toContain('create_folder');
+			expect(scopeTools['project:write']).not.toContain('update_folder');
+			expect(scopeTools['workflow:write']).not.toContain('move_workflows_to_folder');
+			expect(scopeTools['project:write']).not.toContain('search_folders');
+			expect(scopeTools['project:read']).not.toContain('search_folders');
+			expect(scopeTools['project:read']).toContain('search_projects');
 		});
 
 		it('should drop agent scopes and tools when the agents module is inactive', () => {

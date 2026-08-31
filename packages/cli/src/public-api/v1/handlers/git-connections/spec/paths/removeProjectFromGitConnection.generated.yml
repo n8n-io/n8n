@@ -1,0 +1,30 @@
+operationId: removeProjectFromGitConnection
+tags:
+  - GitConnections
+summary: Remove a project from a Git connection
+x-required-scope: gitConnection:manageProjects
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: id
+    in: path
+  - schema:
+      type: string
+    required: true
+    name: projectId
+    in: path
+responses:
+  '204':
+    description: Operation successful.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml

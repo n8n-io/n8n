@@ -1,7 +1,15 @@
-import type { GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
+import { isBatchStepConfig } from '@n8n/engine';
+import type { BatchStepConfig, GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
 import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
 
-import { MAIN_CONNECTION_TYPE, MANUAL_TRIGGER_TYPE, SPLIT_IN_BATCHES_TYPE } from './constants';
+import {
+	DEFAULT_BATCH_SIZE,
+	MAIN_CONNECTION_TYPE,
+	MANUAL_TRIGGER_TYPE,
+	MERGE_TYPE,
+	SPLIT_IN_BATCHES_TYPE,
+	SPLIT_IN_BATCHES_TYPE_VERSION,
+} from './constants';
 import {
 	UnsupportedConnectionTypeError,
 	UnsupportedCycleError,
@@ -9,6 +17,7 @@ import {
 	UnsupportedTriggerError,
 	UnsupportedWorkflowError,
 } from './errors';
+import { isRecord } from './guards';
 import type { V1NodeStepConfig } from './types';
 
 /**
@@ -81,6 +90,12 @@ export class V1WorkflowConverter {
 			);
 		}
 
+		if (node.type === MERGE_TYPE) this.assertSupportedMergeMode(node);
+
+		if (node.type === SPLIT_IN_BATCHES_TYPE) {
+			return { id: node.id, name: node.name, type: 'batch', config: toBatchConfig(node) };
+		}
+
 		const config: V1NodeStepConfig = {
 			nodeType: node.type,
 			typeVersion: node.typeVersion,
@@ -88,9 +103,27 @@ export class V1WorkflowConverter {
 			continueOnFail: node.continueOnFail === true || node.onError === 'continueRegularOutput',
 		};
 
-		const type = node.type === SPLIT_IN_BATCHES_TYPE ? 'batch' : 'v1-node';
+		return { id: node.id, name: node.name, type: 'v1-node', config };
+	}
 
-		return { id: node.id, name: node.name, type, config };
+	/**
+	 * chooseBranch waits for data on every input, but the engine runs a node
+	 * once any input is live. An expression-valued mode could resolve to
+	 * chooseBranch at run time (`noDataExpression` only binds the UI), so it
+	 * is rejected too, except on Merge v1, which predates chooseBranch.
+	 */
+	private assertSupportedMergeMode(node: INode): void {
+		const mode = node.parameters.mode;
+		if (mode === 'chooseBranch') {
+			throw new UnsupportedWorkflowError(
+				`Node "${node.name}" uses Merge mode "chooseBranch", which is not supported yet.`,
+			);
+		}
+		if (node.typeVersion >= 2 && typeof mode === 'string' && mode.startsWith('=')) {
+			throw new UnsupportedWorkflowError(
+				`Node "${node.name}" sets its Merge mode with an expression, which cannot be checked at conversion time. Use a literal mode.`,
+			);
+		}
 	}
 
 	/** Heuristic trigger detection — see {@link KNOWN_TRIGGER_TYPES}. */
@@ -333,4 +366,46 @@ export class V1WorkflowConverter {
 
 		return sccs;
 	}
+}
+
+function toBatchConfig(node: INode): BatchStepConfig {
+	if (node.typeVersion !== SPLIT_IN_BATCHES_TYPE_VERSION) {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" is a Split In Batches of version ${node.typeVersion}, and only version ${SPLIT_IN_BATCHES_TYPE_VERSION} is supported.`,
+		);
+	}
+
+	// Each pass slices a list fixed at the first pass, so nothing can restart a
+	// loop halfway through.
+	const options: unknown = node.parameters?.options;
+	if (typeof options === 'string') {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" sets its options from an expression, which is not supported yet.`,
+		);
+	}
+
+	const reset = isRecord(options) ? options.reset : undefined;
+	if (reset !== undefined && reset !== false) {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" uses the reset option, which is not supported yet.`,
+		);
+	}
+
+	const batchSize: unknown = node.parameters?.batchSize ?? DEFAULT_BATCH_SIZE;
+
+	if (typeof batchSize === 'string') {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" sets its batch size from an expression, which is not supported yet.`,
+		);
+	}
+
+	const config = { batchSize };
+
+	if (!isBatchStepConfig(config)) {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" has a batch size of ${String(batchSize)}, and it must be a whole number of at least 1.`,
+		);
+	}
+
+	return config;
 }

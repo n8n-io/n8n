@@ -21,10 +21,12 @@ const props = withDefaults(
 		tabs: ArtifactTab[];
 		activeTabId?: string;
 		isExpanded?: boolean;
+		isExpandDisabled?: boolean;
 		previewToggleLabel?: string;
 	}>(),
 	{
 		isExpanded: false,
+		isExpandDisabled: false,
 		previewToggleLabel: undefined,
 	},
 );
@@ -43,6 +45,11 @@ const sizeToggleLabel = computed(() =>
 		props.isExpanded ? 'instanceAi.previewTabBar.collapse' : 'instanceAi.previewTabBar.expand',
 	),
 );
+
+function handleToggleExpanded() {
+	if (props.isExpandDisabled) return;
+	emit('toggleExpanded');
+}
 
 function getTabListElement() {
 	const tabList = tabListRef.value;
@@ -95,6 +102,9 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'workflow') return `/workflow/${tab.id}`;
 	if (tab.type === 'data-table') {
 		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
+	}
+	if (tab.type === 'agent') {
+		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
 	}
 	return undefined;
 }
@@ -160,10 +170,11 @@ async function handleCopyLink(tab: ArtifactTab) {
 			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"
 			size="medium"
+			:disabled="isExpandDisabled"
 			:aria-label="sizeToggleLabel"
-			:title="sizeToggleLabel"
+			:title="isExpandDisabled ? undefined : sizeToggleLabel"
 			data-test-id="instance-ai-preview-expand-toggle"
-			@click="emit('toggleExpanded')"
+			@click="handleToggleExpanded"
 		/>
 	</div>
 </template>

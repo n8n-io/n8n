@@ -237,4 +237,35 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 			expect.anything(),
 		);
 	});
+
+	it('derives mcp-connect type and server count from an mcpConnectRequest', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('user-1', 'thread-a', {
+			payload: {
+				mcpConnectRequest: {
+					servers: [
+						{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
+						{ serverSlug: 'linear', title: 'Linear', credentialType: 'linearMcpOAuth2Api' },
+					],
+				},
+			},
+		});
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({ type: 'mcp-connect', num_steps: 2 }),
+		);
+	});
+
+	it('falls back to approval when the payload carries no recognised request', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('user-1', 'thread-a', { payload: {} });
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({ type: 'approval', num_steps: 1 }),
+		);
+	});
 });

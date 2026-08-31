@@ -114,7 +114,10 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns book-open for skill tools', () => {
+		expect(getToolIcon('create_skills')).toBe('book-open');
 		expect(getToolIcon('list_skills')).toBe('book-open');
+		expect(getToolIcon('read_skill')).toBe('book-open');
+		expect(getToolIcon('update_skill')).toBe('book-open');
 		expect(getToolIcon('load_skill')).toBe('book-open');
 	});
 
