@@ -33,7 +33,7 @@ jobs:
           days-before-issue-stale: -1
           days-before-issue-close: -1
 
-          any-of-pr-labels: 'triage:needs-info,triage:tests-needed,Needs Feedback'
+          any-of-pr-labels: 'triage:needs-info,triage:tests-needed,Needs Feedback,Stale'
           days-before-pr-stale: 30
           days-before-pr-close: 14
           stale-pr-label: 'Stale'
