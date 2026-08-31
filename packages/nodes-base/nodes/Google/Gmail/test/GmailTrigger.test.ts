@@ -2085,6 +2085,32 @@ describe('GmailTrigger', () => {
 			);
 		});
 
+		it('should not queue a set-aside id that the listing returns again', async () => {
+			// The set-aside list already owns that id and retries it every poll. Also
+			// putting it in the queue would have both lists fetch it, and one poll
+			// could deliver it twice.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					failedFetches: [['X', 1]],
+				},
+			};
+
+			mockLabels();
+			mockGetError('X');
+			mockList(listPage(['A', 'X']));
+			mockGet('A', 2_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['A']);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual([]);
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([['X', 2]]);
+		});
+
 		it('should retry only as many quarantined ids as one poll allows', async () => {
 			// The list can grow past what a poll should spend on requests, so each
 			// poll takes a slice and moves the rest to the front for the next one.

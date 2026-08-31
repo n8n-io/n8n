@@ -581,9 +581,15 @@ export class GmailTrigger implements INodeType {
 			// calls. Gmail's `after:` query is inclusive at the second boundary, and a
 			// held cursor re-lists its whole window, so handled messages can reappear.
 			if (shouldLimitMessages) {
-				const possibleDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
-				if (possibleDuplicates.size > 0) {
-					messages = messages.filter((m) => !possibleDuplicates.has(m.id));
+				// Set-aside ids are dropped along with the handled ones: that list
+				// already owns them and retries them every poll, so queueing them here
+				// as well would have both paths fetch the same message.
+				const alreadyTracked = new Set([
+					...(nodeStaticData.possibleDuplicates ?? []),
+					...(nodeStaticData.failedFetches ?? []).map(([id]) => id),
+				]);
+				if (alreadyTracked.size > 0) {
+					messages = messages.filter((m) => !alreadyTracked.has(m.id));
 				}
 
 				if (!messages.length && !allFetchedMessages.length) {
