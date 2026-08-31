@@ -35,9 +35,7 @@
 								"description": "Message to echo"
 							}
 						},
-						"required": [
-							"message"
-						]
+						"required": ["message"]
 					},
 					"strict": false
 				},
@@ -56,10 +54,7 @@
 								"description": "Second number"
 							}
 						},
-						"required": [
-							"a",
-							"b"
-						]
+						"required": ["a", "b"]
 					},
 					"strict": false
 				},
@@ -74,9 +69,7 @@
 								"description": "Image caption"
 							}
 						},
-						"required": [
-							"caption"
-						]
+						"required": ["caption"]
 					},
 					"strict": false
 				}

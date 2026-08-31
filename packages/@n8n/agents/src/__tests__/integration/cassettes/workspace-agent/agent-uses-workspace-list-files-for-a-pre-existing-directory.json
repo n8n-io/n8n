@@ -36,16 +36,11 @@
 							},
 							"encoding": {
 								"type": "string",
-								"enum": [
-									"utf-8",
-									"base64"
-								],
+								"enum": ["utf-8", "base64"],
 								"description": "File encoding (default: utf-8)"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -62,10 +57,7 @@
 							},
 							"view": {
 								"type": "string",
-								"enum": [
-									"describe",
-									"json"
-								],
+								"enum": ["describe", "json"],
 								"description": "Inspect the selected value shape, or read a bounded JSON value"
 							},
 							"pointer": {
@@ -90,9 +82,7 @@
 								"description": "Maximum object or array children to return"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -121,20 +111,14 @@
 											"description": "Replacement text to write in place of old_str."
 										}
 									},
-									"required": [
-										"old_str",
-										"new_str"
-									],
+									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
 								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
-						"required": [
-							"path",
-							"replacements"
-						],
+						"required": ["path", "replacements"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -158,10 +142,7 @@
 								"description": "Create parent directories if they do not exist"
 							}
 						},
-						"required": [
-							"path",
-							"content"
-						],
+						"required": ["path", "content"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -181,9 +162,7 @@
 								"description": "List files recursively"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -199,9 +178,7 @@
 								"description": "Path to the file or directory"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -221,9 +198,7 @@
 								"description": "Create parent directories if needed"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -247,9 +222,7 @@
 								"description": "Ignore errors if the file does not exist"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -269,10 +242,7 @@
 								"description": "Content to append to the file"
 							}
 						},
-						"required": [
-							"path",
-							"content"
-						],
+						"required": ["path", "content"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -296,10 +266,7 @@
 								"description": "Overwrite the destination if it already exists"
 							}
 						},
-						"required": [
-							"src",
-							"dest"
-						],
+						"required": ["src", "dest"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -323,10 +290,7 @@
 								"description": "Overwrite the destination if it already exists"
 							}
 						},
-						"required": [
-							"src",
-							"dest"
-						],
+						"required": ["src", "dest"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -350,9 +314,7 @@
 								"description": "Ignore errors if the directory does not exist"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -376,9 +338,7 @@
 								"description": "Timeout in milliseconds"
 							}
 						},
-						"required": [
-							"command"
-						],
+						"required": ["command"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -404,9 +364,7 @@
 								"description": "PID of the process to kill"
 							}
 						},
-						"required": [
-							"pid"
-						],
+						"required": ["pid"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -510,16 +468,11 @@
 							},
 							"encoding": {
 								"type": "string",
-								"enum": [
-									"utf-8",
-									"base64"
-								],
+								"enum": ["utf-8", "base64"],
 								"description": "File encoding (default: utf-8)"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -536,10 +489,7 @@
 							},
 							"view": {
 								"type": "string",
-								"enum": [
-									"describe",
-									"json"
-								],
+								"enum": ["describe", "json"],
 								"description": "Inspect the selected value shape, or read a bounded JSON value"
 							},
 							"pointer": {
@@ -564,9 +514,7 @@
 								"description": "Maximum object or array children to return"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -595,20 +543,14 @@
 											"description": "Replacement text to write in place of old_str."
 										}
 									},
-									"required": [
-										"old_str",
-										"new_str"
-									],
+									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
 								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
-						"required": [
-							"path",
-							"replacements"
-						],
+						"required": ["path", "replacements"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -632,10 +574,7 @@
 								"description": "Create parent directories if they do not exist"
 							}
 						},
-						"required": [
-							"path",
-							"content"
-						],
+						"required": ["path", "content"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -655,9 +594,7 @@
 								"description": "List files recursively"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -673,9 +610,7 @@
 								"description": "Path to the file or directory"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -695,9 +630,7 @@
 								"description": "Create parent directories if needed"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -721,9 +654,7 @@
 								"description": "Ignore errors if the file does not exist"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -743,10 +674,7 @@
 								"description": "Content to append to the file"
 							}
 						},
-						"required": [
-							"path",
-							"content"
-						],
+						"required": ["path", "content"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -770,10 +698,7 @@
 								"description": "Overwrite the destination if it already exists"
 							}
 						},
-						"required": [
-							"src",
-							"dest"
-						],
+						"required": ["src", "dest"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -797,10 +722,7 @@
 								"description": "Overwrite the destination if it already exists"
 							}
 						},
-						"required": [
-							"src",
-							"dest"
-						],
+						"required": ["src", "dest"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -824,9 +746,7 @@
 								"description": "Ignore errors if the directory does not exist"
 							}
 						},
-						"required": [
-							"path"
-						],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -850,9 +770,7 @@
 								"description": "Timeout in milliseconds"
 							}
 						},
-						"required": [
-							"command"
-						],
+						"required": ["command"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -878,9 +796,7 @@
 								"description": "PID of the process to kill"
 							}
 						},
-						"required": [
-							"pid"
-						],
+						"required": ["pid"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}

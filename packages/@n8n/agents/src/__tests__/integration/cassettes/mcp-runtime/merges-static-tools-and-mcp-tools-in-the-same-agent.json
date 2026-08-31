@@ -35,9 +35,7 @@
 								"description": "The number to double"
 							}
 						},
-						"required": [
-							"n"
-						],
+						"required": ["n"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -53,9 +51,7 @@
 								"description": "Message to echo"
 							}
 						},
-						"required": [
-							"message"
-						]
+						"required": ["message"]
 					},
 					"strict": false
 				},
@@ -74,10 +70,7 @@
 								"description": "Second number"
 							}
 						},
-						"required": [
-							"a",
-							"b"
-						]
+						"required": ["a", "b"]
 					},
 					"strict": false
 				},
@@ -92,9 +85,7 @@
 								"description": "Image caption"
 							}
 						},
-						"required": [
-							"caption"
-						]
+						"required": ["caption"]
 					},
 					"strict": false
 				}
@@ -201,9 +192,7 @@
 								"description": "The number to double"
 							}
 						},
-						"required": [
-							"n"
-						],
+						"required": ["n"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -219,9 +208,7 @@
 								"description": "Message to echo"
 							}
 						},
-						"required": [
-							"message"
-						]
+						"required": ["message"]
 					},
 					"strict": false
 				},
@@ -240,10 +227,7 @@
 								"description": "Second number"
 							}
 						},
-						"required": [
-							"a",
-							"b"
-						]
+						"required": ["a", "b"]
 					},
 					"strict": false
 				},
@@ -258,9 +242,7 @@
 								"description": "Image caption"
 							}
 						},
-						"required": [
-							"caption"
-						]
+						"required": ["caption"]
 					},
 					"strict": false
 				}
