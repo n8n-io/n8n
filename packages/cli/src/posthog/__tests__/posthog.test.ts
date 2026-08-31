@@ -16,6 +16,7 @@ function mockEvaluatedFlags(flags: FeatureFlags) {
 	return {
 		keys: Object.keys(flags),
 		getFlag: (key: string) => flags[key],
+		getFlagPayload: () => undefined,
 	};
 }
 

@@ -291,7 +291,7 @@ function registerAuthenticationHooks() {
 			userRole: user.role,
 		});
 		try {
-			postHogStore.init(user.featureFlags);
+			postHogStore.init(user.featureFlags, user.featureFlagPayloads);
 		} catch (e) {
 			// don't let posthog failing prevent further function calls
 			console.error(e);

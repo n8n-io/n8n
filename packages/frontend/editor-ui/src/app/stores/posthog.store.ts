@@ -5,7 +5,7 @@ import { useStorage } from '@n8n/composables/useStorage';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import type { FeatureFlags, IDataObject } from 'n8n-workflow';
+import type { FeatureFlagPayloads, FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
@@ -23,6 +23,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const { debounce } = useDebounce();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
+	const featureFlagPayloads: Ref<FeatureFlagPayloads | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
 	const trackedExposures: Ref<FeatureFlags> = ref({});
 	const pendingFeatureFlagsEvaluation = ref(false);
@@ -49,6 +50,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
+		featureFlagPayloads.value = null;
 		trackedDemoExp.value = {};
 		trackedExposures.value = {};
 		pendingFeatureFlagsEvaluation.value = false;
@@ -58,6 +60,8 @@ export const usePostHog = defineStore('posthog', () => {
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
 		return overrides.value[experiment] ?? featureFlags.value?.[experiment];
 	};
+
+	const getFeatureFlagPayload = (flag: string) => featureFlagPayloads.value?.[flag];
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
 		return getVariant(experiment) === variant;
@@ -158,7 +162,10 @@ export const usePostHog = defineStore('posthog', () => {
 		debounceTime: 2000,
 	});
 
-	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
+	const init = (
+		evaluatedFeatureFlags?: FeatureFlags,
+		evaluatedFeatureFlagPayloads?: FeatureFlagPayloads,
+	) => {
 		if (!window.posthog) {
 			return;
 		}
@@ -193,6 +200,9 @@ export const usePostHog = defineStore('posthog', () => {
 			options.bootstrap = {
 				distinctID: distinctId,
 				featureFlags: evaluatedFeatureFlags,
+				...(evaluatedFeatureFlagPayloads && {
+					featureFlagPayloads: evaluatedFeatureFlagPayloads,
+				}),
 			};
 			// Flags are server-evaluated and bootstrapped; without this, identify()/group()
 			// in the loaded callback each trigger a billed /flags refetch of values the
@@ -210,6 +220,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
+			featureFlagPayloads.value = evaluatedFeatureFlagPayloads ?? {};
 			resolveFeatureFlagsWaiters(featureFlags.value);
 
 			// does not need to be debounced really, but tracking does not fire without delay on page load
@@ -266,6 +277,7 @@ export const usePostHog = defineStore('posthog', () => {
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
+		getFeatureFlagPayload,
 		hasPendingFeatureFlags,
 		waitForFeatureFlags,
 		reset,

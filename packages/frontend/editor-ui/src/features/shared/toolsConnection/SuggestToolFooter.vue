@@ -1,13 +1,30 @@
 <script setup lang="ts">
 import { N8nExternalLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { REQUEST_NODE_FORM_URL } from '@/app/constants';
+import { computed } from 'vue';
+import { REQUEST_NODE_FORM_URL, SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const props = withDefaults(defineProps<{ variant?: 'node' | 'service' }>(), {
 	variant: 'service',
 });
 
 const i18n = useI18n();
+const posthogStore = usePostHog();
+
+const suggestionUrl = computed(() => {
+	if (props.variant === 'node') return REQUEST_NODE_FORM_URL;
+
+	const url = posthogStore.getFeatureFlagPayload(SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY);
+	if (typeof url !== 'string') return REQUEST_NODE_FORM_URL;
+
+	try {
+		return ['http:', 'https:'].includes(new URL(url).protocol) ? url : REQUEST_NODE_FORM_URL;
+	} catch {
+		return REQUEST_NODE_FORM_URL;
+	}
+});
+
 const copyKeys = {
 	node: {
 		prompt: 'nodeCreator.noResults.needNativeIntegration',
@@ -27,7 +44,7 @@ const copyKeys = {
 		</N8nText>
 		<N8nExternalLink
 			:class="[$style.link, 'ignore-key-press-node-creator']"
-			:href="REQUEST_NODE_FORM_URL"
+			:href="suggestionUrl"
 			size="small"
 		>
 			{{ i18n.baseText(copyKeys[props.variant].action) }}

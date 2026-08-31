@@ -27,6 +27,7 @@ import type {
 	NodeParameterValueType,
 	IDisplayOptions,
 	FeatureFlags,
+	FeatureFlagPayloads,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
@@ -111,6 +112,7 @@ declare global {
 						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
+						featureFlagPayloads?: FeatureFlagPayloads;
 					};
 					session_recording?: {
 						maskAllInputs?: boolean;
