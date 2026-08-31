@@ -6,7 +6,6 @@ description: >
   variables are returned with their effective value and ignored on write.
 required:
   - enabled
-  - exporterProtocol
   - exporterEndpoint
   - exporterTracingPath
   - exporterServiceName
@@ -26,10 +25,12 @@ properties:
     enum:
       - http/protobuf
       - grpc
+    default: http/protobuf
     description: >
       The wire protocol used to export spans. Collectors conventionally serve OTLP/HTTP on port
       4318 and OTLP/gRPC on port 4317. The endpoint scheme (`http://` or `https://`) controls
-      TLS for both protocols.
+      TLS for both protocols. Optional for backward compatibility: omitting it on a write
+      selects `http/protobuf`, the value in force before this field existed.
     example: http/protobuf
   exporterEndpoint:
     type: string
