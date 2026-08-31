@@ -2128,6 +2128,266 @@ export class WorkflowExecute {
 		} as ITaskDataConnections;
 	}
 
+	/**
+	 * Queue every node connected to an output of the node that just ran. In execution
+	 * order v1 the nodes are sorted first, so the one closest to the top left runs first.
+	 */
+	private scheduleDownstreamNodes(
+		workflow: Workflow,
+		executionNode: INode,
+		nodeSuccessData: INodeExecutionData[][],
+		runIndex: number,
+	): void {
+		// Add the nodes to which the current node has an output connection to that they can
+		// be executed next
+		if (Object.hasOwn(workflow.connectionsBySourceNode, executionNode.name)) {
+			if (Object.hasOwn(workflow.connectionsBySourceNode[executionNode.name], 'main')) {
+				let outputIndex: string;
+				let connectionData: IConnection;
+				// Iterate over all the outputs
+
+				const nodesToAdd: Array<{
+					position: [number, number];
+					connection: IConnection;
+					outputIndex: number;
+				}> = [];
+
+				// Add the nodes to be executed
+				// eslint-disable-next-line @typescript-eslint/no-for-in-array
+				for (outputIndex in workflow.connectionsBySourceNode[executionNode.name].main) {
+					if (
+						!Object.hasOwn(workflow.connectionsBySourceNode[executionNode.name].main, outputIndex)
+					) {
+						continue;
+					}
+
+					// Iterate over all the different connections of this output
+					for (connectionData of workflow.connectionsBySourceNode[executionNode.name].main[
+						outputIndex
+					] ?? []) {
+						if (!Object.hasOwn(workflow.nodes, connectionData.node)) {
+							throw new UnexpectedError('Destination node not found', {
+								extra: {
+									sourceNodeName: executionNode.name,
+									destinationNodeName: connectionData.node,
+								},
+							});
+						}
+
+						if (
+							nodeSuccessData[outputIndex] &&
+							(nodeSuccessData[outputIndex].length !== 0 ||
+								(connectionData.index > 0 && this.isLegacyExecutionOrder(workflow)))
+						) {
+							// Add the node only if it did execute or if connected to second "optional" input
+							if (workflow.settings.executionOrder === 'v1') {
+								const nodeToAdd = workflow.getNode(connectionData.node);
+								nodesToAdd.push({
+									position: nodeToAdd?.position || [0, 0],
+									connection: connectionData,
+									outputIndex: parseInt(outputIndex, 10),
+								});
+							} else {
+								this.addNodeToBeExecuted(
+									workflow,
+									connectionData,
+									parseInt(outputIndex, 10),
+									executionNode.name,
+									nodeSuccessData,
+									runIndex,
+								);
+							}
+						}
+					}
+				}
+
+				if (workflow.settings.executionOrder === 'v1') {
+					// Always execute the node that is more to the top-left first
+					nodesToAdd.sort((a, b) => {
+						if (a.position[1] < b.position[1]) {
+							return 1;
+						}
+						if (a.position[1] > b.position[1]) {
+							return -1;
+						}
+
+						if (a.position[0] > b.position[0]) {
+							return -1;
+						}
+
+						return 0;
+					});
+
+					for (const nodeData of nodesToAdd) {
+						this.addNodeToBeExecuted(
+							workflow,
+							nodeData.connection,
+							nodeData.outputIndex,
+							executionNode.name,
+							nodeSuccessData,
+							runIndex,
+						);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * When nothing is left to execute, look for a node that waits for input on more than
+	 * one connection and already got enough of it. Queue the first such node and drop the
+	 * waiting entries it consumed.
+	 */
+	private promoteWaitingNodesToExecutionStack(workflow: Workflow): void {
+		if (this.runExecutionData.executionData!.nodeExecutionStack.length !== 0) return;
+
+		let waitingNodes = Object.keys(this.runExecutionData.executionData!.waitingExecution);
+		if (waitingNodes.length === 0) return;
+
+		// There are no more nodes in the execution stack. Check if there are
+		// waiting nodes that do not require data on all inputs and execute them,
+		// one by one.
+
+		// TODO: Should this also care about workflow position (top-left first?)
+		for (let i = 0; i < waitingNodes.length; i++) {
+			const nodeName = waitingNodes[i];
+
+			const checkNode = workflow.getNode(nodeName);
+			if (!checkNode) {
+				continue;
+			}
+			const nodeType = workflow.nodeTypes.getByNameAndVersion(
+				checkNode.type,
+				checkNode.typeVersion,
+			);
+
+			// Check if the node is only allowed execute if all inputs received data
+			let requiredInputs =
+				workflow.settings.executionOrder === 'v1' ? nodeType.description.requiredInputs : undefined;
+			if (requiredInputs !== undefined) {
+				if (typeof requiredInputs === 'string') {
+					requiredInputs = workflow.expression.getSimpleParameterValue(
+						checkNode,
+						requiredInputs,
+						this.mode,
+						{ $version: checkNode.typeVersion },
+						undefined,
+						[],
+					) as number[];
+				}
+
+				if (
+					(requiredInputs !== undefined &&
+						Array.isArray(requiredInputs) &&
+						requiredInputs.length === nodeType.description.inputs.length) ||
+					requiredInputs === nodeType.description.inputs.length
+				) {
+					// All inputs are required, but not all have data so do not continue
+					continue;
+				}
+			}
+
+			const parentNodes = workflow.getParentNodes(nodeName);
+
+			// Check if input nodes (of same run) got already executed
+
+			const parentIsWaiting = parentNodes.some((value) => waitingNodes.includes(value));
+			if (parentIsWaiting) {
+				// Execute node later as one of its dependencies is still outstanding
+				continue;
+			}
+
+			const runIndexes = Object.keys(
+				this.runExecutionData.executionData!.waitingExecution[nodeName],
+			).sort();
+
+			// The run-index of the earliest outstanding one
+			const firstRunIndex = parseInt(runIndexes[0]);
+
+			// Find all the inputs which received any kind of data, even if it was an empty
+			// array as this shows that the parent nodes executed but they did not have any
+			// data to pass on.
+			const inputsWithData = this.runExecutionData
+				.executionData!.waitingExecution[nodeName][firstRunIndex].main.map((data, index) =>
+					data === null ? null : index,
+				)
+				.filter((data) => data !== null);
+
+			if (requiredInputs !== undefined) {
+				// Certain inputs are required that the node can execute
+
+				if (Array.isArray(requiredInputs)) {
+					// Specific inputs are required (array of input indexes)
+					let inputDataMissing = false;
+					for (const requiredInput of requiredInputs) {
+						if (!inputsWithData.includes(requiredInput)) {
+							inputDataMissing = true;
+							break;
+						}
+					}
+					if (inputDataMissing) {
+						continue;
+					}
+				} else {
+					// A certain amount of inputs are required (amount of inputs)
+					if (inputsWithData.length < requiredInputs) {
+						continue;
+					}
+				}
+			}
+
+			const taskDataMain = this.runExecutionData.executionData!.waitingExecution[nodeName][
+				firstRunIndex
+			].main.map((data) => {
+				// For the inputs for which never any data got received set it to an empty array
+				return data === null ? [] : data;
+			});
+
+			if (taskDataMain.filter((data) => data.length).length !== 0) {
+				// Add the node to be executed
+
+				// Make sure that each input at least receives an empty array
+				if (taskDataMain.length < nodeType.description.inputs.length) {
+					for (; taskDataMain.length < nodeType.description.inputs.length; ) {
+						taskDataMain.push([]);
+					}
+				}
+
+				this.runExecutionData.executionData!.nodeExecutionStack.push({
+					node: workflow.nodes[nodeName],
+					data: {
+						main: taskDataMain,
+					},
+					source:
+						this.runExecutionData.executionData!.waitingExecutionSource![nodeName][firstRunIndex],
+				});
+			}
+
+			// Remove the node from waiting
+			delete this.runExecutionData.executionData!.waitingExecution[nodeName][firstRunIndex];
+			delete this.runExecutionData.executionData!.waitingExecutionSource![nodeName][firstRunIndex];
+
+			if (
+				Object.keys(this.runExecutionData.executionData!.waitingExecution[nodeName]).length === 0
+			) {
+				// No more data left for the node so also delete that one
+				delete this.runExecutionData.executionData!.waitingExecution[nodeName];
+				delete this.runExecutionData.executionData!.waitingExecutionSource![nodeName];
+			}
+
+			if (taskDataMain.filter((data) => data.length).length !== 0) {
+				// Node to execute got found and added to stop
+				break;
+			} else {
+				// Node to add did not get found, rather an empty one removed so continue with search
+				waitingNodes = Object.keys(this.runExecutionData.executionData!.waitingExecution);
+				// Set counter to start again from the beginning. Set it to -1 as it auto increments
+				// after run. So only like that will we end up again at 0.
+				i = -1;
+			}
+		}
+	}
+
 	/** True while there are nodes queued for execution. */
 	private isExecutionStackNotEmpty(): boolean {
 		return this.runExecutionData.executionData!.nodeExecutionStack.length !== 0;
@@ -2438,100 +2698,7 @@ export class WorkflowExecute {
 
 					// Add the nodes to which the current node has an output connection to that they can
 					// be executed next
-					if (Object.hasOwn(workflow.connectionsBySourceNode, executionNode.name)) {
-						if (Object.hasOwn(workflow.connectionsBySourceNode[executionNode.name], 'main')) {
-							let outputIndex: string;
-							let connectionData: IConnection;
-							// Iterate over all the outputs
-
-							const nodesToAdd: Array<{
-								position: [number, number];
-								connection: IConnection;
-								outputIndex: number;
-							}> = [];
-
-							// Add the nodes to be executed
-							// eslint-disable-next-line @typescript-eslint/no-for-in-array
-							for (outputIndex in workflow.connectionsBySourceNode[executionNode.name].main) {
-								if (
-									!Object.hasOwn(
-										workflow.connectionsBySourceNode[executionNode.name].main,
-										outputIndex,
-									)
-								) {
-									continue;
-								}
-
-								// Iterate over all the different connections of this output
-								for (connectionData of workflow.connectionsBySourceNode[executionNode.name].main[
-									outputIndex
-								] ?? []) {
-									if (!Object.hasOwn(workflow.nodes, connectionData.node)) {
-										throw new UnexpectedError('Destination node not found', {
-											extra: {
-												sourceNodeName: executionNode.name,
-												destinationNodeName: connectionData.node,
-											},
-										});
-									}
-
-									if (
-										nodeSuccessData![outputIndex] &&
-										(nodeSuccessData![outputIndex].length !== 0 ||
-											(connectionData.index > 0 && this.isLegacyExecutionOrder(workflow)))
-									) {
-										// Add the node only if it did execute or if connected to second "optional" input
-										if (workflow.settings.executionOrder === 'v1') {
-											const nodeToAdd = workflow.getNode(connectionData.node);
-											nodesToAdd.push({
-												position: nodeToAdd?.position || [0, 0],
-												connection: connectionData,
-												outputIndex: parseInt(outputIndex, 10),
-											});
-										} else {
-											this.addNodeToBeExecuted(
-												workflow,
-												connectionData,
-												parseInt(outputIndex, 10),
-												executionNode.name,
-												nodeSuccessData!,
-												runIndex,
-											);
-										}
-									}
-								}
-							}
-
-							if (workflow.settings.executionOrder === 'v1') {
-								// Always execute the node that is more to the top-left first
-								nodesToAdd.sort((a, b) => {
-									if (a.position[1] < b.position[1]) {
-										return 1;
-									}
-									if (a.position[1] > b.position[1]) {
-										return -1;
-									}
-
-									if (a.position[0] > b.position[0]) {
-										return -1;
-									}
-
-									return 0;
-								});
-
-								for (const nodeData of nodesToAdd) {
-									this.addNodeToBeExecuted(
-										workflow,
-										nodeData.connection,
-										nodeData.outputIndex,
-										executionNode.name,
-										nodeSuccessData!,
-										runIndex,
-									);
-								}
-							}
-						}
-					}
+					this.scheduleDownstreamNodes(workflow, executionNode, nodeSuccessData!, runIndex);
 
 					// If we got here, it means that we did not stop executing from manual executions / destination.
 					// Execute hooks now to make sure that all hooks are executed properly
@@ -2543,164 +2710,7 @@ export class WorkflowExecute {
 						this.runExecutionData,
 					]);
 
-					let waitingNodes: string[] = Object.keys(
-						this.runExecutionData.executionData!.waitingExecution,
-					);
-
-					if (
-						this.runExecutionData.executionData!.nodeExecutionStack.length === 0 &&
-						waitingNodes.length
-					) {
-						// There are no more nodes in the execution stack. Check if there are
-						// waiting nodes that do not require data on all inputs and execute them,
-						// one by one.
-
-						// TODO: Should this also care about workflow position (top-left first?)
-						for (let i = 0; i < waitingNodes.length; i++) {
-							const nodeName = waitingNodes[i];
-
-							const checkNode = workflow.getNode(nodeName);
-							if (!checkNode) {
-								continue;
-							}
-							const nodeType = workflow.nodeTypes.getByNameAndVersion(
-								checkNode.type,
-								checkNode.typeVersion,
-							);
-
-							// Check if the node is only allowed execute if all inputs received data
-							let requiredInputs =
-								workflow.settings.executionOrder === 'v1'
-									? nodeType.description.requiredInputs
-									: undefined;
-							if (requiredInputs !== undefined) {
-								if (typeof requiredInputs === 'string') {
-									requiredInputs = workflow.expression.getSimpleParameterValue(
-										checkNode,
-										requiredInputs,
-										this.mode,
-										{ $version: checkNode.typeVersion },
-										undefined,
-										[],
-									) as number[];
-								}
-
-								if (
-									(requiredInputs !== undefined &&
-										Array.isArray(requiredInputs) &&
-										requiredInputs.length === nodeType.description.inputs.length) ||
-									requiredInputs === nodeType.description.inputs.length
-								) {
-									// All inputs are required, but not all have data so do not continue
-									continue;
-								}
-							}
-
-							const parentNodes = workflow.getParentNodes(nodeName);
-
-							// Check if input nodes (of same run) got already executed
-
-							const parentIsWaiting = parentNodes.some((value) => waitingNodes.includes(value));
-							if (parentIsWaiting) {
-								// Execute node later as one of its dependencies is still outstanding
-								continue;
-							}
-
-							const runIndexes = Object.keys(
-								this.runExecutionData.executionData!.waitingExecution[nodeName],
-							).sort();
-
-							// The run-index of the earliest outstanding one
-							const firstRunIndex = parseInt(runIndexes[0]);
-
-							// Find all the inputs which received any kind of data, even if it was an empty
-							// array as this shows that the parent nodes executed but they did not have any
-							// data to pass on.
-							const inputsWithData = this.runExecutionData
-								.executionData!.waitingExecution[nodeName][firstRunIndex].main.map((data, index) =>
-									data === null ? null : index,
-								)
-								.filter((data) => data !== null);
-
-							if (requiredInputs !== undefined) {
-								// Certain inputs are required that the node can execute
-
-								if (Array.isArray(requiredInputs)) {
-									// Specific inputs are required (array of input indexes)
-									let inputDataMissing = false;
-									for (const requiredInput of requiredInputs) {
-										if (!inputsWithData.includes(requiredInput)) {
-											inputDataMissing = true;
-											break;
-										}
-									}
-									if (inputDataMissing) {
-										continue;
-									}
-								} else {
-									// A certain amount of inputs are required (amount of inputs)
-									if (inputsWithData.length < requiredInputs) {
-										continue;
-									}
-								}
-							}
-
-							const taskDataMain = this.runExecutionData.executionData!.waitingExecution[nodeName][
-								firstRunIndex
-							].main.map((data) => {
-								// For the inputs for which never any data got received set it to an empty array
-								return data === null ? [] : data;
-							});
-
-							if (taskDataMain.filter((data) => data.length).length !== 0) {
-								// Add the node to be executed
-
-								// Make sure that each input at least receives an empty array
-								if (taskDataMain.length < nodeType.description.inputs.length) {
-									for (; taskDataMain.length < nodeType.description.inputs.length; ) {
-										taskDataMain.push([]);
-									}
-								}
-
-								this.runExecutionData.executionData!.nodeExecutionStack.push({
-									node: workflow.nodes[nodeName],
-									data: {
-										main: taskDataMain,
-									},
-									source:
-										this.runExecutionData.executionData!.waitingExecutionSource![nodeName][
-											firstRunIndex
-										],
-								});
-							}
-
-							// Remove the node from waiting
-							delete this.runExecutionData.executionData!.waitingExecution[nodeName][firstRunIndex];
-							delete this.runExecutionData.executionData!.waitingExecutionSource![nodeName][
-								firstRunIndex
-							];
-
-							if (
-								Object.keys(this.runExecutionData.executionData!.waitingExecution[nodeName])
-									.length === 0
-							) {
-								// No more data left for the node so also delete that one
-								delete this.runExecutionData.executionData!.waitingExecution[nodeName];
-								delete this.runExecutionData.executionData!.waitingExecutionSource![nodeName];
-							}
-
-							if (taskDataMain.filter((data) => data.length).length !== 0) {
-								// Node to execute got found and added to stop
-								break;
-							} else {
-								// Node to add did not get found, rather an empty one removed so continue with search
-								waitingNodes = Object.keys(this.runExecutionData.executionData!.waitingExecution);
-								// Set counter to start again from the beginning. Set it to -1 as it auto increments
-								// after run. So only like that will we end up again at 0.
-								i = -1;
-							}
-						}
-					}
+					this.promoteWaitingNodesToExecutionStack(workflow);
 				}
 
 				return;
