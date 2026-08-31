@@ -187,6 +187,19 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 					target: '_blank',
 				},
 			},
+			...(settingsStore.isCloudDeployment
+				? [
+						{
+							id: 'contact-support',
+							icon: 'life-buoy',
+							label: i18n.baseText('mainSidebar.helpMenuItems.contactSupport'),
+							link: {
+								href: EXTERNAL_LINKS.SUPPORT,
+								target: '_blank',
+							},
+						},
+					]
+				: []),
 			{
 				id: 'report-bug',
 				icon: 'bug',
@@ -301,6 +314,7 @@ const handleSelect = (key: string) => {
 			void handleSettingsItemSelect(key);
 			break;
 		}
+		case 'contact-support':
 		case 'quickstart':
 		case 'docs':
 		case 'forum':
