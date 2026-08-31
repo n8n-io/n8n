@@ -9,7 +9,7 @@ import type { GraphNode } from '@vue-flow/core';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
-import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
+import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { BoundingBox } from '../../../canvas.types';
 
@@ -41,7 +41,7 @@ const { isSelectionExtractable } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
 	readOnly: () => props.readOnly,
 });
-const { isNodeContextEnabled } = useAddNodesToChat();
+const { isNodeContextEnabled } = useIsNodeContextEnabled();
 
 const emit = defineEmits<{
 	'group-created': [id: string];

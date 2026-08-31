@@ -1,31 +1,20 @@
-import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiHandoff, stashPendingDraftAttachment } from './useInstanceAiHandoff';
+import { useIsNodeContextEnabled } from './useIsNodeContextEnabled';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { buildNodesAttachment, type NodeContextWorkflow } from '../utils/buildNodesAttachment';
-import { useEditorContext } from '@/app/composables/useEditorContext';
 import type { IWorkflowDb } from '@/Interface';
 
 export function useAddNodesToChat() {
-	const posthog = usePostHog();
 	const store = useInstanceAiStore();
 	const handoff = useInstanceAiHandoff();
 	const router = useRouter();
 	const toast = useToast();
 	const i18n = useI18n();
-	const { instanceAi } = useEditorContext();
-
-	// The add-to-chat affordance only works when Instance AI is actually
-	// available — gating on the flag alone would surface an unusable control and
-	// suppress the legacy Focus AI action.
-	const isNodeContextEnabled = computed(
-		() => posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG) && instanceAi.value,
-	);
+	const { isNodeContextEnabled } = useIsNodeContextEnabled();
 
 	async function addSelectedNodesToChat(params: {
 		workflowId: string;

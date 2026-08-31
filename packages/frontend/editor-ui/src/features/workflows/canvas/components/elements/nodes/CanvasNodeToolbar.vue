@@ -9,7 +9,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
-import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
+import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -52,7 +52,7 @@ const focusedNodesStore = useFocusedNodesStore();
 // Per-editor host overrides — e.g. the Instance AI artifact preview supersedes
 // the AI capabilities of its embedded editor, which must hide this entry point.
 const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
-const { isNodeContextEnabled } = useAddNodesToChat();
+const { isNodeContextEnabled } = useIsNodeContextEnabled();
 
 const node = computed(() =>
 	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,

@@ -5,8 +5,8 @@ import { renderComponent } from '@/__tests__/render';
 import CanvasSelectionToolbar from '../CanvasSelectionToolbar.vue';
 
 const isEnabled = { value: true };
-vi.mock('@/features/ai/instanceAi/composables/useAddNodesToChat', () => ({
-	useAddNodesToChat: () => ({ isNodeContextEnabled: isEnabled, addSelectedNodesToChat: vi.fn() }),
+vi.mock('@/features/ai/instanceAi/composables/useIsNodeContextEnabled', () => ({
+	useIsNodeContextEnabled: () => ({ isNodeContextEnabled: isEnabled }),
 }));
 
 function nodes(count: number): GraphNode[] {

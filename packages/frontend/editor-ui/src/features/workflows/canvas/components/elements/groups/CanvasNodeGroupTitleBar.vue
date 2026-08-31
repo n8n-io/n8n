@@ -30,7 +30,7 @@ import {
 	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
-import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
+import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 const EXTRACT_WORKFLOW_SHORTCUT = { altKey: true, keys: ['X'] };
@@ -70,7 +70,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { isNodeContextEnabled } = useAddNodesToChat();
+const { isNodeContextEnabled } = useIsNodeContextEnabled();
 const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
