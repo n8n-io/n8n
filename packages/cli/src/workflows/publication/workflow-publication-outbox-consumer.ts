@@ -87,8 +87,21 @@ export class WorkflowPublicationOutboxConsumer {
 		});
 	}
 
+	/**
+	 * Whether this instance participates in outbox processing. Leader-only by
+	 * default; under trigger seats every main consumes — the applier no longer
+	 * registers in-memory triggers locally (seats carry them), per-workflow
+	 * serialization comes from the claim's in-progress exclusion, and records are
+	 * idempotent reconcile markers. Known PoC gap: the outbox claim carries no
+	 * fencing epoch (CAT-3923), so a stalled consumer's late status writes are
+	 * healed by reconciliation rather than fenced out.
+	 */
+	private get processesOnThisInstance(): boolean {
+		return this.workflowsConfig.useTriggerSeats || this.instanceSettings.isLeader;
+	}
+
 	async init() {
-		if (!this.instanceSettings.isLeader) return;
+		if (!this.processesOnThisInstance) return;
 
 		this.startPolling();
 		// Drain immediately so triggers get activated ASAP
@@ -132,11 +145,26 @@ export class WorkflowPublicationOutboxConsumer {
 	@OnPubSubEvent('workflow-publish-wake-up', { instanceType: 'main', instanceRole: 'leader' })
 	@OnLeaderTakeover()
 	async wakeUp(): Promise<void> {
+		await this.wakeUpInternal();
+	}
+
+	/**
+	 * Under trigger seats, followers consume the outbox too, so they need the
+	 * wake-up as well; the role-filtered handler above covers the leader.
+	 */
+	@OnPubSubEvent('workflow-publish-wake-up', { instanceType: 'main' })
+	async wakeUpFollowerRunner(): Promise<void> {
+		if (!this.workflowsConfig.useTriggerSeats) return;
+		if (this.instanceSettings.isLeader) return;
+		await this.wakeUpInternal();
+	}
+
+	private async wakeUpInternal(): Promise<void> {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
 		// Direct callers (e.g. a short-lived CLI process waking its own local consumer)
 		// bypass the pubsub role filter, and a non-leader claiming a record it can never
 		// apply would strand it `in_progress` until its lease expires.
-		if (!this.instanceSettings.isLeader) return;
+		if (!this.processesOnThisInstance) return;
 
 		this.startPolling();
 		try {
@@ -325,7 +353,8 @@ export class WorkflowPublicationOutboxConsumer {
 					// A record claimed while leader can reach here after stepdown (e.g. while
 					// waiting on the lock during teardown). Activating triggers now would leave
 					// them running on a demoted instance, so hand the record back to the queue.
-					if (!this.instanceSettings.isLeader) {
+					// Under trigger seats no instance ever demotes out of processing.
+					if (!this.processesOnThisInstance) {
 						await this.outboxRepository.returnToPending(record.id);
 						this.logger.debug('Returned publication outbox record to queue: no longer leader', {
 							outboxId: record.id,

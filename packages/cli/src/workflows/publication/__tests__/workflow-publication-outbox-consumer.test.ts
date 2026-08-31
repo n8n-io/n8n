@@ -39,9 +39,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		isLeader = true,
 		concurrency = 1,
 		leaseSeconds = LEASE_SECONDS,
+		useTriggerSeats = false,
 	) {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
+			useTriggerSeats,
 			publicationOutboxPollIntervalMs: POLL_INTERVAL_MS,
 			workflowPublicationConcurrency: concurrency,
 			publicationOutboxLeaseSeconds: leaseSeconds,
@@ -88,6 +90,38 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	describe('under trigger seats', () => {
+		test('a follower drains pending records and starts polling', async () => {
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			consumer = createConsumer(true, false, 1, LEASE_SECONDS, true);
+
+			await consumer.init();
+
+			expect(applier.apply).toHaveBeenCalledTimes(1);
+			expect(reporter.report).toHaveBeenCalledTimes(1);
+			expect(outboxRepository.returnToPending).not.toHaveBeenCalled();
+		});
+
+		test('a follower wakes up on the all-mains pubsub handler', async () => {
+			const record = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			consumer = createConsumer(true, false, 1, LEASE_SECONDS, true);
+
+			await consumer.wakeUpFollowerRunner();
+
+			expect(applier.apply).toHaveBeenCalledTimes(1);
+		});
+
+		test('without the flag a follower still refuses the all-mains wake-up', async () => {
+			consumer = createConsumer(true, false, 1, LEASE_SECONDS, false);
+
+			await consumer.wakeUpFollowerRunner();
+
+			expect(applier.apply).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('init', () => {
