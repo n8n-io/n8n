@@ -1055,6 +1055,7 @@ describe('CredentialsHelper', () => {
 					workflowSettings: {
 						credentialResolverId: 'workflow-resolver-123',
 					},
+					executionId: 'exec-123',
 				} as IWorkflowExecuteAdditionalData;
 
 				// Act
@@ -1065,7 +1066,10 @@ describe('CredentialsHelper', () => {
 					additionalDataWithCredentials,
 				);
 
-				// Assert: Should use dynamic proxy, NOT direct database update
+				// Assert: Should use dynamic proxy, NOT direct database update, and forward the
+				// execution id so a context already bound to this execution (via
+				// `maybeBindExecutionId`) passes the resolver's replay check the same way
+				// `resolveIfNeeded` already does.
 				expect(storeOAuthTokenDataSpy).toHaveBeenCalledWith(
 					{
 						id: 'cred-789',
@@ -1078,6 +1082,7 @@ describe('CredentialsHelper', () => {
 					additionalDataWithCredentials.executionContext,
 					existingCredentialData,
 					additionalDataWithCredentials.workflowSettings,
+					'exec-123',
 				);
 				expect(credentialsRepository.update).not.toHaveBeenCalled();
 			});
@@ -1129,6 +1134,7 @@ describe('CredentialsHelper', () => {
 						additionalDataWithCredentials.executionContext,
 						existingCredentialData,
 						additionalDataWithCredentials.workflowSettings,
+						undefined,
 					);
 					expect(credentialsRepository.update).not.toHaveBeenCalled();
 				} finally {
@@ -1665,6 +1671,43 @@ describe('CredentialsHelper', () => {
 			);
 
 			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalled();
+			expect(result).toEqual(dynamicData);
+		});
+
+		test('should resolve against the identity carried on a test-webhook registration', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			const dynamicData = { apiKey: 'builders-own-key' };
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: dynamicData,
+				isDynamic: true,
+			});
+
+			// A chat trigger test run: the builder's identity was minted at registration and
+			// travelled on the registration, so the manual-mode static fallback is bypassed and
+			// that carrier is what the resolver resolves against.
+			const registrationContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual' as const,
+				credentials: 'registration-minted-context',
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				{ ...mockAdditionalData, executionContext: registrationContext },
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				registrationContext,
+				expect.anything(),
+				undefined,
+			);
 			expect(result).toEqual(dynamicData);
 		});
 

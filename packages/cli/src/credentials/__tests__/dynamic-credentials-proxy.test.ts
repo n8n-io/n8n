@@ -169,6 +169,7 @@ describe('DynamicCredentialsProxy', () => {
 				credentialContext,
 				undefined,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -192,6 +193,32 @@ describe('DynamicCredentialsProxy', () => {
 				credentialContext,
 				staticData,
 				workflowSettings,
+				undefined,
+			);
+		});
+
+		it('forwards executionId to the storage provider, so a context bound to this execution passes the resolver replay check', async () => {
+			const staticData = { clientId: 'static-client-id' };
+			const workflowSettings: IWorkflowSettings = { executionTimeout: 300 };
+
+			proxy.setStorageProvider(mockStorageProvider);
+
+			await proxy.storeIfNeeded(
+				credentialMetadata,
+				dynamicData,
+				credentialContext,
+				staticData,
+				workflowSettings,
+				'exec-123',
+			);
+
+			expect(mockStorageProvider.storeIfNeeded).toHaveBeenCalledWith(
+				credentialMetadata,
+				dynamicData,
+				credentialContext,
+				staticData,
+				workflowSettings,
+				'exec-123',
 			);
 		});
 	});

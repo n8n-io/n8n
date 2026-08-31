@@ -657,7 +657,7 @@ describe('AiController', () => {
 	describe('getGatewayWallet', () => {
 		it('should reject gateway requests when n8n Connect is disabled', async () => {
 			aiGatewayService.assertEnabled.mockImplementation(() => {
-				throw new BadRequestError('n8n Connect is not enabled on this instance');
+				throw new BadRequestError('Gateway credits are not enabled on this instance');
 			});
 			const query = mock<AiGatewayUsageQueryDto>({ offset: 0, limit: 10 });
 
