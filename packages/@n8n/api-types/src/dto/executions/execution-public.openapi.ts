@@ -27,7 +27,9 @@ export const executionFieldDocs = {
 	}),
 	stoppedAt: alsoNullable({
 		format: 'date-time',
-		description: 'The time at which the execution stopped. Null while it has not stopped yet.',
+		description:
+			'The time at which the execution stopped. Null while it has not stopped yet, so for ' +
+			'executions with the status `new`, `waiting` or `running`.',
 	}),
 	deletedAt: alsoNullable({
 		format: 'date-time',

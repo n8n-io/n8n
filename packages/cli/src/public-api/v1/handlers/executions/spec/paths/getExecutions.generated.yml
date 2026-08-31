@@ -146,7 +146,7 @@ responses:
                     type: string
                     nullable: true
                     format: date-time
-                    description: The time at which the execution stopped. Null while it has not stopped yet.
+                    description: The time at which the execution stopped. Null while it has not stopped yet, so for executions with the status `new`, `waiting` or `running`.
                   workflowId:
                     type: string
                     example: '1000'
