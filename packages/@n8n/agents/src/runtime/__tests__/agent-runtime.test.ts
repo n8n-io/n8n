@@ -8200,14 +8200,42 @@ describe('AgentRuntime — oversized tool results', () => {
 		it('completes terminal runs when result cleanup hangs', async () => {
 			const filesystem = new InMemoryFilesystem();
 			const runId = 'hung-cleanup-run';
-			await filesystem.writeFile(`${getToolResultRunDirectory(runId)}/result.json`, '{}', {
-				recursive: true,
-			});
 			vi.spyOn(filesystem, 'rmdir').mockReturnValue(new Promise(() => undefined));
-			const runtime = createRunScopedRuntime(filesystem, [], runId);
-			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			const runtime = createRunScopedRuntime(filesystem, [largeResultTool], runId);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc-large', toolName: largeResultTool.name, args: {} },
+					]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
 
 			await expect(runtime.generate('run')).resolves.toMatchObject({ finishReason: 'stop' });
+		});
+
+		it('performs no filesystem calls during cleanup when the run never offloaded', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const existsSpy = vi.spyOn(filesystem, 'exists');
+			const rmdirSpy = vi.spyOn(filesystem, 'rmdir');
+			const smallResultTool: BuiltTool = {
+				name: 'small_result',
+				description: 'small result',
+				inputSchema: z.object({}),
+				handler: async () => await Promise.resolve({ ok: true }),
+			};
+			const runtime = createRunScopedRuntime(filesystem, [smallResultTool], 'no-offload-run');
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc-small', toolName: smallResultTool.name, args: {} },
+					]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			await runtime.generate('run');
+
+			expect(existsSpy).not.toHaveBeenCalled();
+			expect(rmdirSpy).not.toHaveBeenCalled();
 		});
 
 		it('retains offloaded results across suspension and re-suspension, then removes them', async () => {

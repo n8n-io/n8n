@@ -63,8 +63,9 @@ export class AgentRuntimeCacheService {
 	 *   Draft:     `{agentId}:draft[:{integrationType}][:{callerScope}]`
 	 *   Published: `{agentId}:published[:{integrationType}][:{callerScope}]`
 	 *
-	 * TTL = 30 minutes — entries are evicted when the agent is idle so that
-	 * memory is freed without requiring an explicit shutdown step.
+	 * TTL = 30 minutes of inactivity (sliding — each cache hit refreshes the
+	 * expiry) so actively used runtimes stay cached while idle agents are
+	 * evicted and their memory freed without an explicit shutdown step.
 	 *
 	 * Separating draft and published with explicit prefixes prevents a draft
 	 * runtime from being mistakenly returned to a published-agent execution.
@@ -220,7 +221,10 @@ export class AgentRuntimeCacheService {
 		const cacheKey = this.computeRuntimeCacheKey(params);
 
 		const cached = this.runtimes.get(cacheKey);
-		if (cached) return this.acquireRuntimeLease(cached);
+		if (cached) {
+			this.runtimes.touch(cacheKey);
+			return this.acquireRuntimeLease(cached);
+		}
 
 		const initialization = this.runtimeInitializations.get(cacheKey);
 		if (initialization) return this.acquireRuntimeLease(await initialization.promise);

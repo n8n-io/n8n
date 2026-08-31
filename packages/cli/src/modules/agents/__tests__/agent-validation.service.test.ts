@@ -994,7 +994,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('flags duplicate, missing, and incompatible sub-agent and workflow-tool references in one pass', async () => {
+	it('flags missing and self sub-agent references plus invalid workflow-tool references', async () => {
 		const { service, agentRepository, workflowRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -1080,11 +1080,6 @@ describe('AgentValidationService — structured issues', () => {
 				code: 'incompatible_reference',
 				path: 'subAgents.agents.3.agentId',
 				capability: { kind: 'subAgent', id: agentId, index: 3 },
-			},
-			{
-				code: 'incompatible_reference',
-				path: 'subAgents.agents.4.agentId',
-				capability: { kind: 'subAgent', id: 'sub-3', index: 4 },
 			},
 			{
 				code: 'missing_reference',

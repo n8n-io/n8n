@@ -35,6 +35,9 @@ frontend, and extensible node-based workflow engine.
 - **Developing v3 features:** land normal feature work on `master` behind an
   opt-in flag; introduce breaking changes only on the `3.x` branch. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
+- The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
+  error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
+  comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
 
 ## Agent Skills and Claude Code Plugin
 
