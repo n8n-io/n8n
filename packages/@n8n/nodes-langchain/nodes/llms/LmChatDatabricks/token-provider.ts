@@ -12,20 +12,15 @@ export interface DatabricksOAuth2Credential {
 }
 
 /**
- * Returns a function that mints Databricks service-principal access tokens on
- * demand, caching the in-flight promise (single-flight) so concurrent callers
- * don't stampede the token endpoint, and re-minting 60s before expiry so a
- * request fired near the end of the token window doesn't die mid-flight with
- * a non-retryable 403.
+ * Mints Databricks service-principal tokens on demand. Concurrent callers
+ * share one in-flight mint, and tokens re-mint 60s before expiry so requests
+ * near the end of the token window don't fail.
  *
- * Self-mints instead of reading core's `oauthTokenData` access token: the
- * model client's HTTP bypasses core's refresh machinery, so a core-issued
- * token would expire mid-run with no way to renew it.
- *
- * The mint URL is derived from `host` (https-enforced in supplyData) rather
- * than the credential's stored `accessTokenUrl`, so a tampered credential
- * cannot redirect the client secret elsewhere; it matches the credential's
- * default `={{$self["host"]}}/oidc/v1/token`.
+ * Self-mints (instead of using core's `oauthTokenData`) because the model
+ * client bypasses core's refresh machinery, so a core-issued token would
+ * expire mid-run. The mint URL is derived from the https-validated `host`
+ * (matching the credential's default) so a stored `accessTokenUrl` cannot
+ * redirect the client secret elsewhere.
  */
 export function getDatabricksTokenProvider(
 	node: INode,
