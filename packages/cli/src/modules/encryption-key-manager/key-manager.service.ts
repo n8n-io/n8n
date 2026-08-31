@@ -64,7 +64,11 @@ export class KeyManagerService {
 			if (key) {
 				return { id: key.id, value: key.value, algorithm: key.algorithm! };
 			}
-			this.logger.warn('Legacy aes-256-cbc encryption key not found; falling back to instance key');
+			if (!this.cachedInstanceKeyInfo) {
+				this.logger.warn(
+					'Legacy aes-256-cbc encryption key not found; falling back to instance key',
+				);
+			}
 		} catch (error) {
 			this.logger.warn(
 				'Key store unavailable while reading legacy key; using the instance key directly',

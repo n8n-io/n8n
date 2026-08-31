@@ -21,6 +21,20 @@ const makeKey = (overrides: Partial<DeploymentKey> = {}): DeploymentKey =>
 		...overrides,
 	}) as DeploymentKey;
 
+// Builds a service with its own mocks so the memoized legacy-key cache starts
+// cold, independent of the shared DI singleton and test order.
+const makeFreshService = () => {
+	const repo = mock<DeploymentKeyRepository>();
+	const cipherMock = mock<Cipher>();
+	const service = new KeyManagerService(
+		repo,
+		cipherMock,
+		mock<InstanceSettings>({ encryptionKey: 'test_key' }),
+		mock<Logger>(),
+	);
+	return { service, repo, cipherMock };
+};
+
 describe('KeyManagerService', () => {
 	const repository = mockInstance(DeploymentKeyRepository);
 	const cipher = mockInstance(Cipher);
@@ -91,39 +105,35 @@ describe('KeyManagerService', () => {
 		});
 
 		it('falls back to the instance key when the legacy key is not seeded', async () => {
-			repository.findOne.mockResolvedValue(null);
-			cipher.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
+			const { service, repo, cipherMock } = makeFreshService();
+			repo.findOne.mockResolvedValue(null);
+			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
 
-			const result = await Container.get(KeyManagerService).getLegacyKey();
+			const result = await service.getLegacyKey();
 
 			expect(result.value).toBe('wrapped-instance-key');
 			expect(result.algorithm).toBe('aes-256-cbc');
+			expect(cipherMock.encryptDEKWithInstanceKey).toHaveBeenCalledWith('test_key');
 		});
 
 		it('falls back to the instance key when the store lookup fails', async () => {
-			repository.findOne.mockRejectedValue(new Error('connection refused'));
-			cipher.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
+			const { service, repo, cipherMock } = makeFreshService();
+			repo.findOne.mockRejectedValue(new Error('connection refused'));
+			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
 
-			const result = await Container.get(KeyManagerService).getLegacyKey();
+			const result = await service.getLegacyKey();
 
 			expect(result.value).toBe('wrapped-instance-key');
 			expect(result.algorithm).toBe('aes-256-cbc');
+			expect(cipherMock.encryptDEKWithInstanceKey).toHaveBeenCalledWith('test_key');
 		});
 
-		// Uses a freshly constructed service so the memoized fallback starts cold,
-		// independent of test order. The seeded legacy key IS the instance key, so
-		// the fallback wraps the instance key exactly as bootstrap would.
+		// The seeded legacy key IS the instance key, so the fallback wraps the
+		// instance key exactly as bootstrap would.
 		it('wraps the instance key only once and reuses the result', async () => {
-			const repo = mock<DeploymentKeyRepository>();
+			const { service, repo, cipherMock } = makeFreshService();
 			repo.findOne.mockResolvedValue(null);
-			const cipherMock = mock<Cipher>();
 			cipherMock.encryptDEKWithInstanceKey.mockReturnValue('wrapped-instance-key');
-			const service = new KeyManagerService(
-				repo,
-				cipherMock,
-				mock<InstanceSettings>({ encryptionKey: 'test_key' }),
-				mock<Logger>(),
-			);
 
 			const first = await service.getLegacyKey();
 			const second = await service.getLegacyKey();
