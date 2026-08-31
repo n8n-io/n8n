@@ -516,6 +516,14 @@ async function handleSubmit(
 			}
 			chatInputRef.value?.focus();
 		});
+		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
+		// so without this every refusal would strand a blank thread in the sidebar and leave
+		// an EventSource open behind it (deleting disposes the runtime, which closes it).
+		// Discarding it also keeps the server's view matching what the user was just told: if
+		// a run did start but its response never arrived, this tears it down rather than
+		// leaving it burning credits on a conversation they believe never began. Fired after
+		// the restore is queued so cleanup can never delay giving the draft back.
+		void store.deleteThread(threadId);
 		return;
 	}
 

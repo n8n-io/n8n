@@ -911,6 +911,19 @@ describe('InstanceAiEmptyView', () => {
 		// handed the draft either: it reads localStorage once, synchronously, on mount.
 		expect(replaceMock).not.toHaveBeenCalled();
 		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+		// syncThread already persisted the thread and sendMessage opened its SSE; leaving
+		// them behind would strand a blank sidebar entry and an EventSource per attempt.
+		expect(store.deleteThread).toHaveBeenCalledWith('thread-placeholder');
+	});
+
+	it('keeps the provisional thread when the send is accepted', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.deleteThread).not.toHaveBeenCalled();
 	});
 
 	it('attributes syncThread to ?source= from an unsaved-canvas hand-off', async () => {
