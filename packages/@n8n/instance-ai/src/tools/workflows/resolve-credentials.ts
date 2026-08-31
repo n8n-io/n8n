@@ -124,7 +124,7 @@ export function buildCredentialResolutionNote(
 	}
 	if (gatewayParts.length > 0) {
 		sentences.push(
-			`Set up automatically with n8n credits (no API key required) for: ${gatewayParts.join('; ')}.`,
+			`Set up automatically with Gateway credits (no API key required) for: ${gatewayParts.join('; ')}.`,
 		);
 	}
 	if (storedParts.length > 0 || gatewayParts.length > 0) {
@@ -136,7 +136,7 @@ export function buildCredentialResolutionNote(
 	}
 	if (gatewayParts.length > 0) {
 		sentences.push(
-			'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
+			'Briefly let the user know these run on Gateway credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
 		);
 	}
 	return sentences.join(' ');
