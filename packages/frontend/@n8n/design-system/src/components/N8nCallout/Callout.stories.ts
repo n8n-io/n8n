@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';
-import N8nText from '../N8nText';
 
 const meta = {
 	title: 'Core/Callout',
@@ -50,9 +49,6 @@ export const Default: Story = {
 };
 
 export const Variants: Story = {
-	args: {
-		theme: 'info',
-	},
 	render: () => ({
 		components: { N8nCallout },
 		template: `
@@ -87,40 +83,5 @@ export const Custom: Story = {
 		theme: 'custom',
 		icon: 'git-branch',
 		default: 'This is a custom callout.',
-	},
-};
-
-export const Secondary: Story = {
-	render: (args) => ({
-		components: { N8nCallout, N8nLink, N8nText },
-		setup() {
-			return { args };
-		},
-		template: `
-			<N8nCallout v-bind="args">
-				{{ args.default }}
-				<template #actions>
-					<N8nLink theme="secondary" size="small" :bold="true" :underline="true">
-						Unpin
-					</N8nLink>
-				</template>
-				<template #trailingContent>
-					<N8nLink
-						theme="secondary"
-						size="small"
-						:bold="true"
-						:underline="true"
-						to="https://n8n.io"
-					>
-						Learn more
-					</N8nLink>
-				</template>
-			</N8nCallout>
-		`,
-	}),
-	args: {
-		theme: 'secondary',
-		icon: 'pin',
-		default: 'This data is pinned.',
 	},
 };
