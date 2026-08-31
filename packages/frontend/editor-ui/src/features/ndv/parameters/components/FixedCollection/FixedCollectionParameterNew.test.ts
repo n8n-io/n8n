@@ -930,7 +930,7 @@ describe('FixedCollectionParameterNew.vue', () => {
 			await waitFor(() => {
 				// N8nActionDropdown renders items with data-test-id like "action-*"
 				const options = document.querySelectorAll('[class*="itemContainer"]');
-				expect(options.length).toBe(2);
+				expect(options.length).toBe(3);
 			});
 		});
 
