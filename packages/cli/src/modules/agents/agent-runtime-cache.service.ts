@@ -305,7 +305,7 @@ export class AgentRuntimeCacheService {
 		if (Date.now() - runtime.toolAccessCheckedAt < TOOL_ACCESS_RECHECK_INTERVAL_MS) return true;
 
 		const inFlight = this.toolAccessRechecks.get(runtime);
-		if (inFlight) return inFlight;
+		if (inFlight) return await inFlight;
 
 		const recheck = (async () => {
 			try {
