@@ -86,5 +86,13 @@ export const executionListItemPublicSchema = executionPublicSchema
 
 export class ExecutionListPublicDto extends Z.class({
 	data: z.array(executionListItemPublicSchema),
-	nextCursor: z.string().nullable(),
+	nextCursor: z
+		.string()
+		.nullable()
+		.openapi({
+			description:
+				'Paginate through executions by setting the cursor parameter to a nextCursor attribute ' +
+				'returned by a previous request. Default value fetches the first "page" of the collection.',
+			example: 'MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA',
+		}),
 }) {}
