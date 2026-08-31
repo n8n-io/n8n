@@ -1846,6 +1846,79 @@ export class WorkflowExecute {
 		return { nodeSuccessData, closeFunction };
 	}
 
+	/**
+	 * The error to send to the error reporter, or undefined if this error must not be
+	 * reported. Errors of our own classes report their cause. Other errors report only
+	 * their class and call frames, because their message can hold user data.
+	 */
+	private buildErrorReport(error: unknown): Error | undefined {
+		if (error instanceof ApplicationError) {
+			// Report any unhandled errors that were wrapped in by one of our error classes
+			return error.cause instanceof Error ? error.cause : undefined;
+		}
+
+		if (error instanceof BaseError) {
+			// BaseError subclasses specify shouldReport and level
+			// so always report and let beforeSend decide
+			return error;
+		}
+
+		if (!(error instanceof Error) || isAxiosError(error)) {
+			// Axios errors are suppressed in ErrorReporter's beforeSend via the
+			// `isAxiosError` brand, which sanitizing below would strip - so skip them here
+			return undefined;
+		}
+
+		// Non-BaseError errors only report their class and call frames
+		// The full error is still stored in the execution resultData
+		// Stack frames are in the format `<name>: <message>\n<call frames>`
+		// they can span multiple lines, so we drop everything except call frame lines
+		const errorClass = error.name || 'Error';
+		const sanitized = new Error(errorClass);
+		sanitized.name = errorClass;
+		const frames = (error.stack ?? '').split('\n').filter((line) => /^\s+at\s/.test(line));
+		sanitized.stack = [errorClass, ...frames].join('\n');
+		return sanitized;
+	}
+
+	/**
+	 * Handle an error a node threw: mark the node as the last one executed, report the
+	 * error and return it in the serializable shape the run data stores.
+	 */
+	private reportNodeExecutionError(
+		error: unknown,
+		executionNode: INode,
+		workflow: Workflow,
+	): ExecutionBaseError {
+		this.runExecutionData.resultData.lastNodeExecuted = executionNode.name;
+
+		const toReport = this.buildErrorReport(error);
+		if (toReport) {
+			const { executionId, instanceBaseUrl } = this.additionalData;
+			Container.get(ErrorReporter).error(toReport, {
+				extra: {
+					nodeName: executionNode.name,
+					nodeType: executionNode.type,
+					nodeVersion: executionNode.typeVersion,
+					workflowId: workflow.id,
+					executionId,
+					executionUrl:
+						instanceBaseUrl && executionId
+							? `${instanceBaseUrl}workflow/${workflow.id}/executions/${executionId}`
+							: undefined,
+				},
+			});
+		}
+
+		Logger.debug(`Running node "${executionNode.name}" finished with error`, {
+			node: executionNode.name,
+			workflowId: workflow.id,
+		});
+
+		const e = normalizeUnhandledAxiosError(error, executionNode);
+		return { ...e, message: e.message, stack: e.stack };
+	}
+
 	/** True while there are nodes queued for execution. */
 	private isExecutionStackNotEmpty(): boolean {
 		return this.runExecutionData.executionData!.nodeExecutionStack.length !== 0;
@@ -2111,57 +2184,7 @@ export class WorkflowExecute {
 
 							break;
 						} catch (error) {
-							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
-
-							let toReport: Error | undefined;
-							if (error instanceof ApplicationError) {
-								// Report any unhandled errors that were wrapped in by one of our error classes
-								if (error.cause instanceof Error) toReport = error.cause;
-							} else if (error instanceof BaseError) {
-								// BaseError subclasses specify shouldReport and level
-								// so always report and let beforeSend decide
-								toReport = error;
-							} else if (error instanceof Error && !isAxiosError(error)) {
-								// Axios errors are suppressed in ErrorReporter's beforeSend via the
-								// `isAxiosError` brand, which sanitizing below would strip - so skip them here
-								// Non-BaseError errors only report their class and call frames
-								// The full error is still stored in the execution resultData
-								// Stack frames are in the format `<name>: <message>\n<call frames>`
-								// they can span multiple lines, so we drop everything except call frame lines
-								const errorClass = error.name || 'Error';
-								const sanitized = new Error(errorClass);
-								sanitized.name = errorClass;
-								const frames = (error.stack ?? '')
-									.split('\n')
-									.filter((line) => /^\s+at\s/.test(line));
-								sanitized.stack = [errorClass, ...frames].join('\n');
-								toReport = sanitized;
-							}
-							if (toReport) {
-								const { executionId, instanceBaseUrl } = this.additionalData;
-								Container.get(ErrorReporter).error(toReport, {
-									extra: {
-										nodeName: executionNode.name,
-										nodeType: executionNode.type,
-										nodeVersion: executionNode.typeVersion,
-										workflowId: workflow.id,
-										executionId,
-										executionUrl:
-											instanceBaseUrl && executionId
-												? `${instanceBaseUrl}workflow/${workflow.id}/executions/${executionId}`
-												: undefined,
-									},
-								});
-							}
-
-							const e = normalizeUnhandledAxiosError(error, executionNode);
-
-							executionError = { ...e, message: e.message, stack: e.stack };
-
-							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
-								node: executionNode.name,
-								workflowId: workflow.id,
-							});
+							executionError = this.reportNodeExecutionError(error, executionNode, workflow);
 						}
 					}
 
