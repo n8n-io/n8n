@@ -84,72 +84,66 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 		return [base, `Filesystem access is scoped to ${this.root}.`].filter(Boolean).join('\n');
 	}
 
-	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
-		const resolved = resolvePath(this.root, path);
+	/**
+	 * Resolve paths inside the scope root, then make sure the root exists.
+	 * Validation runs first so escaping paths reject without side effects
+	 * (no sandbox boot, no directory creation).
+	 */
+	private async preparePaths(paths: string[], options?: AbortableOptions): Promise<string[]> {
+		const resolved = paths.map((path) => resolvePath(this.root, path));
 		await this.ensureRoot?.(options?.abortSignal);
-		return await this.filesystem.readFile(resolved, options);
+		return resolved;
+	}
+
+	private async preparePath(path: string, options?: AbortableOptions): Promise<string> {
+		const [resolved] = await this.preparePaths([path], options);
+		return resolved;
+	}
+
+	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
+		return await this.filesystem.readFile(await this.preparePath(path, options), options);
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
-		const resolved = resolvePath(this.root, path);
-		await this.ensureRoot?.(options?.abortSignal);
-		await this.filesystem.writeFile(resolved, content, options);
+		await this.filesystem.writeFile(await this.preparePath(path, options), content, options);
 	}
 
 	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
-		const resolved = resolvePath(this.root, path);
-		await this.ensureRoot?.(options?.abortSignal);
-		await this.filesystem.appendFile(resolved, content, options);
+		await this.filesystem.appendFile(await this.preparePath(path, options), content, options);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
-		const resolved = resolvePath(this.root, path);
-		await this.ensureRoot?.(options?.abortSignal);
-		await this.filesystem.deleteFile(resolved, options);
+		await this.filesystem.deleteFile(await this.preparePath(path, options), options);
 	}
 
 	async copyFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		const resolvedSrc = resolvePath(this.root, src);
-		const resolvedDest = resolvePath(this.root, dest);
-		await this.ensureRoot?.(options?.abortSignal);
+		const [resolvedSrc, resolvedDest] = await this.preparePaths([src, dest], options);
 		await this.filesystem.copyFile(resolvedSrc, resolvedDest, options);
 	}
 
 	async moveFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		const resolvedSrc = resolvePath(this.root, src);
-		const resolvedDest = resolvePath(this.root, dest);
-		await this.ensureRoot?.(options?.abortSignal);
+		const [resolvedSrc, resolvedDest] = await this.preparePaths([src, dest], options);
 		await this.filesystem.moveFile(resolvedSrc, resolvedDest, options);
 	}
 
 	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
-		const resolved = resolvePath(this.root, path);
-		await this.ensureRoot?.(options?.abortSignal);
-		await this.filesystem.mkdir(resolved, options);
+		await this.filesystem.mkdir(await this.preparePath(path, options), options);
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
-		const resolved = resolvePath(this.root, path);
-		await this.ensureRoot?.(options?.abortSignal);
-		await this.filesystem.rmdir(resolved, options);
+		await this.filesystem.rmdir(await this.preparePath(path, options), options);
 	}
 
 	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
-		const resolved = resolvePath(this.root, path);
-		await this.ensureRoot?.(options?.abortSignal);
-		return await this.filesystem.readdir(resolved, options);
+		return await this.filesystem.readdir(await this.preparePath(path, options), options);
 	}
 
 	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
-		const resolved = resolvePath(this.root, path);
-		await this.ensureRoot?.(options?.abortSignal);
-		return await this.filesystem.exists(resolved, options);
+		return await this.filesystem.exists(await this.preparePath(path, options), options);
 	}
 
 	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
-		const resolved = resolvePath(this.root, path);
-		await this.ensureRoot?.(options?.abortSignal);
-		return await this.filesystem.stat(resolved, options);
+		return await this.filesystem.stat(await this.preparePath(path, options), options);
 	}
 }
 
