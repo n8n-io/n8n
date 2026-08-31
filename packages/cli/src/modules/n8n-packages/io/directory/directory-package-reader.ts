@@ -19,19 +19,6 @@ export interface DirectoryReaderLimits {
 	maxPathLength: number;
 }
 
-/**
- * Reads the n8n-packages layout from loose files in a directory (the "unzipped"
- * format written by {@link DirectoryPackageWriter}), the filesystem counterpart
- * to {@link TarPackageReader}. Reads are lazy — the manifest and each file are
- * read on demand rather than loading the whole tree up front.
- *
- * The directory originates from a remote Git repository, so it is untrusted: the
- * same path-safety and size guards as the tar reader apply. Entry paths must stay
- * within `baseDir`, symbolic links are rejected, and a single file may not exceed
- * `maxEntryBytes`. Because reads are lazy, callers must validate the whole tree up
- * front via {@link listEntries} to enforce the package-wide `maxEntries` and
- * `maxUncompressedBytes` limits.
- */
 export class DirectoryPackageReader implements PackageReader {
 	constructor(
 		private readonly baseDir: string,

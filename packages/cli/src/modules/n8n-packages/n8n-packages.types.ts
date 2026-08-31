@@ -230,11 +230,6 @@ export interface ExportPackageRequest {
 	credentialExportPolicy?: CredentialExportPolicy;
 }
 
-/**
- * A source-agnostic import: everything the importers need except where the
- * package bytes come from. The reader (tar buffer, on-disk directory, …) is
- * passed alongside, so importers never touch the source format.
- */
 export type ImportRequest = {
 	user: User;
 	projectId?: string;

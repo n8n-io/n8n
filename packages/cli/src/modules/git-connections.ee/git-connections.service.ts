@@ -313,12 +313,6 @@ export class GitConnectionsService {
 		});
 	}
 
-	/**
-	 * Imports every project from the connection's local working copy into the
-	 * instance, overwriting to match it. Reads what is already on disk — a git
-	 * pull/fetch is out of scope, so the result reflects the last connect, not
-	 * necessarily the remote's latest.
-	 */
 	async pull(connectionId: string, actor: User): Promise<GitConnectionPullResultDto> {
 		// Validates the connection exists (throws NotFound otherwise) before any import work.
 		await this.getEntity(connectionId);
