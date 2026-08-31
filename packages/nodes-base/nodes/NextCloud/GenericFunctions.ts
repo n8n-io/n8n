@@ -33,18 +33,7 @@ export async function nextCloudApiRequest(
 
 	// Validate webDavUrl to catch credential corruption (empty, malformed, or no hostname etc.)
 	const webDavUrl = credentials.webDavUrl ?? '';
-	try {
-		const parsed = new URL(webDavUrl);
-		if (!parsed.hostname) {
-			throw new Error('No hostname');
-		}
-	} catch (error) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Invalid WebDAV URL in credentials: "${webDavUrl}". The URL must start with https:// or http://. Please check your Nextcloud credentials.`,
-		);
-	}
-	if (!webDavUrl || !/^https?:\/\//.test(webDavUrl)) {
+	if (!URL.canParse(webDavUrl) || !/^https?:\/\//.test(webDavUrl)) {
 		throw new NodeOperationError(
 			this.getNode(),
 			`Invalid WebDAV URL in credentials: "${webDavUrl}". The URL must start with https:// or http://. Please check your Nextcloud credentials.`,
