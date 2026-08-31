@@ -15,7 +15,6 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 	const instance = {
 		env: vi.fn(),
 		add: vi.fn(),
-		status: vi.fn(),
 		commit: vi.fn(),
 		push: vi.fn(),
 		fetch: vi.fn(),
@@ -287,7 +286,6 @@ describe('GitConnectionsGitService (git operations)', () => {
 			});
 
 		beforeEach(() => {
-			mockGit.status.mockResolvedValue({ isClean: () => false });
 			mockGit.revparse.mockResolvedValue('abc123\n');
 		});
 
@@ -295,7 +293,6 @@ describe('GitConnectionsGitService (git operations)', () => {
 			const result = await call();
 
 			expect(mockGit.add).toHaveBeenCalledWith(['--all', '--', 'n8n-export']);
-			expect(mockGit.status).toHaveBeenCalledWith(['--', 'n8n-export']);
 			expect(mockGit.commit).toHaveBeenCalledWith('sync');
 			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main');
 			expect(result).toEqual({ commitSha: 'abc123', head: 'abc123' });
@@ -315,16 +312,6 @@ describe('GitConnectionsGitService (git operations)', () => {
 		it('force-pushes when force is set', async () => {
 			await call({ force: true });
 			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main', ['-f']);
-		});
-
-		it('skips commit and push on a clean tree, returning a null commit SHA', async () => {
-			mockGit.status.mockResolvedValue({ isClean: () => true });
-
-			const result = await call();
-
-			expect(mockGit.commit).not.toHaveBeenCalled();
-			expect(mockGit.push).not.toHaveBeenCalled();
-			expect(result).toEqual({ commitSha: null, head: 'abc123' });
 		});
 
 		it('maps a stall timeout to a 503', async () => {

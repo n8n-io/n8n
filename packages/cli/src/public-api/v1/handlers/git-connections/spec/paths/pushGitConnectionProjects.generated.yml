@@ -69,7 +69,6 @@ responses:
                 - tags
             commitSha:
               type: string
-              nullable: true
           required:
             - connectionId
             - counts

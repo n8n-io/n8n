@@ -90,9 +90,7 @@ export const gitConnectionExportCountsSchema = z.object({
 export const gitConnectionPushResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionExportCountsSchema,
-	// The commit that was pushed, or null when the export matched the working copy
-	// and nothing was committed (no-op push).
-	commitSha: z.string().nullable(),
+	commitSha: z.string(),
 });
 
 export class GitConnectionPushResultDto extends Z.class(gitConnectionPushResultSchema.shape) {}

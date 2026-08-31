@@ -430,15 +430,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 			);
 		});
 
-		it('returns a null commit SHA and still records the base on a no-op push', async () => {
-			gitService.commitAndPush.mockResolvedValueOnce({ commitSha: null, head: 'headsha' });
-
-			const result = await exportService.push('1', actor, { commitMessage: 'm' });
-
-			expect(result.commitSha).toBeNull();
-			expect((repository.save.mock.calls.at(-1)?.[0] as GitConnection).baseCommit).toBe('headsha');
-		});
-
 		it('falls back to the n8n identity when the actor has no profile', async () => {
 			const bareActor = mock<User>({ id: 'x', firstName: '', lastName: '', email: undefined });
 

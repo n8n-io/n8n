@@ -64,8 +64,8 @@ export interface ExportPackageResult {
 export type PushGitConnectionResult = {
 	connectionId: string;
 	counts: ExportPackageCounts;
-	/** The pushed commit, or null when nothing changed (no-op push). */
-	commitSha: string | null;
+	/** The pushed commit. */
+	commitSha: string;
 };
 
 export interface ImportPackageCounts {
