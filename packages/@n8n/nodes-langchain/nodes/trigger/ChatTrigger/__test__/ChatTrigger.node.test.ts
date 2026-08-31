@@ -325,6 +325,34 @@ describe('ChatTrigger Node', () => {
 			]);
 		});
 
+		it('merges the page query into a message sent with files', async () => {
+			// Multipart payloads are built from `req.body.data`, and form fields are
+			// always strings — the widget sends the page query JSON-encoded there.
+			const body = {
+				data: {
+					action: 'sendMessage',
+					chatInput: 'Hello',
+					query: '{"q":"from-payload","foo":"bar"}',
+				},
+				files: {},
+			};
+			mockRequest.contentType = 'multipart/form-data';
+			mockRequest.body = body;
+			mockRequest.query = { q: 'from-url', test: '123' };
+			mockContext.getBodyData.mockReturnValue(body);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0][0].json).toEqual({
+				action: 'sendMessage',
+				chatInput: 'Hello',
+				query: { q: 'from-url', foo: 'bar', test: '123' },
+			});
+
+			// Assigned properties survive `clearAllMocks`, so don't leak into later tests
+			mockRequest.contentType = undefined;
+		});
+
 		it('should enable streaming when availableInChat is true and responseMode is not set', async () => {
 			// Mock options with availableInChat true and no responseMode
 			mockContext.getNodeParameter.mockImplementation(

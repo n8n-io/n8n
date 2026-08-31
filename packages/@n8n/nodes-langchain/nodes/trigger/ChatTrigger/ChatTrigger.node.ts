@@ -85,6 +85,35 @@ function appendQueryParameters(url: string, queryParameters: Request['query']): 
 	return result.toString();
 }
 
+function isQueryObject(value: unknown): value is IDataObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Puts the page query on a webhook payload. `query` arrives as a JSON string on
+ * multipart sends (form fields are always strings) and as an object otherwise, and
+ * the URL's own parameters win over whatever the client put into the payload.
+ */
+function applyPageQuery(json: IDataObject, pageQuery: Record<string, string | string[]>): void {
+	if (typeof json.query === 'string') {
+		try {
+			const parsed: unknown = JSON.parse(json.query);
+			// Only a parsed object replaces the raw value, so a payload that happens to be
+			// valid JSON (`"123"`, `"true"`) keeps the type the client sent.
+			if (isQueryObject(parsed)) json.query = parsed;
+		} catch {
+			// Ignore malformed query payloads and keep the original raw value for compatibility.
+		}
+	}
+
+	if (Object.keys(pageQuery).length === 0) return;
+
+	const mergedQuery = Object.create(null) as Record<string, string | string[]>;
+	if (isQueryObject(json.query)) Object.assign(mergedQuery, json.query);
+	Object.assign(mergedQuery, pageQuery);
+	json.query = mergedQuery;
+}
+
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
@@ -814,7 +843,10 @@ export class ChatTrigger extends Node {
 		],
 	};
 
-	private async handleFormData(context: IWebhookFunctions) {
+	private async handleFormData(
+		context: IWebhookFunctions,
+		pageQuery: Record<string, string | string[]>,
+	) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
 		a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 		const options = context.getNodeParameter('options', {}) as IDataObject;
@@ -823,6 +855,8 @@ export class ChatTrigger extends Node {
 		const returnItem: INodeExecutionData = {
 			json: data,
 		};
+
+		applyPageQuery(returnItem.json, pageQuery);
 
 		if (files && Object.keys(files).length) {
 			returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
@@ -926,25 +960,11 @@ export class ChatTrigger extends Node {
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const bodyData = ctx.getBodyData() ?? {};
-		if (typeof bodyData.query === 'string') {
-			try {
-				bodyData.query = JSON.parse(bodyData.query);
-			} catch {
-				// Ignore malformed query payloads and keep the original raw value for compatibility.
-			}
-		}
-		const requestQuery = getQueryParameters(req.query, CHAT_SHELL_INNER_PARAM);
-		if (Object.keys(requestQuery).length > 0) {
-			const mergedQuery = Object.create(null) as Record<string, string | string[]>;
-			if (
-				typeof bodyData.query === 'object' &&
-				bodyData.query !== null &&
-				!Array.isArray(bodyData.query)
-			) {
-				Object.assign(mergedQuery, bodyData.query);
-			}
-			Object.assign(mergedQuery, requestQuery);
-			bodyData.query = mergedQuery;
+		const pageQuery = getQueryParameters(req.query, CHAT_SHELL_INNER_PARAM);
+		// A multipart payload is built from `req.body.data` in `handleFormData`, so its query
+		// is applied there — `bodyData` is only the `{ data, files }` wrapper in that case.
+		if (req.contentType !== 'multipart/form-data') {
+			applyPageQuery(bodyData, pageQuery);
 		}
 
 		try {
@@ -1120,7 +1140,7 @@ export class ChatTrigger extends Node {
 			res.flushHeaders();
 
 			if (req.contentType === 'multipart/form-data') {
-				returnData = [await this.handleFormData(ctx)];
+				returnData = [await this.handleFormData(ctx, pageQuery)];
 			} else {
 				returnData = [{ json: bodyData }];
 			}
@@ -1132,7 +1152,7 @@ export class ChatTrigger extends Node {
 		}
 
 		if (req.contentType === 'multipart/form-data') {
-			returnData = [await this.handleFormData(ctx)];
+			returnData = [await this.handleFormData(ctx, pageQuery)];
 			return {
 				webhookResponse,
 				workflowData: [returnData],
