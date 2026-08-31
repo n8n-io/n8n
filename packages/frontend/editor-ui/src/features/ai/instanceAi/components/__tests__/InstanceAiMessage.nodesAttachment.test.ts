@@ -1,4 +1,3 @@
-import { configure } from '@testing-library/vue';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createThreadComponentRenderer } from '../../__tests__/createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
@@ -11,10 +10,6 @@ vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 		props: ['source'],
 	},
 }));
-
-// NodesAttachmentChips uses `data-testid` (not this project's default
-// `data-test-id`) to mirror the legacy chip components it's based on.
-configure({ testIdAttribute: 'data-testid' });
 
 const renderComponent = createThreadComponentRenderer(InstanceAiMessageComponent, {
 	global: {

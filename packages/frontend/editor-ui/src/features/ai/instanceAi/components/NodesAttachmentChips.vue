@@ -180,7 +180,7 @@ function focusAdjacentPanelRow(currentRow: HTMLElement, direction: 1 | -1) {
 async function focusPanelRowAfterRemoval(removedIndex: number) {
 	await nextTick();
 	const rows = Array.from(
-		panelRef.value?.querySelectorAll('[data-testid="nodes-chip-panel-row"]') ?? [],
+		panelRef.value?.querySelectorAll('[data-test-id="nodes-chip-panel-row"]') ?? [],
 	) as HTMLElement[];
 
 	if (!rows.length) {
@@ -192,7 +192,7 @@ async function focusPanelRowAfterRemoval(removedIndex: number) {
 
 function closePanel() {
 	expandedSetIndex.value = null;
-	openChipAnchor.value?.querySelector<HTMLElement>('[data-testid]')?.focus();
+	openChipAnchor.value?.querySelector<HTMLElement>('[data-test-id]')?.focus();
 }
 
 // Deferred to a macrotask: a keyboard removal destroys the focused row and
@@ -256,7 +256,7 @@ async function enterPanel(setIndex: number) {
 	positionPanel(setIndex);
 	expandedSetIndex.value = setIndex;
 	await nextTick();
-	panelRef.value?.querySelector<HTMLElement>('[data-testid="nodes-chip-panel-row"]')?.focus();
+	panelRef.value?.querySelector<HTMLElement>('[data-test-id="nodes-chip-panel-row"]')?.focus();
 }
 
 const COLLAPSE_CHIP_THRESHOLD = 6;
@@ -311,14 +311,14 @@ const totalNodeCount = computed(() =>
 						:ref="(el) => (panelRef = el as HTMLElement | null)"
 						:class="$style.panel"
 						:style="panelStyle"
-						data-testid="nodes-chip-panel"
+						data-test-id="nodes-chip-panel"
 						@focusout="handlePanelFocusOut(chip.setIndex)"
 					>
 						<div
 							v-for="(node, nodeIndex) in chip.panel"
 							:key="node.id"
 							:class="$style.panelRow"
-							data-testid="nodes-chip-panel-row"
+							data-test-id="nodes-chip-panel-row"
 							tabindex="-1"
 							role="option"
 							:aria-label="node.name"
@@ -337,7 +337,7 @@ const totalNodeCount = computed(() =>
 								v-if="isRemovable"
 								type="button"
 								:class="$style.panelRemove"
-								data-testid="nodes-chip-panel-remove"
+								data-test-id="nodes-chip-panel-remove"
 								tabindex="-1"
 								:aria-label="i18n.baseText('generic.delete')"
 								@click.stop="removeNode(chip.setIndex, nodeIndex)"
@@ -353,7 +353,7 @@ const totalNodeCount = computed(() =>
 			v-if="showCollapseToggle"
 			type="button"
 			:class="$style.collapseToggle"
-			data-testid="nodes-chips-collapse"
+			data-test-id="nodes-chips-collapse"
 			@click.stop="isCollapsed = !isCollapsed"
 		>
 			{{

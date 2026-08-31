@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { configure, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -15,8 +15,6 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn(() => ({ addEventListener: vi.fn(() => () => {}) })),
 }));
-
-configure({ testIdAttribute: 'data-testid' });
 
 const defaultProps = () => ({
 	isStreaming: false,
@@ -69,18 +67,13 @@ describe('InstanceAiInput — staged node attachments', () => {
 	});
 
 	it('enables send with staged chips and empty text, and restores chips on failed send', async () => {
-		const { container, emitted, findAllByTestId, queryAllByTestId } = renderComponent();
+		const { emitted, findAllByTestId, findByTestId, queryAllByTestId } = renderComponent();
 		const store = useInstanceAiStore();
 
 		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
 		await findAllByTestId('nodes-chip-node');
 
-		// The composer uses `data-test-id`, while this file's queries are configured
-		// for the chips' `data-testid` — grab the send button directly.
-		const sendButton = container.querySelector<HTMLButtonElement>(
-			'[data-test-id="instance-ai-send-button"]',
-		);
-		if (!sendButton) throw new Error('send button not rendered');
+		const sendButton = await findByTestId('instance-ai-send-button');
 		expect(sendButton).toBeEnabled();
 		await userEvent.click(sendButton);
 

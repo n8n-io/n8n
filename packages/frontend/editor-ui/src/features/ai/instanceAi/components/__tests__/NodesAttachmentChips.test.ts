@@ -1,4 +1,4 @@
-import { configure, fireEvent } from '@testing-library/vue';
+import { fireEvent } from '@testing-library/vue';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
@@ -12,10 +12,6 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-
-// This project's default test-id attribute is `data-test-id`; this component
-// (and the legacy chip components it mirrors) use `data-testid` per the brief.
-configure({ testIdAttribute: 'data-testid' });
 
 const att = (sets: InstanceAiNodesAttachment['sets']): InstanceAiNodesAttachment => ({
 	type: 'nodes',
@@ -160,7 +156,7 @@ describe('NodesAttachmentChips', () => {
 		const { getByTestId, getAllByTestId } = renderComponent(NodesAttachmentChips, {
 			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
 		});
-		expect(document.querySelector('[data-testid="nodes-chip-panel"]')).toBeNull();
+		expect(document.querySelector('[data-test-id="nodes-chip-panel"]')).toBeNull();
 		await fireEvent.keyDown(getByTestId('nodes-chip-bundle'), { key: 'ArrowDown' });
 		expect(getByTestId('nodes-chip-panel')).toBeTruthy();
 		expect(document.activeElement).toBe(getAllByTestId('nodes-chip-panel-row')[0]);

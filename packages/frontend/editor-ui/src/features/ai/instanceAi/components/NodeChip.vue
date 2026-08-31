@@ -57,7 +57,7 @@ function handleKeydown(event: KeyboardEvent) {
 <template>
 	<span
 		:class="$style.chip"
-		:data-testid="testid"
+		:data-test-id="testid"
 		tabindex="0"
 		role="group"
 		:aria-label="label"
@@ -71,7 +71,7 @@ function handleKeydown(event: KeyboardEvent) {
 			v-if="expanded != null"
 			type="button"
 			:class="$style.iconBtn"
-			data-testid="nodes-chip-expand"
+			data-test-id="nodes-chip-expand"
 			tabindex="-1"
 			:aria-label="
 				i18n.baseText(
@@ -86,7 +86,7 @@ function handleKeydown(event: KeyboardEvent) {
 			v-if="removable"
 			type="button"
 			:class="$style.iconBtn"
-			data-testid="nodes-chip-remove"
+			data-test-id="nodes-chip-remove"
 			tabindex="-1"
 			:aria-label="i18n.baseText('generic.delete')"
 			@click.stop="emit('remove')"
