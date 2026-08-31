@@ -885,10 +885,10 @@ export class ChatTrigger extends Node {
 		const bodyData = ctx.getBodyData() ?? {};
 
 		try {
-			// The editor's canvas chat can't supply webhook credentials, and test webhooks
-			// are only ever registered through an authenticated editor session, so auth is
-			// only enforced for production executions.
-			if (mode !== 'test') {
+			// The editor's canvas chat can't supply webhook credentials, so its session-scoped
+			// test route (flagged by the backend at registration) is exempt from auth. Every
+			// other request — production or sessionless test — enforces the configured auth.
+			if (mode !== 'test' || !ctx.isChatSessionTest()) {
 				await validateAuth(ctx);
 			}
 		} catch (error) {

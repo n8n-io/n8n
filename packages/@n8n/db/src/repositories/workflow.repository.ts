@@ -283,6 +283,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	async findOneByAgentToolReference(
 		projectId: string,
 		reference: { workflowId?: string; workflowName: string },
+		options: { withActiveVersion?: boolean } = {},
 	) {
 		const workflowWhere: FindOptionsWhere<WorkflowEntity> =
 			reference.workflowId !== undefined
@@ -291,7 +292,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		return await this.findOne({
 			where: { ...workflowWhere, shared: { projectId } },
-			relations: ['shared'],
+			relations: options.withActiveVersion ? ['shared', 'activeVersion'] : ['shared'],
 		});
 	}
 

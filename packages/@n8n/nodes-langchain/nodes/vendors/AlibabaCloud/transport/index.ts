@@ -62,7 +62,7 @@ export async function apiRequest(
  *
  * @param taskId - The task ID returned by the async task creation call.
  * @param pollIntervalMs - Interval between polls in milliseconds. Defaults to 15 seconds.
- * @returns The final task response containing video_url on success.
+ * @returns The final task response on success.
  */
 export async function pollTaskResult(
 	this: IExecuteFunctions,
@@ -77,13 +77,12 @@ export async function pollTaskResult(
 		if (TERMINAL_STATUSES.includes(taskStatus)) {
 			if (taskStatus === 'FAILED') {
 				const errorCode = response?.output?.code || response?.code || 'UNKNOWN';
-				const errorMessage =
-					response?.output?.message || response?.message || 'Video generation task failed';
+				const errorMessage = response?.output?.message || response?.message || 'Task failed';
 				throw new NodeOperationError(this.getNode(), `Task failed: [${errorCode}] ${errorMessage}`);
 			}
 
 			if (taskStatus === 'CANCELED') {
-				throw new NodeOperationError(this.getNode(), 'Video generation task was canceled');
+				throw new NodeOperationError(this.getNode(), 'Task was canceled');
 			}
 
 			// SUCCEEDED

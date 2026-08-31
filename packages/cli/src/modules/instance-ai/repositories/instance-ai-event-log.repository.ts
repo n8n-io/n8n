@@ -32,9 +32,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * in one transaction. The (threadId, seq) PK makes a concurrent-writer race
 	 * fail loudly instead of silently interleaving — the caller re-reads maxSeq
 	 * and retries. Returns the serialized payload bytes written (instrumentation).
-	 *
-	 * INS-844 (compose with the shared-sequence drain): the live-id Redis INCRBY
-	 * merges into this call, so id assignment and durable insert become one round trip.
+	 * Id assignment and the durable insert are one round trip.
 	 */
 	async appendBatch(
 		threadId: string,
