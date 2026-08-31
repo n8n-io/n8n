@@ -243,7 +243,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: var(--resizer--size);
 	top: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ns-resize;
+	cursor: row-resize;
 }
 
 .bottom {
@@ -251,7 +251,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: var(--resizer--size);
 	bottom: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ns-resize;
+	cursor: row-resize;
 }
 
 .left {
