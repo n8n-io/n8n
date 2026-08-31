@@ -24,12 +24,24 @@ on:
     - cron: '0 3 * * *' # 3:00 AM UTC, after the nightly Docker build at midnight
   pull_request:
     paths:
+      - 'docker/docker-bake.hcl'
       - 'docker/images/n8n/**'
       - 'docker/images/n8n-base/**'
       - 'docker/images/runners/**'
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
       - 'scripts/smoke-n8n-image.mjs'
+      - '.github/scripts/docker/kafka-native-smoke-check.mjs'
+      # These drive the build and the image distribution, so a change here can
+      # break the chain without touching a Dockerfile.
+      - '.github/actions/build-n8n-docker/action.yml'
+      - '.github/actions/load-n8n-docker/action.yml'
+      - '.github/workflows/docker-build-push.yml'
+      # Patched native dependencies change here. pnpm-workspace.yaml is
+      # excluded: it changes too often for a two-arch no-cache build. A native
+      # catalog bump that slips past this is still caught before it ships, by
+      # verify-pushed-images in docker-build-push.yml.
+      - 'patches/**'
   workflow_dispatch:
 
 concurrency:
@@ -70,6 +82,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           build-command: 'pnpm build:docker:clean'
           enable-docker-cache: true
+          # Use a separate key. This job builds with --no-cache. A shared key
+          # would write an empty snapshot over the release layers.
+          docker-cache-key: docker-smoke
 
       - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
 

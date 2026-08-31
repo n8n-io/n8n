@@ -1743,7 +1743,7 @@ describe('NodeCredentials', () => {
 
 				// The select stays visible with n8n credits as the selection.
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
-				expect(await screen.findByDisplayValue('n8n credits')).toBeInTheDocument();
+				expect(await screen.findByDisplayValue('Gateway credits')).toBeInTheDocument();
 			});
 
 			it('keeps the managed selection when gateway config has not loaded yet', () => {
@@ -1824,7 +1824,7 @@ describe('NodeCredentials', () => {
 
 				// The readonly disabled input shows the managed selection.
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
-				expect(screen.getByDisplayValue('n8n credits')).toBeInTheDocument();
+				expect(screen.getByDisplayValue('Gateway credits')).toBeInTheDocument();
 			});
 
 			it('should show the readonly disabled input when readonly and not managed', () => {

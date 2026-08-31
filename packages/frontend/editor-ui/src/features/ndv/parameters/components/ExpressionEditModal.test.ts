@@ -3,7 +3,7 @@ import ExpressionEditModal from './ExpressionEditModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, type Pinia } from 'pinia';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 import { useUIStore } from '@/app/stores/ui.store';
