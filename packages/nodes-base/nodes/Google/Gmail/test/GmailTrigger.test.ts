@@ -3,11 +3,7 @@ import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import {
-	GmailTrigger,
-	MAX_LIST_PAGES,
-	MAX_PENDING_FETCH_ATTEMPTS,
-} from '../GmailTrigger.node';
+import { GmailTrigger, MAX_LIST_PAGES, MAX_PENDING_FETCH_ATTEMPTS } from '../GmailTrigger.node';
 import type { Message, ListMessage, MessageListResponse } from '../types';
 
 vi.mock('mailparser');
