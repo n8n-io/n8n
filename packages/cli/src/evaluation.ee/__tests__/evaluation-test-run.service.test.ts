@@ -35,7 +35,7 @@ describe('EvaluationTestRunService', () => {
 		);
 	});
 
-	describe('getManyAndCount', () => {
+	describe('findManyAndCount', () => {
 		it('lists and counts test runs for a workflow', async () => {
 			const testRuns = [{ id: 'run-1', testCaseCount: 2 }] as Awaited<
 				ReturnType<TestRunRepository['getMany']>
@@ -43,7 +43,7 @@ describe('EvaluationTestRunService', () => {
 			testRunRepository.getMany.mockResolvedValueOnce(testRuns);
 			testRunRepository.countByWorkflowId.mockResolvedValueOnce(3);
 
-			const result = await service.getManyAndCount('wf-1', { offset: 0, limit: 10 }, 'completed');
+			const result = await service.findManyAndCount('wf-1', { offset: 0, limit: 10 }, 'completed');
 
 			expect(testRunRepository.getMany).toHaveBeenCalledWith(
 				'wf-1',

@@ -45,7 +45,7 @@ const evaluationsHandlers: EvaluationsHandlers = {
 			const { id: workflowId } = req.params;
 			const { offset = 0, limit = 100, status } = req.query;
 
-			const { testRuns, count } = await Container.get(EvaluationTestRunService).getManyAndCount(
+			const { testRuns, count } = await Container.get(EvaluationTestRunService).findManyAndCount(
 				workflowId,
 				{ offset, limit },
 				status,

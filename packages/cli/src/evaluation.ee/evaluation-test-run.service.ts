@@ -21,7 +21,7 @@ export class EvaluationTestRunService {
 		private readonly licenseState: LicenseState,
 	) {}
 
-	async getManyAndCount(workflowId: string, pagination: Pagination, status?: TestRun['status']) {
+	async findManyAndCount(workflowId: string, pagination: Pagination, status?: TestRun['status']) {
 		const [testRuns, count] = await Promise.all([
 			this.testRunRepository.getMany(workflowId, pagination, status),
 			this.testRunRepository.countByWorkflowId(workflowId, status),
