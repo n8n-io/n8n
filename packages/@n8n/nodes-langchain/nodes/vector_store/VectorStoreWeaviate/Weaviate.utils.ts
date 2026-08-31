@@ -1,5 +1,5 @@
 import { jsonParse, OperationalError } from 'n8n-workflow';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type {
 	FilterValue,
@@ -33,39 +33,80 @@ const INTEGRATION_NAME = 'n8n-langchain';
  */
 const INTEGRATION_HEADER = 'X-Weaviate-Client-Integration';
 
+/** Errors that mean "nothing here", so the walk should continue upwards. */
+const MISSING_PATH_CODES = new Set(['ENOENT', 'ENOTDIR']);
+
 /**
- * Resolves the `@n8n/n8n-nodes-langchain` package version, reported alongside
- * {@link INTEGRATION_NAME} to Weaviate telemetry. This is a single, consistent
- * source — the package version — and all packages in the monorepo share the
- * same version, so it also matches the n8n version.
- *
- * The version is read from the nearest `package.json` by walking up from this
- * module, which is robust to the differing directory depth between the compiled
- * (`dist/nodes/...`) and source/test (`nodes/...`) layouts. `moduleResolution`
- * is classic `node` here, so a direct `package.json` import is not an option.
- *
- * Memoized, since a client is created per node execution but the version cannot
- * change while the process is running.
+ * Filesystem errors worth retrying. Everything else — a missing or malformed
+ * `package.json` — is a permanent property of the installation, so its failure
+ * is cached rather than re-walked on every client creation.
  */
-let cachedIntegrationVersion: string | undefined;
+const TRANSIENT_FS_CODES = new Set(['EMFILE', 'ENFILE', 'EAGAIN', 'EBUSY', 'EIO']);
 
-export function getIntegrationVersion(): string {
-	if (cachedIntegrationVersion !== undefined) return cachedIntegrationVersion;
-
+/**
+ * Resolves the `@n8n/n8n-nodes-langchain` package version by walking up from
+ * this module to the nearest `package.json`. The walk keeps this robust to the
+ * differing directory depth between the compiled (`dist/nodes/...`) and
+ * source/test (`nodes/...`) layouts.
+ *
+ * A direct `package.json` import is not an option: the build config
+ * (`@n8n/typescript-config/modern/tsconfig.cjs.go.json`) sets
+ * `resolveJsonModule: false`.
+ *
+ * Only "path does not exist" errors continue the walk — a `package.json` that
+ * exists but cannot be read or parsed is a real problem, and must not silently
+ * resolve some other package's version further up the tree.
+ */
+async function resolveIntegrationVersion(): Promise<string> {
 	let dir = __dirname;
-	// Walk up until a package.json is found or the filesystem root is reached.
 	while (true) {
-		const packageJsonPath = join(dir, 'package.json');
-		if (existsSync(packageJsonPath)) {
-			const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'));
-			cachedIntegrationVersion = packageJson.version;
-			return cachedIntegrationVersion;
+		try {
+			const contents = await readFile(join(dir, 'package.json'), 'utf8');
+			const { version } = jsonParse<{ version?: string }>(contents);
+			// A package.json without a version is not the one we are looking for;
+			// returning it would tag requests with `n8n-langchain/undefined`.
+			if (version) return version;
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code;
+			if (code === undefined || !MISSING_PATH_CODES.has(code)) throw error;
 		}
 		const parent = dirname(dir);
 		if (parent === dir) break;
 		dir = parent;
 	}
 	throw new OperationalError('Could not resolve the n8n-nodes-langchain package version');
+}
+
+let cachedIntegrationVersion: Promise<string> | undefined;
+
+/**
+ * The version reported alongside {@link INTEGRATION_NAME} to Weaviate
+ * telemetry. This is the version of the integration itself — the
+ * nodes-langchain package — which is the value the `n8n-langchain/<version>`
+ * header is meant to carry.
+ *
+ * The in-flight promise is memoized rather than the resolved value, so that
+ * concurrent first calls share a single filesystem read.
+ *
+ * A rejection is cached too, since a missing or malformed `package.json` is a
+ * permanent property of the installation and re-walking it on every client
+ * creation would just repeat the same failure. Only transient filesystem
+ * errors evict the cache, so a passing resource blip does not disable
+ * telemetry for the lifetime of the process.
+ */
+export async function getIntegrationVersion(): Promise<string> {
+	cachedIntegrationVersion ??= resolveIntegrationVersion();
+	const pending = cachedIntegrationVersion;
+	try {
+		return await pending;
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException).code;
+		// Identity-guarded, so a retry already started by another caller is kept.
+		if (code !== undefined && TRANSIENT_FS_CODES.has(code) && cachedIntegrationVersion === pending) {
+			cachedIntegrationVersion = undefined;
+		}
+		throw error;
+	}
 }
 
 /**
@@ -86,7 +127,7 @@ export async function registerIntegrationHeader(client: WeaviateClient): Promise
 		// The client only spreads object-form headers into requests, so only the
 		// `Record<string, string>` form can be augmented in place.
 		if (headers && !Array.isArray(headers)) {
-			headers[INTEGRATION_HEADER] = `${INTEGRATION_NAME}/${getIntegrationVersion()}`;
+			headers[INTEGRATION_HEADER] = `${INTEGRATION_NAME}/${await getIntegrationVersion()}`;
 		}
 	} catch {
 		// Best-effort telemetry: never let header registration break the node.
