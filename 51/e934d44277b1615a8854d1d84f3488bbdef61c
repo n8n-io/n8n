@@ -1,0 +1,41 @@
+packages/cli/test/integration/scheduling/scheduled-job-lifecycle.test.ts
+  s_0aeccad1d2ec55::t_edc21945894228 1-109,114-212,215-218,220-258,261-263,265-293
+  s_0aeccad1d2ec55::t_0c4535db95eabb 110-113
+  s_0aeccad1d2ec55::t_e7a7a861a6ef8d 213-214,219,259-260,264
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  s_f4348d95023aa0::t_dacf65f6f132cb 1-9,11-22
+  ai_agent 10,142-276
+  s_d0e9b43a636764::t_b82baddf44eb73 23-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51e934d44277b1615a8854d1d84f3488bbdef61c",
+  "prompts": {},
+  "sessions": {
+    "s_0aeccad1d2ec55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "238bf090-8a6b-4c83-9195-6e4ffb49935f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_d0e9b43a636764": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dae7824-17ea-4f33-8099-6a9b1af82418",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_f4348d95023aa0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad94c5e6-773e-45b1-8edb-c8faa2523af2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
