@@ -50,10 +50,11 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 		.systemInstruction(
 			'Prefer spawn_background_subagent for independent pieces of work that can run in parallel ' +
 				'while you continue. After spawning, either continue with non-overlapping work or end ' +
-				'your turn telling the user that work continues in the background. Retrieve outcomes ' +
-				'later with check_background_jobs — the final answer is the contract; never expect the ' +
-				'full trace. Instruct sub-agents producing large outputs to write them to the shared ' +
-				'workspace and return a summary.',
+				'your turn telling the user that work continues in the background — never poll ' +
+				'check_background_jobs in a loop waiting for jobs to finish; check once in a later turn ' +
+				'instead. The final answer is the contract; never expect the full trace. Instruct ' +
+				'sub-agents producing large outputs to write them to the shared workspace and return a ' +
+				'summary.',
 		)
 		.input(
 			z.object({
@@ -153,7 +154,9 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 	return new Tool('check_background_jobs')
 		.description(
 			'List the background jobs of this conversation with their status and, once settled, ' +
-				'their result or error. Pass an empty object {} to list all jobs (required — do not pass null).',
+				'their result or error. Pass an empty object {} to list all jobs (required — do not pass null). ' +
+				'Call this at most once per turn: when jobs are still running, tell the user and end your ' +
+				'turn — repeated checks within one turn only burn time and tokens.',
 		)
 		.input(
 			z.object({
