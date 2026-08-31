@@ -357,7 +357,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `victoriaLogs` | - | VictoriaLogs for log storage |
 | `victoriaMetrics` | - | VictoriaMetrics for metrics |
 | `vector` | - | Vector log collector (depends on victoriaLogs) |
-| `tracing` | ✓ | Jaeger for distributed tracing |
+| `tracing` | ✓ | Jaeger for distributed tracing (OTLP receivers: HTTP on 4318, gRPC on 4317) |
 | `kafka` | ✓ | Kafka broker for message queue testing |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |

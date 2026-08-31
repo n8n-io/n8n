@@ -4,7 +4,8 @@ import { GenericContainer, Wait } from 'testcontainers';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceResult } from './types';
 
-const JAEGER_OTLP_PORT = 4318;
+const JAEGER_OTLP_HTTP_PORT = 4318;
+const JAEGER_OTLP_GRPC_PORT = 4317;
 const JAEGER_UI_PORT = 16686;
 const N8N_TRACER_INGEST_PORT = 8889;
 const N8N_TRACER_HEALTH_PORT = 8888;
@@ -18,7 +19,14 @@ export interface TracingConfig {
 export interface TracingMeta {
 	jaeger: {
 		uiUrl: string;
+		/** OTLP/HTTP-protobuf receiver, as seen from inside the stack network. */
 		internalOtlpEndpoint: string;
+		/**
+		 * OTLP/gRPC receiver, as seen from inside the stack network. Same
+		 * `http://` scheme as the HTTP endpoint — for gRPC the scheme only
+		 * signals TLS on/off, and the endpoint carries no URL path.
+		 */
+		internalOtlpGrpcEndpoint: string;
 	};
 	tracer: {
 		internalIngestEndpoint: string;
@@ -56,10 +64,11 @@ export const tracing: Service<TracingResult> = {
 				'com.docker.compose.project': projectName,
 				'com.docker.compose.service': 'jaeger',
 			})
-			.withExposedPorts(JAEGER_UI_PORT, JAEGER_OTLP_PORT)
+			.withExposedPorts(JAEGER_UI_PORT, JAEGER_OTLP_HTTP_PORT, JAEGER_OTLP_GRPC_PORT)
 			.withEnvironment({
 				COLLECTOR_OTLP_ENABLED: 'true',
-				COLLECTOR_OTLP_HTTP_HOST_PORT: '0.0.0.0:4318',
+				COLLECTOR_OTLP_HTTP_HOST_PORT: `0.0.0.0:${JAEGER_OTLP_HTTP_PORT}`,
+				COLLECTOR_OTLP_GRPC_HOST_PORT: `0.0.0.0:${JAEGER_OTLP_GRPC_PORT}`,
 			})
 			.withWaitStrategy(
 				Wait.forHttp('/', JAEGER_UI_PORT).forStatusCode(200).withStartupTimeout(60000),
@@ -68,7 +77,8 @@ export const tracing: Service<TracingResult> = {
 			.start();
 
 		const jaegerUiPort = jaegerContainer.getMappedPort(JAEGER_UI_PORT);
-		const internalOtlpEndpoint = `http://${JAEGER_HOSTNAME}:${JAEGER_OTLP_PORT}`;
+		const internalOtlpEndpoint = `http://${JAEGER_HOSTNAME}:${JAEGER_OTLP_HTTP_PORT}`;
+		const internalOtlpGrpcEndpoint = `http://${JAEGER_HOSTNAME}:${JAEGER_OTLP_GRPC_PORT}`;
 
 		// Start n8n-tracer pointing to Jaeger
 		const tracerContainer = await new GenericContainer(TEST_CONTAINER_IMAGES.n8nTracer)
@@ -103,6 +113,7 @@ export const tracing: Service<TracingResult> = {
 				jaeger: {
 					uiUrl: `http://localhost:${jaegerUiPort}`,
 					internalOtlpEndpoint,
+					internalOtlpGrpcEndpoint,
 				},
 				tracer: {
 					internalIngestEndpoint,
@@ -147,6 +158,10 @@ export class TracingHelper {
 
 	get internalOtlpEndpoint(): string {
 		return this.meta.jaeger.internalOtlpEndpoint;
+	}
+
+	get internalOtlpGrpcEndpoint(): string {
+		return this.meta.jaeger.internalOtlpGrpcEndpoint;
 	}
 
 	get internalIngestEndpoint(): string {
