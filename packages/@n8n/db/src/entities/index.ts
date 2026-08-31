@@ -1,3 +1,10 @@
+import {
+	ActivityEvent,
+	activityEventCategories,
+	activityResourceTypes,
+	type ActivityEventCategory,
+	type ActivityResourceType,
+} from './activity-event';
 import { AgentEvalDataset, type AgentEvalColumnMapping } from './agent-eval-dataset.ee';
 import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
@@ -90,6 +97,11 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	ActivityEvent,
+	activityEventCategories,
+	activityResourceTypes,
+	type ActivityEventCategory,
+	type ActivityResourceType,
 	AgentEvalDataset,
 	type AgentEvalColumnMapping,
 	AgentEvalRun,
@@ -178,6 +190,7 @@ export {
 };
 
 export const entities = {
+	ActivityEvent,
 	AgentEvalDataset,
 	AgentEvalRun,
 	AgentEvalResult,
