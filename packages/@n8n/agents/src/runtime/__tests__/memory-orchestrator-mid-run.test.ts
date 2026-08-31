@@ -320,4 +320,68 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		const cursor = await store.getCursor(THREAD_ID);
 		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
 	});
+
+	it('latches mid-run observation off after repeated non-advancing observer runs', async () => {
+		const store = new InMemoryMemory();
+		// Runs but never yields a parseable observation, so the cursor never advances.
+		const observe = vi.fn(async () => await Promise.resolve('not a bullet line'));
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 10,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('a user message crossing the threshold')]);
+
+		for (let i = 0; i < 5; i++) {
+			await orchestrator.maybeObserveMidRun(list, runOptions());
+		}
+
+		// Three blocking attempts, then the latch stops the per-boundary retries.
+		expect(observe).toHaveBeenCalledTimes(3);
+		expect(list.forLlm('base').messages).toHaveLength(1);
+	});
+});
+
+describe('MemoryOrchestrator.persistTurnDelta', () => {
+	const observationalMemory: ObservationalMemoryConfig = {
+		observerThresholdTokens: 100_000,
+		observe: async () => await Promise.resolve(''),
+		observationLogTailLimit: 20,
+	};
+
+	it('persists only the unpersisted suffix of the turn across repeated crossings', async () => {
+		const store = new InMemoryMemory();
+		const { orchestrator } = buildOrchestrator(store, observationalMemory);
+		const saveSpy = vi.spyOn(store, 'saveMessages');
+		const list = new AgentMessageList();
+		list.addInput([userMsg('first message')]);
+
+		await orchestrator.persistTurnDelta(list, runOptions());
+		list.addResponse([assistantMsg('second message')]);
+		await orchestrator.persistTurnDelta(list, runOptions());
+		// Nothing new: no store write at all.
+		await orchestrator.persistTurnDelta(list, runOptions());
+
+		expect(saveSpy.mock.calls.map((c) => c[0].messages.length)).toEqual([1, 1]);
+		expect(await store.getMessagesForObservationScope(THREAD_ID)).toHaveLength(2);
+	});
+
+	it('re-persists the turn after a resume entry resets the watermark', async () => {
+		const store = new InMemoryMemory();
+		const { orchestrator } = buildOrchestrator(store, observationalMemory);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('needs approval')]);
+		await orchestrator.persistTurnDelta(list, runOptions());
+
+		const saveSpy = vi.spyOn(store, 'saveMessages');
+		await orchestrator.persistTurnDelta(list, runOptions());
+		expect(saveSpy).not.toHaveBeenCalled();
+
+		// Resume entry point: a suspension settles the pending tool call in
+		// place, so the restored turn must be re-persisted from scratch.
+		await orchestrator.applyObservationMask(list, runOptions().persistence);
+		await orchestrator.persistTurnDelta(list, runOptions());
+		expect(saveSpy).toHaveBeenCalledTimes(1);
+	});
 });

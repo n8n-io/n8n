@@ -5,7 +5,7 @@ import {
 	runEpisodicMemoryIndexer,
 } from './episodic-memory';
 import { createFilteredLogger } from '../logger';
-import { saveMessagesToThread } from './memory-store';
+import { compareKeyset, saveMessagesToThread } from './memory-store';
 import {
 	renderObserverTranscript,
 	runObservationLogObserver,
@@ -21,6 +21,7 @@ import {
 	type ScopedMemoryTaskResult,
 } from './scoped-memory-task-runner';
 import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
+import { getCreatedAt } from '../../sdk/message';
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
@@ -48,6 +49,14 @@ import { sanitizeOffloadedToolResultsForMemory } from '../tools/tool-result-guar
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 /** Fraction of observerThresholdTokens at which the mid-run observer starts in the background. */
 const MID_RUN_SOFT_THRESHOLD_RATIO = 0.7;
+/**
+ * Consecutive observer attempts that failed to advance the cursor (provider
+ * outage, persistently unparseable output, estimator disagreement) before
+ * mid-run observation stops retrying for the rest of the run. Without the
+ * latch, the hard path would fire a blocking observer call at every loop
+ * boundary. Post-turn observation is unaffected.
+ */
+const MID_RUN_MAX_NON_ADVANCING_ATTEMPTS = 3;
 const logger = createFilteredLogger();
 
 function hasFunctionProperty<K extends PropertyKey>(
@@ -101,6 +110,15 @@ export class MemoryOrchestrator {
 
 	/** In-flight background mid-run observer task; `result` set on settlement. */
 	private midRunObserverTask: MidRunObserverTask | undefined;
+
+	/** Consecutive mid-run observer attempts that did not advance the cursor. */
+	private midRunNonAdvancingAttempts = 0;
+
+	/**
+	 * Keyset high-water mark of turn messages already persisted mid-run;
+	 * `persistTurnDelta` saves only the suffix after it.
+	 */
+	private lastPersistedTurnKeyset: { createdAt: Date; id: string } | undefined;
 
 	constructor(
 		private readonly config: AgentRuntimeConfig,
@@ -180,6 +198,7 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
+		this.resetMidRunState();
 		if (this.config.memory && options?.persistence?.threadId) {
 			const telemetry = this.runtimeTelemetry.resolve(options);
 			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
@@ -303,7 +322,19 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const memory = this.config.memory;
 		if (!memory || !options?.persistence) return;
-		const delta = sanitizeOffloadedToolResultsForMemory(list.turnDelta());
+		// Mid-run boundaries can cross the observer threshold many times; without
+		// the watermark each crossing would re-upsert the whole turn, quadratic in
+		// turn length. The watermark is per-run state (reset on run entry) because
+		// a suspension settles a pending tool call in place across runs — a resume
+		// starts with a fresh watermark and re-persists the restored turn once.
+		const watermark = this.lastPersistedTurnKeyset;
+		const unpersisted = watermark
+			? list.turnDelta().filter((m) => {
+					const createdAt = getCreatedAt(m);
+					return !createdAt || compareKeyset({ createdAt, id: m.id }, watermark) > 0;
+				})
+			: list.turnDelta();
+		const delta = sanitizeOffloadedToolResultsForMemory(unpersisted);
 		if (delta.length === 0) return;
 		try {
 			const telemetry = this.runtimeTelemetry.resolve(options);
@@ -314,6 +345,11 @@ export class MemoryOrchestrator {
 				delta,
 				telemetry,
 			);
+			const last = unpersisted[unpersisted.length - 1];
+			const lastCreatedAt = getCreatedAt(last);
+			if (lastCreatedAt) {
+				this.lastPersistedTurnKeyset = { createdAt: lastCreatedAt, id: last.id };
+			}
 		} catch (error) {
 			// Best-effort: a completed turn's end-of-turn save still persists this delta,
 			// so a transient failure here must not abort the suspend/cancel flow. Only a turn
@@ -378,7 +414,9 @@ export class MemoryOrchestrator {
 	 * Observer run. Best-effort: a skipped (lock held) or failed observer run —
 	 * or any failure in the surrounding store reads and token counting — leaves
 	 * the window untouched and never fails the run; the budget stays high and
-	 * the next boundary retries.
+	 * the next boundary retries. After `MID_RUN_MAX_NON_ADVANCING_ATTEMPTS`
+	 * consecutive attempts that did not advance the cursor, mid-run observation
+	 * latches off for the rest of the run instead of retrying every boundary.
 	 */
 	async maybeObserveMidRun(
 		list: AgentMessageList,
@@ -396,6 +434,34 @@ export class MemoryOrchestrator {
 		}
 	}
 
+	/** Per-run mid-run observation state; reset on each run entry (generate via `loadInto`, resume via `applyObservationMask`). */
+	private resetMidRunState(): void {
+		this.midRunNonAdvancingAttempts = 0;
+		this.lastPersistedTurnKeyset = undefined;
+	}
+
+	/**
+	 * Track whether an observer attempt advanced the cursor; after
+	 * `MID_RUN_MAX_NON_ADVANCING_ATTEMPTS` consecutive misses, `observeMidRun`
+	 * latches off for the rest of the run. Returns whether the cursor advanced.
+	 */
+	private noteMidRunObserverResult(
+		result: ScopedMemoryTaskResult<RunObservationLogObserverResult>,
+		threadId: string,
+	): boolean {
+		if (didAdvanceCursor(result)) {
+			this.midRunNonAdvancingAttempts = 0;
+			return true;
+		}
+		this.midRunNonAdvancingAttempts += 1;
+		if (this.midRunNonAdvancingAttempts === MID_RUN_MAX_NON_ADVANCING_ATTEMPTS) {
+			logger.warn('Mid-run observation latched off after repeated non-advancing observer runs', {
+				threadId,
+			});
+		}
+		return false;
+	}
+
 	private async observeMidRun(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
@@ -411,10 +477,12 @@ export class MemoryOrchestrator {
 		if (this.midRunObserverTask?.result) {
 			const { result } = this.midRunObserverTask;
 			this.midRunObserverTask = undefined;
-			if (didAdvanceCursor(result)) {
+			if (this.noteMidRunObserverResult(result, options.persistence.threadId)) {
 				await this.activateObservations(list, options.persistence);
 			}
 		}
+
+		if (this.midRunNonAdvancingAttempts >= MID_RUN_MAX_NON_ADVANCING_ATTEMPTS) return;
 
 		const budget = await this.estimateVisibleBudget(list);
 		const softThresholdTokens = Math.max(
@@ -438,7 +506,7 @@ export class MemoryOrchestrator {
 			if (this.midRunObserverTask) {
 				const result = await this.midRunObserverTask.handle.done;
 				this.midRunObserverTask = undefined;
-				if (didAdvanceCursor(result)) {
+				if (this.noteMidRunObserverResult(result, options.persistence.threadId)) {
 					await this.activateObservations(list, options.persistence);
 					if ((await this.estimateVisibleBudget(list)) < observerThresholdTokens) return;
 				}
@@ -451,7 +519,7 @@ export class MemoryOrchestrator {
 			);
 			if (!handle) return;
 			const result = await handle.done;
-			if (!didAdvanceCursor(result)) return;
+			if (!this.noteMidRunObserverResult(result, options.persistence.threadId)) return;
 			await this.activateObservations(list, options.persistence);
 			return;
 		}
@@ -512,6 +580,11 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		persistence: AgentPersistenceOptions | undefined,
 	): Promise<void> {
+		// Resume entry point (a resume never runs `loadInto`): reset per-run
+		// mid-run state so a cached runtime cannot carry the suspended run's
+		// watermark or latch into the resumed run — the resolved tool call
+		// mutated in place and must be re-persisted.
+		this.resetMidRunState();
 		const { memory, observationalMemory } = this.config;
 		if (!observationalMemory) return;
 		if (!memory || !persistence || !hasObservationLogObserverMemory(memory)) return;

@@ -350,8 +350,16 @@ export class AgentMessageList {
 	 * Later calls overwrite the boundary (cursors only move forward).
 	 */
 	maskObservedMessages(cursor: { lastObservedAt: Date; lastObservedMessageId: string }): void {
+		// Store adapters are an open interface: a JSON-backed one can hand back
+		// lastObservedAt as an ISO string. An unusable date would compare as NaN
+		// and mask every message, so fail open and leave the window unmasked.
+		const lastObservedAt =
+			cursor.lastObservedAt instanceof Date
+				? cursor.lastObservedAt
+				: new Date(cursor.lastObservedAt);
+		if (isNaN(lastObservedAt.getTime())) return;
 		this.observationMaskBoundary = {
-			createdAt: cursor.lastObservedAt,
+			createdAt: lastObservedAt,
 			id: cursor.lastObservedMessageId,
 		};
 	}
@@ -361,8 +369,11 @@ export class AgentMessageList {
 		const boundary = this.observationMaskBoundary;
 		if (!boundary) return this.all;
 		return this.all.filter((m) => {
-			// createdAt can be an ISO string after a checkpoint JSON round-trip
-			const createdAt = m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt);
+			// createdAt can be an ISO string after a checkpoint JSON round-trip. An
+			// unparseable date cannot be compared — keep the message visible rather
+			// than silently dropping it from the window.
+			const createdAt = getCreatedAt(m);
+			if (!createdAt) return true;
 			return compareKeyset({ createdAt, id: m.id }, boundary) > 0;
 		});
 	}
@@ -414,7 +425,8 @@ export class AgentMessageList {
 		for (const m of data.messages) {
 			// createdAt is an ISO string after the checkpoint JSON round-trip —
 			// rehydrate so downstream consumers can rely on the declared Date type.
-			const msg = m.createdAt instanceof Date ? m : { ...m, createdAt: new Date(m.createdAt) };
+			const createdAt = getCreatedAt(m) ?? m.createdAt;
+			const msg = createdAt === m.createdAt ? m : { ...m, createdAt };
 			list.all.push(msg);
 			if (historyIdSet.has(msg.id)) list.historySet.add(msg);
 			if (inputIdSet.has(msg.id)) list.inputSet.add(msg);

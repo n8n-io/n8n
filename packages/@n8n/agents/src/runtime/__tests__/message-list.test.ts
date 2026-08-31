@@ -615,6 +615,30 @@ describe('AgentMessageList — observation masking', () => {
 		expect(serialized).toContain('text c');
 	});
 
+	it('masks from a string-dated cursor and ignores an unparseable one', () => {
+		// Store adapters are an open interface — a JSON-backed one hands back
+		// lastObservedAt as an ISO string instead of a Date.
+		const list = new AgentMessageList();
+		list.addHistory([
+			dbMsgWithId('m1', 'observed history', at(1)),
+			dbMsgWithId('m2', 'still visible', at(2)),
+		]);
+
+		list.maskObservedMessages({
+			lastObservedAt: at(1).toISOString() as unknown as Date,
+			lastObservedMessageId: 'm1',
+		});
+		expect(list.llmVisibleMessages().map((m) => m.id)).toEqual(['m2']);
+
+		// An unusable date would compare as NaN and mask every message — the
+		// boundary must stay where it was instead.
+		list.maskObservedMessages({
+			lastObservedAt: 'not-a-date' as unknown as Date,
+			lastObservedMessageId: 'm2',
+		});
+		expect(list.llmVisibleMessages().map((m) => m.id)).toEqual(['m2']);
+	});
+
 	it('sends exactly one continuation reminder when the whole window is masked', () => {
 		const list = new AgentMessageList();
 		list.addHistory([
