@@ -593,7 +593,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		]);
 	});
 
-	it('references a published sub-agent by id only, with no versionId pin', async () => {
+	it('references a saved sub-agent by id only, with no versionId pin', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: 'agent-billing',
@@ -613,7 +613,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		expect(sourcesById).toEqual({ 'agent-billing': { agentId: 'agent-billing' } });
 	});
 
-	it('omits an unpublished sub-agent from sourcesById and availableSubAgents', async () => {
+	it('includes an unpublished sub-agent in sourcesById and availableSubAgents', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: 'agent-billing',
@@ -633,8 +633,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			'project-1',
 		);
 
-		expect(sourcesById).toEqual({});
-		expect(availableSubAgents).toEqual([]);
+		expect(sourcesById).toEqual({ 'agent-billing': { agentId: 'agent-billing' } });
+		expect(availableSubAgents).toEqual([{ id: 'agent-billing', name: 'Billing Agent' }]);
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
