@@ -1664,6 +1664,117 @@ export class WorkflowExecute {
 		}
 	}
 
+	/**
+	 * Prepare the dynamic-credential bookkeeping for the node that is about to run.
+	 *
+	 * A sub-execution that finished while this execution was waiting reported its
+	 * private-credential usage on the resumed stack entry (the node re-runs disabled,
+	 * so `executeWorkflow` never reports again). Restore it so the new task and
+	 * `runtimeData.executedByUserId` still inherit the flags. The stash is
+	 * transport-only, so consume it to keep it out of the persisted task metadata.
+	 */
+	private resetDynamicCredentialsUsage(executionData: IExecuteData): void {
+		this.additionalData.currentNodeUsedDynamicCredentials = false;
+		this.additionalData.currentNodeAttemptedDynamicCredentials = false;
+
+		const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
+		if (reportedUsage) {
+			applyDynamicCredentialsUsage(this.additionalData, reportedUsage);
+			delete executionData.metadata?.dynamicCredentialsUsage;
+		}
+	}
+
+	/** Create the task metadata that is known before the node runs. */
+	private createTaskStartedData(executionData: IExecuteData): ITaskStartedData {
+		return {
+			startTime: Date.now(),
+			executionIndex: this.additionalData.currentNodeExecutionIndex++,
+			source: !executionData.source ? [] : executionData.source.main,
+			hints: [],
+		};
+	}
+
+	/**
+	 * Stamp every input item with its `pairedItem` lineage, so an item can be traced back
+	 * to the item it came from.
+	 */
+	private addPairedItemLineage(executionData: IExecuteData): ITaskDataConnections {
+		const newTaskDataConnections: ITaskDataConnections = {};
+		for (const connectionType of Object.keys(executionData.data)) {
+			newTaskDataConnections[connectionType] = executionData.data[connectionType].map(
+				(input, inputIndex) => {
+					if (input === null) {
+						return input;
+					}
+
+					return input.map((item, itemIndex) => {
+						// Preserve any existing sourceOverwrite from the pairedItem
+						// for tool executions. Tool calls don't have a main
+						// connection to the agent's input, so the data proxy needs
+						// the sourceOverwrite information to know where to look up
+						// paired items. This is necessary because the workflow data
+						// proxy works on input data which normally scrubs paired
+						// item information before executing the node.
+						const sourceOverwrite = resolveSourceOverwrite(item, executionData);
+						if (sourceOverwrite) {
+							return {
+								...item,
+								pairedItem: {
+									item: itemIndex,
+									input: inputIndex || undefined,
+									sourceOverwrite,
+								},
+							};
+						}
+
+						return {
+							...item,
+							pairedItem: {
+								item: itemIndex,
+								input: inputIndex || undefined,
+							},
+						};
+					});
+				},
+			);
+		}
+		return newTaskDataConnections;
+	}
+
+	/**
+	 * The run index of this node execution. Engine requests set it explicitly. Otherwise
+	 * it is the number of times the node already ran.
+	 */
+	private computeRunIndex(executionData: IExecuteData): number {
+		if (executionData.runIndex !== undefined) {
+			return executionData.runIndex;
+		}
+
+		const { runData } = this.runExecutionData.resultData;
+		const nodeName = executionData.node.name;
+		return Object.hasOwn(runData, nodeName) ? runData[nodeName].length : 0;
+	}
+
+	/**
+	 * The retry budget for a node, as `[maxTries, waitBetweenTries]`.
+	 *
+	 * A node resuming with a sub-workflow error has already failed in the sub-workflow;
+	 * there is nothing to re-run, so don't apply retryOnFail (it would just re-throw the
+	 * same error after pointless waits without re-executing anything).
+	 */
+	private getRetryParams(executionData: IExecuteData): [number, number] {
+		const isResumedError = executionData.metadata?.resumeError !== undefined;
+		if (executionData.node.retryOnFail !== true || isResumedError) {
+			return [1, 0];
+		}
+
+		// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
+		return [
+			Math.min(5, Math.max(2, executionData.node.maxTries || 3)),
+			Math.min(5000, Math.max(0, executionData.node.waitBetweenTries || 1000)),
+		];
+	}
+
 	/** True while there are nodes queued for execution. */
 	private isExecutionStackNotEmpty(): boolean {
 		return this.runExecutionData.executionData!.nodeExecutionStack.length !== 0;
@@ -1754,77 +1865,14 @@ export class WorkflowExecute {
 					executionData = this.popExecutionStack();
 					executionNode = executionData.node;
 
-					// Reset per-node dynamic credential flags before each node execution
-					this.additionalData.currentNodeUsedDynamicCredentials = false;
-					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
+					this.resetDynamicCredentialsUsage(executionData);
 
-					// A sub-execution that finished while this execution was waiting reported its
-					// private-credential usage on the resumed stack entry (the node re-runs disabled,
-					// so `executeWorkflow` never reports again) — restore it so the new task and
-					// `runtimeData.executedByUserId` still inherit the flags. The stash is
-					// transport-only, so consume it to keep it out of the persisted task metadata.
-					const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
-					if (reportedUsage) {
-						applyDynamicCredentialsUsage(this.additionalData, reportedUsage);
-						delete executionData.metadata?.dynamicCredentialsUsage;
-					}
-
-					const taskStartedData: ITaskStartedData = {
-						startTime: Date.now(),
-						executionIndex: this.additionalData.currentNodeExecutionIndex++,
-						source: !executionData.source ? [] : executionData.source.main,
-						hints: [],
-					};
+					const taskStartedData = this.createTaskStartedData(executionData);
 
 					// Update the pairedItem information on items
-					const newTaskDataConnections: ITaskDataConnections = {};
-					for (const connectionType of Object.keys(executionData.data)) {
-						newTaskDataConnections[connectionType] = executionData.data[connectionType].map(
-							(input, inputIndex) => {
-								if (input === null) {
-									return input;
-								}
+					executionData.data = this.addPairedItemLineage(executionData);
 
-								return input.map((item, itemIndex) => {
-									// Preserve any existing sourceOverwrite from the pairedItem
-									// for tool executions. Tool calls don't have a main
-									// connection to the agent's input, so the data proxy needs
-									// the sourceOverwrite information to know where to look up
-									// paired items. This is necessary because the workflow data
-									// proxy works on input data which normally scrubs paired
-									// item information before executing the node.
-									const sourceOverwrite = resolveSourceOverwrite(item, executionData);
-									if (sourceOverwrite) {
-										return {
-											...item,
-											pairedItem: {
-												item: itemIndex,
-												input: inputIndex || undefined,
-												sourceOverwrite,
-											},
-										};
-									}
-
-									return {
-										...item,
-										pairedItem: {
-											item: itemIndex,
-											input: inputIndex || undefined,
-										},
-									};
-								});
-							},
-						);
-					}
-					executionData.data = newTaskDataConnections;
-
-					// Get the index of the current run
-					runIndex = 0;
-					if (executionData.runIndex !== undefined) {
-						runIndex = executionData.runIndex;
-					} else if (Object.hasOwn(this.runExecutionData.resultData.runData, executionNode.name)) {
-						runIndex = this.runExecutionData.resultData.runData[executionNode.name].length;
-					}
+					runIndex = this.computeRunIndex(executionData);
 
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
 					if (currentExecutionTry === lastExecutionTry) {
@@ -1855,27 +1903,10 @@ export class WorkflowExecute {
 					if (!executionData.metadata?.nodeWasResumed) {
 						await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					}
-					let maxTries = 1;
 					const isErrorValue = (v: unknown) => v !== undefined && v !== null && v !== false;
 					const checkFailure = (data: IRunNodeResponse | EngineRequest) =>
 						!isEngineRequest(data) && isErrorValue(data.data?.[0]?.[0]?.json?.error);
-					// A node resuming with a sub-workflow error has already failed in the sub-workflow;
-					// there is nothing to re-run, so don't apply retryOnFail (it would just re-throw the
-					// same error after pointless waits without re-executing anything).
-					const isResumedError = executionData.metadata?.resumeError !== undefined;
-					if (executionData.node.retryOnFail === true && !isResumedError) {
-						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
-						maxTries = Math.min(5, Math.max(2, executionData.node.maxTries || 3));
-					}
-
-					let waitBetweenTries = 0;
-					if (executionData.node.retryOnFail === true && !isResumedError) {
-						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
-						waitBetweenTries = Math.min(
-							5000,
-							Math.max(0, executionData.node.waitBetweenTries || 1000),
-						);
-					}
+					const [maxTries, waitBetweenTries] = this.getRetryParams(executionData);
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 						try {
