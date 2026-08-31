@@ -19,6 +19,7 @@
       --border: #333333;
       --border-strong: #444444;
       --blue: #0070f3;
+      --purple: #a78bfa;
       --green: #3ecf8e;
       --amber: #f5a623;
       --card: #0a0a0a;
@@ -239,6 +240,60 @@
       margin-bottom: 8px;
     }
 
+    /* Per-iteration chart */
+    .chart {
+      padding: 26px 32px 30px;
+      border-top: 1px solid var(--border);
+    }
+
+    .chart h2 {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-bottom: 6px;
+      font-size: 12.5px;
+      color: #bdbdbd;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .legend i {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .legend i.opus { background: var(--blue); }
+    .legend i.glm { background: var(--purple); }
+    .legend i.flash { background: var(--green); }
+
+    .chart svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-top: 4px;
+    }
+
+    .chart .note {
+      margin-top: 10px;
+      font-size: 11.5px;
+      color: #6a6a6a;
+    }
+
     footer.page-foot {
       margin-top: 28px;
       font-size: 12px;
@@ -338,6 +393,69 @@
           </tbody>
         </table>
       </div>
+
+      <section class="chart">
+        <h2>Pass rate by iteration</h2>
+        <div class="legend">
+          <span><i class="opus"></i> Opus 4.8</span>
+          <span><i class="glm"></i> GLM 5.3</span>
+          <span><i class="flash"></i> GLM 5.3 Flash</span>
+        </div>
+        <svg viewBox="0 0 800 300" role="img" aria-label="Line chart of pass rate by iteration: Opus 93, 93, 88 percent; GLM 5.3 88, 89, 87 percent; GLM 5.3 Flash 88, 83, 88 percent">
+          <!-- gridlines -->
+          <line x1="90" y1="250" x2="700" y2="250" stroke="#2a2a2a" stroke-width="1" />
+          <line x1="90" y1="190" x2="700" y2="190" stroke="#1c1c1c" stroke-width="1" stroke-dasharray="3 5" />
+          <line x1="90" y1="130" x2="700" y2="130" stroke="#1c1c1c" stroke-width="1" stroke-dasharray="3 5" />
+          <line x1="90" y1="70" x2="700" y2="70" stroke="#1c1c1c" stroke-width="1" stroke-dasharray="3 5" />
+
+          <!-- y labels -->
+          <text x="70" y="254" fill="#6a6a6a" font-size="12" text-anchor="end">80%</text>
+          <text x="70" y="194" fill="#6a6a6a" font-size="12" text-anchor="end">85%</text>
+          <text x="70" y="134" fill="#6a6a6a" font-size="12" text-anchor="end">90%</text>
+          <text x="70" y="74" fill="#6a6a6a" font-size="12" text-anchor="end">95%</text>
+
+          <!-- x labels -->
+          <text x="150" y="276" fill="#8a8a8a" font-size="12.5" text-anchor="middle">Iter 1</text>
+          <text x="380" y="276" fill="#8a8a8a" font-size="12.5" text-anchor="middle">Iter 2</text>
+          <text x="610" y="276" fill="#8a8a8a" font-size="12.5" text-anchor="middle">Iter 3</text>
+
+          <!-- GLM 5.3 Flash: 88 / 83 / 88 -->
+          <polyline fill="none" stroke="#3ecf8e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+            points="150,154 380,214 610,154" />
+          <circle cx="150" cy="154" r="4.5" fill="#3ecf8e" />
+          <circle cx="380" cy="214" r="4.5" fill="#3ecf8e" />
+          <circle cx="610" cy="154" r="4.5" fill="#3ecf8e" />
+          <text x="132" y="176" fill="#3ecf8e" font-size="12.5" text-anchor="end">88%</text>
+          <text x="380" y="236" fill="#3ecf8e" font-size="12.5" text-anchor="middle">83%</text>
+
+          <!-- GLM 5.3: 88 / 89 / 87 -->
+          <polyline fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+            points="150,154 380,142 610,166" />
+          <circle cx="150" cy="154" r="4.5" fill="#a78bfa" />
+          <circle cx="380" cy="142" r="4.5" fill="#a78bfa" />
+          <circle cx="610" cy="166" r="4.5" fill="#a78bfa" />
+          <text x="132" y="146" fill="#a78bfa" font-size="12.5" text-anchor="end">88%</text>
+          <text x="380" y="128" fill="#a78bfa" font-size="12.5" text-anchor="middle">89%</text>
+
+          <!-- Opus 4.8: 93 / 93 / 88 -->
+          <polyline fill="none" stroke="#0070f3" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+            points="150,94 380,94 610,154" />
+          <circle cx="150" cy="94" r="4.5" fill="#0070f3" />
+          <circle cx="380" cy="94" r="4.5" fill="#0070f3" />
+          <circle cx="610" cy="154" r="4.5" fill="#0070f3" />
+          <text x="150" y="80" fill="#0070f3" font-size="12.5" text-anchor="middle">93%</text>
+          <text x="380" y="80" fill="#0070f3" font-size="12.5" text-anchor="middle">93%</text>
+
+          <!-- iteration 3 end labels (Opus and Flash both land on 88%) -->
+          <line x1="618" y1="152" x2="632" y2="136" stroke="#0070f3" stroke-width="1" opacity="0.5" />
+          <text x="638" y="140" fill="#0070f3" font-size="12.5" text-anchor="start">88%</text>
+          <line x1="618" y1="158" x2="632" y2="170" stroke="#3ecf8e" stroke-width="1" opacity="0.5" />
+          <text x="638" y="174" fill="#3ecf8e" font-size="12.5" text-anchor="start">88%</text>
+          <line x1="618" y1="170" x2="632" y2="200" stroke="#a78bfa" stroke-width="1" opacity="0.5" />
+          <text x="638" y="204" fill="#a78bfa" font-size="12.5" text-anchor="start">87%</text>
+        </svg>
+        <p class="note">Opus and Flash both finish at 88% on iteration 3 — their markers overlap; labels are offset for legibility.</p>
+      </section>
 
       <div class="verdict">
         <article>
