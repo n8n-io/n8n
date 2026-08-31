@@ -219,6 +219,53 @@ describe('AgentRuntimeCacheService', () => {
 		}
 	});
 
+	it('keeps the cached runtime when a tool-access re-check fails and retries after the debounce window', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const user = mock<User>({ id: 'user-a' });
+			const runtime = {
+				...makeRuntime(),
+				userToolAccessSnapshot: { credentialIds: ['cred-1'], workflowIds: ['wf-1'] },
+			};
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			reconstructionService.userStillHasToolAccess.mockRejectedValue(
+				new Error('database unavailable'),
+			);
+
+			const initial = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(initial.agent);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+
+			const afterFailedRecheck = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(afterFailedRecheck.agent);
+
+			expect(afterFailedRecheck).toBe(initial);
+			expect(afterFailedRecheck.agent).toBe(runtime.agent);
+			expect(runtime.agent.close).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledOnce();
+
+			const withinDebounceWindow = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(withinDebounceWindow.agent);
+			expect(reconstructionService.userStillHasToolAccess).toHaveBeenCalledOnce();
+
+			reconstructionService.userStillHasToolAccess.mockResolvedValue(true);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const afterRetry = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(afterRetry.agent);
+
+			expect(afterRetry).toBe(initial);
+			expect(reconstructionService.userStillHasToolAccess).toHaveBeenCalledTimes(2);
+			expect(runtime.agent.close).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('shares an in-flight tool-access re-check across concurrent cache hits', async () => {
 		vi.useFakeTimers();
 		try {
