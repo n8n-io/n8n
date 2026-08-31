@@ -1,7 +1,13 @@
 import { UnexpectedError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 import { brand } from './policy-brand';
-import type { EnforcementPoint, PolicyDecision, PolicyVersionRef } from './policy-check';
+import type {
+	EnforcementPoint,
+	PolicedWorkflow,
+	PolicyDecision,
+	PolicyVersionRef,
+} from './policy-check';
 
 /**
  * What kind of thing was policed. Closed, so a typo is a compile error rather than a binding
@@ -17,6 +23,22 @@ export type PolicySubject = {
 	/** Stable id, or a content hash where there is none yet — a workflow being created. */
 	readonly id: string;
 };
+
+/**
+ * A workflow being created has no id yet, so it binds to its nodes instead.
+ *
+ * Truthiness, not `!== null`: on the create path the id is absent as `undefined` (entities
+ * generate it on insert), and treating that as present would bind every create to the same
+ * `undefined` subject — a token for one create would then clear any other.
+ */
+export function workflowSubject(workflow: PolicedWorkflow): PolicySubject {
+	if (workflow.id) return { type: 'workflow', id: workflow.id };
+
+	// Same object within one request, so key order is stable.
+	const nodes = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
+
+	return { type: 'workflow', id: nodes };
+}
 
 /**
  * Proof that policy enforcement cleared one specific action, returned by every `enforce*`

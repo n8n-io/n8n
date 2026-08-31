@@ -10,7 +10,8 @@ import type {
 	PolicyCleared,
 	PolicySubject,
 } from '@n8n/decorators';
-import { mintPolicyCleared, workflowSubject } from '@n8n/decorators/policy-internal';
+import { workflowSubject } from '@n8n/decorators';
+import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
