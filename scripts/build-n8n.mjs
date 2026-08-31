@@ -295,13 +295,17 @@ for (const { label, find } of strippedPatterns) {
 	// would read as "nothing survived" — the exact false pass this check exists
 	// to prevent. Fail closed when it could not run.
 	if (left.exitCode !== 0) {
-		echo(chalk.red(`ERROR: could not verify ${label} were stripped (find exited ${left.exitCode})`));
+		echo(
+			chalk.red(`ERROR: could not verify ${label} were stripped (find exited ${left.exitCode})`),
+		);
 		echo(chalk.dim(left.stderr.slice(0, 400)));
+		await restorePackageJsonFiles();
 		process.exit(1);
 	}
 	const count = left.stdout.split('\n').filter(Boolean).length;
 	if (count > 0) {
 		echo(chalk.red(`ERROR: ${count} ${label} survived the strip — the pattern no longer matches`));
+		await restorePackageJsonFiles();
 		process.exit(1);
 	}
 }
@@ -325,6 +329,7 @@ const aliasCheck = await $`
 if (aliasCheck.exitCode !== 0 || aliasCheck.stdout.includes('MISMATCH')) {
 	echo(chalk.red('ERROR: agent-browser glibc alias does not point at the musl build'));
 	echo(chalk.dim(aliasCheck.stdout || aliasCheck.stderr.slice(0, 400)));
+	await restorePackageJsonFiles();
 	process.exit(1);
 }
 
@@ -347,6 +352,7 @@ for (const glob of runtimeAssetGlobs) {
 	const found = await $`find ${config.compiledAppDir} -type f -path ${glob}`.nothrow();
 	if (found.stdout.split('\n').filter(Boolean).length === 0) {
 		echo(chalk.red(`ERROR: no files left under ${glob} — runtime assets were stripped`));
+		await restorePackageJsonFiles();
 		process.exit(1);
 	}
 }
@@ -448,6 +454,7 @@ if (generateLicenses) {
 		// the release workflow uploads it unconditionally and would otherwise publish
 		// an incomplete attribution file.
 		if (process.env.CI === 'true') {
+			await restorePackageJsonFiles();
 			throw error;
 		}
 		echo(chalk.yellow('⚠️  Warning: continuing local build (CI=true would have failed)'));
@@ -458,16 +465,34 @@ if (generateLicenses) {
 	);
 }
 
-// Restore package.json files
-for (const file of packageJsonFiles) {
-	if (file) {
+// Restore package.json files. Called from here (success path) and from every
+// process.exit(1)/throw site above that runs after the FE trim —
+// process.exit() bypasses try/finally, so each of those call sites invokes
+// this explicitly rather than relying on a wrapping try/finally. A missing
+// backup is NOT silently skipped: leaving a trimmed package.json on disk
+// unnoticed is exactly the failure that broke a later `pnpm` command's
+// lockfile check in production — it saw whatever the trim left behind and
+// reported the gap as an "outdated lockfile", with no error anywhere here.
+async function restorePackageJsonFiles() {
+	const missing = [];
+	for (const file of packageJsonFiles) {
+		if (!file) continue;
 		const backupPath = path.join(packageJsonBackupDir, file);
 		if (await fs.pathExists(backupPath)) {
 			await fs.move(backupPath, path.join(config.rootDir, file), { overwrite: true });
+		} else {
+			missing.push(file);
 		}
 	}
+	await fs.remove(packageJsonBackupDir);
+	if (missing.length > 0) {
+		throw new Error(
+			`Failed to restore ${missing.length} package.json file(s) from backup — the working ` +
+				`tree is left mutated: ${missing.join(', ')}`,
+		);
+	}
 }
-await fs.remove(packageJsonBackupDir);
+await restorePackageJsonFiles();
 
 // Calculate output size
 const compiledAppOutputSize = (await $`du -sh ${config.compiledAppDir} | cut -f1`).stdout.trim();
