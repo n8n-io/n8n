@@ -13,6 +13,13 @@ describe('extractJsonCandidate', () => {
 		expect(extractJsonCandidate('Result: {"ok":true} Done')).toBe('{"ok":true}');
 	});
 
+	it.each([
+		['Ran ```pnpm test``` then {"ok":true}', '{"ok":true}'],
+		['{"note": "run ```pnpm test``` twice"}', '{"note": "run ```pnpm test``` twice"}'],
+	])('ignores fenced blocks that are not JSON-shaped', (input, expected) => {
+		expect(extractJsonCandidate(input)).toBe(expected);
+	});
+
 	it('returns trimmed text when no JSON candidate exists', () => {
 		expect(extractJsonCandidate('  not JSON  ')).toBe('not JSON');
 	});

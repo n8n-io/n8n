@@ -15,14 +15,21 @@
 export const SECRET_KEYS =
 	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|client[_-]?secret|private[_-]?key|session[_-]?cookie|token';
 
+// `\b` never fires inside a compound key (`webhook_secret`, `bot_token`)
+// because `_` is a word character, so key patterns also accept an optional
+// snake/kebab prefix before the secret word.
+const COMPOUND_KEY_PREFIX = '(?:[\\w-]*[_-])?';
+
 export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// PEM private-key blocks (RSA/EC/DSA/OpenSSH/PGP). Whole block, multiline.
 	/-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----/g,
 	// JWTs: `eyJ<header>.eyJ<payload>.<signature>` (both leading segments are
 	// base64url of a `{"` object, which makes this highly distinctive).
 	/\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-	// Authorization-header substrings: `Bearer <token>`, `Basic <token>`, `Token <token>`
-	/\b(?:(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+|Token\s+[A-Za-z0-9._~+/=-]{12,})/gi,
+	// Authorization-header substrings: any `Bearer <value>`; `Basic` and `Token`
+	// require 12+ chars because they are common prose words ("basic usage",
+	// "token exchange").
+	/\b(?:Bearer\s+[A-Za-z0-9._~+/=-]+|(?:Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,})/gi,
 	// OpenAI / Anthropic API keys
 	/\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g,
 	// Stripe secret/restricted/publishable keys (`sk_live_…`, `rk_test_…`, …)
@@ -64,12 +71,12 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// chained behind upstream object-walking redaction (langsmith trace
 	// payloads, mcp-browser markers).
 	new RegExp(
-		`"(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)(?::[^"\\]]*)?\\]")(?:[^"\\\\\\r\\n]|\\\\.)*"`,
+		`"${COMPOUND_KEY_PREFIX}(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)(?::[^"\\]]*)?\\]")(?:[^"\\\\\\r\\n]|\\\\.)*"`,
 		'gi',
 	),
 	// JS-object-shaped `'key': 'value'`
 	new RegExp(
-		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)(?::[^'\\]]*)?\\]')(?:[^'\\\\\\r\\n]|\\\\.)*'`,
+		`'${COMPOUND_KEY_PREFIX}(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)(?::[^'\\]]*)?\\]')(?:[^'\\\\\\r\\n]|\\\\.)*'`,
 		'gi',
 	),
 	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.
@@ -83,7 +90,7 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// redaction placeholder (bracketed, typed, or URL-safe bare form) — the same
 	// idempotency convention as the quoted forms.
 	new RegExp(
-		`(?<!\\[(?:redacted|REDACTED):)\\b(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
+		`(?<!\\[(?:redacted|REDACTED):)\\b${COMPOUND_KEY_PREFIX}(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
 		'gi',
 	),
 ];

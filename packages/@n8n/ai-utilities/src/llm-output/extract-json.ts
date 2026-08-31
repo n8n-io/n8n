@@ -5,8 +5,10 @@ export function extractFencedJson(text: string): string | undefined {
 }
 
 export function extractJsonCandidate(text: string): string {
+	// Trust a fenced block only when it is JSON-shaped: backtick pairs inside a
+	// JSON payload's string values would otherwise shadow the payload itself.
 	const fenced = extractFencedJson(text);
-	if (fenced !== undefined) return fenced;
+	if (fenced !== undefined && (fenced.startsWith('{') || fenced.startsWith('['))) return fenced;
 
 	const trimmed = text.trim();
 	const start = trimmed.indexOf('{');

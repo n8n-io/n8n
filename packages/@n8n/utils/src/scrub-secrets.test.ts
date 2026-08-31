@@ -80,13 +80,18 @@ describe('scrubSecretsInText', () => {
 				'token=value and client_secret=value and private_key=value and session_cookie=value',
 			),
 		).toBe('[REDACTED] and [REDACTED] and [REDACTED] and [REDACTED]');
-		expect(scrubSecretsInText('max_token=5')).toBe('max_token=5');
+		expect(
+			scrubSecretsInText('webhook_secret=whsec_x and account_password=hunter2 and bot_token=abc'),
+		).toBe('[REDACTED] and [REDACTED] and [REDACTED]');
+		expect(scrubSecretsInText('max_tokens=500')).toBe('max_tokens=500');
 	});
 
 	it('redacts JSON-shaped credential fields with quoted keys and values', () => {
 		const input =
-			'{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz", "client_secret": "value"}';
-		expect(scrubSecretsInText(input)).toBe('{[REDACTED], [REDACTED], [REDACTED], [REDACTED]}');
+			'{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz", "client_secret": "value", "webhook_secret": "whsec_x"}';
+		expect(scrubSecretsInText(input)).toBe(
+			'{[REDACTED], [REDACTED], [REDACTED], [REDACTED], [REDACTED]}',
+		);
 	});
 
 	it('redacts a "credentials" field holding a serialized scalar value', () => {
@@ -167,6 +172,7 @@ describe('scrubSecretsInText', () => {
 			'feedback about the workflow plan',
 		);
 		expect(scrubSecretsInText('Token exchange failed')).toBe('Token exchange failed');
+		expect(scrubSecretsInText('Basic usage of the node')).toBe('Basic usage of the node');
 		expect(scrubSecretsInText('/var/lib/n8n/data/some-id-1234')).toBe(
 			'/var/lib/n8n/data/some-id-1234',
 		);
