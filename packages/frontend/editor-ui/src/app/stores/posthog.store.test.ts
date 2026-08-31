@@ -164,6 +164,29 @@ describe('Posthog store', () => {
 			);
 		});
 
+		it('bootstraps remote config payloads and clears them on reset', () => {
+			const flags = { 'config-form-url': true };
+			const payloads = { 'config-form-url': 'https://example.com/form' };
+			const posthog = usePostHog();
+
+			posthog.init(flags, payloads);
+
+			expect(posthog.getFeatureFlagPayload('config-form-url')).toBe(payloads['config-form-url']);
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					bootstrap: {
+						distinctID: `${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`,
+						featureFlags: flags,
+						featureFlagPayloads: payloads,
+					},
+				}),
+			);
+
+			posthog.reset();
+			expect(posthog.getFeatureFlagPayload('config-form-url')).toBeUndefined();
+		});
+
 		it('disables client-side flag refetch when flags are bootstrapped', () => {
 			const posthog = usePostHog();
 			posthog.init({ test: 'variant' });

@@ -2,7 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
 import { InstanceSettings } from 'n8n-core';
-import type { FeatureFlags } from 'n8n-workflow';
+import type { FeatureFlagPayloads, FeatureFlags } from 'n8n-workflow';
 import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -12,11 +12,11 @@ import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
 
-function mockEvaluatedFlags(flags: FeatureFlags) {
+function mockEvaluatedFlags(flags: FeatureFlags, payloads: FeatureFlagPayloads = {}) {
 	return {
 		keys: Object.keys(flags),
 		getFlag: (key: string) => flags[key],
-		getFlagPayload: () => undefined,
+		getFlagPayload: (key: string) => payloads[key],
 	};
 }
 
@@ -169,6 +169,23 @@ describe('PostHog', () => {
 				},
 				groups: { company: instanceId },
 			});
+		});
+
+		it('returns remote config payloads from the same flag evaluation', async () => {
+			const flags = { 'config-form-url': true };
+			const payloads = { 'config-form-url': 'https://example.com/form' };
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+				mockEvaluatedFlags(flags, payloads),
+			);
+
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await expect(ph.getFeatureFlagsAndPayloads({ id: userId, createdAt })).resolves.toEqual({
+				featureFlags: flags,
+				featureFlagPayloads: payloads,
+			});
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns cached flags on second call', async () => {
