@@ -183,6 +183,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (returnAs === 'video') {
+		const allowedDomains = new URL(credentials.host as string).hostname;
 		const promises = response.response.generateVideoResponse.generatedSamples.map(
 			async (sample) => {
 				const { fileContent, mimeType } = await downloadFile.call(
@@ -192,6 +193,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					{
 						key: credentials.apiKey as string,
 					},
+					allowedDomains,
 				);
 				const fileName = getFilenameFromMimeType(mimeType, 'video', 'mp4');
 				const binaryData = await this.helpers.prepareBinaryData(fileContent, fileName, mimeType);

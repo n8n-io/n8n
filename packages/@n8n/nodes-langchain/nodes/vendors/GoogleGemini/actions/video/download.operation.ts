@@ -47,9 +47,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		'data',
 	) as string;
 	const credentials = await this.getCredentials('googlePalmApi');
-	const { fileContent, mimeType } = await downloadFile.call(this, url, 'video/mp4', {
-		key: credentials.apiKey as string,
-	});
+	const allowedDomains = new URL(credentials.host as string).hostname;
+	const { fileContent, mimeType } = await downloadFile.call(
+		this,
+		url,
+		'video/mp4',
+		{ key: credentials.apiKey as string },
+		allowedDomains,
+	);
 	const fileName = getFilenameFromMimeType(mimeType, 'video', 'mp4');
 	const binaryData = await this.helpers.prepareBinaryData(fileContent, fileName, mimeType);
 	return [

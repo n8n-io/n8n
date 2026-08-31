@@ -52,11 +52,13 @@ export async function downloadFile(
 	url: string,
 	fallbackMimeType?: string,
 	qs?: IDataObject,
+	allowedDomains?: string,
 ) {
 	const downloadResponse = (await this.helpers.httpRequest({
 		method: 'GET',
 		url,
 		qs,
+		...(allowedDomains ? { allowedDomains } : {}),
 		returnFullResponse: true,
 		encoding: 'arraybuffer',
 	})) as { body: ArrayBuffer; headers: IDataObject };

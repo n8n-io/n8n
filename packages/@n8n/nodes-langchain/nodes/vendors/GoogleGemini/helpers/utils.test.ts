@@ -68,6 +68,30 @@ describe('GoogleGemini -> utils', () => {
 			});
 		});
 
+		it('should restrict a credential-authenticated download to allowed domains', async () => {
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValue({
+				body: new ArrayBuffer(10),
+				headers: {},
+			});
+
+			await downloadFile.call(
+				mockExecuteFunctions,
+				'https://generativelanguage.googleapis.com/v1beta/files/video:download',
+				'video/mp4',
+				{ key: 'test-api-key' },
+				'generativelanguage.googleapis.com',
+			);
+
+			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url: 'https://generativelanguage.googleapis.com/v1beta/files/video:download',
+				qs: { key: 'test-api-key' },
+				allowedDomains: 'generativelanguage.googleapis.com',
+				returnFullResponse: true,
+				encoding: 'arraybuffer',
+			});
+		});
+
 		it('should parse mime type from content type header', async () => {
 			mockExecuteFunctions.helpers.httpRequest.mockResolvedValue({
 				body: new ArrayBuffer(10),

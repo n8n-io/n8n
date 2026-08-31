@@ -1998,7 +1998,10 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				host: 'https://generativelanguage.googleapis.com',
+			});
 			let pollCount = 0;
 			apiRequestMock.mockImplementation(async (_method: string, path: string) => {
 				if (path.includes(':predictLongRunning')) {
@@ -2018,7 +2021,7 @@ describe('GoogleGemini Node', () => {
 										generatedSamples: [
 											{
 												video: {
-													uri: 'https://example.com/video.mp4',
+													uri: 'https://generativelanguage.googleapis.com/v1beta/files/video:download',
 												},
 											},
 										],
@@ -2082,9 +2085,12 @@ describe('GoogleGemini Node', () => {
 			);
 			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/operations/123');
 			expect(pollCount).toBe(2);
-			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/video.mp4', 'video/mp4', {
-				key: 'test-api-key',
-			});
+			expect(downloadFileMock).toHaveBeenCalledWith(
+				'https://generativelanguage.googleapis.com/v1beta/files/video:download',
+				'video/mp4',
+				{ key: 'test-api-key' },
+				'generativelanguage.googleapis.com',
+			);
 		});
 
 		it('should derive video filename from MIME type', async () => {
@@ -2108,7 +2114,10 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				host: 'https://generativelanguage.googleapis.com',
+			});
 			apiRequestMock
 				.mockResolvedValueOnce({
 					name: 'operations/123',
@@ -2122,7 +2131,7 @@ describe('GoogleGemini Node', () => {
 							generatedSamples: [
 								{
 									video: {
-										uri: 'https://example.com/video.mp4',
+										uri: 'https://generativelanguage.googleapis.com/v1beta/files/video:download',
 									},
 								},
 							],
@@ -2274,14 +2283,17 @@ describe('GoogleGemini Node', () => {
 				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
 					switch (parameter) {
 						case 'url':
-							return 'https://example.com/video.mp4';
+							return 'https://generativelanguage.googleapis.com/v1beta/files/video:download';
 						case 'options.binaryPropertyOutput':
 							return 'data';
 						default:
 							return undefined;
 					}
 				});
-				executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+				executeFunctionsMock.getCredentials.mockResolvedValue({
+					apiKey: 'test-api-key',
+					host: 'https://generativelanguage.googleapis.com',
+				});
 				downloadFileMock.mockResolvedValue({
 					fileContent: Buffer.from('abcdefgh'),
 					mimeType: 'video/webm',
@@ -2314,11 +2326,12 @@ describe('GoogleGemini Node', () => {
 					},
 				]);
 				expect(downloadFileMock).toHaveBeenCalledWith(
-					'https://example.com/video.mp4',
+					'https://generativelanguage.googleapis.com/v1beta/files/video:download',
 					'video/mp4',
 					{
 						key: 'test-api-key',
 					},
+					'generativelanguage.googleapis.com',
 				);
 				expect(executeFunctionsMock.helpers.prepareBinaryData).toHaveBeenCalledWith(
 					Buffer.from('abcdefgh'),
