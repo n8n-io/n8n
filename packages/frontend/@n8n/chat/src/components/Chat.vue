@@ -114,6 +114,12 @@ let clearOnMessageSent: () => void;
 let stopListeningForCredentialStatus: () => void;
 
 onMounted(async () => {
+	// Register before the initialize() await so a credential-status message
+	// arriving while loadPreviousSession() is pending isn't dropped.
+	stopListeningForCredentialStatus = listenForCredentialStatus((status) => {
+		credentialStatus.value = status;
+	});
+
 	if (!messages.value.length && options.messageHistory) {
 		messages.value = options.messageHistory.map((m) => ({ ...m }));
 	}
@@ -126,10 +132,6 @@ onMounted(async () => {
 	clearOnMessageSent = chatEventBus.on('messageSent', () => {
 		messageHistoryIndex.value = -1;
 		currentInputBuffer.value = '';
-	});
-
-	stopListeningForCredentialStatus = listenForCredentialStatus((status) => {
-		credentialStatus.value = status;
 	});
 });
 
