@@ -252,7 +252,7 @@ export class GitConnectionsService {
 			await rename(stagingFolder, exportFolder);
 
 			const credentials = await this.decryptCredentials(connection);
-			const { commit, head } = await this.gitService.commitAndPush({
+			const { commitSha, head } = await this.gitService.commitAndPush({
 				connection,
 				credentials,
 				rootFolder,
@@ -267,7 +267,7 @@ export class GitConnectionsService {
 			connection.baseCommit = head;
 			await this.repository.save(connection);
 
-			return { connectionId, counts: exportResult.counts, commit };
+			return { connectionId, counts: exportResult.counts, commitSha };
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
@@ -393,7 +393,7 @@ export class GitConnectionsService {
 		return {
 			connectionId,
 			counts: this.toPullCounts({ importResult: result, projectReconciliation }),
-			commit: head,
+			commitSha: head,
 		};
 	}
 

@@ -92,7 +92,7 @@ export const gitConnectionPushResultSchema = z.object({
 	counts: gitConnectionExportCountsSchema,
 	// The commit that was pushed, or null when the export matched the working copy
 	// and nothing was committed (no-op push).
-	commit: z.string().nullable(),
+	commitSha: z.string().nullable(),
 });
 
 export class GitConnectionPushResultDto extends Z.class(gitConnectionPushResultSchema.shape) {}
@@ -156,7 +156,7 @@ export const gitConnectionPullResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionImportCountsSchema,
 	// The remote commit the working copy was reset to and imported from.
-	commit: z.string(),
+	commitSha: z.string(),
 });
 
 export class GitConnectionPullResultDto extends Z.class(gitConnectionPullResultSchema.shape) {}

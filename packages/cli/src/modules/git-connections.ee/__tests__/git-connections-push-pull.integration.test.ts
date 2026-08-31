@@ -186,7 +186,7 @@ describe('Git connection push and pull', () => {
 		await expect(
 			readFile(path.join(inspectionDir, 'n8n-export', workflowEntry.target, 'workflow.json')),
 		).resolves.toBeDefined();
-		expect(result.commit).toBe(remoteHead);
+		expect(result.commitSha).toBe(remoteHead);
 		expect(result.counts.workflows).toBe(1);
 		expect((await connectionRepository.findOneByOrFail({ id: connection.id })).baseCommit).toBe(
 			remoteHead,
@@ -248,7 +248,7 @@ describe('Git connection push and pull', () => {
 		expect(result.counts.projects.deleted).toBe(1);
 		expect(result.counts.workflows.deleted).toBe(1);
 		expect(result.counts.folders.removed).toBe(1);
-		expect(result.commit).toBe(remoteHead);
+		expect(result.commitSha).toBe(remoteHead);
 		expect((await connectionRepository.findOneByOrFail({ id: connection.id })).baseCommit).toBe(
 			remoteHead,
 		);

@@ -217,8 +217,8 @@ export class GitConnectionsGitService {
 	/**
 	 * Commit the already-exported working copy and push it to the remote branch.
 	 * Stages only `stagePathspec` so files the user keeps at the repository root
-	 * stay out of the commit. Returns the pushed commit and the resulting HEAD;
-	 * on a clean tree it commits nothing and returns `commit: null`.
+	 * stay out of the commit. Returns the pushed commit SHA and the resulting HEAD;
+	 * on a clean tree it commits nothing and returns `commitSha: null`.
 	 */
 	async commitAndPush({
 		connection,
@@ -238,7 +238,7 @@ export class GitConnectionsGitService {
 		commitMessage: string;
 		force: boolean;
 		stagePathspec: string;
-	}): Promise<{ commit: string | null; head: string }> {
+	}): Promise<{ commitSha: string | null; head: string }> {
 		const { repositoryFolder, sshDir } = this.connectionPaths(rootFolder);
 		try {
 			return await this.withGit(
@@ -258,7 +258,7 @@ export class GitConnectionsGitService {
 					if (status.isClean()) {
 						// Nothing changed since the last push: skip commit + push.
 						const head = (await git.revparse(['HEAD'])).trim();
-						return { commit: null, head };
+						return { commitSha: null, head };
 					}
 
 					await git.commit(commitMessage);
@@ -270,7 +270,7 @@ export class GitConnectionsGitService {
 					}
 
 					const head = (await git.revparse(['HEAD'])).trim();
-					return { commit: head, head };
+					return { commitSha: head, head };
 				},
 			);
 		} catch (error) {

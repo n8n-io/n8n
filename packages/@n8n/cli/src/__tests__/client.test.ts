@@ -43,11 +43,11 @@ describe('N8nClient packages', () => {
 	});
 
 	describe('pushGitConnectionProjects', () => {
-		it('POSTs the commit message and returns the connection id, counts, and commit', async () => {
+		it('POSTs the commit message and returns the connection id, counts, and commit SHA', async () => {
 			const response = {
 				connectionId: 'connection-id',
 				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
-				commit: 'abc123',
+				commitSha: 'abc123',
 			};
 			fetchMock.mockResolvedValue(jsonResponse(200, response));
 
@@ -88,7 +88,7 @@ describe('N8nClient packages', () => {
 					variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 					tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
 				},
-				commit: 'def456',
+				commitSha: 'def456',
 			};
 			fetchMock.mockResolvedValue(jsonResponse(200, response));
 

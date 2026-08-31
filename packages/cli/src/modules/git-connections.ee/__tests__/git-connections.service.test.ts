@@ -273,7 +273,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			repository.findOneBy.mockResolvedValue(sshEntity());
 			projectRepository.findTeamProjectIds.mockResolvedValue(['project-a', 'project-b']);
 			gitService.hasWorkingCopy.mockResolvedValue(true);
-			gitService.commitAndPush.mockResolvedValue({ commit: 'newsha', head: 'newsha' });
+			gitService.commitAndPush.mockResolvedValue({ commitSha: 'newsha', head: 'newsha' });
 			cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 			n8nPackagesService.exportPackageToDirectory.mockImplementation(
 				async (_request, { targetDir }) => {
@@ -345,7 +345,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					variables: 0,
 					tags: 0,
 				},
-				commit: 'newsha',
+				commitSha: 'newsha',
 			});
 			// Commits and pushes the export with the actor's identity and given message.
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
@@ -430,12 +430,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 			);
 		});
 
-		it('returns a null commit and still records the base on a no-op push', async () => {
-			gitService.commitAndPush.mockResolvedValueOnce({ commit: null, head: 'headsha' });
+		it('returns a null commit SHA and still records the base on a no-op push', async () => {
+			gitService.commitAndPush.mockResolvedValueOnce({ commitSha: null, head: 'headsha' });
 
 			const result = await exportService.push('1', actor, { commitMessage: 'm' });
 
-			expect(result.commit).toBeNull();
+			expect(result.commitSha).toBeNull();
 			expect((repository.save.mock.calls.at(-1)?.[0] as GitConnection).baseCommit).toBe('headsha');
 		});
 
@@ -732,7 +732,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					variables: { matched: 1, created: 1, updated: 1, stubbed: 0, missing: 0 },
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
 				},
-				commit: 'remotesha',
+				commitSha: 'remotesha',
 			});
 		});
 

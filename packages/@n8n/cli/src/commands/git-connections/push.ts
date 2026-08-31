@@ -29,9 +29,9 @@ export default class GitConnectionsPush extends BaseCommand {
 				force: flags.force,
 			});
 			const message =
-				result.commit === null
+				result.commitSha === null
 					? `No changes to push for Git connection ${args.id}; the working copy already matched the last commit.`
-					: `Projects pushed to Git connection ${args.id} as commit ${result.commit}.`;
+					: `Projects pushed to Git connection ${args.id} as commit ${result.commitSha}.`;
 			this.succeed(message, flags, result);
 		});
 	}

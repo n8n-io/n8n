@@ -15,7 +15,7 @@ export default class GitConnectionsPull extends BaseCommand {
 		await this.execute(async () => {
 			const result = await this.getClient(flags).pullGitConnectionProjects(args.id);
 			this.succeed(
-				`Projects pulled into the instance from Git connection ${args.id} at commit ${result.commit}.`,
+				`Projects pulled into the instance from Git connection ${args.id} at commit ${result.commitSha}.`,
 				flags,
 				result,
 			);

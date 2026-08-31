@@ -65,7 +65,7 @@ export type PushGitConnectionResult = {
 	connectionId: string;
 	counts: ExportPackageCounts;
 	/** The pushed commit, or null when nothing changed (no-op push). */
-	commit: string | null;
+	commitSha: string | null;
 };
 
 export interface ImportPackageCounts {
@@ -101,7 +101,7 @@ export type PullGitConnectionResult = {
 	connectionId: string;
 	counts: ImportPackageCounts;
 	/** The remote commit the working copy was reset to and imported from. */
-	commit: string;
+	commitSha: string;
 };
 
 export class ApiError extends Error {

@@ -291,14 +291,14 @@ describe('GitConnectionsGitService (git operations)', () => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
 		});
 
-		it('stages the export, commits, pushes, and returns the trimmed commit', async () => {
+		it('stages the export, commits, pushes, and returns the trimmed commit SHA', async () => {
 			const result = await call();
 
 			expect(mockGit.add).toHaveBeenCalledWith(['--all', '--', 'n8n-export']);
 			expect(mockGit.status).toHaveBeenCalledWith(['--', 'n8n-export']);
 			expect(mockGit.commit).toHaveBeenCalledWith('sync');
 			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main');
-			expect(result).toEqual({ commit: 'abc123', head: 'abc123' });
+			expect(result).toEqual({ commitSha: 'abc123', head: 'abc123' });
 		});
 
 		it('runs git in the repository folder and applies the author as process-local config', async () => {
@@ -317,14 +317,14 @@ describe('GitConnectionsGitService (git operations)', () => {
 			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main', ['-f']);
 		});
 
-		it('skips commit and push on a clean tree, returning a null commit', async () => {
+		it('skips commit and push on a clean tree, returning a null commit SHA', async () => {
 			mockGit.status.mockResolvedValue({ isClean: () => true });
 
 			const result = await call();
 
 			expect(mockGit.commit).not.toHaveBeenCalled();
 			expect(mockGit.push).not.toHaveBeenCalled();
-			expect(result).toEqual({ commit: null, head: 'abc123' });
+			expect(result).toEqual({ commitSha: null, head: 'abc123' });
 		});
 
 		it('maps a stall timeout to a 503', async () => {
