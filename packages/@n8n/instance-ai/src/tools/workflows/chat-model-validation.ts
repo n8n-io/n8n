@@ -4,7 +4,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { NodeJSON } from '@n8n/workflow-sdk';
 import { getChildNodes, NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 
-import { isAiGatewayManagedCredential } from './credential-utils';
+import { N8N_CONNECT_DISPLAY_NAME, isAiGatewayManagedCredential } from './credential-utils';
 import type { InstanceAiContext } from '../../types';
 import { isChatModelNode, resolveChatModelCatalogEntry } from '../nodes/preferred-chat-model';
 
@@ -155,7 +155,7 @@ export function buildChatModelFailureGuidance(
 				' The chosen model cannot perform this node operation (for example image generation, computer use, or Responses API-only models). ' +
 				replacements +
 				(aiCreditsAvailable
-					? ' Or switch to n8n credits (no API key required) when the task fits a covered model.'
+					? ' Or switch to Gateway credits (no API key required) when the task fits a covered model.'
 					: '') +
 				' Original error: ' +
 				errorMessage
@@ -166,7 +166,7 @@ export function buildChatModelFailureGuidance(
 				' ' +
 				replacements +
 				(aiCreditsAvailable
-					? " If the user's own key cannot reach any working model, switch the node to n8n credits (no API key required) instead of another guessed ID."
+					? " If the user's own key cannot reach any working model, switch the node to Gateway credits (no API key required) instead of another guessed ID."
 					: " If the user's own key cannot reach any working model, ask the user for a provider or key that works instead of another guessed ID.") +
 				' Original error: ' +
 				errorMessage
@@ -316,7 +316,7 @@ function resolveStoredCredential(
 	if (!selected || typeof selected !== 'object') return undefined;
 
 	if (isAiGatewayManagedCredential(selected)) {
-		return { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n credits' };
+		return { id: AI_GATEWAY_MANAGED_TAG, name: N8N_CONNECT_DISPLAY_NAME };
 	}
 
 	const id: unknown = Reflect.get(selected, 'id');

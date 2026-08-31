@@ -184,6 +184,13 @@ echo(chalk.green('✅ Phantom dirs stripped'));
 // build-from-source fallback (~11MB), but the prebuilt binary - librdkafka statically
 // linked in, no .so/.a shipped - is what actually loads at runtime on Alpine. The
 // source is dead weight in the shipped image.
+// isolated-vm ships prebuilds for darwin, win32 and linux. The image compiles
+// the binding from source, so these are unused. Removing them also keeps 15MB
+// out of the build context.
+echo(chalk.yellow('INFO: Stripping isolated-vm prebuilds...'));
+await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/isolated-vm/prebuilds" -exec rm -rf {} + 2>/dev/null || true`;
+echo(chalk.green('✅ isolated-vm prebuilds stripped'));
+
 echo(chalk.yellow('INFO: Stripping unused librdkafka source tree...'));
 await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/@confluentinc/kafka-javascript/deps" -exec rm -rf {} + 2>/dev/null || true`;
 echo(chalk.green('✅ librdkafka source tree stripped'));
@@ -243,7 +250,8 @@ const verifySingleInstance = async (label, dir) => {
 	echo(chalk.yellow(`INFO: Verifying single-instance dependency integrity in ${label}...`));
 	// `--dir` rather than `--filter`: a filter that matches nothing exits 0, so a renamed or moved
 	// package would report a passing check having run no verifier at all.
-	const verifyProcess = $`cd ${config.rootDir} && pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
+	const verifyProcess =
+		$`cd ${config.rootDir} && pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
 	verifyProcess.pipe(process.stdout);
 	const { exitCode } = await verifyProcess;
 	// 0 and 3 are the only codes the verifier itself produces; everything else (tsx failing to load,
@@ -299,7 +307,9 @@ if (generateLicenses) {
 		echo(chalk.yellow('⚠️  Warning: continuing local build (CI=true would have failed)'));
 	}
 } else {
-	echo(chalk.gray('INFO: Skipping SBOM/license generation (set N8N_GENERATE_LICENSES=true to enable)'));
+	echo(
+		chalk.gray('INFO: Skipping SBOM/license generation (set N8N_GENERATE_LICENSES=true to enable)'),
+	);
 }
 
 // Restore package.json files

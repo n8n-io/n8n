@@ -354,7 +354,7 @@ describe('BuilderModelLiveLookupService', () => {
 
 			await expect(
 				service.list(user, projectId, AI_GATEWAY_MANAGED_TAG, 'xAiApi', 'xai'),
-			).rejects.toThrow('does not support');
+			).rejects.toThrow('do not support');
 			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
 			expect(listModelsForProvider).not.toHaveBeenCalled();
 		});

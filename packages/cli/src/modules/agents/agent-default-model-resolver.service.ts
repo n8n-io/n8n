@@ -132,7 +132,7 @@ export class AgentDefaultModelResolverService {
 
 		return await this.resolveCredential(user, projectId, {
 			id: AI_GATEWAY_MANAGED_TAG,
-			name: 'n8n credits',
+			name: 'Gateway credits',
 			type: credentialType,
 		});
 	}
