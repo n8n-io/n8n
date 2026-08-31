@@ -1834,10 +1834,11 @@ describe('GmailTrigger', () => {
 		});
 
 		it('should keep unfetched new-message ids when a fetch fails after the scan', async () => {
-			// Same invariant as the drain loop, on the new-message side: the window
-			// was fully scanned, so the cursor advances past every listed id. A fetch
-			// error mid-loop is swallowed — any within-budget id not yet persisted
-			// as pending sits behind the new cursor and is lost for good.
+			// Same rule as the queue drain, on the newly scanned side. The scan
+			// reached the whole window, so the cursor advances past every id it
+			// found: an id that is in no stored state would sit behind the new
+			// cursor and be lost. A failed id goes to the set-aside list, and the
+			// ids the budget could not reach stay queued.
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': { lastTimeChecked: 1000000 },
 			};
@@ -1846,20 +1847,21 @@ describe('GmailTrigger', () => {
 			mockList(listPage(['1', '2', '3', '4']));
 			mockGet('1', 4_000_000_000_000);
 			mockGetError('2');
-			// No mock for '3': the throw on '2' must stop the loop before it.
+			mockGet('3', 3_000_000_000_000);
+			// No mock for '4': it is beyond the budget, so this poll must not fetch it.
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 3 } },
 				workflowStaticData,
 			});
 
-			// Only the message fetched before the error is delivered...
-			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
-			// ...and the unfetched within-budget remainder joins the beyond-budget
-			// tail in the pending queue, order preserved.
-			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['2', '3', '4']);
+			// The failure costs only its own message.
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1', '3']);
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([['2', 1]]);
+			// The beyond-budget tail stays queued.
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['4']);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
-				expect.arrayContaining(['1']),
+				expect.arrayContaining(['1', '3']),
 			);
 		});
 
@@ -1978,7 +1980,11 @@ describe('GmailTrigger', () => {
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['Q1', 'NEW']);
 		});
 
-		it('should drop a quarantined id once it has used up its attempts', async () => {
+		it('should stop looking for an id it gave up on', async () => {
+			// Giving up has to outlast the poll. An id that is only removed from the
+			// set-aside list is in no stored state at all, so the next scan finds it
+			// again and the whole round of attempts starts over. Putting it at the
+			// boundary keeps the scan from picking it up while the cursor is held.
 			const initialTimestamp = 1000000;
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': {
@@ -1989,14 +1995,19 @@ describe('GmailTrigger', () => {
 
 			mockLabels();
 			mockGetError('GONE');
-			mockList(listPage([]));
+			// The message is still in the mailbox, so the scan returns it again.
+			mockList(listPage(['GONE']));
 
-			await testPollingTriggerNode(GmailTrigger, {
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
 				workflowStaticData,
 			});
 
+			expect(response).toBeNull();
 			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([]);
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toContain('GONE');
+			// Not queued for a fetch either: the scan skipped it.
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
 		});
 
 		it('should count attempts per id so a fresh failure is not dropped early', async () => {
@@ -2136,6 +2147,29 @@ describe('GmailTrigger', () => {
 			// Raw labelIds survive, because simplifying failed.
 			expect(response?.[0]?.[0]?.json.labelIds).toEqual(['testLabelId']);
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(2_000_000_000);
+		});
+
+		it('should keep fetching the rest of a scanned batch when one fetch fails', async () => {
+			// The scan found several messages. One failing fetch must not cost the
+			// poll the messages behind it, and that failure must count as an attempt
+			// like every other one, so the id does not get a free try.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			mockLabels();
+			mockList(listPage(['A', 'B']));
+			mockGetError('A');
+			mockGet('B', 2_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['B']);
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([['A', 1]]);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual([]);
 		});
 
 		it('should retry only as many quarantined ids as one poll allows', async () => {

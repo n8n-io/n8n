@@ -462,6 +462,14 @@ export class GmailTrigger implements INodeType {
 								`Gmail Trigger cannot fetch message ${id} after ${attempted} attempts; skipping it`,
 								{ node: node.name },
 							);
+							// Giving up has to outlast this poll. An id that only leaves the
+							// set-aside list is in no stored state, so the next scan finds it
+							// again and starts the attempts over. The boundary set is what the
+							// scan already skips, so it goes there.
+							nodeStaticData.possibleDuplicates = [
+								...(nodeStaticData.possibleDuplicates ?? []),
+								id,
+							];
 						} else {
 							stillFailing.push([id, attempted]);
 						}
@@ -637,17 +645,39 @@ export class GmailTrigger implements INodeType {
 				Object.assign(fetchQs, options);
 				delete fetchQs.includeDrafts;
 
+				const scannedButFailed: Array<[string, number]> = [];
+
 				for (const [index, message] of messagesToProcess.entries()) {
-					await fetchAndProcessMessage(message.id, fetchQs);
+					try {
+						await fetchAndProcessMessage(message.id, fetchQs);
+					} catch (error) {
+						// Same rule as the queue drain: set this message aside, count the
+						// attempt, and carry on with the rest of the batch. Letting the
+						// error out here would skip every message behind it and give this
+						// one an attempt that no count remembers.
+						this.logger.warn(`Gmail Trigger could not fetch message ${message.id}; will retry it`, {
+							node: node.name,
+							error,
+						});
+						scannedButFailed.push([message.id, 1]);
+					}
+
 					if (shouldLimitMessages) {
 						// Trim what the queue write above seeded: keep only the ids this loop
-						// has not delivered yet, so a swallowed throw leaves every unfetched
-						// id stored while the cursor may still advance past all of them.
+						// has not handled yet, so a later throw leaves every unhandled id
+						// stored while the cursor may still advance past all of them.
 						nodeStaticData.pendingMessageIds = [
 							...messagesToProcess.slice(index + 1).map((m) => m.id),
 							...beyondBudgetIds,
 						];
 					}
+				}
+
+				if (scannedButFailed.length > 0) {
+					nodeStaticData.failedFetches = [
+						...(nodeStaticData.failedFetches ?? []),
+						...scannedButFailed,
+					];
 				}
 			}
 		} catch (error) {
