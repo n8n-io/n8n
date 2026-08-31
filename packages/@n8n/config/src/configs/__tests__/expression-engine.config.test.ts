@@ -105,6 +105,14 @@ describe('ExpressionEngineConfig', () => {
 			expect(Container.get(ExpressionEngineConfig).bridgeMemoryLimit).toBe(128);
 			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
+
+		test('falls back to default on fractional value', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT', '8.5');
+			expect(Container.get(ExpressionEngineConfig).bridgeMemoryLimit).toBe(128);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
 	});
 
 	describe('observability defaults', () => {

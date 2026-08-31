@@ -33,8 +33,10 @@ export class ExpressionEngineConfig {
 	/**
 	 * Memory limit in MB for the V8 isolate used by the VM bridge.
 	 * The isolate requires at least 8MB, and a negative value leaves it without a limit.
+	 * It tolerates a fractional value by truncating it, but whole megabytes are the only
+	 * meaningful unit here, so this rejects a fraction rather than silently truncating.
 	 */
-	@Env('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT', z.number({ coerce: true }).min(8))
+	@Env('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT', z.number({ coerce: true }).int().min(8))
 	bridgeMemoryLimit: number = 128;
 
 	/**
