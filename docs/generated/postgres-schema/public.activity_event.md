@@ -9,7 +9,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | json |  | true |  |  | Minimal detail that makes an entry meaningful unexpanded (a run status and failing node, a save node delta). Size-capped on write; no user ids |
 | id | integer |  | false |  |  |  |
-| projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Scopes the entry to one project. NULL for instance-level entries — including a project deletion, which would otherwise cascade away the record of itself |
+| projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Scopes the entry to one project. NULL for entries about the instance rather than one project |
 | resourceId | varchar(36) |  | true |  |  | Id of the resource, for fetching the full record. No FK: entries outlive it |
 | resourceName | text |  | true |  |  | Name at the time of the entry, denormalised so a row reads without a join and survives the resource being deleted. Truncated on write |
 | resourceType | varchar(32) |  | true |  |  | What `resourceId` points at; see ActivityResourceType in @n8n/db. NULL when an entry is about the instance rather than a resource |

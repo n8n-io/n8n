@@ -38,8 +38,8 @@ export class CreateActivityEventTable1787741452169 implements ReversibleMigratio
 				column('projectId')
 					.varchar(36)
 					.comment(
-						'Scopes the entry to one project. NULL for instance-level entries — including ' +
-							'a project deletion, which would otherwise cascade away the record of itself',
+						'Scopes the entry to one project. NULL for entries about the instance rather ' +
+							'than one project',
 					),
 				column('resourceType')
 					.varchar(32)
@@ -69,9 +69,9 @@ export class CreateActivityEventTable1787741452169 implements ReversibleMigratio
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
-			// CASCADE: a deleted project's history is unreachable by every read, which are all
-			// project-scoped. The one entry that must survive a deletion is written at instance
-			// level instead, with the project id in `resourceId`.
+			// CASCADE: a deleted project's history is unreachable by every read, since all of them
+			// are project-scoped. Recording the deletion itself would need an entry outside the
+			// project, which no writer emits today.
 			.withForeignKey('projectId', {
 				tableName: PROJECT_TABLE,
 				columnName: 'id',

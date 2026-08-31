@@ -98,10 +98,15 @@ describe('ActivityEventRepository', () => {
 		it('combines both id bounds instead of letting one overwrite the other', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
 
-			await repository.findFeed({ limit: 10, afterId: 5, beforeId: 40 });
+			await repository.findFeed({
+				projectIds: ['project1'],
+				limit: 10,
+				afterId: 5,
+				beforeId: 40,
+			});
 
 			expect(entityManager.find).toHaveBeenCalledWith(ActivityEvent, {
-				where: { id: And(MoreThan(5), LessThan(40)) },
+				where: { projectId: In(['project1']), id: And(MoreThan(5), LessThan(40)) },
 				order: { id: 'DESC' },
 				take: 10,
 			});
@@ -145,6 +150,16 @@ describe('ActivityEventRepository', () => {
 			});
 			expect(entityManager.delete).toHaveBeenCalledWith(ActivityEvent, { id: LessThan(120) });
 			expect(deleted).toBe(7);
+		});
+
+		it('deletes everything when the cap is zero, rather than asking for a negative offset', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 3, raw: [] });
+
+			const deleted = await repository.deleteBeyondNewest(0);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(entityManager.delete).toHaveBeenCalledWith(ActivityEvent, {});
+			expect(deleted).toBe(3);
 		});
 
 		it('does nothing when the table holds fewer entries than the cap', async () => {

@@ -35,8 +35,9 @@ export class ActivityEvent extends WithCreatedAt {
 	/**
 	 * Autoincrement int, not the usual nanoid: the feed orders by id, pages on it as a cursor, and
 	 * records the high-water mark of what a thread was already shown. On SQLite this is a rowid
-	 * alias, so ids are reused once the top rows are deleted, which pruning does — never compare a
-	 * stored cursor against a feed that has been pruned beneath it.
+	 * alias: pruning deletes the oldest rows and so never frees the highest id, but emptying the
+	 * table does, and ids then restart. A stored cursor is only meaningful against a feed that has
+	 * held at least one row throughout.
 	 */
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -62,6 +63,11 @@ export class ActivityEvent extends WithCreatedAt {
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
+	/**
+	 * Null for entries about the instance rather than one project. A project deletion cascades its
+	 * entries away; recording that deletion needs a resource vocabulary that covers projects, which
+	 * is why no writer emits one yet.
+	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	projectId: string | null;
 
