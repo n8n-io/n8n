@@ -456,13 +456,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		}
 	}
 
-	/** Mark a claimed record as successfully processed. Pass `trx` to enroll in an existing transaction. */
-	async markCompleted(id: number, trx?: EntityManager): Promise<void> {
+	/**
+	 * Mark a claimed record as successfully processed. Pass `trx` to enroll in an
+	 * existing transaction. An optional `warningMessage` is stored in
+	 * `errorMessage` for a record that completed with a non-fatal side effect
+	 * (e.g. an abandoned external webhook deregistration).
+	 */
+	async markCompleted(id: number, trx?: EntityManager, warningMessage?: string): Promise<void> {
 		const manager = trx ?? this.manager;
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.Completed, errorMessage: null },
+			{ status: Status.Completed, errorMessage: warningMessage ?? null },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}

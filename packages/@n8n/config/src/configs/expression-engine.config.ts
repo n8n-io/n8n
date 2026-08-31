@@ -24,12 +24,19 @@ export class ExpressionEngineConfig {
 
 	/**
 	 * Execution timeout in milliseconds for each expression evaluation in the VM bridge.
+	 * The isolate accepts only a positive 32-bit integer: it rejects a fractional value
+	 * outright, and leaves the evaluation effectively unbounded for zero or a negative one.
 	 */
-	@Env('N8N_EXPRESSION_ENGINE_TIMEOUT')
+	@Env('N8N_EXPRESSION_ENGINE_TIMEOUT', z.number({ coerce: true }).int().positive())
 	bridgeTimeout: number = 5000;
 
-	/** Memory limit in MB for the V8 isolate used by the VM bridge. */
-	@Env('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT')
+	/**
+	 * Memory limit in MB for the V8 isolate used by the VM bridge.
+	 * The isolate requires at least 8MB, and a negative value leaves it without a limit.
+	 * It tolerates a fractional value by truncating it, but whole megabytes are the only
+	 * meaningful unit here, so this rejects a fraction rather than silently truncating.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT', z.number({ coerce: true }).int().min(8))
 	bridgeMemoryLimit: number = 128;
 
 	/**
