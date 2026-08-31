@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import * as alert from '../actions/alert';
@@ -71,6 +71,49 @@ describe('TheHiveProject router error handling', () => {
 			description: null,
 			httpCode: null,
 		});
+		expect(result[0][0].error).toBeUndefined();
+	});
+
+	it('should fall back to the raw error detail for connection errors without a description', async () => {
+		const connectionError = new NodeApiError(node, {
+			message: 'connect ECONNREFUSED 10.0.0.5:443',
+			code: 'ECONNREFUSED',
+		});
+		vi.mocked(alert.create.execute).mockRejectedValue(connectionError);
+		executeFunctions.continueOnFail.mockReturnValue(true);
+
+		const result = await router.call(executeFunctions);
+
+		expect(result[0][0].json).toEqual({
+			error: 'The service refused the connection - perhaps it is offline',
+			description: 'connect ECONNREFUSED 10.0.0.5:443',
+			httpCode: 'ECONNREFUSED',
+		});
+	});
+
+	it('should attach the error to the item so core routes it to the error output', async () => {
+		const apiError = new NodeApiError(node, {
+			message: 'Alert test:ref:123 already exists in organisation Acme',
+			httpCode: '400',
+		});
+		vi.mocked(alert.create.execute).mockRejectedValue(apiError);
+		executeFunctions.continueOnFail.mockReturnValue(true);
+		executeFunctions.getNode.mockReturnValue({ ...node, onError: 'continueErrorOutput' });
+
+		const result = await router.call(executeFunctions);
+
+		expect(result[0][0].error).toBe(apiError);
+	});
+
+	it('should attach a wrapped error to the item for non-node errors', async () => {
+		vi.mocked(alert.create.execute).mockRejectedValue(new Error('some failure'));
+		executeFunctions.continueOnFail.mockReturnValue(true);
+		executeFunctions.getNode.mockReturnValue({ ...node, onError: 'continueErrorOutput' });
+
+		const result = await router.call(executeFunctions);
+
+		expect(result[0][0].error).toBeInstanceOf(NodeOperationError);
+		expect((result[0][0].error as NodeOperationError).message).toBe('some failure');
 	});
 
 	it('should throw when continueOnFail is false', async () => {
