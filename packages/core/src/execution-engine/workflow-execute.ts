@@ -61,7 +61,7 @@ import {
 	createRunExecutionData,
 	applyDynamicCredentialsUsage,
 } from 'n8n-workflow';
-import PCancelable from 'p-cancelable';
+import PCancelable, { type OnCancelFunction } from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
@@ -1575,6 +1575,95 @@ export class WorkflowExecute {
 		}
 	}
 
+	/**
+	 * Connect the PCancelable cancellation callback. On cancellation it aborts the
+	 * running nodes and reports the run so far through the lifecycle hooks.
+	 */
+	private setupCancellation(
+		onCancel: OnCancelFunction,
+		hooks: ExecutionLifecycleHooks,
+		startedAt: Date,
+	): void {
+		// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
+		setMaxListeners(Infinity, this.abortController.signal);
+
+		onCancel.shouldReject = false;
+		onCancel(() => {
+			this.status = 'canceled';
+			this.updateTaskStatusesToCancelled();
+			this.abortController.abort();
+			const fullRunData = this.getFullRunData(startedAt);
+			void hooks.runHook('workflowExecuteAfter', [fullRunData]);
+		});
+	}
+
+	/**
+	 * Acquire the expression isolate, establish the execution context and run the first
+	 * lifecycle hook. If any of that fails, record the error on the first node of the
+	 * stack so it is saved correctly, then rethrow.
+	 */
+	private async initializeExecution(
+		workflow: Workflow,
+		hooks: ExecutionLifecycleHooks,
+	): Promise<void> {
+		try {
+			await workflow.expression.acquireIsolate();
+
+			// Establish the execution context
+			await establishExecutionContext(
+				workflow,
+				this.runExecutionData,
+				this.additionalData,
+				this.mode,
+			);
+
+			if (!this.additionalData.restartExecutionId) {
+				await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
+			} else {
+				await hooks.runHook('workflowExecuteResume', [workflow, this.runExecutionData]);
+			}
+		} catch (error) {
+			const e = error as unknown as ExecutionBaseError;
+
+			// Set the error that it can be saved correctly
+			const executionError: ExecutionBaseError = {
+				...e,
+				message: e.message,
+				stack: e.stack,
+			};
+
+			// Set the incoming data of the node that it can be saved correctly.
+			// A Chat Trigger-only workflow has an empty stack, so there may be no node to
+			// blame — recording the error alone beats throwing over the top of it.
+			const startItem = this.runExecutionData.executionData!.nodeExecutionStack.at(0);
+
+			if (startItem) {
+				const taskData: ITaskData = {
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 0,
+					data: {
+						main: startItem.data.main,
+					},
+					source: [],
+					executionStatus: 'error',
+					hints: [],
+				};
+				this.runExecutionData.resultData = {
+					runData: {
+						[startItem.node.name]: [taskData],
+					},
+					lastNodeExecuted: startItem.node.name,
+					error: executionError,
+				};
+			} else {
+				this.runExecutionData.resultData.error = executionError;
+			}
+
+			throw error;
+		}
+	}
+
 	/** True while there are nodes queued for execution. */
 	private isExecutionStackNotEmpty(): boolean {
 		return this.runExecutionData.executionData!.nodeExecutionStack.length !== 0;
@@ -1647,77 +1736,11 @@ export class WorkflowExecute {
 		let closeFunction: Promise<void> | undefined;
 
 		return new PCancelable(async (resolve, _reject, onCancel) => {
-			// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
-			setMaxListeners(Infinity, this.abortController.signal);
-
-			onCancel.shouldReject = false;
-			onCancel(() => {
-				this.status = 'canceled';
-				this.updateTaskStatusesToCancelled();
-				this.abortController.abort();
-				const fullRunData = this.getFullRunData(startedAt);
-				void hooks.runHook('workflowExecuteAfter', [fullRunData]);
-			});
+			this.setupCancellation(onCancel, hooks, startedAt);
 
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
-				try {
-					await workflow.expression.acquireIsolate();
-
-					// Establish the execution context
-					await establishExecutionContext(
-						workflow,
-						this.runExecutionData,
-						this.additionalData,
-						this.mode,
-					);
-
-					if (!this.additionalData.restartExecutionId) {
-						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
-					} else {
-						await hooks.runHook('workflowExecuteResume', [workflow, this.runExecutionData]);
-					}
-				} catch (error) {
-					const e = error as unknown as ExecutionBaseError;
-
-					// Set the error that it can be saved correctly
-					executionError = {
-						...e,
-						message: e.message,
-						stack: e.stack,
-					};
-
-					// Set the incoming data of the node that it can be saved correctly.
-					// A Chat Trigger-only workflow has an empty stack, so there may be no node to
-					// blame — recording the error alone beats throwing over the top of it.
-					const startItem = this.runExecutionData.executionData!.nodeExecutionStack.at(0);
-
-					if (startItem) {
-						executionData = startItem;
-						const taskData: ITaskData = {
-							startTime: Date.now(),
-							executionIndex: 0,
-							executionTime: 0,
-							data: {
-								main: executionData.data.main,
-							},
-							source: [],
-							executionStatus: 'error',
-							hints: [],
-						};
-						this.runExecutionData.resultData = {
-							runData: {
-								[executionData.node.name]: [taskData],
-							},
-							lastNodeExecuted: executionData.node.name,
-							error: executionError,
-						};
-					} else {
-						this.runExecutionData.resultData.error = executionError;
-					}
-
-					throw error;
-				}
+				await this.initializeExecution(workflow, hooks);
 
 				executionLoop: while (this.isExecutionStackNotEmpty()) {
 					if (this.shouldStopExecuting()) {
