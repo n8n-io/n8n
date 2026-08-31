@@ -11,7 +11,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * lazily by execution recording, and a job can be registered before the
  * thread row exists.
  */
-export class CreateAgentBackgroundJobTable1787756564283 implements ReversibleMigration {
+export class CreateAgentBackgroundJobTable1788191436461 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, createIndex, column } }: MigrationContext) {
 		await createTable('agent_background_job')
 			.withColumns(
