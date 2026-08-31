@@ -205,27 +205,5 @@ describe('MainSidebar', () => {
 				},
 			});
 		});
-<<<<<<< HEAD
-=======
-
-		it('should open the top-up flow when n8n credits is selected', async () => {
-			settingsStore.settings = {
-				...defaultSettings,
-				aiGateway: {
-					enabled: true,
-					budget: 0,
-					cloudUbbEnabled: true,
-				},
-			};
-
-			const { getByText, findByText } = renderComponent();
-
-			getByText('Settings').click();
-			const creditsItem = await findByText('Gateway credits');
-			creditsItem.click();
-
-			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });
-		});
->>>>>>> 67183927 (feat(editor): Rename n8n credits and n8n Connect copy to Gateway credits in the UI (#37267))
 	});
 });
