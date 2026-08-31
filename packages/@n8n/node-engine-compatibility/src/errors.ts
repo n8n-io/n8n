@@ -74,7 +74,7 @@ export class UnsupportedNodeTypeError extends UserError {
 export class VmExpressionEngineRequiredError extends UnexpectedError {
 	constructor() {
 		super(
-			'V1StepExecutor requires the VM expression engine. Initialize it via `Expression.initExpressionEngine()` before executing steps.',
+			'V1StepExecutor requires an isolated expression engine (vm or quickjs). Initialize it via `Expression.initExpressionEngine()` before executing steps.',
 		);
 	}
 }
