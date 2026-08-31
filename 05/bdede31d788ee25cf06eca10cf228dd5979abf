@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_60dc2ad9ff7de2::t_df87f2db0bd847 400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05bdede31d788ee25cf06eca10cf228dd5979abf",
+  "prompts": {},
+  "sessions": {
+    "s_60dc2ad9ff7de2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "469357ba-a39d-4452-ac53-8a787319ebd9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
