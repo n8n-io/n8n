@@ -41,6 +41,7 @@ import {
 } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
+import { checkContextAssertions } from '../harness/context-assertions';
 import {
 	credentialSetupExpectationTexts,
 	runCredentialSetupChecks,
@@ -429,8 +430,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// Deterministic credential-setup verdicts, started EAGERLY: per-build
 		// cleanup deletes artifacts later, and a credential read that lost that
 		// race would report "not created" for a run that did create one.
-		const injected = build.credentialSetup
-			? runCredentialSetupChecks({
+		const deterministic: Array<Promise<BuildExpectationResult[]>> = [];
+		if (build.credentialSetup) {
+			deterministic.push(
+				runCredentialSetupChecks({
 					client,
 					facts: build.credentialSetup,
 					searchableRunText,
@@ -444,8 +447,26 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						credentialSetupExpectationTexts(build.credentialSetup?.credentialType),
 						`Credential-setup checks could not run: ${reason}`,
 					);
-				})
-			: undefined;
+				}),
+			);
+		}
+		// Context assertions read the run debug this build already stashes, so they wait
+		// on that promise rather than re-fetching. `stashRunDebug` swallows its own
+		// failures into `[]`, which the checker reports as ungraded — a dropped capture
+		// must not read as the asserted value being absent.
+		if (testCase.contextAssertions?.length) {
+			const assertions = testCase.contextAssertions;
+			const runDebug = build.threadId ? runDebugByThreadId.get(build.threadId) : undefined;
+			deterministic.push(
+				(runDebug ?? Promise.resolve(undefined)).then((debug) =>
+					checkContextAssertions(assertions, debug),
+				),
+			);
+		}
+		const injected =
+			deterministic.length > 0
+				? Promise.all(deterministic).then((lists) => lists.flat())
+				: undefined;
 		const { expectations, transcript, unjudged } = selectAuthorExpectations({
 			testCase,
 			transcript: build.transcript,

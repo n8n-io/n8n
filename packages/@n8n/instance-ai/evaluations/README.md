@@ -268,6 +268,65 @@ Operational details:
 - The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
 - Absent both fields, it's a complete no-op.
 
+### Context assertions (per test case)
+
+`processExpectations` and `outcomeExpectations` grade what the agent **did**.
+`contextAssertions` grade what it **had** — whether an exact value was in the context the
+model was actually sent.
+
+```jsonc
+"contextAssertions": [
+  { "text": "#ops-alerts", "note": "the channel agreed three turns ago" },
+  { "text": "email_address", "mustAppear": false, "note": "renamed column, should have been dropped" },
+  { "text": "Daily Sync", "anchor": "turn-end" }
+]
+```
+
+- **Deterministic.** Case-insensitive substring search over the captured run debug — no
+  judge, so no rubric, no cost, and nothing to hallucinate. Counted as units in the pass
+  rate like any other expectation.
+- **Three tiers are searched** and the verdict names which one hit: the compressed
+  observation block, the message window, and the system prompt.
+- **Assert atomic values** (`#ops-alerts`, `triggerAtHour`, `2026-03-01`), not formatted
+  phrases (`triggerAtHour: 6`). The same value is serialised with different spacing
+  depending on which tier carries it.
+- **Needs run debug**, so these are skipped in prebuilt/MCP runs. A dropped capture is
+  reported as `incomplete` ("not checked") rather than as the value being absent.
+
+#### `anchor` — which moment the claim is about
+
+This is what makes an A/B attributable rather than just a pass rate.
+
+| Anchor | State it reads | Use for |
+| --- | --- | --- |
+| `probe` (default) | what the model held when the request arrived | **retention** — "a fact from earlier survived to here" |
+| `turn-end` | the state once the turn is over | **retrieval** — "the agent went and fetched it" |
+
+Grade retention at the `probe`, because the agent restates facts as it works and the end
+state would let the claim manufacture its own evidence. Grade retrieval at `turn-end`,
+because tools are called *after* the request arrives — a fetch claim graded at the probe
+can never pass.
+
+A probe-anchored claim that misses is checked again at turn end, so the verdict can
+separate "never had it" from "re-derived it while answering".
+
+When the graded turn captured no usable probe state, probe claims report `incomplete`
+rather than falling back to the end-of-turn state. Borrowing that state would count what
+the agent produced *while answering* as evidence that it remembered.
+
+#### Context outcome (context × build)
+
+Crossing the context verdict with the build verdict names one of four situations, because
+a single pass rate collapses cases whose fixes are opposite:
+
+| | build correct | build wrong |
+| --- | --- | --- |
+| **context had it** | `working` | `context-ignored` — a prompting problem |
+| **context lacked it** | `unattributed-success` — the feature contributed nothing | `retrieval-gap` — a retrieval problem |
+
+Both axes take the strictest reading: every graded claim on that axis must pass. A case
+without a graded claim on both axes is `unclassified` rather than `working`.
+
 ### Artifact types (workflow / agent / config-eval)
 
 A test case's build can produce more than a workflow — a builder can also create a standalone **agent** or attach a **config-eval** (an evaluation config on a workflow, graded against its referenced dataset). These are graded through the **same `outcomeExpectations`** as everything else — there are no artifact-specific case fields.
@@ -710,7 +769,7 @@ The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author 
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `contextAssertions`, `credentials`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation, or one context assertion** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One case = one LangSmith split**, named from the case slug (the LangTracer case name; for disk-loaded files, the filename without `.json`). Pick a slug you're happy to also use as a `--filter` target.
 

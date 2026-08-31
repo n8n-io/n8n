@@ -259,6 +259,11 @@ export interface WorkflowTestCase {
 	 *  absence and content ("an agent was created and no workflow", "the agent instructions mention
 	 *  escalating refunds"). Also run in prebuilt/MCP runs. Counted toward the pass rate. */
 	outcomeExpectations?: string[];
+	/** Exact values that must (or must not) be in the agent's captured context at a
+	 *  named moment. Checked deterministically by substring search — no judge, so no
+	 *  rubric and no hallucination. Needs run debug, so skipped in prebuilt/MCP runs.
+	 *  Counted toward the pass rate. */
+	contextAssertions?: ContextAssertion[];
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this
@@ -311,6 +316,34 @@ export interface ExecutionScenarioResult {
 	incomplete?: boolean;
 }
 
+/**
+ * Which moment in the graded turn a context claim is judged against.
+ *
+ * `probe` — the state the model held when the request arrived, before it produced
+ * anything. Correct for RETENTION claims ("a fact from earlier survived to here"),
+ * because the agent restates facts as it works, so the end state would let a claim
+ * manufacture its own evidence.
+ *
+ * `turn-end` — the state once the turn is over. Correct for WITHIN-TURN RETRIEVAL
+ * claims ("the agent went and fetched the sibling workflow"). The request arrives and
+ * *then* tools are called, so a retrieval claim graded at the probe can never pass:
+ * the anchor excludes the very thing the claim is about.
+ */
+export type ContextAnchor = 'probe' | 'turn-end';
+
+/** One deterministic claim about the agent's captured context, checked by substring
+ *  search rather than by a judge. See `harness/context-assertions.ts`. */
+export interface ContextAssertion {
+	text: string;
+	/** Omit or true → must appear. False → must NOT appear (a stale value that should
+	 *  have been dropped). */
+	mustAppear?: boolean;
+	/** Shown in the verdict when the raw string is not self-explanatory. */
+	note?: string;
+	/** Defaults to `probe`. */
+	anchor?: ContextAnchor;
+}
+
 /** Verdict for one author-written build expectation. Scored as a unit in the
  *  pass rate alongside execution scenarios. */
 export interface BuildExpectationResult {
@@ -319,6 +352,12 @@ export interface BuildExpectationResult {
 	reason: string;
 	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
 	incomplete?: boolean;
+	/** Set on verdicts graded against the agent's CONTEXT STATE rather than against the
+	 *  conversation or the built workflow. Present so a context miss is identifiable in
+	 *  the report and in `eval-results.json` without matching expectation strings back
+	 *  to the case file. Conversation-judged verdicts stay untagged, so absence means
+	 *  "process or outcome". */
+	kind?: 'context';
 	/** Who owns a failed expectation. Stamped where the verdicts are attached to
 	 *  a row (the only place that also knows whether the build died on infra). */
 	attribution?: EvalAttribution;

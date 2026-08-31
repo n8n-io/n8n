@@ -185,6 +185,10 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// transcript-less MCP builds there); declaring them needs no build-side setup.
 	processExpectations: 'supported',
 	outcomeExpectations: 'supported',
+	// Graded from the in-product run debug, which an MCP build never produces —
+	// `claude` drives the build, so there is no thread whose context state could be
+	// captured. A case declaring these would score them as ungraded every time.
+	contextAssertions: 'orchestrator-only',
 	// Forbidden legacy key — the schema rejects it at load, so it can never
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',

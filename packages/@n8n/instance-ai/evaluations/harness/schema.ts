@@ -148,6 +148,30 @@ const evalTestCaseObjectSchema = z
 		 *  and from the rendered agent/config-eval context when the build produced one, so they also
 		 *  cover artifact existence/absence/content. Also run in prebuilt/MCP runs. Counted as units. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
+		/** Exact values that must (or must not) be in the agent's captured context at a named
+		 *  moment. Checked by deterministic substring search with no LLM in the path, so these
+		 *  cannot hallucinate and need no rubric. Use them for concrete values (a channel, a
+		 *  column name, a date, a parameter key). Assert ATOMIC values, not formatted phrases:
+		 *  the same value is serialised with different spacing depending on which tier carries
+		 *  it. Needs run debug, so skipped in prebuilt/MCP runs. Counted as units. */
+		contextAssertions: z
+			.array(
+				z
+					.object({
+						text: z.string().min(1),
+						/** Omit or true → must appear. False → must NOT appear (a stale value that
+						 *  should have been dropped). */
+						mustAppear: z.boolean().optional(),
+						/** Shown in the verdict when the raw string is not self-explanatory. */
+						note: z.string().min(1).optional(),
+						/** `probe` (default) for retention claims; `turn-end` for a value the agent
+						 *  fetched during this turn. Retrieval happens after the probe, so a fetch
+						 *  claim graded at the probe can never pass. */
+						anchor: z.enum(['probe', 'turn-end']).optional(),
+					})
+					.strict(),
+			)
+			.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
@@ -296,16 +320,18 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		//
 		// A case needs at least one gradable unit. Execution scenarios grade the built workflow;
 		// process/outcome expectations grade the conversation, the workflow, and any non-workflow
-		// artifact (agent, config-eval) rendered into the judge context.
+		// artifact (agent, config-eval) rendered into the judge context; context assertions grade
+		// the captured context state.
 		if (
 			(c.executionScenarios?.length ?? 0) === 0 &&
 			(c.processExpectations?.length ?? 0) === 0 &&
-			(c.outcomeExpectations?.length ?? 0) === 0
+			(c.outcomeExpectations?.length ?? 0) === 0 &&
+			(c.contextAssertions?.length ?? 0) === 0
 		) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message:
-					'a case needs at least one executionScenario, or a process/outcome expectation to grade it',
+					'a case needs at least one executionScenario, or a process/outcome expectation or context assertion to grade it',
 			});
 		}
 	});
