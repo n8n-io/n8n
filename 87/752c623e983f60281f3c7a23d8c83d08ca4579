@@ -1,0 +1,35 @@
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0002-1787813855304-unknown-host-POST-_v1_messages-6bc250eb.json
+  ai_agent 1-105
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/trace.jsonl
+  ai_agent 1-4
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0001-1787813855303-unknown-host-POST-_v1_messages-170275ad.json
+  ai_agent 7,18,24,29-31,33,36,39,42,51,54,57,60,63,66,75,87,92-93,97
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-remediation-guard.spec.ts
+  s_cc061af4a03de9::t_84348af86e0104 256-265
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0003-1787813855305-unknown-host-POST-_v1_messages-c8fa2710.json
+  ai_agent 7,18,24,29-31,33,36,39,42,51,54,57,60,63,66,75,87,92-93,97
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0004-1787813855306-unknown-host-POST-_v1_messages-c8fa2710.json
+  ai_agent 7,18,24,29-31,33,36,39,42,51,54,57,60,63,66,75,87,92-93,97
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0000-1787813855301-unknown-host-POST-_v1_messages-5faa04d7.json
+  ai_agent 7,18,24,29-31,33,36,39,42,51,54,57,60,63,66,75,87,92-93,97
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0005-1787813855306-unknown-host-POST-_v1_messages-962c8e4b.json
+  ai_agent 7,18,24,29-31,33,36,39,42,51,54,57,60,63,66,75,78,84,88-120,123
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0006-1787813855307-unknown-host-POST-_v1_messages-c8fa2710.json
+  ai_agent 7,18,24,29-31,33,36,39,42,51,54,57,60,63,66,75,87,92-93,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "87752c623e983f60281f3c7a23d8c83d08ca4579",
+  "prompts": {},
+  "sessions": {
+    "s_cc061af4a03de9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c80490fb-33d8-43b1-abd0-5563fedb856c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

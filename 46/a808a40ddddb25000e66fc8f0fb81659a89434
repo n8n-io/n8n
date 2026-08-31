@@ -1,0 +1,58 @@
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_f3e0cf8bc1e610::t_271b8aef2c9115 207-214
+  s_f3e0cf8bc1e610::t_067bdf8d375cc8 80-84
+  s_f3e0cf8bc1e610::t_d0366330282ca1 36
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_f3e0cf8bc1e610::t_8b2126ac505f65 46
+  s_f3e0cf8bc1e610::t_5985a8140656e1 1-2,18,25-29
+  s_f3e0cf8bc1e610::t_b9f43fa01fdd22 75-94
+  s_f3e0cf8bc1e610::t_3a8e976119ecc5 30
+packages/@n8n/agents/src/__tests__/workspace/scoped-workspace.test.ts
+  s_f3e0cf8bc1e610::t_2290b21a7f9e2d 1-60
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f3e0cf8bc1e610::t_a24bc0f0ec6978 375,396
+  s_f3e0cf8bc1e610::t_b204e6d2bd41b9 478
+  s_f3e0cf8bc1e610::t_388d67c411269c 140-145
+  s_f3e0cf8bc1e610::t_cdae7a3b2df080 620,638,643-644,646-664,668-679
+  s_f3e0cf8bc1e610::t_6c9266043103b3 55
+  s_f3e0cf8bc1e610::t_25f8b8e9f4451f 797,810
+  s_f3e0cf8bc1e610::t_89408c19320607 764
+  s_f3e0cf8bc1e610::t_d6d3ebeafc1cdd 827
+packages/@n8n/agents/src/workspace/scoped-workspace.ts
+  s_f3e0cf8bc1e610::t_f7f9f93dbaf3a0 217-224
+  s_f3e0cf8bc1e610::t_93bac085e84cf8 155,160-161
+  s_f3e0cf8bc1e610::t_f380e1bb7a75e3 209,211-216,225-227,231-234
+  s_f3e0cf8bc1e610::t_87719a5dac3cb4 39-43,48
+  s_f3e0cf8bc1e610::t_ff4aa8ce75b847 85,90,95,100,105,114,123,128,133,138,143
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_f3e0cf8bc1e610::t_944935ccdab7e9 367-407
+  s_f3e0cf8bc1e610::t_221dbea49a0710 25
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_f3e0cf8bc1e610::t_ef82d69edc29f9 314-317
+  s_f3e0cf8bc1e610::t_4f0c541cce3bcb 35-38
+  s_f3e0cf8bc1e610::t_96d9429496aafe 108-111
+  s_f3e0cf8bc1e610::t_a5a85334c10179 286-289
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_f3e0cf8bc1e610::t_d2abe48482dfb0 67,69-73,84,95-119
+  s_f3e0cf8bc1e610::t_ddea47aea1a66f 146-147,151-152
+  s_f3e0cf8bc1e610::t_8636de8c20cfba 31-32,37-38,49
+  s_f3e0cf8bc1e610::t_dee5d4c1e26249 120-121
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_f3e0cf8bc1e610::t_9a916e9db9839f 1-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "46a808a40ddddb25000e66fc8f0fb81659a89434",
+  "prompts": {},
+  "sessions": {
+    "s_f3e0cf8bc1e610": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d29ad06f-d820-4c0a-a6df-11974076db34",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
