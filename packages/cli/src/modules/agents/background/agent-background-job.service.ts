@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
@@ -13,7 +14,8 @@ import {
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
 export const MAX_RUNNING_JOBS_PER_THREAD = 5;
-export const SUB_AGENT_BACKGROUND_TIMEOUT_MS = 30 * 60 * 1000;
+export const SUB_AGENT_BACKGROUND_TIMEOUT_MS = 30 * Time.minutes.toMilliseconds;
+export const SETTLED_JOB_RETENTION_MS = 30 * Time.days.toMilliseconds;
 
 export type BackgroundJobReceipt =
 	| { status: 'started'; jobId: string }
@@ -158,6 +160,8 @@ export class AgentBackgroundJobService {
 	async reconcile(): Promise<void> {
 		await this.failJobsPastTimeout();
 		await this.failOrphanedSubAgentJobs(await this.jobRepository.findRunningJobs('subagent'));
+
+		await this.jobRepository.deleteSettledBefore(new Date(Date.now() - SETTLED_JOB_RETENTION_MS));
 	}
 
 	private async failJobsPastTimeout(): Promise<void> {

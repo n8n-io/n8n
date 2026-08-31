@@ -10,6 +10,7 @@ import type { AgentExecutionRepository } from '../../repositories/agent-executio
 import {
 	AgentBackgroundJobService,
 	MAX_RUNNING_JOBS_PER_THREAD,
+	SETTLED_JOB_RETENTION_MS,
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
 } from '../agent-background-job.service';
 
@@ -20,7 +21,6 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 		status: 'running',
 		parentAgentId: 'agent-1',
 		parentThreadId: 'thread-1',
-		projectId: 'project-1',
 		title: 'research',
 		subAgentId: 'sub-1',
 		childThreadId: 'child-thread-1',
@@ -64,7 +64,6 @@ const registerParams = {
 	id: 'job-1',
 	parentAgentId: 'agent-1',
 	parentThreadId: 'thread-1',
-	projectId: 'project-1',
 	title: 'research',
 	subAgentId: 'sub-1',
 	childThreadId: 'child-thread-1',
@@ -237,6 +236,17 @@ describe('handleCancelRelay', () => {
 });
 
 describe('reconcile', () => {
+	it('prunes settled rows past the retention cutoff', async () => {
+		const { service, jobRepository } = setup();
+
+		await service.reconcile();
+
+		const cutoff = jobRepository.deleteSettledBefore.mock.calls[0][0];
+		const expected = Date.now() - SETTLED_JOB_RETENTION_MS;
+		expect(cutoff.getTime()).toBeGreaterThan(expected - 5000);
+		expect(cutoff.getTime()).toBeLessThanOrEqual(expected);
+	});
+
 	it('fails jobs past their timeout and aborts their live handles', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.findRunningPastTimeout.mockResolvedValue([makeJob()]);

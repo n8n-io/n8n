@@ -12,7 +12,9 @@ export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'can
  * connection, the parent's turn, and backend restarts.
  */
 @Entity({ name: 'agent_background_job' })
-@Index(['parentThreadId'])
+@Index(['parentThreadId', 'status'])
+@Index(['parentAgentId'])
+@Index(['settledAt'])
 @Index(['childExecutionId'], { unique: true, where: '"childExecutionId" IS NOT NULL' })
 @Index(['timeoutAt'], { where: '"status" = \'running\'' })
 export class AgentBackgroundJob extends WithTimestampsAndStringId {
@@ -30,9 +32,6 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	// agent_execution_threads.id.
 	@Column({ type: 'varchar', length: 128 })
 	parentThreadId: string;
-
-	@Column({ type: 'varchar', length: 36 })
-	projectId: string;
 
 	/** Task name or workflow name, echoed in status-check listings. */
 	@Column({ type: 'varchar', length: 255 })

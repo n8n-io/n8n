@@ -110,7 +110,6 @@ erDiagram
   varchar_16_ kind
   varchar_36_ parentAgentId FK
   varchar_128_ parentThreadId
-  varchar_36_ projectId FK
   TEXT result
   datetime_3_ settledAt
   varchar_16_ status

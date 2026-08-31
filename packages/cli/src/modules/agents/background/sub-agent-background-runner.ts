@@ -71,7 +71,6 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
-			projectId: context.projectId,
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, In, LessThan, Not, Repository } from '@n8n/typeorm';
 
 import {
 	AgentBackgroundJob,
@@ -11,7 +11,6 @@ type NewAgentBackgroundJobBase = {
 	id: string;
 	parentAgentId: string;
 	parentThreadId: string;
-	projectId: string;
 	title: string;
 };
 
@@ -90,5 +89,12 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 			},
 		);
 		return result.affected === 1;
+	}
+
+	/** Retention: drop settled rows past the cutoff. The child run's transcript
+	 * and the parent↔child link live on agent_execution_threads, so nothing a
+	 * trace needs is lost with the row. */
+	async deleteSettledBefore(cutoff: Date): Promise<void> {
+		await this.delete({ status: Not('running'), settledAt: LessThan(cutoff) });
 	}
 }

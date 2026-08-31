@@ -28,7 +28,6 @@ export class CreateAgentBackgroundJobTable1787756564283 implements ReversibleMig
 				// (e.g. `test-<agentId>:<userId>`), so they exceed a bare uuid —
 				// same width as agent_execution_threads.id.
 				column('parentThreadId').varchar(128).notNull,
-				column('projectId').varchar(36).notNull,
 				column('title')
 					.varchar(255)
 					.notNull.comment('Task name or workflow name, echoed in status-check listings'),
@@ -45,21 +44,18 @@ export class CreateAgentBackgroundJobTable1787756564283 implements ReversibleMig
 				column('error').text,
 				column('settledAt').timestampTimezone(3),
 			)
-			.withIndexOn('parentThreadId')
+			.withIndexOn(['parentThreadId', 'status'])
+			// Covers the FK cascade scan when an agent is deleted.
+			.withIndexOn('parentAgentId')
 			.withForeignKey('parentAgentId', {
 				tableName: 'agents',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withForeignKey('projectId', {
-				tableName: 'project',
-				columnName: 'id',
-				onDelete: 'CASCADE',
-			}).withTimestamps;
+			// For jobs data retention sweep
+			.withIndexOn('settledAt').withTimestamps;
 
-		// One job per workflow execution, enforced by the schema and never
-		// relaxed at settle — a replayed registration for the same execution
-		// reads back the existing row instead of creating a second tracker.
+		// At most one tracker per workflow execution
 		await createIndex(
 			'agent_background_job',
 			['childExecutionId'],
@@ -69,9 +65,7 @@ export class CreateAgentBackgroundJobTable1787756564283 implements ReversibleMig
 		);
 
 		// Reconciliation sweeps every couple of minutes on every main, filtering
-		// on status = 'running' (and timeoutAt), while settled rows accumulate
-		// without retention. The partial index only ever holds the small running
-		// set, keeping the sweeps off the full table.
+		// on status = 'running' (and timeoutAt)
 		await createIndex(
 			'agent_background_job',
 			['timeoutAt'],
