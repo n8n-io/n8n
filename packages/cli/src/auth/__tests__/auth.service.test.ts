@@ -979,7 +979,7 @@ describe('AuthService', () => {
 
 			authService.clearCookie(res);
 
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			// The form page cookies are not clearable from here: their names embed the
 			// workflow/execution they were minted for, unknown to this response.
 			expect(res.clearCookie).toHaveBeenCalledTimes(1);

@@ -163,6 +163,9 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
+		const { app, pathResolvingService } = this;
+		const basePath = pathResolvingService.getBasePath();
+
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 			Container.get(PrometheusMetricsService).init(this.app);
@@ -197,15 +200,13 @@ export class Server extends AbstractServer {
 		// Public API
 		// ----------------------------------------
 
-		if (isApiEnabled()) {
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(
-				this.globalConfig.publicApi.path,
-				basePath,
-			);
-			this.app.use(...apiRouters);
-			if (frontendService) {
-				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
-			}
+		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(
+			this.globalConfig.publicApi.path,
+			basePath,
+		);
+		this.app.use(...apiRouters);
+		if (frontendService) {
+			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 		}
 
 		// Parse cookies for easier access
@@ -233,18 +234,6 @@ export class Server extends AbstractServer {
 				),
 			),
 		);
-
-		// ----------------------------------------
-		// Public API
-		// ----------------------------------------
-
-		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
-		this.app.use(...apiRouters);
-		if (frontendService) {
-			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
-		}
-
-		const { basePath, restEndpoint, app } = this;
 
 		const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
 		const push = Container.get(Push);
@@ -282,7 +271,7 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`${basePath}/${this.restEndpoint}/options/timezones`, (_, res) =>
+		this.app.get(pathResolvingService.resolveRestEndpoint('options/timezones'), (_, res) =>
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
@@ -408,7 +397,10 @@ export class Server extends AbstractServer {
 				}
 				res.sendStatus(404);
 			};
-			this.app.use(`${basePath}/schemas/:node/:version{/:resource}{/:operation}.json`, serveSchemas);
+			this.app.use(
+				`${basePath}/schemas/:node/:version{/:resource}{/:operation}.json`,
+				serveSchemas,
+			);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -451,12 +443,11 @@ export class Server extends AbstractServer {
 				'static',
 				'types',
 				'\\.well-known',
-				this.endpointHealth,
+				this.globalConfig.endpoints.health,
 				'metrics',
 				'e2e',
-				this.restEndpoint,
+				this.globalConfig.endpoints.rest,
 				this.endpointPresetCredentials,
-				isApiEnabled() ? '' : this.globalConfig.publicApi.path,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			// Matched against the normalised path, so a non-UI asset requested in another
@@ -554,13 +545,13 @@ export class Server extends AbstractServer {
 	}
 
 	private configureSettingsRoute() {
-		const { frontendService, basePath } = this;
+		const { frontendService, pathResolvingService } = this;
 		const authService = Container.get(AuthService);
 
 		if (frontendService) {
 			// Returns the current settings for the UI
 			this.app.get(
-				`${basePath}/${this.restEndpoint}/settings`,
+				pathResolvingService.resolveRestEndpoint('settings'),
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
 					return req.user
