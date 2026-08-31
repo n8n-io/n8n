@@ -19,7 +19,9 @@ import { FocusScope } from 'reka-ui';
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type {
+	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
+	AgentJsonNodeToolMockConfig,
 	AgentJsonToolRef,
 	CustomToolEntry,
 	WorkflowToolRef,
@@ -36,6 +38,7 @@ import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetti
 import AgentToolConfigModalHeader from './AgentToolConfigModalHeader.vue';
 import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
 import AgentToolConfigWorkflowContent from './AgentToolConfigWorkflowContent.vue';
+import AgentToolMockSection from './AgentToolMockSection.vue';
 
 interface ToolModalData {
 	toolRef: AgentJsonToolRef;
@@ -48,6 +51,20 @@ interface ToolModalData {
 	supportsToolApproval?: boolean;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
 	onRemove?: () => void;
+	/**
+	 * Fired the moment a mock is generated/regenerated — that call already
+	 * persisted server-side, so the host syncs its local config immediately
+	 * instead of waiting for this modal's own Save/Cancel.
+	 */
+	onMockGenerated?: (config: AgentJsonConfig) => void;
+	/**
+	 * The tool doesn't exist in the agent's persisted config yet (the "connect a
+	 * new tool" wizard) — the mock-data endpoint resolves tools by name against
+	 * that persisted config, so mocking has nothing to generate against until
+	 * the tool is saved once. Hides the mock section rather than surfacing a
+	 * confusing 404.
+	 */
+	isNewTool?: boolean;
 	kind?: 'tool';
 }
 
@@ -109,6 +126,16 @@ const mcpModalData = computed(() => (isMcpServerModalData(props.data) ? props.da
 const toolModalData = computed(() => (isMcpServerModalData(props.data) ? null : props.data));
 const isWorkflowTool = computed(() => toolModalData.value?.toolRef.type === 'workflow');
 const isCustomTool = computed(() => toolModalData.value?.toolRef.type === 'custom');
+// Mocking is v1 node-tool-only scope (AGENT-716) — MCP servers, workflow, and
+// custom tools never get the mock section, even though MCP tools reuse
+// AgentToolConfigNodeContent for their own settings form.
+const isNodeTool = computed(
+	() =>
+		!isMcpTool.value &&
+		!isWorkflowTool.value &&
+		!isCustomTool.value &&
+		toolModalData.value?.isNewTool !== true,
+);
 
 const nodeContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
 const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
@@ -118,6 +145,8 @@ const approvalRequired = ref(false);
 const mcpApproval = ref<AgentJsonMcpServerConfig['approval']>();
 const mcpApprovalValid = ref(true);
 const draftNode = ref<INode | null>(null);
+const mockDraft = ref<AgentJsonNodeToolMockConfig | undefined>(undefined);
+const mockValid = ref(true);
 
 const initialNode = computed<INode | null>(() =>
 	isMcpTool.value
@@ -172,6 +201,8 @@ watch(
 	() => toolModalData.value?.toolRef,
 	(toolRef) => {
 		approvalRequired.value = Boolean(toolRef?.requireApproval);
+		mockDraft.value = toolRef?.type === 'node' ? toolRef.mock : undefined;
+		mockValid.value = true;
 	},
 	{ immediate: true },
 );
@@ -210,7 +241,7 @@ const hasHttpRequestUrlIssue = computed(() => {
 const canSave = computed(() => {
 	if (isCustomTool.value) return true;
 	if (isMcpTool.value) return isValid.value && mcpApprovalValid.value;
-	return isValid.value && !hasHttpRequestUrlIssue.value;
+	return isValid.value && !hasHttpRequestUrlIssue.value && mockValid.value;
 });
 const fromAiDisabledParameters = computed(() => {
 	const toolRef = toolModalData.value?.toolRef;
@@ -250,6 +281,11 @@ const headerNodeTypeDescription = computed(() => {
 	return nodeContentRef.value?.getNodeTypeDescription() ?? null;
 });
 
+const mockServiceLabel = computed(() => {
+	const label = headerNodeTypeDescription.value?.displayName?.replace(/ Tool$/, '');
+	return label || nodeName.value;
+});
+
 function closeDialog() {
 	uiStore.closeModal(props.modalName);
 }
@@ -270,6 +306,14 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 		delete updatedRef.requireApproval;
 	}
 	return updatedRef;
+}
+
+function withMock(ref: AgentJsonToolRef): AgentJsonToolRef {
+	if (ref.type !== 'node') return ref;
+	if (mockDraft.value) return { ...ref, mock: mockDraft.value };
+	if (!('mock' in ref)) return ref;
+	const { mock: _mock, ...rest } = ref;
+	return rest;
 }
 
 function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerConfig {
@@ -326,7 +370,7 @@ function handleConfirm() {
 	if (!currentNode) return;
 	if (!toolData) return;
 	const updatedRef = updateToolRefFromNode(toolData.toolRef, currentNode);
-	toolData.onConfirm(withApprovalRequirement(updatedRef));
+	toolData.onConfirm(withMock(withApprovalRequirement(updatedRef)));
 	closeDialog();
 }
 
@@ -361,6 +405,18 @@ function handleNodeNameUpdate(name: string) {
 
 function handleNodeUpdate(node: INode) {
 	draftNode.value = node;
+}
+
+function handleMockUpdate(mock: AgentJsonNodeToolMockConfig | undefined) {
+	mockDraft.value = mock;
+}
+
+function handleMockValidUpdate(valid: boolean) {
+	mockValid.value = valid;
+}
+
+function handleMockGenerated(config: AgentJsonConfig) {
+	toolModalData.value?.onMockGenerated?.(config);
 }
 </script>
 
@@ -439,6 +495,18 @@ function handleNodeUpdate(node: INode) {
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
 							@update:node="handleNodeUpdate"
+						/>
+						<AgentToolMockSection
+							v-if="isNodeTool && initialNode && toolModalData"
+							:key="initialName"
+							:mock="mockDraft"
+							:tool-name="nodeName"
+							:service-label="mockServiceLabel"
+							:project-id="data.projectId"
+							:agent-id="data.agentId"
+							@update:mock="handleMockUpdate"
+							@update:valid="handleMockValidUpdate"
+							@generated="handleMockGenerated"
 						/>
 						<AgentToolConfigApprovalSetting
 							v-if="!isMcpTool && initialNode && showApprovalSetting"

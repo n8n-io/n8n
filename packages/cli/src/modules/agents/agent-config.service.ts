@@ -29,6 +29,7 @@ import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
+import { NodeToolMockReconcileService } from './json-config/node-tool-mock-reconcile.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -53,6 +54,7 @@ export class AgentConfigService {
 		private readonly credentialsService: CredentialsService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
+		private readonly nodeToolMockReconcileService: NodeToolMockReconcileService,
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
@@ -177,6 +179,10 @@ export class AgentConfigService {
 				validatedConfig.tools,
 				new Set(accessibleCredentials.map((credential) => credential.type)),
 			);
+			// Auto-unmock a tool whose required credentials just went from empty to
+			// fully filled; compares against the config as persisted before this
+			// write, so a mock the user re-enables later isn't immediately undone.
+			this.nodeToolMockReconcileService.reconcile(validatedConfig.tools, entity.schema?.tools);
 			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
 		}
 

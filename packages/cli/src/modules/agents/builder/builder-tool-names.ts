@@ -32,6 +32,7 @@ export const BUILDER_TOOLS = {
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',
 	CALL_AGENT: 'call_agent',
+	MOCK_TOOL: 'mock_tool',
 	PUBLISH_AGENT: 'publish_agent',
 	UNPUBLISH_AGENT: 'unpublish_agent',
 	RESOLVE_INTEGRATION: 'resolve_integration',

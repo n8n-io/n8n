@@ -13,6 +13,7 @@ import {
 import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
@@ -24,6 +25,7 @@ import type {
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { mockedNodeTools, nodeToolServiceLabel } from '../utils/agentToolMock';
 import { TOOL_CALL_STATE } from '../constants';
 
 const props = withDefaults(
@@ -65,6 +67,16 @@ const emit = defineEmits<{
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
+const nodeTypesStore = useNodeTypesStore();
+
+// Derived from the agent config (not the stream) so the banner reflects what
+// will actually run in Preview, independent of which tools a given turn calls.
+const mockedToolLabels = computed(() =>
+	mockedNodeTools(props.agentConfig).map((tool) =>
+		nodeToolServiceLabel(tool, nodeTypesStore.getNodeType),
+	),
+);
+const hasMockedTools = computed(() => mockedToolLabels.value.length > 0);
 
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
@@ -405,6 +417,20 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
+		<N8nCallout
+			v-if="hasMockedTools"
+			theme="secondary"
+			:class="$style.mockedBanner"
+			slim
+			data-test-id="agent-chat-mocked-tools-banner"
+		>
+			{{
+				locale.baseText('agents.chat.mockedBanner.message', {
+					interpolate: { tools: mockedToolLabels.join(', ') },
+				})
+			}}
+		</N8nCallout>
+
 		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
 		<AgentChatMessageList
 			v-else
@@ -529,6 +555,11 @@ onBeforeUnmount(() => {
 }
 
 .warningBanner {
+	margin: var(--spacing--sm);
+	flex-shrink: 0;
+}
+
+.mockedBanner {
 	margin: var(--spacing--sm);
 	flex-shrink: 0;
 }

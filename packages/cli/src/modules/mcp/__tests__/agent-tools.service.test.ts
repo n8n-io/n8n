@@ -47,6 +47,7 @@ import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
+import type { NodeToolMockReconcileService } from '@/modules/agents/json-config/node-tool-mock-reconcile.service';
 import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
@@ -227,6 +228,7 @@ describe('McpAgentToolsService', () => {
 			localCredentialsService,
 			workflowRepository,
 			mock<NodeToolAiGatewayService>(),
+			mock<NodeToolMockReconcileService>(),
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,

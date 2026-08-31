@@ -28,6 +28,13 @@ const defaultAgentConfig: AgentJsonConfig = {
 	instructions: 'Help.',
 };
 
+const getNodeType = vi.fn<(type: string, version?: number) => { displayName: string } | null>(
+	() => null,
+);
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({ getNodeType }),
+}));
+
 vi.mock('@n8n/i18n', () => {
 	const baseText = (key: string, options?: { interpolate?: Record<string, string> }) => {
 		const translations: Record<string, string> = {
@@ -36,6 +43,7 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
 			'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
+			'agents.chat.mockedBanner.message': `Responses from ${options?.interpolate?.tools} are mocked — this agent isn't calling real services.`,
 		};
 		return translations[key] ?? key;
 	};
@@ -161,6 +169,7 @@ describe('AgentChatPanel', () => {
 		isCancellingMock.value = false;
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
+		getNodeType.mockReturnValue(null);
 	});
 
 	function mountPanel(
@@ -677,6 +686,54 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.text()).toContain('MCP server');
 		expect(wrapper.text()).toContain('Sub-agent');
 		expect(wrapper.text()).toContain('integrations.0.credentialId');
+	});
+
+	it('does not show the mocked-tools banner when no tool is mock-enabled', () => {
+		const wrapper = mountPanel();
+
+		expect(wrapper.find('[data-test-id="agent-chat-mocked-tools-banner"]').exists()).toBe(false);
+	});
+
+	it('shows a persistent banner listing mock-enabled tools, derived from the config', () => {
+		getNodeType.mockImplementation((type: string) => {
+			if (type === 'n8n-nodes-base.gmailTool') return { displayName: 'Gmail Tool' };
+			if (type === 'n8n-nodes-base.slackTool') return { displayName: 'Slack Tool' };
+			return null;
+		});
+
+		const wrapper = mountPanel({
+			agentConfig: {
+				...defaultAgentConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'send_email',
+						node: { nodeType: 'n8n-nodes-base.gmailTool', nodeTypeVersion: 1, nodeParameters: {} },
+						mock: { enabled: true, items: [{ id: 1 }] },
+					},
+					{
+						type: 'node',
+						name: 'post_message',
+						node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
+						mock: { enabled: true, items: [{ id: 2 }] },
+					},
+					{
+						type: 'node',
+						name: 'read_calendar',
+						node: {
+							nodeType: 'n8n-nodes-base.googleCalendarTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+						},
+					},
+				],
+			},
+		});
+
+		const banner = wrapper.get('[data-test-id="agent-chat-mocked-tools-banner"]');
+		expect(banner.text()).toContain('Gmail');
+		expect(banner.text()).toContain('Slack');
+		expect(banner.text()).not.toContain('read_calendar');
 	});
 });
 

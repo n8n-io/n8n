@@ -72,6 +72,7 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
 			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
 			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
+			'agents.chat.mockedTag': 'Mocked',
 		} as Record<string, string>,
 		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
@@ -166,6 +167,31 @@ describe('AgentChatToolSteps', () => {
 
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.text()).toContain('Slack');
+	});
+
+	it('tags a mocked tool call in its step label', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'send_email',
+				toolCallId: 'tc-mocked',
+				state: TOOL_CALL_STATE.DONE,
+				mocked: true,
+			},
+		]);
+
+		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toBe('Mocked');
+	});
+
+	it('does not tag a normal tool call as mocked', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'send_email',
+				toolCallId: 'tc-real',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(wrapper.find('[data-testid="tool-step-summary"]').exists()).toBe(false);
 	});
 
 	it('does not make generic tool steps without data expandable', () => {

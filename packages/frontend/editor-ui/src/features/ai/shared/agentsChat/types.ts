@@ -30,6 +30,8 @@ export interface ToolCall {
 	startTime?: number;
 	/** Epoch ms when the tool settled. Absent while still running. */
 	endTime?: number;
+	/** Set when this node tool call was served from stored mock items instead of executing (AGENT-716). Never set on published runs. */
+	mocked?: boolean;
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user

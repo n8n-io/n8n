@@ -65,6 +65,7 @@ import {
 	InvalidAgentTestRunCheckpointError,
 	type AgentTestRunResult,
 } from '../agent-test-run.service';
+import { AgentToolMockService } from '../agent-tool-mock.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
@@ -287,6 +288,7 @@ export class AgentsBuilderToolsService {
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentPublishService: AgentPublishService,
 		private readonly agentTestRunService: AgentTestRunService,
+		private readonly agentToolMockService: AgentToolMockService,
 		private readonly aiService: AiService,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly outboundHttp: OutboundHttp,
@@ -708,7 +710,8 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
 					'Pass the returned sessionId on later calls to continue the same conversation; omit it to start a new one. ' +
-					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
+					'The draft uses its real configured tools and credentials, so external side effects are possible — except for a mock-enabled node tool, which returns its stored sample data without calling the real service. ' +
+					'A run that only exercises mocked tools is still a valid test: report which tools were mocked and never claim their real integrations were exercised. ' +
 					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
 					'Unsupported interactive requests return approval_required with a Preview path.',
 			)
@@ -835,6 +838,52 @@ export class AgentsBuilderToolsService {
 			)
 			.build();
 
+		const mockToolTool = new Tool(BUILDER_TOOLS.MOCK_TOOL)
+			.description(
+				'Generate (or regenerate) stored sample output for a node tool in `tools[]` and enable ' +
+					"mocking on it, so it stays testable in Preview without the tool's real credential. " +
+					'Preview/test runs then return the stored items instead of calling the real service; ' +
+					'publishing still requires a real credential regardless of this flag. ' +
+					'Call this whenever a node-tool credential is skipped (an `ask_credential` skip or a ' +
+					'`finish_setup` credential card left `skipped`) so the target agent stays testable, and always tell ' +
+					'the user which tools are mocked. Never hand-write `mock.items` yourself — only this tool ' +
+					'generates them. ' +
+					'Returns { ok: true, configMutated: true, agentId, toolName, itemCount, fallbackUsed } — ' +
+					'fallbackUsed: true means generation was unavailable and schema-derived placeholder items were ' +
+					'used instead, so tell the user to review and edit them — or { ok: false, errors }.',
+			)
+			.input(
+				z.object({
+					toolName: z
+						.string()
+						.min(1)
+						.describe("The node tool's `name` in `tools[]` to generate mock data for."),
+				}),
+			)
+			.handler(async ({ toolName }: { toolName: string }) => {
+				try {
+					const result = await this.agentToolMockService.generateAndPersist(
+						agentId,
+						projectId,
+						toolName,
+						user,
+						'builder',
+					);
+					return {
+						ok: true,
+						toolName: result.toolName,
+						itemCount: result.mock.items.length,
+						fallbackUsed: result.fallbackUsed,
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
 		const modelLookup: ModelLookup = {
 			// `list` resolves the n8n Connect managed tag to the synthetic gateway
 			// credential internally, so no managed branch is needed here.
@@ -857,6 +906,7 @@ export class AgentsBuilderToolsService {
 			this.withConfigMutationMarker(publishAgentTool, agentId),
 			this.withConfigMutationMarker(unpublishAgentTool, agentId),
 			callAgentTool,
+			this.withConfigMutationMarker(mockToolTool, agentId),
 			buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,

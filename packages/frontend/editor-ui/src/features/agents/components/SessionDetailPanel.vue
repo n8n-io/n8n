@@ -435,6 +435,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 							:output="item.toolOutput"
 							:node-parameters="item.nodeParameters"
 							:success="item.toolOutcome ? item.toolOutcome !== 'error' : item.toolSuccess"
+							:mocked="item.mocked"
 						/>
 					</template>
 

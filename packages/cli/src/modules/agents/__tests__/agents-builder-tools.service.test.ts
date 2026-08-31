@@ -36,6 +36,7 @@ import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
+import type { AgentToolMockService } from '../agent-tool-mock.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
@@ -90,6 +91,7 @@ function makeService() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
+	const agentToolMockService = mock<AgentToolMockService>();
 	const telemetry = mock<Telemetry>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
@@ -121,6 +123,7 @@ function makeService() {
 		agentTaskService,
 		agentPublishService,
 		agentTestRunService,
+		agentToolMockService,
 		aiService,
 		mock<AiGatewayService>(),
 		outboundHttp,
@@ -138,6 +141,7 @@ function makeService() {
 		agentTaskService,
 		agentPublishService,
 		agentTestRunService,
+		agentToolMockService,
 		nodeTypes,
 		outboundHttp,
 		telemetry,
@@ -2372,6 +2376,114 @@ describe('AgentsBuilderToolsService', () => {
 				executionId: 'execution-1',
 				suspensions: [{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'schedule_record' }],
 				previewPath: '/projects/project-1/agents/agent-1/preview',
+			});
+		});
+
+		it('succeeds against a draft whose only tool is mocked (mocks the orchestrator boundary)', async () => {
+			// WP2/WP3 (already landed) make `executeDraftRun` honor mocks and treat a
+			// mock-enabled node tool's missing credential as runnable. From this
+			// service's perspective a mocked-tool run is just another completed run —
+			// nothing here needs to special-case it.
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				response: 'Here is the mocked Slack message.',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+			});
+
+			const result = await getCallAgentTool(service).handler!(
+				{ message: 'Send a Slack message' },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				status: 'completed',
+				response: 'Here is the mocked Slack message.',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+			});
+		});
+	});
+
+	describe('mock_tool tool', () => {
+		function getMockToolTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
+				.json.find((tool) => tool.name === BUILDER_TOOLS.MOCK_TOOL)!;
+		}
+
+		it('generates and persists mock data for the named tool', async () => {
+			const { service, agentToolMockService } = makeService();
+			agentToolMockService.generateAndPersist.mockResolvedValue({
+				toolName: 'Slack: Send Message',
+				mock: { enabled: true, items: [{ ok: true }, { ok: true }], source: 'builder' },
+				fallbackUsed: false,
+				config: baseConfig,
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				versionId: 'v1',
+			});
+
+			const result = await getMockToolTool(service).handler!(
+				{ toolName: 'Slack: Send Message' },
+				ctx,
+			);
+
+			expect(agentToolMockService.generateAndPersist).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'Slack: Send Message',
+				user,
+				'builder',
+			);
+			expect(result).toEqual({
+				ok: true,
+				toolName: 'Slack: Send Message',
+				itemCount: 2,
+				fallbackUsed: false,
+				configMutated: true,
+				agentId,
+			});
+		});
+
+		it('reports fallbackUsed when generation fell back to placeholder items', async () => {
+			const { service, agentToolMockService } = makeService();
+			agentToolMockService.generateAndPersist.mockResolvedValue({
+				toolName: 'Slack: Send Message',
+				mock: { enabled: true, items: [{}], source: 'builder' },
+				fallbackUsed: true,
+				config: baseConfig,
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				versionId: 'v1',
+			});
+
+			const result = await getMockToolTool(service).handler!(
+				{ toolName: 'Slack: Send Message' },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				toolName: 'Slack: Send Message',
+				itemCount: 1,
+				fallbackUsed: true,
+				configMutated: true,
+				agentId,
+			});
+		});
+
+		it('surfaces an unknown-tool error to the model', async () => {
+			const { service, agentToolMockService } = makeService();
+			agentToolMockService.generateAndPersist.mockRejectedValue(
+				new Error('Node tool "Unknown" not found on this agent'),
+			);
+
+			const result = await getMockToolTool(service).handler!({ toolName: 'Unknown' }, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'Node tool "Unknown" not found on this agent' }],
 			});
 		});
 	});

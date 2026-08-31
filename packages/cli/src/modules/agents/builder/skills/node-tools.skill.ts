@@ -14,6 +14,7 @@ export function nodeToolsSkill(): RuntimeSkill {
 			'search_nodes',
 			'get_node_types',
 			'ask_credential',
+			'mock_tool',
 			'read_config',
 			'patch_config',
 		],
@@ -22,6 +23,7 @@ export function nodeToolsSkill(): RuntimeSkill {
 			'search_nodes',
 			'get_node_types',
 			'ask_credential',
+			'mock_tool',
 			'get_resource_locator_options',
 			'ask_questions',
 			'read_config',
@@ -84,7 +86,7 @@ conventions. Never add an incomplete tool or use a placeholder URL.
 - Gateway credits cover many services, including some community nodes. Adding a node tool with its credential slot omitted triggers server-side assignment: for a covered service the server attaches the managed \`Gateway credits\` credential (\`{ id: null, name: "Gateway credits", __aiGatewayManaged: true }\`) to each required, eligible slot on write — but only when the project has no credential of that type; an existing credential of the type wins and the slot stays empty for the normal credential flow below. Add the tool with the credential slot omitted, then \`read_config\`.
 - Exception — when the user explicitly asks to run a tool on Gateway credits, write \`{ "id": null, "name": "Gateway credits", "__aiGatewayManaged": true }\` into that credential slot yourself: the server keeps it when the service is covered (even if the user has their own credential of the type) and removes it when not covered — check \`read_config\` after the write and resolve a real credential if it was removed.
 - The \`Gateway credits\` managed credential IS the real, working credential — the tool executes through n8n's gateway on Gateway credits, so NO separate API key is needed. It is NOT a placeholder and NOT "invalid for the service", even for a community node. For a slot \`read_config\` shows populated with it: the slot is fully connected and the tool WILL run. Do NOT call \`ask_credential\` for it; do NOT include it in \`finish_setup\`; NEVER clear, remove, or replace it via \`patch_config\`; and NEVER seek a "real" API key to swap in for it. Report the tool as ready, running on Gateway credits — exactly like a managed model. Never tell the user the credential is "not connected"/"not set up" or that the tool "won't run until a credential is added".
-- Only for a required slot that \`read_config\` shows still empty after the write (a service Gateway credits do not cover) do you resolve a real credential: call \`ask_credential\` once before the config mutation for an addition to an existing agent. ${INITIAL_BUILD_NOTE} After the trailing \`finish_setup\` resolves the credential, copy the returned credentials into \`node.credentials\` via \`patch_config\`; for resource-locator resolution follow \`agent-builder-resource-locators\` then. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
+- Only for a required slot that \`read_config\` shows still empty after the write (a service Gateway credits do not cover) do you resolve a real credential: call \`ask_credential\` once before the config mutation for an addition to an existing agent. ${INITIAL_BUILD_NOTE} After the trailing \`finish_setup\` resolves the credential, copy the returned credentials into \`node.credentials\` via \`patch_config\`; for resource-locator resolution follow \`agent-builder-resource-locators\` then. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool, omit only that credential slot, and call \`mock_tool\` with the tool's name so the target agent stays testable; tell the user which tools are mocked. This is the sanctioned alternative to the credential — never invent a credential ID or placeholder value instead.
 - When the agent already has a chat channel configured and the tool needs the same
   credential type, \`ask_credential\` reuses the channel's credential automatically —
   do not ask the user to pick a different one.
@@ -117,7 +119,7 @@ through \`$json\`; use \`$fromAI\` for those fields instead.
 - \`$fromAI(...)\` placeholders define the node tool input schema; do not add it manually.
 - Follow \`agent-builder-resource-locators\` for dynamic selector lookup,
   credentials, and \`parameterValue\` handling.
-- If a required node-tool credential is skipped, add the tool and omit only that credential slot.
+- If a required node-tool credential is skipped, add the tool, omit only that credential slot, and call \`mock_tool\` so it stays testable; tell the user it's mocked.
 - Node tools execute inline, so never use waiting operations such as \`sendAndWait\`
   or \`dispatchAndWait\`. When the user requests human approval, configure the
   intended non-waiting operation and set \`requireApproval: true\` on the tool.
@@ -127,6 +129,7 @@ through \`$json\`; use \`$fromAI\` for those fields instead.
 - Generic external-service requests were routed through \`resolve_integration\`
   before node setup.
 - Node tools use discovered tool node ids and valid node parameters.
-- HTTP Request Tools use a fixed URL supplied by the user.`,
+- HTTP Request Tools use a fixed URL supplied by the user.
+- Every node tool with a skipped required credential was mocked via \`mock_tool\`, and the user was told which tools are mocked.`,
 	};
 }

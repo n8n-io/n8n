@@ -67,7 +67,12 @@ import {
 	mcpServerToNode,
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
-import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type {
+	AgentJsonConfig,
+	AgentJsonMcpServerConfig,
+	AgentJsonToolRef,
+	WorkflowToolRef,
+} from '../types';
 import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
@@ -314,6 +319,9 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,
 		existingToolNames: getExistingToolNames(workingTools.value),
+		// Not in the persisted config yet — the mock-data endpoint has nothing to
+		// resolve `toolName` against until this tool is saved once.
+		isNewTool: true,
 		onConfirm: (savedRef: AgentJsonToolRef) => {
 			addToolRef(savedRef);
 		},
@@ -554,6 +562,20 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 				(e) => e.localId !== entry.localId,
 			);
 			commit();
+		},
+		// The generate/regenerate call already persisted its mock against the
+		// agent's saved config — mirror it onto this modal's own working copy so
+		// a later `commit()` doesn't overwrite it with a stale ref.
+		onMockGenerated: (config: AgentJsonConfig) => {
+			if (toolRef.type !== 'node') return;
+			const updatedTool = config.tools?.find(
+				(t): t is Extract<AgentJsonToolRef, { type: 'node' }> =>
+					t.type === 'node' && t.name === toolRef.name,
+			);
+			if (!updatedTool) return;
+			workingToolEntries.value = workingToolEntries.value.map((e) =>
+				e.localId === entry.localId ? { ...e, ref: updatedTool } : e,
+			);
 		},
 	});
 }

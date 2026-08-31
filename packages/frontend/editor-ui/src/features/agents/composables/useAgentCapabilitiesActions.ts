@@ -190,6 +190,12 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						scheduleConfigUpdate({ tools: nextTools });
 					},
 					onRemove: () => onRemoveTool(toolIndex),
+					// A mock generate/regenerate call already persisted server-side —
+					// sync local state immediately so a later autosave (of this or any
+					// other edit) doesn't overwrite it with a stale `tools` array.
+					onMockGenerated: (config: AgentJsonConfig) => {
+						scheduleConfigUpdate(config);
+					},
 				},
 			});
 			return;

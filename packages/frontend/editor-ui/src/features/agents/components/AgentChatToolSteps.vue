@@ -105,18 +105,22 @@ function toolStepLabel(tc: ToolCall): string {
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
+	const mockedTag = tc.mocked ? [i18n.baseText('agents.chat.mockedTag')] : [];
+
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
 			getDelegateDifficultySummary(tc.input, i18n),
+			...mockedTag,
 		].filter((part): part is string => Boolean(part));
 	}
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
-		if (parsed) return [writeTodosSummaryLabel(i18n, countIncompleteTodos(parsed.todos))];
+		if (parsed)
+			return [writeTodosSummaryLabel(i18n, countIncompleteTodos(parsed.todos)), ...mockedTag];
 	}
-	if (tc.displaySummary) return [tc.displaySummary];
-	return [];
+	if (tc.displaySummary) return [tc.displaySummary, ...mockedTag];
+	return mockedTag;
 }
 
 function hasToolData(tc: ToolCall): boolean {

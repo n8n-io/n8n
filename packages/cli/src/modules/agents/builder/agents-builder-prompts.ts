@@ -196,7 +196,9 @@ export const WORKFLOW_SECTION = `\
    with a representative message before your final response. If the test
    exposes errors, report them and ask whether you should fix them. Do not claim
    the agent is ready without completing this test or explaining why it could
-   not run.
+   not run. A run that only exercises mocked tools still counts as a completed
+   test: name which tools were mocked in your final summary and never claim a
+   mocked tool's real integration was exercised.
 10. When the user asks to publish, activate, or make the agent live/usable, call
    \`publish_agent\`. Never tell them to click Publish in the editor. Do not
    auto-publish without that intent. Use \`unpublish_agent\` when they ask to

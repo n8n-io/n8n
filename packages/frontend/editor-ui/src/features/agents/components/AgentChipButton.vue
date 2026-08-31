@@ -12,6 +12,8 @@ const props = withDefaults(
 		invalid?: boolean;
 		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
 		invalidReasons?: string[];
+		/** Pin-data visual language for a mock-enabled tool (AGENT-716) — purple border, dimmed by `invalid`. */
+		mocked?: boolean;
 		clickable?: boolean;
 	}>(),
 	{
@@ -20,6 +22,7 @@ const props = withDefaults(
 		active: false,
 		invalid: false,
 		invalidReasons: () => [],
+		mocked: false,
 		clickable: true,
 	},
 );
@@ -27,6 +30,8 @@ const props = withDefaults(
 defineSlots<{
 	icon?: () => unknown;
 	default?: () => unknown;
+	/** Extra content after the label and before the invalid-warning icon (e.g. a "Mocked" badge). */
+	trailing?: () => unknown;
 }>();
 
 const emit = defineEmits<{
@@ -42,6 +47,7 @@ const emit = defineEmits<{
 			props.variant === 'suggestion' ? $style.suggestion : $style.default,
 			{
 				[$style.active]: props.active,
+				[$style.mocked]: props.mocked && !props.invalid,
 				[$style.invalid]: props.invalid,
 				[$style.nonClickable]: !props.clickable,
 			},
@@ -62,6 +68,7 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
+		<slot name="trailing" />
 		<N8nTooltip v-if="props.invalid" :disabled="props.invalidReasons.length === 0" placement="top">
 			<N8nIcon
 				icon="triangle-alert"
@@ -107,6 +114,10 @@ const emit = defineEmits<{
 
 .invalid {
 	border-color: var(--canvas-node--border-color--error, var(--color--danger));
+}
+
+.mocked {
+	border-color: var(--node--border-color--pinned);
 }
 
 .invalidIcon {

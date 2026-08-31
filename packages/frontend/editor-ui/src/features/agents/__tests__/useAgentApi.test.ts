@@ -1,8 +1,9 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getFullApiResponse } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
+import type { GenerateAgentToolMockResult } from '@n8n/api-types';
 
-import { listAgents, listAgentsPage } from '../composables/useAgentApi';
+import { generateAgentToolMockData, listAgents, listAgentsPage } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -72,6 +73,33 @@ describe('useAgentApi', () => {
 				'/projects/project-1/agents/v2',
 				{ skip: 1, take: 250 },
 			);
+		});
+	});
+
+	describe('generateAgentToolMockData', () => {
+		it('posts to the mock-data endpoint and returns the result', async () => {
+			const result: GenerateAgentToolMockResult = {
+				toolName: 'send_email',
+				mock: { enabled: true, items: [{ id: 1 }] },
+				fallbackUsed: false,
+				config: { name: 'Agent', model: '', instructions: '' },
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				versionId: 'version-1',
+			};
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(result);
+
+			const response = await generateAgentToolMockData(restApiContext, 'project-1', 'agent-1', {
+				toolName: 'send_email',
+				source: 'user',
+			});
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/tools/mock-data',
+				{ toolName: 'send_email', source: 'user' },
+			);
+			expect(response).toBe(result);
 		});
 	});
 });

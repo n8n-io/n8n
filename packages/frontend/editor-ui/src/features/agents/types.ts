@@ -133,6 +133,8 @@ export type WorkflowToolRef = AgentJsonToolConfig & { type: 'workflow' };
 
 export type {
 	NodeToolConfig,
+	AgentJsonNodeToolConfig,
+	AgentJsonNodeToolMockConfig,
 	AgentJsonToolConfig,
 	AgentJsonToolConfig as AgentJsonToolRef,
 	AgentJsonSkillConfig as AgentJsonSkillRef,

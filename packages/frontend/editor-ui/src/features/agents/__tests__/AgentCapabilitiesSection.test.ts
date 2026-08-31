@@ -250,6 +250,56 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.text()).toContain('Inbox triage');
 	});
 
+	it('shows the mocked badge and pin-data chip styling for a mock-enabled node tool', () => {
+		getNodeType.mockImplementation((type: string) => {
+			if (type === 'n8n-nodes-base.gmailTool') {
+				return createNodeType('n8n-nodes-base.gmailTool', 'Gmail Tool');
+			}
+			return null;
+		});
+
+		const wrapper = mountSection([
+			{
+				type: 'node',
+				name: 'inbox_triage',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+				mock: { enabled: true, items: [{ subject: 'Sample' }] },
+			},
+		]);
+
+		expect(wrapper.find('[data-testid="agent-tool-mocked-badge"]').exists()).toBe(true);
+		const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+		expect(chip.classes().some((c) => c.includes('mocked'))).toBe(true);
+		expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
+	});
+
+	it('does not show the mocked badge for a tool without mocking enabled', () => {
+		getNodeType.mockImplementation((type: string) => {
+			if (type === 'n8n-nodes-base.gmailTool') {
+				return createNodeType('n8n-nodes-base.gmailTool', 'Gmail Tool');
+			}
+			return null;
+		});
+
+		const wrapper = mountSection([
+			{
+				type: 'node',
+				name: 'inbox_triage',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+		]);
+
+		expect(wrapper.find('[data-testid="agent-tool-mocked-badge"]').exists()).toBe(false);
+	});
+
 	it('groups tools once the same node type reaches the threshold', () => {
 		getNodeType.mockImplementation((type: string) => {
 			if (type === 'n8n-nodes-base.gmailTool') {

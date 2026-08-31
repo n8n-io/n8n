@@ -18,6 +18,7 @@ import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
+import type { NodeToolMockReconcileService } from '../json-config/node-tool-mock-reconcile.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -61,6 +62,7 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
+	const nodeToolMockReconcileService = mock<NodeToolMockReconcileService>();
 	const eventService = mock<EventService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const telemetry = mock<Telemetry>();
@@ -92,6 +94,7 @@ function makeService() {
 		credentialsService,
 		workflowRepository,
 		nodeToolAiGatewayService,
+		nodeToolMockReconcileService,
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
@@ -106,6 +109,7 @@ function makeService() {
 		credentialsService,
 		workflowRepository,
 		nodeToolAiGatewayService,
+		nodeToolMockReconcileService,
 		eventService,
 		agentValidationService,
 		telemetry,

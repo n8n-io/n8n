@@ -396,6 +396,8 @@ interface RawToolCallEvent {
 	nodeTypeVersion?: number;
 	nodeDisplayName?: string;
 	nodeParameters?: Record<string, unknown>;
+	/** Served from stored mock items instead of executing the node (AGENT-716). */
+	mocked?: boolean;
 }
 
 interface RawTextEvent {
@@ -632,6 +634,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
 					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
 					nodeParameters: isNode ? event.nodeParameters : undefined,
+					mocked: isNode ? event.mocked : undefined,
 				};
 				items.push(item);
 				if (event.toolCallId) initialToolItems.set(event.toolCallId, item);

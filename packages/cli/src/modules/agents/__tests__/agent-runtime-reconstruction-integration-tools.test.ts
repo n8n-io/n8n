@@ -31,6 +31,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
+import type { NodeToolMockReconcileService } from '../json-config/node-tool-mock-reconcile.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -253,6 +254,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<WorkflowRepository>(),
 			mock<NodeToolAiGatewayService>(),
+			mock<NodeToolMockReconcileService>(),
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,

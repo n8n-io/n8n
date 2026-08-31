@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 import type { IDataObject, INodeExecutionData, IRunData } from 'n8n-workflow';
 import StandaloneRunData from '@/features/ndv/runData/components/StandaloneRunData.vue';
 import StandaloneRunDataHost from '@/features/ndv/runData/components/StandaloneRunDataHost.vue';
@@ -35,8 +36,10 @@ const props = withDefaults(
 		 * rather than rendering as if the call had completed cleanly.
 		 */
 		success?: boolean;
+		/** Served from stored mock items instead of executing the node (AGENT-716). */
+		mocked?: boolean;
 	}>(),
-	{ success: true },
+	{ success: true, mocked: false },
 );
 
 const i18n = useI18n();
@@ -188,6 +191,20 @@ const toolNodeUi = computed<INodeUi | null>(() => {
 <template>
 	<StandaloneRunDataHost v-slot="{ workflowObject, workflowExecution }" :execution="synthExecution">
 		<div :class="$style.root">
+			<N8nTooltip
+				v-if="mocked"
+				:content="i18n.baseText('agents.builder.toolMock.badgeTooltip')"
+				placement="top"
+			>
+				<N8nBadge
+					theme="secondary"
+					size="xsmall"
+					:class="$style.mockedBadge"
+					data-test-id="agent-tool-mocked-badge"
+				>
+					{{ i18n.baseText('agents.builder.toolMock.badge') }}
+				</N8nBadge>
+			</N8nTooltip>
 			<div :class="$style.pane" data-test-id="agent-session-run-data-input">
 				<div :class="$style.paneTitle">
 					{{ i18n.baseText('agentSessions.timeline.input') }}
@@ -223,6 +240,9 @@ const toolNodeUi = computed<INodeUi | null>(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+.mockedBadge {
+	align-self: flex-start;
 }
 .pane {
 	display: flex;

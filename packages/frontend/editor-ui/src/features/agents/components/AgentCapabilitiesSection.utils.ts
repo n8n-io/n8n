@@ -21,6 +21,7 @@ type BaseToolRow = {
 	openTarget: ToolOpenTarget;
 	invalid: boolean;
 	invalidReasons: string[];
+	mocked: boolean;
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
@@ -31,6 +32,7 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		openTarget: row.openTarget,
 		invalid: row.invalid,
 		invalidReasons: row.invalidReasons,
+		mocked: row.mocked,
 	};
 
 	return {
@@ -41,6 +43,7 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		fallbackIcon: row.fallbackIcon,
 		invalid: row.invalid,
 		invalidReasons: row.invalidReasons,
+		mocked: row.mocked,
 		isGrouped: false,
 		tool: item,
 	};
@@ -57,6 +60,7 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 		fallbackIcon: first.fallbackIcon,
 		invalid: group.some((row) => row.invalid),
 		invalidReasons: [...new Set(group.flatMap((row) => row.invalidReasons))],
+		mocked: group.some((row) => row.mocked),
 		isGrouped: true,
 		tools: group.map((row) => ({
 			index: row.index,
@@ -65,6 +69,7 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 			openTarget: row.openTarget,
 			invalid: row.invalid,
 			invalidReasons: row.invalidReasons,
+			mocked: row.mocked,
 		})),
 	};
 }

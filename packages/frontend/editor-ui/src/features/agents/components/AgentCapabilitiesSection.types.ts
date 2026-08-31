@@ -23,6 +23,8 @@ export type ToolRowItem = {
 	openTarget: ToolOpenTarget;
 	invalid: boolean;
 	invalidReasons: string[];
+	/** Node tool with mocking enabled (AGENT-716) — drives the pin-data chip styling + badge. */
+	mocked: boolean;
 };
 
 type ToolRowBase = {
@@ -35,6 +37,8 @@ type ToolRowBase = {
 	invalid: boolean;
 	/** Human-readable reasons behind `invalid`; the union of member reasons for a grouped row. */
 	invalidReasons: string[];
+	/** True for a single row when the tool is mock-enabled; true for a grouped row when any of its tools are. */
+	mocked: boolean;
 };
 
 export type GroupedToolRow = ToolRowBase & {
@@ -56,5 +60,6 @@ export type ToolMenuItem = DropdownMenuItemProps<
 		openTarget: ToolOpenTarget;
 		invalid: boolean;
 		invalidReasons: string[];
+		mocked: boolean;
 	}
 >;

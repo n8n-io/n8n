@@ -54,6 +54,8 @@ export interface TimelineItem {
 	 * the LLM's runtime input items.
 	 */
 	nodeParameters?: Record<string, unknown>;
+	/** Served from stored mock items instead of executing the node (AGENT-716). Only ever set for `kind: 'node'`. */
+	mocked?: boolean;
 	/**
 	 * Resolved display name for a `delegate_subagent` tool call — the configured
 	 * sub-agent's name, falling back to the humanized task name. Set by the view

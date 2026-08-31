@@ -5,7 +5,14 @@ import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -404,6 +411,11 @@ function toolEntryReasons(entry: CapabilityToolEntry): string[] {
 	return toolIssueMessages.value.get(entry.index) ?? [];
 }
 
+/** Node tool with mocking enabled (AGENT-716) — v1 scope excludes MCP/workflow/custom tools. */
+function toolEntryMocked(entry: CapabilityToolEntry): boolean {
+	return entry.kind === 'tool' && entry.tool.type === 'node' && entry.tool.mock?.enabled === true;
+}
+
 const toolRows = computed<ToolRow[]>(() => {
 	return buildToolRows(
 		capabilityTools.value.map((entry) => {
@@ -419,6 +431,7 @@ const toolRows = computed<ToolRow[]>(() => {
 				openTarget: entry.openTarget,
 				invalid: reasons.length > 0,
 				invalidReasons: reasons,
+				mocked: toolEntryMocked(entry),
 			};
 		}),
 	);
@@ -459,6 +472,7 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 			openTarget: item.openTarget,
 			invalid: item.invalid,
 			invalidReasons: item.invalidReasons,
+			mocked: item.mocked,
 		},
 	}));
 }
@@ -566,6 +580,7 @@ function openExistingSubAgentModal(subAgent: {
 								<AgentChipButton
 									:invalid="tool.invalid"
 									:invalid-reasons="tool.invalidReasons"
+									:mocked="tool.mocked"
 									:disabled="props.disabled"
 									:class="$style.capabilityChip"
 									data-testid="agent-capabilities-tool-row"
@@ -577,6 +592,20 @@ function openExistingSubAgentModal(subAgent: {
 										{{ tool.label }}
 										<N8nIcon icon="chevron-down" :size="12" color="text-light" />
 									</span>
+									<template v-if="tool.mocked" #trailing>
+										<N8nTooltip
+											:content="i18n.baseText('agents.builder.toolMock.badgeTooltip')"
+											placement="top"
+										>
+											<N8nBadge
+												theme="secondary"
+												size="xsmall"
+												data-testid="agent-tool-mocked-badge"
+											>
+												{{ i18n.baseText('agents.builder.toolMock.badge') }}
+											</N8nBadge>
+										</N8nTooltip>
+									</template>
 								</AgentChipButton>
 							</template>
 							<template #item-leading="{ item, ui }">
@@ -588,6 +617,17 @@ function openExistingSubAgentModal(subAgent: {
 								/>
 							</template>
 							<template #item-trailing="{ item }">
+								<N8nTooltip
+									v-if="item.data?.mocked"
+									:content="i18n.baseText('agents.builder.toolMock.badgeTooltip')"
+									placement="top"
+								>
+									<N8nIcon
+										icon="pin"
+										:size="14"
+										data-testid="agent-capabilities-tool-menu-mocked-icon"
+									/>
+								</N8nTooltip>
 								<N8nTooltip
 									v-if="item.data?.invalid"
 									:disabled="(item.data.invalidReasons ?? []).length === 0"
@@ -610,6 +650,7 @@ function openExistingSubAgentModal(subAgent: {
 							v-else-if="tool.nodeType"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:mocked="tool.mocked"
 							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
@@ -619,18 +660,39 @@ function openExistingSubAgentModal(subAgent: {
 								<NodeIcon :node-type="tool.nodeType" :size="16" />
 							</template>
 							{{ tool.label }}
+							<template v-if="tool.mocked" #trailing>
+								<N8nTooltip
+									:content="i18n.baseText('agents.builder.toolMock.badgeTooltip')"
+									placement="top"
+								>
+									<N8nBadge theme="secondary" size="xsmall" data-testid="agent-tool-mocked-badge">
+										{{ i18n.baseText('agents.builder.toolMock.badge') }}
+									</N8nBadge>
+								</N8nTooltip>
+							</template>
 						</AgentChipButton>
 						<AgentChipButton
 							v-else
 							:icon="tool.fallbackIcon"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:mocked="tool.mocked"
 							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
 						>
 							{{ tool.label }}
+							<template v-if="tool.mocked" #trailing>
+								<N8nTooltip
+									:content="i18n.baseText('agents.builder.toolMock.badgeTooltip')"
+									placement="top"
+								>
+									<N8nBadge theme="secondary" size="xsmall" data-testid="agent-tool-mocked-badge">
+										{{ i18n.baseText('agents.builder.toolMock.badge') }}
+									</N8nBadge>
+								</N8nTooltip>
+							</template>
 						</AgentChipButton>
 						<N8nTooltip
 							v-if="toolIndex === toolRows.length - 1"

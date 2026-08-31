@@ -32,7 +32,8 @@ function setAiGatewayManagedCredential(
 	}
 }
 
-function resolveNodeParameters(
+/** Exported for {@link reconcileNodeToolMocks}, which needs the same resolved-parameter view to check slot visibility. */
+export function resolveNodeParameters(
 	node: NodeToolConfig,
 	description: INodeTypeDescription,
 ): INodeParameters {
@@ -50,7 +51,8 @@ function resolveNodeParameters(
 	);
 }
 
-function isCredentialDisplayed(
+/** Exported for {@link reconcileNodeToolMocks}. */
+export function isCredentialDisplayed(
 	node: NodeToolConfig,
 	description: INodeTypeDescription,
 	credentialType: string,

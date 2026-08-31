@@ -486,6 +486,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						input: event.input,
 						state: TOOL_CALL_STATE.PENDING,
 						displaySummary: summariseToolCall(event.toolName, undefined, event.input),
+						...(event.mocked && { mocked: true }),
 					});
 				} else {
 					existing.input = event.input;
@@ -494,6 +495,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						existing.output,
 						existing.input,
 					);
+					if (event.mocked) existing.mocked = true;
 					if (
 						existing.state !== TOOL_CALL_STATE.RUNNING &&
 						existing.state !== TOOL_CALL_STATE.DONE &&

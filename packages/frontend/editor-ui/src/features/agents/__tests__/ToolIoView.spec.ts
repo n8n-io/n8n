@@ -126,6 +126,20 @@ describe('ToolIoView', () => {
 		);
 	});
 
+	it('shows the mocked badge when the tool call was served from stored mock items', async () => {
+		const { getByTestId } = mountIt({ mocked: true });
+		await flushPromises();
+
+		expect(getByTestId('agent-tool-mocked-badge')).toBeTruthy();
+	});
+
+	it('does not show the mocked badge for a real tool call', async () => {
+		const { queryByTestId } = mountIt({ mocked: false });
+		await flushPromises();
+
+		expect(queryByTestId('agent-tool-mocked-badge')).toBeNull();
+	});
+
 	it('updates both panes when the mounted view is reused with new tool data', async () => {
 		const { getAllByTestId, rerender } = mountIt();
 		await flushPromises();

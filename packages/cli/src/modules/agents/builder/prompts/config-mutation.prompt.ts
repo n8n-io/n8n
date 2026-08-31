@@ -27,6 +27,7 @@ ${getSchemaReferenceSection()}
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
+- Preserve an existing node tool's \`mock\` field on \`write_config\`/\`patch_config\` unless intentionally toggling \`enabled\`. Never hand-write \`mock.items\` — only \`mock_tool\` generates them.
 - Never write placeholder instructions, tool descriptions, or skill descriptions.
 - Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\` or \`ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.

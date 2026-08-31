@@ -16,6 +16,8 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
+	GenerateAgentToolMockDto,
+	GenerateAgentToolMockResult,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
@@ -556,6 +558,26 @@ export const testAgentVectorStore = async (
 		'POST',
 		`/projects/${projectId}/agents/v2/vector-stores/test`,
 		{ vectorStore },
+	);
+};
+
+/**
+ * Generate (or regenerate) stored mock output items for a node tool
+ * (AGENT-716). Persists the mock on the tool config server-side and returns
+ * the refreshed config alongside the generated items, so callers can sync
+ * local state immediately rather than waiting for the next explicit save.
+ */
+export const generateAgentToolMockData = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: Pick<GenerateAgentToolMockDto, 'toolName' | 'source'>,
+): Promise<GenerateAgentToolMockResult> => {
+	return await makeRestApiRequest<GenerateAgentToolMockResult>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/tools/mock-data`,
+		payload,
 	);
 };
 

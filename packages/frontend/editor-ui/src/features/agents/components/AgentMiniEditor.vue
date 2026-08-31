@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, toRef, watch } from 'vue';
 import { javascript } from '@codemirror/lang-javascript';
+import { json, jsonParseLinter } from '@codemirror/lang-json';
+import { linter as createLinter, lintGutter } from '@codemirror/lint';
 import { lineNumbers, EditorView } from '@codemirror/view';
 import { history } from '@codemirror/commands';
 
@@ -10,7 +12,7 @@ import { useCodeMirrorEditor } from '../composables/useCodeMirrorEditor';
 const props = withDefaults(
 	defineProps<{
 		modelValue: string;
-		language?: 'typescript' | 'markdown';
+		language?: 'typescript' | 'markdown' | 'json';
 		readonly?: boolean;
 		maxHeight?: string;
 		minHeight?: string;
@@ -27,7 +29,12 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 
 const container = ref<HTMLDivElement>();
 const readOnly = toRef(props, 'readonly');
-const langExtensions = props.language === 'typescript' ? [javascript({ typescript: true })] : [];
+const langExtensions =
+	props.language === 'typescript'
+		? [javascript({ typescript: true })]
+		: props.language === 'json'
+			? [json(), createLinter(jsonParseLinter()), lintGutter()]
+			: [];
 
 const { replaceDoc } = useCodeMirrorEditor({
 	container,
