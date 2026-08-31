@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_f3e0cf8bc1e610::t_2cc3755f933bfa 172-221
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_f3e0cf8bc1e610::t_b6d501131c40e2 283-317
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_f3e0cf8bc1e610::t_5692c0fdce4046 350,358-359
+  s_f3e0cf8bc1e610::t_b53f9357a830c9 52
+  s_f3e0cf8bc1e610::t_2e48a9ff1d42fa 47-51,53,60-68
+  s_f3e0cf8bc1e610::t_af986f232851ce 24
+  s_f3e0cf8bc1e610::t_591fca08b629f4 86-88
+  s_f3e0cf8bc1e610::t_52b80074c1293b 245-252
+  s_f3e0cf8bc1e610::t_018e739785e8fc 284-317
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f3e0cf8bc1e610::t_ec2a663287a51d 113
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f3e0cf8bc1e610::t_35d07cb01e1475 172-185
+  s_f3e0cf8bc1e610::t_dda285317348b8 405-408
+  s_f3e0cf8bc1e610::t_7649b11ba51e60 255,275-278
+  s_f3e0cf8bc1e610::t_c0f6aaa7ebdd76 294,298-300,324-325,341-342,346-386
+  s_f3e0cf8bc1e610::t_79c61c96334532 221-225,236,238-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "aa1a288fd8e6b87f5f9e3e6db13880e36abf508e",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f3e0cf8bc1e610": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d29ad06f-d820-4c0a-a6df-11974076db34",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
