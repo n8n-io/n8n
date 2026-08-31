@@ -39,6 +39,21 @@ wait_settled() { # [quiet-seconds] [timeout-seconds]
   return 1
 }
 
+# Wait until the execution count reaches target (or timeout). Prints the count.
+# Failover drains only after Kafka's session timeout (~45s) evicts the dead
+# member, so timeouts here must be generous.
+wait_for_count() { # target [timeout-seconds]
+  local target="$1" timeout="${2:-240}" waited=0 now=0
+  while [ "$waited" -lt "$timeout" ]; do
+    now=$(execution_count)
+    [ "$now" -ge "$target" ] && { echo "$now"; return 0; }
+    sleep 3
+    waited=$((waited + 3))
+  done
+  echo "$now"
+  return 1
+}
+
 assert_eq() { # actual expected label
   if [ "$1" = "$2" ]; then
     echo "  ✅ $3: $1"

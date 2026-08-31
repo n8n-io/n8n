@@ -19,8 +19,10 @@ echo "[scenario-2] kill -9 main-$VICTIM (pid $(main_pid "$VICTIM"))"
 kill -9 "$(main_pid "$VICTIM")"
 
 wait "$PRODUCER"
-echo "[scenario-2] producer done; waiting for the survivor to drain (lease reclaim ~10s + redelivery)"
-FINAL=$(wait_settled 14 300)
-assert_eq "$((FINAL - BASELINE))" "$COUNT" "executions after killing main-$VICTIM (nothing lost)"
+echo "[scenario-2] producer done; waiting for the survivor to drain (Kafka session timeout ~45s + redelivery)"
+FINAL=$(wait_for_count "$((BASELINE + COUNT))" 240 || true)
+# Then settle a further quiet period to prove no duplicates trickle in.
+FINAL=$(wait_settled 16 120)
+assert_eq "$((FINAL - BASELINE))" "$COUNT" "executions after killing main-$VICTIM (nothing lost, nothing doubled)"
 echo "[scenario-2] seats now:"
 seat_state

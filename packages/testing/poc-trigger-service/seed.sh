@@ -26,7 +26,7 @@ api() { # method path [json-body]
 }
 
 echo "[seed] ensuring kafka topic poc-events ($PARTITIONS partitions)"
-docker exec n8n-poc-kafka-1 /opt/bitnami/kafka/bin/kafka-topics.sh \
+docker exec n8n-poc-kafka-1 /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server localhost:9092 --create --if-not-exists \
   --topic poc-events --partitions "$PARTITIONS" --replication-factor 1 >/dev/null
 

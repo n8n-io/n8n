@@ -3,7 +3,7 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-export N8N_USER_FOLDER="$POC_DIR/.poc-data/worker-1"
+export N8N_USER_FOLDER="$HOME/.n8n-poc-seats/worker-1"
 mkdir -p "$N8N_USER_FOLDER"
 # Worker health-check server; must not collide with the mains (5678-5680).
 export QUEUE_HEALTH_CHECK_PORT=5681

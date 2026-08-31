@@ -53,6 +53,14 @@ export const versionDescription: INodeTypeDescription = {
 			description: 'ID of the consumer group',
 		},
 		{
+			displayName: 'Replica Seats',
+			name: 'seatCount',
+			type: 'number',
+			default: 1,
+			description:
+				'How many instances may consume this trigger concurrently as members of the consumer group. Effective replicas are the smaller of this and the number of running instances; more seats than topic partitions leaves members idle.',
+		},
+		{
 			displayName: 'Resolve Offset',
 			name: 'resolveOffset',
 			type: 'options',
