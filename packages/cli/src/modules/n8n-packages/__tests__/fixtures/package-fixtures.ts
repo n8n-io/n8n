@@ -14,6 +14,7 @@ import type { SerializedDataTable } from '../../spec/serialized/data-table.schem
 import type { SerializedFolder } from '../../spec/serialized/folder.schema';
 import type { SerializedProject } from '../../spec/serialized/project.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
+import type { SerializedCredential } from '../../spec/serialized/credential.schema';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
@@ -214,6 +215,7 @@ export async function buildImportPackageBuffer(
 	options: {
 		manifestExtras?: Partial<PackageManifest>;
 		sourceId?: string;
+		credentials?: SerializedCredential[];
 	} = {},
 ): Promise<Buffer> {
 	const writer = new TarPackageWriter();
@@ -229,6 +231,15 @@ export async function buildImportPackageBuffer(
 			name: w.name,
 			target: `workflows/wf-${idx}`,
 		})),
+		...(options.credentials?.length
+			? {
+					credentials: options.credentials.map((credential, idx) => ({
+						id: credential.id,
+						name: credential.name,
+						target: `credentials/cred-${idx}`,
+					})),
+				}
+			: {}),
 		...options.manifestExtras,
 	};
 
@@ -247,6 +258,10 @@ export async function buildImportPackageBuffer(
 	workflows.forEach((wf, idx) => {
 		writer.writeDirectory(`workflows/wf-${idx}`);
 		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(wf));
+	});
+	(options.credentials ?? []).forEach((credential, idx) => {
+		writer.writeDirectory(`credentials/cred-${idx}`);
+		writer.writeFile(`credentials/cred-${idx}/credential.json`, JSON.stringify(credential));
 	});
 
 	return await streamToBuffer(writer.finalize());

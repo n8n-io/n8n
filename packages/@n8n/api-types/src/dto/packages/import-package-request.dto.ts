@@ -94,7 +94,10 @@ export class ImportPackageRequestDto extends Z.class({
 	projectId: optionalFormId,
 	folderId: optionalFormId,
 	credentialMatchingMode: optionalEnum(['id-only', 'name-and-type', 'type-only'], 'id-only'),
-	credentialMissingMode: optionalEnum(['must-preexist', 'create-stub'], 'create-stub'),
+	credentialMissingMode: optionalEnum(
+		['must-preexist', 'create-stub', 'create-with-values'],
+		'create-stub',
+	),
 	bindings: bindingsSchema,
 	workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version'),
 	workflowPublishingPolicy: optionalEnum(

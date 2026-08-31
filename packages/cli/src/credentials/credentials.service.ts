@@ -1739,19 +1739,20 @@ export class CredentialsService {
 	}
 
 	/**
-	 * Creates an empty credential placeholder for package import. Skips field
-	 * validation so every known type can be stubbed; {@link save} still enforces
-	 * `credential:create` on the target project.
+	 * Creates a credential placeholder for package import — empty, or seeded with
+	 * the caller-supplied data. Skips field validation so every known type can be
+	 * stubbed; {@link save} still enforces `credential:create` on the target project.
 	 */
 	async createStubCredential(
-		opts: { name: string; type: string; projectId: string },
+		opts: { name: string; type: string; projectId: string; data?: ICredentialDataDecryptedObject },
 		user: User,
 	): Promise<CredentialsEntity> {
+		const data = opts.data ?? {};
 		const encryptedCredential = await this.createEncryptedData({
 			id: null,
 			name: opts.name,
 			type: opts.type,
-			data: {},
+			data,
 		});
 
 		const credentialEntity = this.credentialsRepository.create({
@@ -1760,7 +1761,7 @@ export class CredentialsService {
 			isResolvable: false,
 		});
 
-		return await this.save(credentialEntity, encryptedCredential, user, opts.projectId, {});
+		return await this.save(credentialEntity, encryptedCredential, user, opts.projectId, data);
 	}
 
 	/**
