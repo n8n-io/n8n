@@ -129,11 +129,12 @@ export function createDeepLazyProxy(
 	const isArray = meta?.kind === 'array';
 	const arrayLength = isArray ? meta.length : 0;
 	const objectKeys = meta?.kind === 'object' ? meta.keys : undefined;
-	const stringForm = meta?.kind === 'object' ? meta.stringForm : undefined;
+	const metaStringForm = meta?.kind === 'object' ? meta.stringForm : undefined;
 
 	// Cache for keys fetched from the bridge (root object proxies without known keys).
 	// Shared between ownKeys and getOwnPropertyDescriptor for consistency.
 	let fetchedKeys: string[] | undefined;
+	let fetchedStringForm: string | undefined;
 
 	function resolveObjectKeys(): string[] {
 		if (objectKeys) return objectKeys;
@@ -142,9 +143,30 @@ export function createDeepLazyProxy(
 		throwIfErrorSentinel(value);
 		if (isObjectMetadata(value)) {
 			fetchedKeys = value.__keys;
+			fetchedStringForm = value.__stringForm;
 			return fetchedKeys;
 		}
 		return [];
+	}
+
+	/**
+	 * The host's string form for this value, if it had an overridden `toString`.
+	 *
+	 * Deliberately never triggers a bridge call. `toString()` on a proxy is
+	 * required to cost nothing — `lazy-proxy.test.ts` asserts `getValueAtPath` is
+	 * not called for it — so this reads the metadata the proxy was built with, or
+	 * what a previous fetch already cached, and otherwise gives up and lets
+	 * `Object.prototype.toString` answer.
+	 *
+	 * The consequence is that a proxy created with no metadata at all
+	 * (`$item(n)`, `$('Node')`, `$input`) whose value is itself a class instance
+	 * keeps returning `[object Object]`. Those roots are always item or
+	 * collection objects in practice, and paying a host round-trip on every
+	 * `toString()` to cover a case that cannot occur is the wrong trade against
+	 * an invariant the suite pins.
+	 */
+	function resolveStringForm(): string | undefined {
+		return metaStringForm ?? fetchedStringForm;
 	}
 
 	function isInArrayBounds(prop: string): number | undefined {
@@ -316,12 +338,13 @@ export function createDeepLazyProxy(
 			// plain objects keep native `Object.prototype.toString`. A cached entry
 			// or a declared data key of the same name still takes precedence.
 			if (
-				stringForm !== undefined &&
 				prop === 'toString' &&
+				!isArray &&
 				!Object.prototype.hasOwnProperty.call(targetObj, prop) &&
 				!objectKeys?.includes(prop)
 			) {
-				return () => stringForm;
+				const resolved = resolveStringForm();
+				if (resolved !== undefined) return () => resolved;
 			}
 
 			// Check cache - if already fetched, return cached value

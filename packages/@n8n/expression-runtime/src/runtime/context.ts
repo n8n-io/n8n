@@ -375,7 +375,11 @@ export function buildContext(
 			return true;
 		}
 		if (isObjectMetadata(value)) {
-			target[key] = createDeepLazyProxy([key], { kind: 'object', keys: value.__keys }, callbacks);
+			target[key] = createDeepLazyProxy(
+				[key],
+				{ kind: 'object', keys: value.__keys, stringForm: value.__stringForm },
+				callbacks,
+			);
 			return true;
 		}
 

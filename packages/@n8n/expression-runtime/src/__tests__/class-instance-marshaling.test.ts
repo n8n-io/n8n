@@ -84,13 +84,25 @@ describe('class instances in workflow data', () => {
 
 	it('treats a throwing toString as absent instead of failing the expression', () => {
 		class Unstringable {
-			readonly x = undefined;
 			toString(): string {
 				throw new Error('boom');
 			}
 		}
 		const data = { $json: { b: new Unstringable() } };
 
-		expect(evaluator.evaluate('{{ $json.b.x }}', data, caller)).toBeUndefined();
+		// Asserting on `toString()` rather than a sibling field is deliberate: a
+		// sibling read yields `undefined` whether or not the host swallows the
+		// throw, so it cannot fail if the guard is removed. Here the two outcomes
+		// differ — with the guard the string form is absent and the proxy falls
+		// back to `Object.prototype.toString`; without it the marshaled value
+		// errors and the expression yields `undefined`.
+		expect(evaluator.evaluate('{{ $json.b.toString() }}', data, caller)).toBe('[object Object]');
+	});
+
+	it('keeps it when the value is a top-level context key', () => {
+		const data = { $json: new ObjectIdLike(HEX) as unknown as Record<string, unknown> };
+
+		expect(evaluator.evaluate('{{ $json.toString() }}', data, caller)).toBe(HEX);
+		expect(evaluator.evaluate('{{ "v=" + $json }}', data, caller)).toBe(`v=${HEX}`);
 	});
 });
