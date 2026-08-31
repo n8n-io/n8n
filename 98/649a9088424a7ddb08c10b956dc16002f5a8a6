@@ -1,0 +1,100 @@
+packages/@n8n/api-types/src/index.ts
+  s_be6d12de03f718::t_517c9ee07bfb74 294
+packages/@n8n/instance-ai/skills/one-off-operations/SKILL.md
+  s_be6d12de03f718::t_3d05491b273d2c 54,56-76,80-91
+  s_be6d12de03f718::t_aa13adeaa89fa1 13
+  s_be6d12de03f718::t_94522ccc9464d9 77-79
+packages/@n8n/instance-ai/src/index.ts
+  s_be6d12de03f718::t_9e500bb87a7b35 624-626
+packages/cli/src/node-execution/index.ts
+  s_be6d12de03f718::t_9e500bb87a7b35 16-26
+packages/@n8n/instance-ai/src/types.ts
+  s_be6d12de03f718::t_9e500bb87a7b35 466-475,479-480,490-494,1142
+  s_be6d12de03f718::t_0eb848a4703ca5 476-478,481-489
+  s_be6d12de03f718::t_c9287c93ba7bcb 1141
+packages/cli/src/node-execution/execute-node.service.ts
+  s_be6d12de03f718::t_13d558040087d4 249-260
+  s_be6d12de03f718::t_12c5314ba98fee 110-111
+  s_be6d12de03f718::t_f9ddc7f2d45ade 1-39,42-44,49-109,112-204,206-248,261-402
+  s_be6d12de03f718::t_2f8bb4c33c527d 205
+  s_be6d12de03f718::t_80976f1913d592 40-41,45-48
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_be6d12de03f718::t_7ab5c27fe7b879 80-103
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_be6d12de03f718::t_31a162c431e037 56-61,63-69
+  s_be6d12de03f718::t_716dc3ffee2093 62,70-71
+  s_be6d12de03f718::t_064a87e0c9184d 55
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_be6d12de03f718::t_761f00578d8196 504-506
+  s_be6d12de03f718::t_9e500bb87a7b35 68,87,144,293,371-373,486-493,500-503
+  s_be6d12de03f718::t_20f62b42f1f054 494-499
+packages/@n8n/instance-ai/docs/tools.md
+  s_be6d12de03f718::t_e6b8e3be689863 788-792
+  s_be6d12de03f718::t_730dfa40209479 793-798
+  s_be6d12de03f718::t_17773504399411 776-783,787,799-820
+  s_be6d12de03f718::t_9d196a0e64c5c2 693
+  s_be6d12de03f718::t_0ae748aa2bf7d3 23
+  s_be6d12de03f718::t_4d945ca7624b6e 775
+  s_be6d12de03f718::t_82af9404c32707 784,786
+  s_be6d12de03f718::t_387f1af10ac4be 785
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_be6d12de03f718::t_3ecd2b953f7562 137-142
+  s_be6d12de03f718::t_8d20e82d74c5db 45
+  s_be6d12de03f718::t_979c6d63ba943f 88-91
+  s_be6d12de03f718::t_cf2e4f89b82a05 153-155
+  s_be6d12de03f718::t_66d57b4d8fdaeb 165-169
+  s_be6d12de03f718::t_4585843f61631f 1-44,46-87,92-136,143-152,156-164,170-185,187-206,208-342
+  s_be6d12de03f718::t_593b8c507987dc 186,207
+  s_be6d12de03f718::t_31eb8e75eba144 343-345
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_be6d12de03f718::t_780b9ec1ac5e95 557,569,573-631,633-639,665-669
+  s_be6d12de03f718::t_3b96056c865064 503-511,558-568,570-572,670-732,737-738
+  s_be6d12de03f718::t_ba008969cedef2 3
+  s_be6d12de03f718::t_9a15455cac39f2 632,640-664
+  s_be6d12de03f718::t_5bdd131532bafc 733-736
+  s_be6d12de03f718::t_bc52e195b94ba3 739-741
+  s_be6d12de03f718::t_b9081ce551d9f7 512-552,554-556
+  s_be6d12de03f718::t_6b6fbc40c987e2 1,9-12
+  s_be6d12de03f718::t_668c8199e8d4d0 13
+  s_be6d12de03f718::t_6257a76347a0da 553
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_be6d12de03f718::t_4fa2b1f2697b03 155
+  s_be6d12de03f718::t_89d94a47a81ec5 478
+  s_be6d12de03f718::t_6ed2f598c3d891 569,571-572
+  s_be6d12de03f718::t_ce96e7af34241d 443-454,486-488,490-492,494,499-509
+  s_be6d12de03f718::t_b0dec6ae400199 14
+  s_be6d12de03f718::t_e792db718b29af 137-154,156-200,589
+  s_be6d12de03f718::t_c112bb897ade14 2-3,13,15-17,19
+  s_be6d12de03f718::t_7c9b06fd3ec075 455-456,472-477,479-485,489,493,495-498
+  s_be6d12de03f718::t_acbd086cb42486 201-202
+  s_be6d12de03f718::t_a23d443f4781a8 510-511
+  s_be6d12de03f718::t_8bdda13ec35fca 573-574
+  s_be6d12de03f718::t_5a0e495660bc85 588
+  s_be6d12de03f718::t_9548c6b9f8fc7f 457,459-469
+  s_be6d12de03f718::t_02f9d47051d0a6 458
+  s_be6d12de03f718::t_76f89394850dd0 18
+  s_be6d12de03f718::t_9c0144db38f684 470-471
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_be6d12de03f718::t_0bf77d9ddda7f7 657-658,662-664
+  s_be6d12de03f718::t_04f50e9568a62a 6
+  s_be6d12de03f718::t_fbc357be545069 27
+  s_be6d12de03f718::t_5ab266047cbd47 659-661,665
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_be6d12de03f718::t_0d5b71eaf05871 7265-7266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "98649a9088424a7ddb08c10b956dc16002f5a8a6",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
