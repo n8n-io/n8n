@@ -1,0 +1,7 @@
+type: array
+description: |
+  Files that differ between the local instance and the remote repository. Each
+  entry can be passed back to `POST /source-control/push` via `fileNames` to
+  push a specific subset of changes.
+items:
+  $ref: './sourceControlledFile.yml'
