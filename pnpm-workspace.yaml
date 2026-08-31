@@ -263,6 +263,7 @@ catalogs:
     '@storybook/addon-vitest': ^10.1.11
     '@storybook/vue3': ^10.1.11
     '@storybook/vue3-vite': ^10.1.11
+    '@vueless/storybook-dark-mode': ^10.0.7
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
   typescript:

@@ -103,33 +103,36 @@ export const WithJumper: StoryObj = {
 	},
 };
 
-export const SmallSize: StoryObj = {
-	render: Template,
-	args: {
-		total: 200,
-		pageSize: 10,
-		background: true,
-		size: 'small',
-	},
+export const Sizes: StoryObj = {
+	render: () => ({
+		components: { Pagination },
+		setup() {
+			const currentPage = ref(1);
+			return { currentPage };
+		},
+		template: `
+			<div style="display: flex; flex-direction: column; gap: 16px;">
+				<Pagination v-model:current-page="currentPage" :total="200" :page-size="10" background size="small" />
+				<Pagination v-model:current-page="currentPage" :total="200" :page-size="10" background size="medium" />
+			</div>
+		`,
+	}),
 };
 
-export const MediumSize: StoryObj = {
-	render: Template,
-	args: {
-		total: 200,
-		pageSize: 10,
-		background: true,
-		size: 'medium',
-	},
-};
-
-export const GhostVariant: StoryObj = {
-	render: Template,
-	args: {
-		total: 100,
-		pageSize: 10,
-		variant: 'ghost',
-	},
+export const Variants: StoryObj = {
+	render: () => ({
+		components: { Pagination },
+		setup() {
+			const currentPage = ref(1);
+			return { currentPage };
+		},
+		template: `
+			<div style="display: flex; flex-direction: column; gap: 16px;">
+				<Pagination v-model:current-page="currentPage" :total="100" :page-size="10" variant="default" />
+				<Pagination v-model:current-page="currentPage" :total="100" :page-size="10" variant="ghost" />
+			</div>
+		`,
+	}),
 };
 
 export const Disabled: StoryObj = {

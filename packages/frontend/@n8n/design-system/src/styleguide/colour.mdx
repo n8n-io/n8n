@@ -1,14 +1,15 @@
 import { Meta } from '@storybook/addon-docs/blocks';
 
+import NamedTokensColorTable from './components/NamedTokensColorTable.vue';
 import PrimitivesColorTable from './components/PrimitivesColorTable.vue';
 
-<Meta title="Style guide/Colour" />
+<Meta title="StyleGuide/Colour" />
 
 # Colour
 
-We have a vast, beautiful color palette out of the box. Prefer using these rather than custom colours (e.g #ff0000). These are similar to Tailwind CSS.
+Primitive colour scales live in `_primitives.scss`. Prefer semantic tokens from `_tokens.scss` in product UI (for example `--text-color`, `--background--surface`) so themes stay consistent.
 
-Each colour has 13 steps ranging from lightest (50) to darkest (950).
+Each hue scale uses steps from lightest (`50`) to darkest (`950`). Hover a swatch for the token and resolved value. Click to copy the token name.
 
 <div class="sb-unstyled">
 	<PrimitivesColorTable />
@@ -16,37 +17,8 @@ Each colour has 13 steps ranging from lightest (50) to darkest (950).
 
 ## Tokens
 
-Instead of using the raw primitive colours, it's often better to use a token. These are aliases for common use cases (e.g text color) to make it easier to keep UI consistent and flexible.
+Semantic colour tokens from `_tokens.scss`, grouped by prefix. Values resolve live for the current theme. Click a row to copy the token name. Search by token or value.
 
-### Text
-
-| Token                   | Description                                     |
-| ----------------------- | ----------------------------------------------- |
-| `--text-color`          | Default body text and primary labels.           |
-| `--text-color--subtle`  | Secondary text such as helper copy or metadata. |
-| `--text-color--subtler` | Tertiary or low-emphasis text.                  |
-| `--text-color--inverse` | Text shown on dark or inverse surfaces.         |
-
-### Background
-
-| Token                   | Description                                            |
-| ----------------------- | ------------------------------------------------------ |
-| `--background--surface` | Base surface for cards, panels, and page sections.     |
-| `--background--hover`   | Hover state for neutral interactive surfaces.          |
-| `--background--active`  | Pressed/active state for neutral interactive surfaces. |
-| `--background--success` | Success banners, badges, or confirmation surfaces.     |
-| `--background--warning` | Warning callouts and cautionary surfaces.              |
-| `--background--danger`  | Danger/error surfaces behind destructive messaging.    |
-| `--background--info`    | Informational surfaces and neutral notices.            |
-
-### Border
-
-| Token                     | Description                                       |
-| ------------------------- | ------------------------------------------------- |
-| `--border-color`          | Default border for inputs, cards, and separators. |
-| `--border-color--subtle`  | Low-contrast dividers and lightweight outlines.   |
-| `--border-color--strong`  | More prominent outlines for elevated contrast.    |
-| `--border-color--success` | Borders for success states and confirmations.     |
-| `--border-color--warning` | Borders for warning states and cautions.          |
-| `--border-color--danger`  | Borders for error states and destructive actions. |
-| `--border-color--info`    | Borders for informational states.                 |
+<div class="sb-unstyled">
+	<NamedTokensColorTable />
+</div>

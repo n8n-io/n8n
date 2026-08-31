@@ -58,9 +58,7 @@ export const Default: Story = {
 			return { args, onSelect: action('select') };
 		},
 		template: `
-			<div style="height: 240px; display: flex; align-items: flex-start; justify-content: center; padding-top: 40px;">
-				<N8nActionDropdown v-bind="args" @select="onSelect" />
-			</div>
+			<N8nActionDropdown v-bind="args" @select="onSelect" />
 		`,
 	}),
 	args: {
@@ -76,9 +74,7 @@ export const WithIconsAndStates: Story = {
 			return { args, onSelect: action('select') };
 		},
 		template: `
-			<div style="height: 280px; display: flex; align-items: flex-start; justify-content: center; padding-top: 40px;">
-				<N8nActionDropdown v-bind="args" @select="onSelect" />
-			</div>
+			<N8nActionDropdown v-bind="args" @select="onSelect" />
 		`,
 	}),
 	args: {
@@ -104,9 +100,7 @@ export const WithShortcuts: Story = {
 			return { args, onSelect: action('select') };
 		},
 		template: `
-			<div style="height: 240px; display: flex; align-items: flex-start; justify-content: center; padding-top: 40px;">
-				<N8nActionDropdown v-bind="args" @select="onSelect" />
-			</div>
+			<N8nActionDropdown v-bind="args" @select="onSelect" />
 		`,
 	}),
 	args: {
@@ -133,9 +127,7 @@ export const Disabled: Story = {
 			return { args };
 		},
 		template: `
-			<div style="height: 120px; display: flex; align-items: flex-start; justify-content: center; padding-top: 40px;">
-				<N8nActionDropdown v-bind="args" />
-			</div>
+			<N8nActionDropdown v-bind="args" />
 		`,
 	}),
 	args: {

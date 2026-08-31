@@ -25,7 +25,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Basic = {
+export const Default = {
 	render: (args) => ({
 		components: { InputNumber },
 		setup() {
@@ -33,7 +33,7 @@ export const Basic = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 300px;">
+		<div style="max-width: 300px">
 			<InputNumber v-bind="args" v-model="value" />
 			<p style="margin-top: 16px;">Value: {{ value }}</p>
 		</div>
@@ -53,7 +53,7 @@ export const WithControlsBoth = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 300px;">
+		<div style="max-width: 300px">
 			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both" />
 			<p style="margin-top: 16px;">Value: {{ value }}</p>
 		</div>
@@ -74,7 +74,7 @@ export const WithControlsRight = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 300px;">
+		<div style="max-width: 300px">
 			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="right" />
 			<p style="margin-top: 16px;">Value: {{ value }}</p>
 		</div>
@@ -95,7 +95,7 @@ export const Sizes = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 300px;">
+		<div style="max-width: 300px">
 			<h3>mini</h3>
 			<InputNumber v-model="value" size="mini" placeholder="mini" />
 			<h3 style="margin-top: 15px;">small</h3>
@@ -122,7 +122,7 @@ export const Precision = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 300px;">
+		<div style="max-width: 300px">
 			<h3>No precision</h3>
 			<InputNumber v-model="value" placeholder="Any decimals" />
 			<h3 style="margin-top: 15px;">Precision: 2</h3>
@@ -146,7 +146,7 @@ export const MinMax = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 300px;">
+		<div style="max-width: 300px">
 			<p>Range: 0 to 100, Step: 10</p>
 			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both" />
 			<p style="margin-top: 16px;">Value: {{ value }}</p>
@@ -169,7 +169,7 @@ export const Disabled = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
+		<div style="display: flex; gap: 16px; align-items: center">
 			<div>
 				<h3>Default</h3>
 				<InputNumber v-model="value" placeholder="Enabled" />
@@ -194,7 +194,7 @@ export const CustomButtons = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 300px;">
+		<div style="max-width: 300px">
 			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both">
 				<template #decrement>
 					<N8nIcon icon="minus" size="small" />
@@ -222,7 +222,7 @@ export const ControlsSizes = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; gap: 32px;">
+		<div style="display: flex; gap: 32px">
 			<div style="max-width: 200px;">
 				<h3>Both (left/right)</h3>
 				<InputNumber v-model="value" size="mini" :controls="true" controls-position="both" style="margin-bottom: 10px;" />

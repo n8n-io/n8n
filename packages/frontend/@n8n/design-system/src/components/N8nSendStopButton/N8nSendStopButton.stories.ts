@@ -51,8 +51,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const SendButton = Template.bind({});
-SendButton.args = {
+export const Default = Template.bind({});
+Default.args = {
 	streaming: false,
 	disabled: false,
 	size: 'small',
@@ -72,28 +72,7 @@ StopButton.args = {
 	size: 'small',
 };
 
-export const SmallSize = Template.bind({});
-SmallSize.args = {
-	streaming: false,
-	disabled: false,
-	size: 'small',
-};
-
-export const MediumSize = Template.bind({});
-MediumSize.args = {
-	streaming: false,
-	disabled: false,
-	size: 'medium',
-};
-
-export const LargeSize = Template.bind({});
-LargeSize.args = {
-	streaming: false,
-	disabled: false,
-	size: 'large',
-};
-
-const AllSizesTemplate: StoryFn = () => ({
+const SizesTemplate: StoryFn = () => ({
 	components: {
 		N8nSendStopButton,
 	},
@@ -120,7 +99,7 @@ const AllSizesTemplate: StoryFn = () => ({
 	methods,
 });
 
-export const AllSizes = AllSizesTemplate.bind({});
+export const Sizes = SizesTemplate.bind({});
 
 const InteractiveTemplate: StoryFn = () => ({
 	components: {

@@ -67,7 +67,7 @@ export const Default: Story = {
 	},
 };
 
-export const Variant: Story = {
+export const Variants: Story = {
 	render: () => ({
 		components: { N8nButton },
 		template: `
@@ -84,7 +84,7 @@ export const Variant: Story = {
 	args: {},
 };
 
-export const Size: Story = {
+export const Sizes: Story = {
 	render: () => ({
 		components: { N8nButton },
 		template: `

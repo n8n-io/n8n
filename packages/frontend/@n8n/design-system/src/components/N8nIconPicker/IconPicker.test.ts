@@ -394,6 +394,7 @@ describe('IconPicker', () => {
 		});
 
 		await fireEvent.click(getByTestId('icon-picker-button'));
+		await findAllByTestId('icon-picker-icon');
 
 		// Open the color popover
 		const colorTrigger = getByTestId('icon-color-picker-trigger');

@@ -535,7 +535,7 @@ const SuggestionsTemplate: StoryFn = (args) => ({
 		N8nChatInput,
 	},
 	template: `
-		<div style="max-width: 710px; margin: 0 auto; padding: 20px;">
+		<div style="max-width: 710px; margin: 0 auto;">
 			<div
 				style="
 					display: flex;

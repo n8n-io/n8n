@@ -39,8 +39,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		/>`,
 });
 
-export const Pagination: StoryFn = Template.bind({});
-Pagination.args = {
+export const Default: StoryFn = Template.bind({});
+Default.args = {
 	currentPage: 1,
 	pagerCount: 5,
 	pageSize: 10,

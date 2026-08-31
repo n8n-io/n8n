@@ -1,7 +1,5 @@
 <script lang="ts" setup>
-// vueuse is a peer dependency
-// eslint-disable import-x/no-extraneous-dependencies
-import { onClickOutside } from '@vueuse/core';
+import { onClickOutside, useEventListener } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick } from 'vue';
 
@@ -43,6 +41,12 @@ defineOptions({ name: 'N8nIconPicker' });
 const SKIN_TONE_STORAGE_KEY = 'n8n-emoji-skin-tone';
 const VIRTUAL_ROW_SIZE = 32;
 const VIRTUAL_ROW_STYLE = { minHeight: 'var(--height--md)' };
+const POPUP_WIDTH_PX = 296;
+const POPUP_MAX_HEIGHT_PX = 400;
+const POPUP_VIEWPORT_MARGIN_PX = 8;
+const POPUP_GAP_PX = 4;
+// Match APP_Z_INDEXES.FLOATING_UI so the teleported picker stacks above dialogs, modals, and NDV.
+const POPOVER_Z_INDEX = 3000;
 
 type Props = {
 	buttonTooltip: string;
@@ -128,13 +132,36 @@ const selectedSkinTone = ref<number>(
 );
 
 const container = ref<HTMLDivElement>();
+const popupRef = ref<HTMLDivElement>();
 const searchInputRef = ref<InstanceType<typeof N8nInput>>();
 const colorPickerRef = ref<InstanceType<typeof IconColorPicker>>();
 const skinTonePickerRef = ref<InstanceType<typeof SkinTonePicker>>();
+const popupPosition = ref<{ top?: string; bottom?: string; left: string }>({ left: '0px' });
 
-onClickOutside(container, () => {
-	popupVisible.value = false;
-});
+onClickOutside(
+	popupRef,
+	() => {
+		popupVisible.value = false;
+	},
+	{ ignore: [container] },
+);
+
+function updatePopupPosition() {
+	if (!popupVisible.value || !container.value) return;
+	const rect = container.value.getBoundingClientRect();
+	const spaceBelow = window.innerHeight - rect.bottom - POPUP_GAP_PX;
+	const openUpward = spaceBelow < POPUP_MAX_HEIGHT_PX && rect.top > spaceBelow;
+	const maxLeft = window.innerWidth - POPUP_WIDTH_PX - POPUP_VIEWPORT_MARGIN_PX;
+	popupPosition.value = {
+		left: `${Math.max(POPUP_VIEWPORT_MARGIN_PX, Math.min(rect.left, maxLeft))}px`,
+		...(openUpward
+			? { top: 'auto', bottom: `${window.innerHeight - rect.top + POPUP_GAP_PX}px` }
+			: { top: `${rect.bottom + POPUP_GAP_PX}px`, bottom: 'auto' }),
+	};
+}
+
+useEventListener('scroll', updatePopupPosition, { capture: true, passive: true });
+useEventListener('resize', updatePopupPosition);
 
 // --- Search ---
 const { filteredIcons, filteredIconSections, filteredEmojiSections, debouncedQuery } =
@@ -163,7 +190,12 @@ const selectIcon = (value: IconOrEmoji) => {
 	popupVisible.value = false;
 };
 
+function focusSearchInput() {
+	searchInputRef.value?.focus();
+}
+
 const togglePopup = async () => {
+	if (props.isReadOnly) return;
 	popupVisible.value = !popupVisible.value;
 	if (popupVisible.value) {
 		selectedTab.value = !props.iconsOnly && model.value.type === 'emoji' ? 'emojis' : 'icons';
@@ -172,16 +204,12 @@ const togglePopup = async () => {
 		// Initialize color from current model value (only when the color picker is enabled)
 		selectedColor.value =
 			props.showColorPicker && model.value.type === 'icon' ? model.value.color : undefined;
-		// Load data on first open
 		await loadData();
 		await nextTick();
+		updatePopupPosition();
 		focusSearchInput();
 	}
 };
-
-function focusSearchInput() {
-	searchInputRef.value?.focus();
-}
 
 // Persist skin tone preference
 watch(selectedSkinTone, (tone) => {
@@ -216,6 +244,13 @@ const selectRandomEmoji = () => {
 function humanizeIconName(name: string): string {
 	return name.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 }
+
+const popupStyle = computed(() => ({
+	position: 'fixed' as const,
+	zIndex: POPOVER_Z_INDEX,
+	width: `${POPUP_WIDTH_PX}px`,
+	...popupPosition.value,
+}));
 </script>
 
 <template>
@@ -269,164 +304,168 @@ function humanizeIconName(name: string): string {
 				</N8nButton>
 			</N8nTooltip>
 		</div>
-		<div
-			v-if="popupVisible"
-			:class="[$style.popup, { [$style.iconsOnly]: props.iconsOnly }]"
-			data-test-id="icon-picker-popup"
-		>
-			<div v-if="!props.iconsOnly" :class="$style.tabs">
-				<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
-			</div>
-
-			<!-- Search row -->
-			<div :class="$style.searchRow">
-				<N8nInput
-					ref="searchInputRef"
-					v-model="searchQuery"
-					:placeholder="t('iconPicker.search.placeholder')"
-					clearable
-					size="small"
-					data-test-id="icon-picker-search"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" :size="14" />
-					</template>
-				</N8nInput>
-				<N8nTooltip
-					v-if="selectedTab === 'icons' && showColorPicker"
-					placement="top"
-					:disabled="colorPickerRef?.isOpen"
-					:teleported="false"
-				>
-					<template #content>
-						{{ t('iconPicker.colorPicker.selectColor') }}
-					</template>
-					<IconColorPicker
-						ref="colorPickerRef"
-						v-model="selectedColor"
-						data-test-id="icon-color-picker"
-					/>
-				</N8nTooltip>
-				<N8nTooltip
-					v-if="!props.iconsOnly && selectedTab === 'emojis'"
-					placement="top"
-					:disabled="skinTonePickerRef?.isOpen"
-					:teleported="false"
-				>
-					<template #content>
-						{{ t('iconPicker.skinTone.selectSkinTone') }}
-					</template>
-					<SkinTonePicker ref="skinTonePickerRef" v-model="selectedSkinTone" />
-				</N8nTooltip>
-				<N8nTooltip placement="top" :teleported="false">
-					<template #content>
-						{{
-							selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')
-						}}
-					</template>
-					<N8nButton
-						:class="$style.shuffleButton"
-						variant="outline"
-						size="medium"
-						icon-only
-						:aria-label="
-							selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')
-						"
-						data-test-id="icon-picker-random"
-						@click="selectedTab === 'icons' ? selectRandomIcon() : selectRandomEmoji()"
-					>
-						<IconShuffle :class="$style.shuffleIcon" />
-					</N8nButton>
-				</N8nTooltip>
-			</div>
-
-			<!-- Loading state -->
-			<div v-if="dataLoading" :class="$style.loadingState" data-test-id="icon-picker-loading">
-				{{ t('iconPicker.loading') }}
-			</div>
-
-			<!-- Icons tab -->
-			<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
-				<N8nRecycleScroller
-					v-if="iconRows.length > 0"
-					:items="iconRows"
-					item-key="id"
-					:item-size="VIRTUAL_ROW_SIZE"
-				>
-					<template #default="{ item }">
-						<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
-							<div :class="$style.sectionHeader">
-								{{ t(item.labelKey) }}
-							</div>
-						</div>
-						<div
-							v-else-if="item.type === 'icon-row'"
-							:class="$style.iconGridRow"
-							:style="VIRTUAL_ROW_STYLE"
-						>
-							<button
-								v-for="name in item.iconNames"
-								:key="name"
-								type="button"
-								:class="$style.iconButton"
-								:style="selectedColor ? { color: `var(${selectedColor})` } : undefined"
-								data-test-id="icon-picker-icon"
-								:title="humanizeIconName(name)"
-								:aria-label="humanizeIconName(name)"
-								@click="selectIcon({ type: 'icon', value: name, color: selectedColor })"
-							>
-								<N8nIcon :icon="name" :size="20" :class="$style.icon" />
-							</button>
-						</div>
-					</template>
-				</N8nRecycleScroller>
-				<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
-					{{ t('iconPicker.search.noResults') }}
-				</div>
-			</div>
-
-			<!-- Emojis tab -->
+		<Teleport to="body">
 			<div
-				v-else-if="!props.iconsOnly && selectedTab === 'emojis' && dataLoaded"
-				:class="$style.content"
+				v-if="popupVisible"
+				ref="popupRef"
+				:class="[$style.popup, { [$style.iconsOnly]: props.iconsOnly }]"
+				:style="popupStyle"
+				data-test-id="icon-picker-popup"
 			>
-				<N8nRecycleScroller
-					v-if="emojiRows.length > 0"
-					:items="emojiRows"
-					item-key="id"
-					:item-size="VIRTUAL_ROW_SIZE"
-				>
-					<template #default="{ item }">
-						<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
-							<div :class="$style.sectionHeader">
-								{{ t(item.labelKey) }}
-							</div>
-						</div>
-						<div
-							v-else-if="item.type === 'emoji-row'"
-							:class="$style.emojiGridRow"
-							:style="VIRTUAL_ROW_STYLE"
+				<div v-if="!props.iconsOnly" :class="$style.tabs">
+					<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
+				</div>
+
+				<!-- Search row -->
+				<div :class="$style.searchRow">
+					<N8nInput
+						ref="searchInputRef"
+						v-model="searchQuery"
+						:placeholder="t('iconPicker.search.placeholder')"
+						clearable
+						size="small"
+						data-test-id="icon-picker-search"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" :size="14" />
+						</template>
+					</N8nInput>
+					<N8nTooltip
+						v-if="selectedTab === 'icons' && showColorPicker"
+						placement="top"
+						:disabled="colorPickerRef?.isOpen"
+						:teleported="false"
+					>
+						<template #content>
+							{{ t('iconPicker.colorPicker.selectColor') }}
+						</template>
+						<IconColorPicker
+							ref="colorPickerRef"
+							v-model="selectedColor"
+							data-test-id="icon-color-picker"
+						/>
+					</N8nTooltip>
+					<N8nTooltip
+						v-if="!props.iconsOnly && selectedTab === 'emojis'"
+						placement="top"
+						:disabled="skinTonePickerRef?.isOpen"
+						:teleported="false"
+					>
+						<template #content>
+							{{ t('iconPicker.skinTone.selectSkinTone') }}
+						</template>
+						<SkinTonePicker ref="skinTonePickerRef" v-model="selectedSkinTone" />
+					</N8nTooltip>
+					<N8nTooltip placement="top" :teleported="false">
+						<template #content>
+							{{
+								selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')
+							}}
+						</template>
+						<N8nButton
+							:class="$style.shuffleButton"
+							variant="outline"
+							size="medium"
+							icon-only
+							:aria-label="
+								selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')
+							"
+							data-test-id="icon-picker-random"
+							@click="selectedTab === 'icons' ? selectRandomIcon() : selectRandomEmoji()"
 						>
-							<button
-								v-for="emoji in item.emojis"
-								:key="emoji.u"
-								type="button"
-								:class="$style.emojiButton"
-								data-test-id="icon-picker-emoji"
-								:title="emoji.l"
-								:aria-label="emoji.l"
-								@click="selectIcon({ type: 'emoji', value: emoji.display })"
+							<IconShuffle :class="$style.shuffleIcon" />
+						</N8nButton>
+					</N8nTooltip>
+				</div>
+
+				<!-- Loading state -->
+				<div v-if="dataLoading" :class="$style.loadingState" data-test-id="icon-picker-loading">
+					{{ t('iconPicker.loading') }}
+				</div>
+
+				<!-- Icons tab -->
+				<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
+					<N8nRecycleScroller
+						v-if="iconRows.length > 0"
+						:items="iconRows"
+						item-key="id"
+						:item-size="VIRTUAL_ROW_SIZE"
+					>
+						<template #default="{ item }">
+							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
+								<div :class="$style.sectionHeader">
+									{{ t(item.labelKey) }}
+								</div>
+							</div>
+							<div
+								v-else-if="item.type === 'icon-row'"
+								:class="$style.iconGridRow"
+								:style="VIRTUAL_ROW_STYLE"
 							>
-								<span :class="$style.emoji">{{ emoji.display }}</span>
-							</button>
-						</div>
-					</template>
-				</N8nRecycleScroller>
-				<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
-					{{ t('iconPicker.search.noResults') }}
+								<button
+									v-for="name in item.iconNames"
+									:key="name"
+									type="button"
+									:class="$style.iconButton"
+									:style="selectedColor ? { color: `var(${selectedColor})` } : undefined"
+									data-test-id="icon-picker-icon"
+									:title="humanizeIconName(name)"
+									:aria-label="humanizeIconName(name)"
+									@click="selectIcon({ type: 'icon', value: name, color: selectedColor })"
+								>
+									<N8nIcon :icon="name" :size="20" :class="$style.icon" />
+								</button>
+							</div>
+						</template>
+					</N8nRecycleScroller>
+					<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
+						{{ t('iconPicker.search.noResults') }}
+					</div>
+				</div>
+
+				<!-- Emojis tab -->
+				<div
+					v-else-if="!props.iconsOnly && selectedTab === 'emojis' && dataLoaded"
+					:class="$style.content"
+				>
+					<N8nRecycleScroller
+						v-if="emojiRows.length > 0"
+						:items="emojiRows"
+						item-key="id"
+						:item-size="VIRTUAL_ROW_SIZE"
+					>
+						<template #default="{ item }">
+							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
+								<div :class="$style.sectionHeader">
+									{{ t(item.labelKey) }}
+								</div>
+							</div>
+							<div
+								v-else-if="item.type === 'emoji-row'"
+								:class="$style.emojiGridRow"
+								:style="VIRTUAL_ROW_STYLE"
+							>
+								<button
+									v-for="emoji in item.emojis"
+									:key="emoji.u"
+									type="button"
+									:class="$style.emojiButton"
+									data-test-id="icon-picker-emoji"
+									:title="emoji.l"
+									:aria-label="emoji.l"
+									@click="selectIcon({ type: 'emoji', value: emoji.display })"
+								>
+									<span :class="$style.emoji">{{ emoji.display }}</span>
+								</button>
+							</div>
+						</template>
+					</N8nRecycleScroller>
+					<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
+						{{ t('iconPicker.search.noResults') }}
+					</div>
 				</div>
 			</div>
-		</div>
+		</Teleport>
 	</div>
 </template>
 
@@ -480,13 +519,9 @@ function humanizeIconName(name: string): string {
 }
 
 .popup {
-	position: absolute;
-	z-index: 9999;
-	width: 296px;
 	max-height: 400px;
 	display: flex;
 	flex-direction: column;
-	margin-top: var(--spacing--4xs);
 	background-color: var(--color--background--light-3);
 	border-radius: var(--radius);
 	border: var(--border);

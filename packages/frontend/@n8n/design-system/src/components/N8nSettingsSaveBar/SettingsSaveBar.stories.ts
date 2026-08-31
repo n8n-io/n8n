@@ -24,7 +24,7 @@ const storyComponents = {
 };
 
 const meta = {
-	title: 'Areas/Settings/Settings Save Bar',
+	title: 'Areas/Settings/SettingsSaveBar',
 	component: N8nSettingsSaveBar,
 	parameters: {
 		docs: {
@@ -42,7 +42,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Docked: Story = {
+export const Default: Story = {
 	render: () => ({
 		components: storyComponents,
 		setup() {

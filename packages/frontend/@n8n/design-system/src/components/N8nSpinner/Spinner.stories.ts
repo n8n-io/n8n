@@ -42,7 +42,7 @@ export const Default: Story = {
 	},
 };
 
-export const Types = {
+export const Variants = {
 	render: () => ({
 		components: { N8nSpinner },
 		template: `

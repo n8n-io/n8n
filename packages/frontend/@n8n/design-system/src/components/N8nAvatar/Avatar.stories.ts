@@ -40,3 +40,18 @@ export const Default: Story = {
 		size: 'medium',
 	},
 };
+
+export const Sizes: Story = {
+	render: () => ({
+		components: { N8nAvatar },
+		template: `
+			<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+				<N8nAvatar first-name="Sunny" last-name="Side" size="xxsmall" />
+				<N8nAvatar first-name="Sunny" last-name="Side" size="xsmall" />
+				<N8nAvatar first-name="Sunny" last-name="Side" size="small" />
+				<N8nAvatar first-name="Sunny" last-name="Side" size="medium" />
+				<N8nAvatar first-name="Sunny" last-name="Side" size="large" />
+			</div>
+		`,
+	}),
+};

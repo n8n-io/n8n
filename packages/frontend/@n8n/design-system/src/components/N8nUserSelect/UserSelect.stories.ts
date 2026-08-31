@@ -37,8 +37,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 });
 
-export const UserSelect = Template.bind({});
-UserSelect.args = {
+export const Default = Template.bind({});
+Default.args = {
 	users: [
 		{
 			id: '1',
@@ -60,3 +60,21 @@ UserSelect.args = {
 	placeholder: 'Select user to transfer to',
 	currentUserId: '1',
 };
+
+export const Sizes: StoryFn = () => ({
+	components: { N8nUserSelect },
+	data() {
+		return {
+			val: '',
+			users: Default.args?.users,
+		};
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 12px; max-width: 320px;">
+			<n8n-user-select v-model="val" :users="users" size="mini" placeholder="Mini" />
+			<n8n-user-select v-model="val" :users="users" size="small" placeholder="Small" />
+			<n8n-user-select v-model="val" :users="users" size="medium" placeholder="Medium" />
+			<n8n-user-select v-model="val" :users="users" size="large" placeholder="Large" />
+		</div>
+	`,
+});

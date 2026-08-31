@@ -6,15 +6,23 @@ import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';
 import { setup } from '@storybook/vue3';
+import { DARK_MODE_EVENT_NAME } from '@vueless/storybook-dark-mode';
 import ElementPlus from 'element-plus';
 // @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
 import { createPinia } from 'pinia';
+import { addons } from 'storybook/preview-api';
+import { themes } from 'storybook/theming';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
+import { applyN8nTheme, isDarkModeStored } from './applyN8nTheme';
+import { ThemedDocsContainer } from './ThemedDocsContainer';
 import './storybook.scss';
-import { withThemePreview } from './withThemePreview';
 // import '../src/css/tailwind/index.css';
+
+const channel = addons.getChannel();
+applyN8nTheme(isDarkModeStored());
+channel.on(DARK_MODE_EVENT_NAME, applyN8nTheme);
 
 setup((app) => {
 	app.provide(IconBodyLoaderKey, loadLucideIconBody);
@@ -50,42 +58,27 @@ export const parameters = {
 	themes: {
 		disable: true,
 	},
+	darkMode: {
+		dark: themes.dark,
+		light: themes.light,
+		classTarget: 'html',
+		darkClass: 'dark',
+		lightClass: 'light',
+		stylePreview: true,
+	},
 	options: {
 		storySort: {
-			order: ['Style guide', 'Core', 'Areas', 'Experimental'],
+			method: 'alphabetical',
+			order: ['StyleGuide', 'Core', 'Areas', 'Experimental'],
+			includeNames: false,
 		},
+	},
+	docs: {
+		container: ThemedDocsContainer,
 	},
 	chromatic: {
 		disableSnapshot: false,
-		// Keep both themes in Chromatic snapshots regardless of the toolbar default.
-		modes: {
-			themes: {
-				globals: { themePreview: 'side-by-side' },
-			},
-		},
 	},
 };
-
-export const globalTypes = {
-	themePreview: {
-		description: 'Color theme preview',
-		toolbar: {
-			title: 'Theme',
-			icon: 'mirror',
-			items: [
-				{ value: 'light', title: 'Light', icon: 'sun' },
-				{ value: 'dark', title: 'Dark', icon: 'moon' },
-				{ value: 'side-by-side', title: 'Light & dark', icon: 'mirror' },
-			],
-			dynamicTitle: true,
-		},
-	},
-};
-
-export const initialGlobals = {
-	themePreview: 'light',
-};
-
-export const decorators = [withThemePreview];
 
 export const tags = ['autodocs'];

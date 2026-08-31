@@ -41,9 +41,7 @@ export const Default: Story = {
 			return { args, pressed };
 		},
 		template: `
-			<div style="display: grid; place-items: center;">
-				<N8nToggle v-model="pressed" v-bind="args" />
-			</div>
+			<N8nToggle v-model="pressed" v-bind="args" />
 		`,
 	}),
 	args: {
@@ -64,7 +62,7 @@ export const Variants: Story = {
 			return { variants };
 		},
 		template: `
-			<div style="display: flex; gap: 12px; align-items: center; justify-content: center;">
+			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nToggle
 					v-for="variant in variants"
 					:key="variant"
@@ -87,7 +85,7 @@ export const Sizes: Story = {
 			return { sizes };
 		},
 		template: `
-			<div style="display: flex; gap: 12px; align-items: center; justify-content: center;">
+			<div style="display: flex; gap: 12px; align-items: center;">
 				<N8nToggle
 					v-for="size in sizes"
 					:key="size"

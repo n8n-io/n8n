@@ -132,7 +132,7 @@ export const WithStrokeWidth: Story = {
 	render: Default.render,
 };
 
-export const AllSizes: Story = {
+export const Sizes: Story = {
 	render: () => ({
 		components: { N8nIcon },
 		template: `
@@ -162,7 +162,7 @@ export const AllSizes: Story = {
 	}),
 };
 
-export const AllColors: Story = {
+export const Variants: Story = {
 	render: () => ({
 		components: { N8nIcon },
 		template: `

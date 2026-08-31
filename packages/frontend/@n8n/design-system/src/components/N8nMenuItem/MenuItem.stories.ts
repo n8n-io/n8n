@@ -22,7 +22,7 @@ const meta = {
 	},
 	decorators: [
 		() => ({
-			template: '<div style="width: 240px; padding: 16px;"><story /></div>',
+			template: '<div style="width: 240px;"><story /></div>',
 		}),
 	],
 } satisfies Meta<typeof N8nMenuItem>;
@@ -131,7 +131,7 @@ export const Compact: Story = {
 	},
 	decorators: [
 		() => ({
-			template: '<div style="width: 48px; padding: 16px;"><story /></div>',
+			template: '<div style="width: 48px;"><story /></div>',
 		}),
 	],
 };

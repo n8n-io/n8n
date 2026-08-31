@@ -67,7 +67,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const Input = Template.bind({});
+export const Default = Template.bind({});
 
 export const Filterable = Template.bind({});
 Filterable.args = {

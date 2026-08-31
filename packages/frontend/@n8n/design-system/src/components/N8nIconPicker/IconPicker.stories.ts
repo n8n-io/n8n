@@ -5,7 +5,7 @@ import N8nIconPicker from './IconPicker.vue';
 import { type IconOrEmoji } from './types';
 
 export default {
-	title: 'Core/Icon Picker',
+	title: 'Core/IconPicker',
 	component: N8nIconPicker,
 	argTypes: {
 		buttonTooltip: {
@@ -33,7 +33,7 @@ function createTemplate(icon: IconOrEmoji): StoryFn {
 			icon,
 		}),
 		template:
-			'<div style="height: 500px"><n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" /></div>',
+			'<n8n-icon-picker v-model="icon" v-bind="args" @update:model-value="onIconSelected" />',
 		methods: {
 			onIconSelected: action('iconSelected'),
 		},

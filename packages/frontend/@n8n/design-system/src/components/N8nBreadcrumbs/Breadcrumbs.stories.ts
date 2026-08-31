@@ -58,6 +58,19 @@ Default.args = {
 	items,
 };
 
+export const Sizes: StoryFn = () => ({
+	components: { Breadcrumbs },
+	setup() {
+		return { items };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<Breadcrumbs :items="items" theme="medium" />
+			<Breadcrumbs :items="items" theme="small" />
+		</div>
+	`,
+});
+
 export const CustomSeparator = defaultTemplate.bind({});
 CustomSeparator.args = {
 	items,

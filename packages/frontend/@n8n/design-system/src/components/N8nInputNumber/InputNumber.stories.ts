@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nInputNumber from './InputNumber.vue';
 
 export default {
-	title: 'Core/Input Number',
+	title: 'Core/InputNumber',
 	component: N8nInputNumber,
 	argTypes: {
 		placeholder: {
@@ -74,8 +74,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const Input = Template.bind({});
-Input.args = {
+export const Default = Template.bind({});
+Default.args = {
 	placeholder: 'placeholder...',
 	controls: false,
 };

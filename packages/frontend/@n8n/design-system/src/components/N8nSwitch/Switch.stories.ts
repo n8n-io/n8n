@@ -33,7 +33,7 @@ export const Default = {
 			return { args };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<Switch
 				:model-value="args.modelValue"
 				:label="args.label"
@@ -61,7 +61,7 @@ export const Sizes = {
 			return { small, large };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 16px;">
+		<div style="display: flex; flex-direction: column; gap: 16px">
 			<Switch v-model="small" label="Small size (for parameters panel)" size="small"/>
 			<Switch v-model="large" label="Large size (for settings)" size="large"/>
 		</div>
@@ -73,7 +73,7 @@ export const States = {
 	render: () => ({
 		components: { Switch },
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 16px;">
+		<div style="display: flex; flex-direction: column; gap: 16px">
 			<Switch :model-value="false" label="Unchecked"/>
 			<Switch :model-value="true" label="Checked"/>
 			<Switch :model-value="false" label="Disabled unchecked" disabled/>
@@ -99,7 +99,7 @@ export const WithCustomLabel = {
 			return { value };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<Switch v-model="value">
 				<template #label>
 					I accept the <a href="#" style="color: var(--color--primary);">terms and conditions</a>

@@ -50,6 +50,22 @@ export const Default: Story = {
 	},
 };
 
+export const Variants: Story = {
+	render: () => ({
+		components: { N8nCallout },
+		template: `
+			<div style="display: flex; flex-direction: column; gap: 12px;">
+				<N8nCallout theme="info">This is an info callout.</N8nCallout>
+				<N8nCallout theme="secondary">This is a secondary callout.</N8nCallout>
+				<N8nCallout theme="success">This is a success callout.</N8nCallout>
+				<N8nCallout theme="warning">This is a warning callout.</N8nCallout>
+				<N8nCallout theme="danger">This is a danger callout.</N8nCallout>
+				<N8nCallout theme="custom" icon="git-branch">This is a custom callout.</N8nCallout>
+			</div>
+		`,
+	}),
+};
+
 export const Custom: Story = {
 	render: (args) => ({
 		components: { N8nCallout, N8nLink },

@@ -9,7 +9,7 @@ export default {
 	argTypes: {
 		size: {
 			type: 'select',
-			options: ['small', 'medium'],
+			options: ['small', 'small-medium', 'medium'],
 		},
 	},
 	parameters: {
@@ -40,8 +40,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 });
 
-export const Example = Template.bind({});
-Example.args = {
+export const Default = Template.bind({});
+Default.args = {
 	options: [
 		{
 			label: 'Test',
@@ -57,6 +57,27 @@ Example.args = {
 		},
 	],
 };
+
+export const Sizes: StoryFn = () => ({
+	components: { N8nRadioButtons },
+	data() {
+		return {
+			val: 'test',
+			options: [
+				{ label: 'Test', value: 'test' },
+				{ label: 'World', value: 'world' },
+				{ label: 'Hello', value: 'hello' },
+			],
+		};
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 12px;">
+			<n8n-radio-buttons v-model="val" size="small" :options="options" />
+			<n8n-radio-buttons v-model="val" size="small-medium" :options="options" />
+			<n8n-radio-buttons v-model="val" size="medium" :options="options" />
+		</div>
+	`,
+});
 
 export const Disabled = Template.bind({});
 Disabled.args = {

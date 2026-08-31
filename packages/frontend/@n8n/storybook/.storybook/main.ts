@@ -30,6 +30,7 @@ const config: StorybookConfig = {
 			},
 		},
 		getAbsolutePath('storybook-addon-vue-mdx'),
+		getAbsolutePath('@vueless/storybook-dark-mode'),
 	],
 	framework: getAbsolutePath('@storybook/vue3-vite'),
 	staticDirs: ['../../design-system/assets'],
