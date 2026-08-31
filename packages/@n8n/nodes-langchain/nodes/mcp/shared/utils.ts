@@ -469,6 +469,7 @@ export async function connectMcpClientForCredential(
 			connection: config.registryCredential.connection,
 			credentialType: config.registryCredential.credentialType,
 			credentialData: credentials,
+			oauth2: ctx.getOAuth2Options(config.authentication),
 			headers,
 		});
 		if (!prepared.ok) {

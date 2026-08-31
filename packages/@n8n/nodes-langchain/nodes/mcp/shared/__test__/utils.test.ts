@@ -801,6 +801,8 @@ describe('utils', () => {
 				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
 					access_token: 'refreshed-token',
 				});
+				const oauth2 = { tokenType: 'MAC' };
+				ctx.getOAuth2Options.mockReturnValue(oauth2);
 				const credentialType = 'testMcpOAuth2Api' as const;
 				const connection = {
 					nodeTypeName: '@n8n/mcp-registry.test',
@@ -829,7 +831,8 @@ describe('utils', () => {
 
 				expect(prepareConnection).toHaveBeenCalledWith(
 					expect.objectContaining({
-						headers: { Authorization: 'Bearer refreshed-token' },
+						headers: { Authorization: 'MAC refreshed-token' },
+						oauth2,
 					}),
 				);
 			});
