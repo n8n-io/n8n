@@ -529,18 +529,13 @@ describe('GET /executions', () => {
 		await createSuccessfulExecution(workflow);
 		await createSuccessfulExecution(workflow);
 
-		// `lastId` must exceed every seeded id, or `LessThan` matches no rows and the
-		// assertions below hold for any limit.
 		const forge = (limit: unknown) =>
 			Buffer.from(JSON.stringify({ lastId: '999999', limit })).toString('base64');
 
 		const cases: Array<[unknown, number]> = [
-			// A limit below 1 must floor to 1. TypeORM omits the SQL LIMIT clause for
-			// `take: 0`, so a zero floor returns every row the caller can see.
 			[-1, 1],
 			[0, 1],
 			[2, 2],
-			// Not an integer, so the decoded limit is ignored and the default applies.
 			['abc', 3],
 			[null, 3],
 		];
@@ -580,8 +575,6 @@ describe('GET /executions', () => {
 		expect(response.body.message).toBe('An invalid cursor was provided');
 	});
 
-	// Statuses measured against the legacy handler on master. Anything that answered 200 there
-	// must still answer 200, or a call that works today breaks on upgrade.
 	test('should keep the legacy accept and reject boundary for odd cursor shapes', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await createSuccessfulExecution(workflow);
@@ -590,7 +583,6 @@ describe('GET /executions', () => {
 
 		const encode = (payload: unknown) => Buffer.from(JSON.stringify(payload)).toString('base64');
 
-		// An unusable `lastId` is ignored rather than rejected, so it yields the first page.
 		const tolerated: Array<[unknown, number]> = [
 			[{}, 3],
 			[{ limit: 2 }, 2],
@@ -606,7 +598,6 @@ describe('GET /executions', () => {
 			expect(response.body.data).toHaveLength(rows);
 		}
 
-		// Legacy read `'offset' in decoded`, which throws on a scalar.
 		for (const payload of ['a string', 42]) {
 			const response = await authOwnerAgent.get('/executions').query({ cursor: encode(payload) });
 
@@ -644,8 +635,6 @@ describe('GET /executions', () => {
 		expect(cursorForm.statusCode).toBe(200);
 		expect(cursorForm.body.data).toHaveLength(1);
 
-		// Legacy tolerated an offset-form cursor on this endpoint and ignored its `offset`,
-		// honouring only the limit.
 		const offsetForm = await authOwnerAgent
 			.get('/executions')
 			.query({ cursor: encode({ offset: 0, limit: 1 }) });
