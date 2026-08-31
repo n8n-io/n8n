@@ -845,8 +845,8 @@ export class ChatTrigger extends Node {
 
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
-		// Allow execution in manual mode (test) even when not public
-		if (!isPublic && mode !== 'test') {
+		// Only the editor's session-scoped canvas test route may execute a non-public chat
+		if (!isPublic && (mode !== 'test' || !ctx.isChatSessionTest())) {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
