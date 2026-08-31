@@ -11,7 +11,7 @@ import {
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/instanceAi/constants';
-import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { stashPendingAgentAttachment } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '../constants';
@@ -23,7 +23,9 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
-const instanceAiAvailable = useInstanceAiAvailable();
+// `Ready`, not merely available: this mints a thread and lands the user in it,
+// so before setup is done the manual builder is the working path.
+const instanceAiReady = useInstanceAiReady();
 const instanceAiStore = useInstanceAiStore();
 
 /**
@@ -51,7 +53,7 @@ onMounted(async () => {
 			? clickedAgentId
 			: generateNanoId();
 	try {
-		if (!instanceAiAvailable.value) {
+		if (!instanceAiReady.value) {
 			await router.replace({
 				name: AGENT_BUILDER_VIEW,
 				params: { projectId, agentId },

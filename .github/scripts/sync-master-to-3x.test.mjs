@@ -12,7 +12,6 @@ import {
 	rebaseResolvingMechanical,
 	reconcileWithMergeTreeAtTip,
 	reconcileLockfileAtTip,
-	recentAbandonedConflictPrs,
 	assertTreeMatches,
 	assertNoMarkers,
 	buildConflictBranch,
@@ -428,33 +427,6 @@ test('reconcileLockfileAtTip folds an inconsistent lockfile into the tip commit,
 			}),
 		/amend a master commit/,
 	);
-});
-
-test('recentAbandonedConflictPrs keeps only recently closed-unmerged conflict PRs', () => {
-	const now = Date.parse('2026-08-10T00:00:00Z');
-	const gh = makeStub([
-		[
-			() => true,
-			JSON.stringify([
-				{
-					number: 1,
-					url: 'u1',
-					mergedAt: '2026-08-01T00:00:00Z',
-					closedAt: '2026-08-01T00:00:00Z',
-				},
-				{ number: 2, url: 'u2', mergedAt: null, closedAt: '2026-07-01T00:00:00Z' }, // too old
-				{ number: 3, url: 'u3', mergedAt: null, closedAt: '2026-08-08T00:00:00Z' },
-			]),
-		],
-	]);
-
-	const abandoned = recentAbandonedConflictPrs(gh, { now });
-
-	assert.deepEqual(
-		abandoned.map((pr) => pr.number),
-		[3],
-	);
-	assert.equal(gh.calls[0][gh.calls[0].indexOf('--state') + 1], 'closed');
 });
 
 test('sync replays and force-pushes with a lease, creating no commit', async () => {
@@ -993,39 +965,6 @@ test('openConflictPr degrades gracefully when owner resolution fails', async () 
 
 	assert.equal(prUrl, 'https://github.com/n8n-io/n8n/pull/1');
 	assert.equal(ownersSlack, 'Could not auto-attribute owners.');
-});
-
-test('openConflictPr calls out a recently abandoned conflict PR', async () => {
-	const git = makeStub([[(a) => a[0] === 'log', 'sha1']]);
-	const closedAt = new Date(Date.now() - 2 * 86_400_000).toISOString();
-	const gh = makeStub([
-		[
-			(a) => a[0] === 'pr' && a[1] === 'list' && a.includes('closed'),
-			JSON.stringify([
-				{ number: 42, url: 'https://github.com/n8n-io/n8n/pull/42', mergedAt: null, closedAt },
-			]),
-		],
-		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/43'],
-	]);
-
-	const { ownersSlack } = await openConflictPr({
-		git,
-		gh,
-		repo: 'n8n-io/n8n',
-		token: 't',
-		masterSha: MASTER,
-		preHead: PRE_HEAD,
-		pushUrl: 'https://push',
-		files: ['x.ts'],
-		fetchFn: okFetch(['alice']),
-		log: () => {},
-	});
-
-	const create = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'create');
-	const body = create[create.indexOf('--body') + 1];
-	assert.match(body, /#42\) was closed without being merged/);
-	assert.match(body, /Merge, don't close/);
-	assert.match(ownersSlack, /<https:\/\/github\.com\/n8n-io\/n8n\/pull\/42\|#42>/);
 });
 
 test('sync reports a marker-less delete/modify conflict as its own decision, with the master commit', async () => {

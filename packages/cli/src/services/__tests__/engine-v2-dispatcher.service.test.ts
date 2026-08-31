@@ -17,6 +17,7 @@ import type { CredentialsPermissionChecker } from '@/executions/pre-execution-ch
 import type { ResumableExecution } from '@/interfaces';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import type { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
 const node = (id: string, name: string, type: string): INode => ({
 	id,
@@ -72,6 +73,7 @@ function runData(
 describe('EngineV2Dispatcher', () => {
 	const proxy = mock<EngineDataPlaneProxyService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const pushRegistry = mock<EngineV2PushRegistry>();
 
 	let dispatcher: EngineV2Dispatcher;
 
@@ -79,7 +81,7 @@ describe('EngineV2Dispatcher', () => {
 		vi.clearAllMocks();
 		proxy.isAvailable.mockReturnValue(true);
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
-		dispatcher = new EngineV2Dispatcher(proxy, credentialsPermissionChecker);
+		dispatcher = new EngineV2Dispatcher(proxy, credentialsPermissionChecker, pushRegistry);
 	});
 
 	describe('routesToEngineV2', () => {
@@ -315,6 +317,49 @@ describe('EngineV2Dispatcher', () => {
 				await dispatcher.start(data);
 
 				expect(startedWith()).toBeNull();
+			});
+		});
+
+		describe('the push session', () => {
+			it('records the run against the data plane execution id', async () => {
+				await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+				expect(pushRegistry.register).toHaveBeenCalledExactlyOnceWith('dp-uuid', {
+					pushRef: 'push-1',
+					workflowId: 'wf-1',
+					trigger: { nodeName: MANUAL_TRIGGER.name, outputs: [[{ json: {} }]] },
+				});
+			});
+
+			it('records the trigger payload the engine was given', async () => {
+				const data = runData({
+					pushRef: 'push-1',
+					triggerToStartFrom: {
+						name: MANUAL_TRIGGER.name,
+						data: taskData([[{ json: { from: 'trigger' } }]]),
+					},
+				});
+
+				await dispatcher.start(data);
+
+				expect(pushRegistry.register.mock.calls[0][1].trigger).toEqual({
+					nodeName: MANUAL_TRIGGER.name,
+					outputs: [[{ json: { from: 'trigger' } }]],
+				});
+			});
+
+			it('records nothing when nothing is watching the run', async () => {
+				await dispatcher.start(runData());
+
+				expect(pushRegistry.register).not.toHaveBeenCalled();
+			});
+
+			it('records nothing when the data plane refused the run', async () => {
+				proxy.startExecution.mockRejectedValueOnce(new Error('down'));
+
+				await expect(dispatcher.start(runData({ pushRef: 'push-1' }))).rejects.toThrow('down');
+
+				expect(pushRegistry.register).not.toHaveBeenCalled();
 			});
 		});
 	});

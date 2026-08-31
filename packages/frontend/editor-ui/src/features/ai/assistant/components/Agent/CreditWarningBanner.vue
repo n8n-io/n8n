@@ -5,14 +5,19 @@ import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { round2 } from './creditFormatting';
 
-const props = defineProps<{
-	creditsRemaining?: number;
-	creditsQuota?: number;
-	// 'attached' fuses onto the chat input below (used in the assistant sidebar);
-	// 'standalone' is a self-contained card that sits above a detached input.
-	variant?: 'attached' | 'standalone';
-	amountsHidden?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		creditsRemaining?: number;
+		creditsQuota?: number;
+		// 'standalone' is a self-contained card sitting above a detached input; 'attached'
+		// fuses onto the chat input below it (the assistant sidebar). Standalone is the
+		// default because every other call site is detached, and an attached banner there
+		// renders as an inset box with squared-off bottom corners floating above the input.
+		variant?: 'attached' | 'standalone';
+		amountsHidden?: boolean;
+	}>(),
+	{ variant: 'standalone' },
+);
 
 const emit = defineEmits<{
 	'upgrade-click': [];
@@ -63,7 +68,7 @@ const tooltipContent = computed(() => {
 
 <template>
 	<div
-		:class="[$style.banner, { [$style.standalone]: props.variant === 'standalone' }]"
+		:class="[$style.banner, props.variant === 'attached' ? $style.attached : $style.standalone]"
 		data-test-id="credit-warning-banner"
 	>
 		<div :class="$style.content">
@@ -110,19 +115,24 @@ const tooltipContent = computed(() => {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: light-dark(var(--color--neutral-125), var(--color--neutral-850));
-	border: var(--border);
-	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
-	border-bottom: none;
-	margin: 0 var(--spacing--2xs);
 	line-height: var(--line-height--xl);
 }
 
+// Inset and open at the bottom so it sits on top of the chat input's own border.
+.attached {
+	background: light-dark(var(--color--neutral-125), var(--color--neutral-850));
+	border: var(--border);
+	border-bottom: none;
+	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
+	margin: 0 var(--spacing--2xs);
+}
+
+// Its own card above a detached input. Mirrors N8nChatInput's surface treatment so
+// the two stack as siblings instead of as two differently-outlined boxes.
 .standalone {
-	// Full card so it reads as its own element above a detached, rounded input.
+	background: var(--background--surface);
+	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--lg);
-	border-bottom: var(--border);
-	margin: 0;
 }
 
 .content {
