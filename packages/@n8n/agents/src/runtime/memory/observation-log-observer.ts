@@ -1,4 +1,4 @@
-import { SECRET_KEYS } from '@n8n/utils/scrub-secrets';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
 import { redactText } from '../../sdk/guardrails';
@@ -32,14 +32,6 @@ const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
 const DEFAULT_MAX_OBJECT_KEYS = 40;
 const REDACTED_VALUE = '[REDACTED]';
-// Built from the shared secret-key vocabulary (@n8n/utils/scrub-secrets) plus
-// a few key names that vocabulary doesn't cover (bare `token`, private keys,
-// client secrets, session cookies) — catches secrets sitting under a
-// sensitive object key regardless of value shape.
-const SENSITIVE_KEY_PATTERN = new RegExp(
-	`(?:^|[_-])(?:${SECRET_KEYS}|token|private[_-]?key|client[_-]?secret|session[_-]?cookie)(?:$|[_-])`,
-	'i',
-);
 
 export interface ParsedObservationLogEntry {
 	marker: ObservationLogMarker;
@@ -335,10 +327,6 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 		result.__truncatedKeys = entries.length - maxObjectKeys;
 	}
 	return result;
-}
-
-function isSensitiveKey(key: string): boolean {
-	return SENSITIVE_KEY_PATTERN.test(key);
 }
 
 function shouldStripBlob(key: string, value: unknown): boolean {

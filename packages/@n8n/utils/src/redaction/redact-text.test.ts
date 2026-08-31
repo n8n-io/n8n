@@ -51,6 +51,15 @@ describe('redactDeep', () => {
 		expect(JSON.stringify(value)).not.toContain('jane@example.com');
 	});
 
+	it('redacts values under shared sensitive key variants', () => {
+		expect(
+			redactDeep(
+				{ passwd: 'secret one', token_v2: 'secret two', note: 'safe' },
+				{ redactSensitiveKeys: true },
+			).value,
+		).toEqual({ passwd: '[REDACTED]', token_v2: '[REDACTED]', note: 'safe' });
+	});
+
 	it.each([true, false])(
 		'withholds a subtree at the depth bound (redactSensitiveKeys: %s)',
 		(redactSensitiveKeys) => {

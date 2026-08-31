@@ -672,8 +672,6 @@ describe('ToolHttpRequest', () => {
 			const res = await invokeTool();
 
 			expect(res).toContain('HTTP 401');
-			// The key stays so the model still learns which credential was rejected.
-			expect(res).toContain('api_key');
 			expect(res).toContain('Rejected request');
 			expect(res).not.toContain('sk-live-abcdef123456');
 			expect(res).not.toContain('eyJhbGciOiJIUzI1NiJ9');
@@ -697,7 +695,6 @@ describe('ToolHttpRequest', () => {
 			const res = await invokeTool();
 
 			expect(res).toContain('Token exchange failed');
-			expect(res).toContain('client_secret');
 			expect(res).not.toContain('cs-live-abcdef');
 			expect(res).not.toContain('abcdef-bare-key');
 			// Keys that merely read like credentials keep their value.
@@ -714,7 +711,6 @@ describe('ToolHttpRequest', () => {
 			const res = await invokeTool();
 
 			expect(res).toContain('HTTP 401');
-			expect(res).toContain('client_secret');
 			expect(res).not.toContain('cs-live-abcdef');
 			// Both sides are redacted, so the body is still recognised as a repeat of the message.
 			expect(res).not.toContain('Response body');

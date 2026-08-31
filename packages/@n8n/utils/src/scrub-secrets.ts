@@ -13,7 +13,7 @@
  * unreadable.
  */
 export const SECRET_KEYS =
-	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token';
+	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|client[_-]?secret|private[_-]?key|session[_-]?cookie|token';
 
 export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// PEM private-key blocks (RSA/EC/DSA/OpenSSH/PGP). Whole block, multiline.
@@ -22,13 +22,15 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// base64url of a `{"` object, which makes this highly distinctive).
 	/\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
 	// Authorization-header substrings: `Bearer <token>`, `Basic <token>`, `Token <token>`
-	/\b(?:Bearer|Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,}/gi,
+	/\b(?:(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+|Token\s+[A-Za-z0-9._~+/=-]{12,})/gi,
 	// OpenAI / Anthropic API keys
 	/\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g,
 	// Stripe secret/restricted/publishable keys (`sk_live_…`, `rk_test_…`, …)
 	/\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{16,}/g,
 	// Google API keys
 	/\bAIza[0-9A-Za-z_-]{35}\b/g,
+	// Google OAuth access tokens
+	/\bya29\.[0-9A-Za-z_-]{20,}\b/g,
 	// Slack tokens (xoxb, xoxp, xoxa, xoxr, xoxs, xoxo)
 	/\bxox[abprso]-[A-Za-z0-9-]{10,}/g,
 	// GitHub tokens (ghp, ghs, gho, ghr, ghu)

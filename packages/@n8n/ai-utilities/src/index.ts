@@ -84,6 +84,7 @@ export {
 	processDocument,
 } from './utils/vector-store/processDocuments';
 export type { ServerSentEventMessage } from './utils/sse';
+export { stripNonXHeaders } from './utils/strip-non-x-headers';
 
 // Converters
 export { getParametersJsonSchema } from './converters/tool';

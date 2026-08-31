@@ -5,6 +5,7 @@ import { JSDOM } from 'jsdom';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 import type {
 	IDataObject,
@@ -195,32 +196,6 @@ const defaultOptimizer = <T>(response: T) => {
 /** Error payloads are appended to the tool output, so they must not flood the model's context. */
 const MAX_ERROR_BODY_LENGTH = 2000;
 
-const SECRET_REDACTION = '[redacted]';
-
-/**
- * Masks credential-shaped values that an API echoed back in its error payload, so they do not
- * reach the model or the stored execution data. The key is kept, so `invalid api_key: <secret>`
- * still tells the model which credential the API rejected.
- *
- * A sibling of the redaction applied to skill tool output in
- * `packages/@n8n/agents/src/skills/tools.ts`; kept separate because `@n8n/agents` is not a
- * dependency here. Keep the two in mind when changing either.
- *
- * The leading `[\w-]*` matters: `\b` alone never fires inside a compound key such as
- * `client_secret`, where every character before `secret` is a word character. The auth scheme is
- * optional so an `Authorization` header holding a bare key is masked too.
- */
-const redactSecrets = (content: string): string =>
-	content
-		.replace(
-			/\b(authorization)(["']?\s*[:=]\s*["']?\s*(?:(?:bearer|basic)\s+)?)[^\s"',;}]+/gi,
-			`$1$2${SECRET_REDACTION}`,
-		)
-		.replace(
-			/([\w-]*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|passwd|secret|credential|private[_-]?key))(["']?\s*[:=]\s*)(["']?)[^\s"',;}]+\3/gi,
-			`$1$2$3${SECRET_REDACTION}$3`,
-		);
-
 type FailedRequest = {
 	error?: unknown;
 	response?: { status?: number; data?: unknown };
@@ -266,7 +241,7 @@ const serializeErrorBody = (body: unknown): string | undefined => {
 		return undefined;
 	}
 
-	return serialized.trim() ? redactSecrets(serialized) : undefined;
+	return serialized.trim() ? scrubSecretsInText(serialized) : undefined;
 };
 
 function isBinary(data: unknown) {
@@ -883,7 +858,7 @@ export const configureToolFunction = (
 				const httpCode = (error as NodeApiError).httpCode ?? status;
 				// Some clients fold the response body into the message, so it needs the same masking
 				// as the body itself — and the dedupe check below only holds if both sides are redacted.
-				const message = redactSecrets(error.message);
+				const message = scrubSecretsInText(error.message);
 				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${message}"`;
 
 				// The API's own error payload is what tells the model why the call was rejected. Without

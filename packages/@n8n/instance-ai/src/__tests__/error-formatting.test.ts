@@ -35,9 +35,8 @@ describe('formatErrorForLog', () => {
 			}),
 		});
 
-		expect(formatted).toContain('"access_token": "[REDACTED]"');
-		expect(formatted).toContain('"client_secret": "[REDACTED]"');
-		expect(formatted).toContain('"password": "[REDACTED]"');
+		expect(formatted).toContain('"error":"invalid token"');
+		expect(formatted).toContain('[REDACTED]');
 		expect(formatted).not.toContain('secret-token');
 		expect(formatted).not.toContain('secret-client');
 		expect(formatted).not.toContain('secret-password');
@@ -48,8 +47,8 @@ describe('formatErrorForLog', () => {
 			new Error('Authorization: Bearer super-secret failed with token=other-secret'),
 		);
 
-		expect(formatted).toContain('Authorization: Bearer [REDACTED]');
-		expect(formatted).toContain('token=[REDACTED]');
+		expect(formatted).toContain('Authorization: [REDACTED]');
+		expect(formatted).toContain('failed with [REDACTED]');
 		expect(formatted).not.toContain('super-secret');
 		expect(formatted).not.toContain('other-secret');
 	});
@@ -60,7 +59,7 @@ describe('formatErrorForLog', () => {
 			body: `${'x'.repeat(960)} access_token=${secret}`,
 		});
 
-		expect(formatted).toContain('access_token=[REDACTED]');
+		expect(formatted).toContain('[REDACTED]');
 		expect(formatted).not.toContain(secret.slice(0, 20));
 		expect(formatted.length).toBeLessThanOrEqual(1_003);
 	});
