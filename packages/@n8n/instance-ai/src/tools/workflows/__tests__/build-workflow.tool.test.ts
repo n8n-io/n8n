@@ -1841,7 +1841,7 @@ describe('createBuildWorkflowTool', () => {
 			mockedCredentialsByNode: {},
 			resolvedCredentialsByNode: {
 				'OpenAI Chat Model': [
-					{ type: 'openAiApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					{ type: 'openAiApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				],
 			},
 		});

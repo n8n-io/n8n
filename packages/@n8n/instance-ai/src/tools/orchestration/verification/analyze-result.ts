@@ -168,6 +168,20 @@ function classifyVerificationFailure(
 	}
 
 	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
+<<<<<<< HEAD
+=======
+		const quotaGuidance =
+			normalized.includes('quota') &&
+			isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+				? creditsCoverFailingNode(
+						nodeErrors,
+						lastNodeExecuted,
+						chatModelRecovery?.creditsCoveredNodeNames,
+					)
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to Gateway credits or another provider they can run."
+					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
+				: '';
+>>>>>>> c96e7c0d (feat(core): Rename n8n credits copy to Gateway credits in AI assistant (no-changelog) (#37271))
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,

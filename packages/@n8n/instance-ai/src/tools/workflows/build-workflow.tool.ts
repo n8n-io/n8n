@@ -173,6 +173,19 @@ export const buildWorkflowInputSchema = z
 				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
 					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
 			),
+<<<<<<< HEAD
+=======
+		preferNewCredentials: z
+			.array(z.string())
+			.optional()
+			.describe(
+				'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
+					'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
+					'credential whose secret is invalid or rotated, never as a default. Those slots are ' +
+					'left unresolved instead of being filled from an existing credential or Gateway credits, so ' +
+					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
+			),
+>>>>>>> c96e7c0d (feat(core): Rename n8n credits copy to Gateway credits in AI assistant (no-changelog) (#37271))
 		executionIntent: z
 			.enum(['one-off', 'reusable'])
 			.optional()
