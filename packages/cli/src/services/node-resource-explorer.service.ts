@@ -27,6 +27,12 @@ import { getBase } from '@/workflow-execute-additional-data';
  */
 const MAX_AVAILABILITY_PAGES = 5;
 
+<<<<<<< HEAD
+=======
+/** Display name for the managed n8n Connect credential slot in explore-resources. */
+const N8N_CONNECT_DISPLAY_NAME = 'Gateway credits';
+
+>>>>>>> 035dfbd2 (feat(core): Rename n8n credits copy to Gateway credits in gateway and agent services (no-changelog) (#37269))
 /**
  * Looks up dynamic resource locator and load-options values for a node on
  * behalf of a user, after verifying credential ownership.
