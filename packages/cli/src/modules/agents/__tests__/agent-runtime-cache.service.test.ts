@@ -169,6 +169,56 @@ describe('AgentRuntimeCacheService', () => {
 		}
 	});
 
+	it('re-checks baked-in tool access after the debounce window and rebuilds when a grant is revoked', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const user = mock<User>({ id: 'user-a' });
+			const snapshot = { credentialIds: ['cred-1'], workflowIds: ['wf-1'] };
+			const originalRuntime = { ...makeRuntime(), userToolAccessSnapshot: snapshot };
+			const rebuiltRuntime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(originalRuntime)
+				.mockResolvedValueOnce(rebuiltRuntime);
+			reconstructionService.userStillHasToolAccess.mockResolvedValue(true);
+
+			const first = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(first.agent);
+
+			// Inside the debounce window: served without any re-check.
+			vi.setSystemTime(Date.now() + 30 * 1000);
+			const second = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(second.agent);
+			expect(second.agent).toBe(originalRuntime.agent);
+			expect(reconstructionService.userStillHasToolAccess).not.toHaveBeenCalled();
+
+			// Past the window with grants intact: re-checked, same instance kept.
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const third = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(third.agent);
+			expect(reconstructionService.userStillHasToolAccess).toHaveBeenCalledWith(
+				snapshot,
+				projectId,
+				user,
+			);
+			expect(third.agent).toBe(originalRuntime.agent);
+
+			// Grant revoked: the next re-check retires the runtime and rebuilds it.
+			reconstructionService.userStillHasToolAccess.mockResolvedValue(false);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const fourth = await service.getRuntime({ agentId, projectId, user });
+
+			expect(fourth.agent).toBe(rebuiltRuntime.agent);
+			expect(originalRuntime.agent.close).toHaveBeenCalledOnce();
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('keeps draft runtimes separate by integration type', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();
