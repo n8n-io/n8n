@@ -6,7 +6,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendSettings } from '@n8n/api-types';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 import { nextTick } from 'vue';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import type { FeatureFlags } from 'n8n-workflow';
