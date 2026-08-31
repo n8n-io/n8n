@@ -38,7 +38,7 @@ const { isNodeContextEnabled } = vi.hoisted(() => {
 	return { isNodeContextEnabled: ref(false) };
 });
 vi.mock('@/features/ai/instanceAi/composables/useIsNodeContextEnabled', () => ({
-	useIsNodeContextEnabled: () => ({ isNodeContextEnabled }),
+	useIsNodeContextEnabled: () => isNodeContextEnabled,
 }));
 
 import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';

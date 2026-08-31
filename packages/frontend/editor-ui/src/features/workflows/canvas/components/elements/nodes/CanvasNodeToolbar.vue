@@ -52,7 +52,7 @@ const focusedNodesStore = useFocusedNodesStore();
 // Per-editor host overrides — e.g. the Instance AI artifact preview supersedes
 // the AI capabilities of its embedded editor, which must hide this entry point.
 const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
-const { isNodeContextEnabled } = useIsNodeContextEnabled();
+const isNodeContextEnabled = useIsNodeContextEnabled();
 
 const node = computed(() =>
 	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,

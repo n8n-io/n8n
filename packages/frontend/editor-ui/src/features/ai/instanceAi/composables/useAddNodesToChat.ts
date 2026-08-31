@@ -14,7 +14,7 @@ export function useAddNodesToChat() {
 	const router = useRouter();
 	const toast = useToast();
 	const i18n = useI18n();
-	const { isNodeContextEnabled } = useIsNodeContextEnabled();
+	const isNodeContextEnabled = useIsNodeContextEnabled();
 
 	async function addSelectedNodesToChat(params: {
 		workflowId: string;

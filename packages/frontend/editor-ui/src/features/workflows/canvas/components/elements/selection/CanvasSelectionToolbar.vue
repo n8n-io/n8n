@@ -41,7 +41,7 @@ const { isSelectionExtractable } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
 	readOnly: () => props.readOnly,
 });
-const { isNodeContextEnabled } = useIsNodeContextEnabled();
+const isNodeContextEnabled = useIsNodeContextEnabled();
 
 const emit = defineEmits<{
 	'group-created': [id: string];

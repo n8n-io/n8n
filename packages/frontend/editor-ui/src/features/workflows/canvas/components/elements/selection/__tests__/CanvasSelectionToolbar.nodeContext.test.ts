@@ -6,7 +6,7 @@ import CanvasSelectionToolbar from '../CanvasSelectionToolbar.vue';
 
 const isEnabled = { value: true };
 vi.mock('@/features/ai/instanceAi/composables/useIsNodeContextEnabled', () => ({
-	useIsNodeContextEnabled: () => ({ isNodeContextEnabled: isEnabled }),
+	useIsNodeContextEnabled: () => isEnabled,
 }));
 
 function nodes(count: number): GraphNode[] {

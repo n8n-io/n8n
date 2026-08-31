@@ -70,7 +70,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { isNodeContextEnabled } = useIsNodeContextEnabled();
+const isNodeContextEnabled = useIsNodeContextEnabled();
 const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
