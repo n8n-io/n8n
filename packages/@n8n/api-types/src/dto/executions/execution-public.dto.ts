@@ -93,6 +93,8 @@ export class ExecutionListPublicDto extends Z.class({
 			description:
 				'Paginate through executions by setting the cursor parameter to a nextCursor attribute ' +
 				'returned by a previous request. Default value fetches the first "page" of the collection.',
-			example: 'MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA',
+			// base64 of `{"lastId":"1000","limit":100}`. Master's example decoded to a bare
+			// truncated UUID, so feeding it back answered 400.
+			example: 'eyJsYXN0SWQiOiIxMDAwIiwibGltaXQiOjEwMH0=',
 		}),
 }) {}
