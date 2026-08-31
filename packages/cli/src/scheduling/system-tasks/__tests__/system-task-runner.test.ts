@@ -111,6 +111,51 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(1);
 		});
 
+		it('runs a takeover task at once when the timers start', async () => {
+			const { runner, metadata } = setup({ isLeader: true });
+			dummy.runOnTakeover = true;
+			metadata.register(DummySystemTask);
+
+			runner.init();
+			expect(dummy.runCount).toBe(1);
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(dummy.runCount).toBe(2);
+		});
+
+		it('runs a takeover task registered after takeover at once', () => {
+			const { runner, metadata } = setup({ isLeader: true });
+			dummy.runOnTakeover = true;
+			runner.init();
+
+			metadata.register(DummySystemTask);
+
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('does not run a takeover task on a follower', async () => {
+			const { runner, metadata } = setup({ isLeader: false });
+			dummy.runOnTakeover = true;
+			metadata.register(DummySystemTask);
+
+			runner.init();
+			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(0);
+		});
+
+		it('runs a takeover task again on a later takeover', async () => {
+			const { runner, metadata } = setup({ isLeader: true });
+			dummy.runOnTakeover = true;
+			metadata.register(DummySystemTask);
+			runner.init();
+
+			await runner.stopTimers();
+			runner.startTimers();
+
+			expect(dummy.runCount).toBe(2);
+		});
+
 		it('skips an occurrence while the previous run is still going', async () => {
 			const { runner, metadata, logger } = setup();
 			dummy.onRun = async () => await new Promise<void>(() => {});

@@ -40,6 +40,13 @@ export interface SystemTask {
 	readonly durable: boolean;
 
 	/**
+	 * Runs one occurrence as soon as this instance becomes the leader, on top
+	 * of the scheduled occurrences. In-memory timers only: ignored for a
+	 * durable run.
+	 */
+	readonly runOnTakeover?: boolean;
+
+	/**
 	 * Overrides what happens to occurrences that missed their grace window.
 	 * Defaults to `coalesce` for idempotent work and `skip` otherwise.
 	 */

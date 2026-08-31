@@ -92,11 +92,16 @@ export class SystemTaskRunner {
 			this.timersStarted = true;
 			this.inMemoryRunsController = new AbortController();
 			const from = new Date();
-			const timers = this.inMemoryTimers();
-			for (const timer of timers) {
-				timer.start(from);
+			const inMemoryTasks = this.inMemoryTasks();
+			for (const routed of inMemoryTasks) {
+				routed.timer.start(from);
+				if (routed.task.runOnTakeover) {
+					void this.run(routed);
+				}
 			}
-			this.logger.debug('Started the in-memory system task timers', { count: timers.length });
+			this.logger.debug('Started the in-memory system task timers', {
+				count: inMemoryTasks.length,
+			});
 		}
 	}
 
@@ -104,15 +109,17 @@ export class SystemTaskRunner {
 	async stopTimers(): Promise<void> {
 		this.timersStarted = false;
 		this.inMemoryRunsController.abort();
-		for (const timer of this.inMemoryTimers()) {
+		for (const { timer } of this.inMemoryTasks()) {
 			timer.stop();
 		}
 		this.logger.debug('Stopped the in-memory system task timers');
 		await Promise.all(this.inFlightRuns());
 	}
 
-	private inMemoryTimers(): SystemTaskTimer[] {
-		return [...this.routedTasksByName.values()].flatMap(({ timer }) => (timer ? [timer] : []));
+	private inMemoryTasks(): Array<RoutedTask & { timer: SystemTaskTimer }> {
+		return [...this.routedTasksByName.values()].filter(
+			(routed): routed is RoutedTask & { timer: SystemTaskTimer } => routed.timer !== undefined,
+		);
 	}
 
 	private inFlightRuns(): Array<Promise<void>> {
@@ -171,6 +178,9 @@ export class SystemTaskRunner {
 
 			if (this.timersStarted) {
 				routed.timer.start(new Date());
+				if (task.runOnTakeover) {
+					void this.run(routed);
+				}
 			}
 		}
 	}
