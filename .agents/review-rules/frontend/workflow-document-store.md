@@ -2,36 +2,16 @@
 
 Applies to: `packages/frontend`.
 
-Workflow state is actively migrating from `workflowsStore`
-(`packages/frontend/editor-ui/src/app/stores/workflows.store.ts`) to
-`workflowDocumentStore`
-(`packages/frontend/editor-ui/src/app/stores/workflowDocument.store.ts`).
-
-`workflowDocumentStore` is the single source of truth for migrated fields. New
-code that reads or writes one of them must go through it, not through
-`workflowsStore.workflow.*` or an equivalent accessor.
-
-Already-migrated fields — do NOT access these via `workflowsStore`:
+Workflow state is migrating from `workflowsStore` to `workflowDocumentStore`,
+now the single source of truth for the fields already moved:
 
 `active`, `activeVersion`, `activeVersionId`, `checksum`, `createdAt`,
 `homeProject`, `meta`, `pinData`, `settings`, `tags`, `updatedAt`
 
-Flag when NEW code does any of:
+Flag NEW code reading one of those from `workflowsStore.workflow.<field>` or a
+`workflow` ref destructured out of it, writing one through `workflowsStore`,
+or calling a `workflowsStore` action that only mutates a migrated field.
+Point at `useWorkflowDocumentStore(createWorkflowDocumentId(workflowId))`.
 
-1. Reads a migrated field from `workflowsStore.workflow.<field>`
-2. Reads one from a destructured `workflow` ref originating in `workflowsStore`
-3. Writes one through `workflowsStore`, e.g. `workflowsStore.workflow.active = true`
-4. Calls a `workflowsStore` setter/action that only mutates a migrated field,
-   when `workflowDocumentStore` already exposes an equivalent method
-
-Do NOT flag:
-
-- Non-migrated fields, e.g. `workflowsStore.workflow.nodes`, `.connections`
-- Code inside `workflowDocument.store.ts` or its sub-modules — those *are* the
-  source of truth
-- Code inside `workflows.store.ts` itself — the migration is still in progress there
-
-Use `useWorkflowDocumentStore(createWorkflowDocumentId(workflowId))` from
-`@/app/stores/workflowDocument.store.ts`.
-
-This is an active migration; the field list will grow.
+Do NOT flag non-migrated fields such as `.nodes` or `.connections`, or the two
+store files themselves. The list grows as the migration proceeds.
