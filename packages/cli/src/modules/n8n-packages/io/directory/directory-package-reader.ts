@@ -11,7 +11,6 @@ import type { PackageReader } from '../package-reader';
 const MANIFEST_PATH = 'manifest.json';
 const ALLOWED_PATH_CHARS = /^[a-zA-Z0-9._/-]+$/;
 
-/** The subset of {@link PackageImportConfig} the reader enforces. */
 export interface DirectoryReaderLimits {
 	maxUncompressedBytes: number;
 	maxEntryBytes: number;
@@ -19,19 +18,6 @@ export interface DirectoryReaderLimits {
 	maxPathLength: number;
 }
 
-/**
- * Reads the n8n-packages layout from loose files in a directory (the "unzipped"
- * format written by {@link DirectoryPackageWriter}), the filesystem counterpart
- * to {@link TarPackageReader}. Reads are lazy — the manifest and each file are
- * read on demand rather than loading the whole tree up front.
- *
- * The directory originates from a remote Git repository, so it is untrusted: the
- * same path-safety and size guards as the tar reader apply. Entry paths must stay
- * within `baseDir`, symbolic links are rejected, and a single file may not exceed
- * `maxEntryBytes`. Because reads are lazy, callers must validate the whole tree up
- * front via {@link listEntries} to enforce the package-wide `maxEntries` and
- * `maxUncompressedBytes` limits.
- */
 export class DirectoryPackageReader implements PackageReader {
 	constructor(
 		private readonly baseDir: string,
@@ -85,7 +71,6 @@ export class DirectoryPackageReader implements PackageReader {
 		return entries;
 	}
 
-	/** Reads a file after validating its path stays within `baseDir` and its size is within limits. */
 	private async readWithinBase(entryPath: string): Promise<Buffer> {
 		const safePath = this.validateEntryPath(entryPath);
 		const absolutePath = this.resolveWithin(safePath);
@@ -102,7 +87,6 @@ export class DirectoryPackageReader implements PackageReader {
 		return await readFile(absolutePath);
 	}
 
-	/** Rejects symlinks in the package root or any component of an entry path. */
 	private async lstatWithoutSymlinks(absolutePath: string, entryPath: string): Promise<Stats> {
 		let currentPath = this.baseDir;
 		let stats = await lstat(currentPath);
@@ -122,7 +106,7 @@ export class DirectoryPackageReader implements PackageReader {
 		return stats;
 	}
 
-	/** Mirrors TarPackageReader path validation: relative, in-bounds, allowed characters only. */
+	/** Keep path validation aligned with TarPackageReader. */
 	private validateEntryPath(rawPath: string): string {
 		const trimmed = rawPath.endsWith('/') ? rawPath.slice(0, -1) : rawPath;
 
@@ -154,7 +138,6 @@ export class DirectoryPackageReader implements PackageReader {
 		return normalized;
 	}
 
-	/** Resolves a validated entry path against the base dir, refusing anything that escapes it. */
 	private resolveWithin(safePath: string): string {
 		const destination = path.resolve(this.baseDir, safePath);
 		const relative = path.relative(this.baseDir, destination);
@@ -166,7 +149,6 @@ export class DirectoryPackageReader implements PackageReader {
 		return destination;
 	}
 
-	/** Depth-first walk yielding each regular file's posix-relative path and size. */
 	private async walk(
 		dir: string,
 		visit: (relativePath: string, size: number) => void,

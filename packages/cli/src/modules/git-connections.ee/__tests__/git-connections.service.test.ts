@@ -758,7 +758,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 		});
 
 		it('fails with a clear error when there is no exported working copy', async () => {
-			// exportFolder deliberately not created.
 			await expect(importService.pull('1', actor)).rejects.toThrow(
 				'no exported working copy to import',
 			);

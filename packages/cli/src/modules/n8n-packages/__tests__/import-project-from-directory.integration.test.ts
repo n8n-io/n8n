@@ -31,7 +31,6 @@ let service: N8nPackagesService;
 let owner: User;
 let sourceDir: string;
 
-// The fixed "git folder is source of truth, overwrite" policy the pull uses.
 const importPolicy: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: 'overwrite',
 	workflowConflictPolicy: 'new-version',
@@ -92,7 +91,7 @@ describe('importPackageFromDirectory', () => {
 			{ targetDir: sourceDir },
 		);
 
-		// Wipe the instance so the import recreates the project from the directory.
+		// Force the create path.
 		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'ProjectRelation', 'Project']);
 
 		const result = await service.importPackageFromDirectory(
@@ -164,7 +163,6 @@ describe('importPackageFromDirectory', () => {
 			},
 		]);
 
-		// The instance now matches the directory, and nothing was duplicated.
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
 		expect((await Container.get(ProjectRepository).findOneBy({ id: project.id }))?.name).toBe(
 			'Alpha Project',

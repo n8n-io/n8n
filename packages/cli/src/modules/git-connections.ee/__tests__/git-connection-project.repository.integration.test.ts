@@ -4,10 +4,6 @@ import { Container } from '@n8n/di';
 import { GitConnectionProjectRepository } from '../database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from '../database/repositories/git-connection.repository';
 
-// `syncConnectionProjects` prunes and upserts in one transaction using `In`/`Not`
-// operators, so it runs against the real driver: a mocked entity manager would
-// green-light SQL the database rejects and never exercise the FK cascades.
-
 let connectionRepository: GitConnectionRepository;
 let projectLinkRepository: GitConnectionProjectRepository;
 

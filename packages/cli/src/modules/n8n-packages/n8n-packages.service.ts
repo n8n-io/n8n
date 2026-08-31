@@ -366,9 +366,6 @@ export class N8nPackagesService {
 			'package-import',
 		);
 
-		// A user-facing archive import; the internal directory import does not emit this.
-		// Emit under the folder policy the dispatcher settled on, so analytics see what
-		// the import actually ran under rather than the caller's blank.
 		const resolvedRequest: ResolvedImportPackageRequest = {
 			...request,
 			folderConflictPolicy: resolveFolderConflictPolicy(
@@ -381,22 +378,11 @@ export class N8nPackagesService {
 		return result;
 	}
 
-	/**
-	 * Imports the unzipped n8n-packages layout from a directory (e.g. a Git
-	 * connection's working copy) rather than a tar archive.
-	 *
-	 * Mirrors {@link exportPackageToDirectory}: the `n8n-package-imported` event
-	 * tracks the user-facing archive import, so this internal directory read does
-	 * not emit it.
-	 */
 	async importPackageFromDirectory(
 		request: ImportRequest,
 		source: { sourceDir: string },
 	): Promise<ImportResult> {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
-		// The working copy is untrusted, so enforce the package-wide size and count
-		// limits over the whole tree before reading any entry. The tar reader gets this
-		// for free while parsing; the directory reader reads lazily, so validate up front.
 		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
 		// Import from a directory only supports project packages, mirroring the directory
@@ -411,7 +397,6 @@ export class N8nPackagesService {
 		return result;
 	}
 
-	/** Routes a read manifest to the importer for its package shape (project vs workflow). */
 	private async dispatchImport(
 		request: ImportRequest,
 		reader: PackageReader,

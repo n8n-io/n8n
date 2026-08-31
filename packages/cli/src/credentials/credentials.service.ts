@@ -1741,9 +1741,7 @@ export class CredentialsService {
 	/**
 	 * Creates an empty credential placeholder for package import. Skips field
 	 * validation so every known type can be stubbed; {@link save} still enforces
-	 * `credential:create` on the target project. An `id` may be supplied to reuse
-	 * the source credential's id, so id-based matching resolves the stub on later
-	 * imports instead of creating a duplicate each time.
+	 * `credential:create` on the target project. A supplied `id` preserves source identity.
 	 */
 	async createStubCredential(
 		opts: { id?: string; name: string; type: string; projectId: string },

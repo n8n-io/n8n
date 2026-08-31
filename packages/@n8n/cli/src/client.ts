@@ -68,7 +68,6 @@ export type PushGitConnectionResult = {
 	commit: string | null;
 };
 
-/** Per-entity counts of what a pull changed in the instance, broken down by outcome. */
 export interface ImportPackageCounts {
 	projects: { created: number; updated: number; skipped: number; deleted: number };
 	folders: { created: number; skipped: number; removed: number };
@@ -78,7 +77,6 @@ export interface ImportPackageCounts {
 		skipped: number;
 		archived: number;
 		deleted: number;
-		/** The post-write publish sweep's outcome per workflow; reported, never fails the pull. */
 		publishing: {
 			published: number;
 			unpublished: number;
@@ -99,7 +97,6 @@ export interface ImportPackageCounts {
 	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
 }
 
-/** Outcome of importing a Git connection's working copy into the instance. */
 export type PullGitConnectionResult = {
 	connectionId: string;
 	counts: ImportPackageCounts;

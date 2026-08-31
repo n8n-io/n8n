@@ -321,7 +321,6 @@ describe('CredentialImporter', () => {
 		it('reuses the source id so a repeated pull resolves the stub instead of restubbing', async () => {
 			const missingCredential = packageCredential({ id: 'cred-source', name: 'Source GitHub' });
 
-			// First pull: nothing on the target, so a stub is created with the source id.
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'cred-source' } as never);
 			const firstRequest = bindingRequest([missingCredential], { missingMode: 'create-stub' });
 			const firstResult = await importer.apply(context, firstRequest, {
@@ -335,7 +334,6 @@ describe('CredentialImporter', () => {
 			);
 			expect(firstResult.bindings).toEqual(new Map([['cred-source', 'cred-source']]));
 
-			// Second pull: the stub now exists and is usable, so the matcher resolves it.
 			vi.clearAllMocks();
 			credentialTypes.recognizes.mockReturnValue(true);
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([

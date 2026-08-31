@@ -47,17 +47,6 @@ export class GitConnectionProjectRepository extends BaseRepository<GitConnection
 		return rows.map((row) => row.projectId);
 	}
 
-	/**
-	 * Reconciles the connection's project links to exactly `projectIds`: links new
-	 * or moved projects (the `projectId` primary key enforces one connection per
-	 * project) and prunes links for projects no longer in the working copy, so a
-	 * later push doesn't resurrect a project that was deleted upstream. The prune
-	 * and the upsert run in one transaction to keep the link set consistent.
-	 *
-	 * An empty list is a deliberate no-op rather than "unlink everything": pull
-	 * only reaches here with an existing working copy, so no imported projects
-	 * means a non-project or malformed export, not an instruction to wipe links.
-	 */
 	async syncConnectionProjects(
 		gitConnectionId: string,
 		projectIds: string[],
