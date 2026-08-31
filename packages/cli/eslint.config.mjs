@@ -119,7 +119,6 @@ export default defineConfig(
 		files: [
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
-			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 			'./src/public-api/v1/handlers/projects/projects.handler.ts',
 			'./src/public-api/v1/handlers/users/users.handler.ee.ts',

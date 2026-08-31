@@ -3,11 +3,14 @@ import type { JSONSchema7 } from 'json-schema';
 import { createHash } from 'node:crypto';
 
 import type { McpCallToolResult, McpConnection } from './mcp-connection';
+import {
+	hasMcpMediaContent,
+	mcpContentToMessageParts,
+	mcpContentToModelParts,
+} from './mcp-content';
 import { sanitizeToolName } from '../../sdk/tool';
-import type { AgentMessage, ContentFile, ContentText } from '../../types/sdk/message';
+import type { AgentMessage } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
-
-type McpContentBlock = McpCallToolResult['content'][number];
 
 const MAX_TOOL_NAME_LENGTH = 64;
 const TOOL_NAME_HASH_LENGTH = 8;
@@ -46,6 +49,9 @@ export class McpToolResolver {
 		const toMessage = (output: unknown): AgentMessage | undefined => {
 			return buildRichMessage(output as McpCallToolResult);
 		};
+		const toModelOutput = (output: unknown): unknown => {
+			return buildModelOutput(output as McpCallToolResult);
+		};
 
 		const builtTool: BuiltTool = {
 			name: prefixedName,
@@ -53,6 +59,7 @@ export class McpToolResolver {
 			inputSchema: tool.inputSchema as JSONSchema7,
 			handler,
 			toMessage,
+			toModelOutput,
 			mcpTool: true,
 			mcpServerName: connection.name,
 			mcpToolName: originalName,
@@ -124,45 +131,23 @@ function appendStableSuffix(name: string, stableIdentity: string, attempt: numbe
 }
 
 /**
- * Convert an MCP CallToolResult into a rich AgentMessage containing text and image content parts.
+ * Convert an MCP CallToolResult into a rich AgentMessage containing text and file content parts.
  * Returns undefined if the result contains only text (the tool-result JSON is sufficient for the LLM).
- * Returns an assistant Message with ContentFile parts for image blocks so multimodal models can process them.
+ * Returns an assistant Message with ContentFile parts so multimodal models can process them.
  */
 function buildRichMessage(result: McpCallToolResult): AgentMessage | undefined {
 	if (!result?.content) return undefined;
 
-	const hasImages = result.content.some((block) => block.type === 'image');
-	if (!hasImages) return undefined;
+	if (!hasMcpMediaContent(result.content)) return undefined;
 
-	const contentParts: Array<ContentText | ContentFile> = [];
-
-	for (const block of result.content) {
-		const part = blockToContentPart(block);
-		if (part) contentParts.push(part);
-	}
-
+	const contentParts = mcpContentToMessageParts(result.content);
 	if (contentParts.length === 0) return undefined;
 
 	return { role: 'assistant', content: contentParts };
 }
 
-function blockToContentPart(block: McpContentBlock): ContentText | ContentFile | undefined {
-	if (block.type === 'text' && block.text) {
-		return { type: 'text', text: block.text };
-	}
+function buildModelOutput(result: McpCallToolResult): unknown {
+	if (!result?.content || !hasMcpMediaContent(result.content)) return result;
 
-	if (block.type === 'image' && block.data) {
-		return {
-			type: 'file',
-			data: block.data,
-			mediaType: block.mimeType ?? 'image/png',
-		};
-	}
-
-	if (block.type === 'resource' && block.resource) {
-		const text = 'text' in block.resource ? block.resource.text : block.resource.uri;
-		return { type: 'text', text };
-	}
-
-	return undefined;
+	return { type: 'content', value: mcpContentToModelParts(result.content) };
 }

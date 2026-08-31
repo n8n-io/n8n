@@ -185,9 +185,10 @@ export const buildWorkflowInputSchema = z
 			.array(z.string())
 			.optional()
 			.describe(
-				'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on ' +
-					'an explicit request like "create a new Slack credential", never as a default. Those slots are ' +
-					'left unresolved instead of being filled from an existing credential or n8n credits, so ' +
+				'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
+					'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
+					'credential whose secret is invalid or rotated, never as a default. Those slots are ' +
+					'left unresolved instead of being filled from an existing credential or Gateway credits, so ' +
 					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
 			),
 		executionIntent: z
