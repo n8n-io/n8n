@@ -36,11 +36,46 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 /** `deletedAt` is on the entity but missing from `IExecutionBase`, and the response carries it. */
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse> & { deletedAt?: Date | null };
 
-/** A decoded cursor is parsed JSON, so every field starts out untrusted. */
-function isDecodedCursor(
+function isCursorObject(
 	value: unknown,
 ): value is { lastId?: unknown; offset?: unknown; limit?: unknown } {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Resolves the paging window from an optional cursor, falling back to the query's own limit.
+ *
+ * A cursor is unsigned, so its decoded fields are caller-supplied. Only the two shapes this
+ * endpoint emits are accepted: the `lastId` form, and the offset form legacy also tolerated
+ * here, whose `offset` is ignored and only its limit honoured.
+ */
+function resolveCursorPaging(
+	cursor: string | undefined,
+	queryLimit: number,
+): { lastId?: string; limit: number } {
+	if (!cursor) return { limit: queryLimit };
+
+	const invalid = new BadRequestError('An invalid cursor was provided');
+
+	let decoded: unknown;
+	try {
+		decoded = decodeCursor(cursor);
+	} catch {
+		throw invalid;
+	}
+
+	if (!isCursorObject(decoded)) throw invalid;
+
+	const lastId = typeof decoded.lastId === 'string' ? decoded.lastId : undefined;
+	if (lastId === undefined && !Number.isInteger(decoded.offset)) throw invalid;
+
+	const limit =
+		typeof decoded.limit === 'number' && Number.isInteger(decoded.limit)
+			? // Floored at 1: TypeORM omits the SQL LIMIT clause for `take: 0`.
+				Math.min(Math.max(decoded.limit, 1), MAX_ITEMS_PER_PAGE)
+			: queryLimit;
+
+	return { lastId, limit };
 }
 
 function isRedactableExecution(
@@ -71,38 +106,7 @@ export class ExecutionsPublicController {
 		_res: Response,
 		@Query query: ListExecutionsQueryDto,
 	): Promise<ExecutionListPublicDto> {
-		let { limit } = query;
-		let lastId: string | undefined;
-
-		// A cursor is unsigned, so its contents are caller-supplied and cannot be trusted to
-		// match what this endpoint issued. Only the two shapes it ever emits are accepted:
-		// the `lastId` form, and the offset form that legacy also tolerated here (its
-		// `offset` is ignored, only the limit is honoured).
-		if (query.cursor) {
-			let decoded: unknown;
-
-			try {
-				decoded = decodeCursor(query.cursor);
-			} catch {
-				throw new BadRequestError('An invalid cursor was provided');
-			}
-
-			if (!isDecodedCursor(decoded)) {
-				throw new BadRequestError('An invalid cursor was provided');
-			}
-
-			if (typeof decoded.lastId === 'string') {
-				lastId = decoded.lastId;
-			} else if (!Number.isInteger(decoded.offset)) {
-				throw new BadRequestError('An invalid cursor was provided');
-			}
-
-			if (typeof decoded.limit === 'number' && Number.isInteger(decoded.limit)) {
-				// The floor is 1, not 0: TypeORM omits the SQL LIMIT clause for `take: 0`,
-				// so a zero floor would return every execution the caller can see.
-				limit = Math.min(Math.max(decoded.limit, 1), MAX_ITEMS_PER_PAGE);
-			}
-		}
+		const { lastId, limit } = resolveCursorPaging(query.cursor, query.limit);
 
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
@@ -289,8 +293,7 @@ export class ExecutionsPublicController {
 		return this.serialize({
 			id: execution.id,
 			...this.toBaseFields(execution),
-			// Absent unless `includeData` is set. An undefined value is dropped by `res.json`, so the
-			// key stays out of the response.
+			// Undefined unless `includeData` is set, and `res.json` drops undefined keys.
 			data: execution.data,
 			customData: execution.customData,
 			workflowData: execution.workflowData,
@@ -309,9 +312,8 @@ export class ExecutionsPublicController {
 	}
 
 	/**
-	 * `replaceCircularReferences` makes the object safe to serialise and calls `toJSON` on every
-	 * `Date`, turning it into the ISO string the DTO declares. The cast covers that change, which
-	 * the type system cannot see.
+	 * Calls `toJSON` on every `Date`, producing the ISO strings the DTO declares. The cast covers
+	 * that change, which the type system cannot see.
 	 */
 	private serialize<T>(response: object): T {
 		return replaceCircularReferences(response) as unknown as T;
