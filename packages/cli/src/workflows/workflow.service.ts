@@ -544,7 +544,7 @@ export class WorkflowService {
 		// Gate the save on policy before persisting, so the author learns about a violation
 		// while editing rather than at runtime. Carries the stored workflow alongside the
 		// submitted one so a check can restrict its verdict to what this save adds.
-		await this.policyEnforcementService.enforceWorkflowSave({
+		const cleared = await this.policyEnforcementService.enforceWorkflowSave({
 			workflow: {
 				id: workflow.id,
 				name: workflowUpdateData.name ?? workflow.name,
@@ -606,7 +606,9 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
-		await this.workflowRepository.update(workflowId, updatePayload);
+		await this.workflowRepository.updateContent(workflowId, updatePayload, {
+			policyCleared: cleared,
+		});
 		const tagsDisabled = this.globalConfig.tags.disabled;
 
 		if (tagIds && !tagsDisabled) {
