@@ -49,6 +49,8 @@ const EXPIRED_OFFLOADED_TOOL_RESULT_JSON = JSON.stringify(EXPIRED_OFFLOADED_TOOL
 
 export interface ToolResultGuardStorage extends ToolResultStorageScope {
 	filesystem: WorkspaceFilesystem;
+	/** Invoked after a result was successfully offloaded to the workspace filesystem. */
+	onOffloaded?: () => void;
 }
 
 export interface GuardedToolResult {
@@ -241,6 +243,7 @@ async function tryOffloadResult(
 
 	try {
 		const path = await storeToolResult(storage.filesystem, storage, kind, serialized);
+		storage.onOffloaded?.();
 		return {
 			_offloaded: true,
 			path,

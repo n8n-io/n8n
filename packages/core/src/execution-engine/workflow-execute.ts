@@ -363,7 +363,7 @@ export class WorkflowExecute {
 						taskData.metadata = { ...taskData.metadata, ...metaRunData };
 					} else {
 						Container.get(ErrorReporter).error(
-							new UnexpectedError('Taskdata missing at the end of an execution'),
+							new UnexpectedError('Task data missing at the end of an execution'),
 							{ extra: { nodeName, index } },
 						);
 					}
@@ -1575,6 +1575,53 @@ export class WorkflowExecute {
 		}
 	}
 
+	/** True while there are nodes queued for execution. */
+	private isExecutionStackNotEmpty(): boolean {
+		return this.runExecutionData.executionData!.nodeExecutionStack.length !== 0;
+	}
+
+	/** Dequeue the next node to execute from the front of the execution stack. */
+	private popExecutionStack(): IExecuteData {
+		return this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
+	}
+
+	/** Push a node back to the front of the execution stack, so it runs again next. */
+	private pushExecutionStack(executionData: IExecuteData): void {
+		this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
+	}
+
+	/** True if the execution has passed its configured timeout. */
+	private hasExecutionTimedOut(): boolean {
+		return (
+			this.additionalData.executionTimeoutTimestamp !== undefined &&
+			Date.now() >= this.additionalData.executionTimeoutTimestamp
+		);
+	}
+
+	/**
+	 * True if the loop must stop now. Marks the execution as timed-out first if its
+	 * timeout has passed, so a timeout is reported as a cancellation.
+	 */
+	private shouldStopExecuting(): boolean {
+		if (this.hasExecutionTimedOut()) {
+			this.status = 'canceled';
+			this.timedOut = true;
+		}
+
+		return this.status === 'canceled';
+	}
+
+	/**
+	 * True if a node filter is set and this node is not in it. The filter holds only the
+	 * nodes on the path to the destination node. Skipping the others avoids execution of
+	 * leaves that are parallel to the destination node. Normally they would execute,
+	 * because they have the same parent and all child nodes of a parent execute.
+	 */
+	private isNodeFilteredOut(nodeName: string): boolean {
+		const { runNodeFilter } = this.runExecutionData.startData!;
+		return runNodeFilter !== undefined && !runNodeFilter.includes(nodeName);
+	}
+
 	/**
 	 * Runs the given execution data.
 	 *
@@ -1672,18 +1719,8 @@ export class WorkflowExecute {
 					throw error;
 				}
 
-				executionLoop: while (
-					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
-				) {
-					if (
-						this.additionalData.executionTimeoutTimestamp !== undefined &&
-						Date.now() >= this.additionalData.executionTimeoutTimestamp
-					) {
-						this.status = 'canceled';
-						this.timedOut = true;
-					}
-
-					if (this.status === 'canceled') {
+				executionLoop: while (this.isExecutionStackNotEmpty()) {
+					if (this.shouldStopExecuting()) {
 						return;
 					}
 
@@ -1691,8 +1728,7 @@ export class WorkflowExecute {
 
 					let nodeSuccessData: INodeExecutionData[][] | null | undefined = null;
 					executionError = undefined;
-					executionData =
-						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
+					executionData = this.popExecutionStack();
 					executionNode = executionData.node;
 
 					// Reset per-node dynamic credential flags before each node execution
@@ -1772,13 +1808,7 @@ export class WorkflowExecute {
 						throw new UserError('Stopped execution because it seems to be in an endless loop');
 					}
 
-					if (
-						this.runExecutionData.startData!.runNodeFilter !== undefined &&
-						this.runExecutionData.startData!.runNodeFilter.indexOf(executionNode.name) === -1
-					) {
-						// If filter is set and node is not on filter skip it, that avoids the problem that it executes
-						// leaves that are parallel to a selected destinationNode. Normally it would execute them because
-						// they have the same parent and it executes all child nodes.
+					if (this.isNodeFilteredOut(executionNode.name)) {
 						continue;
 					}
 
@@ -2137,7 +2167,7 @@ export class WorkflowExecute {
 							}
 
 							// Add the execution data again so that it can get restarted
-							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
+							this.pushExecutionStack(executionData);
 							// Only execute the nodeExecuteAfter hook if the node did not get aborted
 							if (!this.isCancelled) {
 								await hooks.runHook('nodeExecuteAfter', [
@@ -2209,7 +2239,7 @@ export class WorkflowExecute {
 						]);
 
 						// Add the node back to the stack that the workflow can start to execute again from that node
-						this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
+						this.pushExecutionStack(executionData);
 
 						break;
 					}
