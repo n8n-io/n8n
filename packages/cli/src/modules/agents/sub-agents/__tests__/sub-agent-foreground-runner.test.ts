@@ -1,4 +1,5 @@
 import {
+	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
 	type BuiltTelemetry,
 	type CredentialProvider,
@@ -252,6 +253,21 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
+	it.each([
+		{ runType: 'test' as const, usePublishedVersion: false },
+		{ runType: 'production' as const, usePublishedVersion: true },
+	])(
+		'resolves the child draft for test runs and the published version for production ($runType)',
+		async ({ runType, usePublishedVersion }) => {
+			await runner.runForeground(spawnRequest, { projectId, credentialProvider, runType });
+
+			expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(spawnRequest.source, {
+				projectId,
+				usePublishedVersion,
+			});
+		},
+	);
+
 	it.each(['integrated', 'manual'] as const)(
 		'reconstructs child workflow tools with the parent %s execution mode',
 		async (workflowToolExecutionMode) => {
@@ -422,11 +438,7 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
-	it('returns a child suspension with pinned resume context', async () => {
-		sourceResolver.resolveForRuntime.mockResolvedValue({
-			...runtimeSource,
-			source: { ...runtimeSource.source, versionId: 'version-7' },
-		});
+	it('returns a child suspension with draft resume context', async () => {
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
 				{ type: 'text-delta', id: 'text-1', delta: 'Choose an option' },
@@ -454,7 +466,7 @@ describe('SubAgentForegroundRunner', () => {
 			}),
 		).resolves.toMatchObject({
 			status: 'suspended',
-			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+			resumeContext: { agentId: 'agent-1' },
 			result: {
 				runId: 'child-run-1',
 				finishReason: 'tool-calls',
@@ -480,7 +492,63 @@ describe('SubAgentForegroundRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('resumes the exact pinned child checkpoint in the same thread', async () => {
+	it('applies the self-delegation model while preserving the parent draft', async () => {
+		const parentConfig: RunnableAgentJsonConfig = {
+			...runnableConfig,
+			model: 'openai/gpt-4o-mini',
+			credential: 'parent-credential',
+			instructions: 'Parent instructions.',
+			memory: { enabled: true, storage: 'n8n' },
+			tools: [{ type: 'custom', id: 'tool_1' }],
+			skills: [{ type: 'skill', id: 'skill_1' }],
+			config: { webSearch: { enabled: true } },
+			providerTools: {
+				'anthropic.web_search': { maxUses: 3 },
+				'openai.image_generation': {},
+			},
+			subAgents: {
+				modelsByDifficulty: {
+					high: {
+						model: 'anthropic/claude-sonnet-4-5',
+						credential: 'high-credential',
+					},
+				},
+			},
+		};
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			source: { sourceId: parentAgentId, config: parentConfig },
+		});
+
+		await runner.runForeground(
+			{ ...spawnRequest, source: { agentId: parentAgentId } },
+			{
+				projectId,
+				parentAgentId,
+				credentialProvider,
+				runType: 'production',
+				selfDelegationDifficulty: 'high',
+			},
+		);
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				config: {
+					...parentConfig,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'high-credential',
+					providerTools: {
+						'anthropic.web_search_20250305': { maxUses: 3 },
+					},
+				},
+				toolDescriptors: runtimeSource.toolDescriptors,
+				toolCodeByName: runtimeSource.toolCodeByName,
+				skills: runtimeSource.skills,
+			}),
+		);
+	});
+
+	it('resumes a draft child in the same thread', async () => {
 		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 
 		const result = await runner.resumeForeground(
@@ -490,7 +558,7 @@ describe('SubAgentForegroundRunner', () => {
 				childToolCallId: 'tool-call-1',
 				childThreadId: 'child-thread-1',
 				resumeData: { approved: true },
-				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+				resumeContext: { agentId: 'agent-1' },
 				parentThreadId,
 			},
 			{
@@ -502,8 +570,8 @@ describe('SubAgentForegroundRunner', () => {
 		);
 
 		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
-			{ agentId: 'agent-1', versionId: 'version-7' },
-			{ projectId },
+			{ agentId: 'agent-1' },
+			{ projectId, usePublishedVersion: true },
 		);
 		expect(childAgent.resume).toHaveBeenCalledWith(
 			'stream',
@@ -537,19 +605,99 @@ describe('SubAgentForegroundRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('cancels the exact pinned child checkpoint without reconstructing the child', async () => {
-		await runner.cancelForeground({
+	it('resumes and cancels self-delegation from the parent-owned checkpoint', async () => {
+		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+		const request = {
 			...delegatedRequest,
+			subAgentId: INLINE_SUB_AGENT_ID,
+			difficulty: 'high' as const,
 			childRunId: 'child-run-1',
 			childToolCallId: 'tool-call-1',
-			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
-			reason: 'Parent run aborted',
-		});
+			childThreadId: 'child-thread-1',
+			resumeData: { approved: true },
+			resumeContext: { agentId: parentAgentId },
+			parentThreadId,
+		};
 
-		expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', 'agent-1');
-		expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
-		expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
-		expect(childAgent.resume).not.toHaveBeenCalled();
+		const result = await runner.resumeForeground(
+			request,
+			{
+				projectId,
+				parentAgentId,
+				credentialProvider,
+				runType: 'production',
+				selfDelegationDifficulty: 'high',
+			},
+			parentAgentId,
+		);
+		await runner.cancelForeground({ ...request, reason: 'Parent run aborted' }, parentAgentId);
+
+		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
+			{ agentId: parentAgentId },
+			{ projectId, usePublishedVersion: true },
+		);
+		expect(result.threadId).toBe('child-thread-1');
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', parentAgentId);
+	});
+
+	it('accepts a legacy pinned resume context', async () => {
+		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+
+		await runner.resumeForeground(
+			{
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				childThreadId: 'child-thread-1',
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+			},
+			{
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			},
+		);
+
+		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
+			{ agentId: 'agent-1', versionId: 'version-7' },
+			{ projectId, usePublishedVersion: true },
+		);
+	});
+
+	it.each([{ agentId: 'agent-1' }, { agentId: 'agent-1', versionId: 'version-7' }])(
+		'cancels a child checkpoint from resume context %#',
+		async (resumeContext) => {
+			await runner.cancelForeground({
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				resumeContext,
+				reason: 'Parent run aborted',
+			});
+
+			expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', 'agent-1');
+			expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+			expect(childAgent.resume).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		{ agentId: 'other-agent' },
+		{ agentId: 'agent-1', versionId: '' },
+		{ versionId: 'version-7' },
+	])('rejects invalid resume context %#', async (resumeContext) => {
+		await expect(
+			runner.cancelForeground({
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				resumeContext,
+				reason: 'Parent run aborted',
+			}),
+		).rejects.toThrow('Configured sub-agent resume context is missing or invalid');
+		expect(checkpointStorage.delete).not.toHaveBeenCalled();
 	});
 
 	it('marks the run as failed when the child result contains an error', async () => {

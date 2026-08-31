@@ -314,10 +314,6 @@ function createEventBusStub(): InstanceAiEventBus {
 	return {
 		publish: () => {},
 		subscribe: () => () => {},
-		getEventsAfter: () => [],
-		getEventsForRun: () => [],
-		getEventsForRuns: () => [],
-		getNextEventId: async () => await Promise.resolve(1),
 	};
 }
 
