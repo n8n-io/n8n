@@ -17,7 +17,7 @@ import type {
 	WriteOptions,
 } from './types';
 import { Workspace } from './workspace';
-import { raceWithAbort } from '../sdk/abort';
+import { raceWithAbort, throwIfAborted } from '../sdk/abort';
 
 function isInsideRoot(path: string, root: string): boolean {
 	const boundary = root.endsWith('/') ? root : `${root}/`;
@@ -222,6 +222,8 @@ export function createScopedWorkspace(
 	const ensureRoot: EnsureRoot | undefined =
 		options?.ensureRootExists && filesystem
 			? async (abortSignal) => {
+					// Don't start (or boot a sandbox for) root creation on a dead operation.
+					throwIfAborted(abortSignal);
 					if (!ensureRootPromise) {
 						const attempt = (async () => {
 							try {

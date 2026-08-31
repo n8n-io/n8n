@@ -71,6 +71,19 @@ describe('createScopedWorkspace ensureRootExists', () => {
 		expect(filesystem.mkdir).not.toHaveBeenCalled();
 	});
 
+	it('does not start root creation for an already-aborted operation', async () => {
+		const { filesystem, scoped } = makeScopedWorkspace({ ensureRootExists: true });
+		const controller = new AbortController();
+		controller.abort();
+
+		await expect(
+			scoped.filesystem!.writeFile('a.md', 'a', { abortSignal: controller.signal }),
+		).rejects.toThrow('aborted');
+
+		expect(filesystem.mkdir).not.toHaveBeenCalled();
+		expect(filesystem.writeFile).not.toHaveBeenCalled();
+	});
+
 	it('unblocks an aborted operation while the root is still being created', async () => {
 		const { filesystem, scoped } = makeScopedWorkspace({ ensureRootExists: true });
 		filesystem.mkdir.mockImplementation(async () => await new Promise<void>(() => {}));
