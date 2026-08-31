@@ -181,9 +181,11 @@ describe('MainSidebar', () => {
 		it('should not show contact support item in help menu when not on cloud deployment', async () => {
 			settingsStore.isCloudDeployment = false;
 
-			const { getByText, queryByText } = renderComponent();
+			const { getByText, findByRole, queryByText } = renderComponent();
 
 			getByText('Help').click();
+			// Wait for the popover to mount before checking
+			await findByRole('dialog');
 
 			expect(queryByText('Contact Support')).not.toBeInTheDocument();
 		});

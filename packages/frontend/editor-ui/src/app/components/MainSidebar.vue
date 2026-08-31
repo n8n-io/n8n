@@ -187,19 +187,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 					target: '_blank',
 				},
 			},
-			...(settingsStore.isCloudDeployment
-				? [
-						{
-							id: 'contact-support',
-							icon: 'life-buoy',
-							label: i18n.baseText('mainSidebar.helpMenuItems.contactSupport'),
-							link: {
-								href: EXTERNAL_LINKS.SUPPORT,
-								target: '_blank',
-							},
-						},
-					]
-				: []),
+			{
+				id: 'contact-support',
+				icon: 'life-buoy',
+				label: i18n.baseText('mainSidebar.helpMenuItems.contactSupport'),
+				available: settingsStore.isCloudDeployment,
+				link: {
+					href: EXTERNAL_LINKS.SUPPORT,
+					target: '_blank',
+				},
+			},
 			{
 				id: 'report-bug',
 				icon: 'bug',
@@ -227,7 +224,12 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 ]);
 
 const visibleMenuItems = computed<IMenuItem[]>(() =>
-	mainMenuItems.value.filter((item) => item.available !== false),
+	mainMenuItems.value
+		.filter((item) => item.available !== false)
+		.map((item) => ({
+			...item,
+			children: item.children?.filter((child) => child.available !== false),
+		})),
 );
 
 const checkOverflow = () => {
