@@ -56,12 +56,8 @@ export class ObjectStoreService {
 
 	/** This generates the config for the S3Client to make it work in all various auth configurations */
 	getClientConfig() {
-		const { host, bucket, protocol, credentials, maxAttempts, connectionTimeoutMs } = this.s3Config;
-		const clientConfig: S3ClientConfig = {
-			// Passed as options rather than a handler instance so the SDK builds the
-			// handler with its own bundled version.
-			requestHandler: { connectionTimeout: connectionTimeoutMs },
-		};
+		const { host, bucket, protocol, credentials, maxAttempts } = this.s3Config;
+		const clientConfig: S3ClientConfig = {};
 		const endpoint = host ? `${protocol}://${host}` : undefined;
 		if (endpoint) {
 			clientConfig.endpoint = endpoint;
@@ -104,18 +100,17 @@ export class ObjectStoreService {
 		try {
 			this.logger.debug('Checking connection to S3 bucket', { bucket: this.bucket, endpoint });
 			const command = new HeadBucketCommand({ Bucket: this.bucket });
-			// Without an abort signal this hangs indefinitely when the endpoint accepts
-			// the TCP connection but never completes the TLS handshake, which blocks
-			// the rest of startup. The signal bounds all retry attempts together.
-			await this.s3Client.send(command, {
-				abortSignal: AbortSignal.timeout(this.s3Config.connectionTimeoutMs),
-			});
+			const { startupTimeoutMs } = this.s3Config;
+			await this.s3Client.send(
+				command,
+				// NOTE: startupTimeoutMs of 0 means no timeout.
+				startupTimeoutMs > 0 ? { abortSignal: AbortSignal.timeout(startupTimeoutMs) } : {},
+			);
 		} catch (e) {
 			const error = ensureError(e);
-			throw new UnexpectedError(
-				`Failed to connect to S3 at ${endpoint} (bucket: ${this.bucket}): ${error.message}. Check that N8N_EXTERNAL_STORAGE_S3_HOST includes the port, that N8N_EXTERNAL_STORAGE_S3_PROTOCOL matches the endpoint, and that the endpoint is reachable.`,
-				{ cause: error },
-			);
+			const message = `Failed to connect to S3 at ${endpoint} (bucket: ${this.bucket}): ${error.message}. Check that N8N_EXTERNAL_STORAGE_S3_HOST includes the port, that N8N_EXTERNAL_STORAGE_S3_PROTOCOL matches the endpoint, and that the endpoint is reachable.`;
+			this.logger.error(message);
+			throw new UnexpectedError(message, { cause: error });
 		}
 	}
 

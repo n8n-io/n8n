@@ -48,7 +48,7 @@ describe('ObjectStoreService', () => {
 		protocol: 'https',
 		forcePathStyle: true,
 		maxAttempts: 3,
-		connectionTimeoutMs: 10_000,
+		startupTimeoutMs: 10_000,
 	});
 
 	let objectStoreService: ObjectStoreService;
@@ -86,8 +86,6 @@ describe('ObjectStoreService', () => {
 			accessKeyId: s3Config.credentials.accessKey,
 			secretAccessKey: s3Config.credentials.accessSecret,
 		};
-		const requestHandler = { connectionTimeout: 10_000 };
-
 		it('should return client config with endpoint and forcePathStyle when custom host is provided', () => {
 			s3Config.host = 'example.com';
 			s3Config.forcePathStyle = true;
@@ -100,7 +98,6 @@ describe('ObjectStoreService', () => {
 				region: mockBucket.region,
 				credentials,
 				maxAttempts: 3,
-				requestHandler,
 			});
 		});
 
@@ -116,7 +113,6 @@ describe('ObjectStoreService', () => {
 				region: mockBucket.region,
 				credentials,
 				maxAttempts: 3,
-				requestHandler,
 			});
 		});
 
@@ -129,7 +125,6 @@ describe('ObjectStoreService', () => {
 				region: mockBucket.region,
 				credentials,
 				maxAttempts: 3,
-				requestHandler,
 			});
 		});
 
@@ -141,18 +136,7 @@ describe('ObjectStoreService', () => {
 			expect(clientConfig).toEqual({
 				region: mockBucket.region,
 				maxAttempts: 3,
-				requestHandler,
 			});
-		});
-
-		it('should bound connection establishment with the configured timeout', () => {
-			s3Config.connectionTimeoutMs = 2_500;
-
-			const clientConfig = objectStoreService.getClientConfig();
-
-			expect(clientConfig.requestHandler).toEqual({ connectionTimeout: 2_500 });
-
-			s3Config.connectionTimeoutMs = 10_000;
 		});
 	});
 
@@ -171,6 +155,19 @@ describe('ObjectStoreService', () => {
 			expect(command).toBeInstanceOf(HeadBucketCommand);
 			expect(command.input).toEqual({ Bucket: 'test-bucket' });
 			expect(optionsCaptor.value.abortSignal).toBeInstanceOf(AbortSignal);
+		});
+
+		it('should not attach an abort signal when the startup timeout is disabled (0)', async () => {
+			s3Config.startupTimeoutMs = 0;
+			mockS3Send.mockResolvedValueOnce({});
+
+			objectStoreService.setReady(false);
+
+			await objectStoreService.checkConnection();
+
+			expect(mockS3Send).toHaveBeenCalledWith(expect.any(HeadBucketCommand), {});
+
+			s3Config.startupTimeoutMs = 10_000;
 		});
 
 		it('should throw an error naming the endpoint on request failure', async () => {
