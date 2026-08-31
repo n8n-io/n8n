@@ -5,7 +5,7 @@ interface CompletionStep {
 	content?: string;
 }
 
-// Hoisted so the `vi.mock('@n8n/instance-ai')` factory below can resolve them.
+// Hoisted so the module mock factories below can resolve them.
 const { submitQueue, submitCapture, promptCapture, mockGenerate, mockAgent, mockExtractText } =
 	vi.hoisted(() => {
 		const submitQueue: CompletionStep[] = [];
@@ -52,6 +52,9 @@ function toolBuilderMock(name: string) {
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(() => mockAgent),
 	extractText: mockExtractText,
+}));
+
+vi.mock('@n8n/agents', () => ({
 	Tool: vi.fn().mockImplementation(toolBuilderMock),
 }));
 
@@ -60,8 +63,9 @@ vi.mock('@n8n/di', () => ({
 	Service: () => (target: unknown) => target,
 }));
 
+import { Tool } from '@n8n/agents';
 import { Container } from '@n8n/di';
-import { createEvalAgent, Tool } from '@n8n/instance-ai';
+import { createEvalAgent } from '@n8n/instance-ai';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { createLlmCompletionMockHandler } from '../llm-completion-mock';

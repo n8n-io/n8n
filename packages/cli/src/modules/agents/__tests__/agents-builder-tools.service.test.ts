@@ -6,9 +6,9 @@ import {
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
-	zodToJsonSchema,
 } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	type AgentJsonConfig,

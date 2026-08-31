@@ -1,11 +1,11 @@
 import {
 	redactText,
-	SUPPORTED_PII_CATEGORIES,
 	type AttributeValue,
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import { createHash } from 'node:crypto';
 
 import {

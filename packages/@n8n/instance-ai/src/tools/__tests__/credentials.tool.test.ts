@@ -1,4 +1,5 @@
-import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
+import { isZodSchema } from '@n8n/agents';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
