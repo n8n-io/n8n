@@ -13,8 +13,8 @@ export type InputNumberProps = Omit<NumberFieldRootProps, 'formatOptions'> & {
 };
 
 export type InputNumberEmits = NumberFieldRootEmits & {
-	focus: [event: FocusEvent];
-	blur: [event: FocusEvent];
+	focus: [payload: FocusEvent];
+	blur: [payload: FocusEvent];
 };
 
 export type InputNumberControlSlotProps = {

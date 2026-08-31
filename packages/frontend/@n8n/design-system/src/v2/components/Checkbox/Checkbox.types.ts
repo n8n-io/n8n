@@ -13,5 +13,5 @@ export type CheckboxSlots = {
 };
 
 export type CheckboxEmits = {
-	change: [event: Event];
+	change: [payload: Event];
 };

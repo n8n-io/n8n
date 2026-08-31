@@ -84,7 +84,7 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 });
 
 const emit = defineEmits<{
-	click: [event: MouseEvent | KeyboardEvent];
+	click: [payload: MouseEvent | KeyboardEvent];
 }>();
 
 // Declared rather than inferred from `useSlots()`: `slots` is read by a computed

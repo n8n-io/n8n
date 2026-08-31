@@ -35,7 +35,7 @@ setup((app) => {
 		locale: lang,
 	});
 
-	app.use(N8nPlugin, {});
+	app.use(N8nPlugin);
 });
 
 export const parameters = {

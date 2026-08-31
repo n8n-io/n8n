@@ -1,0 +1,22 @@
+{
+	// Typechecks the declarations this package emits, from the package itself —
+	// deliberately without the `paths` mappings the other configs carry, so
+	// `dist/**/*.d.ts` resolves its imports the way an installed consumer would:
+	// `vue` and the sibling `@n8n/*` packages through node, and nothing through
+	// `src`. `skipLibCheck: false` is the whole point; a real app leaves it on and
+	// therefore never sees these errors until it turns it off.
+	//
+	// Run through `scripts/check-shipped-types.mjs`, which scopes the verdict to
+	// this package's own files. Never extended by another config.
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"types": [],
+		"strict": true,
+		"noEmit": true,
+		"skipLibCheck": false
+	},
+	"include": ["dist/**/*.d.ts"]
+}

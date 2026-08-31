@@ -90,7 +90,7 @@ const emit = defineEmits<{
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'update:options': [payload: TableOptions];
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'click:row': [event: MouseEvent, payload: { item: T }];
+	'click:row': [payload: MouseEvent, row: { item: T }];
 }>();
 
 const data = shallowRef<T[]>(props.items.concat());
