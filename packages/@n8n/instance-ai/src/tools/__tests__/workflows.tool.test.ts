@@ -2400,6 +2400,7 @@ describe('workflows tool', () => {
 
 			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
 				includeSettled: true,
+				appliedCredentialIds: ['cred-1'],
 			});
 			expect(result).toMatchObject({
 				success: true,
@@ -2770,6 +2771,83 @@ describe('workflows tool', () => {
 				expect(context.revokeSessionToolApproval).not.toHaveBeenCalledWith(
 					'workflows:setup-skip:cred:slackApi',
 				);
+			});
+		});
+
+		describe('credential slots the resume just filled', () => {
+			// The analysis's credential list view can lag a credential created moments
+			// ago; slots this resume bound settle on the apply result instead.
+			it('hands just-applied credential ids to the post-apply analysis', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([]);
+				(applyNodeChanges as Mock).mockResolvedValue({ applied: ['Call Replicate'], failed: [] });
+				(buildCompletedReport as Mock).mockReturnValue([
+					{ nodeName: 'Call Replicate', credentialType: 'httpBearerAuth' },
+				]);
+				const context = createMockContext();
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						credentials: { 'Call Replicate': { httpBearerAuth: 'cred-new' } },
+					},
+				} as never);
+
+				expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+					includeSettled: true,
+					appliedCredentialIds: ['cred-new'],
+				});
+			});
+
+			it('hands just-applied credential ids to the trigger-test analysis', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([]);
+				(applyNodeChanges as Mock).mockResolvedValue({ applied: ['Call Replicate'], failed: [] });
+				const context = createMockContext();
+				(context.executionService.run as Mock).mockResolvedValue({ status: 'success' });
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					suspend,
+					resumeData: {
+						approved: true,
+						action: 'test-trigger',
+						testTriggerNode: 'Receive Photo Request',
+						credentials: { 'Call Replicate': { httpBearerAuth: 'cred-new' } },
+					},
+				} as never);
+
+				expect(analyzeWorkflow).toHaveBeenCalledWith(
+					context,
+					'wf1',
+					{ 'Receive Photo Request': { status: 'success' } },
+					{ appliedCredentialIds: ['cred-new'] },
+				);
+			});
+
+			it('does not vouch for a credential id whose application failed', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([]);
+				(applyNodeChanges as Mock).mockResolvedValue({
+					applied: [],
+					failed: [{ nodeName: 'Call Replicate', error: 'Credential not found: cred-gone' }],
+				});
+				(buildCompletedReport as Mock).mockReturnValue([]);
+				const context = createMockContext();
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						credentials: { 'Call Replicate': { httpBearerAuth: 'cred-gone' } },
+					},
+				} as never);
+
+				expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+					includeSettled: true,
+					appliedCredentialIds: [],
+				});
 			});
 		});
 	});

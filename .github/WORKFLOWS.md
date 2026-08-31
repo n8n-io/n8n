@@ -245,9 +245,10 @@ parallelism). See the `--build-via-mcp` section in
 
 ### Other Manual Workflows
 
-| Workflow                  | Purpose                                                 |
-|---------------------------|---------------------------------------------------------|
-| `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
+| Workflow                    | Purpose                                                 |
+|-----------------------------|---------------------------------------------------------|
+| `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
 ---
 
@@ -339,12 +340,42 @@ test-workflows-pr-comment.yml
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Recovering a failed release
+
+If the pipeline publishes `n8n@X.Y.Z` to npm and then fails, that version is
+burned — npm versions are immutable. Recovery depends on how far it got:
+
+| Failure point | Recovery |
+|---|---|
+| Before `n8n` reached npm | **Re-run failed jobs** on the original run. Sub-packages publish before `n8n` and `pnpm publish -r` skips versions already on npm, so a retry is safe. |
+| After `n8n` reached npm | Dispatch **`release-recreate-failed-release.yml`** with `failed-version: X.Y.Z`. |
+
+`release-recreate-failed-release.yml` checks out `release/X.Y.Z`, bumps only the
+root and `packages/cli` versions to `X.Y.(Z+1)`, pushes `release/X.Y.(Z+1)` from
+the same commit, and opens an auto-merging `release-pr/X.Y.(Z+1)`. Merging it
+fires `release-publish.yml` as normal — `release-publish.yml` has no
+`workflow_dispatch`, so a release PR is the only way to re-drive it.
+
+Only those two `package.json` files move: the root version drives every publish
+output (git tag, Docker tags, GitHub Release, SBOM) and `packages/cli` drives
+the runtime `N8N_VERSION`. Every other package keeps its version, so the publish
+step skips the ones already on npm and publishes whichever ones the failed run
+never reached.
+
+It refuses to run unless `n8n@X.Y.Z` is on npm and `n8n@X.Y.(Z+1)` is not. That
+check fails closed: if the registry can't be reached, the run stops rather than
+guessing. Dispatch with `force: true` to skip it.
+
+The burned version stays on npm. Deprecate it by hand once the re-release is
+out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
+
 ### Other Release Workflows
 
-| Workflow                         | Trigger            | Purpose                                        |
-|----------------------------------|--------------------|------------------------------------------------|
-| `release-standalone-package.yml` | Manual dispatch    | Release individual packages (@n8n/codemirror-lang, @n8n/create-node, etc.) |
-| `create-patch-release-branch.yml`| Manual dispatch    | Cherry-pick commits for patch releases         |
+| Workflow                                  | Trigger         | Purpose                                        |
+|-------------------------------------------|-----------------|------------------------------------------------|
+| `release-standalone-package.yml`           | Manual dispatch | Release individual packages (@n8n/codemirror-lang, @n8n/create-node, etc.) |
+| `release-create-patch-pr.yml`              | Manual dispatch | Open a patch release PR for one track          |
+| `release-recreate-failed-release.yml`      | Manual dispatch | Re-release a version whose publish failed after it reached npm |
 
 ---
 
@@ -401,6 +432,7 @@ Push to master/1.x
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
+| 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
 
 ---
 
@@ -448,8 +480,17 @@ Composite actions in `.github/actions/`:
 inputs:
   node-version:        # default: '24.18.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
+  docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
+
+The Blacksmith layer cache lives on a sticky disk identified by
+`docker-cache-key`, and commits are last-writer-wins. Splitting the key per
+image would avoid that, but Blacksmith currently never populates a
+newly created sticky disk - it stays at 0 bytes however many runs commit to it,
+while the build reports a successful commit. Every job therefore shares the
+`n8n-io/n8n` key, which is the only disk that actually retains layers. Revisit
+once new-disk retention works.
 
 ### docker-registry-login
 
@@ -503,6 +544,7 @@ Scripts in `.github/scripts/`:
 |-------------------------------|----------------------------|-------------------------|
 | `bump-versions.mjs`           | Calculate next version     | `release-create-pr.yml` |
 | `update-changelog.mjs`        | Generate CHANGELOG         | `release-create-pr.yml` |
+| `prepare-rerelease.mjs`       | Bump root + cli for a re-release | `release-recreate-failed-release.yml` |
 | `trim-fe-packageJson.js`      | Strip frontend devDeps     | `release-publish.yml`   |
 | `ensure-provenance-fields.mjs`| Add license/author fields  | `release-publish.yml`   |
 
@@ -521,6 +563,8 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
+| `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Branch Replay Scripts
 
@@ -648,10 +692,43 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 ### SBOM
 
-- **Runs on:** release-publish
-- **Format:** CycloneDX JSON
-- **Signing:** GitHub Attestation API
-- **Attached to:** GitHub Release
+There are two, with different subjects and different consumers. They are not duplicates.
+
+| | Release SBOM | Image SBOM |
+|---|---|---|
+| **Job** | `generate-and-attach-sbom` (`sbom-generation-callable.yml`) | `sbom-attestation` (`docker-build-push.yml`) |
+| **Scans** | the deployed npm closure in `compiled/` (`cdxgen -t pnpm`) | each pushed image, by digest (`syft`) |
+| **Covers** | npm only | OS packages **and** npm, as laid down in the image |
+| **Signing** | GitHub Attestation API, subject `./package.json` | `cosign attest`, subject = image digest |
+| **Output** | `sbom-source.cdx.json`, `THIRD_PARTY_LICENSES.md`, `vex.openvex.json` on the GitHub Release | attestation in the registry beside the image |
+| **Consumer** | humans — legal/license compliance; backs `/third-party-licenses` | machines — `cosign verify-attestation`, admission control |
+
+Format is CycloneDX JSON 1.6 for both. Each pipeline pins the schema version, so a
+scanner upgrade cannot change the shape of a signed artifact without a visible diff.
+
+The two use different scanners on purpose. The release SBOM runs `cdxgen -t pnpm` over the
+resolved pnpm closure with `FETCH_LICENSE=true`, because a lockfile scan has no package files
+to read licenses from. The image SBOM runs `syft` over the pushed image, which resolves
+licenses from the LICENSE files on disk and so needs no network at all.
+
+The image job used to run `cdxgen -t docker --profile license-compliance`. That profile sets
+`FETCH_LICENSE=true` and nothing else, so it made one sequential npm registry call per
+component — roughly 3,700 per release, about half the job's runtime. syft resolves the same
+licenses locally in a fraction of the time, and catalogues more of the image besides.
+
+A/B any scanner change against the current output before shipping it. The gate only enforces
+`pkg:npm/`, so a change can silently degrade PyPI or OS license coverage while CI stays green.
+Compare the licenses resolved per component, not just the component counts.
+
+`enrich-sbom.mjs --drop-phantom-npm` removes scan artefacts that would otherwise assert
+components the image does not contain: nested test/fixture `package.json` and `exports`
+subpaths. It reads the component's source path from either scanner's property name (`SrcFile`
+for cdxgen, `syft:location:0:path` for syft) and treats syft's `version: "UNKNOWN"` the same as
+a missing version.
+
+Packages whose license cannot be resolved from disk go in
+`scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
+LICENSE file, not registry metadata.
 
 ### SLSA L3 Provenance
 
