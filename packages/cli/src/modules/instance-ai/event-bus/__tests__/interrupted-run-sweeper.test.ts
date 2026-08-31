@@ -15,6 +15,7 @@ import {
 import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity';
 import type { InstanceAiCheckpointRepository } from '../../repositories/instance-ai-checkpoint.repository';
 import type { InstanceAiEventLogRepository } from '../../repositories/instance-ai-event-log.repository';
+import type { InstanceAiPendingConfirmationRepository } from '../../repositories/instance-ai-pending-confirmation.repository';
 
 const THREAD = 'thread-1';
 const RUN = 'run-1';
@@ -87,6 +88,7 @@ interface Setup {
 	isMultiMain?: boolean;
 	lastFactAt?: Date | null;
 	host?: Partial<InterruptedRunResumeHost>;
+	hasLiveConfirmationRow?: boolean;
 }
 
 function buildSweeper(setup: Setup) {
@@ -121,6 +123,9 @@ function buildSweeper(setup: Setup) {
 	const checkpointRepo = mock<InstanceAiCheckpointRepository>();
 	checkpointRepo.findActiveByThreadId.mockResolvedValue(setup.checkpoints ?? []);
 
+	const pendingConfirmationRepo = mock<InstanceAiPendingConfirmationRepository>();
+	pendingConfirmationRepo.hasLiveRowForRun.mockResolvedValue(setup.hasLiveConfirmationRow ?? false);
+
 	const published: InstanceAiEvent[] = [];
 	const eventBus = {
 		publish: (_threadId: string, event: InstanceAiEvent) => {
@@ -138,12 +143,13 @@ function buildSweeper(setup: Setup) {
 		logger,
 		eventLogRepo,
 		checkpointRepo,
+		pendingConfirmationRepo,
 		eventBus as never,
 		metrics,
 		{ isMultiMain: setup.isMultiMain ?? false } as InstanceSettings,
 	);
 	sweeper.setResumeHost(host);
-	return { sweeper, published, metrics, eventLogRepo };
+	return { sweeper, published, metrics, eventLogRepo, pendingConfirmationRepo };
 }
 
 describe('InterruptedRunSweeper', () => {
@@ -227,9 +233,10 @@ describe('InterruptedRunSweeper', () => {
 		expect(published.at(-1)?.type).toBe('run-finish');
 	});
 
-	it('skips HITL-suspended runs entirely (the confirmation orphan path owns them)', async () => {
-		const { sweeper, published } = buildSweeper({
+	it('skips HITL-suspended runs even without a confirmation row (the orphan path owns them)', async () => {
+		const { sweeper, published, pendingConfirmationRepo } = buildSweeper({
 			events: [runStart()],
+			hasLiveConfirmationRow: false,
 			checkpoints: [
 				runningCheckpoint({
 					state: {
@@ -245,6 +252,9 @@ describe('InterruptedRunSweeper', () => {
 		await sweeper.sweep();
 
 		expect(published).toHaveLength(0);
+		// Only a user cancel consults the row; the boot sweep never settles a
+		// suspended run.
+		expect(pendingConfirmationRepo.hasLiveRowForRun).not.toHaveBeenCalled();
 	});
 
 	it('sweeps a crashed run even when a different run in the thread is HITL-suspended', async () => {
@@ -365,13 +375,15 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		expect(eventLogRepo.findUnfinishedRuns).toHaveBeenCalledWith(THREAD);
 	});
 
-	it('leaves live, suspended, and recently-active runs alone', async () => {
+	it('leaves live, awaiting-confirmation, and recently-active runs alone', async () => {
 		const live = buildSweeper({ events: [runStart()], host: { isRunLive: () => true } });
 		expect(await live.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(live.published).toHaveLength(0);
 
+		// A legitimate HITL wait: suspended checkpoint + intact confirmation row.
 		const suspended = buildSweeper({
 			events: [runStart()],
+			hasLiveConfirmationRow: true,
 			checkpoints: [
 				runningCheckpoint({
 					state: {
@@ -385,6 +397,10 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		});
 		expect(await suspended.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(suspended.published).toHaveLength(0);
+		expect(suspended.pendingConfirmationRepo.hasLiveRowForRun).toHaveBeenCalledWith(
+			RUN,
+			expect.any(Date),
+		);
 
 		const activeSibling = buildSweeper({
 			events: [runStart()],
@@ -393,6 +409,34 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		});
 		expect(await activeSibling.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(activeSibling.published).toHaveLength(0);
+	});
+
+	it('settles a suspended-checkpoint run whose confirmation row is gone', async () => {
+		// The stranded state: HITL-suspended checkpoint, but the confirmation
+		// row was consumed (or expired) before the resume claimed the
+		// checkpoint. The orphan path can never recover it — an explicit stop
+		// must terminalize it instead of no-opping forever.
+		const { sweeper, published } = buildSweeper({
+			events: [runStart()],
+			hasLiveConfirmationRow: false,
+			checkpoints: [
+				runningCheckpoint({
+					state: {
+						persistence: { threadId: THREAD, resourceId: 'user-1', hostRunId: RUN },
+						status: 'suspended',
+						messageList: { messages: [] },
+						pendingToolCalls: { 'tc-p': { suspended: true } },
+					} as never,
+				}),
+			],
+		});
+
+		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(1);
+
+		const finish = published.at(-1);
+		expect(finish?.type).toBe('run-finish');
+		expect(finish?.type === 'run-finish' && finish.payload.status).toBe('cancelled');
+		expect(finish?.type === 'run-finish' && finish.payload.reason).toBe('user_cancelled');
 	});
 
 	it('never appends a second terminal fact when one landed mid-race', async () => {
