@@ -66,7 +66,9 @@ function parseQueryParameters(
  * Placeholders are only substituted when they make up a complete string value or a complete
  * object key, so a parameter can never contribute structure (extra keys, operators, extra
  * clauses) to the resulting query. A parameter bound to a key must be a plain, non-`$` string, so
- * it can neither turn into an operator nor shadow a reserved object property such as `constructor`.
+ * it can neither turn into an operator nor shadow a reserved object property such as `constructor`,
+ * and it must not collide with another field name in the same object, so it cannot replace a clause
+ * the author wrote.
  */
 export function parseAndResolveQueryParameters(
 	query: string,
@@ -130,8 +132,29 @@ export function parseAndResolveQueryParameters(
 		if (Array.isArray(value)) return value.map(resolveValue);
 
 		if (value !== null && typeof value === 'object') {
+			const seenKeys = new Set<string>();
+
+			// Object.fromEntries would let a later key win silently, so a bound field name could
+			// replace a clause the author wrote. Reject the collision instead.
 			return Object.fromEntries(
-				Object.entries(value).map(([key, entry]) => [resolveKey(key), resolveValue(entry)]),
+				Object.entries(value).map(([key, entry]) => {
+					const resolvedKey = resolveKey(key);
+
+					if (seenKeys.has(resolvedKey)) {
+						throw new NodeOperationError(
+							node,
+							`${label} field name "${resolvedKey}" is used more than once`,
+							{
+								itemIndex,
+								description:
+									'A parameter bound to a field name must not collide with another field name in the same object, because one clause would silently replace the other',
+							},
+						);
+					}
+
+					seenKeys.add(resolvedKey);
+					return [resolvedKey, resolveValue(entry)];
+				}),
 			);
 		}
 

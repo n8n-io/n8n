@@ -554,6 +554,22 @@ describe('MongoDB CRUD Node', () => {
 				expect(field === 'sort' ? applied.sort : applied.project).toEqual(expected);
 			});
 
+			it.each(['sort', 'projection'])(
+				'rejects a %s parameter that collides with a configured field',
+				async (field) => {
+					mockFindCursor();
+
+					await expect(
+						node.execute.call(
+							mockQueryOperation('find', {
+								[field]: '{ "_id": 0, "$1": 1 }',
+								[`${field}Parameters`]: ['_id'],
+							}),
+						),
+					).rejects.toThrow('"_id" is used more than once');
+				},
+			);
+
 			it.each([
 				{ field: 'sort', parameter: '$where' },
 				{ field: 'sort', parameter: 'constructor' },

@@ -59,6 +59,28 @@ describe('parseAndResolveQueryParameters', () => {
 		},
 	);
 
+	it('throws when a bound field name collides with a field the author wrote', () => {
+		const query = JSON.stringify({ tenantId: 'acme', $1: '$2' });
+
+		expect(() => parseAndResolveQueryParameters(query, ['tenantId', 'beta'], mockNode, 0)).toThrow(
+			'Query field name "tenantId" is used more than once',
+		);
+	});
+
+	it('throws when two bound field names collide', () => {
+		expect(() =>
+			parseAndResolveQueryParameters('{ "$1": 1, "$2": 2 }', ['name', 'name'], mockNode, 0),
+		).toThrow('Query field name "name" is used more than once');
+	});
+
+	it('allows the same field name at different nesting levels', () => {
+		const query = JSON.stringify({ $and: [{ $1: 'a' }, { $2: 'b' }] });
+
+		const result = parseAndResolveQueryParameters(query, ['name', 'name'], mockNode, 0);
+
+		expect(result).toEqual({ $and: [{ name: 'a' }, { name: 'b' }] });
+	});
+
 	it('uses the given label in error messages', () => {
 		expect(() => parseAndResolveQueryParameters('{', [], mockNode, 0, 'Sort')).toThrow(
 			"Invalid JSON in 'Sort'",
