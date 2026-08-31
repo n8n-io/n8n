@@ -1,8 +1,3 @@
-declare module '*.scss?raw' {
-	const source: string;
-	export default source;
-}
-
 declare module 'markdown-it-task-lists' {
 	import type { PluginWithOptions } from 'markdown-it';
 
