@@ -1,10 +1,13 @@
 // Import zod alias support before importing Start command
 import '@/zod-alias-support';
 
+import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import http from 'node:http';
+import https from 'node:https';
 
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
@@ -153,6 +156,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
 		};
@@ -196,6 +200,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -208,6 +213,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
 			};
@@ -231,6 +237,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -243,6 +250,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
 			};
@@ -250,6 +258,73 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('init - license auto-renewal reconciliation', () => {
+		const queueGlobalConfig = () => ({
+			executions: { mode: 'queue' as const },
+			multiMainSetup: { enabled: true },
+			license: { autoRenewalEnabled: true },
+			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
+			database: { type: 'sqlite' as const },
+			sentry: {
+				backendDsn: '',
+				environment: 'test',
+				deploymentName: 'test',
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
+				eventLoopBlockThreshold: 0,
+			},
+			cache: { backend: 'memory' as const },
+			taskRunners: {},
+			outboundProxy: { mode: 'all' },
+			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
+			workflows: { useWorkflowPublicationService: false },
+		});
+
+		it('reconciles license auto-renewal when leadership was already taken over before handlers were registered', async () => {
+			setupInstanceSettings('main', true, true);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = queueGlobalConfig();
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
+			expect(license.enableAutoRenewals).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not reconcile license auto-renewal when this instance is not leader', async () => {
+			setupInstanceSettings('main', true, false);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = queueGlobalConfig();
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
+			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
+		});
+
+		it('does not reconcile license auto-renewal when auto-renewal is disabled', async () => {
+			setupInstanceSettings('main', true, true);
+			const config = queueGlobalConfig();
+			config.license.autoRenewalEnabled = false;
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = config;
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
+			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
+		});
+
+		it('does not reconcile license auto-renewal when multi-main is disabled', async () => {
+			setupInstanceSettings('main', false, false);
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).not.toHaveBeenCalled();
+			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
 		});
 	});
 
@@ -277,6 +352,7 @@ describe('Start - AuthRolesService initialization', () => {
 		const multiMainConfig = {
 			executions: { mode: 'queue' as const },
 			multiMainSetup: { enabled: true },
+			license: { autoRenewalEnabled: true },
 			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 			database: { type: 'sqlite' },
 			sentry: {
@@ -289,6 +365,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
 		};
@@ -362,4 +439,56 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(license.reload).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('init - env-proxy global agents', () => {
+		afterEach(() => {
+			uninstallGlobalProxyAgent();
+			vi.unstubAllEnvs();
+		});
+
+		it('should install env-proxy global agents before any outbound request', async () => {
+			setupInstanceSettings('main', false, false);
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+		});
+
+		it('should install env-proxy global agents in main-only mode, as start runs the main server', async () => {
+			setupInstanceSettings('main', false, false);
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.outboundProxy = { mode: 'main-only' };
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+		});
+
+		it('should keep plain global agents when no proxy env var is set', async () => {
+			setupInstanceSettings('main', false, false);
+			for (const envVar of [
+				'HTTP_PROXY',
+				'http_proxy',
+				'HTTPS_PROXY',
+				'https_proxy',
+				'ALL_PROXY',
+				'all_proxy',
+			]) {
+				vi.stubEnv(envVar, undefined);
+			}
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('Agent');
+			expect(https.globalAgent.constructor.name).toBe('Agent');
+		});
+	});
+});
+
+test('start needs the expression engine', () => {
+	expect(new Start().needsExpressionEngine).toBe(true);
 });

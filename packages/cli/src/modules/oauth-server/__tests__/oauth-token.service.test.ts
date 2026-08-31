@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import { Logger, type ModuleRegistry } from '@n8n/backend-common';
+import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { OperationContext, TransactionRunner, User } from '@n8n/db';
@@ -19,6 +19,7 @@ import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
@@ -29,6 +30,7 @@ let accessTokenRepository: Mocked<AccessTokenRepository>;
 let refreshTokenRepository: Mocked<RefreshTokenRepository>;
 let service: OAuthTokenService;
 let txRunner: MockProxy<TransactionRunner>;
+const workflowFinderService = mock<WorkflowFinderService>();
 
 const TEST_BASE_URL = 'https://n8n.example.com';
 const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
@@ -66,6 +68,7 @@ describe('OAuthTokenService', () => {
 			refreshTokenRepository,
 			registry,
 			txRunner,
+			workflowFinderService,
 		);
 	});
 
@@ -442,7 +445,9 @@ describe('OAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user, authType: 'oauth', scopes: [] });
+			// The caller carries the client the token was issued to, handed back so
+			// callers can attribute activity per client and not only per user.
+			expect(result).toEqual({ user, caller: { authType: 'oauth', clientId }, scopes: [] });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],
@@ -474,6 +479,48 @@ describe('OAuthTokenService', () => {
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toMatchObject({ user: null });
+		});
+	});
+
+	describe('authorizeSealedGrant', () => {
+		const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+
+		it('returns false when the user no longer exists', async () => {
+			userRepository.findOne.mockResolvedValue(null);
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+		});
+
+		it('returns false when the user is disabled', async () => {
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123', disabled: true }));
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+		});
+
+		it('grants when the user still holds workflow:execute on the bound workflow', async () => {
+			const user = mock<User>({ id: 'user-123', disabled: false });
+			userRepository.findOne.mockResolvedValue(user);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf']));
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(true);
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { id: 'user-123' },
+				relations: ['role'],
+			});
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf'],
+				user,
+				['workflow:execute'],
+			);
+		});
+
+		it('denies when the user no longer holds workflow:execute on the bound workflow', async () => {
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
 		});
 	});
 
@@ -587,6 +634,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				multiResourceRegistry,
 				txRunner,
+				workflowFinderService,
 			);
 		});
 
@@ -669,6 +717,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				scopedRegistry,
 				txRunner,
+				workflowFinderService,
 			);
 		});
 
@@ -772,6 +821,7 @@ describe('OAuthTokenService', () => {
 				mcpConfig,
 				mock<GlobalConfig>(),
 				mock<ModuleRegistry>(),
+				mock<LicenseState>(),
 			);
 
 			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());
@@ -785,6 +835,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				configuredRegistry,
 				txRunner,
+				workflowFinderService,
 			);
 		});
 

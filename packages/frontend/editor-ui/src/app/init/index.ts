@@ -9,8 +9,10 @@ import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { AuthenticationMethod } from '@n8n/api-types';
 import {
+	registerModuleCommands,
 	registerModuleModals,
 	registerModuleProjectTabs,
+	registerModulePushHandlers,
 	registerModuleResources,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
@@ -237,6 +239,8 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleProjectTabs();
 	registerModuleModals();
 	registerModuleSettingsPages();
+	registerModulePushHandlers();
+	registerModuleCommands();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {
@@ -305,5 +309,7 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		// So a soft-redirect re-login (no page reload) re-fetches per-user data.
+		authenticatedFeaturesInitialized = false;
 	});
 }

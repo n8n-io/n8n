@@ -32,7 +32,7 @@ import type {
 	ToolContext,
 } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
-import type { JSONValue } from '../../types/utils/json';
+import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { withoutMessageCount } from '../loop/execution-counter';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
@@ -169,6 +169,8 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	parentThreadId?: string;
 	/** Parent's episodic-memory resource id (`ctx.persistence.resourceId`). */
 	parentResourceId?: string;
+	/** Opaque host metadata from the parent's persistence scope. */
+	parentHostMetadata?: JSONObject;
 	/** Parent's tool-call id that triggered this delegation. */
 	parentToolCallId?: string;
 	/**
@@ -717,6 +719,9 @@ function createDelegateSubAgentRequest(
 			: {}),
 		...(ctx.persistence?.resourceId !== undefined
 			? { parentResourceId: ctx.persistence.resourceId }
+			: {}),
+		...(ctx.persistence?.hostMetadata !== undefined
+			? { parentHostMetadata: ctx.persistence.hostMetadata }
 			: {}),
 		...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
 		...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),

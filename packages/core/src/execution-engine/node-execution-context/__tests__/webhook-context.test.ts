@@ -12,9 +12,13 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { getInputConnectionData } from '../utils/get-input-connection-data';
 import { WebhookContext } from '../webhook-context';
+
+vi.mock('../utils/get-input-connection-data');
 
 describe('WebhookContext', () => {
 	const testCredentialType = 'testCredential';
@@ -136,6 +140,24 @@ describe('WebhookContext', () => {
 
 			expect(credentials).toEqual({ secret: 'token' });
 		});
+
+		it('should surface the node to the credentials helper', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await webhookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+			);
+		});
 	});
 
 	describe('getBodyData', () => {
@@ -255,6 +277,56 @@ describe('WebhookContext', () => {
 					expect(context.getWebhookResourceUrl('default')).toContain('prod-webhook');
 				},
 			);
+		});
+	});
+
+	describe('getInputConnectionData', () => {
+		const inputPassedToSubNodes = () => vi.mocked(getInputConnectionData).mock.calls[0][3];
+
+		it('should expose the request body to sub-nodes', async () => {
+			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			expect(inputPassedToSubNodes()).toEqual([{ json: { test: 'body' } }]);
+		});
+
+		it('should expose the input data the trigger supplied instead', async () => {
+			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0, {
+				inputData: { body: { test: 'body' }, headers: { test: 'header' } },
+			});
+
+			expect(inputPassedToSubNodes()).toEqual([
+				{ json: { body: { test: 'body' }, headers: { test: 'header' } } },
+			]);
+		});
+
+		it('should fall back to the request body when the trigger supplies no input data', async () => {
+			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0, {});
+
+			expect(inputPassedToSubNodes()).toEqual([{ json: { test: 'body' } }]);
+		});
+
+		it('should ignore a legacy numeric third argument', async () => {
+			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0, 1);
+
+			expect(inputPassedToSubNodes()).toEqual([{ json: { test: 'body' } }]);
+		});
+
+		it('should not fail when there is no HTTP request', async () => {
+			const contextAdditionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+			contextAdditionalData.httpRequest = undefined;
+			const context = new WebhookContext(
+				workflow,
+				node,
+				contextAdditionalData,
+				mode,
+				webhookData,
+				[],
+				null,
+			);
+
+			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			expect(inputPassedToSubNodes()).toEqual([{ json: {} }]);
 		});
 	});
 

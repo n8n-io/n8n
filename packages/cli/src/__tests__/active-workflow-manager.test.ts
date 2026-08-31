@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowsConfig } from '@n8n/config';
+import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -28,7 +28,7 @@ import type {
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import { Workflow, WorkflowActivationError } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -44,6 +44,7 @@ import type {
 	ScheduleTriggerJobRegistrar,
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -406,9 +407,12 @@ describe('ActiveWorkflowManager', () => {
 		let scopedLogger: Logger;
 
 		let factory: TriggerExecutionContextFactory;
+		let pollCursorService: MockProxy<PollCursorService>;
 
 		beforeEach(() => {
 			vi.clearAllMocks();
+			pollCursorService = mock<PollCursorService>({ enabled: false });
+			pollCursorService.resolveCursor.mockResolvedValue({ migrated: false });
 			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 			workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 			activeWorkflowTriggers.remove.mockResolvedValue(true);
@@ -436,6 +440,8 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // scheduleTriggerJobRegistrar
 				ownershipService,
 				mock(), // nodeTypes
+				pollCursorService,
+				mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
@@ -819,7 +825,7 @@ describe('ActiveWorkflowManager', () => {
 					scheduledTaskManager,
 					triggersAndPollers,
 					mock(),
-					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing()),
+					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing(), mock()),
 				);
 
 				await realActiveWorkflowTriggers.addAllTriggers(

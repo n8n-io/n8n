@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
+import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
@@ -17,6 +18,8 @@ import type { IntegrationMessageContextService } from '../integration-message-co
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
+
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -50,6 +53,7 @@ function makeBot() {
 			handlers.action = h;
 		},
 		getAdapter: vi.fn().mockReturnValue(undefined),
+		thread: vi.fn(),
 	};
 	return { bot, handlers };
 }
@@ -237,7 +241,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 
@@ -397,7 +401,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
-		it('includes tool approval details when posting a suspension card', async () => {
+		it('posts tool approval cards without raw JSON input', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
@@ -447,13 +451,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						},
 						{
 							type: 'fields',
-							fields: [
-								{ label: 'Tool', value: 'GIPHY GIF Search' },
-								{
-									label: 'Input',
-									value: '{\n  "query": "project status",\n  "limit": 3\n}',
-								},
-							],
+							fields: [{ label: 'Tool', value: 'GIPHY GIF Search' }],
 						},
 						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
 						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
@@ -667,6 +665,12 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenNthCalledWith(
 				1,
 				expect.objectContaining({
+					sandboxPrincipalHash: hashAgentSandboxPrincipal({
+						type: 'integration-user',
+						connectionId: 'cred-1',
+						platform: 'test-streaming',
+						platformUserId: 'u1',
+					}),
 					memory: expect.objectContaining({
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 						resourceId: 'integration:test-streaming:u1',
@@ -1350,6 +1354,50 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		});
 
+		it('uses the user message as a ready thread root for Agent view DMs', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent' },
+				},
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(setAssistantStatus).toHaveBeenCalledWith('D123', '1779466577.518139', '');
+		});
+
 		it('retries top-level Slack assistant status when Slack has not materialized the thread yet', async () => {
 			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();
@@ -1816,6 +1864,425 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 	});
 
+	describe('session binding on inbound', () => {
+		it('continues the bound task session when a reply arrives in a bound thread', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:1001');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: '1002',
+				text: 'follow-up in the thread',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(messageContextStore.resolveSession).toHaveBeenCalledWith('agent-1:slack:D123:1001');
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'task-1-uuid' }),
+						resourceId: 'task:task-1',
+					}),
+				}),
+			);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:slack:D123:1001',
+				'u1',
+				expect.objectContaining({ messageId: '1002', interactingUserId: 'u1' }),
+			);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'task-1-uuid',
+				'task:task-1',
+				expect.objectContaining({
+					messageId: '1002',
+					interactingUserId: 'u1',
+					target: expect.objectContaining({ threadId: 'slack:D123:1001' }),
+				}),
+			);
+		});
+
+		it('stores inbound attachments on the bound task thread', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:1001');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const attachmentService = {
+				storeInbound: vi.fn(
+					async (params: { fileName: string; mimeType: string; data: Buffer }) => ({
+						id: 'att-1',
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+					}),
+				),
+				deleteByIds: vi.fn(async () => {}),
+			};
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+				attachmentService as never,
+			);
+
+			const pngBytes = Buffer.from([
+				0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+				0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
+				0x15, 0xc4, 0x89,
+			]);
+
+			await handlers.subscribed!(thread, {
+				id: '1002',
+				text: 'see attached',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'task-1-uuid',
+					resourceId: 'task:task-1',
+					fileName: 'photo.png',
+				}),
+			);
+		});
+
+		it('starts a fresh session when no binding exists', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:1001');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: '1002',
+				text: 'follow-up in the thread',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:D123:1001' }),
+						resourceId: 'integration:slack:u1',
+					}),
+				}),
+			);
+		});
+
+		it('keeps a conversation-scoped Slack DM on that thread id', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent' },
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(thread, {
+				id: '1001',
+				text: 'hello from a dm',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(bot.thread).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:D123:' }),
+					}),
+				}),
+			);
+		});
+
+		it('re-anchors a top-level Slack channel post at the message ts', async () => {
+			const { bot, handlers } = makeBot();
+			const inbound = makeThread('slack:C123:');
+			const anchored = makeThread('slack:C123:456.789');
+			bot.thread = vi.fn().mockReturnValue(anchored);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(inbound, {
+				id: '456.789',
+				text: 'hello channel',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(bot.thread).toHaveBeenCalledWith('slack:C123:456.789');
+			expect(anchored.subscribe).toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:C123:456.789' }),
+					}),
+				}),
+			);
+		});
+
+		it('keeps a conversation-scoped Slack group DM on that thread id', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:G123:');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(thread, {
+				id: '1001',
+				text: 'hello from a group dm',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel_type: 'mpim', channel: 'G123' },
+			});
+
+			expect(bot.thread).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:G123:' }),
+					}),
+				}),
+			);
+		});
+
+		it('re-anchors a top-level Slack private channel post at the message ts', async () => {
+			const { bot, handlers } = makeBot();
+			const inbound = makeThread('slack:G123:');
+			const anchored = makeThread('slack:G123:456.789');
+			bot.thread = vi.fn().mockReturnValue(anchored);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(inbound, {
+				id: '456.789',
+				text: 'hello private channel',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel_type: 'group', channel: 'G123' },
+			});
+
+			expect(bot.thread).toHaveBeenCalledWith('slack:G123:456.789');
+			expect(anchored.subscribe).toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:G123:456.789' }),
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('while the run is parked on a suspension', () => {
+		function bridgeWithOpenSuspension(suspendPayload: unknown | null) {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([])),
+				findOpenSuspension: vi
+					.fn()
+					.mockResolvedValue(suspendPayload === null ? null : { suspendPayload }),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+
+			return { handlers, thread, agentExecutor };
+		}
+
+		// Starting a second run strips the pending tool call from the model's
+		// context, so it calls the same tool again — a duplicate side effect.
+		it('answers instead of starting a second run', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
+				type: 'workflow_wait',
+				title: 'Waiting on "Approval workflow"',
+				components: [{ type: 'section', text: 'paused' }],
+			});
+
+			await handlers.subscribed!(thread, {
+				text: 'any news?',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(agentExecutor.findOpenSuspension).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				threadId: 'agent-1:thread-1',
+			});
+			expect(thread.post).toHaveBeenCalledWith(
+				expect.stringContaining('Waiting on "Approval workflow"'),
+			);
+		});
+
+		// A fresh @mention lands in the same thread as the parked run, so it has
+		// to be gated on the same grounds as a follow-up message.
+		it('answers a new mention in the parked thread too', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
+				title: 'Approval required',
+				components: [{ type: 'section', text: 'approve?' }],
+			});
+
+			await handlers.mention!(thread, {
+				text: '@bot hello',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('Approval required'));
+		});
+
+		// The gate must not swallow the message: nothing ran, so the handler's error
+		// reply is all that can tell the user their message went nowhere.
+		it('surfaces a failure to post the notice instead of dropping the message', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
+				title: 'Approval required',
+				components: [{ type: 'section', text: 'approve?' }],
+			});
+			thread.post.mockRejectedValueOnce(new Error('platform unavailable'));
+
+			await handlers.subscribed!(thread, {
+				text: 'any news?',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('runs normally when nothing is parked', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension(null);
+
+			await handlers.subscribed!(thread, {
+				text: 'hello',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('status handle cleanup', () => {
 		it('clears the status handle when execution fails before stream consumption', async () => {
 			const { bot, handlers } = makeBot();
@@ -1881,7 +2348,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 	beforeEach(() => {
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 

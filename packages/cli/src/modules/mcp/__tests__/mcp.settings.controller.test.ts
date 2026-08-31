@@ -111,6 +111,9 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: false }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(false);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = createRes();
@@ -122,7 +125,8 @@ describe('McpSettingsController', () => {
 				user,
 				enabled: false,
 			});
-			expect(result).toEqual({ mcpAccessEnabled: false });
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
+			expect(result).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
 		});
 
 		test('enables MCP access correctly', async () => {
@@ -130,6 +134,8 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: true }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(true);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = createRes();
@@ -141,7 +147,9 @@ describe('McpSettingsController', () => {
 				user,
 				enabled: true,
 			});
-			expect(result).toEqual({ mcpAccessEnabled: true });
+			// The response reflects the persisted state read back via the getters,
+			// surfacing the real stored auto-expose value on enable.
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
 		});
 
 		test('handles module registry refresh failure gracefully', async () => {
@@ -150,6 +158,8 @@ describe('McpSettingsController', () => {
 			const error = new Error('Registry sync failed');
 
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
 			moduleRegistry.refreshModuleSettings.mockRejectedValue(error);
 
 			const res = createRes();
@@ -160,7 +170,22 @@ describe('McpSettingsController', () => {
 			expect(logger.warn).toHaveBeenCalledWith('Failed to sync MCP settings to module registry', {
 				cause: 'Registry sync failed',
 			});
-			expect(result).toEqual({ mcpAccessEnabled: true });
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
+		});
+
+		test('handles a non-Error rejection from the module registry refresh', async () => {
+			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockRejectedValue('registry unavailable');
+
+			const res = createRes();
+			await controller.updateSettings(req, res, dto);
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to sync MCP settings to module registry', {
+				cause: 'registry unavailable',
+			});
 		});
 
 		test('rejects updates when MCP settings are managed by env', async () => {
@@ -177,8 +202,58 @@ describe('McpSettingsController', () => {
 		});
 
 		test('requires boolean mcpAccessEnabled value', () => {
-			expect(() => new UpdateMcpSettingsDto({} as never)).toThrow();
 			expect(() => new UpdateMcpSettingsDto({ mcpAccessEnabled: 'yes' } as never)).toThrow();
+		});
+
+		test('updates both fields when both are patched', async () => {
+			const user = createUser();
+			const req = createReq({ mcpAccessEnabled: true, autoExposeNewWorkflows: false }, { user });
+			const dto = UpdateMcpSettingsDto.parse({
+				mcpAccessEnabled: true,
+				autoExposeNewWorkflows: false,
+			});
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const res = createRes();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(false);
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
+		});
+
+		test('touches only autoExposeNewWorkflows when mcpAccessEnabled is not patched', async () => {
+			const user = createUser();
+			const req = createReq({ autoExposeNewWorkflows: true }, { user });
+			const dto = UpdateMcpSettingsDto.parse({ autoExposeNewWorkflows: true });
+			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(true);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const res = createRes();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
+		});
+
+		test('rejects an empty body', () => {
+			const result = UpdateMcpSettingsDto.safeParse({});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.errors[0].message).toBe(
+					'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows',
+				);
+			}
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
 		});
 	});
 
@@ -379,6 +454,7 @@ describe('McpSettingsController', () => {
 				skippedCount: 0,
 				failedCount: 0,
 			});
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		});
 	});
 

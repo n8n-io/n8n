@@ -32,6 +32,8 @@ export const CREDENTIAL_CONTEXT_OPEN_TAG = '<credential-context>';
 export const CREDENTIAL_CONTEXT_CLOSE_TAG = '</credential-context>';
 export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
 export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
+export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
+export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -48,12 +50,58 @@ const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
 /** Captures the leading JSON line inside an agent-preview-context block. */
 const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
 
-/** Matches the per-turn date/time block the service appends to the user message. */
-const CURRENT_DATE_TIME_BLOCK = /\n*<current-date-time>[\s\S]*?<\/current-date-time>\s*$/;
+/** Match the final opening tag so user-authored lookalikes earlier in the message stay visible. */
+const CURRENT_DATE_TIME_BLOCK =
+	/\n*<current-date-time>(?:(?!<current-date-time>)[\s\S])*?<\/current-date-time>\s*$/;
 
-/** Append the per-turn clock as a tagged suffix the parser strips before display. */
+/** Same shape as the clock block, for the same reason — see `withProjectContext`. */
+const PROJECT_CONTEXT_BLOCK =
+	/\n*<project-context>(?:(?!<project-context>)[\s\S])*?<\/project-context>\s*$/;
+
+/** Every trailing block the service appends. */
+const TRAILING_CONTEXT_BLOCKS = [CURRENT_DATE_TIME_BLOCK, PROJECT_CONTEXT_BLOCK];
+
+/** Strip each trailing block once, in whatever order they were composed. */
+function stripTrailingContextBlocks(message: string): string {
+	let text = message;
+	const unstripped = new Set(TRAILING_CONTEXT_BLOCKS);
+	let stripped: boolean;
+	do {
+		stripped = false;
+		for (const block of unstripped) {
+			const next = text.replace(block, '');
+			if (next === text) continue;
+			text = next;
+			unstripped.delete(block);
+			stripped = true;
+			break;
+		}
+	} while (stripped);
+	return text;
+}
+
+/**
+ * Append the per-turn clock as a tagged suffix the parser strips before display.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
+ * */
 export function withCurrentDateTime(message: string, dateTimeSection: string): string {
 	return `${message}\n\n<current-date-time>${dateTimeSection}\n</current-date-time>`;
+}
+
+/**
+ * Name the project this conversation is scoped to.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
+ */
+export function withProjectContext(message: string, projectSection: string): string {
+	return `${message}\n\n<project-context>\n${projectSection}\n</project-context>`;
+}
+
+/** The fact, and only the fact. The rule that follows from it ("writes are locked to
+ *  this project", "check it before you build") lives in the system prompt, which is
+ *  CACHED — restating it here would pay for the same sentence in uncached tokens on
+ *  every turn of every conversation. Measured: the fact alone is enough. */
+export function getProjectContextSection(project: { name: string; type: string }): string {
+	return `This conversation is scoped to the project "${project.name}" (${project.type}).`;
 }
 
 /**
@@ -65,7 +113,7 @@ export function cleanStoredUserMessage(stored: string): string | null {
 	// The service can stack several internal blocks (e.g. an editor-context block
 	// ahead of a running-tasks-enriched message), so strip every leading block —
 	// not just the first — or the trailing ones leak into the visible message.
-	let text = stored.replace(CURRENT_DATE_TIME_BLOCK, '');
+	let text = stripTrailingContextBlocks(stored);
 	let previous: string;
 	do {
 		previous = text;

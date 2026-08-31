@@ -1,12 +1,13 @@
 import { type BuiltTool, McpClient } from '@n8n/agents';
 import type {
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiMcpUpdateConnectionRequestDto,
 } from '@n8n/api-types';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
@@ -137,6 +138,13 @@ function toToolResponse(tool: BuiltTool, serverName: string): InstanceAiMcpConne
 	return response;
 }
 
+function disconnectedToolsResponse(
+	id: string,
+	failureReason: InstanceAiMcpConnectionFailureReason = 'unknown',
+): InstanceAiMcpConnectionToolsResponse {
+	return { id, status: 'disconnected', tools: [], failureReason };
+}
+
 @Service()
 export class InstanceAiMcpRegistryService {
 	private readonly logger: Logger;
@@ -150,8 +158,6 @@ export class InstanceAiMcpRegistryService {
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -251,15 +257,37 @@ export class InstanceAiMcpRegistryService {
 		return await this.connectionRepository.save(connection);
 	}
 
-	async listConnectionTools(
-		user: User,
-		id: string,
-	): Promise<InstanceAiMcpConnectionToolResponse[]> {
+	async listConnectionTools(user: User, id: string): Promise<InstanceAiMcpConnectionToolsResponse> {
 		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
 		if (!connection) {
 			throw new NotFoundError('MCP registry connection not found');
 		}
 
+		return await this.fetchConnectionTools(user, connection);
+	}
+
+	async listAllConnectionTools(user: User): Promise<InstanceAiMcpConnectionToolsResponse[]> {
+		const connections = await this.connectionRepository.findBy({ userId: user.id });
+		return await Promise.all(
+			connections.map(async (connection) => {
+				try {
+					return await this.fetchConnectionTools(user, connection);
+				} catch (error) {
+					this.logger.warn('Failed to check MCP connection', {
+						connectionId: connection.id,
+						serverSlug: connection.serverSlug,
+						error,
+					});
+					return disconnectedToolsResponse(connection.id);
+				}
+			}),
+		);
+	}
+
+	private async fetchConnectionTools(
+		user: User,
+		connection: InstanceAiMcpRegistryConnection,
+	): Promise<InstanceAiMcpConnectionToolsResponse> {
 		const server = await this.mcpRegistryService.get(connection.serverSlug);
 		if (!server) {
 			throw new NotFoundError(`Unknown MCP registry server: ${connection.serverSlug}`);
@@ -272,20 +300,32 @@ export class InstanceAiMcpRegistryService {
 			server.authType,
 			server.remotes,
 		);
-		if (!resolvedServer) return [];
+		if (!resolvedServer) return disconnectedToolsResponse(connection.id);
 
-		const aiMcpFetch = createAiMcpFetch(
-			this.outboundHttp,
-			this.ssrfConfig,
-			this.ssrfProtectionService,
-		);
+		const aiMcpFetch = createAiMcpFetch(this.outboundHttp);
 		const requestFetch = await this.buildRegistryServerFetch(
 			resolvedServer,
 			user,
 			connection.id,
 			aiMcpFetch,
 		);
-		if (!requestFetch) return [];
+		if (!requestFetch) return disconnectedToolsResponse(connection.id, 'authentication');
+
+		let failureReason: InstanceAiMcpConnectionFailureReason = 'unknown';
+		const classifiedFetch: CustomFetch = async (input, init) => {
+			try {
+				const response = await requestFetch(input, init);
+				if (response.status === 401 || response.status === 403) {
+					failureReason = 'authentication';
+				} else if (response.status >= 500) {
+					failureReason = 'server_unavailable';
+				}
+				return response;
+			} catch (error) {
+				failureReason = 'server_unavailable';
+				throw error;
+			}
+		};
 
 		const serverName = buildServerName(resolvedServer.serverSlug, 1);
 		const client = new McpClient([
@@ -293,13 +333,17 @@ export class InstanceAiMcpRegistryService {
 				name: serverName,
 				url: resolvedServer.endpointUrl,
 				transport: resolvedServer.transport,
-				fetch: requestFetch,
+				fetch: classifiedFetch,
 				connectionTimeoutMs: 10_000,
 			},
 		]);
 
 		try {
-			return (await client.listTools()).map((tool) => toToolResponse(tool, serverName));
+			const tools = (await client.listTools()).map((tool) => toToolResponse(tool, serverName));
+			if (client.getConnectionFailures().length > 0) {
+				return disconnectedToolsResponse(connection.id, failureReason);
+			}
+			return { id: connection.id, status: 'connected', tools };
 		} finally {
 			await client.close().catch((error: unknown) => {
 				this.logger.warn('Failed to close MCP client after listing tools', {
@@ -324,11 +368,7 @@ export class InstanceAiMcpRegistryService {
 		const slugCounts = new Map<string, number>();
 
 		// One proxy-aware, SSRF-protected transport shared across all resolved MCP connections.
-		const aiMcpFetch = createAiMcpFetch(
-			this.outboundHttp,
-			this.ssrfConfig,
-			this.ssrfProtectionService,
-		);
+		const aiMcpFetch = createAiMcpFetch(this.outboundHttp);
 
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {

@@ -14,6 +14,7 @@ import {
 } from 'n8n-workflow';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
+import { minimaxTextModelOptions } from '../../vendors/MiniMax/helpers/modelOptions';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
 export class LmChatMinimax implements INodeType {
@@ -23,7 +24,8 @@ export class LmChatMinimax implements INodeType {
 		name: 'lmChatMinimax',
 		icon: 'file:minimax.svg',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'MiniMax Chat Model',
@@ -66,19 +68,29 @@ export class LmChatMinimax implements INodeType {
 				type: 'options',
 				description:
 					'The model which will generate the completion. <a href="https://platform.minimax.io/docs/api-reference/text-openai-api">Learn more</a>.',
-				options: [
-					{ name: 'MiniMax-M2', value: 'MiniMax-M2' },
-					{ name: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
-					{ name: 'MiniMax-M2.1-Highspeed', value: 'MiniMax-M2.1-highspeed' },
-					{ name: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
-					{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
-					{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
-					{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
-				],
+				options: minimaxTextModelOptions.v1,
 				default: 'MiniMax-M2.7',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				description:
+					'The model which will generate the completion. <a href="https://platform.minimax.io/docs/api-reference/text-openai-api">Learn more</a>.',
+				options: minimaxTextModelOptions.v1_1,
+				default: 'MiniMax-M3',
 				builderHint: {
-					propertyHint:
-						'Default to the latest MiniMax-M2.x flagship (MiniMax-M2.7). Avoid MiniMax-M2 and earlier.',
+					propertyHint: 'Default to the latest MiniMax flagship model (MiniMax-M3).',
+				},
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
 				},
 			},
 			{

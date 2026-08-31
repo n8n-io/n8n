@@ -62,6 +62,7 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
@@ -147,6 +148,7 @@ type Props = {
 	errorHighlight?: boolean;
 	isForCredential?: boolean;
 	canBeOverridden?: boolean;
+	externalIssues?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -160,6 +162,7 @@ const props = withDefaults(defineProps<Props>(), {
 	eventBus: () => createEventBus(),
 	additionalExpressionData: () => ({}),
 	label: () => ({ size: 'small' }),
+	externalIssues: () => [],
 });
 
 const emit = defineEmits<{
@@ -194,6 +197,7 @@ const builderStore = useBuilderStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -577,7 +581,7 @@ const getIssues = computed<string[]>(() => {
 	const validationError = jsonValidationError.value;
 
 	if (validationError) {
-		return [validationError];
+		return [validationError, ...props.externalIssues];
 	}
 
 	if (props.hideIssues || !node.value) {
@@ -657,10 +661,10 @@ const getIssues = computed<string[]>(() => {
 	}
 
 	if (issues?.parameters?.[props.parameter.name] !== undefined) {
-		return issues.parameters[props.parameter.name];
+		return [...issues.parameters[props.parameter.name], ...props.externalIssues];
 	}
 
-	return [];
+	return props.externalIssues;
 });
 
 const displayTitle = computed<string>(() => {
@@ -814,6 +818,9 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		// Update the issues
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
+
+	// Tool-config hosts keep a separate local draft; sync credentials onto it.
+	onToolConfigCredentialSelected?.(updateInformation);
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
@@ -1492,6 +1499,7 @@ onUpdated(async () => {
 			:event-source="eventSource || 'ndv'"
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
+			:additional-expression-data="additionalExpressionData"
 			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
 		/>

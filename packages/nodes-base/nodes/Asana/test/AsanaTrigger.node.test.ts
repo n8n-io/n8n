@@ -1,7 +1,8 @@
-import type { IWebhookFunctions } from 'n8n-workflow';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 
 import { AsanaTrigger } from '../AsanaTrigger.node';
 import { verifySignature } from '../AsanaTriggerHelpers';
+import { asanaApiRequest } from '../GenericFunctions';
 import type { Mock, Mocked } from 'vitest';
 
 vi.mock('../AsanaTriggerHelpers');
@@ -36,14 +37,13 @@ describe('AsanaTrigger', () => {
 	});
 
 	describe('webhook', () => {
-		it('should complete the handshake when X-Hook-Secret header is present', async () => {
+		it('should acknowledge the confirmation handshake by echoing the X-Hook-Secret header', async () => {
 			const handshakeSecret = 'asana-handshake-secret';
 			const mockResponse = {
 				set: vi.fn().mockReturnThis(),
 				status: vi.fn().mockReturnThis(),
 				end: vi.fn(),
 			};
-			const webhookData: any = {};
 
 			mockWebhookFunctions.getBodyData.mockReturnValue({});
 			mockWebhookFunctions.getHeaderData.mockReturnValue({
@@ -51,17 +51,38 @@ describe('AsanaTrigger', () => {
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({} as any);
 			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse as any);
-			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
 
 			const result = await trigger.webhook.call(
 				mockWebhookFunctions as unknown as IWebhookFunctions,
 			);
 
-			expect(webhookData.hookSecret).toBe(handshakeSecret);
 			expect(mockResponse.set).toHaveBeenCalledWith('X-Hook-Secret', handshakeSecret);
 			expect(mockResponse.status).toHaveBeenCalledWith(200);
 			expect(verifySignature).not.toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should not store a secret from the handshake header, even when one is already set', async () => {
+			const establishedSecret = 'secret-captured-from-the-create-response';
+			const mockResponse = {
+				set: vi.fn().mockReturnThis(),
+				status: vi.fn().mockReturnThis(),
+				end: vi.fn(),
+			};
+			const webhookData: any = { hookSecret: establishedSecret };
+
+			mockWebhookFunctions.getBodyData.mockReturnValue({});
+			mockWebhookFunctions.getHeaderData.mockReturnValue({
+				'x-hook-secret': 'some-other-value',
+			});
+			mockWebhookFunctions.getRequestObject.mockReturnValue({} as any);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse as any);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
+
+			await trigger.webhook.call(mockWebhookFunctions as unknown as IWebhookFunctions);
+
+			expect(webhookData.hookSecret).toBe(establishedSecret);
+			expect(mockWebhookFunctions.getWorkflowStaticData).not.toHaveBeenCalled();
 		});
 
 		it('should return 401 when signature verification fails', async () => {
@@ -145,6 +166,54 @@ describe('AsanaTrigger', () => {
 
 			expect(verifySignature).toHaveBeenCalled();
 			expect(result).toEqual({});
+		});
+	});
+
+	describe('webhookMethods.default.create', () => {
+		let mockHookFunctions: Pick<
+			Mocked<IHookFunctions>,
+			'getWorkflowStaticData' | 'getNodeWebhookUrl' | 'getNodeParameter'
+		>;
+
+		beforeEach(() => {
+			mockHookFunctions = {
+				getWorkflowStaticData: vi.fn(),
+				getNodeWebhookUrl: vi.fn().mockReturnValue('https://example.com/webhook'),
+				getNodeParameter: vi.fn().mockReturnValue('resource-gid'),
+			};
+		});
+
+		it('should capture the webhook id and verification secret from the create response', async () => {
+			const webhookData: any = {};
+			mockHookFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
+			(asanaApiRequest as Mock).mockResolvedValue({
+				data: { gid: 'webhook-gid' },
+				'X-Hook-Secret': 'the-real-secret',
+			});
+
+			const result = await trigger.webhookMethods.default.create.call(
+				mockHookFunctions as unknown as IHookFunctions,
+			);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('webhook-gid');
+			expect(webhookData.hookSecret).toBe('the-real-secret');
+		});
+
+		it('should not set a secret when the create response omits X-Hook-Secret', async () => {
+			const webhookData: any = {};
+			mockHookFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
+			(asanaApiRequest as Mock).mockResolvedValue({
+				data: { gid: 'webhook-gid' },
+			});
+
+			const result = await trigger.webhookMethods.default.create.call(
+				mockHookFunctions as unknown as IHookFunctions,
+			);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('webhook-gid');
+			expect(webhookData.hookSecret).toBeUndefined();
 		});
 	});
 });

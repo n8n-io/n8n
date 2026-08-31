@@ -35,6 +35,7 @@ import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiM
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
 import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 
@@ -207,7 +208,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'credentials',
 		labelKey: 'settings.n8nAgent.permissions.group.credentials',
-		keys: ['deleteCredential'],
+		keys: ['createCredential', 'deleteCredential'],
 	},
 	{
 		id: 'system',
@@ -350,6 +351,8 @@ async function enableEnvironmentSandboxIfNeeded(): Promise<boolean> {
 	store.setField('sandboxEnabled', true);
 	return await store.save();
 }
+
+useSetupPageViewTelemetry('settings');
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));

@@ -34,7 +34,8 @@ const persistedAgent = {
 
 const AgentBuilderViewStub = {
 	name: 'AgentBuilderView',
-	emits: ['persisted', 'name-saved'],
+	props: ['artifactPreviewSessionId'],
+	emits: ['persisted', 'name-saved', 'preview-open-change', 'assistant-handoff'],
 	template: '<div />',
 };
 
@@ -47,6 +48,35 @@ describe('InstanceAiAgentPreview', () => {
 			},
 		};
 		updateThreadMetadataMock.mockClear();
+	});
+
+	it('forwards preview dock state and Assistant handoffs from Agent Builder', async () => {
+		const wrapper = mount(InstanceAiAgentPreview, {
+			props: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				previewSessionId: 'preview-session-1',
+			},
+			global: {
+				stubs: { AgentBuilderView: AgentBuilderViewStub },
+			},
+		});
+
+		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
+		expect(builder.props('artifactPreviewSessionId')).toBe('preview-session-1');
+		builder.vm.$emit('preview-open-change', true);
+		const handoff = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'preview-session-1',
+			executionId: 'execution-1',
+			initialDraft: 'Fix the failed tool calls',
+		};
+		builder.vm.$emit('assistant-handoff', handoff);
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('preview-open-change')).toEqual([[true]]);
+		expect(wrapper.emitted('assistant-handoff')).toEqual([[handoff]]);
 	});
 
 	it('keeps the bound thread target in sync across persistence and renames', async () => {

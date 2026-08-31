@@ -5,9 +5,12 @@ import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { TIME } from '@/app/constants';
+import { DEFAULT_ID_COLUMN_NAME } from '@/features/core/dataTable/constants';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 import * as agentEvalsApi from './agentEvals.api';
 import type {
+	AgentEvalCase,
 	AgentEvalDatasetRecord,
 	AgentEvalRatingRecord,
 	AgentEvalResultRecord,
@@ -18,8 +21,18 @@ import type {
 	GenerateDraftCasesOptions,
 } from './agentEvals.types';
 import { AGENT_EVAL_RESULTS_DEFAULT_TAKE, MAX_ITEMS_PER_PAGE } from './agentEvals.types';
+import { AGENT_EVAL_CASES_PAGE_SIZE } from './constants';
 import type { PendingReview, ReviewDraft } from './utils/agent-eval-review';
 import { canSaveDraft, readCorrectionText } from './utils/agent-eval-review';
+import {
+	toAgentEvalCase,
+	toAgentEvalCases,
+	toDataTableRow,
+	type AgentEvalCaseSource,
+} from './utils/agentEvalCases.utils';
+
+/** The two fields a case is edited through; the row id identifies which row they land on. */
+type AgentEvalCaseValue = Pick<AgentEvalCase, 'input' | 'whatToCheck'>;
 
 /**
  * Per-run review state: the run, a page of its cases, the latest rating on each,
@@ -56,6 +69,11 @@ type RunReviewState = {
  */
 const RUN_POLL_INTERVAL_MS = 5 * TIME.SECOND;
 
+/** Stop watching a run that never settles, so a forgotten tab can't poll indefinitely. */
+const RUN_POLL_TIMEOUT_MS = 10 * TIME.MINUTE;
+/** One failed poll is a blip worth retrying; a sustained run of them means we've lost the run. */
+const RUN_POLL_MAX_ERRORS = 3;
+
 /** A run in one of these states is still doing work. */
 const isPendingStatus = (status: AgentEvalRunStatus | undefined) =>
 	status === 'new' || status === 'running';
@@ -77,6 +95,7 @@ const emptyRunReview = (): RunReviewState => ({
  */
 export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const rootStore = useRootStore();
+	const dataTableStore = useDataTableStore();
 
 	// Keyed by agentId so switching agents inside the builder can't render the
 	// previous agent's datasets.
@@ -107,6 +126,27 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// reschedule itself under the *new* watcher's flag — leaving two timers running.
 	let pollTimer: ReturnType<typeof setTimeout> | null = null;
 	let pollGeneration = 0;
+	/** Wall clock past which the current watch gives up; null when not watching. */
+	let pollDeadline: number | null = null;
+	let pollConsecutiveErrors = 0;
+
+	// Set when a watch stops without seeing its run settle, so the view can say the
+	// progress it is showing is no longer being updated.
+	const lostTrackByRunId = ref<Record<string, boolean | undefined>>({});
+
+	// Cases key by datasetId, not agentId: one agent accumulates a dataset per
+	// generation, and each has its own rows.
+	const casesByDatasetId = ref<Record<string, AgentEvalCase[]>>({});
+	// The server's total, which can exceed the page held above — it's what the run
+	// button counts, since a run covers every row in the table.
+	const casesCountByDatasetId = ref<Record<string, number>>({});
+	const loadingCases = ref<Record<string, boolean | undefined>>({});
+	// Keyed `datasetId:rowId` so one row saving can't disable its siblings.
+	const mutatingCases = ref<Record<string, boolean | undefined>>({});
+	const cancellingRunByDatasetId = ref<Record<string, boolean | undefined>>({});
+	// A case table's owning project, which the Data Table routes scope on. Keyed by
+	// table id because it is a property of the table, not of the agent reading it.
+	const tableProjectByDataTableId = ref<Record<string, string | undefined>>({});
 	/**
 	 * A request from another surface to focus an agent's eval tab, optionally
 	 * generating on arrival — raised by the assistant's post-setup suggestion.
@@ -212,6 +252,158 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const getLatestRunId = (datasetId: string) => latestRunIdByDatasetId.value[datasetId];
 
 	const isStartingRun = (datasetId: string) => startingRunByDatasetId.value[datasetId] === true;
+
+	const getCases = (datasetId: string) => casesByDatasetId.value[datasetId] ?? [];
+
+	const getCasesCount = (datasetId: string) => casesCountByDatasetId.value[datasetId] ?? 0;
+
+	/** Absence of an entry is "not read yet", not "no cases" — the two render differently. */
+	const areCasesLoaded = (datasetId: string) => casesByDatasetId.value[datasetId] !== undefined;
+
+	const isLoadingCases = (datasetId: string) => loadingCases.value[datasetId] === true;
+
+	const isMutatingCase = (datasetId: string, rowId: number) =>
+		mutatingCases.value[`${datasetId}:${rowId}`] === true;
+
+	const isCancellingRun = (datasetId: string) => cancellingRunByDatasetId.value[datasetId] === true;
+
+	/** True when a watch stopped without its run settling — the counts shown are frozen. */
+	const hasLostTrackOfRun = (runId: string) => lostTrackByRunId.value[runId] === true;
+
+	const setCases = (datasetId: string, cases: AgentEvalCase[]) => {
+		casesByDatasetId.value = { ...casesByDatasetId.value, [datasetId]: cases };
+	};
+
+	const setCasesCount = (datasetId: string, count: number) => {
+		casesCountByDatasetId.value = { ...casesCountByDatasetId.value, [datasetId]: count };
+	};
+
+	const setMutatingCase = (datasetId: string, rowId: number, mutating: boolean) => {
+		mutatingCases.value = { ...mutatingCases.value, [`${datasetId}:${rowId}`]: mutating };
+	};
+
+	// The Data Table routes scope on the project in the path, which is *the table's*
+	// project — not necessarily the agent's. Generation co-locates the two, but a
+	// dataset attached through the API may point at a table in another project (the
+	// runner resolves that case via `getProjectIdForDataTable`, so such datasets are
+	// runnable and must be editable too).
+	//
+	// Only a resolved answer is cached. Caching the fallback would pin the agent's
+	// project for the rest of the session after a single transient failure, so the
+	// card's retry would keep re-reading the wrong project and never recover.
+	const resolveTableProjectId = async (agentProjectId: string, dataTableId: string) => {
+		const cached = tableProjectByDataTableId.value[dataTableId];
+		if (cached) return cached;
+
+		// `fetchDataTableById` is the store's existing global point lookup: it does not
+		// touch the list state, and it returns null when the user lacks `dataTable:list`
+		// rather than firing a request that would be refused.
+		const resolved = await dataTableStore
+			.fetchDataTableById(dataTableId)
+			.then((table) => table?.projectId)
+			.catch(() => undefined);
+
+		if (!resolved) return agentProjectId;
+
+		tableProjectByDataTableId.value = {
+			...tableProjectByDataTableId.value,
+			[dataTableId]: resolved,
+		};
+		return resolved;
+	};
+
+	// Sorted by row id so the numbering the view shows is stable across reads, and
+	// read as one page: the page size is the row route's own ceiling.
+	const fetchCases = async (projectId: string, source: AgentEvalCaseSource) => {
+		loadingCases.value = { ...loadingCases.value, [source.datasetId]: true };
+		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const { count, data } = await dataTableStore.fetchDataTableContent(
+				source.dataTableId,
+				tableProjectId,
+				1,
+				AGENT_EVAL_CASES_PAGE_SIZE,
+				`${DEFAULT_ID_COLUMN_NAME}:asc`,
+			);
+			const cases = toAgentEvalCases(data, source.columns);
+			setCases(source.datasetId, cases);
+			setCasesCount(source.datasetId, count);
+			return cases;
+		} finally {
+			loadingCases.value = { ...loadingCases.value, [source.datasetId]: false };
+		}
+	};
+
+	// Appends rather than refetching, so the list can't reorder under the user
+	// mid-review. The total moves regardless of whether the returned row could be
+	// mapped — the row exists server-side either way, and an unmappable one heals
+	// on the next read.
+	const createCase = async (
+		projectId: string,
+		source: AgentEvalCaseSource,
+		value: AgentEvalCaseValue,
+	) => {
+		const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+		const inserted = await dataTableStore.insertRow(
+			source.dataTableId,
+			tableProjectId,
+			toDataTableRow(value, source.columns),
+		);
+		setCasesCount(source.datasetId, getCasesCount(source.datasetId) + 1);
+
+		const created = inserted ? toAgentEvalCase(inserted, source.columns) : null;
+		if (created) setCases(source.datasetId, [...getCases(source.datasetId), created]);
+
+		return created;
+	};
+
+	// Patches in place only once the write is acknowledged. No optimistic update:
+	// the route answers with a boolean rather than the row, so a rollback would need
+	// a snapshot to restore for a sub-second single-row write.
+	const updateCase = async (
+		projectId: string,
+		source: AgentEvalCaseSource,
+		rowId: number,
+		value: AgentEvalCaseValue,
+	) => {
+		setMutatingCase(source.datasetId, rowId, true);
+		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const updated = await dataTableStore.updateRow(
+				source.dataTableId,
+				tableProjectId,
+				rowId,
+				toDataTableRow(value, source.columns),
+			);
+			if (!updated) return false;
+
+			setCases(
+				source.datasetId,
+				getCases(source.datasetId).map((c) => (c.rowId === rowId ? { ...c, ...value } : c)),
+			);
+			return true;
+		} finally {
+			setMutatingCase(source.datasetId, rowId, false);
+		}
+	};
+
+	const deleteCase = async (projectId: string, source: AgentEvalCaseSource, rowId: number) => {
+		setMutatingCase(source.datasetId, rowId, true);
+		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const deleted = await dataTableStore.deleteRows(source.dataTableId, tableProjectId, [rowId]);
+			if (!deleted) return false;
+
+			setCases(
+				source.datasetId,
+				getCases(source.datasetId).filter((c) => c.rowId !== rowId),
+			);
+			setCasesCount(source.datasetId, Math.max(0, getCasesCount(source.datasetId) - 1));
+			return true;
+		} finally {
+			setMutatingCase(source.datasetId, rowId, false);
+		}
+	};
 
 	/**
 	 * The newest run of a dataset, or `null` when it has never been run. Runs come
@@ -582,6 +774,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 	const stopPollingRun = () => {
 		pollGeneration += 1;
+		pollDeadline = null;
+		pollConsecutiveErrors = 0;
 		if (pollTimer !== null) {
 			clearTimeout(pollTimer);
 			pollTimer = null;
@@ -646,9 +840,18 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			if (current.counts !== null && canRefreshWholeWindow(runId)) {
 				await refreshResults(projectId, agentId, runId);
 			}
+
+			pollConsecutiveErrors = 0;
 		} catch {
 			// A dropped poll is not worth surfacing — the next tick retries, and the
-			// run is unaffected either way.
+			// run is unaffected either way. A sustained run of them is different: the
+			// counts on screen have stopped tracking the run, so stop claiming they are
+			// live rather than retrying forever.
+			pollConsecutiveErrors += 1;
+			if (pollConsecutiveErrors >= RUN_POLL_MAX_ERRORS) {
+				lostTrackByRunId.value = { ...lostTrackByRunId.value, [runId]: true };
+				return true;
+			}
 		}
 		return false;
 	};
@@ -661,6 +864,14 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		pollTimer = setTimeout(async () => {
 			pollTimer = null;
 			if (generation !== pollGeneration) return;
+
+			// Guards a run that never reports settled — without this a forgotten tab
+			// polls for as long as it stays open.
+			if (pollDeadline !== null && Date.now() > pollDeadline) {
+				lostTrackByRunId.value = { ...lostTrackByRunId.value, [runId]: true };
+				stopPollingRun();
+				return;
+			}
 
 			// A backgrounded tab doesn't need progress; it re-reads when it comes back.
 			if (!document.hidden && (await pollRunOnce(projectId, agentId, runId))) {
@@ -680,6 +891,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const startPollingRun = (projectId: string, agentId: string, runId: string) => {
 		stopPollingRun();
 		const generation = pollGeneration;
+		pollDeadline = Date.now() + RUN_POLL_TIMEOUT_MS;
+		lostTrackByRunId.value = { ...lostTrackByRunId.value, [runId]: false };
 
 		void (async () => {
 			const settled = await pollRunOnce(projectId, agentId, runId);
@@ -688,6 +901,30 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			if (settled) stopPollingRun();
 			else schedulePoll(projectId, agentId, runId, generation);
 		})();
+	};
+
+	// Asks the runner to stop. The cases already in flight settle on their own, so
+	// polling continues until the summary reports nothing pending — treating the
+	// cancel response as the end would strand the tallies mid-count.
+	const cancelRun = async (
+		projectId: string,
+		agentId: string,
+		datasetId: string,
+		runId: string,
+	) => {
+		cancellingRunByDatasetId.value = { ...cancellingRunByDatasetId.value, [datasetId]: true };
+		try {
+			const run = await agentEvalsApi.cancelRun(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				runId,
+			);
+			patchReview(runId, { run });
+			return run;
+		} finally {
+			cancellingRunByDatasetId.value = { ...cancellingRunByDatasetId.value, [datasetId]: false };
+		}
 	};
 
 	/** Runs the dataset's cases again against the agent's current config. */
@@ -733,7 +970,19 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		isRunInFlight,
 		startPollingRun,
 		stopPollingRun,
+		hasLostTrackOfRun,
 		startRun,
+		cancelRun,
+		isCancellingRun,
+		getCases,
+		getCasesCount,
+		areCasesLoaded,
+		isLoadingCases,
+		isMutatingCase,
+		fetchCases,
+		createCase,
+		updateCase,
+		deleteCase,
 		pendingEvalsFocus,
 		requestEvalsFocus,
 		consumeEvalsFocus,

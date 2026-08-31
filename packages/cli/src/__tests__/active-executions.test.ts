@@ -23,6 +23,7 @@ import type { Mock } from 'vitest';
 import { captor, mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -366,6 +367,37 @@ describe('ActiveExecutions', () => {
 		const resumedExecution = activeExecutions.getExecutionOrFail(executionId);
 		expect(resumedExecution.startedAt).toBe(waitingExecution.startedAt);
 		expect(resumedExecution.responsePromise).toBe(responsePromise);
+	});
+
+	describe('resolveExecutionResponsePromise', () => {
+		test('Should settle the response promise with the no-response sentinel', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.attachResponsePromise(executionId, responsePromise);
+
+			activeExecutions.resolveExecutionResponsePromise(executionId);
+
+			// Identity, not equality: `webhook-helpers` recognises the sentinel by reference,
+			// so any other empty object would be treated as a real, empty response.
+			expect(vi.mocked(responsePromise.resolve).mock.calls[0][0]).toBe(
+				EXECUTION_ENDED_WITHOUT_RESPONSE,
+			);
+		});
+
+		test('Should leave a waiting execution alone, so it can still respond on resume', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.attachResponsePromise(executionId, responsePromise);
+			activeExecutions.setStatus(executionId, 'waiting');
+
+			activeExecutions.resolveExecutionResponsePromise(executionId);
+
+			expect(responsePromise.resolve).not.toHaveBeenCalled();
+		});
+
+		test('Should do nothing for an unknown execution', () => {
+			expect(() =>
+				activeExecutions.resolveExecutionResponsePromise(FAKE_EXECUTION_ID),
+			).not.toThrow();
+		});
 	});
 
 	describe('finalizeExecution', () => {

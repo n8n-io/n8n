@@ -44,8 +44,8 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['disabled', 'ariaLabel'],
 	},
 	N8nLoading: { template: '<div />', props: ['rows', 'variant'] },
+	N8nSegmentControl: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nOption: { template: '<div />', props: ['value', 'label', 'disabled'] },
-	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nSelect: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
 	N8nSwitch: { template: '<button data-test-id="agent-memory-toggle"></button>' },
@@ -114,7 +114,7 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
+		props: ['embedded', 'projectId', 'agentId', 'manageStoreLifecycle'],
 		template: '<div />',
 	},
 }));
@@ -298,7 +298,10 @@ describe('AgentBuilderEditorColumn', () => {
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
 
-		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props('embedded')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
+			embedded: true,
+			manageStoreLifecycle: false,
+		});
 	});
 
 	it('renders the knowledge files panel only on the Knowledge tab', async () => {

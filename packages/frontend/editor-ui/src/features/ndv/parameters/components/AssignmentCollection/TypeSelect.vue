@@ -97,9 +97,9 @@ const onSelect = (type: string): void => {
 	border-bottom-left-radius: var(--input--radius--bottom-left, var(--input--radius, 0));
 	border-top-right-radius: var(--input-triple--radius--top-right, var(--input--radius, 0));
 	border-bottom-right-radius: var(--input-triple--radius--bottom-right, var(--input--radius, 0));
-	background-color: var(--color--background--light-2);
+	background-color: var(--input--color--background);
 	color: var(--color--text);
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--xs);
 	font-family: var(--font-family);
 	cursor: pointer;
 

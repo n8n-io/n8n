@@ -1,6 +1,5 @@
-import type { JsonObject } from '../common';
 import type { WorkflowGraph } from '../graph';
-import type { ExecutionMode, ExecutionStatus } from './execution.types';
+import type { ExecutionMode, ExecutionStatus, TriggerOutputs } from './execution.types';
 
 /** A new execution to persist. `id` and timestamps are assigned by the store. */
 export interface NewExecutionRecord {
@@ -8,17 +7,21 @@ export interface NewExecutionRecord {
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
-	triggerPayload: JsonObject | null;
+	triggerOutputs: TriggerOutputs | null;
 }
 
-/** A full execution record. */
+/**
+ * What running an execution needs of its row. No timing: the execution path
+ * decides on `status`, never on when anything happened. The read path has its
+ * own view (`ExecutionView`).
+ */
 export interface ExecutionRecord {
 	id: string;
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
-	triggerPayload: JsonObject | null;
+	triggerOutputs: TriggerOutputs | null;
 }
 
 /** Thrown by `loadExecution` when no execution exists for the given id. */

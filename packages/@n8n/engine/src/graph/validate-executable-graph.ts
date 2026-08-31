@@ -1,15 +1,10 @@
 import { UnimplementedError } from '../common';
+import { GraphValidationError } from './graph-validation.error';
+import { validateLoops } from './loops';
 import type { WorkflowGraph } from './workflow-graph';
+import { getDescendantNodeIds } from './workflow-graph-queries';
 
-const MAX_SLOT_INDEX = 100;
-
-/** Thrown when a graph fails a structural rule and can never execute. */
-export class GraphValidationError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = 'GraphValidationError';
-	}
-}
+export const MAX_SLOT_INDEX = 100;
 
 /**
  * Asserts the graph is one the engine is willing to execute, before any state
@@ -28,10 +23,16 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		throw new GraphValidationError('Graph must have exactly one trigger node');
 	}
 
-	// TODO(CAT-2875): loop iteration needs re-runnable steps; until that lands,
-	// graphs with back-edges are rejected outright rather than deadlocking.
-	if (graph.edges.some((edge) => edge.isBackEdge)) {
-		throw new UnimplementedError('Graphs with back-edges (loops) are not supported yet');
+	validateLoops(graph);
+
+	const [trigger] = triggers;
+	const reachable = new Set([trigger.id, ...getDescendantNodeIds(graph, trigger.id)]);
+	for (const edge of graph.edges) {
+		if (reachable.has(edge.to) && !reachable.has(edge.from)) {
+			throw new GraphValidationError(
+				`Edge ${edge.from} -> ${edge.to} feeds a node the trigger reaches from one it cannot reach, so ${edge.to} would wait on ${edge.from} forever`,
+			);
+		}
 	}
 
 	// Slot indices are structural, so they're enforced here rather than left to
@@ -40,24 +41,14 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		for (const index of [edge.outputIndex, edge.inputIndex]) {
 			if (!Number.isInteger(index) || index < 0) {
 				throw new GraphValidationError(
-					`Edge ${edge.from} → ${edge.to} has slot index ${index}; slot indices are non-negative integers`,
+					`Edge ${edge.from} -> ${edge.to} has slot index ${index}; slot indices are non-negative integers`,
 				);
 			}
 			if (index > MAX_SLOT_INDEX) {
 				throw new GraphValidationError(
-					`Edge ${edge.from} → ${edge.to} has slot index ${index}; slot indices above ${MAX_SLOT_INDEX} are not supported yet`,
+					`Edge ${edge.from} -> ${edge.to} has slot index ${index}; slot indices above ${MAX_SLOT_INDEX} are not supported yet`,
 				);
 			}
-		}
-	}
-
-	// TODO(CAT-2874): multi-slot outputs arrive with branching; until then only
-	// output slot 0 fires, and the runtime can assume single-slot outputs.
-	for (const edge of graph.edges) {
-		if (edge.outputIndex !== 0) {
-			throw new UnimplementedError(
-				`Edge ${edge.from} → ${edge.to} leaves output slot ${edge.outputIndex}; only output slot 0 is supported yet`,
-			);
 		}
 	}
 
@@ -65,6 +56,7 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 	// until then it is rejected rather than given accidental semantics.
 	const seenInputSlots = new Set<string>();
 	for (const edge of graph.edges) {
+		if (edge.isBackEdge) continue;
 		const slot = `${edge.to}#${edge.inputIndex}`;
 		if (seenInputSlots.has(slot)) {
 			throw new UnimplementedError(
