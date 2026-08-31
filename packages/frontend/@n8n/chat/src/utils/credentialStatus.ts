@@ -14,7 +14,16 @@ function isCredentialStatusMessageData(data: unknown): data is CredentialStatusM
 	if (typeof data !== 'object' || data === null) return false;
 
 	const candidate = data as Record<string, unknown>;
-	return candidate.type === CREDENTIAL_STATUS_MESSAGE_TYPE && typeof candidate.ready === 'boolean';
+	return (
+		candidate.type === CREDENTIAL_STATUS_MESSAGE_TYPE &&
+		typeof candidate.ready === 'boolean' &&
+		(candidate.missingCount === undefined ||
+			(typeof candidate.missingCount === 'number' &&
+				Number.isFinite(candidate.missingCount) &&
+				Number.isInteger(candidate.missingCount) &&
+				candidate.missingCount >= 0)) &&
+		(candidate.testMode === undefined || typeof candidate.testMode === 'boolean')
+	);
 }
 
 /**
