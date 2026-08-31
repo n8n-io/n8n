@@ -2111,6 +2111,33 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([['X', 2]]);
 		});
 
+		it('should deliver the raw shape when the labels lookup for simplifying fails', async () => {
+			// Simplifying needs a labels request of its own. A failure there is
+			// swallowed like any other poll error and the items go out unsimplified,
+			// which is what the node did before. Delivering nothing instead would
+			// change what a workflow receives and needs a new node version.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			// Earlier tests can leave unconsumed interceptors behind, and this test
+			// needs the labels lookup to be the one request that fails.
+			nock.cleanAll();
+			nock(baseUrl).get('/gmail/v1/users/me/labels').reply(500, { error: 'transient' });
+			mockList(listPage(['1']));
+			mockGet('1', 2_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
+			// Raw labelIds survive, because simplifying failed.
+			expect(response?.[0]?.[0]?.json.labelIds).toEqual(['testLabelId']);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(2_000_000_000);
+		});
+
 		it('should retry only as many quarantined ids as one poll allows', async () => {
 			// The list can grow past what a poll should spend on requests, so each
 			// poll takes a slice and moves the rest to the front for the next one.
@@ -2142,62 +2169,6 @@ describe('GmailTrigger', () => {
 				['Q1', 2],
 				['Q2', 2],
 			]);
-		});
-
-		it('should not record ids at the boundary when the poll fails before delivering', async () => {
-			// The poll fetched a message and then failed while simplifying, so it
-			// delivers nothing. Its id must not join the boundary set: the cursor did
-			// not move, so the next poll re-lists that message, and a boundary entry
-			// would filter it out and lose it.
-			const initialTimestamp = 1000000;
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': {
-					lastTimeChecked: initialTimestamp,
-					pendingMessageIds: ['P1', 'P2'],
-				},
-			};
-
-			nock.cleanAll();
-			nock(baseUrl).get('/gmail/v1/users/me/labels').reply(500, { error: 'transient' });
-			mockGet('P1', 2_000_000_000_000);
-
-			await expect(
-				testPollingTriggerNode(GmailTrigger, {
-					node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
-					workflowStaticData,
-				}),
-			).rejects.toThrow();
-
-			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates ?? []).not.toContain('P1');
-			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
-		});
-
-		it('should deliver nothing when the output cannot be simplified', async () => {
-			// The workflow asked for simplified output. If the labels request that
-			// simplifying needs fails, the poll must not hand over the raw shape:
-			// downstream nodes read fields that only the simplified shape has. Fail
-			// the poll instead and leave the cursor alone, so the next poll delivers
-			// these messages in the shape the workflow expects.
-			const initialTimestamp = 1000000;
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
-			};
-
-			// Earlier tests can leave unconsumed interceptors behind, and this test
-			// needs the labels lookup to be the one request that fails.
-			nock.cleanAll();
-			nock(baseUrl).get('/gmail/v1/users/me/labels').reply(500, { error: 'transient' });
-			mockList(listPage(['1']));
-			mockGet('1', 2_000_000_000_000);
-
-			await expect(
-				testPollingTriggerNode(GmailTrigger, {
-					node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
-					workflowStaticData,
-				}),
-			).rejects.toThrow();
-
-			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 		});
 
 		it('should emit a message only once when pages return an overlapping id', async () => {
