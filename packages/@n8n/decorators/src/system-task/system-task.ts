@@ -55,7 +55,8 @@ export interface SystemTask {
 
 	/**
 	 * Overrides how many times an occurrence is attempted before it is given up on.
-	 * Defaults to 3 for idempotent work and 1 otherwise.
+	 * Defaults to 3 for idempotent work. Ignored for non-idempotent work, which is
+	 * always kept to a single attempt.
 	 */
 	readonly maxAttempts?: number;
 
@@ -94,7 +95,8 @@ const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
 /**
  * Resolves the run options a task is scheduled with, and rejects values the
  * scheduler cannot store. A task's own overrides win over the defaults its
- * effects imply.
+ * effects imply, except for `maxAttempts` on non-idempotent work, which stays
+ * at a single attempt.
  */
 export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOptions {
 	const defaults = SYSTEM_TASK_RUN_OPTION_DEFAULTS[task.effects];
@@ -102,7 +104,7 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	const options = {
 		misfirePolicy: task.misfirePolicy ?? defaults.misfirePolicy,
 		misfireGraceSeconds: task.misfireGraceSeconds ?? DEFAULT_MISFIRE_GRACE_SECONDS,
-		maxAttempts: task.maxAttempts ?? defaults.maxAttempts,
+		maxAttempts: task.effects === 'non-idempotent' ? 1 : (task.maxAttempts ?? defaults.maxAttempts),
 	};
 
 	// Both end up in `int` columns, where a fractional value is rounded and anything
