@@ -136,13 +136,7 @@ export function buildCredentialResolutionNote(
 	}
 	if (gatewayParts.length > 0) {
 		sentences.push(
-<<<<<<< HEAD
-			'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
-=======
-			options?.n8nCreditsDepleted
-				? 'Gateway credits are depleted. Tell the user they must top up Gateway credits or add their own key on the node before the workflow can run. Do not offer a live test. Do not say it works out of the box.'
-				: 'Briefly let the user know these run on Gateway credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
->>>>>>> c96e7c0d (feat(core): Rename n8n credits copy to Gateway credits in AI assistant (no-changelog) (#37271))
+			'Briefly let the user know these run on Gateway credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
 		);
 	}
 	return sentences.join(' ');
