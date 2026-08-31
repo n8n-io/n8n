@@ -122,7 +122,15 @@ export class BackgroundTaskManager {
 	 */
 	private readonly byRoleAndWorkflowId = new Map<string, string>();
 
-	constructor(private readonly maxConcurrentPerThread = 5) {}
+	constructor(
+		private readonly maxConcurrentPerThread = 5,
+		/**
+		 * Ceiling on sub-agents running across every thread on this process. Guards the
+		 * fan-out the per-thread limit misses: a handful of runs each spawning their full
+		 * complement. `-1` means unlimited, matching the execution concurrency limits.
+		 */
+		private readonly maxConcurrentTotal = -1,
+	) {}
 
 	private workflowKey(role: string, workflowId: string): string {
 		return `${role}:${workflowId}`;
@@ -163,6 +171,15 @@ export class BackgroundTaskManager {
 		return [...this.tasks.values()].filter(
 			(task) => task.threadId === threadId && task.status === 'running',
 		);
+	}
+
+	/** Sub-agents running across every thread on this process. */
+	runningTaskCount(): number {
+		let count = 0;
+		for (const task of this.tasks.values()) {
+			if (task.status === 'running') count++;
+		}
+		return count;
 	}
 
 	/**
@@ -277,6 +294,13 @@ export class BackgroundTaskManager {
 		if (runningCount >= this.maxConcurrentPerThread) {
 			options.onLimitReached?.(
 				`Cannot start background task: limit of ${this.maxConcurrentPerThread} concurrent tasks reached. Wait for existing tasks to complete.`,
+			);
+			return { status: 'limit-reached' };
+		}
+
+		if (this.maxConcurrentTotal !== -1 && this.runningTaskCount() >= this.maxConcurrentTotal) {
+			options.onLimitReached?.(
+				`Cannot start background task: this n8n instance is at its limit of ${this.maxConcurrentTotal} concurrent tasks. Wait for existing tasks to complete.`,
 			);
 			return { status: 'limit-reached' };
 		}

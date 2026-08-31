@@ -29,6 +29,7 @@ import {
 	isInstanceAiThreadSource,
 } from './constants';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import { stashPendingComposerDraft } from './composables/useInstanceAiHandoff';
 import {
 	InstanceAiProactiveStarterMessage,
 	useInstanceAiProactiveAgentExperiment,
@@ -494,7 +495,12 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
-	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	// We navigate away without awaiting, so a refused send (e.g. a concurrency cap) would
+	// land the user on an empty thread with their message gone. Park it as that thread's
+	// composer draft for the destination view to pick up.
+	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef).then((sent) => {
+		if (!sent) stashPendingComposerDraft(threadId, finalMessage);
+	});
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },

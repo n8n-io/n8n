@@ -66,7 +66,7 @@ describe('RunStateRegistry', () => {
 	});
 
 	beforeEach(() => {
-		registry = new RunStateRegistry<TestUser>();
+		registry = new RunStateRegistry<TestUser>((user) => user.id);
 		nanoidCounter = 0;
 		mockedNanoid.mockReset();
 		mockedNanoid.mockImplementation(() => `id-${++nanoidCounter}`);
@@ -1253,6 +1253,69 @@ describe('RunStateRegistry', () => {
 
 			// now - createdAt === maxAgeMs, so >= matches
 			expect(result.suspendedThreadIds).toEqual(['thread-1']);
+		});
+	});
+
+	// ── activeRunCountForUser ─────────────────────────────────────────────────
+
+	describe('activeRunCountForUser', () => {
+		const alice: TestUser = { id: 'alice', name: 'Alice' };
+		const bob: TestUser = { id: 'bob', name: 'Bob' };
+
+		it("counts only the given user's executing runs", () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.startRun({ threadId: 'thread-2', user: alice });
+			registry.startRun({ threadId: 'thread-3', user: bob });
+
+			expect(registry.activeRunCountForUser('alice')).toBe(2);
+			expect(registry.activeRunCountForUser('bob')).toBe(1);
+			expect(registry.activeRunCount()).toBe(3);
+		});
+
+		it('returns zero for a user with no runs', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+
+			expect(registry.activeRunCountForUser('carol')).toBe(0);
+		});
+
+		it('stops counting a run once it is cleared', () => {
+			const { executionToken } = registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.clearActiveRun('thread-1', executionToken);
+
+			expect(registry.activeRunCountForUser('alice')).toBe(0);
+		});
+
+		// A suspended run spends nothing while it waits, so counting it would lock the user
+		// out for the whole confirmation timeout after a few abandoned HITL cards.
+		it('excludes suspended runs, and counts them again on resume', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.suspendRun(
+				'thread-1',
+				createSuspendedRunState({ threadId: 'thread-1', user: alice }),
+			);
+
+			expect(registry.activeRunCountForUser('alice')).toBe(0);
+
+			registry.activateSuspendedRun('thread-1');
+
+			expect(registry.activeRunCountForUser('alice')).toBe(1);
+		});
+
+		// A run restored from the DB after a restart was never stamped by `startRun`, so the
+		// owner has to be recoverable from the suspended state's `user`.
+		it('attributes a resumed run with no stamped userId via its user', () => {
+			registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1', user: bob }));
+
+			registry.activateSuspendedRun('thread-1');
+
+			expect(registry.activeRunCountForUser('bob')).toBe(1);
+		});
+
+		it('keeps attribution across attachTracing', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.attachTracing('thread-1', {} as never);
+
+			expect(registry.activeRunCountForUser('alice')).toBe(1);
 		});
 	});
 });

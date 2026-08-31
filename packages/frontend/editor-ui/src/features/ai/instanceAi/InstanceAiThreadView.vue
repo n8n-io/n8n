@@ -56,6 +56,7 @@ import {
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	stashPendingComposerDraft,
+	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
@@ -738,12 +739,14 @@ function reconnectThreadAfterHydration(): void {
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(props.threadId);
 		if (pending) {
-			void thread.sendMessage(
-				pending.message,
-				pending.attachments,
-				rootStore.pushRef,
-				pending.context,
-			);
+			void thread
+				.sendMessage(pending.message, pending.attachments, rootStore.pushRef, pending.context)
+				.then((sent) => {
+					// Consuming already removed it, so a refused send (e.g. a concurrency cap)
+					// would otherwise discard a message the user typed in another tab. Put it
+					// back so the next mount replays it.
+					if (!sent) stashPendingFirstMessage(props.threadId, pending);
+				});
 		}
 	});
 }

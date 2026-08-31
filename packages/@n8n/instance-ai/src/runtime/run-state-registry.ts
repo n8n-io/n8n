@@ -21,6 +21,8 @@ export interface ActiveRunState {
 	modelId?: ModelConfig;
 	startedAt?: number;
 	lastActivityAt?: number;
+	/** Owner of the run, resolved at entry so concurrency can be counted per user. */
+	userId?: string;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
@@ -141,6 +143,13 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
+	/**
+	 * Resolves a user id from the opaque `TUser` the registry is parameterised over.
+	 * Required rather than optional: per-user concurrency counting depends on it, and a
+	 * missing extractor would silently report every user as holding zero runs.
+	 */
+	constructor(private readonly getUserId: (user: TUser) => string) {}
+
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
@@ -154,6 +163,7 @@ export class RunStateRegistry<TUser = unknown> {
 			messageGroupId,
 			startedAt: now,
 			lastActivityAt: now,
+			userId: this.getUserId(options.user),
 		});
 		this.threadUsers.set(options.threadId, options.user);
 
@@ -259,6 +269,22 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.size;
 	}
 
+	/**
+	 * Number of runs this user currently has executing, across all their threads.
+	 *
+	 * Suspended runs are deliberately excluded: they spend nothing while parked, and
+	 * counting them would lock a user out for the whole confirmation timeout after a few
+	 * abandoned HITL cards. A linear scan is fine -- the map is bounded by the
+	 * instance-wide concurrency cap.
+	 */
+	activeRunCountForUser(userId: string): number {
+		let count = 0;
+		for (const run of this.activeRuns.values()) {
+			if (run.userId === userId) count++;
+		}
+		return count;
+	}
+
 	getActiveRun(threadId: string): ActiveRunState | undefined {
 		return this.activeRuns.get(threadId);
 	}
@@ -296,6 +322,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.activeRuns.delete(threadId);
 		state.startedAt = state.startedAt ?? activeRun?.startedAt ?? state.createdAt;
 		state.lastActivityAt = state.lastActivityAt ?? state.createdAt;
+		state.userId = state.userId ?? activeRun?.userId;
 		this.suspendedRuns.set(threadId, state);
 
 		// Re-seed group indexes: on a restart-resumed orphan these maps start
@@ -339,6 +366,7 @@ export class RunStateRegistry<TUser = unknown> {
 			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
+			userId: suspended.userId ?? this.getUserId(suspended.user),
 		});
 
 		// Re-seed group indexes for the reactivated run (empty after a restart).

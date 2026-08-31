@@ -1,3 +1,5 @@
+import type { InstanceAiRunLimitReason } from '@n8n/api-types';
+
 export type InstanceAiEventMap = {
 	/** One durable-log batch persisted by the writer's per-thread drain. */
 	'instance-ai-durable-log-drained': {
@@ -29,6 +31,14 @@ export type InstanceAiEventMap = {
 	/** History rendered from the message-derived fallback ladder instead of a renderable snapshot tree. */
 	'instance-ai-parser-fallback': {
 		count: number;
+	};
+	/**
+	 * A new user turn was refused by a concurrency cap. The reason split is the signal for
+	 * whether queuing is worth building: `instance_run_limit` refusals mean real users are
+	 * colliding on a shared instance, `user_run_limit` refusals do not.
+	 */
+	'instance-ai-run-refused': {
+		reason: InstanceAiRunLimitReason;
 	};
 	/** The interrupted-run sweep resolved a crashed run. */
 	'instance-ai-run-swept': {

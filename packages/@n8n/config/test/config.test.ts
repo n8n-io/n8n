@@ -369,6 +369,9 @@ describe('GlobalConfig', () => {
 			canvasNodeContextEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
+			maxConcurrentRuns: -1,
+			maxConcurrentRunsPerUser: -1,
+			maxConcurrentSubAgents: -1,
 		},
 		queue: {
 			health: {
