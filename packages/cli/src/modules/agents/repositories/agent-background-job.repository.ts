@@ -91,9 +91,7 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return result.affected === 1;
 	}
 
-	/** Retention: drop settled rows past the cutoff. The child run's transcript
-	 * and the parent↔child link live on agent_execution_threads, so nothing a
-	 * trace needs is lost with the row. */
+	/** Retention: drop settled rows past the cutoff. */
 	async deleteSettledBefore(cutoff: Date): Promise<void> {
 		await this.delete({ status: Not('running'), settledAt: LessThan(cutoff) });
 	}
