@@ -39,6 +39,23 @@ export default defineConfig(
 			// Public API handler-pattern ratchet — the allowlist is the only escape hatch; block inline disables.
 			'n8n-local-rules/no-public-api-guardrail-disable': 'error',
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
+			// Seal WorkflowEntity node-writes to the token-gated repository methods.
+			// The allowlist below must shrink to empty; a new unsealed write fails CI.
+			'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
+			// The clearance minter lives on the `policy-internal` subpath, off the public barrel.
+			// Only PolicyEnforcementService may reach it; callers use enforce*/evaluate*.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: '@n8n/decorators/policy-internal',
+							message:
+								'Only PolicyEnforcementService may mint a policy clearance. Call enforce*/evaluate* instead.',
+						},
+					],
+				},
+			],
 			'n8n-local-rules/project-owned-entity-transfer': [
 				'error',
 				{ acknowledged: acknowledgedProjectOwnedEntities },
@@ -171,6 +188,23 @@ export default defineConfig(
 				{ paths: instanceAiLazyRuntimeImports },
 			],
 		},
+	},
+	{
+		// Shrink-only ratchet: node-write sites not yet migrated to the sealed repository path.
+		// NEVER add — a new unsealed write must fail CI. Remove each entry as its site migrates.
+		files: [
+			'./src/workflows/workflow-creation.service.ts',
+			'./src/services/import.service.ts',
+			'./src/modules/source-control.ee/source-control-import.service.ee.ts',
+			'./src/modules/instance-ai/instance-ai.adapter.service.ts',
+			'./src/modules/chat-hub/chat-hub-workflow.service.ts',
+		],
+		rules: { 'n8n-local-rules/no-unsealed-workflow-entity-write': 'off' },
+	},
+	{
+		// Only the PEP may import the clearance minter.
+		files: ['./src/policy/policy-enforcement.service.ts'],
+		rules: { '@typescript-eslint/no-restricted-imports': 'off' },
 	},
 	{
 		files: ['./src/databases/migrations/**/*.ts'],

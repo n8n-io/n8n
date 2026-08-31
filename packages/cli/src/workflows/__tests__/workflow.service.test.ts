@@ -32,6 +32,7 @@ import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { PolicyCleared } from '@n8n/decorators';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
@@ -332,6 +333,7 @@ describe('WorkflowService', () => {
 		let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 		let workflowRepositoryMock: MockProxy<{
 			update: Mock;
+			updateContent: Mock;
 			findOne: Mock;
 		}>;
 
@@ -449,11 +451,12 @@ describe('WorkflowService', () => {
 				{ forceSave: true },
 			);
 
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
 					versionId: expect.not.stringMatching('v1'),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -485,11 +488,12 @@ describe('WorkflowService', () => {
 				{ forceSave: true },
 			);
 
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
 					versionId: 'v1',
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -617,11 +621,12 @@ describe('WorkflowService', () => {
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
 				projectId: 'project-1',
 			});
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
 					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -640,11 +645,12 @@ describe('WorkflowService', () => {
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
 				projectId: 'project-1',
 			});
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -685,11 +691,12 @@ describe('WorkflowService', () => {
 				{ forceSave: true },
 			);
 
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
 					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -706,11 +713,12 @@ describe('WorkflowService', () => {
 				{ forceSave: true },
 			);
 
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -771,7 +779,7 @@ describe('WorkflowService', () => {
 				'none',
 				undefined,
 			);
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
 					settings: expect.objectContaining({
@@ -779,6 +787,7 @@ describe('WorkflowService', () => {
 						timezone: 'Europe/Berlin',
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -799,11 +808,12 @@ describe('WorkflowService', () => {
 				'none',
 				'none',
 			);
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
 					settings: expect.objectContaining({ redactionPolicy: 'none' }),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -952,11 +962,12 @@ describe('WorkflowService', () => {
 					{ forceSave: true },
 				);
 
-				expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 					'workflow-1',
 					expect.objectContaining({
 						settings: expect.not.objectContaining({ redactionPolicy: 'non-manual' }),
 					}),
+					expect.anything(),
 				);
 			});
 
@@ -972,11 +983,12 @@ describe('WorkflowService', () => {
 					{ forceSave: true },
 				);
 
-				expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 					'workflow-1',
 					expect.objectContaining({
 						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
 					}),
+					expect.anything(),
 				);
 			});
 
@@ -997,11 +1009,12 @@ describe('WorkflowService', () => {
 					{ forceSave: true },
 				);
 
-				expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 					'workflow-1',
 					expect.objectContaining({
 						settings: expect.not.objectContaining({ redactionPolicy: 'manual-only' }),
 					}),
+					expect.anything(),
 				);
 			});
 
@@ -1022,11 +1035,12 @@ describe('WorkflowService', () => {
 					{ forceSave: true },
 				);
 
-				expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 					'workflow-1',
 					expect.objectContaining({
 						settings: expect.not.objectContaining({ redactionPolicy: 'manual-only' }),
 					}),
+					expect.anything(),
 				);
 			});
 		});
@@ -1972,7 +1986,7 @@ describe('WorkflowService', () => {
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let ownershipServiceMock: MockProxy<OwnershipService>;
 		let licenseStateMock: MockProxy<LicenseState>;
-		let workflowRepositoryMock: MockProxy<{ update: Mock; findOne: Mock }>;
+		let workflowRepositoryMock: MockProxy<{ update: Mock; updateContent: Mock; findOne: Mock }>;
 
 		const WORKFLOW_ID = 'workflow-1';
 
@@ -2098,9 +2112,10 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 			);
 
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				WORKFLOW_ID,
 				expect.not.objectContaining({ isArchived: expect.anything() }),
+				expect.anything(),
 			);
 		});
 	});
@@ -2112,7 +2127,7 @@ describe('WorkflowService', () => {
 		let ownershipServiceMock: MockProxy<OwnershipService>;
 		let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 		let policyEnforcementServiceMock: MockProxy<PolicyEnforcementService>;
-		let workflowRepositoryMock: MockProxy<{ update: Mock; findOne: Mock }>;
+		let workflowRepositoryMock: MockProxy<{ update: Mock; updateContent: Mock; findOne: Mock }>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const storedNodes = [{ name: 'Start' }] as unknown as INode[];
@@ -2229,7 +2244,26 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 			);
 
-			expect(workflowRepositoryMock.update).toHaveBeenCalledTimes(1);
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledTimes(1);
+		});
+
+		// The content write must go through the token-gated `updateContent`, carrying the
+		// clearance minted by `enforceWorkflowSave` on the context.
+		it('persists the content through updateContent carrying the policy clearance', async () => {
+			const cleared = mock<PolicyCleared<'workflowSave'>>();
+			policyEnforcementServiceMock.enforceWorkflowSave.mockResolvedValue(cleared);
+
+			await workflowService.update(
+				mock<User>({ id: 'user-1' }),
+				{ nodes: [], connections: {} } as unknown as WorkflowEntity,
+				WORKFLOW_ID,
+			);
+
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				expect.anything(),
+				{ policyCleared: cleared },
+			);
 		});
 
 		it('persists nothing when the check throws', async () => {
