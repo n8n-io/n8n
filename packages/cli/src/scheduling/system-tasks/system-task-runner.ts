@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { SystemTask, SystemTaskClass } from '@n8n/decorators';
 import {
 	OnLeaderStepdown,
@@ -27,6 +28,7 @@ type RoutedTask = {
 	task: SystemTask;
 	timer?: SystemTaskTimer;
 	inFlightRun?: InFlightRun;
+	retryTimer?: NodeJS.Timeout;
 };
 
 /**
@@ -109,8 +111,10 @@ export class SystemTaskRunner {
 	async stopTimers(): Promise<void> {
 		this.timersStarted = false;
 		this.inMemoryRunsController.abort();
-		for (const { timer } of this.inMemoryTasks()) {
-			timer.stop();
+		for (const routed of this.inMemoryTasks()) {
+			routed.timer.stop();
+			clearTimeout(routed.retryTimer);
+			routed.retryTimer = undefined;
 		}
 		this.logger.debug('Stopped the in-memory system task timers');
 		await Promise.all(this.inFlightRuns());
@@ -228,7 +232,7 @@ export class SystemTaskRunner {
 			}
 		} else {
 			const inFlightRun: InFlightRun = {
-				promise: this.runOnce(task).finally(() => {
+				promise: this.runOnce(routed).finally(() => {
 					if (routed.inFlightRun === inFlightRun) {
 						routed.inFlightRun = undefined;
 					}
@@ -241,12 +245,26 @@ export class SystemTaskRunner {
 		}
 	}
 
-	private async runOnce(task: SystemTask): Promise<void> {
+	private async runOnce(routed: RoutedTask): Promise<void> {
 		try {
-			await task.run(this.inMemoryRunsController.signal);
+			await routed.task.run(this.inMemoryRunsController.signal);
 		} catch (error) {
-			this.reportFailure('A system task run failed', task, error);
+			this.reportFailure('A system task run failed', routed.task, error);
+			this.scheduleRetry(routed);
 		}
+	}
+
+	private scheduleRetry(routed: RoutedTask): void {
+		const { retryDelaySeconds, effects } = routed.task;
+		if (retryDelaySeconds === undefined || effects === 'non-idempotent' || !this.timersStarted) {
+			return;
+		}
+
+		clearTimeout(routed.retryTimer);
+		routed.retryTimer = setTimeout(() => {
+			void this.run(routed);
+		}, retryDelaySeconds * Time.seconds.toMilliseconds);
+		routed.retryTimer.unref();
 	}
 
 	private reportFailure(message: string, task: SystemTask, error: unknown): void {

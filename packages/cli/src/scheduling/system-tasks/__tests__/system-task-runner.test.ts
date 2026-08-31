@@ -223,6 +223,67 @@ describe('SystemTaskRunner', () => {
 			});
 		});
 
+		it('retries a failed run sooner when the task asks for it', async () => {
+			const { runner, metadata } = setup();
+			dummy.retryDelaySeconds = 5;
+			dummy.onRun = async () => {
+				if (dummy.runCount === 1) {
+					throw new Error('failed');
+				}
+			};
+			metadata.register(DummySystemTask);
+			runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(dummy.runCount).toBe(1);
+
+			await vi.advanceTimersByTimeAsync(5 * Time.seconds.toMilliseconds);
+			expect(dummy.runCount).toBe(2);
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS - 5 * Time.seconds.toMilliseconds);
+			expect(dummy.runCount).toBe(3);
+		});
+
+		it('keeps retrying while the runs keep failing', async () => {
+			const { runner, metadata } = setup();
+			dummy.retryDelaySeconds = 5;
+			dummy.onRun = async () => {
+				throw new Error('failed');
+			};
+			metadata.register(DummySystemTask);
+			runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS + 10 * Time.seconds.toMilliseconds);
+
+			expect(dummy.runCount).toBe(3);
+		});
+
+		it('does not retry a successful run', async () => {
+			const { runner, metadata } = setup();
+			dummy.retryDelaySeconds = 5;
+			metadata.register(DummySystemTask);
+			runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS + 30 * Time.seconds.toMilliseconds);
+
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('does not retry non-idempotent work', async () => {
+			const { runner, metadata } = setup();
+			dummy.effects = 'non-idempotent';
+			dummy.retryDelaySeconds = 5;
+			dummy.onRun = async () => {
+				throw new Error('failed');
+			};
+			metadata.register(DummySystemTask);
+			runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS + 30 * Time.seconds.toMilliseconds);
+
+			expect(dummy.runCount).toBe(1);
+		});
+
 		it('logs a failing run as well as reporting it', async () => {
 			const { runner, metadata, logger } = setup();
 			const error = new Error('failed');
@@ -332,6 +393,22 @@ describe('SystemTaskRunner', () => {
 			expect(runSignals).toHaveLength(2);
 			expect(runSignals[0].aborted).toBe(true);
 			expect(runSignals[1].aborted).toBe(false);
+		});
+
+		it('drops a pending retry on stepdown', async () => {
+			const { runner, metadata } = setup();
+			dummy.retryDelaySeconds = 5;
+			dummy.onRun = async () => {
+				throw new Error('failed');
+			};
+			metadata.register(DummySystemTask);
+			runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			await runner.stopTimers();
+			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
 		});
 
 		it('starts the timers again on a later takeover', async () => {

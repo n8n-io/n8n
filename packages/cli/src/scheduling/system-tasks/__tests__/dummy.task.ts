@@ -13,6 +13,8 @@ export class DummySystemTask implements SystemTask {
 
 	runOnTakeover = false;
 
+	retryDelaySeconds?: number;
+
 	runCount = 0;
 
 	/** How a run settles. Replace it to make a run fail or to hold it open. */

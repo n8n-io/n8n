@@ -47,6 +47,13 @@ export interface SystemTask {
 	readonly runOnTakeover?: boolean;
 
 	/**
+	 * How long after a failed run an earlier retry occurrence runs, instead of
+	 * waiting for the next scheduled one. In-memory timers only, and only
+	 * honored for idempotent work. Durable runs retry via `maxAttempts`.
+	 */
+	readonly retryDelaySeconds?: number;
+
+	/**
 	 * Overrides what happens to occurrences that missed their grace window.
 	 * Defaults to `coalesce` for idempotent work and `skip` otherwise.
 	 */
