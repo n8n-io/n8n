@@ -580,6 +580,52 @@ describe('GET /executions', () => {
 		expect(response.body.message).toBe('An invalid cursor was provided');
 	});
 
+	test('should return 400 for a cursor that decodes to an unusable shape', async () => {
+		const encode = (payload: unknown) => Buffer.from(JSON.stringify(payload)).toString('base64');
+
+		const unusable: unknown[] = [
+			{},
+			{ limit: 10 },
+			{ lastId: 123 },
+			{ lastId: { id: '1' } },
+			{ lastId: null },
+			[],
+			'a string',
+			42,
+		];
+
+		for (const payload of unusable) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: encode(payload) });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe('An invalid cursor was provided');
+		}
+	});
+
+	test('should accept both supported cursor shapes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+
+		const encode = (payload: unknown) => Buffer.from(JSON.stringify(payload)).toString('base64');
+
+		const cursorForm = await authOwnerAgent
+			.get('/executions')
+			.query({ cursor: encode({ lastId: '999999', limit: 1 }) });
+
+		expect(cursorForm.statusCode).toBe(200);
+		expect(cursorForm.body.data).toHaveLength(1);
+
+		// Legacy tolerated an offset-form cursor on this endpoint and ignored its `offset`,
+		// honouring only the limit.
+		const offsetForm = await authOwnerAgent
+			.get('/executions')
+			.query({ cursor: encode({ offset: 0, limit: 1 }) });
+
+		expect(offsetForm.statusCode).toBe(200);
+		expect(offsetForm.body.data).toHaveLength(1);
+	});
+
 	describe('with query status', () => {
 		type AllowedQueryStatus =
 			| 'canceled'

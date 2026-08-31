@@ -36,6 +36,13 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 /** `deletedAt` is on the entity but missing from `IExecutionBase`, and the response carries it. */
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse> & { deletedAt?: Date | null };
 
+/** A decoded cursor is parsed JSON, so every field starts out untrusted. */
+function isDecodedCursor(
+	value: unknown,
+): value is { lastId?: unknown; offset?: unknown; limit?: unknown } {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function isRedactableExecution(
 	execution: IExecutionBase,
 ): execution is IExecutionBase & RedactableExecution {
@@ -67,22 +74,33 @@ export class ExecutionsPublicController {
 		let { limit } = query;
 		let lastId: string | undefined;
 
-		// A cursor is unsigned, so its contents are caller-supplied. The decoded limit is bounded the
-		// same way the query parameter is, and ignored when it is not a usable number.
-		// Legacy accepted an offset-form cursor too, ignoring its `lastId`.
+		// A cursor is unsigned, so its contents are caller-supplied and cannot be trusted to
+		// match what this endpoint issued. Only the two shapes it ever emits are accepted:
+		// the `lastId` form, and the offset form that legacy also tolerated here (its
+		// `offset` is ignored, only the limit is honoured).
 		if (query.cursor) {
+			let decoded: unknown;
+
 			try {
-				const decoded = decodeCursor(query.cursor);
-				if ('lastId' in decoded) {
-					lastId = decoded.lastId;
-				}
-				if (Number.isInteger(decoded.limit)) {
-					// The floor is 1, not 0: TypeORM omits the SQL LIMIT clause for `take: 0`,
-					// so a zero floor would return every execution the caller can see.
-					limit = Math.min(Math.max(decoded.limit, 1), MAX_ITEMS_PER_PAGE);
-				}
+				decoded = decodeCursor(query.cursor);
 			} catch {
 				throw new BadRequestError('An invalid cursor was provided');
+			}
+
+			if (!isDecodedCursor(decoded)) {
+				throw new BadRequestError('An invalid cursor was provided');
+			}
+
+			if (typeof decoded.lastId === 'string') {
+				lastId = decoded.lastId;
+			} else if (!Number.isInteger(decoded.offset)) {
+				throw new BadRequestError('An invalid cursor was provided');
+			}
+
+			if (typeof decoded.limit === 'number' && Number.isInteger(decoded.limit)) {
+				// The floor is 1, not 0: TypeORM omits the SQL LIMIT clause for `take: 0`,
+				// so a zero floor would return every execution the caller can see.
+				limit = Math.min(Math.max(decoded.limit, 1), MAX_ITEMS_PER_PAGE);
 			}
 		}
 
