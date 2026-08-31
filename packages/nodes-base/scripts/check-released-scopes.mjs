@@ -98,9 +98,11 @@ for (const { name, dir } of PACKAGES) {
 	// Not a soft failure: skipping here would silently disable the check if a
 	// build stops emitting the metadata or it moves.
 	if (!existsSync(localFile)) {
-		console.error(
-			`[check-released-scopes] ${name} is not built: ${TYPES_FILE} is missing. Run \`pnpm build --filter=${name}\` first.`,
-		);
+		report([
+			'### OAuth scope check could not run',
+			'',
+			`\`${name}\` is not built, \`${TYPES_FILE}\` is missing. Run \`pnpm build --filter=${name}\` first.`,
+		]);
 		process.exit(1);
 	}
 
