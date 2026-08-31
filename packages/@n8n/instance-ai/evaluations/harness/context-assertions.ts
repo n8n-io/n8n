@@ -1,7 +1,7 @@
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 import { captureContext, snapshotFor, tiersOf } from './context-capture';
-import type { BuildExpectationResult, ContextAssertion } from '../types';
+import type { BuildExpectationResult, ContextAnchor, ContextAssertion } from '../types';
 
 /** No run debug at all — the thread produced nothing to search, so every claim is
  *  unanswerable rather than false. */
@@ -54,13 +54,26 @@ export function checkContextAssertions(
 	const captured = captureContext(runDebug);
 	if (!captured) return assertions.map((a) => ungraded(a, NO_CAPTURE_REASON));
 
-	const hits = (anchor: 'probe' | 'turn-end', needle: string): string[] => {
+	// Lower-cased once per anchor, not once per assertion. The tiers are immutable for
+	// the life of this call and deliberately untruncated — they carry every tool payload
+	// — so re-casing them inside the loop would copy the whole context up to six times
+	// per assertion.
+	const prepared = new Map<ContextAnchor, Array<[string, string]>>();
+	const tiersLowered = (anchor: ContextAnchor): Array<[string, string]> => {
+		const cached = prepared.get(anchor);
+		if (cached) return cached;
 		const snapshot = snapshotFor(captured, anchor);
-		if (!snapshot) return [];
-		return tiersOf(snapshot)
-			.filter(([, text]) => text.toLowerCase().includes(needle))
-			.map(([tier]) => tier);
+		const lowered: Array<[string, string]> = snapshot
+			? tiersOf(snapshot).map(([tier, text]) => [tier, text.toLowerCase()])
+			: [];
+		prepared.set(anchor, lowered);
+		return lowered;
 	};
+
+	const hits = (anchor: ContextAnchor, needle: string): string[] =>
+		tiersLowered(anchor)
+			.filter(([, text]) => text.includes(needle))
+			.map(([tier]) => tier);
 
 	return assertions.map((assertion) => {
 		const anchor = assertion.anchor ?? 'probe';

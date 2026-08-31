@@ -8,13 +8,9 @@ import { parseMessageBlocks, parseSystemPromptForDisplay } from '@n8n/api-types'
 
 import type { ContextAnchor } from '../types';
 
-/**
- * The three places a fact can be sitting when the model reads its context.
- *
- * Kept apart rather than concatenated so a verdict can say *where* a value was
- * found: surviving in the compressed observation block is a different claim about
- * the memory subsystem than still being visible in the raw message window.
- */
+/** The three places a fact can sit when the model reads its context. Kept apart, not
+ *  concatenated, so a verdict can say *where* a value was found: surviving compression
+ *  is a different claim than still being visible in the raw message window. */
 export interface ContextSnapshot {
 	/** The compressed observation block. `null` when compression never ran, which is
 	 *  itself a finding rather than a missing capture. */
@@ -24,13 +20,12 @@ export interface ContextSnapshot {
 }
 
 /**
- * One thread's context state at the two moments worth grading.
+ * The graded turn's context state at the two moments worth grading.
  *
- * `probe` is deliberately optional. A step whose prompt and window both failed to
- * parse cannot answer a retention question, and substituting the end-of-turn state
- * would report content the agent produced *while answering* as evidence that it
- * remembered — a pass-biased lie. Making the absence a type rather than a flag means
- * a caller has to decide what to do about it.
+ * `probe` is optional by design. A step whose prompt and window both failed to parse
+ * cannot answer a retention question, and substituting the end-of-turn state would count
+ * what the agent produced *while answering* as evidence that it remembered. Encoding the
+ * absence as a type rather than a flag forces the caller to decide.
  */
 export interface CapturedContext {
 	/** Absent when the graded turn's first step captured nothing gradable. */
@@ -64,9 +59,9 @@ function segmentText(segment: ReadableSegment): string {
 	}
 }
 
-/** Segments are the parsed form of `content`, so prefer them and fall back only when
- *  they render to nothing. Payloads are included untruncated: this text is searched,
- *  never shown to a model, so it has no attention budget to protect. */
+/** Segments are the parsed form of `content`, so prefer them and fall back when they
+ *  render to nothing. Payloads stay untruncated: this text is searched, never shown to a
+ *  model, so there is no attention budget to protect. */
 function blockText(block: ReadableContentBlock): string {
 	const fromSegments = (block.segments ?? [])
 		.map(segmentText)
@@ -95,39 +90,42 @@ function isGradable(snapshot: ContextSnapshot): boolean {
 }
 
 /**
- * Reduce a thread's captured run debug to the two anchored snapshots.
+ * Reduce a thread's captured run debug to the two anchored snapshots of its graded turn.
  *
- * The probe is anchored structurally — the first step of the last run — rather than
- * by matching the probe text. A follow-up turn is paraphrased by the user proxy, so
- * the message actually sent need not match the one the case authored.
+ * The turn is anchored structurally — the last run carrying steps — rather than by
+ * matching the probe text. A follow-up turn is paraphrased by the user proxy, so the
+ * message actually sent need not match the one the case authored.
  */
 export function captureContext(
 	runDebug: InstanceAiRunDebugResponse[] | undefined,
 ): CapturedContext | undefined {
 	if (!runDebug || runDebug.length === 0) return undefined;
 
+	// Both anchors read the SAME run — the last one carrying steps. Spanning the whole
+	// thread would mix tiers across turns, and a value left over from an earlier turn
+	// would surface as one the agent fetched during this one.
 	const runs = [...runDebug].sort((a, b) => a.startedAt - b.startedAt);
-	const turnEnd: ContextSnapshot = { observations: null, systemPrompt: '', messageWindow: '' };
-	let sawStep = false;
-
-	for (const run of runs) {
-		for (const step of run.steps ?? []) {
-			sawStep = true;
-			const snapshot = snapshotOf(step);
-			// Keep the newest non-empty value per tier: a trailing step whose prompt
-			// failed to parse must not blank out the state we would otherwise report.
-			if (snapshot.observations !== null) turnEnd.observations = snapshot.observations;
-			if (snapshot.systemPrompt.trim().length > 0) turnEnd.systemPrompt = snapshot.systemPrompt;
-			if (snapshot.messageWindow.trim().length > 0) turnEnd.messageWindow = snapshot.messageWindow;
-		}
-	}
-	if (!sawStep) return undefined;
-
 	const gradedRun = [...runs].reverse().find((run) => (run.steps ?? []).length > 0);
-	const firstStep = [...(gradedRun?.steps ?? [])].sort((a, b) => a.stepNumber - b.stepNumber)[0];
-	const probe = firstStep ? snapshotOf(firstStep) : undefined;
+	if (!gradedRun) return undefined;
 
-	return { probe: probe && isGradable(probe) ? probe : undefined, turnEnd };
+	const steps = [...(gradedRun.steps ?? [])].sort((a, b) => a.stepNumber - b.stepNumber);
+	const turnEnd: ContextSnapshot = { observations: null, systemPrompt: '', messageWindow: '' };
+	for (const step of steps) {
+		const snapshot = snapshotOf(step);
+		// Newest non-empty value per tier: a trailing step whose prompt failed to parse
+		// must not blank out the state we would otherwise report.
+		if (snapshot.observations !== null) turnEnd.observations = snapshot.observations;
+		if (snapshot.systemPrompt.trim().length > 0) turnEnd.systemPrompt = snapshot.systemPrompt;
+		if (snapshot.messageWindow.trim().length > 0) turnEnd.messageWindow = snapshot.messageWindow;
+	}
+
+	// Nothing usable in the graded turn means neither anchor can answer. An empty
+	// turn-end snapshot is gradable, so it would fail every claim with "not present" —
+	// a finding invented out of a capture failure.
+	if (!isGradable(turnEnd)) return undefined;
+
+	const probe = snapshotOf(steps[0]);
+	return { probe: isGradable(probe) ? probe : undefined, turnEnd };
 }
 
 export function snapshotFor(

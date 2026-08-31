@@ -143,8 +143,8 @@ describe('checkContextAssertions', () => {
 		expect(verdict.reason).toContain('no run debug was captured');
 	});
 
-	// A probe claim graded against borrowed end-of-turn state fails toward PASS, which
-	// is the direction that manufactures a finding. It must report "not checked".
+	// A probe claim graded against the end-of-turn state fails toward PASS, which is the
+	// direction that manufactures a finding. It must report "not checked" instead.
 	it('declines to grade a probe claim when the graded turn captured no probe state', () => {
 		const runDebug: InstanceAiRunDebugResponse[] = [
 			{
@@ -152,18 +152,17 @@ describe('checkContextAssertions', () => {
 				runId: 'r1',
 				startedAt: 1,
 				steps: [
+					// First step unparseable, so there is no probe snapshot...
+					{ stepNumber: 1, input: {} },
+					// ...but the agent went and fetched the value later in the same turn.
 					{
-						stepNumber: 1,
-						input: { system: 'sys', messages: [{ role: 'user', content: 'use #ops-alerts' }] },
+						stepNumber: 2,
+						input: {
+							system: 'sys',
+							messages: [{ role: 'assistant', content: 'looked it up: #ops-alerts' }],
+						},
 					},
 				],
-				workflowCode: [],
-			},
-			{
-				threadId: 't1',
-				runId: 'r2',
-				startedAt: 2,
-				steps: [{ stepNumber: 1, input: {} }],
 				workflowCode: [],
 			},
 		];
@@ -173,7 +172,7 @@ describe('checkContextAssertions', () => {
 		expect(probe.reason).toContain('not checked');
 		expect(probe.reason).not.toContain('retained');
 
-		// The end-of-turn state is unaffected, so a turn-end claim is still gradable.
+		// Turn end is a different question, and it is still answerable.
 		const [atEnd] = checkContextAssertions([{ text: '#ops-alerts', anchor: 'turn-end' }], runDebug);
 		expect(atEnd.incomplete).toBeUndefined();
 		expect(atEnd.pass).toBe(true);

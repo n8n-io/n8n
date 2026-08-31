@@ -283,15 +283,13 @@ model was actually sent.
 ```
 
 - **Deterministic.** Case-insensitive substring search over the captured run debug — no
-  judge, so no rubric, no cost, and nothing to hallucinate. Counted as units in the pass
-  rate like any other expectation.
+  judge, so no rubric, no cost, nothing to hallucinate. Counted as units in the pass rate.
 - **Three tiers are searched** and the verdict names which one hit: the compressed
   observation block, the message window, and the system prompt.
-- **Assert atomic values** (`#ops-alerts`, `triggerAtHour`, `2026-03-01`), not formatted
-  phrases (`triggerAtHour: 6`). The same value is serialised with different spacing
-  depending on which tier carries it.
-- **Needs run debug**, so these are skipped in prebuilt/MCP runs. A dropped capture is
-  reported as `incomplete` ("not checked") rather than as the value being absent.
+- **Assert atomic values** (`#ops-alerts`, `2026-03-01`), not formatted phrases
+  (`triggerAtHour: 6`) — spacing varies by which tier carries the value.
+- **Needs run debug**, so prebuilt/MCP runs report `incomplete` ("not checked") rather
+  than treating the value as absent.
 
 #### `anchor` — which moment the claim is about
 
@@ -299,33 +297,30 @@ This is what makes an A/B attributable rather than just a pass rate.
 
 | Anchor | State it reads | Use for |
 | --- | --- | --- |
-| `probe` (default) | what the model held when the request arrived | **retention** — "a fact from earlier survived to here" |
-| `turn-end` | the state once the turn is over | **retrieval** — "the agent went and fetched it" |
+| `probe` (default) | what the model held when the request arrived | **retention** |
+| `turn-end` | the state once the turn is over | **retrieval** |
 
-Grade retention at the `probe`, because the agent restates facts as it works and the end
-state would let the claim manufacture its own evidence. Grade retrieval at `turn-end`,
-because tools are called *after* the request arrives — a fetch claim graded at the probe
-can never pass.
+Grade retention at the `probe`: the agent restates facts as it works, so the end state
+would let a claim manufacture its own evidence. Grade retrieval at `turn-end`: tools are
+called *after* the request arrives, so a fetch claim graded at the probe can never pass.
 
-A probe-anchored claim that misses is checked again at turn end, so the verdict can
-separate "never had it" from "re-derived it while answering".
-
-When the graded turn captured no usable probe state, probe claims report `incomplete`
-rather than falling back to the end-of-turn state. Borrowing that state would count what
-the agent produced *while answering* as evidence that it remembered.
+Both anchors read the same run — the graded turn. A probe claim that misses is re-checked
+at turn end, separating "never had it" from "re-derived it while answering". If the graded
+turn captured no usable state, claims report `incomplete` rather than falling back to
+another moment or another turn.
 
 #### Context outcome (context × build)
 
-Crossing the context verdict with the build verdict names one of four situations, because
-a single pass rate collapses cases whose fixes are opposite:
+Crossing the two verdicts names one of four situations, because a single pass rate
+collapses cases whose fixes are opposite:
 
 | | build correct | build wrong |
 | --- | --- | --- |
 | **context had it** | `working` | `context-ignored` — a prompting problem |
 | **context lacked it** | `unattributed-success` — the feature contributed nothing | `retrieval-gap` — a retrieval problem |
 
-Both axes take the strictest reading: every graded claim on that axis must pass. A case
-without a graded claim on both axes is `unclassified` rather than `working`.
+Both axes take the strictest reading: every graded claim on that axis must pass. Without a
+graded claim on both axes a case is `unclassified`, not `working`.
 
 ### Artifact types (workflow / agent / config-eval)
 

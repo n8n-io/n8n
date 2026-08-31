@@ -66,14 +66,41 @@ describe('captureContext', () => {
 	// must not silently borrow the end-of-turn state. Grading a retention claim against
 	// borrowed content counts what the agent produced WHILE ANSWERING as evidence that
 	// it remembered, and it fails toward PASS.
-	it('reports no probe at all when the graded turn captured nothing usable', () => {
+	it("reports no probe when the graded turn's FIRST step captured nothing", () => {
 		const captured = captureContext([
-			run('r1', 1, [step('real prompt', 1, msg('real content'))]),
-			run('r2', 2, [{ stepNumber: 1, input: {} }]),
+			run('r1', 1, [
+				{ stepNumber: 1, input: {} },
+				step('a prompt', 2, msg('what the agent produced while answering')),
+			]),
 		]);
 		expect(captured?.probe).toBeUndefined();
-		// The end-of-turn state is still reported — it is a different question.
-		expect(captured?.turnEnd.messageWindow).toContain('real content');
+		// Turn end is a different question and is still answerable.
+		expect(captured?.turnEnd.messageWindow).toContain('while answering');
+	});
+
+	it('returns undefined when the graded turn captured nothing usable at all', () => {
+		// Neither anchor can answer. An empty turn-end snapshot would fail every claim
+		// with "not present", inventing a finding out of a capture failure.
+		expect(
+			captureContext([
+				run('r1', 1, [step('real prompt', 1, msg('real content'))]),
+				run('r2', 2, [{ stepNumber: 1, input: {} }]),
+			]),
+		).toBeUndefined();
+	});
+
+	it("does not carry an earlier turn's state into this turn's end state", () => {
+		// Both anchors are scoped to the graded run. A value left over from a previous
+		// turn must not surface as one the agent fetched during this one.
+		const captured = captureContext([
+			run('r1', 1, [
+				step('sys\n<observations>alerts go to #ops</observations>', 1, msg('earlier turn')),
+			]),
+			run('r2', 2, [step('sys', 1, msg('this turn'))]),
+		]);
+		expect(captured?.turnEnd.observations).toBeNull();
+		expect(captured?.turnEnd.messageWindow).toContain('this turn');
+		expect(captured?.turnEnd.messageWindow).not.toContain('earlier turn');
 	});
 
 	it('needs BOTH a prompt and a window before it will call a snapshot gradable', () => {
