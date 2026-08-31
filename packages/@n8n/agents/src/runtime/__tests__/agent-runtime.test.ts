@@ -7748,6 +7748,31 @@ describe('AgentRuntime — untrusted tool outputs', () => {
 		expect(events[0]).toMatchObject({ result: error, isError: true });
 	});
 
+	it('keeps runtime-authored validation errors outside the data boundary', async () => {
+		const tool: BuiltTool = {
+			name: 'external_strict',
+			description: 'Read external data',
+			inputSchema: z.object({ id: z.string() }),
+			outputTrust: 'untrusted',
+			handler: async () => await Promise.resolve('unused'),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-invalid', toolName: tool.name, args: { id: 42 } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		await runtime.generate('run');
+
+		const output = getToolResultOutput();
+		expect(output?.type).toBe('error-text');
+		expect(String(output?.value)).toContain('Invalid tool input');
+		expect(String(output?.value)).not.toContain('<untrusted_data');
+	});
+
 	it('protects derived message text while retaining native file content', async () => {
 		const fileData = Buffer.from('file').toString('base64');
 		const tool: BuiltTool = {
@@ -8172,7 +8197,7 @@ describe('AgentRuntime — oversized tool results', () => {
 			handler: async () => await Promise.resolve(largeResultOutput),
 		};
 
-		it('adds the data boundary after an untrusted result is offloaded', async () => {
+		it('offloads untrusted results with the boundary in the stored copy', async () => {
 			const filesystem = new InMemoryFilesystem();
 			const tool: BuiltTool = { ...largeResultTool, outputTrust: 'untrusted' };
 			const agent = createWorkspaceAgent(filesystem, [tool]);
@@ -8186,10 +8211,7 @@ describe('AgentRuntime — oversized tool results', () => {
 					modelResult = toolResultsFromModelMessages(messages)[0];
 					const modelText = contentToolResultText(modelResult);
 					if (modelText) {
-						const serializedEnvelope = modelText
-							.replace(/^<untrusted_data[^>]*>\n/, '')
-							.replace(/\n<\/untrusted_data>$/, '');
-						const envelope = parseOffloadedEnvelope(serializedEnvelope);
+						const envelope = parseOffloadedEnvelope(modelText);
 						storedResult = String(await filesystem.readFile(envelope.path, { encoding: 'utf8' }));
 					}
 					return await Promise.resolve(makeGenerateSuccess());
@@ -8199,16 +8221,24 @@ describe('AgentRuntime — oversized tool results', () => {
 
 			const modelText = contentToolResultText(modelResult);
 			if (!modelText) {
-				throw new Error('Expected a protected result');
+				throw new Error('Expected a guarded result');
 			}
-			expect(modelText).toMatch(/^<untrusted_data source="tool:large_result">\n/);
-			expect(modelText).toMatch(/\n<\/untrusted_data>$/);
-			const serializedEnvelope = modelText
-				.replace(/^<untrusted_data[^>]*>\n/, '')
-				.replace(/\n<\/untrusted_data>$/, '');
-			const envelope = parseOffloadedEnvelope(serializedEnvelope);
-			expect(envelope._offloaded).toBe(true);
-			expect(storedResult).toBe(JSON.stringify(largeResultOutput));
+			// The offload envelope stays plain runtime text, outside the boundary.
+			expect(modelText).not.toContain('<untrusted_data');
+			expect(parseOffloadedEnvelope(modelText)._offloaded).toBe(true);
+			// The stored copy keeps the boundary around the result text.
+			if (!storedResult) {
+				throw new Error('Expected a stored result');
+			}
+			let storedParts: Array<{ type?: string; text?: string }>;
+			try {
+				storedParts = JSON.parse(storedResult) as Array<{ type?: string; text?: string }>;
+			} catch {
+				throw new Error('Expected stored content parts');
+			}
+			expect(storedParts[0]?.text).toMatch(/^<untrusted_data source="tool:large_result">\n/);
+			expect(storedParts[0]?.text).toContain(JSON.stringify(largeResultOutput));
+			expect(storedParts[0]?.text).toMatch(/\n<\/untrusted_data>$/);
 		});
 
 		it('offloads oversized content text while preserving media parts', async () => {

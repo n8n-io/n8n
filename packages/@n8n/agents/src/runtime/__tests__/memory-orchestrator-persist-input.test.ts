@@ -269,9 +269,6 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 					message: 'Stored in workspace',
 				};
 			};
-			const protectedEnvelope = (kind: 'result' | 'error' | 'message') =>
-				`<untrusted_data source="tool:external_read">\n${JSON.stringify(envelope(kind))}\n</untrusted_data>`;
-			const protectedExpiredEnvelope = `<untrusted_data source="tool:external_read">\n${JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT)}\n</untrusted_data>`;
 			const list = new AgentMessageList();
 			list.addResponse([
 				{
@@ -312,26 +309,6 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 							error: JSON.stringify(envelope('error')),
 						},
 						{ type: 'text', text: JSON.stringify(envelope('message')) },
-						{
-							type: 'tool-call',
-							toolCallId: 'protected-result-call',
-							toolName: 'protected-result-tool',
-							input: {},
-							state: 'resolved',
-							output: {
-								type: 'content',
-								value: [{ type: 'text', text: protectedEnvelope('result') }],
-							},
-						},
-						{
-							type: 'tool-call',
-							toolCallId: 'protected-error-call',
-							toolName: 'protected-error-tool',
-							input: {},
-							state: 'rejected',
-							error: protectedEnvelope('error'),
-						},
-						{ type: 'text', text: protectedEnvelope('message') },
 					],
 				},
 			]);
@@ -368,18 +345,6 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 					error: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT),
 				}),
 				{ type: 'text', text: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT) },
-				expect.objectContaining({
-					state: 'resolved',
-					output: {
-						type: 'content',
-						value: [{ type: 'text', text: protectedExpiredEnvelope }],
-					},
-				}),
-				expect.objectContaining({
-					state: 'rejected',
-					error: protectedExpiredEnvelope,
-				}),
-				{ type: 'text', text: protectedExpiredEnvelope },
 			]);
 		},
 	);
