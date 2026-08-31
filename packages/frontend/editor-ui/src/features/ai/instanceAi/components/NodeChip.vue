@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useTemplateRef } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -17,6 +18,9 @@ const props = defineProps<{
 const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': [] }>();
 
 const i18n = useI18n();
+
+const rootRef = useTemplateRef<HTMLElement>('root');
+defineExpose({ focus: () => rootRef.value?.focus() });
 
 // stopPropagation prevents the canvas/logs panel's document-level
 // Arrow/Enter/Escape shortcuts from also firing (see shouldIgnoreCanvasShortcut).
@@ -56,6 +60,7 @@ function handleKeydown(event: KeyboardEvent) {
 
 <template>
 	<span
+		ref="root"
 		:class="$style.chip"
 		:data-test-id="testid"
 		tabindex="0"
@@ -110,8 +115,8 @@ function handleKeydown(event: KeyboardEvent) {
 	color: var(--text-color--success);
 
 	&:focus-visible {
-		outline: 2px solid var(--color--primary);
-		outline-offset: 2px;
+		outline: var(--spacing--5xs) solid var(--color--primary);
+		outline-offset: var(--spacing--5xs);
 	}
 }
 

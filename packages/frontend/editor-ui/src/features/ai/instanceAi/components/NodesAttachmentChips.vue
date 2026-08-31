@@ -179,9 +179,7 @@ function focusAdjacentPanelRow(currentRow: HTMLElement, direction: 1 | -1) {
 
 async function focusPanelRowAfterRemoval(removedIndex: number) {
 	await nextTick();
-	const rows = Array.from(
-		panelRef.value?.querySelectorAll('[data-test-id="nodes-chip-panel-row"]') ?? [],
-	) as HTMLElement[];
+	const rows = Array.from(panelRef.value?.querySelectorAll<HTMLElement>('[role="option"]') ?? []);
 
 	if (!rows.length) {
 		return;
@@ -192,7 +190,7 @@ async function focusPanelRowAfterRemoval(removedIndex: number) {
 
 function closePanel() {
 	expandedSetIndex.value = null;
-	openChipAnchor.value?.querySelector<HTMLElement>('[data-test-id]')?.focus();
+	openChipRef.value?.focus();
 }
 
 // Deferred to a macrotask: a keyboard removal destroys the focused row and
@@ -217,10 +215,14 @@ function handlePanelFocusOut(setIndex: number) {
 
 const expandedSetIndex = ref<number | null>(null);
 const panelRef = ref<HTMLElement | null>(null);
-// Chip anchors keyed by setIndex — the open one's rect positions the teleported
-// panel, and it's where focus returns on close.
+// Chip anchors (the wrapper spans) keyed by setIndex — the open one's rect
+// positions the teleported panel and scopes the focus-out check.
 const chipAnchors = new Map<number, HTMLElement>();
 const openChipAnchor = ref<HTMLElement | null>(null);
+// The open chip component instance, so we can return focus to it on close.
+type NodeChipInstance = { focus: () => void };
+const chipRefs = new Map<number, NodeChipInstance>();
+const openChipRef = ref<NodeChipInstance | null>(null);
 const panelStyle = ref<Record<string, string>>({});
 
 function setChipAnchor(setIndex: number, el: Element | null) {
@@ -228,9 +230,15 @@ function setChipAnchor(setIndex: number, el: Element | null) {
 	else chipAnchors.delete(setIndex);
 }
 
+function setChipRef(setIndex: number, instance: NodeChipInstance | null) {
+	if (instance) chipRefs.set(setIndex, instance);
+	else chipRefs.delete(setIndex);
+}
+
 function positionPanel(setIndex: number) {
 	const anchor = chipAnchors.get(setIndex) ?? null;
 	openChipAnchor.value = anchor;
+	openChipRef.value = chipRefs.get(setIndex) ?? null;
 	if (!anchor) return;
 	const rect = anchor.getBoundingClientRect();
 	// Cap the panel to the space below the chip so a long list scrolls instead of
@@ -256,7 +264,7 @@ async function enterPanel(setIndex: number) {
 	positionPanel(setIndex);
 	expandedSetIndex.value = setIndex;
 	await nextTick();
-	panelRef.value?.querySelector<HTMLElement>('[data-test-id="nodes-chip-panel-row"]')?.focus();
+	panelRef.value?.querySelector<HTMLElement>('[role="option"]')?.focus();
 }
 
 const COLLAPSE_CHIP_THRESHOLD = 6;
@@ -293,6 +301,7 @@ const totalNodeCount = computed(() =>
 				@focusout="handlePanelFocusOut(chip.setIndex)"
 			>
 				<NodeChip
+					:ref="(el) => setChipRef(chip.setIndex, el as NodeChipInstance | null)"
 					:label="chip.label"
 					:testid="chip.testid"
 					:icon="chip.icon"

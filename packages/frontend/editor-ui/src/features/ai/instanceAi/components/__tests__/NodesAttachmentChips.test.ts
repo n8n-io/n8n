@@ -153,10 +153,10 @@ describe('NodesAttachmentChips', () => {
 	});
 
 	it('ArrowDown on a collapsed bundle chip opens the panel and focuses the first row', async () => {
-		const { getByTestId, getAllByTestId } = renderComponent(NodesAttachmentChips, {
+		const { getByTestId, getAllByTestId, queryByTestId } = renderComponent(NodesAttachmentChips, {
 			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
 		});
-		expect(document.querySelector('[data-test-id="nodes-chip-panel"]')).toBeNull();
+		expect(queryByTestId('nodes-chip-panel')).toBeNull();
 		await fireEvent.keyDown(getByTestId('nodes-chip-bundle'), { key: 'ArrowDown' });
 		expect(getByTestId('nodes-chip-panel')).toBeTruthy();
 		expect(document.activeElement).toBe(getAllByTestId('nodes-chip-panel-row')[0]);
