@@ -2188,7 +2188,7 @@ describe('createWorkflowAdapter', () => {
 					credentials: {
 						googlePalmApi: {
 							id: null,
-							name: 'n8n credits',
+							name: 'Gateway credits',
 							__aiGatewayManaged: true,
 						},
 					},
@@ -2207,13 +2207,13 @@ describe('createWorkflowAdapter', () => {
 		expect(workflow.nodes[1].credentials).toEqual({
 			googlePalmApi: {
 				id: null,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				__aiGatewayManaged: true,
 			},
 		});
 		const code = generateWorkflowCode(workflow);
-		expect(code).toContain("newCredential('n8n credits')");
-		expect(code).not.toContain("newCredential('n8n credits', 'null')");
+		expect(code).toContain("newCredential('Gateway credits')");
+		expect(code).not.toContain("newCredential('Gateway credits', 'null')");
 	});
 
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
@@ -2693,6 +2693,38 @@ describe('createWorkflowAdapter', () => {
 			googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
 		});
 		expect(AI_GATEWAY_MANAGED_TAG).toBe('__AI_GATEWAY_MANAGED__');
+	});
+
+	it('normalizes the managed tag written as a credential id into the runtime sentinel on save', async () => {
+		// The builder may write `newCredential('n8n credits', '__AI_GATEWAY_MANAGED__')`,
+		// which reaches update as `{ id: '__AI_GATEWAY_MANAGED__', name }`. It must be
+		// converted to the null-id sentinel so the runtime never treats the tag as a
+		// real, DB-resolvable credential id.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		const workflow = {
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Gemini',
+					type: 'n8n-nodes-base.lmChatGoogleGemini',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						googlePalmApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n credits' },
+					},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		await adapter.updateFromWorkflowJSON('wf-existing', workflow);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodes: INode[] };
+		expect(updateData.nodes[0].credentials).toEqual({
+			googlePalmApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+		});
 	});
 
 	it('removes the credentials object when every reference lacks an id during update', async () => {

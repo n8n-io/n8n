@@ -1,12 +1,10 @@
 /**
- * Authentication on Chat Trigger test webhooks (`/webhook-test/...`).
+ * Access controls on Chat Trigger test webhooks (`/webhook-test/...`).
  *
- * A Chat Trigger's configured authentication applies to its test webhook the same way
- * it does in production. The one exemption is the editor's canvas chat: its registration
- * is rewritten to the session-scoped `{workflowId}/{chatSessionId}` route and flagged as
- * such by the backend, and only that flagged registration runs without webhook
- * credentials. A rejected request responds before any execution starts and leaves the
- * one-shot registration in place for a later authorized request.
+ * Sessionless test webhooks enforce the trigger's public visibility and configured
+ * authentication. The editor's canvas chat is the one exemption: its registration is
+ * rewritten to the session-scoped `{workflowId}/{chatSessionId}` route and flagged by
+ * the backend, so only that route may run a private, protected chat.
  */
 
 import {
@@ -204,6 +202,31 @@ describe('chat trigger test webhooks', () => {
 			.expect(404);
 	});
 
+	test('does not expose a private chat through a sessionless test route', async () => {
+		const trigger = chatTriggerNode({
+			public: false,
+			mode: 'webhook',
+			authentication: 'none',
+		});
+		const workflow = await createChatWorkflow(trigger);
+
+		const listening = await startListening(workflow.id);
+		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+
+		await webhookAgent
+			.post(`/${webhookTestEndpoint}/${trigger.webhookId}/chat`)
+			.send(chatMessage())
+			.expect(404);
+
+		const executionCount = await Container.get(ExecutionRepository).count({
+			where: { workflowId: workflow.id },
+		});
+		expect(executionCount).toBe(0);
+
+		// Disarm the pending registration's timeout so the suite exits cleanly.
+		await Container.get(TestWebhooks).cancelWebhook(workflow.id);
+	});
+
 	test('requires an n8n session for user-authenticated test webhooks', async () => {
 		const trigger = chatTriggerNode({ authentication: 'n8nUserAuth' });
 		const workflow = await createChatWorkflow(trigger);
@@ -225,10 +248,10 @@ describe('chat trigger test webhooks', () => {
 		await Container.get(TestWebhooks).cancelWebhook(workflow.id);
 	});
 
-	test('allows the editor chat session route without webhook credentials', async () => {
+	test('allows a private protected chat through the editor session route', async () => {
 		const credential = await createBasicAuthCredential();
 		const trigger = chatTriggerNode(
-			{ authentication: 'basicAuth' },
+			{ public: false, authentication: 'basicAuth' },
 			{ id: credential.id, name: credential.name },
 		);
 		const workflow = await createChatWorkflow(trigger);

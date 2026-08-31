@@ -23,6 +23,7 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
+import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import { SubAgentRunner } from '../sub-agent-runner';
 import type {
@@ -391,6 +392,47 @@ describe('SubAgentRunner', () => {
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenLastCalledWith(
 			expect.objectContaining({ sandboxPrincipalHash: principalHash }),
+		);
+	});
+
+	it('threads the parent workspace handle into child reconstruction with the delegation thread id', async () => {
+		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
+		const result = await runner.run(spawnRequest, {
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			parentWorkspaceHandle,
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				parentWorkspace: { handle: parentWorkspaceHandle, delegationThreadId: result.threadId },
+			}),
+		);
+
+		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+		await runner.resumeForeground(
+			{
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				childThreadId: result.threadId,
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+				parentThreadId,
+			},
+			{
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				parentWorkspaceHandle,
+			},
+		);
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				parentWorkspace: { handle: parentWorkspaceHandle, delegationThreadId: result.threadId },
+			}),
 		);
 	});
 

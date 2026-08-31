@@ -2,7 +2,7 @@ import { CalendarDate } from '@internationalized/date';
 import InsightsDateRangeAlert from '@/features/execution/insights/components/InsightsDateRangeAlert.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 const renderComponent = createComponentRenderer(InsightsDateRangeAlert, {
 	global: {

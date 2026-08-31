@@ -35,7 +35,10 @@ import { AgentBackgroundJobService } from '../background/agent-background-job.se
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
-import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
+import type {
+	AgentSandboxRuntime,
+	AgentSandboxRuntimeService,
+} from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -105,7 +108,10 @@ function makeReconstructionService(
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	const defaultAgentWorkspaceService = mock<AgentWorkspaceService>();
-	defaultAgentWorkspaceService.getAgentWorkspace.mockResolvedValue(new Workspace({}));
+	defaultAgentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+		workspace: new Workspace({}),
+		handle: mock<AgentSandboxRuntime>(),
+	});
 	const agentWorkspaceService = overrides.agentWorkspaceService ?? defaultAgentWorkspaceService;
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
@@ -280,7 +286,10 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		const workspace = new Workspace({});
 		agentFileRepository.hasFilesForAgent.mockResolvedValue(false);
-		agentWorkspaceService.getAgentWorkspace.mockResolvedValue(workspace);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace,
+			handle: mock<AgentSandboxRuntime>(),
+		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
 			agentFileRepository,
@@ -305,7 +314,10 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
-		agentWorkspaceService.getAgentWorkspace.mockResolvedValue(new Workspace({}));
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace: new Workspace({}),
+			handle: mock<AgentSandboxRuntime>(),
+		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
 			agentFileRepository,

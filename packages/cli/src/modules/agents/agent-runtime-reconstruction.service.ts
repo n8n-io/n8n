@@ -53,6 +53,7 @@ import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
 	AgentSandboxRuntimeService,
 	sanitizeSandboxErrorDetail,
+	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
@@ -137,6 +138,12 @@ export interface ReconstructAgentRuntimeParams {
 	/** Runtime seams inherited from the delegating parent run (see {@link AgentRuntimeInstrumentation}). */
 	instrumentation?: AgentRuntimeInstrumentation;
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
+	/**
+	 * Parent run's live workspace sandbox handle for delegated sub-agent runs.
+	 * The child scopes into `<workspaceRoot>/subagents/<delegationThreadId>`
+	 * instead of acquiring its own sandbox.
+	 */
+	parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 }
 
 async function getChatIntegrationToolServices() {
@@ -366,6 +373,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
+		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -386,6 +394,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			sandboxPrincipalHash,
+			parentWorkspace,
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
@@ -469,6 +478,7 @@ export class AgentRuntimeReconstructionService {
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
 			integrationType,
 			credentialIntegrations,
+			parentWorkspace,
 			user,
 			instrumentation,
 			sandboxPrincipalHash,
@@ -620,6 +630,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
+		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 	}): Promise<void> {
 		const {
 			agent,
@@ -637,30 +648,48 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			sandboxPrincipalHash,
+			parentWorkspace,
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
 
+		let parentWorkspaceHandle: AgentSandboxRuntime | undefined;
+
 		if (runtimeProfile !== 'inline' && this.agentSandboxRuntimeService.isEnabled()) {
-			if (!sandboxPrincipalHash) {
-				throw new UserError(
-					'Agent workspace scope is missing and the runtime cannot be reconstructed',
-				);
-			}
-			try {
-				agent.workspace(
-					await this.agentWorkspaceService.getAgentWorkspace(
+			if (runtimeProfile === 'sub-agent') {
+				// Delegated runs share the parent's sandbox, scoped to a per-delegation
+				// subdirectory. No parent workspace → no workspace tools (no own-sandbox fallback).
+				if (parentWorkspace) {
+					agent.workspace(
+						this.agentWorkspaceService.getDelegatedAgentWorkspace(
+							parentWorkspace.handle,
+							parentWorkspace.delegationThreadId,
+						),
+					);
+				}
+			} else {
+				if (!sandboxPrincipalHash) {
+					throw new UserError(
+						'Agent workspace scope is missing and the runtime cannot be reconstructed',
+					);
+				}
+				try {
+					const { workspace, handle } = await this.agentWorkspaceService.getAgentWorkspace(
 						projectId,
 						agentId,
 						sandboxPrincipalHash,
-					),
-				);
-			} catch (error) {
-				this.logger.warn('Failed to attach agent workspace', {
-					projectId,
-					agentId,
-					error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
-				});
+					);
+					agent.workspace(workspace);
+					parentWorkspaceHandle = handle;
+				} catch (error) {
+					this.logger.warn('Failed to attach agent workspace', {
+						projectId,
+						agentId,
+						error: sanitizeSandboxErrorDetail(
+							error instanceof Error ? error.message : String(error),
+						),
+					});
+				}
 			}
 
 			if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
@@ -745,6 +774,7 @@ export class AgentRuntimeReconstructionService {
 				runType,
 				workflowToolExecutionMode,
 				delegation: subAgentDelegation,
+				parentWorkspaceHandle,
 				user,
 				instrumentation,
 			});
@@ -791,6 +821,7 @@ export class AgentRuntimeReconstructionService {
 		runType: AgentRunTelemetryType;
 		workflowToolExecutionMode: WorkflowToolExecutionMode;
 		delegation: SubAgentDelegationConfig;
+		parentWorkspaceHandle?: AgentSandboxRuntime;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 	}): Promise<void> {
@@ -803,6 +834,7 @@ export class AgentRuntimeReconstructionService {
 			runType,
 			workflowToolExecutionMode,
 			delegation,
+			parentWorkspaceHandle,
 			user,
 			instrumentation,
 		} = params;
@@ -819,6 +851,7 @@ export class AgentRuntimeReconstructionService {
 				credentialProvider,
 				runType,
 				workflowToolExecutionMode,
+				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				user,
 				instrumentation,
 				policy: this.buildSubAgentPolicy(config),
