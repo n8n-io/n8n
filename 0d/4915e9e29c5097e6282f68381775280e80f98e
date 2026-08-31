@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_ef1105a184535e::t_e490de6644e39d 153-160,171-174,176
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_ef1105a184535e::t_1c4cb75d398eb5 1837,1879-1880
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0d4915e9e29c5097e6282f68381775280e80f98e",
+  "prompts": {},
+  "sessions": {
+    "s_ef1105a184535e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9d6b5b5-949d-423d-a866-9b30325ee660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
