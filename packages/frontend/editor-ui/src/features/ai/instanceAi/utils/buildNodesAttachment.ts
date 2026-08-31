@@ -28,18 +28,19 @@ const setSignature = (set: NodesAttachmentSet) =>
 		.sort()
 		.join('\n');
 
-/** Append incoming sets to existing ones, skipping any whose exact node membership is already attached. */
+/** Append incoming sets to existing ones, skipping duplicates and capping the total to the schema limit. */
 export function mergeNodeSets(
 	existing: InstanceAiNodesAttachment['sets'],
 	incoming: InstanceAiNodesAttachment['sets'],
 ): InstanceAiNodesAttachment['sets'] {
 	const seen = new Set(existing.map(setSignature));
-	return [...existing, ...incoming.filter((s) => !seen.has(setSignature(s)))];
+	const merged = [...existing, ...incoming.filter((s) => !seen.has(setSignature(s)))];
+	return merged.slice(0, MAX_SETS_PER_ATTACHMENT);
 }
 
-// Schema cap (instanceAiNodeSetSchema, #36039). The safeParse test in this file
-// is the real drift-guard — no need to poke zod internals.
+// Schema caps (instanceAiNodeSetSchema / instanceAiNodesAttachmentSchema).
 const MAX_NODES_PER_SET = 50;
+const MAX_SETS_PER_ATTACHMENT = 50;
 
 /**
  * One "add to chat" action = one set: everything the user picked, regardless of

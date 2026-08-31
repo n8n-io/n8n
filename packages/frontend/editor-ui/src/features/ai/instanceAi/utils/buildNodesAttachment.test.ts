@@ -5,6 +5,7 @@ import {
 	resolveSetNeighbors,
 	resolveSetCanvasGroup,
 	buildNodesAttachment,
+	mergeNodeSets,
 } from './buildNodesAttachment';
 import type { NodeContextWorkflow } from './buildNodesAttachment';
 import { instanceAiNodesAttachmentSchema } from '@n8n/api-types';
@@ -178,5 +179,25 @@ describe('buildNodesAttachment', () => {
 		const res = buildNodesAttachment('w1', ['n1', 'n2'], w);
 		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);
 		expect(res!.attachment.sets[0].inputNode).toBeUndefined();
+	});
+});
+
+describe('mergeNodeSets', () => {
+	const set = (n: string) => ({ nodes: [{ id: n }] });
+
+	it('skips incoming sets already present by exact membership', () => {
+		const merged = mergeNodeSets([set('A')], [set('A'), set('B')]);
+		expect(merged).toEqual([set('A'), set('B')]);
+	});
+
+	it('caps the merged sets at the schema limit (50)', () => {
+		const existing = Array.from({ length: 40 }, (_, i) => set(`e${i}`));
+		const incoming = Array.from({ length: 40 }, (_, i) => set(`i${i}`));
+		const merged = mergeNodeSets(existing, incoming);
+		expect(merged).toHaveLength(50);
+		expect(
+			instanceAiNodesAttachmentSchema.safeParse({ type: 'nodes', workflowId: 'w1', sets: merged })
+				.success,
+		).toBe(true);
 	});
 });
