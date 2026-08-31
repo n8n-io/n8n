@@ -219,6 +219,45 @@ describe('AgentRuntimeCacheService', () => {
 		}
 	});
 
+	it('shares an in-flight tool-access re-check across concurrent cache hits', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const user = mock<User>({ id: 'user-a' });
+			const runtime = {
+				...makeRuntime(),
+				userToolAccessSnapshot: { credentialIds: ['cred-1'], workflowIds: ['wf-1'] },
+			};
+			let resolveAccessCheck: (stillGranted: boolean) => void = () => {};
+			const pendingAccessCheck = new Promise<boolean>((resolve) => {
+				resolveAccessCheck = resolve;
+			});
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			reconstructionService.userStillHasToolAccess.mockReturnValue(pendingAccessCheck);
+
+			const initial = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(initial.agent);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+
+			const first = service.getRuntime({ agentId, projectId, user });
+			const second = service.getRuntime({ agentId, projectId, user });
+
+			expect(reconstructionService.userStillHasToolAccess).toHaveBeenCalledOnce();
+			resolveAccessCheck(true);
+			const [firstRuntime, secondRuntime] = await Promise.all([first, second]);
+
+			expect(firstRuntime).toBe(secondRuntime);
+			expect(firstRuntime.agent).toBe(runtime.agent);
+			service.releaseRuntimeLease(firstRuntime.agent);
+			service.releaseRuntimeLease(secondRuntime.agent);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('keeps draft runtimes separate by integration type', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();

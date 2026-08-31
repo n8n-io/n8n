@@ -101,6 +101,8 @@ export class AgentRuntimeCacheService {
 
 	private readonly runtimeInitializations = new Map<string, RuntimeInitialization>();
 
+	private readonly toolAccessRechecks = new WeakMap<AgentRuntime, Promise<boolean>>();
+
 	private readonly activeRuntimeLeases = new WeakMap<RuntimeAgent, number>();
 
 	private readonly runtimesPendingClose = new WeakMap<RuntimeAgent, string>();
@@ -242,14 +244,20 @@ export class AgentRuntimeCacheService {
 
 		const cached = this.runtimes.get(cacheKey);
 		if (cached) {
-			if (await this.toolAccessStillCurrent(cached, params)) {
+			const accessStillCurrent = await this.toolAccessStillCurrent(cached, params);
+			const current = this.runtimes.get(cacheKey);
+			// The awaited re-check may race with cache invalidation or replacement.
+			if (current !== cached) {
+				if (current) return this.acquireRuntimeLease(current);
+			} else if (accessStillCurrent) {
 				this.runtimes.touch(cacheKey);
 				return this.acquireRuntimeLease(cached);
+			} else {
+				// Revoked grants: retire this runtime and rebuild below so the tool
+				// list is re-filtered against the user's current access.
+				this.runtimes.delete(cacheKey);
+				this.closeAgentResources(cached.agent, params.agentId);
 			}
-			// Revoked grants: retire this runtime and rebuild below so the tool
-			// list is re-filtered against the user's current access.
-			this.runtimes.delete(cacheKey);
-			this.closeAgentResources(cached.agent, params.agentId);
 		}
 
 		const initialization = this.runtimeInitializations.get(cacheKey);
@@ -292,26 +300,41 @@ export class AgentRuntimeCacheService {
 		params: GetRuntimeParams,
 	): Promise<boolean> {
 		const { userToolAccessSnapshot } = runtime;
-		if (!userToolAccessSnapshot || !params.user) return true;
+		const { user } = params;
+		if (!userToolAccessSnapshot || !user) return true;
 		if (Date.now() - runtime.toolAccessCheckedAt < TOOL_ACCESS_RECHECK_INTERVAL_MS) return true;
 
+		const inFlight = this.toolAccessRechecks.get(runtime);
+		if (inFlight) return inFlight;
+
+		const recheck = (async () => {
+			try {
+				const stillGranted = await this.agentRuntimeReconstructionService.userStillHasToolAccess(
+					userToolAccessSnapshot,
+					params.projectId,
+					user,
+				);
+				if (stillGranted) runtime.toolAccessCheckedAt = Date.now();
+				return stillGranted;
+			} catch (error) {
+				// Availability over freshness: a failing re-check must not take down
+				// the chat — serve the cached runtime and retry next interval.
+				runtime.toolAccessCheckedAt = Date.now();
+				this.logger.warn('[AgentRuntimeCacheService] Failed to re-check tool access', {
+					agentId: runtime.agentId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return true;
+			}
+		})();
+		this.toolAccessRechecks.set(runtime, recheck);
+
 		try {
-			const stillGranted = await this.agentRuntimeReconstructionService.userStillHasToolAccess(
-				userToolAccessSnapshot,
-				params.projectId,
-				params.user,
-			);
-			if (stillGranted) runtime.toolAccessCheckedAt = Date.now();
-			return stillGranted;
-		} catch (error) {
-			// Availability over freshness: a failing re-check must not take down
-			// the chat — serve the cached runtime and retry next interval.
-			runtime.toolAccessCheckedAt = Date.now();
-			this.logger.warn('[AgentRuntimeCacheService] Failed to re-check tool access', {
-				agentId: runtime.agentId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return true;
+			return await recheck;
+		} finally {
+			if (this.toolAccessRechecks.get(runtime) === recheck) {
+				this.toolAccessRechecks.delete(runtime);
+			}
 		}
 	}
 
