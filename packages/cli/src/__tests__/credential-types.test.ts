@@ -139,4 +139,25 @@ describe('CredentialTypes', () => {
 			expect(originalExtends).toHaveLength(originalLength);
 		});
 	});
+
+	describe('isOAuthCredentialType', () => {
+		const credentialTypes = new CredentialTypes(
+			mock<LoadNodesAndCredentials>({
+				knownCredentials: {
+					gmailOAuth2: { extends: ['oAuth2Api'] },
+					oAuth2Api: { extends: [] },
+					httpBasicAuth: { extends: [] },
+				},
+			} as never) as LoadNodesAndCredentials,
+		);
+
+		test('recognizes base and inherited OAuth credential types', () => {
+			expect(credentialTypes.isOAuthCredentialType('oAuth2Api')).toBe(true);
+			expect(credentialTypes.isOAuthCredentialType('gmailOAuth2')).toBe(true);
+		});
+
+		test('rejects non-OAuth credential types', () => {
+			expect(credentialTypes.isOAuthCredentialType('httpBasicAuth')).toBe(false);
+		});
+	});
 });

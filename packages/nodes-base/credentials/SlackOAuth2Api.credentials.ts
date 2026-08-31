@@ -44,6 +44,11 @@ export class SlackOAuth2Api implements ICredentialType {
 
 	extends = ['oAuth2Api'];
 
+	oauth2 = {
+		tokenType: 'Bearer',
+		property: 'authed_user.access_token',
+	};
+
 	displayName = 'Slack OAuth2 API';
 
 	documentationUrl = 'slack';

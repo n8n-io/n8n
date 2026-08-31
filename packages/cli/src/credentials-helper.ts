@@ -292,6 +292,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return this.credentialTypes.getParentTypes(typeName);
 	}
 
+	getOAuth2Options(type: string) {
+		if (!this.credentialTypes.isOAuthCredentialType(type)) return undefined;
+		return this.credentialTypes.getByName(type).oauth2;
+	}
+
 	/**
 	 * Returns the credentials instance
 	 */

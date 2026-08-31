@@ -1,4 +1,5 @@
-import type { ICredentialDataDecryptedObject } from './interfaces';
+import type { CredentialOAuth2Options, ICredentialDataDecryptedObject } from './interfaces';
+import { getOAuth2AuthHeaders } from './oauth2-helpers';
 
 /** Covers MCP-specific and existing native OAuth2 credential type names. */
 export type McpOAuth2CredentialType = 'oAuth2Api' | `${string}OAuth2Api` | `${string}OAuth2`;
@@ -25,6 +26,7 @@ export interface PrepareMcpRegistryConnectionInput {
 	connection: McpRegistryConnection;
 	credentialType: McpOAuth2CredentialType;
 	credentialData: ICredentialDataDecryptedObject;
+	oauth2?: CredentialOAuth2Options;
 	headers?: Record<string, string>;
 }
 
@@ -73,15 +75,10 @@ export function isMcpOAuth2Authentication(
 export function getMcpAuthHeaders(
 	authentication: string,
 	credentialData: ICredentialDataDecryptedObject,
+	oauth2?: CredentialOAuth2Options,
 ): Record<string, string> {
 	if (isMcpOAuth2Authentication(authentication)) {
-		const tokenData = credentialData.oauthTokenData;
-		const accessToken = isRecord(tokenData)
-			? (tokenData.access_token ?? tokenData.accessToken)
-			: undefined;
-		return typeof accessToken === 'string' && accessToken.length > 0
-			? { ['Authorization']: `Bearer ${accessToken}` }
-			: {};
+		return getOAuth2AuthHeaders(credentialData, oauth2);
 	}
 
 	if (authentication === 'bearerAuth') {

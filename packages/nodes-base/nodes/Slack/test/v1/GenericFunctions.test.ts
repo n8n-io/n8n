@@ -50,9 +50,6 @@ describe('Slack V1 > GenericFunctions', () => {
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'slackOAuth2Api',
 				expect.any(Object),
-				expect.objectContaining({
-					oauth2: expect.any(Object),
-				}),
 			);
 		});
 	});
@@ -88,7 +85,6 @@ describe('Slack V1 > GenericFunctions', () => {
 					method: 'GET',
 					uri: expect.any(String),
 				}),
-				expect.any(Object),
 			);
 		});
 
@@ -118,7 +114,6 @@ describe('Slack V1 > GenericFunctions', () => {
 					method: 'GET',
 					uri: expect.any(String),
 				}),
-				expect.any(Object),
 			);
 		});
 

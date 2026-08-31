@@ -36,4 +36,14 @@ export class CredentialTypes implements ICredentialTypes {
 
 		return extendsArrCopy;
 	}
+
+	isOAuthCredentialType(type: string): boolean {
+		const parentTypes = this.getParentTypes(type);
+		return (
+			type === 'oAuth1Api' ||
+			type === 'oAuth2Api' ||
+			parentTypes.includes('oAuth1Api') ||
+			parentTypes.includes('oAuth2Api')
+		);
+	}
 }

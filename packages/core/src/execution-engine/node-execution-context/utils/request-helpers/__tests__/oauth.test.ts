@@ -974,6 +974,53 @@ describe('requestOAuth2 - preAuthentication', () => {
 		);
 	});
 
+	test('uses credential OAuth2 options unless call options override them', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...credentialData(),
+			oauthTokenData: {
+				access_token: 'bot-token',
+				authed_user: { access_token: 'user-token' },
+			},
+		});
+		mockAdditionalData.credentialsHelper.getOAuth2Options.mockReturnValue({
+			tokenType: 'Bearer',
+			property: 'authed_user.access_token',
+		});
+		mockThis.helpers.httpRequest.mockResolvedValue({ ok: true });
+
+		await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			undefined,
+			true,
+		);
+		await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			{ property: 'access_token' },
+			true,
+		);
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer user-token' }),
+			}),
+		);
+		expect(mockThis.helpers.httpRequest).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer bot-token' }),
+			}),
+		);
+	});
+
 	test('refresh path: retry signs with preAuthentication-transformed refreshed token and persists it', async () => {
 		mockThis.getCredentials.mockResolvedValue(credentialData());
 

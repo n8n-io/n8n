@@ -90,6 +90,11 @@ export interface IOAuth2Options {
 	keyToIncludeInAccessTokenHeader?: string;
 }
 
+export type CredentialOAuth2Options = Pick<
+	IOAuth2Options,
+	'property' | 'tokenType' | 'keyToIncludeInAccessTokenHeader'
+>;
+
 export interface IConnection {
 	// The node the connection is to
 	node: string;
@@ -225,6 +230,8 @@ export interface IHttpRequestHelper {
 }
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
+
+	abstract getOAuth2Options(type: string): CredentialOAuth2Options | undefined;
 
 	/**
 	 * Returns false when the credential type sets `restrictToSupportedNodes: true`
@@ -389,6 +396,8 @@ export interface ICredentialType {
 	 */
 	iconBasePath?: string;
 	extends?: string[];
+	// TODO: extend with more options from IOAuth2Options
+	oauth2?: CredentialOAuth2Options;
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
@@ -1102,6 +1111,7 @@ export interface FunctionsBase {
 		itemIndex?: number,
 	): Promise<T>;
 	getCredentialsProperties(type: string): INodeProperties[];
+	getOAuth2Options(type: string): CredentialOAuth2Options | undefined;
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;

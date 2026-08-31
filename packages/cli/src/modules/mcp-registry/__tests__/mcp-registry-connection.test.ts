@@ -92,4 +92,47 @@ describe('prepareMcpRegistryConnection', () => {
 			},
 		});
 	});
+
+	it('uses the access token selected by credential OAuth2 options', () => {
+		const result = prepareMcpRegistryConnection({
+			connection,
+			credentialType,
+			credentialData: {
+				oauthTokenData: {
+					access_token: 'bot-token',
+					authed_user: { access_token: 'user-token' },
+				},
+			},
+			oauth2: {
+				tokenType: 'Bearer',
+				property: 'authed_user.access_token',
+			},
+		});
+
+		expect(result).toMatchObject({
+			ok: true,
+			value: {
+				headers: { Authorization: 'Bearer user-token' },
+			},
+		});
+	});
+
+	it('includes the access token under the configured additional header', () => {
+		const result = prepareMcpRegistryConnection({
+			connection,
+			credentialType,
+			credentialData: { oauthTokenData: { access_token: 'token' } },
+			oauth2: { keyToIncludeInAccessTokenHeader: 'X-Access-Token' },
+		});
+
+		expect(result).toMatchObject({
+			ok: true,
+			value: {
+				headers: {
+					Authorization: 'Bearer token',
+					'X-Access-Token': 'token',
+				},
+			},
+		});
+	});
 });
