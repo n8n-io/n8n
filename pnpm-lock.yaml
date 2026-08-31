@@ -1152,7 +1152,7 @@ importers:
         version: 1.0.27(@aws-sdk/credential-provider-node@3.972.80)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(@smithy/signature-v4@5.7.2)(cheerio@1.1.0)(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(6cc31e45a82b311205f2bf99fec67d91)
+        version: 1.1.27(2af036a866615d639e1d6409476fa500)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -5559,6 +5559,79 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
+  packages/frontend/@n8n/frontend-test-utils:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../design-system
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@pinia/testing':
+        specifier: ^0.1.6
+        version: 0.1.6(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+    devDependencies:
+      '@iconify/json':
+        specifier: 'catalog:'
+        version: 2.2.488
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/frontend-vite-config':
+        specifier: workspace:*
+        version: link:../frontend-vite-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.6.3
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-svg-loader:
+        specifier: catalog:frontend
+        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+
   packages/frontend/@n8n/frontend-utils:
     dependencies:
       vue:
@@ -6266,6 +6339,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/frontend-test-utils':
+        specifier: workspace:*
+        version: link:../@n8n/frontend-test-utils
       '@n8n/frontend-vite-config':
         specifier: workspace:*
         version: link:../@n8n/frontend-vite-config
@@ -6526,6 +6602,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
+      '@n8n/frontend-test-utils':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-test-utils
       '@n8n/frontend-vite-config':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-vite-config
@@ -7176,6 +7255,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 0.91.1
         version: 0.91.1(zod@3.25.76)
+      '@axe-core/playwright':
+        specifier: ^4.13.0
+        version: 4.13.0(playwright-core@1.62.1)
       '@currents/playwright':
         specifier: catalog:e2e
         version: 2.0.0(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
@@ -7233,6 +7315,12 @@ importers:
       autocannon:
         specifier: ^8.0.0
         version: 8.0.0
+      axe-core:
+        specifier: ^4.13.0
+        version: 4.13.0
+      axe-html-reporter:
+        specifier: ^2.2.11
+        version: 2.2.11(axe-core@4.13.0)
       eslint-plugin-playwright:
         specifier: catalog:e2e
         version: 2.2.2(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -8126,6 +8214,11 @@ packages:
   '@aws/lambda-invoke-store@0.3.0':
     resolution: {integrity: sha512-sl4Bm6yiMNYrZKkqqDFWN0UfnWhlS8ivKxrYl+6t0gCLrqr8y3B2IqZZbFRkfaVVp7C/baApyh71P+LeE1A2sQ==}
     engines: {node: '>=18.0.0'}
+
+  '@axe-core/playwright@4.13.0':
+    resolution: {integrity: sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@azure/abort-controller@1.1.0':
     resolution: {integrity: sha512-TrRLIoSQVzfAJX9H1JeFjzAoDGcoK1IYX1UImfceTZpsyYfWr09Ss1aHW1y5TrrR3iq6RZLBwJ3E24uwPhwahw==}
@@ -15168,9 +15261,19 @@ packages:
   aws4fetch@1.0.20:
     resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
+    engines: {node: '>=4'}
+
   axe-core@4.7.2:
     resolution: {integrity: sha512-zIURGIS1E1Q4pcrMjp+nnEh+16G56eG/MUllJH8yEvw7asDo7Ac9uhC9KIH5jzpITueEZolfYglnCGIuSBz39g==}
     engines: {node: '>=4'}
+
+  axe-html-reporter@2.2.11:
+    resolution: {integrity: sha512-WlF+xlNVgNVWiM6IdVrsh+N0Cw7qupe5HT9N6Uyi+aN7f6SSi92RDomiP1noW8OWIV85V6x404m5oKMeqRV3tQ==}
+    engines: {node: '>=8.9.0'}
+    peerDependencies:
+      axe-core: '>=3'
 
   axios-retry@4.5.0:
     resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
@@ -25802,6 +25905,11 @@ snapshots:
   '@aws/lambda-invoke-store@0.3.0':
     optional: true
 
+  '@axe-core/playwright@4.13.0(playwright-core@1.62.1)':
+    dependencies:
+      axe-core: 4.13.0
+      playwright-core: 1.62.1
+
   '@azure/abort-controller@1.1.0':
     dependencies:
       tslib: 2.8.1
@@ -28929,7 +29037,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.27(6cc31e45a82b311205f2bf99fec67d91)':
+  '@langchain/community@1.1.27(2af036a866615d639e1d6409476fa500)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -34758,7 +34866,14 @@ snapshots:
 
   aws4fetch@1.0.20: {}
 
+  axe-core@4.13.0: {}
+
   axe-core@4.7.2: {}
+
+  axe-html-reporter@2.2.11(axe-core@4.13.0):
+    dependencies:
+      axe-core: 4.13.0
+      mustache: 4.2.0
 
   axios-retry@4.5.0(axios@1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)):
     dependencies:

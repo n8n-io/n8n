@@ -368,12 +368,16 @@ decision after testing.
      only for what a template cannot express: basic auth's base64-encoded
      pair, digest's challenge-response, OAuth flows — or when the user
      explicitly asks for a specific plain type.
-- `credentials(action="list", type=...)` may include a synthetic n8n credits
-  entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
-  when the type is covered by n8n credits (see n8n credits Preference). It is
-  not a stored credential: never pass it to `newCredential(...)` and never
-  emit `id: null` or the `__aiGatewayManaged` marker in SDK output. Setup
-  applies it automatically when the user has no stored credential of that type.
+- `credentials(action="list", type=...)` may include an n8n credits entry
+  `{ id: "__AI_GATEWAY_MANAGED__", name: "n8n credits", type, __aiGatewayManaged: true }`
+  when the type is covered by n8n credits (see n8n credits Preference). Treat its
+  `id` like any credential id: to use n8n credits, write
+  `newCredential('n8n credits', '__AI_GATEWAY_MANAGED__')` on the node — exactly as
+  you copy a stored credential's id. The build keeps it and attaches n8n credits,
+  even when the user already has their own credential of that type. Write it
+  whenever the user asks for n8n credits; otherwise the normal reuse/own-credential
+  rules apply. (When the user has no stored credential of a covered type, the build
+  still auto-attaches n8n credits even if you didn't write the entry.)
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.

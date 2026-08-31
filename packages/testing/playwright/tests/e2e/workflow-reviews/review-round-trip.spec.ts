@@ -113,7 +113,7 @@ test.describe(
 			await reviewerN8n.workflowReviews.approve('Looks good now');
 			await expect(reviewerN8n.workflowReviews.getSelectedRequestStatus()).toHaveAttribute(
 				'aria-label',
-				'Closed • Approved',
+				'Closed | Approved',
 			);
 			// Deciding refetches the review, so this summary has to appear on its own
 			await expect(reviewerN8n.workflowReviews.getClosedCallout()).toBeVisible();
