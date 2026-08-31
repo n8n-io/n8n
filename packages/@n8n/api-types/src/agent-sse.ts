@@ -83,7 +83,14 @@ export type AgentSseEvent =
 	| { type: 'reasoning-end'; id: string }
 	| { type: 'tool-input-start'; toolCallId: string; toolName: string }
 	| { type: 'tool-input-delta'; toolCallId: string; delta: string }
-	| { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+	| {
+			type: 'tool-call';
+			toolCallId: string;
+			toolName: string;
+			input: unknown;
+			/** Set when this node tool call was served from stored mock items instead of executing. Never set on published runs. */
+			mocked?: boolean;
+	  }
 	| {
 			/**
 			 * Mid-flight indicator: the LLM has finished emitting the tool call and

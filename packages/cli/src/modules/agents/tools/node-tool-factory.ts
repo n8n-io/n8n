@@ -7,13 +7,14 @@ import type { JSONSchema7 } from 'json-schema';
 import type {
 	IDataObject,
 	INodeCredentialsDetails,
+	INodeExecutionData,
 	INodeParameters,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { isToolType, nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { EphemeralNodeExecutor, NodeExecutionResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
@@ -25,6 +26,14 @@ export interface NodeToolFactoryContext {
 	projectId: string;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
+	/**
+	 * Whether this runtime honors per-tool mocks. `true` only for draft/test
+	 * runtimes (`agent-runtime-cache.service.ts` builds with execution context
+	 * `'test'`) — published runtimes always pass `false`/omit it so a mock
+	 * payload can never execute in production, even as defense-in-depth on top
+	 * of the mock key being stripped at publish time.
+	 */
+	honorToolMocks?: boolean;
 }
 
 /**
@@ -93,6 +102,7 @@ function createNativeStringToolInputSchema(description: string): z.ZodType {
 async function resolveInputSchema(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,
+	isMocked: boolean,
 ): Promise<NodeToolInputSchema> {
 	const collectedArguments = extractFromAIParameters(
 		(toolSchema.node.nodeParameters ?? {}) as INodeParameters,
@@ -116,13 +126,20 @@ async function resolveInputSchema(
 	}
 
 	if (typeof nodeType.supplyData === 'function') {
-		const introspected = await ctx.executor.introspectSupplyDataToolSchema({
+		const introspectionArgs = {
 			projectId: ctx.projectId,
 			nodeType: nodeTypeName,
 			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 			credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
-		});
+		};
+		// Mocked tools may have no credentials configured — introspection can
+		// throw for them in ways the real path never hits. Fall back to the
+		// string schema instead of failing the whole runtime build; real tools
+		// keep failing loudly so schema-quality regressions surface.
+		const introspected = isMocked
+			? await ctx.executor.introspectSupplyDataToolSchema(introspectionArgs).catch(() => null)
+			: await ctx.executor.introspectSupplyDataToolSchema(introspectionArgs);
 
 		if (introspected) return introspected as NodeToolInputSchema;
 
@@ -150,6 +167,9 @@ export async function resolveNodeTool(
 	// uses (see `create-node-as-tool.ts:101`).
 	const sanitizedName = nodeNameToToolName(toolSchema.name);
 	const nodeType = resolveToolNodeType(toolSchema.node.nodeType, toolSchema.node.nodeTypeVersion);
+	const mockConfig =
+		ctx.honorToolMocks === true && toolSchema.mock?.enabled ? toolSchema.mock : undefined;
+	const isMocked = mockConfig !== undefined;
 
 	// When instrumented (eval runs), the ephemeral node is named after the tool
 	// so hint lookup and request attribution key on the same identifier the
@@ -165,8 +185,21 @@ export async function resolveNodeTool(
 
 	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
-		.input(await resolveInputSchema(toolSchema, ctx))
+		.input(await resolveInputSchema(toolSchema, ctx, isMocked))
 		.handler(async (input: Record<string, unknown>) => {
+			if (mockConfig) {
+				// Pin-data semantics: return the stored items verbatim, matching
+				// the exact `NodeExecutionResult` success shape `executeInline`
+				// returns, so the tool result renders identically in the model's
+				// view and the session timeline — never touch the executor or
+				// its credentials for a mocked tool.
+				const mockResult: NodeExecutionResult = {
+					status: 'success',
+					data: mockConfig.items.map((json): INodeExecutionData => ({ json })),
+				};
+				return mockResult;
+			}
+
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
@@ -193,6 +226,7 @@ export async function resolveNodeTool(
 			kind: 'node',
 			nodeType: toolSchema.node.nodeType,
 			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
+			...(isMocked ? { mocked: true } : {}),
 			displayName: toolSchema.name,
 			// Preserve the configured node parameters (channel, operation,
 			// `$fromAI(...)` templates, etc.) so the session-detail timeline

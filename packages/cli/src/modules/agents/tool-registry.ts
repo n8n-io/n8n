@@ -15,6 +15,8 @@ export interface ToolRegistryEntry {
 	 * templates, etc. — instead of an empty parameters block.
 	 */
 	nodeParameters?: Record<string, unknown>;
+	/** Set when this node tool ran mocked (`resolveNodeTool`'s `metadata.mocked`) — never true for published runs. */
+	mocked?: boolean;
 }
 
 export type ToolRegistry = Map<string, ToolRegistryEntry>;
@@ -52,6 +54,7 @@ export function buildToolRegistry(tools: BuiltTool[]): ToolRegistry {
 			if (m.nodeParameters && typeof m.nodeParameters === 'object') {
 				entry.nodeParameters = m.nodeParameters as Record<string, unknown>;
 			}
+			if (m.mocked === true) entry.mocked = true;
 			registry.set(tool.name, entry);
 		} else {
 			registry.set(tool.name, { kind: 'tool' });

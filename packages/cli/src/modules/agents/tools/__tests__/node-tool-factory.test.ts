@@ -296,3 +296,134 @@ describe('resolveNodeTool → eval instrumentation', () => {
 		expect(request.configureAdditionalData).toBeUndefined();
 	});
 });
+
+describe('resolveNodeTool → mocked tools', () => {
+	const mockItems = [{ id: '1', name: 'Sample file' }];
+
+	it('returns the stored mock items verbatim and never calls the executor', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+
+		const tool = await resolveNodeTool(
+			{ ...baseToolSchema, mock: { enabled: true, items: mockItems } },
+			{
+				executor: { executeInline } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+				honorToolMocks: true,
+			},
+		);
+
+		const result = await tool.handler!({ some: 'llm-arg' }, {} as never);
+
+		expect(result).toEqual({ status: 'success', data: [{ json: mockItems[0] }] });
+		expect(executeInline).not.toHaveBeenCalled();
+	});
+
+	it('sets metadata.mocked: true on a mocked tool', async () => {
+		const tool = await resolveNodeTool(
+			{ ...baseToolSchema, mock: { enabled: true, items: mockItems } },
+			{ executor: {} as unknown as EphemeralNodeExecutor, projectId: 'p1', honorToolMocks: true },
+		);
+
+		expect(tool.metadata?.mocked).toBe(true);
+	});
+
+	it('does not set metadata.mocked on a real tool', async () => {
+		const tool = await resolveNodeTool(baseToolSchema, mockCtx);
+
+		expect(tool.metadata?.mocked).toBeUndefined();
+	});
+
+	it('ignores an enabled mock when the runtime does not honor mocks (honorToolMocks: false)', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+
+		const tool = await resolveNodeTool(
+			{ ...baseToolSchema, mock: { enabled: true, items: mockItems } },
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		await tool.handler!({}, {} as never);
+
+		expect(executeInline).toHaveBeenCalledTimes(1);
+		expect(tool.metadata?.mocked).toBeUndefined();
+	});
+
+	it('ignores a disabled mock even when the runtime honors mocks', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+
+		const tool = await resolveNodeTool(
+			{ ...baseToolSchema, mock: { enabled: false, items: mockItems } },
+			{
+				executor: { executeInline } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+				honorToolMocks: true,
+			},
+		);
+
+		await tool.handler!({}, {} as never);
+
+		expect(executeInline).toHaveBeenCalledTimes(1);
+	});
+
+	it('falls back to a string-compatible schema when introspection throws for a mocked supplyData tool', async () => {
+		const introspectSupplyDataToolSchema = vi.fn().mockRejectedValue(new Error('No credentials'));
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Send a message' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: {
+					nodeType: '@n8n/n8n-nodes-langchain.toolSlack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+				mock: { enabled: true, items: mockItems },
+			},
+			{
+				executor: { introspectSupplyDataToolSchema } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+				honorToolMocks: true,
+			},
+		);
+
+		expect(introspectSupplyDataToolSchema).toHaveBeenCalled();
+		const schema = tool.inputSchema as z.ZodType;
+		expect(schema.safeParse('hello').success).toBe(true);
+
+		// The tool still returns the mock, not a schema-introspection failure.
+		const result = await tool.handler!({ input: 'hello' }, {} as never);
+		expect(result).toEqual({ status: 'success', data: [{ json: mockItems[0] }] });
+	});
+
+	it('regression: a real (non-mocked) tool still fails loudly when introspection throws', async () => {
+		const introspectSupplyDataToolSchema = vi.fn().mockRejectedValue(new Error('No credentials'));
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Send a message' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+
+		await expect(
+			resolveNodeTool(
+				{
+					...baseToolSchema,
+					node: {
+						nodeType: '@n8n/n8n-nodes-langchain.toolSlack',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+					},
+				},
+				{
+					executor: { introspectSupplyDataToolSchema } as unknown as EphemeralNodeExecutor,
+					projectId: 'p1',
+					honorToolMocks: true,
+				},
+			),
+		).rejects.toThrow('No credentials');
+	});
+});

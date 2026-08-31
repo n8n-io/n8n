@@ -1,9 +1,10 @@
-import type { StreamChunk } from '@n8n/agents';
+import type { BuiltTool, StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
 import { initSseStream, pumpChunks, type FlushableResponse } from '../agent-sse-stream';
+import { buildToolRegistry } from '../tool-registry';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -437,6 +438,58 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 				output: '{\n  "message": "Request failed",\n  "detail": "[REDACTED]"\n}',
 				isError: true,
 			},
+		]);
+	});
+});
+
+describe('agent-sse-stream — tool-call mocked flag', () => {
+	it('carries mocked: true when the tool registry marks the tool mocked', async () => {
+		const registry = buildToolRegistry([
+			{
+				name: 'gmail',
+				metadata: { kind: 'node', nodeType: 'n8n-nodes-base.gmailTool', mocked: true },
+			} as unknown as BuiltTool,
+		]);
+		const events: AgentSseEvent[] = [];
+
+		await pumpChunks(
+			toAsyncIterable([{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'gmail', input: {} }]),
+			(event) => events.push(event),
+			() => registry,
+		);
+
+		expect(events).toEqual([
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'gmail', input: {}, mocked: true },
+		]);
+	});
+
+	it('omits mocked for a real tool', async () => {
+		const registry = buildToolRegistry([
+			{
+				name: 'gmail',
+				metadata: { kind: 'node', nodeType: 'n8n-nodes-base.gmailTool' },
+			} as unknown as BuiltTool,
+		]);
+		const events: AgentSseEvent[] = [];
+
+		await pumpChunks(
+			toAsyncIterable([{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'gmail', input: {} }]),
+			(event) => events.push(event),
+			() => registry,
+		);
+
+		expect(events).toEqual([
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'gmail', input: {} },
+		]);
+	});
+
+	it('omits mocked when no tool registry getter is provided', async () => {
+		const events = await collectEvents([
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'gmail', input: {} },
+		]);
+
+		expect(events).toEqual([
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'gmail', input: {} },
 		]);
 	});
 });

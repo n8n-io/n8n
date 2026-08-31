@@ -292,6 +292,8 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
+			/** Set when this call was served from stored mock items instead of executing the node. */
+			mocked?: boolean;
 	  }
 	| {
 			type: 'suspension';
@@ -619,6 +621,7 @@ export class ExecutionRecorder {
 			nodeTypeVersion: entry?.nodeTypeVersion,
 			nodeDisplayName: entry?.nodeDisplayName,
 			nodeParameters: resolvedNodeParameters,
+			mocked: entry?.mocked,
 		});
 	}
 
@@ -738,6 +741,7 @@ export class ExecutionRecorder {
 				entry?.nodeParameters !== undefined
 					? sanitizeExecutionLogRecord(entry.nodeParameters)
 					: undefined,
+			mocked: entry?.mocked,
 		};
 		if (synthesized.kind === 'workflow' && isRecord(recordedOutput)) {
 			const execId = recordedOutput.executionId;

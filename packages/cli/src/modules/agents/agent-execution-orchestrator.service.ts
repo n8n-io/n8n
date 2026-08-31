@@ -65,6 +65,12 @@ export interface ExecuteForChatConfig {
 	source?: string;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
+	/**
+	 * Fired once the runtime's tool registry is available (before any chunk is
+	 * yielded) so callers can look up a tool's `mocked` flag while pumping the
+	 * stream to SSE — see `agent-sse-stream.ts`'s `pumpChunks`.
+	 */
+	onToolRegistry?: (toolRegistry: ToolRegistry) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -112,6 +118,12 @@ export interface ResumeForChatConfig {
 	integrationType?: string;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
+	/**
+	 * Fired once the runtime's tool registry is available (before any chunk is
+	 * yielded) so callers can look up a tool's `mocked` flag while pumping the
+	 * stream to SSE — see `agent-sse-stream.ts`'s `pumpChunks`.
+	 */
+	onToolRegistry?: (toolRegistry: ToolRegistry) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -163,6 +175,8 @@ export interface StreamChatResponseConfig {
 	};
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
+	/** See {@link ExecuteForChatConfig.onToolRegistry}. */
+	onToolRegistry?: (toolRegistry: ToolRegistry) => void;
 	abortSignal?: AbortSignal;
 	/** Add full sanitized tool configuration to approval cards in preview chat. */
 	includeHitlToolDetails?: boolean;
@@ -348,6 +362,7 @@ export class AgentExecutionOrchestratorService {
 			user,
 			usePublishedVersion = true,
 			onExecutionRecorded,
+			onToolRegistry,
 			abortSignal,
 		} = config;
 
@@ -409,6 +424,7 @@ export class AgentExecutionOrchestratorService {
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
+		onToolRegistry?.(toolRegistry);
 		let executionId: string | undefined;
 		let recorder: ExecutionRecorder;
 		let startedAt: Date;
@@ -533,6 +549,7 @@ export class AgentExecutionOrchestratorService {
 			attachments,
 			source,
 			onExecutionRecorded,
+			onToolRegistry,
 			abortSignal,
 		} = config;
 
@@ -574,6 +591,7 @@ export class AgentExecutionOrchestratorService {
 					configuration: runtime.telemetryConfiguration,
 				},
 				onExecutionRecorded,
+				onToolRegistry,
 				abortSignal,
 				includeHitlToolDetails: true,
 				sandboxPrincipalHash,
@@ -736,11 +754,14 @@ export class AgentExecutionOrchestratorService {
 			taskVersionId,
 			telemetry,
 			onExecutionRecorded,
+			onToolRegistry,
 			abortSignal,
 			includeHitlToolDetails,
 			sandboxPrincipalHash,
 		} = config;
 		const { threadId, resourceId } = memory;
+
+		onToolRegistry?.(toolRegistry);
 
 		let executionId: string | undefined;
 		const recorder = this.createRecorder(toolRegistry, () => executionId, {

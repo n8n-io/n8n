@@ -668,6 +668,50 @@ describe('ExecutionRecorder — workflow-tool timeline tags', () => {
 	});
 });
 
+describe('ExecutionRecorder — mocked node tools', () => {
+	function mockedNodeTool(name: string, nodeType: string): BuiltTool {
+		return { name, metadata: { kind: 'node', nodeType, mocked: true } } as unknown as BuiltTool;
+	}
+
+	it('tags a tool-call entry as mocked when the registry marks the tool mocked', () => {
+		const registry = buildToolRegistry([mockedNodeTool('gmail', 'n8n-nodes-base.gmailTool')]);
+		const rec = new ExecutionRecorder(registry);
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'gmail', input: {} } as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'gmail',
+			output: { status: 'success', data: [{ json: { id: '1' } }] },
+			isError: false,
+		} as never);
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.mocked).toBe(true);
+	});
+
+	it('leaves mocked undefined for a real node tool', () => {
+		const registry = buildToolRegistry([nodeTool('http', 'n8n-nodes-base.httpRequestTool', {})]);
+		const rec = new ExecutionRecorder(registry);
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'http', input: {} } as never);
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.mocked).toBeUndefined();
+	});
+
+	it('carries the mocked flag on a synthesized entry (tool-result without a preceding tool-call)', () => {
+		const registry = buildToolRegistry([mockedNodeTool('gmail', 'n8n-nodes-base.gmailTool')]);
+		const rec = new ExecutionRecorder(registry);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't-resume',
+			toolName: 'gmail',
+			output: { status: 'success', data: [] },
+			isError: false,
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call');
+		expect(tc?.mocked).toBe(true);
+	});
+});
+
 describe('ExecutionRecorder — tool-result error normalization', () => {
 	it('captures the Error message when a tool throws (instead of storing a non-serializable Error)', () => {
 		const rec = new ExecutionRecorder();

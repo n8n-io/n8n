@@ -9,12 +9,21 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
+import type { ToolRegistry } from './tool-registry';
+
 export type FlushableResponse = Response & { flush?: () => void };
 
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 
 interface ChunkHandlerCtx {
 	send: (e: AgentSseEvent) => void;
+	/**
+	 * Lazily resolves the current run's tool registry, so the `mocked` flag can
+	 * be looked up per tool-call. A getter (not a snapshot) because the registry
+	 * is only known once the runtime has been built — which happens after
+	 * `pumpChunks` is called but before its first chunk is consumed.
+	 */
+	getToolRegistry?: () => ToolRegistry | undefined;
 }
 
 /**
@@ -146,14 +155,17 @@ function emitToolChunk(
 				send({ type: 'tool-input-delta', toolCallId: chunk.toolCallId, delta: chunk.delta });
 			}
 			break;
-		case 'tool-call':
+		case 'tool-call': {
+			const mocked = ctx.getToolRegistry?.()?.get(chunk.toolName)?.mocked === true;
 			send({
 				type: 'tool-call',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 				input: chunk.input,
+				...(mocked && { mocked: true }),
 			});
 			break;
+		}
 		case 'tool-execution-start':
 			send({
 				type: 'tool-execution-start',
@@ -312,8 +324,9 @@ function stringifyError(error: unknown): string {
 export async function pumpChunks(
 	chunks: AsyncIterable<StreamChunk>,
 	send: (e: AgentSseEvent) => void,
+	getToolRegistry?: () => ToolRegistry | undefined,
 ): Promise<boolean> {
-	const ctx: ChunkHandlerCtx = { send };
+	const ctx: ChunkHandlerCtx = { send, getToolRegistry };
 	let suspended = false;
 
 	for await (const chunk of chunks) {

@@ -400,6 +400,9 @@ export class AgentRuntimeReconstructionService {
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: supportsHitl ?? runtimeProfile === 'top-level',
+				// Draft/test runtimes honor per-tool mocks; published runs never do —
+				// the mock key is also stripped at publish time (defense-in-depth).
+				honorToolMocks: runType === 'test',
 			},
 			instrumentation,
 		);
@@ -558,6 +561,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType?: string;
 			userId?: string;
 			supportsHitl: boolean;
+			honorToolMocks: boolean;
 		},
 		instrumentation?: AgentRuntimeInstrumentation,
 	): ToolResolver {
@@ -569,6 +573,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			userId,
 			supportsHitl,
+			honorToolMocks,
 		} = runIdentity;
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
@@ -596,6 +601,7 @@ export class AgentRuntimeReconstructionService {
 					executor: this.ephemeralNodeExecutor,
 					projectId,
 					instrumentToolAdditionalData,
+					honorToolMocks,
 				});
 			}
 

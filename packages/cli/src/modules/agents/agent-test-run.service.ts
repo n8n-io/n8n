@@ -22,6 +22,7 @@ import { AgentExecutionOrchestratorService } from './agent-execution-orchestrato
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import type { ToolRegistry } from './tool-registry';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 
 interface PrepareDraftRunInput {
@@ -45,6 +46,8 @@ interface StreamDraftRunInput {
 	attachments?: StoredAttachmentRef[];
 	source?: string;
 	onExecutionRecorded?: (executionId: string) => void;
+	/** See `ExecuteForChatConfig.onToolRegistry`. */
+	onToolRegistry?: (toolRegistry: ToolRegistry) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -190,6 +193,7 @@ export class AgentTestRunService {
 		attachments,
 		source,
 		onExecutionRecorded,
+		onToolRegistry,
 		abortSignal,
 	}: StreamDraftRunInput): AsyncGenerator<StreamChunk> {
 		return this.agentExecutionOrchestratorService.executeForChat({
@@ -204,6 +208,7 @@ export class AgentTestRunService {
 			attachments,
 			source,
 			onExecutionRecorded,
+			onToolRegistry,
 			abortSignal,
 		});
 	}

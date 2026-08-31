@@ -31,6 +31,7 @@ import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
+import type { ToolRegistry } from './tool-registry';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
@@ -152,6 +153,7 @@ export class AgentChatController {
 				resourceId: draftChatMemoryResourceId(req.user.id),
 			});
 
+			let toolRegistry: ToolRegistry | undefined;
 			const suspended = await pumpChunks(
 				this.agentTestRunService.streamDraftRun({
 					agentId,
@@ -163,9 +165,13 @@ export class AgentChatController {
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},
+					onToolRegistry: (registry) => {
+						toolRegistry = registry;
+					},
 					abortSignal: abortController.signal,
 				}),
 				send,
+				() => toolRegistry,
 			);
 			if (!suspended) {
 				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
@@ -206,6 +212,7 @@ export class AgentChatController {
 		res.once('close', abortOnClose);
 		try {
 			let executionId: string | undefined;
+			let toolRegistry: ToolRegistry | undefined;
 			const suspended = await pumpChunks(
 				this.agentExecutionOrchestratorService.resumeForChat({
 					agentId,
@@ -219,9 +226,13 @@ export class AgentChatController {
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},
+					onToolRegistry: (registry) => {
+						toolRegistry = registry;
+					},
 					abortSignal: abortController.signal,
 				}),
 				send,
+				() => toolRegistry,
 			);
 			if (!suspended) {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });

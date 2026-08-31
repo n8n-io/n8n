@@ -68,6 +68,31 @@ describe('buildToolRegistry', () => {
 		expect(r.get('partial-node')).toEqual({ kind: 'tool' });
 	});
 
+	it('carries the mocked flag for a mocked node tool', () => {
+		const r = buildToolRegistry([
+			mkTool('gmail-tool', {
+				kind: 'node',
+				nodeType: 'n8n-nodes-base.gmailTool',
+				mocked: true,
+			}),
+		]);
+		expect(r.get('gmail-tool')).toEqual({
+			kind: 'node',
+			nodeType: 'n8n-nodes-base.gmailTool',
+			mocked: true,
+		});
+	});
+
+	it('omits the mocked flag for a real node tool', () => {
+		const r = buildToolRegistry([
+			mkTool('gmail-tool', { kind: 'node', nodeType: 'n8n-nodes-base.gmailTool' }),
+		]);
+		expect(r.get('gmail-tool')).toEqual({
+			kind: 'node',
+			nodeType: 'n8n-nodes-base.gmailTool',
+		});
+	});
+
 	it('keys the registry by tool name', () => {
 		const r = buildToolRegistry([mkTool('a'), mkTool('b')]);
 		expect(r.size).toBe(2);
