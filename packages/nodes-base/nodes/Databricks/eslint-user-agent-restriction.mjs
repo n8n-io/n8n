@@ -25,19 +25,21 @@ export const databricksUserAgentRestriction = [
 				{
 					// Siblings of httpRequestWithAuthentication are restricted too: an
 					// operation written with helpers.httpRequest would otherwise skip
-					// the User-Agent silently. Anchored to `helpers` so unrelated members
-					// like `error.request` don't trip the guard.
+					// the User-Agent silently. Anchored to `helpers` (as a member or a bare
+					// binding from `const { helpers } = this`) so unrelated members like
+					// `error.request` don't trip the guard.
 					selector:
-						'MemberExpression[object.property.name="helpers"][property.name=/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated)$/]',
+						'MemberExpression:matches([object.property.name="helpers"], [object.name="helpers"])[property.name=/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated)$/]',
 					message:
 						'Use databricksApiRequest() from actions/helpers.ts so the partner User-Agent is sent.',
 				},
 				{
 					// The same helpers reached by destructuring rather than member access.
-					// Anchored to a `*.helpers` initialiser so an unrelated `const { request }
-					// = response` doesn't trip the guard with a confusing message.
+					// Anchored to a `*.helpers` or bare `helpers` initialiser so an unrelated
+					// `const { request } = response` doesn't trip the guard with a confusing
+					// message.
 					selector:
-						'VariableDeclarator[init.property.name="helpers"] > ObjectPattern > Property[key.name=/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated)$/]',
+						'VariableDeclarator:matches([init.name="helpers"], [init.property.name="helpers"]) > ObjectPattern > Property[key.name=/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated)$/]',
 					message:
 						'Use databricksApiRequest() from actions/helpers.ts so the partner User-Agent is sent.',
 				},
