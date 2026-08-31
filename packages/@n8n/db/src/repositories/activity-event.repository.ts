@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { And, DataSource, In, LessThan, MoreThan, Repository } from '@n8n/typeorm';
+import { And, DataSource, In, LessThan, LessThanOrEqual, MoreThan, Repository } from '@n8n/typeorm';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -10,6 +10,20 @@ export const activityResourceNameMaxLength = 128;
 
 /** Serialized `data` budget. A row that needs more than this is asking to be expanded instead. */
 export const activityDataMaxLength = 512;
+
+/**
+ * Rows per retention pass. Bounded so a first sweep over a long backlog does not hold one
+ * transaction — and one set of locks — over the highest-write table in the schema.
+ */
+const retentionBatchSize = 500;
+
+/**
+ * `find` drops a falsy `take`, so `take: 0` reads the whole table rather than nothing. Every
+ * limited read goes through this first.
+ */
+function isEmptyPage(limit: number): boolean {
+	return !Number.isInteger(limit) || limit <= 0;
+}
 
 export type ActivityEventInput = Pick<ActivityEvent, 'category' | 'action'> &
 	Partial<Pick<ActivityEvent, 'userId' | 'projectId' | 'resourceType' | 'resourceId'>> & {
@@ -28,7 +42,10 @@ export type ActivityFeedQuery = {
 	userId?: string;
 	resourceId?: string;
 	category?: ActivityEvent['category'];
-	/** Exclusive lower bound — entries newer than an id a caller has already seen. */
+	/**
+	 * Exclusive lower bound — entries newer than an id a caller has already seen. Ids are not a
+	 * completeness watermark; see `ActivityEvent.id` before using this to tail the feed.
+	 */
 	afterId?: number;
 	/** Exclusive upper bound, for paging backwards through older entries. */
 	beforeId?: number;
@@ -65,6 +82,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 * the current user's own actions apart from everyone else's.
 	 */
 	async findFeed(query: ActivityFeedQuery): Promise<ActivityEvent[]> {
+		if (isEmptyPage(query.limit)) return [];
 		// An empty allowance means nothing is visible, not everything — `In([])` would match no
 		// row on Postgres but is worth being explicit about rather than relying on it.
 		if (query.projectIds.length === 0) return [];
@@ -95,6 +113,8 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		resourceId: string,
 		limit: number,
 	): Promise<ActivityEvent[]> {
+		if (isEmptyPage(limit)) return [];
+
 		return await this.find({
 			where: { resourceType, resourceId },
 			order: { id: 'DESC' },
@@ -104,8 +124,13 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */
 	async deleteOlderThan(cutoff: Date): Promise<number> {
-		const { affected } = await this.delete({ createdAt: LessThan(cutoff) });
-		return affected ?? 0;
+		return await this.deleteInBatches(
+			(upperBound) => ({
+				id: LessThanOrEqual(upperBound),
+				createdAt: LessThan(cutoff),
+			}),
+			{ createdAt: LessThan(cutoff) },
+		);
 	}
 
 	/**
@@ -125,8 +150,39 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		});
 		if (!oldestKept) return 0;
 
-		const { affected } = await this.delete({ id: LessThan(oldestKept.id) });
-		return affected ?? 0;
+		return await this.deleteInBatches((upperBound) => ({ id: LessThanOrEqual(upperBound) }), {
+			id: LessThan(oldestKept.id),
+		});
+	}
+
+	/**
+	 * Deletes everything matching `scope`, oldest first, a batch at a time.
+	 *
+	 * Each pass reads the id that ends the next batch and deletes up to it, rather than deleting
+	 * by an id list: SQLite caps a statement at 999 bound variables, so a list would put a ceiling
+	 * on the batch size, and `DELETE ... LIMIT` needs a SQLite compiled with an option we cannot
+	 * assume.
+	 */
+	private async deleteInBatches(
+		batchWhere: (upperBound: number) => FindOptionsWhere<ActivityEvent>,
+		scope: FindOptionsWhere<ActivityEvent>,
+	): Promise<number> {
+		let total = 0;
+
+		for (;;) {
+			const batch = await this.find({
+				where: scope,
+				order: { id: 'ASC' },
+				take: retentionBatchSize,
+				select: { id: true },
+			});
+			if (batch.length === 0) return total;
+
+			const { affected } = await this.delete(batchWhere(batch[batch.length - 1].id));
+			total += affected ?? 0;
+
+			if (batch.length < retentionBatchSize) return total;
+		}
 	}
 }
 

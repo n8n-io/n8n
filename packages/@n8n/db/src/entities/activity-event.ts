@@ -33,11 +33,16 @@ export type ActivityResourceType = (typeof activityResourceTypes)[number];
 @Index('IDX_activity_event_resource', ['resourceType', 'resourceId', 'id'])
 export class ActivityEvent extends WithCreatedAt {
 	/**
-	 * Autoincrement int, not the usual nanoid: the feed orders by id, pages on it as a cursor, and
-	 * records the high-water mark of what a thread was already shown. On SQLite this is a rowid
-	 * alias: pruning deletes the oldest rows and so never frees the highest id, but emptying the
-	 * table does, and ids then restart. A stored cursor is only meaningful against a feed that has
-	 * held at least one row throughout.
+	 * Autoincrement int, not the usual nanoid: the feed orders by id and pages on it.
+	 *
+	 * It is an ordering key, **not** a completeness watermark. Postgres allocates a sequence value
+	 * outside the surrounding transaction, so two concurrent writers can commit id 101 before id
+	 * 100. A reader that stores the highest id it has seen and asks for "everything above it" will
+	 * skip 100 forever. Any tailing read has to tolerate gaps — re-scan a lag window, or track
+	 * seen ids — rather than trust a single high-water mark.
+	 *
+	 * On SQLite this is a rowid alias: pruning deletes the oldest rows and so never frees the
+	 * highest id, but emptying the table does, and ids then restart.
 	 */
 	@PrimaryGeneratedColumn()
 	id: number;

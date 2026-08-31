@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { And, In, LessThan, MoreThan } from '@n8n/typeorm';
+import { And, In, LessThan, LessThanOrEqual, MoreThan } from '@n8n/typeorm';
 
 import { ActivityEvent } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -113,23 +113,70 @@ describe('ActivityEventRepository', () => {
 		});
 	});
 
+	describe('limits', () => {
+		it.each([0, -1, 1.5])(
+			'reads nothing for a limit of %s rather than the whole table',
+			async (limit) => {
+				const entries = await repository.findFeed({ projectIds: ['project1'], limit });
+
+				expect(entries).toEqual([]);
+				expect(entityManager.find).not.toHaveBeenCalled();
+			},
+		);
+
+		it('reads nothing from a resource history asked for a zero limit', async () => {
+			const entries = await repository.findByResource('workflow', 'workflow1', 0);
+
+			expect(entries).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('deleteOlderThan', () => {
-		it('deletes every entry written before the cutoff', async () => {
-			const cutoff = new Date('2026-08-01T00:00:00.000Z');
+		const cutoff = new Date('2026-08-01T00:00:00.000Z');
+
+		it('deletes up to the end of a batch, bounded by the cutoff', async () => {
+			entityManager.find.mockResolvedValueOnce([{ id: 40 } as ActivityEvent]);
 			entityManager.delete.mockResolvedValueOnce({ affected: 12, raw: [] });
 
 			const deleted = await repository.deleteOlderThan(cutoff);
 
 			expect(entityManager.delete).toHaveBeenCalledWith(ActivityEvent, {
+				id: LessThanOrEqual(40),
 				createdAt: LessThan(cutoff),
 			});
 			expect(deleted).toBe(12);
 		});
 
+		it('keeps sweeping while a batch comes back full, so a backlog drains', async () => {
+			const fullBatch = Array.from({ length: 500 }, (_, i) => ({ id: i + 1 }) as ActivityEvent);
+			entityManager.find
+				.mockResolvedValueOnce(fullBatch)
+				.mockResolvedValueOnce([{ id: 501 } as ActivityEvent]);
+			entityManager.delete
+				.mockResolvedValueOnce({ affected: 500, raw: [] })
+				.mockResolvedValueOnce({ affected: 1, raw: [] });
+
+			const deleted = await repository.deleteOlderThan(cutoff);
+
+			expect(entityManager.delete).toHaveBeenCalledTimes(2);
+			expect(deleted).toBe(501);
+		});
+
+		it('stops without deleting when nothing is old enough', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			const deleted = await repository.deleteOlderThan(cutoff);
+
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(deleted).toBe(0);
+		});
+
 		it('reports nothing deleted when the driver does not count affected rows', async () => {
+			entityManager.find.mockResolvedValueOnce([{ id: 40 } as ActivityEvent]);
 			entityManager.delete.mockResolvedValueOnce({ affected: null, raw: [] });
 
-			const deleted = await repository.deleteOlderThan(new Date());
+			const deleted = await repository.deleteOlderThan(cutoff);
 
 			expect(deleted).toBe(0);
 		});
@@ -137,18 +184,29 @@ describe('ActivityEventRepository', () => {
 
 	describe('deleteBeyondNewest', () => {
 		it('deletes below the oldest entry worth keeping', async () => {
-			entityManager.find.mockResolvedValueOnce([{ id: 120 } as ActivityEvent]);
+			entityManager.find
+				.mockResolvedValueOnce([{ id: 120 } as ActivityEvent])
+				.mockResolvedValueOnce([{ id: 113 } as ActivityEvent]);
 			entityManager.delete.mockResolvedValueOnce({ affected: 7, raw: [] });
 
 			const deleted = await repository.deleteBeyondNewest(500);
 
-			expect(entityManager.find).toHaveBeenCalledWith(ActivityEvent, {
+			expect(entityManager.find).toHaveBeenNthCalledWith(1, ActivityEvent, {
 				order: { id: 'DESC' },
 				skip: 499,
 				take: 1,
 				select: { id: true },
 			});
-			expect(entityManager.delete).toHaveBeenCalledWith(ActivityEvent, { id: LessThan(120) });
+			// Scoped to everything below the boundary, then deleted a batch at a time.
+			expect(entityManager.find).toHaveBeenNthCalledWith(2, ActivityEvent, {
+				where: { id: LessThan(120) },
+				order: { id: 'ASC' },
+				take: 500,
+				select: { id: true },
+			});
+			expect(entityManager.delete).toHaveBeenCalledWith(ActivityEvent, {
+				id: LessThanOrEqual(113),
+			});
 			expect(deleted).toBe(7);
 		});
 

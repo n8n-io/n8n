@@ -97,6 +97,24 @@ describe('ActivityEventRepository', () => {
 			expect(remaining.map((entry) => entry.id)).toEqual([newest.id]);
 		});
 
+		// The sweep deletes a bounded batch at a time, so a backlog larger than one batch only
+		// drains if the loop keeps going. A single unbounded DELETE would pass this too; a loop
+		// that stopped after one pass would not.
+		it('drains a backlog larger than one batch', async () => {
+			const entries = Array.from({ length: 601 }, (_, i) => ({
+				category: 'execution' as const,
+				action: `run-${i}`,
+				projectId: project.id,
+				typeVersion: 1,
+			}));
+			await repository.insert(entries);
+
+			const deleted = await repository.deleteOlderThan(new Date(Date.now() + 60_000));
+
+			expect(deleted).toBe(601);
+			expect(await repository.count()).toBe(0);
+		});
+
 		it('keeps only the newest entries when the count backstop trips', async () => {
 			for (const action of ['first', 'second', 'third']) {
 				await repository.record({ category: 'workflow', action, projectId: project.id });

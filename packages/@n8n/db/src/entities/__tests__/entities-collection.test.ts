@@ -42,22 +42,9 @@ describe('entities collection', () => {
 		}
 
 		// Names that legitimately differ from their filename; each is registered under another key.
-		const KNOWN_ALIASES = [
-			'annotation-tag-entity.ee.ts',
-			'annotation-tag-mapping.ee.ts',
-			'credential-dependency-entity.ts',
-			'credentials-entity.ts',
-			'execution-entity.ts',
-			'tag-entity.ts',
-			'webhook-entity.ts',
-			'workflow-dependency-entity.ts',
-			'workflow-entity.ts',
-			'ai-builder-temporary-workflow.ts',
-			'agent-eval-dataset.ee.ts',
-			'agent-eval-rating.ee.ts',
-			'agent-eval-result.ee.ts',
-			'agent-eval-run.ee.ts',
-		];
+		// Kept to exactly the files that need it: an alias for a file whose derived name IS in the
+		// collection is dead weight that only wakes up to swallow the removal this test exists to catch.
+		const KNOWN_ALIASES = ['credential-dependency-entity.ts', 'workflow-dependency-entity.ts'];
 		const unexplained = missing.filter(
 			(entry) => !KNOWN_ALIASES.some((alias) => entry.startsWith(alias)),
 		);
