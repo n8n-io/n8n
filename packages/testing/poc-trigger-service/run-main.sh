@@ -14,4 +14,7 @@ mkdir -p "$N8N_USER_FOLDER"
 
 echo "[poc] main-$N on port $N8N_PORT (user folder: $N8N_USER_FOLDER)"
 cd "$REPO_ROOT"
+# `exec` keeps this shell's PID, so the pid file survives for the chaos
+# scenarios (kill -9 / SIGSTOP by main number).
+echo $$ > "$POC_DIR/.poc-data/main-$N.pid"
 exec node packages/cli/bin/n8n start

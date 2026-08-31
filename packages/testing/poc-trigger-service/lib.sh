@@ -9,12 +9,19 @@ if [ -f "$POC_DIR/.env.local" ]; then
   # shellcheck disable=SC1091
   source "$POC_DIR/.env.local"
 fi
-if [ -z "${N8N_LICENSE_ACTIVATION_KEY:-}" ]; then
-  echo "ERROR: N8N_LICENSE_ACTIVATION_KEY not set. Copy .env.local.example to .env.local and fill it in." >&2
-  exit 1
+# Multi-main needs an enterprise license. Trigger seats do NOT need a leader,
+# so without a key we fall back to running the fleet without multi-main: every
+# main considers itself leader, which is exactly the leaderless posture the
+# seats flags expect. (Leader-gated background jobs like pruning then run on
+# every main — harmless for a demo.)
+if [ -n "${N8N_LICENSE_ACTIVATION_KEY:-}" ]; then
+  export N8N_LICENSE_ACTIVATION_KEY
+  export N8N_LICENSE_TENANT_ID="${N8N_LICENSE_TENANT_ID:-1001}"
+  export N8N_MULTI_MAIN_SETUP_ENABLED=true
+else
+  echo "[poc] no N8N_LICENSE_ACTIVATION_KEY: running WITHOUT multi-main (seats don't need it)"
+  export N8N_MULTI_MAIN_SETUP_ENABLED=false
 fi
-export N8N_LICENSE_ACTIVATION_KEY
-export N8N_LICENSE_TENANT_ID="${N8N_LICENSE_TENANT_ID:-1001}"
 
 # --- Database (compose postgres, host-exposed on 5433) ---
 export DB_TYPE=postgresdb
@@ -34,11 +41,14 @@ export OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
 # --- Identical across all instances ---
 export N8N_ENCRYPTION_KEY=poc-encryption-key
 
-# --- Multi-main + the flows under test ---
-export N8N_MULTI_MAIN_SETUP_ENABLED=true
+# --- The flows under test: publication service + trigger seats ---
 export N8N_USE_WORKFLOW_PUBLICATION_SERVICE=true
-# PoC flag consumed by the trigger-service PoC code paths (task 0.2 onward).
-export N8N_POC_TRIGGER_SERVICE=true
+export N8N_USE_TRIGGER_SEATS=true
+# Snappy demo timings: 2s reconcile ticks, 10s leases (a paused holder is
+# reclaimable ~10s after its last renewal), short teardown wait.
+export N8N_TRIGGER_SEAT_RECONCILE_INTERVAL_SECONDS=2
+export N8N_TRIGGER_SEAT_LEASE_SECONDS=10
+export N8N_TRIGGER_SEAT_TEARDOWN_WAIT_SECONDS=8
 
 # --- Misc ---
 # Task runners are irrelevant to the PoC demos and their default broker port
