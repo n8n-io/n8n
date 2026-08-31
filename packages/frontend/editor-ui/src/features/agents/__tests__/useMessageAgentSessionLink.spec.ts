@@ -105,6 +105,35 @@ describe('useMessageAgentSessionLink', () => {
 		expect(typeof value!.open).toBe('function');
 	});
 
+	it('links by the persisted threadId when present, keeping sessionId caller-facing', () => {
+		const scopedRunData = {
+			...sessionRunData,
+			data: {
+				main: [
+					[
+						{
+							json: {
+								text: 'hi',
+								session: {
+									agentId: 'agent-1',
+									projectId: 'project-1',
+									sessionId: 'thread-1',
+									threadId: 'workflow:project-project-1:thread-1',
+								},
+							},
+						},
+					],
+				],
+			},
+		} as unknown as ITaskData;
+		const logEntry = { value: makeLogEntry({ runData: scopedRunData }) };
+		const { link } = runWithRouter(logEntry, true);
+
+		expect(link()!.href).toBe(
+			'/projects/project-1/agents/agent-1/sessions/workflow:project-project-1:thread-1',
+		);
+	});
+
 	it('returns null when the node-type is not messageAnAgent', () => {
 		const logEntry = {
 			value: makeLogEntry({

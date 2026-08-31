@@ -7,18 +7,18 @@ import {
 } from 'reka-ui';
 import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch } from 'vue';
 
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
+	DropdownMenuSubMaxHeightKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuProps,
 	type DropdownMenuSlots,
 } from './DropdownMenu.types';
 import DropdownMenuItems from './DropdownMenuItems.vue';
 import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import type { IconName } from '../N8nIcon/icons';
 
 defineOptions({ inheritAttrs: false });
 
@@ -35,6 +35,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	searchPlaceholder: 'Search...',
 	searchDebounce: 0,
 	emptyText: 'No items',
+	width: '24rem',
 });
 
 const emit = defineEmits<{
@@ -51,6 +52,17 @@ const $style = useCssModule();
 provide(
 	DropdownMenuPortalTargetKey,
 	computed(() => props.portalTarget),
+);
+
+provide(
+	DropdownMenuSubMaxHeightKey,
+	computed(() =>
+		props.subMenuMaxHeight === undefined
+			? undefined
+			: typeof props.subMenuMaxHeight === 'number'
+				? `${props.subMenuMaxHeight}px`
+				: props.subMenuMaxHeight,
+	),
 );
 
 // Handle controlled/uncontrolled state
@@ -72,12 +84,17 @@ const placementParts = computed(() => {
 });
 
 const contentContainerStyle = computed(() => {
-	if (props.maxHeight) {
-		const maxHeightValue =
-			typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight;
-		return { maxHeight: maxHeightValue, overflowY: 'auto' };
-	}
-	return {};
+	const maxHeightStyle = props.maxHeight
+		? {
+				maxHeight: typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
+				overflowY: 'auto',
+			}
+		: {};
+
+	return {
+		'--n8n--dropdown-menu-width': props.width,
+		...maxHeightStyle,
+	};
 });
 
 const handleOpenChange = (open: boolean) => {
@@ -108,9 +125,22 @@ const handleSubMenuOpenChange = (index: number, open: boolean) => {
 	}
 };
 
+function findItemById(
+	list: Array<DropdownMenuItemProps<T, D>>,
+	id: T,
+): DropdownMenuItemProps<T, D> | undefined {
+	for (const item of list) {
+		if (item.id === id) return item;
+		const found = item.children && findItemById(item.children, id);
+		if (found) return found;
+	}
+	return undefined;
+}
+
 const handleItemSelect = (value: T) => {
 	emit('select', value);
-	close();
+	// Toggle-style rows (e.g. credential selection) keep the menu open.
+	if (!findItemById(props.items, value)?.keepOpen) close();
 };
 
 const handleItemSearch = (term: string, itemId: T) => {
@@ -247,8 +277,8 @@ defineExpose({ open, close });
 		>
 			<DropdownMenuContent
 				v-bind="id ? { id } : {}"
-				:data-test-id="contentTestId"
 				ref="contentRef"
+				:data-test-id="contentTestId"
 				:class="[$style.content, searchable && $style.searchable, extraPopperClass]"
 				data-menu-content
 				:side="placementParts.side"
@@ -355,6 +385,8 @@ defineExpose({ open, close });
 </template>
 
 <style module lang="scss">
+@use '../../css/common/var';
+@use '../../css/mixins/mixins' as scrollbar-mixins;
 @use '../../css/mixins/motion';
 
 .content {
@@ -364,13 +396,13 @@ defineExpose({ open, close });
 	--n8n--dropdown--offset--origin-y: center;
 	--animation--popover-in--translate-x: var(--n8n--dropdown--offset--slide-x);
 	--animation--popover-in--translate-y: var(--n8n--dropdown--offset--slide-y);
-	--n8n--dropdown-menu-width: var(--reka-dropdown-menu-trigger-width);
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
 	min-width: var(--spacing--4xl);
 	max-width: var(--n8n--dropdown-menu-width);
-	max-height: min(var(--reka-dropdown-menu-content-available-height), calc(var(--height--5xl) * 3));
+	/** This stops dropdown menus expanding beyond the viewport height **/
+	max-height: min(var(--reka-dropdown-menu-content-available-height), 75vh);
 	overflow-y: auto;
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
@@ -378,8 +410,8 @@ defineExpose({ open, close });
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
-	z-index: 9999;
-	scrollbar-width: none;
+	z-index: var.$index-popper;
+	@include scrollbar-mixins.hoverable-scroll-bar;
 
 	&.searchable {
 		overflow-y: hidden;

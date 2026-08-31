@@ -54,6 +54,32 @@ describe('useAgentIntegrationsCatalog', () => {
 		expect(second).toEqual(fakeIntegrations);
 	});
 
+	it('re-fetches and replaces a stale cached catalog', async () => {
+		const updatedIntegrations = [
+			...fakeIntegrations,
+			{
+				type: 'discord',
+				label: 'Discord',
+				icon: 'discord',
+				credentialTypes: ['discordBotApi'],
+			},
+		];
+		mockListAgentIntegrations
+			.mockResolvedValueOnce(fakeIntegrations)
+			.mockResolvedValueOnce(updatedIntegrations);
+		const { useAgentIntegrationsCatalog } = await import(
+			'../composables/useAgentIntegrationsCatalog'
+		);
+		const { catalog, ensureLoaded, reload } = useAgentIntegrationsCatalog();
+
+		await ensureLoaded(projectId);
+		const result = await reload(projectId);
+
+		expect(mockListAgentIntegrations).toHaveBeenCalledTimes(2);
+		expect(result).toEqual(updatedIntegrations);
+		expect(catalog.value).toEqual(updatedIntegrations);
+	});
+
 	it('deduplicates concurrent in-flight requests', async () => {
 		let resolve!: (v: typeof fakeIntegrations) => void;
 		const deferred = new Promise<typeof fakeIntegrations>((res) => {

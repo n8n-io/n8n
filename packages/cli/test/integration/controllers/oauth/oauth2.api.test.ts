@@ -1,4 +1,6 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { response as Response } from 'express';
@@ -485,6 +487,181 @@ describe('OAuth2 API', () => {
 			);
 			const credentials = await updatedCredential.getData();
 			expect(credentials.oauthTokenData).toBeUndefined();
+		});
+	});
+
+	describe('access token exchange network restrictions', () => {
+		let ssrfProtectionConfig: SsrfProtectionConfig;
+		let originalEnabled: boolean;
+
+		beforeAll(() => {
+			ssrfProtectionConfig = Container.get(SsrfProtectionConfig);
+			originalEnabled = ssrfProtectionConfig.enabled;
+		});
+
+		beforeEach(() => {
+			nock.cleanAll();
+			ssrfProtectionConfig.enabled = true;
+		});
+
+		afterAll(() => {
+			ssrfProtectionConfig.enabled = originalEnabled;
+		});
+
+		it('should apply the same network access restrictions as other outbound OAuth requests', async () => {
+			const restrictedAccessTokenUrl = 'http://169.254.169.254/latest/meta-data/token';
+			const restrictedCredential = await saveCredential(
+				{
+					name: 'Restricted target',
+					type: 'testOAuth2Api',
+					data: { ...credentialData, accessTokenUrl: restrictedAccessTokenUrl },
+				},
+				{ user: owner, role: 'credential:owner' },
+			);
+
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await ownerAgent
+				.get('/oauth2-credential/auth')
+				.query({ id: restrictedCredential.id })
+				.expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			const validateUrlSpy = vi.spyOn(Container.get(SsrfProtectionService), 'validateUrl');
+
+			const tokenScope = nock('http://169.254.169.254')
+				.post('/latest/meta-data/token')
+				.reply(400, { error: 'invalid_client', error_description: 'internal-response-marker' });
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(validateUrlSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ href: restrictedAccessTokenUrl }),
+			);
+			expect(tokenScope.isDone()).toBe(false);
+			expect(renderSpy).not.toHaveBeenCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({
+						reason: expect.stringContaining('internal-response-marker'),
+					}),
+				}),
+			);
+		});
+
+		it('should complete the exchange against any reachable endpoint when restrictions are off', async () => {
+			// An instance that leaves the guard off must keep working against endpoints the
+			// enabled configuration would reject, e.g. a self-hosted OAuth server on the LAN.
+			ssrfProtectionConfig.enabled = false;
+
+			const localAccessTokenUrl = 'http://10.20.30.40/oauth2/token';
+			const localCredential = await saveCredential(
+				{
+					name: 'Self-hosted target',
+					type: 'testOAuth2Api',
+					data: { ...credentialData, accessTokenUrl: localAccessTokenUrl },
+				},
+				{ user: owner, role: 'credential:owner' },
+			);
+
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await ownerAgent.get('/oauth2-credential/auth').query({ id: localCredential.id }).expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			const validateUrlSpy = vi.spyOn(Container.get(SsrfProtectionService), 'validateUrl');
+
+			const tokenScope = nock('http://10.20.30.40')
+				.post('/oauth2/token')
+				.reply(200, { access_token: 'self_hosted_token' });
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(tokenScope.isDone()).toBe(true);
+			expect(validateUrlSpy).not.toHaveBeenCalled();
+			expect(renderSpy).toHaveBeenCalledWith('oauth-callback');
+
+			const stored = await getCredentialById(localCredential.id);
+			const decrypted = (await decryptCredentialData(stored!)) as Record<string, unknown>;
+			expect(decrypted.oauthTokenData).toEqual(
+				expect.objectContaining({ access_token: 'self_hosted_token' }),
+			);
+		});
+	});
+
+	describe('callback error detail', () => {
+		// Earlier tests leave unconsumed token-endpoint interceptors behind, which would
+		// otherwise answer these requests with a success response.
+		beforeEach(() => {
+			nock.cleanAll();
+		});
+
+		const startFlowAndSpyOnRender = async () => {
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			return { renderSpy, state };
+		};
+
+		it('should render the OAuth2 error code without the accompanying description', async () => {
+			const { renderSpy, state } = await startFlowAndSpyOnRender();
+
+			nock('https://test.domain')
+				.post('/oauth2/token')
+				.reply(400, { error: 'invalid_client', error_description: 'upstream-response-marker' });
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ reason: 'invalid_client' }),
+				}),
+			);
+			expect(JSON.stringify(renderSpy.mock.calls)).not.toContain('upstream-response-marker');
+		});
+
+		it('should not render the token endpoint response body when it is not an OAuth2 error', async () => {
+			const { renderSpy, state } = await startFlowAndSpyOnRender();
+
+			nock('https://test.domain')
+				.post('/oauth2/token')
+				.reply(400, { internalField: 'upstream-response-marker' });
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+				error: { message: 'HTTP status 400', reason: undefined },
+			});
 		});
 	});
 });

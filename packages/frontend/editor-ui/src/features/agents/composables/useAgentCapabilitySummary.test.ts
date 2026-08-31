@@ -28,6 +28,7 @@ function makeSummary(overrides: Partial<AgentCapabilitySummary> = {}): AgentCapa
 		model: { provider: 'anthropic', model: 'claude-opus-4-8' },
 		channels: [],
 		tools: [],
+		mcpServers: [],
 		skills: [],
 		tasks: [],
 		...overrides,

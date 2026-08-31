@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { DynamicStructuredTool, StructuredTool, Tool } from '@langchain/core/tools';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	AINodeConnectionType,
 	ChatNodeMessageWithButtons,
@@ -28,7 +29,6 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	UserError,
-	sleepWithAbort,
 	isHitlToolType,
 } from 'n8n-workflow';
 import z, { ZodType } from 'zod';
@@ -46,6 +46,19 @@ import { isEngineRequest } from '../../requests-response';
 function ensureArray<T>(value: T | T[] | undefined): T[] {
 	if (value === undefined) return [];
 	return Array.isArray(value) ? value : [value];
+}
+
+// Tools are matched structurally, not by class identity
+function isTool(value: unknown): value is StructuredTool | Tool {
+	if (value instanceof StructuredTool || value instanceof Tool) return true;
+	if (value instanceof StructuredToolkit) return false;
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as { name?: unknown }).name === 'string' &&
+		typeof (value as { description?: unknown }).description === 'string' &&
+		typeof (value as { invoke?: unknown }).invoke === 'function'
+	);
 }
 
 export function createHitlToolkit(
@@ -262,7 +275,7 @@ export function makeHandleToolInvocation(
 				lastError = undefined;
 				if (waitBetweenTries !== 0) {
 					try {
-						await sleepWithAbort(waitBetweenTries, abortSignal);
+						await sleep(waitBetweenTries, abortSignal);
 					} catch (abortError) {
 						return 'Error during node execution: Execution was cancelled';
 					}
@@ -364,7 +377,7 @@ function validateInputConfiguration(
 // Extends metadata for tools and toolkits to include the source node name that is used for HITL routing
 export function extendResponseMetadata(response: unknown, connectedNode: INode) {
 	// Ensure sourceNodeName is set for proper routing
-	if (response instanceof StructuredTool || response instanceof Tool) {
+	if (isTool(response)) {
 		response.metadata ??= {};
 		response.metadata.sourceNodeName = connectedNode.name;
 	}
@@ -527,12 +540,18 @@ export async function getInputConnectionData(
 					currentNodeRunIndex = runExecutionData.resultData.runData[parentNode.name].length;
 				}
 
+				// The `subRun` entry is merged onto `runData[<name>][currentNodeRunIndex]` at the
+				// end of the execution, so it has to name a node that gets a record there. A
+				// top-level parent gets one appended right after this failure; a sub-node parent
+				// never does.
+				const subRunTarget = this instanceof SupplyDataContext ? undefined : parentNode.name;
+
 				// Display the error on the node which is causing it
 				await context.addExecutionDataFunctions(
 					'input',
 					error,
 					connectionType,
-					parentNode.name,
+					subRunTarget,
 					currentNodeRunIndex,
 				);
 
@@ -540,7 +559,7 @@ export async function getInputConnectionData(
 					'output',
 					error,
 					connectionType,
-					parentNode.name,
+					subRunTarget,
 					currentNodeRunIndex,
 				);
 

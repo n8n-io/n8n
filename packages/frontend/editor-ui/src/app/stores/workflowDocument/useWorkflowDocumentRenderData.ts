@@ -19,6 +19,11 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
+import {
+	inlineAgentToCapabilitySummary,
+	readAgentSource,
+	readInlineAgentParameter,
+} from '@/features/agents/utils/inlineAgent';
 import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	BoundingBox,
@@ -228,7 +233,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		if (validationErrors.length > 0) return true;
 
 		const executionIssues =
-			executionStateStore.activeExecutionIssuesByNodeName.get(node.name)?.value ?? [];
+			executionStateStore.activeExecutionIssuesByNodeId.get(nodeId)?.value ?? [];
 		if (executionIssues.length > 0) return true;
 
 		const tasks = executionStateStore.activeExecutionRunDataByNodeId.get(nodeId)?.value ?? null;
@@ -237,10 +242,14 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 
 	function getVisiblePinData(nodeId: string) {
 		const node = getNode(nodeId);
-		if (!node) return undefined;
-		if (executionStateStore.isExecutionDataDisplayed) {
-			return executionStateStore.activeExecutionPinDataByNodeName[node.name];
+		if (!node) {
+			return undefined;
 		}
+
+		if (executionStateStore.isExecutionDataDisplayed) {
+			return executionStateStore.activeExecutionPinDataByNodeId.get(nodeId)?.value;
+		}
+
 		return workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
 	}
 
@@ -260,10 +269,17 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	}
 
 	function createAgentRenderType(node: INodeUi): CanvasNodeAgentRender {
+		const agentSource = readAgentSource(node);
+		const inlineAgent = agentSource === 'inline' ? readInlineAgentParameter(node) : null;
+
 		return {
 			type: CanvasNodeRenderType.Agent,
 			options: {
+				agentSource,
 				agentId: node.parameters.agentId as INodeParameterResourceLocator | undefined,
+				inlineSummary: inlineAgent
+					? inlineAgentToCapabilitySummary(node.id, inlineAgent)
+					: undefined,
 			},
 		};
 	}
@@ -541,6 +557,12 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		},
 		get executionPinDataByNodeName() {
 			return executionStateStore.activeExecutionPinDataByNodeName;
+		},
+		get executionIssuesByNodeId() {
+			return executionStateStore.activeExecutionIssuesByNodeId;
+		},
+		get executionPinDataByNodeId() {
+			return executionStateStore.activeExecutionPinDataByNodeId;
 		},
 		get isExecutionDataDisplayed() {
 			return executionStateStore.isExecutionDataDisplayed;

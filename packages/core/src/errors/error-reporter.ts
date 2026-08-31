@@ -83,6 +83,15 @@ const SENTRY_MAX_VALUE_LENGTH = 500;
 const PNPM_NESTED_FRAME_RE = /.*\/node_modules\/\.pnpm\/[^/]+\/node_modules\//;
 const N8N_CLI_INSTALL_PREFIX = '/usr/local/lib/node_modules/n8n/';
 
+type ErrorReportingOptions = ReportingOptions & {
+	/**
+	 * Capture in a forked Sentry isolation scope, dropping any ambient HTTP
+	 * request context. Use for errors reported from background work, which would
+	 * otherwise inherit whatever unrelated request is active at capture time.
+	 */
+	shouldIsolate?: boolean;
+};
+
 /**
  * Normalises a Sentry stack-frame filename so that pnpm-nested dependency
  * paths and the n8n CLI install prefix become stable `app:///` roots. This
@@ -102,7 +111,7 @@ export class ErrorReporter {
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
-	private report: (error: Error | string, options?: ReportingOptions) => void;
+	private report: (error: Error | string, options?: ErrorReportingOptions) => void;
 
 	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 
@@ -121,7 +130,11 @@ export class ErrorReporter {
 			const { executionId } = options ?? {};
 			const context = executionId ? ` (execution ${executionId})` : '';
 
+			// Prevent infinite loops in cyclic cause chains.
+			const seen = new Set<Error>();
+
 			do {
+				seen.add(e);
 				let stack = '';
 				let meta = undefined;
 				if (e instanceof ApplicationError || e instanceof BaseError) {
@@ -138,7 +151,7 @@ export class ErrorReporter {
 					this.logger.error(msg, meta);
 				}
 				e = e.cause as Error;
-			} while (e);
+			} while (e && !seen.has(e));
 		}
 	}
 
@@ -207,6 +220,7 @@ export class ErrorReporter {
 			requestDataIntegration,
 			rewriteFramesIntegration,
 			httpIntegration,
+			withIsolationScope,
 		} = sentry;
 
 		// Most of the integrations are listed here:
@@ -311,7 +325,22 @@ export class ErrorReporter {
 			setUser({ id: serverName });
 		}
 
-		this.report = (error, options) => captureException(error, options);
+		this.report = (error, options) => {
+			if (options?.shouldIsolate) {
+				// The fork is a clone of the ambient isolation scope, so instance-level
+				// tags and user identity survive while request metadata is dropped.
+				withIsolationScope((isolationScope) => {
+					isolationScope.clearBreadcrumbs();
+					isolationScope.setSDKProcessingMetadata({
+						normalizedRequest: undefined,
+						ipAddress: undefined,
+					});
+					captureException(error, options);
+				});
+				return;
+			}
+			captureException(error, options);
+		};
 		this.beforeSendFilter = beforeSendFilter;
 	}
 
@@ -368,7 +397,7 @@ export class ErrorReporter {
 		return event;
 	}
 
-	error(e: unknown, options?: ReportingOptions) {
+	error(e: unknown, options?: ErrorReportingOptions) {
 		if (e instanceof ExecutionCancelledError) return;
 		const toReport = this.wrap(e);
 		if (toReport) this.report(toReport, options);
@@ -407,7 +436,9 @@ export class ErrorReporter {
 		originalException: ApplicationError | BaseError,
 	) {
 		const { level, extra, tags } = originalException;
-		event.level = level;
+		// Sentry initializes exception events at `error`. A different level was
+		// explicitly supplied in the capture context and must take precedence.
+		if (event.level === undefined || event.level === 'error') event.level = level;
 		if (extra) event.extra = { ...event.extra, ...extra };
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}

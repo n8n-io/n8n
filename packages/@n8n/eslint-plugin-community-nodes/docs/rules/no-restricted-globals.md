@@ -33,12 +33,26 @@ export class MyNode implements INodeType {
 ### ✅ Correct
 
 ```typescript
+import { sleep } from 'n8n-workflow';
+
 export class MyNode implements INodeType {
   async execute(this: IExecuteFunctions) {
     // Use n8n context methods instead
     const timezone = this.getTimezone();
 
+    // Use the sleep helper instead of setTimeout
+    await sleep(1000);
+
     return this.prepareOutputData([]);
   }
 }
 ```
+
+## Alternatives to restricted timer globals
+
+`n8n-workflow` exports helpers that work the same everywhere, including on
+n8n Cloud, instead of reaching for the restricted timer globals directly:
+
+- Instead of `setTimeout(resolve, ms)`, use `await sleep(ms)`.
+- Instead of `setTimeout` + `clearTimeout` for a cancellable delay, use
+  `await sleepWithAbort(ms, abortSignal)`.

@@ -260,7 +260,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		type: 'input' | 'output',
 		data: INodeExecutionData[][] | ExecutionBaseError,
 		connectionType: AINodeConnectionType,
-		sourceNodeName: string,
+		/** Node whose run the `subRun` entry attaches to; `undefined` when there is none. */
+		sourceNodeName: string | undefined,
 		currentNodeRunIndex: number,
 		metadata?: ITaskMetadata,
 		sourceNodeRunIndex?: number,
@@ -361,6 +362,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				this.runExecutionData,
 			]);
 
+			if (sourceNodeName === undefined) return;
+
 			if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
 				runExecutionData.executionData!.metadata = {};
 			}
@@ -429,7 +432,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		}
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+			console.log(
+				`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`,
+				...this.redactedConsoleArgs(args),
+			);
 		}
 	}
 

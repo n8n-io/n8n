@@ -4,7 +4,7 @@ import { ref, computed, onMounted } from 'vue';
 import type { ITemplatesCategory } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CATEGORY_BAR_REVEAL_DELAY_MS } from '../constants';
 
 const HIDDEN_CATEGORIES = new Set(['Other']);

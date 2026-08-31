@@ -2,13 +2,7 @@ import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig, AgentJsonToolConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -22,8 +16,11 @@ import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
@@ -65,6 +62,7 @@ const nodeToolWithoutCredential: Extract<AgentJsonToolConfig, { type: 'node' }> 
 
 const workflowTool: Extract<AgentJsonToolConfig, { type: 'workflow' }> = {
 	type: 'workflow',
+	workflowId: 'wf-1',
 	workflow: 'Lookup customer',
 };
 
@@ -130,14 +128,14 @@ function makeService(overrides: {
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
-		{ modules: [] } as unknown as AgentsConfig,
+		mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
+		mock<AgentWorkspaceService>(),
+		mock<AgentKnowledgeMirrorService>(),
 		credentialsFinderService,
 		workflowFinderService,
+		mock<AgentChatAttachmentService>(),
 	);
 
 	return { service, credentialsFinderService, workflowFinderService, workflowRepository };
@@ -166,7 +164,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider);
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
 
 		expect(userHasScopes).not.toHaveBeenCalled();
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
@@ -180,7 +178,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(userHasScopes).toHaveBeenCalledWith(testUser, ['workflow:execute'], false, {
 			projectId,
@@ -196,7 +200,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, nodeToolWithoutCredential]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 			'cred-1',
@@ -209,15 +219,27 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	it('drops a workflow tool the user cannot access, keeps one they can', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		const workflowRepository = mock<WorkflowRepository>();
-		workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ id: 'wf-1' }));
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mock<WorkflowEntity>({ id: 'wf-1' }),
+		);
 		const workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 		const { service } = makeService({ workflowRepository, workflowFinderService });
 		const entity = makeAgentEntity([workflowTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
+		expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(projectId, {
+			workflowId: 'wf-1',
+			workflowName: 'Lookup customer',
+		});
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', testUser, [
 			'workflow:execute',
 		]);
@@ -231,7 +253,9 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			mock<CredentialsEntity>({ id: 'cred-1' }),
 		);
 		const workflowRepository = mock<WorkflowRepository>();
-		workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ id: 'wf-1' }));
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mock<WorkflowEntity>({ id: 'wf-1' }),
+		);
 		const workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>({ id: 'wf-1' }),
@@ -244,11 +268,52 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
+	});
+
+	it('returns the granted credential and workflow ids so cached runtimes can re-check them', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			mock<CredentialsEntity>({ id: 'cred-1' }),
+		);
+		const workflowRepository = mock<WorkflowRepository>();
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mock<WorkflowEntity>({ id: 'wf-1' }),
+		);
+		const workflowFinderService = mock<WorkflowFinderService>();
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			mock<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>({ id: 'wf-1' }),
+		);
+		const { service } = makeService({
+			credentialsFinderService,
+			workflowFinderService,
+			workflowRepository,
+		});
+		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
+
+		const result = await service.reconstructFromAgentEntity(
+			entity,
+			mock<CredentialProvider>(),
+			'production',
+			undefined,
+			testUser,
+		);
+
+		expect(result.userToolAccessSnapshot).toEqual({
+			credentialIds: ['cred-1'],
+			workflowIds: ['wf-1'],
+		});
 	});
 });
 
@@ -286,6 +351,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'test',
 			user: testUser,
 		});
 
@@ -308,6 +374,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'production',
 		});
 
 		expect(userHasScopes).not.toHaveBeenCalled();

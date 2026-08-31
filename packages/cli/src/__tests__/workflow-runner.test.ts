@@ -9,7 +9,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
-import { DirectedGraph, WorkflowExecute } from 'n8n-core';
+import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
@@ -38,6 +38,7 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -151,7 +152,7 @@ describe('processError', () => {
 		);
 		await Container.get(ActiveExecutions).add(
 			{ executionMode: 'webhook', workflowData: workflow },
-			execution.id,
+			{ executionId: execution.id, expectedStatus: 'waiting' },
 		);
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -237,6 +238,88 @@ describe('run', () => {
 
 		// ASSERT
 		expect(recreateNodeExecutionStackSpy).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ existingExecution: undefined },
+		{ existingExecution: { executionId: '42', expectedStatus: 'waiting' as const } },
+		{ existingExecution: { executionId: '42', expectedStatus: 'new' as const } },
+	])('forwards $existingExecution to activeExecutions.add', async ({ existingExecution }) => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+			new PCancelable(() => mock<IRun>()),
+		);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			triggerToStartFrom: undefined,
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			startNodes: undefined,
+			destinationNode: undefined,
+			runData: undefined,
+		});
+
+		// ACT
+		await runner.run(data, undefined, false, existingExecution);
+
+		// ASSERT
+		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
+	});
+
+	describe('engine 2.0 dispatch', () => {
+		it('hands the run to the dispatcher without registering a control-plane execution', async () => {
+			// ARRANGE
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(true);
+			const startSpy = vi.spyOn(dispatcher, 'start').mockResolvedValueOnce('dp-uuid');
+			const addSpy = vi.spyOn(Container.get(ActiveExecutions), 'add');
+
+			const data = mock<IWorkflowExecutionDataProcess>();
+
+			// ACT
+			const executionId = await runner.run(data);
+
+			// ASSERT
+			expect(executionId).toBe('dp-uuid');
+			expect(startSpy).toHaveBeenCalledWith(data);
+			expect(addSpy).not.toHaveBeenCalled();
+		});
+
+		it('leaves the v1 path alone when the run does not route to engine 2.0', async () => {
+			// ARRANGE
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(false);
+			const startSpy = vi.spyOn(dispatcher, 'start');
+			const activeExecutions = Container.get(ActiveExecutions);
+			const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+				new PCancelable(() => mock<IRun>()),
+			);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				triggerToStartFrom: undefined,
+				workflowData: { nodes: [], staticData: {} },
+				executionData: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				runData: undefined,
+			});
+
+			// ACT
+			const executionId = await runner.run(data);
+
+			// ASSERT
+			expect(executionId).toBe('1');
+			expect(startSpy).not.toHaveBeenCalled();
+			expect(addSpy).toHaveBeenCalledWith(data, undefined);
+		});
 	});
 
 	it('run partial execution with additional data', async () => {
@@ -357,6 +440,59 @@ describe('run', () => {
 			await expect(runner.run(data)).resolves.toBe('1');
 		});
 	});
+
+	describe('workflow issues pre-flight failure', () => {
+		function arrangeFailingRunDeps(error: Error) {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockImplementationOnce(() => {
+				throw error;
+			});
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+			return { data };
+		}
+
+		it('surfaces a WorkflowHasIssuesError as a failed run instead of rejecting', async () => {
+			const error = new WorkflowHasIssuesError(
+				{ node1: { parameters: { field: ['is missing'] } } },
+				{},
+			);
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).resolves.toBe('1');
+
+			expect(failExecution).toHaveBeenCalledWith(data, '1', error);
+			expect(processError).not.toHaveBeenCalled();
+		});
+
+		it('still rejects on other startup errors', async () => {
+			const error = new Error('boom');
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).rejects.toThrowError(error);
+
+			expect(processError).toHaveBeenCalled();
+			expect(failExecution).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('enqueueExecution', () => {
@@ -413,14 +549,17 @@ describe('enqueueExecution', () => {
 		);
 	});
 
-	it('should carry the manual-execution identity into job data', async () => {
+	it.each([
+		{ encryptedRunnerIdentity: 'encrypted-identity-blob' },
+		{ mcpToolInput: { method: 'tools/call', headers: { 'x-user-id': 'user-1' } } },
+	])('should carry %o into job data', async (processData) => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
-			encryptedRunnerIdentity: 'encrypted-identity-blob',
+			...processData,
 		});
 		const error = new Error('stop for test purposes');
 
@@ -431,12 +570,7 @@ describe('enqueueExecution', () => {
 		// @ts-expect-error Private method
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
-		expect(addJob).toHaveBeenCalledWith(
-			expect.objectContaining({
-				encryptedRunnerIdentity: 'encrypted-identity-blob',
-			}),
-			expect.any(Object),
-		);
+		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
 	});
 });
 

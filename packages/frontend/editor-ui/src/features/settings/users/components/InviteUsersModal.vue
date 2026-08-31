@@ -1,18 +1,20 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import Modal from '@/app/components/Modal.vue';
 import type { FormFieldValueUpdate, IFormInputs } from '@/Interface';
-import type { IInviteResponse, InvitableRoleName } from '../users.types';
+import type { IInviteResponse } from '@n8n/stores/invitation.api';
+import type { InvitableRoleName } from '../users.types';
 import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import { ROLE } from '@n8n/api-types';
-import { useUsersStore } from '../users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { copyInviteLink } from '../invite-link.utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { createFormEventBus } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
@@ -170,10 +172,7 @@ async function onSubmit() {
 		if (successfulUrlInvites.length) {
 			if (successfulUrlInvites.length === 1) {
 				try {
-					const url = await usersStore.generateInviteLink({
-						id: successfulUrlInvites[0].user.id,
-					});
-					void clipboard.copy(url.link);
+					await copyInviteLink(clipboard, usersStore, successfulUrlInvites[0].user.id);
 				} catch (error) {
 					showError(error, i18n.baseText('settings.users.inviteLinkError'));
 				}
@@ -255,8 +254,7 @@ async function onCopyInviteLink(user: IInviteResponse['user']) {
 	}
 
 	try {
-		const url = await usersStore.generateInviteLink({ id: user.id });
-		void clipboard.copy(url.link);
+		await copyInviteLink(clipboard, usersStore, user.id);
 		showCopyInviteLinkToast([]);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.users.inviteLinkError'));

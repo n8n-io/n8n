@@ -4,9 +4,14 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
+import {
+	DATA_TABLES_TOOL_ID,
+	DOMAIN_TOOL_IDS,
+	EVAL_CONFIG_TOOL_ID,
+} from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
+	ArtifactRef,
 	CapturedEvent,
 	CapturedToolCall,
 	ConversationMetrics,
@@ -35,6 +40,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 	const workflowIds: string[] = [];
 	const executionIds: string[] = [];
 	const dataTableIds: string[] = [];
+	const artifactRefsByKey = new Map<string, ArtifactRef>();
 	const textChunks: string[] = [];
 	const toolCalls: CapturedToolCall[] = [];
 	const agentActivities: AgentActivity[] = [];
@@ -98,6 +104,8 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 
 				// Extract resource IDs from tool results
 				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
+				// Config-eval rides the same tool-result signal (eval-config create).
+				captureConfigEvalRef(toolName, args, result, artifactRefsByKey);
 				break;
 			}
 
@@ -147,6 +155,9 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				if (tools.length > 0) {
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
+
+				// The build-agent sub-agent announces the created agent via targetResource.
+				captureAgentRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
 
@@ -200,10 +211,47 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 		workflowIds: dedupe(workflowIds),
 		executionIds: dedupe(executionIds),
 		dataTableIds: dedupe(dataTableIds),
+		artifactRefs: [...artifactRefsByKey.values()],
 		finalText: textChunks.join(''),
 		toolCalls,
 		agentActivities,
 	};
+}
+
+/**
+ * Capture a config-eval ref from a tool result. The `eval-config` tool's `create` action
+ * returns `{ config }`; the ref id is the owning workflow id from the call args (config-evals
+ * are fetched per-workflow). Deduped by type+id.
+ *
+ * ('create' is the eval-config action literal — no exported constant.)
+ */
+function captureConfigEvalRef(
+	toolName: string,
+	args: Record<string, unknown>,
+	result: unknown,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (toolName !== EVAL_CONFIG_TOOL_ID || getString(args, 'action') !== 'create') return;
+	const record = toResultRecord(result);
+	const workflowId = getString(args, 'workflowId');
+	const created = record?.config !== undefined && record.config !== null;
+	if (workflowId && created) {
+		out.set(`config-eval:${workflowId}`, { type: 'config-eval', id: workflowId });
+	}
+}
+
+/**
+ * Capture an agent ref from an `agent-spawned` event's `targetResource`. The build-agent
+ * sub-agent announces itself with `targetResource: { type: 'agent', id }` — the only agent
+ * signal (its tool result carries no id). Deduped by type+id.
+ */
+function captureAgentRef(
+	targetResource: Record<string, unknown> | undefined,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (!targetResource || getString(targetResource, 'type') !== 'agent') return;
+	const id = getString(targetResource, 'id');
+	if (id) out.set(`agent:${id}`, { type: 'agent', id });
 }
 
 // ---------------------------------------------------------------------------
@@ -450,7 +498,7 @@ export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[]
 	});
 }
 
-/** Prepend the seeded prefix's counters to live metrics so a seedThread case's
+/** Prepend the seeded prefix's counters to live metrics so a seeded case's
  *  metrics span the whole conversation (matching the unified transcript). Live
  *  `reachedRunFinishCleanly` is preserved (it describes the evaluated run); an
  *  empty prefix returns metrics deep-equal to the live ones. */
@@ -578,6 +626,38 @@ function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): s
 		}
 	}
 	return undefined;
+}
+
+/**
+ * The workflow id of the MOST RECENT build that actually SAVED, or undefined if
+ * this run has saved none.
+ *
+ * Deliberately narrower than `extractOutcomeFromEvents().workflowIds`, which
+ * includes ids from FAILED builds on purpose: a save that parsed but didn't
+ * persist still returns `{ success: false, workflowId }`, and discovery wants
+ * those so cleanup can claim and delete whatever the run touched.
+ *
+ * That's the wrong set for any caller that MUTATES a workflow. A failed build
+ * against an attached or pre-existing workflow would otherwise look like a
+ * build this run performed, and the caller would act on state it never created.
+ * Requires `success === true` rather than `!== false`, so a result shape
+ * without the flag is treated as not-saved — the safe direction when the
+ * consequence is writing to someone else's workflow.
+ *
+ * Returns the last id directly rather than a deduped list for the caller to
+ * index. Dedupe keeps FIRST-seen order, so a run that saved A, then B, then A
+ * again yields [A, B] and the last element is B — while the workflow most
+ * recently written is A. Anything mutating "the workflow under discussion" has
+ * to follow save order, not first-appearance order.
+ */
+export function lastSavedWorkflowIdFromEvents(events: CapturedEvent[]): string | undefined {
+	const saved = extractOutcomeFromEvents(events)
+		.toolCalls.filter((call) => WORKFLOW_TOOLS.has(call.toolName))
+		.filter((call) => toResultRecord(call.result)?.success === true)
+		.map((call) => extractIdFromResult(call.result, 'workflowId', 'id'))
+		.filter((id): id is string => id !== undefined);
+
+	return saved.at(-1);
 }
 
 function dedupe(arr: string[]): string[] {

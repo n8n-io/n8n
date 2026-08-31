@@ -1,5 +1,5 @@
 import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
-import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { ToolsAgentAction } from '@langchain/classic/agents/openai/output_parser';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';

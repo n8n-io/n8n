@@ -6,7 +6,8 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { DiffMetaData, DiffRule, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { DiffMetaData, DiffRule, RULES, SKIP_RULES } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { EventService } from '@/events/event.service';
@@ -114,10 +115,12 @@ export class WorkflowHistoryCompactionService {
 
 		this.trimmingInterval = setInterval(trimOnceADay, 1 * Time.hours.toMilliseconds);
 
-		if (this.config.trimOnStartUp) {
-			void this.trimLongRunningHistories();
-		} else {
-			void trimOnceADay();
+		if (!this.config.skipOnStartUp) {
+			if (this.config.trimOnStartUp) {
+				void this.trimLongRunningHistories();
+			} else {
+				void trimOnceADay();
+			}
 		}
 
 		this.logger.debug('Trimming histories once a day at 3am server time');
@@ -135,7 +138,7 @@ export class WorkflowHistoryCompactionService {
 			`Optimizing histories every ${this.config.optimizingTimeWindowHours / 2.0} hour(s)`,
 		);
 
-		void this.optimizeHistories();
+		if (!this.config.skipOnStartUp) void this.optimizeHistories();
 	}
 
 	@OnShutdown()

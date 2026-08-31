@@ -8,7 +8,7 @@ import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
 import { ElDialog } from 'element-plus';
 
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
 	N8nHeading,
@@ -167,7 +167,7 @@ onMounted(() => {
 		>
 			<OidcSettingsForm ref="oidcForm" />
 		</div>
-		<N8nActionBox
+		<N8nEmptyState
 			v-if="!hasAnySsoEnabled"
 			data-test-id="sso-content-unlicensed"
 			:class="$style.actionBox"
@@ -178,7 +178,7 @@ onMounted(() => {
 			<template #heading>
 				<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 
 		<ElDialog
 			v-model="showUnsavedChangesDialog"

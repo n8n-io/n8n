@@ -7,6 +7,7 @@ import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { createDataTable } from '../shared/db/data-tables';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -383,6 +384,21 @@ describe('POST /data-tables', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should fail when the project does not exist', async () => {
+		const missingProjectId = 'non-existent-project-id';
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'my-table',
+			projectId: missingProjectId,
+			columns: [{ name: 'email', type: 'string' }],
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Project with ID "${missingProjectId}" not found`,
+		);
 	});
 
 	test('should reject unsupported column type (json)', async () => {
@@ -1204,6 +1220,157 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 	});
 });
 
+describe('row-content authorization on write endpoints', () => {
+	const SECRET = 'payroll-token-123';
+	const MATCH_ALL_FILTER = {
+		type: 'and',
+		filters: [{ columnName: 'id', condition: 'gte', value: 0 }],
+	};
+
+	let project: Project;
+	let dataTable: DataTable;
+	let writeOnlyRoleSlug: string;
+	let readWriteRoleSlug: string;
+	let writerAgent: SuperAgentTest;
+	let readWriterAgent: SuperAgentTest;
+
+	beforeAll(async () => {
+		// roles survive the per-test truncation of `Project`/`ProjectRelation`
+		const writeOnlyRole = await createCustomRoleWithScopeSlugs(['dataTable:writeRow'], {
+			roleType: 'project',
+		});
+		writeOnlyRoleSlug = writeOnlyRole.slug;
+
+		const readWriteRole = await createCustomRoleWithScopeSlugs(
+			['dataTable:writeRow', 'dataTable:readRow'],
+			{ roleType: 'project' },
+		);
+		readWriteRoleSlug = readWriteRole.slug;
+	});
+
+	beforeEach(async () => {
+		project = await createTeamProject('write-only project', owner);
+		dataTable = await createDataTable(project, {
+			columns: [{ name: 'secret', type: 'string' }],
+			data: [{ secret: SECRET }],
+		});
+
+		const writeOnlyUser = await createMemberWithApiKey();
+		await linkUserToProject(writeOnlyUser, project, writeOnlyRoleSlug);
+		writerAgent = testServer.publicApiAgentFor(writeOnlyUser);
+
+		const readWriteUser = await createMemberWithApiKey();
+		await linkUserToProject(readWriteUser, project, readWriteRoleSlug);
+		readWriterAgent = testServer.publicApiAgentFor(readWriteUser);
+	});
+
+	test('rejects update dryRun without dataTable:readRow scope', async () => {
+		const response = await writerAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: MATCH_ALL_FILTER,
+			data: { secret: 'overwritten' },
+			dryRun: true,
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(JSON.stringify(response.body)).not.toContain(SECRET);
+	});
+
+	test('rejects update returnData without dataTable:readRow scope', async () => {
+		const response = await writerAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: MATCH_ALL_FILTER,
+			data: { secret: 'overwritten' },
+			returnData: true,
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(JSON.stringify(response.body)).not.toContain(SECRET);
+	});
+
+	test('returns update row contents with dataTable:readRow scope', async () => {
+		const response = await readWriterAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: MATCH_ALL_FILTER,
+			data: { secret: 'overwritten' },
+			dryRun: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject([
+			{ secret: SECRET, dryRunState: 'before' },
+			{ secret: 'overwritten', dryRunState: 'after' },
+		]);
+	});
+
+	test('allows a plain update without dataTable:readRow scope', async () => {
+		const response = await writerAgent
+			.patch(`/data-tables/${dataTable.id}/rows/update`)
+			.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' } });
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('rejects upsert dryRun without dataTable:readRow scope', async () => {
+		const response = await writerAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: MATCH_ALL_FILTER,
+			data: { secret: 'overwritten' },
+			dryRun: true,
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(JSON.stringify(response.body)).not.toContain(SECRET);
+	});
+
+	test('rejects upsert returnData without dataTable:readRow scope', async () => {
+		const response = await writerAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: MATCH_ALL_FILTER,
+			data: { secret: 'overwritten' },
+			returnData: true,
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(JSON.stringify(response.body)).not.toContain(SECRET);
+	});
+
+	test('rejects delete returnData without dataTable:readRow scope', async () => {
+		const response = await writerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' });
+
+		expect(response.statusCode).toBe(403);
+		expect(JSON.stringify(response.body)).not.toContain(SECRET);
+	});
+
+	test('allows a plain delete without dataTable:readRow scope', async () => {
+		const response = await writerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter: JSON.stringify(MATCH_ALL_FILTER) });
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('returns upsert row contents with dataTable:readRow scope', async () => {
+		const response = await readWriterAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: MATCH_ALL_FILTER,
+			data: { secret: 'overwritten' },
+			dryRun: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject([
+			{ secret: SECRET, dryRunState: 'before' },
+			{ secret: 'overwritten', dryRunState: 'after' },
+		]);
+	});
+
+	test('returns deleted row contents with dataTable:readRow scope', async () => {
+		const response = await readWriterAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject([{ secret: SECRET }]);
+	});
+});
+
 describe('Filter Parameter Validation', () => {
 	let dataTable: DataTable;
 
@@ -1576,6 +1743,7 @@ describe('POST /data-tables with projectId', () => {
 		});
 
 		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message', 'Forbidden');
 	});
 });
 

@@ -5,8 +5,11 @@
 #
 # Scheduled runs only sync if private is not ahead of public.
 # Manual runs always sync (for conflict recovery after failed cherry-pick).
+#
+# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml.
 
 name: 'Security: Sync from Public'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
 
 on:
   schedule:
@@ -24,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Generate App Token
@@ -90,24 +94,23 @@ jobs:
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
 
-      - name: Ensure bundle/2.x exists
+      - name: Re-create missing bundle branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git ls-remote --exit-code origin refs/heads/bundle/2.x; then
-            echo "bundle/2.x already exists, skipping"
-          else
-            echo "bundle/2.x not found, creating from master"
-            git checkout master
-            git checkout -b bundle/2.x
-            git push origin bundle/2.x
+          EXISTING=$(git ls-remote --heads origin 'refs/heads/bundle/*')
+
+          MISSING=()
+          for BRANCH in bundle/2.x bundle/1.x; do
+            if ! grep -qF "refs/heads/$BRANCH" <<<"$EXISTING"; then
+              MISSING+=("$BRANCH")
+            fi
+          done
+
+          if [ ${#MISSING[@]} -eq 0 ]; then
+            echo 'Both bundle branches exist; nothing to dispatch.'
+            exit 0
           fi
 
-      - name: Ensure bundle/1.x exists
-        run: |
-          if git ls-remote --exit-code origin refs/heads/bundle/1.x; then
-            echo "bundle/1.x already exists, skipping"
-          else
-            echo "bundle/1.x not found, creating from 1.x"
-            git checkout 1.x
-            git checkout -b bundle/1.x
-            git push origin bundle/1.x
-          fi
+          echo "Missing: ${MISSING[*]} - dispatching Security: Sync Bundle Branches"
+          gh workflow run sec-sync-bundle-branches.yml --ref master

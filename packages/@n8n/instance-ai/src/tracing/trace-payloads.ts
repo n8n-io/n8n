@@ -825,6 +825,17 @@ function inferNativeLlmRole(attributes: Record<string, unknown>): string | undef
 }
 
 function displayNameForNativeLlmSpan(attributes: Record<string, unknown>): string {
+	// Memory-task LLM calls inherit the host run's agent_role metadata (e.g.
+	// 'orchestrator'), so the functionId suffix — not the role — is what
+	// distinguishes them; check it first so they don't render as their host
+	// agent's own loop calls.
+	const suffixedFunctionId = readStringAttribute(attributes, [
+		'ai.telemetry.functionId',
+		'resource.name',
+	]);
+	if (suffixedFunctionId?.endsWith('.memory-observer')) return 'llm: memory observer';
+	if (suffixedFunctionId?.endsWith('.memory-reflector')) return 'llm: memory reflector';
+
 	const role = inferNativeLlmRole(attributes);
 	if (role === 'thread_title') {
 		return 'llm: title';

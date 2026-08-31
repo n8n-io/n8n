@@ -33,6 +33,20 @@ describe('EventBusController', () => {
 		);
 	});
 
+	describe('getEventNames', () => {
+		it('should include MCP event names', async () => {
+			const result = await controller.getEventNames();
+
+			expect(result).toEqual(
+				expect.arrayContaining([
+					'n8n.audit.mcp.oauth.completed',
+					'n8n.audit.mcp.tool.called',
+					'n8n.audit.mcp.access.updated',
+				]),
+			);
+		});
+	});
+
 	describe('getDestination', () => {
 		it('should get destination by id', async () => {
 			const webhookOptions: MessageEventBusDestinationWebhookOptions = {

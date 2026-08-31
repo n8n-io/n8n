@@ -1,0 +1,225 @@
+name: 'Docker: SBOM manifest-format probe'
+run-name: "Docker: SBOM probe (sbom=${{ inputs.sbom }})"
+
+# Asserts that the merged manifest is an OCI image index. 2.26.0 shipped as a
+# Docker manifest list and did not pull on AKS (#31997). Run this after a
+# buildx, BuildKit or base image change. It pushes only to a separate
+# -format-probe package, so the published image repo is untouched.
+#
+# The release itself is gated by create_multi_arch_manifest in
+# docker-build-push.yml; this probe is for investigating exporter behaviour.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sbom:
+        description: 'Build with SBOM attestations (true reproduces the current release path)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: '26.7.0'
+  SCRATCH_TAG: sbom-probe-${{ github.run_id }}
+  # A separate package. These are throwaway fixtures (one is a two-layer
+  # alpine), and ghcr.io/<repo> is where the real release tags live - they
+  # would show up in the public n8n tag listing and never get cleaned up.
+  SCRATCH_IMAGE: ghcr.io/${{ github.repository }}-format-probe
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: amd64
+            runner: blacksmith-4vcpu-ubuntu-2204
+          - platform: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          build-command: pnpm build:n8n
+          enable-docker-cache: 'true'
+          docker-cache-key: n8n-io/n8n
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+
+      - name: Build and push scratch image
+        env:
+          PLATFORMS: linux/${{ matrix.platform }}
+          N8N_TAGS: ${{ env.SCRATCH_IMAGE }}:${{ env.SCRATCH_TAG }}-${{ matrix.platform }}
+          SBOM: ${{ inputs.sbom }}
+        run: |
+          if [ "$SBOM" = 'true' ]; then
+            OUT=(--push)
+          else
+            OUT=(--set '*.output=type=image,oci-mediatypes=true,push=true')
+          fi
+          docker buildx bake -f docker/docker-bake.hcl n8n \
+            --provenance=false \
+            --sbom="$SBOM" \
+            "${OUT[@]}"
+
+  verify:
+    name: Merge and verify manifest format
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+
+      - name: Merge per-arch manifests
+        env:
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
+        run: |
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${SCRATCH_TAG}" \
+            "${IMAGE}:${SCRATCH_TAG}-amd64" \
+            "${IMAGE}:${SCRATCH_TAG}-arm64"
+
+      - name: Assert OCI image index
+        env:
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
+        run: |
+          node .github/scripts/docker/assert-manifest-format.mjs \
+            "${IMAGE}:${SCRATCH_TAG}" --expect-platforms 2
+
+      - name: Report scratch tag
+        env:
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
+        run: |
+          {
+            echo "### SBOM probe (sbom=${{ inputs.sbom }})"
+            echo
+            echo 'Pull for a preview deploy:'
+            echo
+            echo '```'
+            echo "docker pull ${IMAGE}:${SCRATCH_TAG}"
+            echo '```'
+            echo
+            echo 'Media types match only proves the producer side. The 2.26.0'
+            echo 'failure was a containerd bug, so verify a real pull too.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  format-matrix:
+    name: Exporter format matrix (${{ matrix.name }})
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Negative control: proves the check can still detect the 2.26.0 format.
+          - name: sbom-off
+            sbom: 'false'
+            oci_mediatypes: 'false'
+            expect_fail: 'true'
+          - name: sbom-off-oci-mediatypes
+            sbom: 'false'
+            oci_mediatypes: 'true'
+          - name: sbom-on
+            sbom: 'true'
+            oci_mediatypes: 'false'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      # Its own key: this builds a throwaway fixture, and commits to the shared
+      # disk are last-writer-wins.
+      - uses: useblacksmith/setup-docker-builder@a5256a73e30f09e37e3eceb8ca36043d17621d24 # v2.1.0
+        with:
+          cache-key: docker-format-probe
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+
+      - name: Build both arches and merge
+        env:
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
+          TAG: fmt-${{ github.run_id }}-${{ matrix.name }}
+          SBOM: ${{ matrix.sbom }}
+          OCI_MEDIATYPES: ${{ matrix.oci_mediatypes }}
+        run: |
+          mkdir -p /tmp/fmt && printf 'FROM alpine:3.22\nRUN echo hi > /hi\n' > /tmp/fmt/Dockerfile
+          for arch in amd64 arm64; do
+            REF="${IMAGE}:${TAG}-${arch}"
+            # oci-mediatypes is an exporter option, so this variant needs
+            # --output instead of -t and --push.
+            if [ "$OCI_MEDIATYPES" = 'true' ]; then
+              OUT=(--output "type=image,name=${REF},oci-mediatypes=true,push=true")
+            else
+              OUT=(-t "${REF}" --push)
+            fi
+            docker buildx build /tmp/fmt \
+              --platform "linux/${arch}" --provenance=false "--sbom=${SBOM}" \
+              "${OUT[@]}"
+          done
+          docker buildx imagetools create --tag "${IMAGE}:${TAG}" \
+            "${IMAGE}:${TAG}-amd64" "${IMAGE}:${TAG}-arm64"
+
+      - name: Report merged format
+        env:
+          IMAGE: ${{ env.SCRATCH_IMAGE }}
+          TAG: fmt-${{ github.run_id }}-${{ matrix.name }}
+          EXPECT_FAIL: ${{ matrix.expect_fail }}
+        run: |
+          set -o pipefail
+          rc=0
+          node .github/scripts/docker/assert-manifest-format.mjs \
+            "${IMAGE}:${TAG}" --expect-platforms 2 | tee /tmp/out.txt || rc=$?
+          if [ "$EXPECT_FAIL" = 'true' ]; then
+            if [ "$rc" -eq 0 ]; then
+              echo "::error::negative control passed - the check no longer detects a Docker manifest list"
+              exit 1
+            fi
+            # A nonzero exit is not proof. A registry error also gives one.
+            if ! grep -q 'docker.distribution.manifest.list' /tmp/out.txt; then
+              echo "::error::negative control failed for the wrong reason - expected a Docker manifest list"
+              cat /tmp/out.txt
+              exit 1
+            fi
+            echo "control produced a Docker manifest list, as expected"
+          elif [ "$rc" -ne 0 ]; then
+            exit "$rc"
+          fi
+          {
+            echo "### ${{ matrix.name }}"
+            echo '```'
+            cat /tmp/out.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type {
+	EvaluationConfigDetail,
 	EvaluationConfigSummary,
 	InstanceAiContext,
 	UpsertEvaluationConfigInput,
@@ -14,6 +15,7 @@ function createMockEvalConfigService() {
 	return {
 		list: vi.fn().mockResolvedValue([]),
 		get: vi.fn().mockResolvedValue(null),
+		describe: vi.fn().mockResolvedValue(null),
 		create: vi.fn().mockResolvedValue({}),
 		update: vi.fn().mockResolvedValue({}),
 		delete: vi.fn().mockResolvedValue(undefined),
@@ -59,6 +61,36 @@ const summary: EvaluationConfigSummary = {
 	startNodeName: 'Agent',
 	endNodeName: 'Agent',
 	metrics: [{ id: 'm-1', name: 'Correctness', type: 'llm_judge' }],
+	datasetSource: 'data_table',
+	dataTableId: 'dt-1',
+};
+
+const detail: EvaluationConfigDetail = {
+	id: 'cfg-1',
+	workflowId: 'wf-1',
+	name: 'Answer quality',
+	status: 'valid',
+	invalidReason: null,
+	startNodeName: 'Agent',
+	endNodeName: 'Agent',
+	metrics: [
+		{
+			id: 'm-1',
+			name: 'Correctness',
+			type: 'llm_judge',
+			config: {
+				preset: 'correctness',
+				provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				credentialId: 'cred-1',
+				model: 'gpt-4o',
+				outputType: 'numeric',
+				inputs: {
+					actualAnswer: '={{ $json.output }}',
+					expectedAnswer: '={{ $json.expected }}',
+				},
+			},
+		},
+	],
 	datasetSource: 'data_table',
 	dataTableId: 'dt-1',
 };
@@ -143,6 +175,37 @@ describe('eval-config tool', () => {
 			const result = await executeTool(
 				tool,
 				{ action: 'get', workflowId: 'wf-1', configId: 'missing' },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ error: 'Evaluation config "missing" not found' });
+		});
+	});
+
+	describe('describe action', () => {
+		it('should return the full config detail when found', async () => {
+			const service = createMockEvalConfigService();
+			service.describe.mockResolvedValue(detail);
+			const tool = createEvalConfigTool(createMockContext(service));
+
+			const result = await executeTool(
+				tool,
+				{ action: 'describe', workflowId: 'wf-1', configId: 'cfg-1' },
+				noSuspendCtx(),
+			);
+
+			expect(service.describe).toHaveBeenCalledWith('wf-1', 'cfg-1');
+			expect(result).toEqual({ config: detail });
+		});
+
+		it('should return an error when not found', async () => {
+			const service = createMockEvalConfigService();
+			service.describe.mockResolvedValue(null);
+			const tool = createEvalConfigTool(createMockContext(service));
+
+			const result = await executeTool(
+				tool,
+				{ action: 'describe', workflowId: 'wf-1', configId: 'missing' },
 				noSuspendCtx(),
 			);
 

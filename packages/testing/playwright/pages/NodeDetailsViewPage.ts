@@ -486,6 +486,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.inlineExpressionEditor.selectPrevItem();
 	}
 
+	async moveMouseAwayFromRunData() {
+		await this.inlineExpressionEditor.moveMouseAway();
+	}
+
 	async openExpressionEditorModal(parameterName: string) {
 		await this.inlineExpressionEditor.openModal(parameterName);
 	}
@@ -522,7 +526,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPaginationPages() {
-		return this.getOutputPagination().locator('.el-pager li.number');
+		return this.getOutputPagination().getByTestId('pagination-item');
 	}
 
 	async navigateToOutputPage(pageNumber: number): Promise<void> {

@@ -30,7 +30,6 @@ import type {
 } from '../../types';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationCursor } from '../../types/sdk/observation';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -43,6 +42,7 @@ import type {
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 } from '../../types/sdk/observation-log';
+import { estimateObservationTokens } from '../model/model-token-counter';
 
 interface StoredMessage {
 	message: AgentDbMessage;
@@ -62,7 +62,7 @@ function cloneObservationLogEntry(entry: ObservationLogEntry): ObservationLogEnt
 	return { ...entry, createdAt: new Date(entry.createdAt) };
 }
 
-function compareKeyset(
+export function compareKeyset(
 	a: { createdAt: Date; id: string },
 	b: { createdAt: Date; id: string },
 ): number {
@@ -247,12 +247,25 @@ export class InMemoryMemory
 
 	// ── Observational memory ─────────────────────────────────────────────
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
 	): Promise<ObservationLogEntry[]> {
+		const prepared = await Promise.all(
+			rows.map(async (row) => {
+				const createdAt = row.createdAt ?? new Date();
+				return {
+					observationScopeId: row.observationScopeId,
+					marker: row.marker,
+					text: row.text,
+					parentId: row.parentId ?? null,
+					tokenCount: row.tokenCount ?? (await estimateObservationTokens(row.text)),
+					createdAt,
+				};
+			}),
+		);
+
 		const persisted: ObservationLogEntry[] = [];
-		for (const row of rows) {
+		for (const row of prepared) {
 			const key = row.observationScopeId;
 			const bucket = this.observationLogByScope.get(key) ?? [];
 			const entry: ObservationLogEntry = {
@@ -260,10 +273,10 @@ export class InMemoryMemory
 				observationScopeId: row.observationScopeId,
 				marker: row.marker,
 				text: row.text,
-				parentId: row.parentId ?? null,
-				tokenCount: row.tokenCount ?? estimateObservationTokens(row.text),
+				parentId: row.parentId,
+				tokenCount: row.tokenCount,
 				...activeLifecycleState(),
-				createdAt: row.createdAt ?? new Date(),
+				createdAt: row.createdAt,
 			};
 			bucket.push(entry);
 			this.observationLogByScope.set(key, bucket);

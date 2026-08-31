@@ -11,17 +11,14 @@ import type {
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
-// REST path helpers. Kept inline (not exported) so callers can't accidentally
-// build a URL that drifts from the backend routes registered in
-// `evaluation-collections.controller.ee.ts` / `eval-insights.controller.ee.ts`.
+// REST path helper, kept inline so callers can't build a URL that drifts from
+// the backend routes in the evaluation-collections / eval-insights controllers.
 const collectionsPath = (workflowId: string, collectionId?: string) =>
 	`/workflows/${workflowId}/eval-collections${collectionId ? `/${collectionId}` : ''}`;
 
-// Server returns the created record plus the ids of any runs it scheduled
-// (versions without an `existingTestRunId`). The store adds the record to the
-// list and arms polling by refetching the collection detail, so it reads the
-// record here; `runsStartedIds` is exposed for callers that want to surface
-// "N runs started" without a second round-trip.
+// Created record plus the ids of any runs the server scheduled (versions without
+// an `existingTestRunId`). `runsStartedIds` lets callers surface "N runs started"
+// without a second round-trip.
 export type CreateCollectionResponse = EvaluationCollectionRecord & {
 	runsStartedIds: string[];
 };
@@ -59,6 +56,20 @@ export const createCollection = async (
 	);
 };
 
+// Re-attempts a collection's runs: the server derives versions from the current
+// runs, starts fresh ones, unlinks the old, and returns the create shape.
+export const rerunCollection = async (
+	context: IRestApiContext,
+	workflowId: string,
+	collectionId: string,
+) => {
+	return await makeRestApiRequest<CreateCollectionResponse>(
+		context,
+		'POST',
+		`${collectionsPath(workflowId, collectionId)}/rerun`,
+	);
+};
+
 export const updateCollection = async (
 	context: IRestApiContext,
 	workflowId: string,
@@ -85,9 +96,8 @@ export const deleteCollection = async (
 	);
 };
 
-// Both add and remove return the freshly-recomputed collection detail — the
-// server rebuilds it from `getCollectionDetail` after mutating membership, so
-// the caller replaces its cached detail wholesale rather than patching runs.
+// Both add and remove return the freshly-recomputed collection detail, so the
+// caller replaces its cached detail wholesale rather than patching runs.
 export const addRunToCollection = async (
 	context: IRestApiContext,
 	workflowId: string,

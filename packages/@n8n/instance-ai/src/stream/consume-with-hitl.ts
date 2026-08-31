@@ -8,6 +8,7 @@ import {
 	normalizeStreamSource,
 	type TraceStatus,
 } from '../runtime/resumable-stream-executor';
+import type { RunTokenUsage } from '../stream/usage-accumulator';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
@@ -34,7 +35,11 @@ export interface ConsumeWithHitlOptions {
 	resumeOptions?: Record<string, unknown>;
 	/** Native agent persistence owner for suspended sub-agent state. */
 	persistence?: { threadId: string; resourceId: string };
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	/**
+	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
+	 * default policy, which on the durable-log path would persist redacted text
+	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
+	 */
 	outputRedaction?: RedactionOptions | false;
 }
 
@@ -126,7 +131,11 @@ export interface ConsumeStreamCascadingOptions {
 	logger: Logger;
 	threadId: string;
 	abortSignal: AbortSignal;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	/**
+	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
+	 * default policy, which on the durable-log path would persist redacted text
+	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
+	 */
 	outputRedaction?: RedactionOptions | false;
 }
 
@@ -136,6 +145,7 @@ export type ConsumeStreamCascadingResult =
 			agentRunId: string;
 			text: Promise<string>;
 			workSummary: WorkSummary;
+			usage?: RunTokenUsage;
 	  }
 	| {
 			status: 'suspended';
@@ -144,6 +154,7 @@ export type ConsumeStreamCascadingResult =
 			confirmationEvent?: ConfirmationRequestEvent;
 			text?: Promise<string>;
 			workSummary: WorkSummary;
+			usage?: RunTokenUsage;
 	  };
 
 /**
@@ -187,6 +198,7 @@ export async function consumeStreamCascading(
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 			...(result.text ? { text: result.text } : {}),
 			workSummary: result.workSummary,
+			...(result.usage ? { usage: result.usage } : {}),
 		};
 	}
 
@@ -195,5 +207,6 @@ export async function consumeStreamCascading(
 		agentRunId: result.agentRunId,
 		text: result.text ?? stream.text ?? Promise.resolve(''),
 		workSummary: result.workSummary,
+		...(result.usage ? { usage: result.usage } : {}),
 	};
 }

@@ -16,8 +16,10 @@ import {
 	AuthorizeIntentService,
 	CredentialConnectionStatusService,
 	DynamicCredentialResolverRegistry,
+	DynamicCredentialService,
 } from '@/modules/dynamic-credentials.ee/services';
 import { OauthService } from '@/oauth/oauth.service';
+import { UrlService } from '@/services/url.service';
 
 import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 
@@ -36,8 +38,10 @@ describe('DynamicCredentialsController', () => {
 	const cipher = mockInstance(Cipher);
 	const authorizeIntentService = mockInstance(AuthorizeIntentService);
 	const credentialsFinderService = mockInstance(CredentialsFinderService);
+	const dynamicCredentialService = mockInstance(DynamicCredentialService);
+	const urlService = mockInstance(UrlService);
+	const eventService = mockInstance(EventService);
 	mockInstance(CredentialConnectionStatusService);
-	mockInstance(EventService);
 
 	mockInstance(Logger);
 
@@ -56,6 +60,12 @@ describe('DynamicCredentialsController', () => {
 			version: 1 as const,
 			metadata: {},
 		});
+
+		// Default: resolver does not map the link to an n8n user (link stays unbound).
+		dynamicCredentialService.resolveOwningUserIdForAuthorization.mockResolvedValue({
+			status: 'unbound',
+		});
+		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
 
 		// Default: caller can access the credential
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
@@ -354,6 +364,62 @@ describe('DynamicCredentialsController', () => {
 
 			expect(cipher.decryptV2).not.toHaveBeenCalled();
 		});
+
+		it('sets the state userId when the resolver binds the link to a user', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const req = mock<Request>({
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer token123' },
+			});
+			const res = mock<Response>();
+
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+			dynamicCredentialService.resolveOwningUserIdForAuthorization.mockResolvedValue({
+				status: 'bound',
+				userId: 'user-1',
+			});
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth2/auth',
+			);
+
+			await controller.authorizeCredential(req, res);
+
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				expect.objectContaining({ userId: 'user-1' }),
+				req,
+				res,
+			);
+		});
+
+		it('leaves the state userId unset when the link is unbound', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const req = mock<Request>({
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer token123' },
+			});
+			const res = mock<Response>();
+
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth2/auth',
+			);
+
+			await controller.authorizeCredential(req, res);
+
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				expect.objectContaining({ userId: undefined }),
+				req,
+				res,
+			);
+		});
 	});
 
 	describe('authorizeCredentialRedirect', () => {
@@ -474,6 +540,182 @@ describe('DynamicCredentialsController', () => {
 
 			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(res, 'discovery failed');
 			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		it('proceeds when a bound link is opened by the intended user', async () => {
+			const req = mock<AuthenticatedRequest>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-1' }),
+			});
+			const res = mock<Response>();
+			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://accounts.google.com/auth?x=1');
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				expect.objectContaining({ userId: 'user-1' }),
+				req,
+				res,
+			);
+			expect(res.redirect).toHaveBeenCalledWith('https://accounts.google.com/auth?x=1');
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('proceeds through the OAuth1 flow when a bound link is opened by the intended user', async () => {
+			const req = mock<AuthenticatedRequest>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-1' }),
+			});
+			const res = mock<Response>();
+			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'twitterOAuth1Api' });
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			oauthService.generateAOauth1AuthUri.mockResolvedValue(
+				'https://api.twitter.com/oauth/authorize?x=1',
+			);
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				expect.objectContaining({ userId: 'user-1' }),
+				req,
+				res,
+			);
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+			expect(res.redirect).toHaveBeenCalledWith('https://api.twitter.com/oauth/authorize?x=1');
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('rejects a bound OAuth1 link opened by a different account before materializing the flow', async () => {
+			const req = mock<AuthenticatedRequest>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-2' }),
+			});
+			const res = mock<Response>();
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(eventService.emit).toHaveBeenCalledWith('dynamic-credential-authorize-rejected', {
+				reason: 'user-mismatch',
+				credentialId: 'cred-1',
+			});
+			expect(oauthService.generateAOauth1AuthUri).not.toHaveBeenCalled();
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		it('redirects an anonymous clicker of a bound link to sign in', async () => {
+			const req = mock<Request>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				originalUrl: '/rest/credentials/cred-1/authorize?token=tok',
+			});
+			const res = mock<Response>();
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(eventService.emit).toHaveBeenCalledWith('dynamic-credential-authorize-rejected', {
+				reason: 'unauthenticated',
+				credentialId: 'cred-1',
+			});
+			expect(res.redirect).toHaveBeenCalledWith(
+				`http://localhost:5678/signin?redirect=${encodeURIComponent(
+					'http://localhost:5678/rest/credentials/cred-1/authorize?token=tok',
+				)}`,
+			);
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
+
+		it('rejects a bound link opened by a different account', async () => {
+			const req = mock<AuthenticatedRequest>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-2' }),
+			});
+			const res = mock<Response>();
+
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(eventService.emit).toHaveBeenCalledWith('dynamic-credential-authorize-rejected', {
+				reason: 'user-mismatch',
+				credentialId: 'cred-1',
+			});
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'This authorization link was issued for a different account. Sign in as the intended user and open the link again.',
+			);
+			expect(res.redirect).not.toHaveBeenCalled();
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
+
+		it('proceeds unchanged for an unbound intent regardless of clicker', async () => {
+			const req = mock<AuthenticatedRequest>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				user: mock<AuthenticatedRequest['user']>({ id: 'some-other-user' }),
+			});
+			const res = mock<Response>();
+			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+
+			// No userId on the intent → link is unbound.
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				metadata: {},
+			});
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			oauthService.generateAOauth2AuthUri.mockResolvedValue('https://accounts.google.com/auth?x=1');
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith('https://accounts.google.com/auth?x=1');
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 

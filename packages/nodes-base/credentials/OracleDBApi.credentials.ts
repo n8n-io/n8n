@@ -61,7 +61,7 @@ export class OracleDBApi implements ICredentialType {
 			type: 'boolean',
 			default: false,
 			displayOptions: {
-				hideOnCloud: true,
+				showOnDeployment: 'hosted',
 			},
 			description: 'Define type of connection with database',
 		},

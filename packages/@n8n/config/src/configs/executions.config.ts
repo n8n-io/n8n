@@ -2,6 +2,7 @@ import { Time } from '@n8n/constants';
 import z from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 class PruningIntervalsConfig {
@@ -163,4 +164,34 @@ export class ExecutionsConfig {
 	 */
 	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
 	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
+
+	/**
+	 * Maximum size in MiB of a webhook response a worker sends back to the main instance
+	 * inside a queue message, in queue mode.
+	 *
+	 * Redis holds several copies of a response while the message is in flight, so budget
+	 * about 1.5 times this value in Redis memory for each response in flight.
+	 *
+	 * With `N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED` turned on, a larger body goes to
+	 * the binary-data store and the main instance reads it back from there. Otherwise the
+	 * node fails. Only the body can go to the store, so a response whose headers alone
+	 * exceed this limit fails either way.
+	 */
+	@Env('N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX', positiveIntSchema)
+	webhookResponseRelaySizeMaxMiB: number = 64;
+
+	/**
+	 * Whether a worker stores a response body over `N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX` in
+	 * the binary-data store, so the main instance can stream it to the client, instead of
+	 * failing the node.
+	 *
+	 * Needs `N8N_DEFAULT_BINARY_DATA_MODE` set to a mode with a store (`filesystem`,
+	 * `database`, `s3`, or `azure`), and a store every instance can read.
+	 *
+	 * Only the worker reads this setting. Turn it on once every main instance runs a version
+	 * that reads a stored body: an older main returns the storage reference instead of the
+	 * response body.
+	 */
+	@Env('N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED')
+	webhookResponseRelayOffloadEnabled: boolean = false;
 }

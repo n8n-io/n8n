@@ -12,15 +12,18 @@ import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { INSTANCE_AI_NEW_VIEW } from '@/features/ai/instanceAi/constants';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -38,7 +41,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
 	const showToast = vi.fn();
@@ -1361,6 +1364,75 @@ describe('WorkflowCard', () => {
 			await waitFor(() => {
 				expect(emitted()['workflow:unpublished']).toBeTruthy();
 				expect(emitted()['workflow:unpublished'][0]).toEqual([{ id: '1' }]);
+			});
+		});
+	});
+
+	describe('metadata divider spacing (ADO-5569)', () => {
+		// The metadata row (`.cardDescription`) lays its items out with
+		// `display: flex; gap`. The flex `gap` only produces even spacing on both
+		// sides of a "|" divider when the "|" is its OWN direct flex child. When a
+		// "|" is baked into the "Last updated ..." / "Created ..." text spans it
+		// gets a plain text space on one side and the flex `gap` on the other,
+		// which makes the spacing around the divider visually uneven.
+		it('should render each "|" divider as its own flex item so spacing is even on both sides', () => {
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				settings: {
+					availableInMCP: true,
+				},
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					data,
+					isMcpEnabled: true,
+					isMcpModuleActive: true,
+					canManageInstanceMcp: true,
+					isWorkflowCardMcpToggleEnabled: false,
+				},
+			});
+
+			// The MCP indicator is a direct child of the metadata flex row.
+			const metadataRow = getByTestId('workflow-card-mcp').parentElement;
+			expect(metadataRow).not.toBeNull();
+
+			// Sanity check: the row actually renders divider characters.
+			expect(metadataRow!.textContent).toContain('|');
+
+			// No content span may embed a "|"; every divider must be a dedicated
+			// direct child of the flex row so the `gap` applies symmetrically.
+			const embedsDivider = Array.from(metadataRow!.children).some((el) => {
+				const text = el.textContent ?? '';
+				return text.includes('|') && text.trim() !== '|';
+			});
+			expect(embedsDivider).toBe(false);
+		});
+	});
+
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	describe('open in assistant experiment', () => {
+		let openInAssistantStore: MockedStore<typeof useOpenWorkflowInAssistantStore>;
+
+		beforeEach(() => {
+			openInAssistantStore = mockedStore(useOpenWorkflowInAssistantStore);
+			openInAssistantStore.opensInAssistant = false;
+		});
+
+		it('opens the workflow in the assistant for treatment users', async () => {
+			openInAssistantStore.opensInAssistant = true;
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
+			});
+			const { getByRole } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
+			await waitFor(() => {
+				expect(router.push).toHaveBeenCalledWith({
+					name: INSTANCE_AI_NEW_VIEW,
+					query: { workflowId: data.id },
+				});
 			});
 		});
 	});

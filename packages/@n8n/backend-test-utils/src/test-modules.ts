@@ -20,5 +20,13 @@ export async function loadModules(moduleNames: ModuleName[]) {
 		}
 	}
 
-	await Container.get(ModuleRegistry).loadModules([]);
+	const registry = Container.get(ModuleRegistry);
+	await registry.loadModules([]);
+
+	// Production marks modules active during `initModules`, which tests don't
+	// run. Mark them active here so `isActive()` guards behave like production.
+	const activeModules = registry.getActiveModules();
+	for (const name of moduleNames) {
+		if (!activeModules.includes(name)) activeModules.push(name);
+	}
 }

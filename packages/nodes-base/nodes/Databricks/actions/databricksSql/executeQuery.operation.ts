@@ -1,7 +1,13 @@
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
+import { sleep } from '@n8n/utils/sleep';
+import {
+	extractResourceLocatorValue,
+	getActiveCredentialType,
+	getHost,
+	sanitizeApiMessage,
+} from '../helpers';
 import type { DatabricksStatementResponse } from '../interfaces';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
@@ -70,11 +76,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (status === 'FAILED' || status === 'CANCELED') {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Query ${status.toLowerCase()}: ${JSON.stringify(queryResult.status)}`,
-			{ itemIndex: i },
-		);
+		// Databricks reports SQL permission failures in-band on an HTTP 200: prefer
+		// the legible status.error.message over the raw status blob when present
+		const apiMessage = queryResult.status.error?.message;
+		const reason =
+			typeof apiMessage === 'string' && apiMessage
+				? sanitizeApiMessage(apiMessage)
+				: JSON.stringify(queryResult.status);
+		throw new NodeOperationError(this.getNode(), `Query ${status.toLowerCase()}: ${reason}`, {
+			itemIndex: i,
+		});
 	}
 
 	if (retries >= maxRetries) {

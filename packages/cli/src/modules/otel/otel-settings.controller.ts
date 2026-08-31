@@ -1,4 +1,4 @@
-import { TestOtelConnectionDto, UpdateOtelSettingsDto } from '@n8n/api-types';
+import { TestOtelTraceDto, UpdateOtelSettingsDto } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, Put, RestController } from '@n8n/decorators';
@@ -41,7 +41,7 @@ export class OtelSettingsController {
 
 	@Post('/test-trace')
 	@GlobalScope('otel:manage')
-	async testTrace(_req: AuthenticatedRequest, _res: Response, @Body dto: TestOtelConnectionDto) {
+	async testTrace(_req: AuthenticatedRequest, _res: Response, @Body dto: TestOtelTraceDto) {
 		const connection = this.otelSettingsService.resolveTestConnection(dto);
 		return await this.otelService.sendTestTrace(connection);
 	}

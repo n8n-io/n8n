@@ -96,6 +96,22 @@ describe('useAgentToolRefAdapter', () => {
 				slackApi: { id: 'cred-1', name: 'Prod Slack' },
 			});
 		});
+
+		it('forwards the n8n Connect managed flag to INodeCredentials', () => {
+			const ref: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: {
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentials: { slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true } },
+				},
+			};
+			expect(toolRefToNode(ref)?.credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+		});
 	});
 
 	describe('nodeTypeToNewToolRef()', () => {
@@ -259,6 +275,33 @@ describe('useAgentToolRefAdapter', () => {
 			});
 		});
 
+		it('keeps an n8n Connect managed credential (null id + flag)', () => {
+			const original: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
+			};
+			const node: INode = {
+				id: 'n-1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+				credentials: {
+					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				},
+			};
+
+			const updated = updateToolRefFromNode(original, node) as Extract<
+				AgentJsonToolRef,
+				{ type: 'node' }
+			>;
+			expect(updated.node?.credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+		});
+
 		it('returns the original unchanged for non-node tool refs', () => {
 			const workflowRef: AgentJsonToolRef = { type: 'workflow', workflow: 'w-1' };
 			const node: INode = {
@@ -320,18 +363,16 @@ describe('useAgentToolRefAdapter', () => {
 			} as IWorkflowDb;
 		}
 
-		it('persists the workflow name on `ref.workflow` — the backend looks it up by name', () => {
-			// See cli/src/modules/agents/tools/workflow-tool-factory.ts:506 — the
-			// backend queries `workflowRepository.findOne({ where: { name } })`.
+		it('persists the workflow id and display name', () => {
 			const ref = workflowToNewToolRef(makeWorkflow({ name: 'Notify Sales' }));
 			expect(ref).toMatchObject({
 				type: 'workflow',
+				workflowId: 'wf-1',
 				workflow: 'Notify Sales',
 				name: 'Notify Sales',
 				description: 'Ship a daily summary',
 				allOutputs: false,
 			});
-			expect((ref as any).id).toBeUndefined();
 		});
 
 		it('defaults description to empty when the workflow has none', () => {
@@ -341,9 +382,10 @@ describe('useAgentToolRefAdapter', () => {
 	});
 
 	describe('updateWorkflowToolRef()', () => {
-		it('merges edited fields into the ref, preserving type and workflow reference', () => {
+		it('merges edited fields into the ref, preserving type', () => {
 			const original: AgentJsonToolRef = {
 				type: 'workflow',
+				workflowId: 'wf-1',
 				workflow: 'Notify Sales',
 				name: 'Notify Sales',
 				description: 'old',
@@ -353,14 +395,72 @@ describe('useAgentToolRefAdapter', () => {
 				name: 'Ping Sales',
 				description: 'new',
 				allOutputs: true,
+				workflow: 'Notify Sales',
+				workflowId: 'wf-1',
 			});
 			expect(updated).toStrictEqual({
 				type: 'workflow',
+				workflowId: 'wf-1',
 				workflow: 'Notify Sales',
 				name: 'Ping Sales',
 				description: 'new',
 				allOutputs: true,
 			});
+		});
+
+		it('persists a changed workflow target', () => {
+			const original: AgentJsonToolRef = {
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'Notify Sales',
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+			};
+			const updated = updateWorkflowToolRef(original, {
+				name: 'Invoice Sender',
+				description: 'new',
+				allOutputs: false,
+				workflow: 'Invoice Sender',
+				workflowId: 'wf-2',
+			});
+			expect(updated).toMatchObject({
+				workflowId: 'wf-2',
+				workflow: 'Invoice Sender',
+				name: 'Invoice Sender',
+			});
+		});
+
+		it('persists and clears workflow input bindings', () => {
+			const original: AgentJsonToolRef = {
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'Notify Sales',
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+			};
+			const withInputs = updateWorkflowToolRef(original, {
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+				workflow: 'Notify Sales',
+				workflowId: 'wf-1',
+				inputs: { botName: { mode: 'fixed', value: 'Jarvis' } },
+			});
+			expect(withInputs).toMatchObject({
+				inputs: { botName: { mode: 'fixed', value: 'Jarvis' } },
+			});
+
+			const cleared = updateWorkflowToolRef(withInputs, {
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+				workflow: 'Notify Sales',
+				workflowId: 'wf-1',
+				inputs: undefined,
+			});
+			expect(cleared).not.toHaveProperty('inputs');
 		});
 
 		it('is a no-op for non-workflow refs', () => {
@@ -370,7 +470,12 @@ describe('useAgentToolRefAdapter', () => {
 				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
 			};
 			expect(
-				updateWorkflowToolRef(nodeRef, { name: 'x', description: 'y', allOutputs: true }),
+				updateWorkflowToolRef(nodeRef, {
+					name: 'x',
+					description: 'y',
+					allOutputs: true,
+					workflow: 'z',
+				}),
 			).toBe(nodeRef);
 		});
 	});

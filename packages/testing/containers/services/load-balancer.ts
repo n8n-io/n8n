@@ -26,6 +26,9 @@ export type LoadBalancerResult = ServiceResult<LoadBalancerMeta>;
 // production setups where WEBHOOK_URL points at the dedicated webhook server.
 const WEBHOOK_PROC_PATHS = ['/webhook/*', '/form/*', '/chat'] as const;
 
+// NOTE: Caddy silently drops request headers whose NAME contains an underscore
+// (verified against caddy:2). Tests running through this LB must not generate
+// header names with '_' — beware nanoid(), whose default alphabet includes it.
 function buildCaddyConfig(
 	mainUpstreams: string[],
 	webhookUpstreams: string[],

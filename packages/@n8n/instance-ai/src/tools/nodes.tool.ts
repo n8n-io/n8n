@@ -2,13 +2,17 @@
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
 import { Tool } from '@n8n/agents';
-import { categoryList, suggestedNodesData } from '@n8n/ai-utilities/node-catalog';
+import {
+	AI_CONNECTION_TYPES,
+	NodeSearchEngine,
+	categoryList,
+	suggestedNodesData,
+	type SearchableNodeType,
+} from '@n8n/ai-utilities/node-catalog';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
-import { NodeSearchEngine } from './nodes/node-search-engine';
-import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 
@@ -30,6 +34,12 @@ const listAction = z.object({
 		.string()
 		.optional()
 		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+	gatewayCreditsOnly: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, return only nodes supported by Gateway credits (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support Gateway credits?".',
+		),
 });
 
 const searchAction = z.object({
@@ -143,6 +153,7 @@ async function handleList(
 ) {
 	const nodes = await context.nodeService.listAvailable({
 		query: input.query,
+		gatewayCreditsOnly: input.gatewayCreditsOnly,
 	});
 	return { nodes };
 }
@@ -238,10 +249,9 @@ async function handleDescribe(
 
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
- * Shared by the consolidated `nodes` tool's `type-definition` action and the
- * agent-builder's `get_node_types` tool so both stay on one implementation.
+ * Used by the consolidated `nodes` tool's `type-definition` action.
  */
-export async function resolveNodeTypeDefinitions(
+async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
 	nodeTypes: NodeTypeRequest[],
 ) {

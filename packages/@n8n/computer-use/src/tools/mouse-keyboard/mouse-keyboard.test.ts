@@ -307,7 +307,7 @@ describe('MouseKeyboardModule.activate', () => {
 			},
 		}));
 
-		const { MouseKeyboardModule: IsolatedModule } = await import('./index');
+		const { MouseKeyboardModule: IsolatedModule } = await import('./index.js');
 		const result = await IsolatedModule.activate(MODULE_CTX);
 
 		vi.doUnmock('@jitsi/robotjs');

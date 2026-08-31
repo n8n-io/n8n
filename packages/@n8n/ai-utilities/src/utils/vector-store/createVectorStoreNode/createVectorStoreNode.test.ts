@@ -429,6 +429,49 @@ describe('createVectorStoreNode', () => {
 			includeDocumentMetadata: true,
 		};
 
+		it('normalizes provider errors thrown while inserting documents', async () => {
+			// AI-2626: provider upsert failures must cross the shared error-normalization boundary.
+			const parameters: Record<string, NodeParameterValueType> = {
+				...DEFAULT_PARAMETERS,
+				mode: 'insert',
+			};
+			const documents: DocumentInterface[] = [
+				{ pageContent: 'test document', metadata: { source: 'test' } },
+			];
+
+			executeContext.getNode.mockReturnValue({
+				id: 'testNode',
+				typeVersion: 1.1,
+				name: 'Test Vector Store',
+				type: 'testVectorStore',
+				parameters,
+				position: [0, 0],
+			});
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => parameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+			executeContext.getInputConnectionData
+				.mockResolvedValueOnce(embeddings)
+				.mockResolvedValueOnce(documents);
+			executeContext.getExecutionCancelSignal.mockReturnValue(undefined);
+
+			const providerError = new Error('Error');
+			vectorStoreNodeArgs.populateVectorStore.mockRejectedValueOnce(providerError);
+
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect(thrown).toMatchObject({
+				level: 'warning',
+				message: 'Error',
+			});
+		});
+
 		it('wraps provider SDK errors thrown during execute in NodeApiError', async () => {
 			// ARRANGE
 			executeContext.getNodeParameter.mockImplementation(

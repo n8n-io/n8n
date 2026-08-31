@@ -4,6 +4,7 @@ import type {
 	NodeSimulationVerdict,
 	WorkflowBuildOutcome,
 } from '../../../workflow-loop/workflow-loop-state';
+import { CREDENTIALLESS_AI_ROOT_SIMULATION_REASON } from '../plan-verification-simulation';
 import { reconcileSimulationPlan } from '../reconcile-simulation-plan';
 import { type CredentialEntry, type CredentialMap } from '../resolve-credentials';
 
@@ -210,6 +211,127 @@ describe('reconcileSimulationPlan', () => {
 		expect(patch?.mockedCredentialsByNode).toBeUndefined();
 	});
 
+	it('flips a credentialless AI root to execute once its model sub-node has real credentials', async () => {
+		const aiRootVerdict: NodeSimulationVerdict = {
+			nodeName: 'Draft Reply',
+			verdict: 'simulate',
+			reason: CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+			confidence: 'high',
+			source: 'deterministic',
+		};
+		// The verdict sits on the ROOT but derives from the MODEL sub-node — the
+		// sub-node is not main-flow, so only the dedicated AI-root refresh can
+		// undo it after credentials are assigned.
+		const workflow = {
+			name: 'Test Workflow',
+			nodes: [
+				{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent', parameters: {} },
+				{
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					parameters: {},
+					credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI' } },
+				},
+			],
+			connections: {
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'Draft Reply', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		} as unknown as WorkflowJSON;
+
+		const patch = await reconcileSimulationPlan({
+			buildOutcome: makeBuildOutcome({
+				nodeSimulationPlan: [aiRootVerdict],
+				simulationFixtures: { 'Draft Reply': [{ output: 'mock' }] },
+			}),
+			workflow,
+			availableCredentials: makeCredentialMap([
+				{ id: 'cred-1', name: 'OpenAI', type: 'openAiApi' },
+			]),
+		});
+
+		expect(patch?.nodeSimulationPlan).toEqual([
+			expect.objectContaining({ nodeName: 'Draft Reply', verdict: 'execute' }),
+		]);
+		expect(patch?.simulationFixtures).toBeUndefined();
+	});
+
+	it('refreshes the AI root when its mocked model sub-node is satisfied', async () => {
+		const aiRootVerdict: NodeSimulationVerdict = {
+			nodeName: 'Draft Reply',
+			verdict: 'simulate',
+			reason: CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+			confidence: 'high',
+			source: 'deterministic',
+		};
+		const workflow = {
+			name: 'Test Workflow',
+			nodes: [
+				{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent', parameters: {} },
+				{
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					parameters: {},
+					credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI' } },
+				},
+			],
+			connections: {
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'Draft Reply', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		} as unknown as WorkflowJSON;
+
+		const patch = await reconcileSimulationPlan({
+			buildOutcome: makeBuildOutcome({
+				mockedNodeNames: ['OpenAI Model'],
+				mockedCredentialTypes: ['openAiApi'],
+				mockedCredentialsByNode: { 'OpenAI Model': ['openAiApi'] },
+				nodeSimulationPlan: [aiRootVerdict],
+			}),
+			workflow,
+			availableCredentials: makeCredentialMap([
+				{ id: 'cred-1', name: 'OpenAI', type: 'openAiApi' },
+			]),
+		});
+
+		expect(patch?.nodeSimulationPlan).toEqual([
+			expect.objectContaining({ nodeName: 'Draft Reply', verdict: 'execute' }),
+		]);
+		expect(patch?.mockedCredentialsByNode).toBeUndefined();
+	});
+
+	it('keeps the AI root simulated while its model sub-node stays credentialless', async () => {
+		const aiRootVerdict: NodeSimulationVerdict = {
+			nodeName: 'Draft Reply',
+			verdict: 'simulate',
+			reason: CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+			confidence: 'high',
+			source: 'deterministic',
+		};
+		const workflow = {
+			name: 'Test Workflow',
+			nodes: [
+				{ name: 'Draft Reply', type: '@n8n/n8n-nodes-langchain.agent', parameters: {} },
+				{ name: 'OpenAI Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', parameters: {} },
+			],
+			connections: {
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'Draft Reply', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		} as unknown as WorkflowJSON;
+
+		const patch = await reconcileSimulationPlan({
+			buildOutcome: makeBuildOutcome({ nodeSimulationPlan: [aiRootVerdict] }),
+			workflow,
+			availableCredentials: makeCredentialMap([]),
+		});
+
+		expect(patch).toBeUndefined();
+	});
+
 	it('only clears the satisfied node and preserves unrelated verdicts', async () => {
 		const formVerdict: NodeSimulationVerdict = {
 			nodeName: 'Form',
@@ -256,5 +378,83 @@ describe('reconcileSimulationPlan', () => {
 		expect(patch?.mockedCredentialTypes).toEqual(['slackApi']);
 		expect(patch?.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
 		expect(patch?.setupRequirement).toBeUndefined();
+	});
+});
+
+describe('reconcileSimulationPlan — wait-gate halt re-derivation', () => {
+	it('re-applies haltBranch to a still-simulated gate on a loop after an AI-root refresh', async () => {
+		const workflow = {
+			name: 'approval loop',
+			nodes: [
+				{
+					id: 'id-0',
+					name: 'Generate',
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'id-1',
+					name: 'Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 100],
+					parameters: {},
+					credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI' } },
+				},
+				{
+					id: 'id-2',
+					name: 'Gate',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2,
+					position: [100, 0],
+					parameters: { operation: 'sendAndWait' },
+				},
+				{
+					id: 'id-3',
+					name: 'Revise',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Model: { ai_languageModel: [[{ node: 'Generate', type: 'ai_languageModel', index: 0 }]] },
+				Generate: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+				Gate: { main: [[{ node: 'Revise', type: 'main', index: 0 }]] },
+				Revise: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+			},
+		} as unknown as WorkflowJSON;
+
+		const patch = await reconcileSimulationPlan({
+			buildOutcome: makeBuildOutcome({
+				nodeSimulationPlan: [
+					{
+						nodeName: 'Generate',
+						verdict: 'simulate',
+						reason: CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+						confidence: 'high',
+						source: 'deterministic',
+					},
+					mockedVerdict('Gate'),
+				],
+				mockedCredentialsByNode: { Gate: ['gmailOAuth2'] },
+				mockedNodeNames: ['Gate'],
+			}),
+			workflow,
+			availableCredentials: makeCredentialMap([]),
+		});
+
+		// The AI root regained credentials, so the plan was refreshed…
+		expect(patch?.nodeSimulationPlan?.find((v) => v.nodeName === 'Generate')?.verdict).toBe(
+			'execute',
+		);
+		// …and the still-simulated gate on the loop keeps halting.
+		expect(patch?.nodeSimulationPlan?.find((v) => v.nodeName === 'Gate')).toMatchObject({
+			verdict: 'simulate',
+			haltBranch: true,
+		});
 	});
 });

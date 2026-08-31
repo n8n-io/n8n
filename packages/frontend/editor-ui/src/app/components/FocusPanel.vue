@@ -35,7 +35,7 @@ import { useEnvironmentsStore } from '@/features/settings/environments.ee/enviro
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/app/utils/typesUtils';
 import type { INodeUi, TargetNodeParameterContext } from '@/Interface';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -50,7 +50,7 @@ import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canv
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
-import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nInfoTip, N8nInput, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 defineOptions({ name: 'FocusPanel' });
 
@@ -586,7 +586,7 @@ function onRenameNode(value: string) {
 					/>
 				</div>
 				<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
-				<N8nRadioButtons
+				<N8nSegmentControl
 					size="small"
 					:model-value="'expression'"
 					:disabled="true"

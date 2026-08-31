@@ -154,6 +154,7 @@ function hasSafeEventKeys(event: InstanceAiEvent): boolean {
 			return event.payload.messageGroupId ? isSafeObjectKey(event.payload.messageGroupId) : true;
 		case 'agent-spawned':
 			return isSafeObjectKey(event.payload.parentId);
+		case 'tool-input-start':
 		case 'tool-call':
 		case 'tool-result':
 		case 'tool-error':
@@ -285,6 +286,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		case 'tool-input-start':
 		case 'tool-call':
 		case 'tool-result':
 		case 'tool-error':
@@ -315,6 +317,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 						...(event.payload.statusCode !== undefined
 							? { statusCode: event.payload.statusCode }
 							: {}),
+						...(event.payload.code ? { code: event.payload.code } : {}),
 						...(event.payload.provider ? { provider: event.payload.provider } : {}),
 						...(event.payload.technicalDetails
 							? { technicalDetails: event.payload.technicalDetails }

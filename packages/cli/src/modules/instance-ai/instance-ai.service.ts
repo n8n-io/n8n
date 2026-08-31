@@ -1,13 +1,27 @@
-import { AgentEvent, filterRuntimeSkillSource } from '@n8n/agents';
-import type { Message, Workspace, ScopedMemoryTaskEvent, AgentEventData } from '@n8n/agents';
+import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
+import type {
+	Message,
+	Workspace,
+	ScopedMemoryTaskEvent,
+	AgentEventData,
+	MemoryTaskUsageReport,
+} from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	mcpConnectRequestSchema,
+	credentialSetupHintSchema,
+	formatAttachmentSizeLimit,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
+	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
+	type InstanceAiNodesAttachment,
+	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
+	type InstanceAiCredits,
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
@@ -17,21 +31,21 @@ import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import {
 	MAX_STEPS,
 	createInstanceAgent,
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-	createScopedWorkspace,
 	getPromptWorkspaceRoot,
-	getPromptSandboxInstructions,
-	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
+	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
+	threadProvenanceMetadata,
 	createInternalOperationTraceContext,
+	emitAgentSnapshotTraceEvent,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -44,12 +58,15 @@ import {
 	getDateTimeSection,
 	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
+	isQuotaExhaustedError,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
+	shutdownProductTelemetryProviders,
+	tokenUsageToBuilderUsageItems,
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
@@ -60,11 +77,15 @@ import {
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
 	orchestratorAgentId,
+	resolveAgentPreviewSession,
+	saveAgentBuilderTarget,
 	type ConfirmationData,
 	type DomainAccessTracker,
+	type InstanceAiContext,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
+	type AgentSnapshotArtifact,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
@@ -78,6 +99,7 @@ import {
 	type ServiceProxyConfig,
 	type StreamableAgent,
 	type SuspendedRunState,
+	type SuspensionInfo,
 	type WorkflowBuildOutcome,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
@@ -90,26 +112,44 @@ import {
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
+import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
+import type { Scope } from '@n8n/permissions';
+import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { AiService } from '@/services/ai.service';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
+import { assertNever } from '@/utils';
 
+import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
+import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
+import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
+import {
+	getAgentErrorSeverity,
+	InstanceAiErrorReporterService,
+} from './instance-ai-error-reporter.service';
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -126,15 +166,15 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withProjectContext,
+	getProjectContextSection,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
-import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
-import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -153,6 +193,7 @@ import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import { isStreamTransportError } from './stream-transport-error';
 import {
 	SuspendedRunRestorer,
 	type RebuildSuspendedRunOutcome,
@@ -169,50 +210,149 @@ import {
 	WorkflowVerificationObligationService,
 } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
+import { AgentExecutionService } from '../agents/agent-execution.service';
+import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
+/** A resource attachment as the trace records it: the reference, not its contents. */
+type TracedResourceAttachment = {
+	type: InstanceAiResourceAttachment['type'];
+	id: string;
+	projectId?: string;
+	executionId?: string;
+};
+
+/** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
+function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
+	const rawMessage = suspension?.suspendPayload.message;
+	const message = typeof rawMessage === 'string' && rawMessage ? rawMessage : undefined;
+	return {
+		status: 'suspended',
+		runId,
+		...(suspension?.requestId ? { requestId: suspension.requestId } : {}),
+		...(suspension?.toolCallId ? { pendingToolCallId: suspension.toolCallId } : {}),
+		...(suspension?.toolName ? { toolName: suspension.toolName } : {}),
+		...(message ? { message } : {}),
+	};
+}
+
 /**
- * Renders a message's workflow attachments (e.g. a workflow + execution handed
- * off from the editor) as a context block telling the agent what the user is
- * looking at. Informative only: the agent should greet the user and ask how it
+ * Renders a message's resource attachments (e.g. a workflow + execution, or an
+ * agent, handed off from the editor) as a context block telling the agent what
+ * the user is looking at. Informative only: the agent should greet the user and ask how it
  * can help rather than inspecting the resources up front. The ids stay in the
  * block so they're available once the user actually asks for something.
  * Returns an empty string when there are none.
  */
-function buildContextResourcesBlock(workflowAttachments: InstanceAiWorkflowAttachment[]): string {
-	if (workflowAttachments.length === 0) return '';
-	const lines = workflowAttachments.map((attachment) => {
+/** Renders one canvas node-selection attachment as one line per set. */
+function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
+	const setLines = attachment.sets.map((set) => {
+		const names = set.nodes.map((node) => node.name ?? node.id);
+
+		const label =
+			names.length === 1
+				? `Node "${names[0]}"`
+				: `A chain of connected nodes: ${names.join(' → ')}`;
+
+		const input = set.inputNode ? `, preceded by "${set.inputNode.name ?? set.inputNode.id}"` : '';
+
+		const output = set.outputNode
+			? `, followed by "${set.outputNode.name ?? set.outputNode.id}"`
+			: '';
+
+		const group = set.canvasGroupName
+			? `, part of canvas group "${set.canvasGroupName}"`
+			: set.canvasGroupId
+				? `, part of canvas group \`${set.canvasGroupId}\``
+				: '';
+
+		return `  - ${label}${input}${output}${group}.`;
+	});
+
+	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}`;
+}
+
+export function buildContextResourcesBlock(
+	contextAttachments: InstanceAiResourceAttachment[],
+): string {
+	if (contextAttachments.length === 0) {
+		return '';
+	}
+
+	const lines = contextAttachments.map((attachment) => {
+		if (attachment.type === 'nodes') {
+			return buildNodesAttachmentLine(attachment);
+		}
+
 		const name = attachment.name ? ` "${attachment.name}"` : '';
+
+		if (attachment.type === 'agent') {
+			if (attachment.pending) {
+				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
+			}
+			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
+		}
+
+		// Attachment type must be workflow at this point
 		// Only mention the execution when one was actually handed off.
 		const execution = attachment.executionId
 			? `, currently viewing its execution \`${attachment.executionId}\``
 			: '';
+
 		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
 	});
+
+	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
+		? 'The user opened this conversation from the agent editor, where they are looking at:'
+		: 'The user opened this conversation from the workflow editor, where they are looking at:';
+
+	const pendingAgentGuidance = contextAttachments.some(
+		(attachment) => attachment.type === 'agent' && attachment.pending,
+	)
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		: '';
+
 	const prose = [
-		'The user opened this conversation from the workflow editor, where they are looking at:',
+		header,
 		...lines,
+		pendingAgentGuidance,
 		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
-	].join('\n');
+	]
+		.filter(Boolean)
+		.join('\n');
 	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
 	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
 	// reload from the leading JSON line — keeping the resource durable without
 	// persisting it as visible text.
-	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(workflowAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
+	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(contextAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
+}
+
+/** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
+function isNamedResourceAttachment(
+	attachment: InstanceAiResourceAttachment,
+): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment {
+	return attachment.type !== 'nodes' && Boolean(attachment.name);
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
-	if (!context) return '';
+	if (!context || context.source !== 'credential-modal') return '';
 
 	const { credential } = context;
+	const placeholderTitles = credential.placeholderTitles ?? [];
 	const lines = [
 		`- Credential type: \`${credential.credentialType}\` (${credential.displayName}).`,
 		credential.id ? `- Existing credential id: \`${credential.id}\`.` : '',
 		credential.nodeName ? `- Node name: "${credential.nodeName}".` : '',
 		credential.nodeType ? `- Node type: \`${credential.nodeType}\`.` : '',
+		placeholderTitles.length
+			? `- The credential form is fully pre-filled from a recipe; the user only pastes: ${placeholderTitles.map((title) => `"${title}"`).join(', ')}.`
+			: '',
+		credential.docsUrl
+			? `- The provider page where the user creates/copies the secret (verified during recipe research): ${credential.docsUrl}`
+			: '',
 		credential.documentationUrl ? `- n8n documentation URL: ${credential.documentationUrl}` : '',
 		credential.oauthRedirectUrl
 			? `- OAuth redirect/callback URL shown in the modal: ${credential.oauthRedirectUrl}`
@@ -222,7 +362,12 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 		'The user opened this conversation from the credential setup modal and is asking for setup guidance.',
 		...lines,
 		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n-docs` with `intent: "credential-setup"`.',
-	].join('\n');
+		placeholderTitles.length
+			? `Because the form is pre-filled, give step-by-step guidance on where to obtain the listed value(s) on the provider side${credential.docsUrl ? ' — direct the user to the provider page above rather than re-researching' : ' (research the provider if needed)'} — and do NOT suggest editing the auth template, test URL, or any other credential field.`
+			: '',
+	]
+		.filter(Boolean)
+		.join('\n');
 
 	return `${CREDENTIAL_CONTEXT_OPEN_TAG}\n${JSON.stringify(context)}\n\n${prose}\n${CREDENTIAL_CONTEXT_CLOSE_TAG}`;
 }
@@ -242,6 +387,9 @@ const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
 const CONFIRMATION_EXPIRED_MESSAGE =
 	'This confirmation has expired. Send a new message to continue.';
+
+const RESUME_REJECTED_MESSAGE =
+	'I could not apply that confirmation. Send a new message to continue.';
 
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
@@ -266,24 +414,181 @@ function isSandboxEndpointNotAllowedError(error: unknown): boolean {
 	return getErrorMessage(error).toLowerCase().includes('endpoint not allowed');
 }
 
-export function getUserFacingErrorMessage(error: unknown): string {
+function isStaleResumeError(error: unknown): boolean {
+	// Name check instead of instanceof: the class crosses the @n8n/agents package boundary.
+	return error instanceof Error && error.name === 'StaleResumeError';
+}
+
+/** Signals that the failure is about an attached file rather than the request as a whole. */
+const ATTACHMENT_SUBJECT_PATTERN = /image|attachment/;
+
+/** Signals that the attachment was refused for its size/decodability, not merely mentioned. */
+const ATTACHMENT_REFUSAL_PATTERN = /exceed|too large|maximum|max allowed|could not process/;
+
+/**
+ * Every scrap of message text reachable from an error, following `cause` chains,
+ * arrays (an aggregate of stream failures) and the message-bearing fields the AI
+ * SDK hangs the provider's response on.
+ *
+ * Needed because the terminal error is the ai-sdk's `AI_NoOutputGeneratedError`
+ * wrapper: the provider's actual refusal is nested underneath it, and a plain
+ * `error.message` check sees only "No output generated".
+ */
+function collectErrorText(value: unknown, depth = 0): string[] {
+	if (depth > 4 || value === null || value === undefined) return [];
+	if (typeof value === 'string') return [value];
+	if (Array.isArray(value)) return value.flatMap((item) => collectErrorText(item, depth + 1));
+	if (value instanceof Error) {
+		return [value.message, ...collectErrorText(Reflect.get(value, 'cause'), depth + 1)];
+	}
+	if (typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		return ['message', 'error', 'responseBody', 'data', 'cause', 'errors'].flatMap((key) =>
+			collectErrorText(record[key], depth + 1),
+		);
+	}
+	return [];
+}
+
+/**
+ * True when the provider refused an attached file outright. Both signals must be
+ * present: matching on the subject alone would misclassify unrelated failures that
+ * happen to mention an image.
+ *
+ * Matched on the message text because the provider surfaces this as a plain 400
+ * with no machine-readable discriminator. `validateAttachmentSizes` rejects the
+ * known cases before the request is built, so this is the net for provider-side
+ * limits we don't model (pixel dimensions, per-provider ceilings, format quirks) —
+ * without it, such a rejection sticks in thread history and fails every later turn.
+ */
+export function isAttachmentRejectedByProviderError(error: unknown): boolean {
+	const haystack = [getErrorMessage(error), ...collectErrorText(error)].join(' ').toLowerCase();
+	return ATTACHMENT_SUBJECT_PATTERN.test(haystack) && ATTACHMENT_REFUSAL_PATTERN.test(haystack);
+}
+
+/**
+ * Shown when the user has exhausted their AI credits/quota. Self-contained so it
+ * still reads clearly on older clients that don't render the structured
+ * `quota_exhausted` error state; kept in sync with the FE i18n copy.
+ */
+export const QUOTA_EXHAUSTED_USER_MESSAGE =
+	"You've run out of AI credits. Upgrade your plan to continue using the AI assistant.";
+
+const OPERATIONAL_ERROR_USER_MESSAGE =
+	'I hit an operational error before I could finish that response. Please try again.';
+
+const GENERIC_ERROR_USER_MESSAGE =
+	'Something went wrong before I could finish that response. Please try again.';
+
+/** Structured error code for the UI when a run failed because credits ran out. */
+function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
+	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
+}
+
+type TerminalErrorCode = NonNullable<ReturnType<typeof getUserFacingErrorCode>>;
+
+/** `fallback` lets a caller name what specifically failed when the error itself
+ *  carries no user-facing meaning. */
+export function getUserFacingErrorMessage(
+	error: unknown,
+	fallback: string = GENERIC_ERROR_USER_MESSAGE,
+	opts: {
+		/**
+		 * Whether the refused attachment was actually removed from thread history.
+		 * `false` means the thread still replays it, so the guidance must send the user
+		 * to a new conversation rather than promise a clean slate.
+		 */
+		attachmentRemoved?: boolean;
+	} = {},
+): string {
+	if (isQuotaExhaustedError(error)) {
+		return QUOTA_EXHAUSTED_USER_MESSAGE;
+	}
+
+	if (isStreamTransportError(error)) {
+		return 'The connection to the AI provider dropped before I could finish that response. Please try again.';
+	}
+
 	if (error instanceof UserError) {
 		return error.message;
+	}
+
+	if (isStaleResumeError(error)) {
+		return "This approval was already handled. If the assistant isn't responding, send a new message to continue.";
 	}
 
 	if (isSandboxEndpointNotAllowedError(error)) {
 		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
 	}
 
+	// Deliberately no "try again": retrying replays the same attachment. Wording stays
+	// generic because PDFs and spreadsheets get refused too, and the size hint is only
+	// offered when the error actually says so — the provider's text is usually
+	// unavailable here, and guessing "too large" would misdirect the user.
+	if (opts.attachmentRemoved !== undefined || isAttachmentRejectedByProviderError(error)) {
+		const sizeAdvice = isAttachmentRejectedByProviderError(error)
+			? ` Keep it under ${formatAttachmentSizeLimit()}, and for images no more than 8000x8000 pixels.`
+			: '';
+
+		return opts.attachmentRemoved === false
+			? 'I could not read one of the attached files, and I could not remove it from this ' +
+					`conversation either. Start a new chat and attach it again.${sizeAdvice}`
+			: 'I could not read one of the attached files, so I left it out. Attach it again — ' +
+					`ideally a smaller version.${sizeAdvice}`;
+	}
+
 	if (error instanceof OperationalError) {
-		return 'I hit an operational error before I could finish that response. Please try again.';
+		return OPERATIONAL_ERROR_USER_MESSAGE;
 	}
 
-	if (error instanceof UnexpectedError) {
-		return 'Something went wrong before I could finish that response. Please try again.';
-	}
+	return fallback;
+}
 
-	return 'Something went wrong before I could finish that response. Please try again.';
+/**
+ * Masked terminal failures whose real cause is unrecoverable from the error
+ * object: the ai-sdk's flush wrapper when zero steps were recorded (created
+ * without `cause`), and undici's `TypeError: terminated` when the upstream
+ * connection is killed mid-stream. When the credit wall hits at the model call
+ * instead of the token endpoint, the run dies with one of these rather than a
+ * classified quota error — see `reclassifyMaskedStreamFailure`.
+ */
+export function isMaskedStreamFailure(error: unknown): error is Error {
+	if (!(error instanceof Error)) return false;
+	if (error.name === 'AI_NoOutputGeneratedError') return true;
+	return error.name === 'TypeError' && error.message === 'terminated';
+}
+
+/** Error codes reported by the browser tool wrapper for failures that happen
+ *  before credential persistence (capturing/resolving secrets in the browser). */
+const GENERATION_STAGE_ERROR_CODES = new Set([
+	'missing_captured_fields',
+	'unresolved_field',
+	'gateway_context_missing',
+]);
+
+function failureStageForErrorCode(
+	errorCode: string | undefined,
+): 'generation' | 'persistence' | 'unknown' {
+	if (errorCode && GENERATION_STAGE_ERROR_CODES.has(errorCode)) return 'generation';
+	if (errorCode === 'credential_create_failed') return 'persistence';
+	return 'unknown';
+}
+
+/**
+ * Substituted for a masked stream failure once the credit re-check confirms
+ * the user is out of credits. Carries the machine-readable quota code so the
+ * run is classified exactly like a quota error surfaced by the proxy (credits
+ * message + structured `errorCode`, not reported to Sentry), and keeps the
+ * masked original as `cause` for tracing and telemetry.
+ */
+export class QuotaExhaustedStreamError extends UserError {
+	readonly errorCode = 'quota_exhausted';
+
+	constructor(maskedError: Error) {
+		super(`AI credits exhausted (${maskedError.name}: ${maskedError.message})`, {
+			cause: maskedError,
+		});
+	}
 }
 
 function createInertAbortSignal(): AbortSignal {
@@ -312,52 +617,58 @@ type RunFinishErrorInfo = {
 	errorSource?: 'stream' | 'exception';
 };
 
+type UnclaimedResumeContext = {
+	threadId: string;
+	runId: string;
+	user: User;
+	signal: AbortSignal;
+	snapshotStorage: DbSnapshotStorage;
+	tracing?: InstanceAiTraceContext;
+	messageGroupId?: string;
+	unregisteredResumeTracing?: InstanceAiTraceContext;
+};
+
+type UnclaimedResumeOutcome =
+	| { kind: 'preserve-hitl' }
+	| { kind: 'stale' }
+	| { kind: 'cancelled' }
+	| { kind: 'errored'; reason: string; errorCode?: TerminalErrorCode; errorMessage: string };
+
+/**
+ * A resume that never claimed its checkpoint gets no terminal event from the run
+ * loop, so one has to be issued for it — except when the checkpoint is stale,
+ * which means another owner is driving the run and may still finish it
+ * successfully. The cancellation reason is left to the caller because reading it
+ * consumes the run's timeout, which must not happen on the silent outcomes.
+ */
+function classifyUnclaimedResume(
+	error: unknown,
+	flags: { aborted: boolean; preserveHitl: boolean },
+): UnclaimedResumeOutcome {
+	if (isStaleResumeError(error)) return { kind: 'stale' };
+	if (flags.aborted) return flags.preserveHitl ? { kind: 'preserve-hitl' } : { kind: 'cancelled' };
+	return {
+		kind: 'errored',
+		reason: getUserFacingErrorMessage(error, RESUME_REJECTED_MESSAGE),
+		errorCode: getUserFacingErrorCode(error),
+		errorMessage: getErrorMessage(error),
+	};
+}
+
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
+
+/**
+ * Circuit breaker for machine-started follow-up runs (verification, synthesize,
+ * replan, …). A follow-up that dies before the agent can settle its trigger
+ * (e.g. sandbox setup fails on an exhausted quota) would otherwise be re-armed
+ * by its own post-run scheduler tick, producing an unbounded error loop.
+ */
+const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
-/** Collapse the frontend's typed confirmation union into the flat payload
- *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
- *  relevant to the submitted kind are populated — everything else stays undefined.
- *
- *  Most kinds carry implicit approval (you wouldn't be submitting answers,
- *  selected credentials, or a setup action otherwise) — only `approval`,
- *  `domainAccessDeny`, and `planDeny` carry a denial path. */
-function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
-	switch (request.kind) {
-		case 'approval':
-			return { approved: request.approved, userInput: request.userInput, scope: request.scope };
-		case 'domainAccessApprove':
-			return { approved: true, domainAccessAction: request.domainAccessAction };
-		case 'domainAccessDeny':
-			return { approved: false };
-		case 'planDeny':
-			return { approved: false, denied: true };
-		case 'questions':
-			return { approved: true, answers: request.answers };
-		case 'credentialSelection':
-			return { approved: true, credentials: request.credentials };
-		case 'credentialAutoSetup':
-			return { approved: true, autoSetup: { credentialType: request.credentialType } };
-		case 'resourceDecision':
-			return { approved: true, resourceDecision: request.resourceDecision };
-		case 'setupWorkflowApply':
-			return {
-				approved: true,
-				action: 'apply',
-				nodeCredentials: request.nodeCredentials,
-				nodeParameters: request.nodeParameters,
-			};
-		case 'setupWorkflowTestTrigger':
-			return {
-				approved: true,
-				action: 'test-trigger',
-				testTriggerNode: request.testTriggerNode,
-				nodeCredentials: request.nodeCredentials,
-				nodeParameters: request.nodeParameters,
-			};
-	}
-}
+/** The built orchestrator agent type returned by `createInstanceAgent`. */
+type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
 
 @Service()
 export class InstanceAiService {
@@ -402,11 +713,41 @@ export class InstanceAiService {
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
 
+	/**
+	 * Runs where the credentials tool handed off to browser-assisted credential
+	 * setup (`needsBrowserSetup`), keyed by runId with one record per setup
+	 * attempt (a run can attempt several). Resolved to one terminal
+	 * success/failure telemetry event per attempt in `publishRunFinish`.
+	 * Entries exist only between the hand-off and the run's terminal event.
+	 */
+	private readonly pendingBrowserCredentialSetups = new Map<
+		string,
+		{
+			userId: string;
+			attempts: Array<{
+				credentialType: string;
+				setupMethod: 'setup_card' | 'conversation';
+				attemptId?: string;
+				startedAt: number;
+				created: boolean;
+				errorCode?: string;
+			}>;
+		}
+	>();
+
 	/** Counts plan-review confirmations per thread, to tell the first plan apart from later revisions. */
 	private readonly planRequestsByThread = new Map<string, number>();
 
 	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
+
+	/**
+	 * Consecutive machine-started follow-up runs that errored, per thread.
+	 * Gates `startInternalFollowUpRun` so a follow-up whose run keeps failing
+	 * (its trigger left unsettled) cannot re-arm itself forever; reset by any
+	 * run that completes or suspends, i.e. proves the thread is healthy again.
+	 */
+	private readonly failedInternalFollowUpStreaks = new Map<string, number>();
 
 	/**
 	 * Checkpoint re-entries that could not fire when their parent-tagged child
@@ -462,6 +803,8 @@ export class InstanceAiService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
+		private readonly eventLog: DurableEventLog,
+		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
@@ -474,7 +817,7 @@ export class InstanceAiService {
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
 		private readonly mcpRegistryService: InstanceAiMcpRegistryService,
 		private readonly userRepository: UserRepository,
@@ -489,7 +832,7 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
-		private readonly moduleRegistry: ModuleRegistry,
+		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -536,7 +879,11 @@ export class InstanceAiService {
 		});
 		this.tracing = new InstanceAiTracingService({
 			logger: this.logger,
-			eventBus: this.eventBus,
+			// `first_visible_state` has to see the run's streamed text, which lives
+			// in the log as coalesced blocks — the bus retains nothing.
+			eventReader: {
+				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
+			},
 			runState: this.runState,
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			aiService: this.aiService,
@@ -551,10 +898,18 @@ export class InstanceAiService {
 			aiService: this.aiService,
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
-			eventBus: this.eventBus,
+			// The terminal guard and outcome-replay dedup must see the run's events
+			// after a restart too, which only the durable log can provide (the bus
+			// cache is empty in a fresh process).
+			eventBus: {
+				publish: (threadId, event) => this.eventBus.publish(threadId, event),
+				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
+				getEventsForRuns: async (threadId, runIds) => await this.readRunEvents(threadId, runIds),
+			},
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
+			errorReporter: this.instanceAiErrorReporter,
 			logger: this.logger,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
@@ -574,13 +929,10 @@ export class InstanceAiService {
 		this._ssrfProtectionConfig = ssrfProtectionConfig;
 		this._ssrfProtectionService = ssrfProtectionService;
 
-		// When the admin changes MCP settings, tear down existing clients so the
-		// next agent run rebuilds them against the new config. In-flight tool
-		// calls on disconnected clients will fail — that's accepted: the
-		// alternative is leaking clients keyed by stale config until shutdown.
-		// We only listen for the MCP-changed flag so unrelated settings saves
-		// don't churn live MCP connections.
+		// Runtime clients capture provider settings at creation, so rebuild them
+		// after admin settings change. In-flight sandbox users retain their entry.
 		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
+			this.sandboxService.invalidateCachedWorkspaces();
 			if (!mcpSettingsChanged) return;
 			if (!this._mcpClientManager) return;
 			this._mcpClientManager.disconnect().catch((error: unknown) => {
@@ -679,14 +1031,138 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * Drop a per-user, thread-level grant. Used by decisions that are meant to be reversible
+	 * within a thread — e.g. the user skipped a credential's setup, then later asks for it.
+	 * Best-effort: a failed delete leaves the decision in place until the next run.
+	 */
+	private async revokeThreadSessionGrant(
+		threadId: string,
+		userId: string,
+		key: string,
+	): Promise<void> {
+		try {
+			await this.threadGrantRepo.revoke(threadId, userId, key);
+		} catch (error) {
+			this.logger.warn('Failed to revoke Instance AI session grant', {
+				threadId,
+				key,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
 	/** Whether the AI service proxy is enabled for credit counting. */
 	isProxyEnabled(): boolean {
 		return this.modelService.isProxyEnabled();
 	}
 
-	/** Get current credit usage from the AI service proxy. */
-	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
-		return await this.modelService.getCredits(user);
+	/**
+	 * Get current credit usage from the AI service proxy.
+	 *
+	 * Doubles as the reconcile point for the activation lock: this runs on every page load, so a
+	 * lock call that was lost to a failed request, an evicted record or a process restart is
+	 * re-asserted here without any scheduled job.
+	 */
+	async getCredits(user: User): Promise<InstanceAiCredits> {
+		await this.creditService.ensureQuotaLockApplied(user);
+
+		const credits = await this.modelService.getCredits(user);
+		return maskCreditsForDisplay(credits, this.settingsService.isActivationCapped());
+	}
+
+	/**
+	 * When the credit wall hits at the model call (rather than the token
+	 * endpoint at sandbox start), the proxy failure surfaces as a masked
+	 * generic error. For those signatures, re-check the user's remaining
+	 * credits and substitute a quota-exhausted error so the run resolves to
+	 * the credits message instead of a generic failure. Best-effort: any
+	 * re-check failure keeps the original error, so genuinely unexplained
+	 * stream deaths stay visible.
+	 */
+	/**
+	 * Whether this run died because the provider refused an attachment.
+	 *
+	 * The terminal error is frequently the ai-sdk's masked wrapper
+	 * (`AI_NoOutputGeneratedError`), which carries none of the provider's text — the
+	 * refusal reaches us as a stream `error` event instead. Checking the run's own
+	 * events is what makes the recovery fire on the path that actually occurs;
+	 * classifying the terminal error alone silently misses it.
+	 */
+	/**
+	 * Whether a failed turn's attachments should be dropped from thread history.
+	 *
+	 * Deliberately *not* based on the provider's error text. That text is
+	 * unreachable by the time a run ends: the terminal error is an
+	 * `AI_NoOutputGeneratedError` wrapper whose `cause` is undefined, the agent's own
+	 * error events carry the same wrapper, and the error event holding the provider
+	 * message is not published until after the terminal handler has run. Matching on
+	 * it looks correct in unit tests and silently never fires in production.
+	 *
+	 * So key off what is knowable: this turn carried files, and it ended without
+	 * producing output. That is exactly the shape that strands a thread — the
+	 * attachment is already persisted, so every later turn replays it and dies the
+	 * same way. Dropping it on an unrelated transient failure is the acceptable
+	 * trade: the user is told, and re-attaching costs one message. Leaving it risks
+	 * a conversation that can never recover.
+	 */
+	/**
+	 * Translate a cleanup outcome into the `attachmentRemoved` hint the message
+	 * formatter takes. `undefined` means "say nothing about attachments" — a thread
+	 * that held none must not be told its attachment could not be removed.
+	 */
+	private async dropTurnAttachments(args: {
+		threadId: string;
+		resourceId: string;
+	}): Promise<boolean | undefined> {
+		const outcome = await dropRejectedAttachmentsFromHistory(
+			this.agentMemory,
+			{ threadId: args.threadId, resourceId: args.resourceId },
+			this.logger,
+		);
+		if (outcome === 'no-attachments') return undefined;
+		return outcome === 'removed';
+	}
+
+	private shouldDropTurnAttachments(args: {
+		/**
+		 * Whether this turn introduced files. Unknown on a resumed run — it replays
+		 * history rather than accepting new input — so callers there pass `true` and
+		 * rely on `dropRejectedAttachmentsFromHistory` no-opping when the thread holds
+		 * no inline files.
+		 */
+		turnHadAttachments: boolean;
+		producedNoOutput: boolean;
+	}): boolean {
+		return args.turnHadAttachments && args.producedNoOutput;
+	}
+
+	private async reclassifyMaskedStreamFailure(
+		error: unknown,
+		user: User,
+		context: { threadId: string; runId: string },
+	): Promise<unknown> {
+		if (!isMaskedStreamFailure(error)) return error;
+		try {
+			const { creditsQuota, creditsClaimed, quotaLocked } =
+				await this.modelService.getCredits(user);
+			// The activation lock refuses use while the quota still has credits left, so the numbers
+			// alone wouldn't explain the failure. Read from the proxy, not from n8n's own trigger
+			// state: that only says the lock *should* apply, so a lock call that failed would turn
+			// any unrelated stream death into a spurious upgrade wall.
+			if (!quotaLocked && (creditsQuota < 0 || creditsClaimed < creditsQuota)) return error;
+		} catch (creditsError) {
+			this.logger.debug('Masked stream failure credit re-check failed; keeping original error', {
+				error: getErrorMessage(creditsError),
+				...context,
+			});
+			return error;
+		}
+		this.logger.info('Reclassified masked stream failure as quota-exhausted', {
+			maskedError: getErrorMessage(error),
+			...context,
+		});
+		return new QuotaExhaustedStreamError(error);
 	}
 
 	isEnabled(): boolean {
@@ -695,6 +1171,18 @@ export class InstanceAiService {
 
 	hasActiveRun(threadId: string): boolean {
 		return this.runState.hasLiveRun(threadId);
+	}
+
+	/**
+	 * Whether this specific run is live (active or suspended) in this process.
+	 * The interrupted-run sweeper uses this so a newer run on the same thread
+	 * never shields an older crashed run from being swept.
+	 */
+	isRunLive(threadId: string, runId: string): boolean {
+		return (
+			this.runState.getActiveRunId(threadId) === runId ||
+			this.runState.getSuspendedRun(threadId)?.runId === runId
+		);
 	}
 
 	getThreadStatus(threadId: string): InstanceAiThreadStatusResponse {
@@ -706,8 +1194,15 @@ export class InstanceAiService {
 		return { ...status, memoryTasks };
 	}
 
-	private memoryTaskObserverFor(threadId: string): (event: ScopedMemoryTaskEvent) => void {
+	private memoryTaskObserverFor(
+		threadId: string,
+		tracing: InstanceAiTraceContext | undefined,
+	): (event: ScopedMemoryTaskEvent) => void {
 		return (event) => {
+			// Retains/releases the trace's telemetry provider lease so the
+			// task's LLM span can still export after the root trace finalizes
+			// (see InstanceAiTraceContext.onMemoryTaskEvent).
+			tracing?.onMemoryTaskEvent?.(event);
 			this.memoryTaskRegistry.handleEvent(threadId, event);
 			const pendingTasks = this.memoryTaskRegistry.getTasks(threadId);
 			const logContext = {
@@ -733,20 +1228,19 @@ export class InstanceAiService {
 	 * Surface the agent's background/best-effort failures to Sentry. The SDK emits
 	 * `AgentEvent.Error` for these but nothing consumed it, so they were lost: memory
 	 * observer/reflector/episodic indexing and the eager input / turn-on-suspend
-	 * persists all fail silently while the run itself succeeds. We report only the
-	 * `source`-tagged events — the main agentic-loop errors (no source) already reach
-	 * Sentry via the errored run/stream result, so reporting them here would only
-	 * re-tag the same (deduped) error.
+	 * persists all fail silently. Optional memory processing is warning-level;
+	 * persistence stays error-level because it can lose turn data. We report only
+	 * the `source`-tagged events — the main agentic-loop errors (no source) already
+	 * reach Sentry via the errored run/stream result.
 	 */
-	private subscribeToAgentErrors(
-		agent: Awaited<ReturnType<typeof createInstanceAgent>>,
-		threadId: string,
-		runId: string,
-	): void {
+	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
-			if (event.type !== AgentEvent.Error || !event.source) return;
+			if (event.type !== AgentEvent.Error) return;
+			if (!event.source) return;
+			const severity = getAgentErrorSeverity(event.source);
 			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
+				...(severity ? { severity } : {}),
 				threadId,
 				runId,
 			});
@@ -775,6 +1269,9 @@ export class InstanceAiService {
 			persistence: {
 				resourceId: user.id,
 				threadId,
+				// Host run id, persisted with checkpoints so the interrupted-run
+				// sweep can match a crashed run's checkpoint exactly.
+				hostRunId: runId,
 			},
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -791,6 +1288,7 @@ export class InstanceAiService {
 		runId: string,
 		agentRunId: string,
 		toolCallId: string,
+		signal: AbortSignal,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
@@ -798,9 +1296,10 @@ export class InstanceAiService {
 		return {
 			runId: agentRunId,
 			toolCallId,
+			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
-			persistence: { resourceId: user.id, threadId },
+			persistence: { resourceId: user.id, threadId, hostRunId: runId },
 			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
 			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
 			// reprocesses the whole conversation uncached on every resume (~100K tokens).
@@ -923,7 +1422,7 @@ export class InstanceAiService {
 				payload: {
 					role: task.role,
 					result: '',
-					error: reason === INSTANCE_AI_RUN_TIMEOUT_REASON ? 'Timed out' : 'Cancelled by user',
+					status: 'cancelled',
 				},
 			});
 			void this.terminalOutcome.recordBackgroundTerminalOutcome(task).finally(() => {
@@ -936,7 +1435,7 @@ export class InstanceAiService {
 				);
 			});
 			if (user) {
-				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
+				void this.handlePlannedTaskSettlement(user, task, 'cancelled', { reschedule: false });
 			}
 		}
 
@@ -987,7 +1486,7 @@ export class InstanceAiService {
 			type: 'agent-completed',
 			runId: task.runId,
 			agentId: task.agentId,
-			payload: { role: task.role, result: '', error: 'Cancelled by user' },
+			payload: { role: task.role, result: '', status: 'cancelled' },
 		});
 
 		// Persist the updated agent tree so cancelled status survives page reload.
@@ -1082,7 +1581,22 @@ export class InstanceAiService {
 	}
 
 	async routeCancelRun(threadId: string): Promise<void> {
+		const hadLiveLocalRun = this.runState.hasLiveRun(threadId);
 		await this.routeTaskControl({ threadId, action: 'cancel-thread' });
+
+		// Emit-shaped fallback for dead runs: a cancel that found nothing live
+		// locally still terminalizes crashed runs in the durable log, so every
+		// client and main converges through the normal replay path — a dead run
+		// has no run body left to emit its own run-finish. A run live in THIS
+		// process is excluded (its abort above emits the terminal fact), and a
+		// run live on a sibling is excluded by the sweeper's durable-activity
+		// grace window while the broadcast cancel reaches it.
+		if (!hadLiveLocalRun) {
+			// Settle the drain first so a run that JUST finished cannot be
+			// misread as unfinished and given a second, later terminal fact.
+			await this.eventLog.flush(threadId);
+			await this.interruptedRunSweeper.cancelUnfinishedRuns(threadId);
+		}
 	}
 
 	async routeClearThreadState(threadId: string): Promise<void> {
@@ -1315,16 +1829,33 @@ export class InstanceAiService {
 		});
 
 		this.schedulerLocks.delete(threadId);
+		this.failedInternalFollowUpStreaks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
 		this.tracing.deleteTraceContextsForThread(threadId);
+		await this.deleteAgentBuilderSessions(threadId);
 		await this.sandboxService.destroySandbox(threadId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
+	}
+
+	/** Builder sub-agent sessions (`ia-builder:<threadId>:*`) live in the agents
+	 *  module's memory tables; instance-AI storage cleanup does not cover them.
+	 *  Best-effort: a failure here must never block thread deletion. */
+	private async deleteAgentBuilderSessions(threadId: string): Promise<void> {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return;
+		try {
+			await Container.get(InstanceAiBuilderDelegateAdapterService).deleteBuilderSessions(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to clean up agent-builder sessions for thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	async shutdown(): Promise<void> {
@@ -1418,8 +1949,17 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.clear();
 		this.tracing.clear();
 
+		// Flush in-flight drains + open coalesce buffers so the tail of every
+		// streamed segment survives the restart.
+		await this.eventLog.flushAll();
+
 		this.eventBus.clear();
 		await this._mcpClientManager?.disconnect();
+
+		// Final drain of every trace's LangSmith provider so spans still sitting
+		// in the batch exporter (e.g. from late memory tasks) are not lost on
+		// shutdown. Best-effort by contract — never throws.
+		await shutdownProductTelemetryProviders();
 		this.logger.debug('Instance AI service shut down');
 	}
 
@@ -1606,11 +2146,34 @@ export class InstanceAiService {
 		}
 	}
 
-	private createAgentMemoryOptions() {
+	private createAgentMemoryOptions(user: User, threadId: string, runId: string) {
 		return {
 			observationalMemory: {
 				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+				// Observer/reflector calls run in the background outside the run's
+				// finish-chunk usage, so they are claimed here per report. Best-effort:
+				// a billing failure must never block observation persistence.
+				onTaskUsage: async (report: MemoryTaskUsageReport) => {
+					try {
+						const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
+						if (items.length === 0) return;
+						await this.creditService.claimRunUsage(
+							user,
+							threadId,
+							`${runId}:memory:${report.task}:${report.reportId}`,
+							items,
+							'completed',
+						);
+					} catch (error) {
+						this.logger.warn('Failed to claim observational-memory usage', {
+							threadId,
+							runId,
+							task: report.task,
+							error: getErrorMessage(error),
+						});
+					}
+				},
 			},
 		};
 	}
@@ -1837,7 +2400,7 @@ export class InstanceAiService {
 			);
 		}
 
-		const adminSettings = this.settingsService.getAdminSettings();
+		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
@@ -1845,15 +2408,31 @@ export class InstanceAiService {
 		);
 		const userGateway = this.gatewayService.findGateway(user.id);
 
+		// There's another ensure lock check at `getCredits`, which only fires when the frontend mounts.
+		await this.creditService.ensureQuotaLockApplied(user);
+
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
+		const proxyContext = { runId, threadId };
+		const modelId =
+			proxyBaseUrl && tokenManager
+				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
+				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
+
+		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
+		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
 			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
+			shouldBypassCredentialTest: (credentialId: string) =>
+				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
+			configEvalsEnabled,
+			mcpConnectionsEnabled,
+			modelId,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -1876,12 +2455,14 @@ export class InstanceAiService {
 		}
 
 		context.permissions = this.settingsService.getPermissions();
-		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
 			context.branchReadOnly = true;
 		}
 
 		context.runId = runId;
+
+		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
 		// reload/navigation and are visible across mains. Load once per run; a tool resuming
@@ -1895,6 +2476,10 @@ export class InstanceAiService {
 			sessionGrants.add(key);
 		};
 		context.grantSessionToolApproval = grantSessionToolApproval;
+		context.revokeSessionToolApproval = async (key: string) => {
+			await this.revokeThreadSessionGrant(threadId, user.id, key);
+			sessionGrants.delete(key);
+		};
 
 		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
 		// the same load/persist path as above), so they survive restart and are visible
@@ -1917,6 +2502,7 @@ export class InstanceAiService {
 			tracker: domainTracker,
 			runId,
 			permissionMode: context.permissions?.fetchUrl,
+			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
 		// Compute gateway status for the system prompt. The direct browser
@@ -1948,11 +2534,6 @@ export class InstanceAiService {
 			};
 		}
 
-		const modelId =
-			proxyBaseUrl && tokenManager
-				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager)
-				: await this.modelService.resolveAgentModelConfig(user);
-
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
 		const snapshotStorage = this.dbSnapshotStorage;
@@ -1970,18 +2551,14 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		// The agent-builder tools are only registered when the agents module is
-		// active (InstanceAiAdapterService.getAgentBuilderAdapter), and the
-		// build_agent flow persists configs from workspace files, so the skill
-		// needs both the agents module and the sandbox workspace. Hide it when
-		// either is unavailable.
-		const allRuntimeSkills = loadInstanceAiRuntimeSkillSource();
-		const agentsModuleActive = this.moduleRegistry.isActive('agents');
-		const withoutAgentBuilderSkill = filterRuntimeSkillSource(allRuntimeSkills, ['agent-builder']);
-		// Default assumes no workspace; the sandbox block below restores the
-		// agent-builder skill once the workspace is known to be available.
-		let availableRuntimeSkills = withoutAgentBuilderSkill;
-		let runtimeSkills = availableRuntimeSkills;
+		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
+		// preserved) so every derived skill source inherits the exclusion.
+		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
+		const allRuntimeSkills =
+			flagDisabledSkillIds.length > 0
+				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
+				: loadInstanceAiRuntimeSkillSource();
+		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
@@ -2020,11 +2597,13 @@ export class InstanceAiService {
 				};
 
 				runtimeWorkspace = createLazyRuntimeWorkspace({
-					// Stable across resumes: keeps the sandbox/filesystem description out
-					// of the cache-busting path (the lazy handle isn't rehydrated per
-					// rebuild, so resolution-dependent text would shift the cached prefix).
-					sandboxInstructions: getPromptSandboxInstructions(sandboxConfig.provider),
-					filesystemInstructions: getPromptFilesystemInstructions(sandboxConfig.provider),
+					// Empty + stable across resumes: sandbox/filesystem guidance lives in
+					// the system prompt's `## Sandbox workspace` section. Passing '' here
+					// (instead of omitting) keeps the lazy workspace from falling back to
+					// resolution-dependent live `getInstructions()` text, which would
+					// shift the cached prompt prefix across rebuilds/resumes.
+					sandboxInstructions: '',
+					filesystemInstructions: '',
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
 				});
@@ -2034,9 +2613,8 @@ export class InstanceAiService {
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
 				});
-				availableRuntimeSkills = agentsModuleActive ? allRuntimeSkills : withoutAgentBuilderSkill;
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-					source: availableRuntimeSkills,
+					source: allRuntimeSkills,
 					workspace: runtimeSkillWorkspace,
 					logger: this.logger,
 				});
@@ -2044,10 +2622,14 @@ export class InstanceAiService {
 		}
 
 		context.workspace = runtimeWorkspace;
+		context.workspaceRoot = workspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
+		// Tool-emitted telemetry is an open-ended property bag (search queries,
+		// remediation reasons, node error strings) — scrub at the boundary so a
+		// new call site can't leak by omission.
 		context.trackTelemetry = (eventName, properties) => {
-			this.telemetry.track(eventName, properties);
+			this.telemetry.track(eventName, redactTelemetryProperties(properties));
 		};
 		const domainTools = createAllTools(context);
 
@@ -2062,9 +2644,38 @@ export class InstanceAiService {
 			checkpointStore: this.checkpointStore,
 			eventBus: this.eventBus,
 			logger: this.logger,
-			outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+			outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 			trackTelemetry: (eventName, properties) => {
-				this.telemetry.track(eventName, properties);
+				this.telemetry.track(eventName, redactTelemetryProperties(properties));
+			},
+			// Aggregate on the instance-AI thread (not the `ia-builder:` session
+			// thread) so the credit service's per-thread display total and FE push
+			// attribute builder tokens to the conversation the user sees. The tool
+			// awaits this before returning/cascading a terminal segment outcome, so
+			// a billing failure must never propagate — best-effort by contract.
+			claimSubAgentUsage: async (dedupeId, usage, status) => {
+				try {
+					await this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
+				} catch (error) {
+					// claimRunUsage() handles ordinary claim failures (network, retries)
+					// internally and only throws for exceptional contract violations
+					// (e.g. a negative quota) — those must still reach centralized
+					// Instance AI error reporting even though billing stays best-effort.
+					this.instanceAiErrorReporter.report(error, {
+						component: 'instance-ai-agent-builder-usage',
+						threadId,
+						runId,
+						userId: user.id,
+						...(boundProjectId ? { projectId: boundProjectId } : {}),
+						...(messageGroupId ? { messageGroupId } : {}),
+					});
+					this.logger.warn('Failed to claim agent-builder usage', {
+						threadId,
+						runId,
+						dedupeId,
+						error: getErrorMessage(error),
+					});
+				}
 			},
 			domainTools,
 			abortSignal,
@@ -2072,7 +2683,7 @@ export class InstanceAiService {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			runtimeSkills,
-			runtimeSkillCatalog: availableRuntimeSkills,
+			runtimeSkillCatalog: allRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,
@@ -2133,6 +2744,56 @@ export class InstanceAiService {
 			plannedTaskService,
 			modelId,
 			orchestrationContext,
+		};
+	}
+
+	/**
+	 * Resolve the agents execution service only when the `agents` module is
+	 * active. Mirrors the builder-delegate gate so agent-preview handoff is
+	 * absent (rather than exploding) when agents are disabled.
+	 */
+	private getAgentExecutionService(): AgentExecutionService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(AgentExecutionService);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Hydrate the thread-persisted preview-session reference (if any) and wire
+	 * the on-demand transcript resolver. Must run before createInstanceAgent so
+	 * createOrchestrationTools can register get-session on follow-up turns.
+	 */
+	private async bindAgentPreviewSession(
+		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
+		user: User,
+	): Promise<void> {
+		await resolveAgentPreviewSession(context);
+		const projectId = context.projectId;
+		if (!context.agentPreviewSession || !projectId) return;
+		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
+			context.agentPreviewSession = undefined;
+			return;
+		}
+
+		context.resolvePreviewSession = async (ref) => {
+			const service = this.getAgentExecutionService();
+			if (!service) return null;
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			if (!detail) return null;
+			const transcript = formatPreviewSessionContext(
+				detail.thread,
+				detail.executions,
+				ref.executionId,
+			);
+			if (transcript === null) return null;
+			return {
+				title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
+				sessionNumber: detail.thread.sessionNumber,
+				transcript,
+			};
 		};
 	}
 
@@ -2279,6 +2940,7 @@ export class InstanceAiService {
 		user: User,
 		task: ManagedBackgroundTask,
 		status: 'succeeded' | 'failed' | 'cancelled',
+		{ reschedule = true }: { reschedule?: boolean } = {},
 	): Promise<void> {
 		if (!task.plannedTaskId) return;
 
@@ -2304,6 +2966,10 @@ export class InstanceAiService {
 			await this.syncPlannedTasksToUi(task.threadId, graph);
 		}
 
+		// Callers that tore the whole thread down (user stop, run timeout,
+		// shutdown) opt out: the scheduler must not start a follow-up run. The
+		// graph stays intact so the next user message can pick it back up.
+		if (!reschedule) return;
 		await this.schedulePlannedTasks(user, task.threadId);
 	}
 
@@ -2561,6 +3227,29 @@ export class InstanceAiService {
 		);
 	}
 
+	/**
+	 * Feed the follow-up circuit breaker from a run's terminal status. Errored
+	 * machine-started follow-ups (`isInternalFollowUp`) extend the streak; any
+	 * run that completes or suspends proves the thread executes again and
+	 * resets it. Cancelled runs carry no signal either way.
+	 */
+	private updateInternalFollowUpFailureStreak(
+		threadId: string,
+		status: MessageTraceFinalization['status'] | undefined,
+		isInternalFollowUp: boolean,
+	): void {
+		if (status === 'completed' || status === 'suspended') {
+			this.failedInternalFollowUpStreaks.delete(threadId);
+			return;
+		}
+		if (status === 'error' && isInternalFollowUp) {
+			this.failedInternalFollowUpStreaks.set(
+				threadId,
+				(this.failedInternalFollowUpStreaks.get(threadId) ?? 0) + 1,
+			);
+		}
+	}
+
 	private async startInternalFollowUpRun(
 		user: User,
 		threadId: string,
@@ -2573,6 +3262,16 @@ export class InstanceAiService {
 	): Promise<string> {
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
+			return '';
+		}
+
+		const failedStreak = this.failedInternalFollowUpStreaks.get(threadId) ?? 0;
+		if (failedStreak >= MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS) {
+			this.logger.warn('Skipping internal follow-up: consecutive follow-up runs keep failing', {
+				threadId,
+				failedStreak,
+				resumeReason: resumeReasonOverride,
+			});
 			return '';
 		}
 
@@ -2871,10 +3570,63 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Splits a message's attachments into the resource references that feed the
+	 * context block, gating canvas node-selection attachments behind
+	 * CANVAS_NODE_CONTEXT_FLAG per user. Workflow and agent references always pass
+	 * through — only `nodes` attachments are conditional.
+	 */
+	private async resolveContextAttachments(
+		attachments: InstanceAiAttachment[] | undefined,
+		user: User,
+	): Promise<InstanceAiResourceAttachment[]> {
+		const attachmentsOrEmpty = attachments ?? [];
+
+		const workflowAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
+		);
+
+		const agentAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+		);
+
+		const nodeAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
+		);
+
+		const canvasNodeContextEnabled =
+			nodeAttachments.length > 0 && (await this.canvasNodeContextFlagGate.isEnabled(user));
+
+		return [
+			...workflowAttachments,
+			...agentAttachments,
+			...(canvasNodeContextEnabled ? nodeAttachments : []),
+		];
+	}
+
+	/**
 	 * Run body for a fresh orchestrator turn. Never call directly — go through
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
 	 * and shutdown can drain it before the DB closes.
 	 */
+	// eslint-disable-next-line complexity
+	/** Thread provenance for the trace. Best-effort by construction: a failed
+	 *  metadata read must not take the run with it — the trace just loses a
+	 *  label it would have been nice to have. */
+	private async readThreadProvenance(
+		userId: string,
+		threadId: string,
+	): Promise<Record<string, unknown>> {
+		try {
+			return threadProvenanceMetadata(await this.memoryService.getThreadMetadata(userId, threadId));
+		} catch (error) {
+			this.logger.debug('Could not read thread provenance for tracing', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return {};
+		}
+	}
+
 	private async executeRun(
 		user: User,
 		threadId: string,
@@ -2897,9 +3649,8 @@ export class InstanceAiService {
 		const fileAttachments = (attachments ?? []).filter(
 			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
 		);
-		const workflowAttachments = (attachments ?? []).filter(
-			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
-		);
+
+		const contextAttachments = await this.resolveContextAttachments(attachments, user);
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
@@ -2908,27 +3659,62 @@ export class InstanceAiService {
 		let activeSnapshotStorage: DbSnapshotStorage | undefined;
 		let messageId = '';
 		let streamReached = false;
+		/** Declared out here so the terminal handlers below can see it. */
+		let turnHadFileAttachments = false;
 		const turnStartedAt = new Date();
+		let errorReporterExecutionToken: symbol | undefined;
 
 		try {
-			this.instanceAiErrorReporter.beginRun(runId);
+			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
 
 			messageId = nanoid();
-			const traceInput: Record<string, unknown> = {
-				message,
-				...(fileAttachments.length
-					? {
-							attachments: fileAttachments.map((attachment) => ({
-								mimeType: attachment.mimeType,
-								size: attachment.data.length,
-							})),
-						}
-					: {}),
-				...(messageGroupId ? { messageGroupId } : {}),
-			};
+			const traceInput: Record<string, unknown> = { message };
+			if (fileAttachments.length) {
+				traceInput.attachments = fileAttachments.map((attachment) => ({
+					mimeType: attachment.mimeType,
+					size: attachment.data.length,
+				}));
+			}
+
+			// `message` is the user's raw text, so without this the trace has no
+			// record that the editor handed the agent a resource.
+			if (contextAttachments.length) {
+				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
+					if (attachment.type === 'nodes') {
+						return { type: attachment.type, id: attachment.workflowId };
+					}
+
+					const resource: TracedResourceAttachment = {
+						type: attachment.type,
+						id: attachment.id,
+					};
+
+					if (attachment.type === 'agent') {
+						resource.projectId = attachment.projectId;
+					}
+
+					if (attachment.type === 'workflow' && attachment.executionId) {
+						resource.executionId = attachment.executionId;
+					}
+
+					return resource;
+				});
+			}
+			if (messageGroupId) {
+				traceInput.messageGroupId = messageGroupId;
+			}
 
 			// Shared with createExecutionEnvironment so one ProxyTokenManager backs tracing + the run.
 			const proxyRunConfig = await this.createProxyRunConfig(user);
+
+			// Read per run: Chrome auto-updates extensions silently.
+			const browserExtension = this.browserSessionService.getExtensionTraceContext(user.id);
+
+			// Where this thread came from (entry point + the opener's own context),
+			// stamped on every run of it. Both trace paths get it: a build finishes
+			// on the RESUME beat, so stamping only the message turn would leave the
+			// spans that actually contain the work unattributable.
+			const threadProvenance = await this.readThreadProvenance(user.id, threadId);
 
 			// Create the trace before run-start so the SSE event carries traceId (modelId lands at finalization).
 			if (resumeReason) {
@@ -2941,6 +3727,7 @@ export class InstanceAiService {
 					input: traceInput,
 					resumeReason,
 					metadata: {
+						...threadProvenance,
 						...(checkpoint?.isCheckpointFollowUp
 							? { checkpoint_task_id: checkpoint.checkpointTaskId }
 							: {}),
@@ -2948,6 +3735,7 @@ export class InstanceAiService {
 							? { build_task_id: plannedBuild.buildTaskId }
 							: {}),
 					},
+					browserExtension,
 				});
 			} else {
 				tracing = await createInstanceAiTraceContext({
@@ -2957,9 +3745,11 @@ export class InstanceAiService {
 					runId,
 					userId: user.id,
 					input: traceInput,
+					metadata: threadProvenance,
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
 					n8nVersion: N8N_VERSION,
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
+					browserExtension,
 				});
 			}
 
@@ -2980,7 +3770,7 @@ export class InstanceAiService {
 			// Check if already cancelled before starting agent work
 			if (signal.aborted) {
 				await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
-				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
 					correlationId: messageId,
 				});
@@ -3004,6 +3794,7 @@ export class InstanceAiService {
 				proxyRunConfig,
 			);
 			activeSnapshotStorage = environment.snapshotStorage;
+
 			const {
 				context,
 				memory,
@@ -3077,7 +3868,9 @@ export class InstanceAiService {
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
 			if (!tracing && process.env.E2E_TESTS === 'true') {
-				const { createTraceReplayOnlyContext } = await import('@n8n/instance-ai');
+				const { createTraceReplayOnlyContext } = await lazyImport<
+					typeof import('@n8n/instance-ai')
+				>(async () => await import('@n8n/instance-ai'));
 				tracing = createTraceReplayOnlyContext();
 			}
 
@@ -3090,13 +3883,57 @@ export class InstanceAiService {
 				}
 			}
 
+			// The builder never sees an attach-only turn, so nothing else records what
+			// the attached agent looked like when the conversation opened.
+			await this.snapshotAttachedAgents(contextAttachments, orchestrationContext, tracing);
+
+			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
+			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
+
+			let handoffContextBlock = '';
+			let agentPreviewTitleFallback: string | undefined;
+			if (handoffContext?.source === 'agent-preview') {
+				const projectId = context.projectId;
+				if (!projectId) {
+					throw new UnexpectedError(
+						`Instance AI thread "${threadId}" has no bound project; agent-preview handoff requires a project`,
+					);
+				}
+				await this.assertAgentPreviewHandoffScopes(user, projectId);
+				const agentExecutionService = this.getAgentExecutionService();
+				if (!agentExecutionService) {
+					throw new UserError('Agent preview handoff is not available');
+				}
+				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
+					projectId,
+					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
+				});
+				handoffContextBlock = resolved.block;
+				agentPreviewTitleFallback = resolved.titleFallback;
+
+				context.agentBuilderTarget = resolved.target;
+				context.agentPreviewSession = {
+					agentId: handoffContext.agentId,
+					threadId: handoffContext.threadId,
+					...(handoffContext.executionId ? { executionId: handoffContext.executionId } : {}),
+				};
+				await saveAgentBuilderTarget(context, resolved.target, {
+					previewSession: context.agentPreviewSession,
+				});
+			} else {
+				handoffContextBlock = buildHandoffContextBlock(handoffContext);
+			}
+
 			// Set heuristic title before agent starts — thread always has a title.
 			// For an editor hand-off the user text is empty (the workflow is the
 			// message), so title it with the workflow name and mark it refined so
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
+
 			if (thread && !thread.title) {
-				const handoffTitle = workflowAttachments.find((attachment) => attachment.name)?.name;
+				const handoffTitle =
+					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
+
 				await patchThread(memory, {
 					threadId,
 					update: ({ metadata }) =>
@@ -3119,10 +3956,6 @@ export class InstanceAiService {
 				});
 			}
 
-			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			const contextResourcesBlock = buildContextResourcesBlock(workflowAttachments);
-			const handoffContextBlock = buildHandoffContextBlock(handoffContext);
-
 			let nonStructuredAttachments: InstanceAiFileAttachment[] = [];
 			let attachmentManifest = '';
 			let hasParseableAttachment = false;
@@ -3132,6 +3965,7 @@ export class InstanceAiService {
 				nonStructuredAttachments = fileAttachments.filter(
 					(attachment) => !isParseableAttachment(attachment),
 				);
+				turnHadFileAttachments = nonStructuredAttachments.length > 0;
 				hasParseableAttachment = classifiedAttachments.some(
 					(attachment: { parseable: boolean }) => attachment.parseable,
 				);
@@ -3151,10 +3985,17 @@ export class InstanceAiService {
 			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
 				.filter(Boolean)
 				.join('\n\n');
+			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
+			// so putting it in the cached system prefix would break caching.
+			const projectSection = await this.resolveProjectContextSection(context);
+			const messageWithProject = projectSection
+				? withProjectContext(messageWithContext, projectSection)
+				: messageWithContext;
+
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithContext,
+				messageWithProject,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 
@@ -3260,7 +4101,7 @@ export class InstanceAiService {
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							stopSignal,
-							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
 				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -3272,7 +4113,7 @@ export class InstanceAiService {
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
-						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
 			if (result.status === 'suspended') {
 				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
@@ -3286,6 +4127,7 @@ export class InstanceAiService {
 						runId,
 						agentRunId: result.agentRunId,
 						agent,
+						orchestrationContext,
 						threadId,
 						user,
 						toolCallId: result.suspension.toolCallId,
@@ -3335,12 +4177,12 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: threadId,
-						message: intermediateText,
+						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
 				}
 
-				const waitingDecision = this.terminalOutcome.evaluateWaitingResponse(
+				const waitingDecision = await this.terminalOutcome.evaluateWaitingResponse(
 					threadId,
 					runId,
 					result.confirmationEvent,
@@ -3362,7 +4204,7 @@ export class InstanceAiService {
 				}
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(user.id, threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
@@ -3370,15 +4212,7 @@ export class InstanceAiService {
 				// The tree is rebuilt from in-memory events and includes the
 				// confirmation-request data that the frontend needs.
 				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
-				const suspensionOutputs = {
-					status: 'suspended',
-					runId,
-					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
-					...(result.suspension?.toolCallId
-						? { pendingToolCallId: result.suspension.toolCallId }
-						: {}),
-					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
-				};
+				const suspensionOutputs = buildSuspensionTraceOutputs(runId, result.suspension);
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
@@ -3421,11 +4255,16 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			const terminalError =
+				result.status === 'errored'
+					? await this.reclassifyMaskedStreamFailure(result.error, user, { threadId, runId })
+					: undefined;
 			if (result.status === 'errored') {
 				this.instanceAiErrorReporter.report(
-					result.error ?? new Error('Instance AI stream errored'),
+					terminalError ?? new Error('Instance AI stream errored'),
 					{
 						component: 'instance-ai-stream',
+						providerStream: true,
 						threadId,
 						runId,
 						tracing,
@@ -3436,14 +4275,28 @@ export class InstanceAiService {
 					},
 				);
 			}
+			// A refused attachment usually lands here rather than in the catch below:
+			// the stream reports the failure instead of throwing. Recovering only on
+			// thrown errors would leave the attachment in history on the common path.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: turnHadFileAttachments,
+				producedNoOutput: result.status === 'errored' && outputText.length === 0,
+			})
+				? await this.dropTurnAttachments({ threadId, resourceId: user.id })
+				: undefined;
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+				result.status === 'errored'
+					? getUserFacingErrorMessage(terminalError, undefined, { attachmentRemoved })
+					: undefined;
+			const userFacingErrorCode =
+				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
-				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
 					correlationId: messageId,
 					workSummary: result.workSummary,
 					errorMessage: userFacingErrorMessage,
+					errorCode: userFacingErrorCode,
 					suppressCompletedFallback:
 						checkpoint?.isCheckpointFollowUp === true ||
 						plannedBuild?.isPlannedBuildFollowUp === true,
@@ -3459,7 +4312,9 @@ export class InstanceAiService {
 				status: finalStatus,
 				outputText,
 				modelId,
-				metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, { status: finalStatus }),
+				metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
+					status: finalStatus,
+				}),
 			};
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 				threadId,
@@ -3477,8 +4332,8 @@ export class InstanceAiService {
 				...(result.status === 'errored'
 					? {
 							errorInfo: {
-								errorMessage: result.error
-									? getErrorMessage(result.error)
+								errorMessage: terminalError
+									? getErrorMessage(terminalError)
 									: 'Instance AI stream errored',
 								errorSource: 'stream' as const,
 							},
@@ -3499,7 +4354,7 @@ export class InstanceAiService {
 			if (result.status === 'completed') {
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
-					message: outputText,
+					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: threadId,
@@ -3526,7 +4381,7 @@ export class InstanceAiService {
 				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
 					this.liveness.publishRunTimeoutNotice(threadId, runId);
 				}
-				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
 					correlationId: messageId,
 				});
@@ -3537,7 +4392,7 @@ export class InstanceAiService {
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, {
+					metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
 						status: 'cancelled',
 						cancellationReason,
 						runTimeout,
@@ -3563,8 +4418,25 @@ export class InstanceAiService {
 				return;
 			}
 
-			const errorMessage = getErrorMessage(error);
-			const userFacingErrorMessage = getUserFacingErrorMessage(error);
+			const terminalError = await this.reclassifyMaskedStreamFailure(error, user, {
+				threadId,
+				runId,
+			});
+			// The attachment is persisted in history before the model call is known to
+			// have succeeded, so a refused file would fail every later turn as well.
+			// Drop it here to keep the thread usable, and tell the user what really
+			// happened — a failed cleanup leaves the thread poisoned.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: turnHadFileAttachments,
+				producedNoOutput: true,
+			})
+				? await this.dropTurnAttachments({ threadId, resourceId: user.id })
+				: undefined;
+			const errorMessage = getErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {
+				attachmentRemoved,
+			});
+			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const errCtx: InstanceAiObservabilityContext = {
 				threadId,
@@ -3579,11 +4451,15 @@ export class InstanceAiService {
 				error: errorMessage,
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
-			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
-			this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'errored', {
+			this.instanceAiErrorReporter.report(terminalError, {
+				component: 'instance-ai-run',
+				...errCtx,
+			});
+			await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'errored', {
 				messageGroupId,
 				correlationId: messageId,
 				errorMessage: userFacingErrorMessage,
+				errorCode: userFacingErrorCode,
 			});
 			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: 'error',
@@ -3592,7 +4468,9 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, { status: 'error' }),
+				metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
+					status: 'error',
+				}),
 			};
 
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
@@ -3615,6 +4493,7 @@ export class InstanceAiService {
 			}
 		} finally {
 			this.runState.clearActiveRun(threadId);
+			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// Note: don't delete threadPushRef here. Planned tasks (build agent,
 			// checkpoint verifications) dispatch later in this same finally and
 			// later still in the post-run scheduler — they need the pushRef to
@@ -3622,36 +4501,59 @@ export class InstanceAiService {
 			// startRun overwrites it; thread-cleanup deletes it on dispose.
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			if (messageTraceFinalization) {
-				await this.tracing.maybeFinalizeRunTraceRoot(runId, messageTraceFinalization);
-				if (messageTraceFinalization.status !== 'cancelled') {
+				if (tracing) {
+					await this.tracing.finalizeMessageTraceRoot(runId, tracing, messageTraceFinalization);
+				}
+				if (messageTraceFinalization.status !== 'cancelled' && !segmentSuspended) {
 					this.liveness.consumeRunTimeout(runId);
 				}
 			}
+			// Must precede the reschedule below: the next tick consults the streak
+			// before re-arming another follow-up for the same unsettled trigger.
+			this.updateInternalFollowUpFailureStreak(
+				threadId,
+				messageTraceFinalization?.status,
+				resumeReason !== undefined,
+			);
 			// Post-run planned-task wiring (only when the run is actually ending,
 			// not when it merely suspended for HITL):
 			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
 			//      follow-up and the orchestrator exited without calling
 			//      complete-checkpoint, mark the task failed so the scheduler
-			//      can transition to awaiting_replan.
-			//   2. Unconditional reschedule — drive the next tick. This covers
-			//      the case where a background task settled during an ordinary
-			//      chat run: its schedulePlannedTasks call may have skipped the
-			//      checkpoint branch because hasLiveRun was true. Ticking again
-			//      now (with no live run) picks it up. schedulerLocks serializes
-			//      this call, and tick() is a no-op when no graph exists.
-			if (!this.runState.hasSuspendedRun(threadId)) {
+			//      can transition to awaiting_replan. Runs even on a stop: the
+			//      cancelled run's context is the only thing that knows about
+			//      this follow-up, so skipping it strands the task at `running`.
+			//   2. Reschedule — drive the next tick, unless the run was stopped
+			//      (a stop must not start another run). This covers the case
+			//      where a background task settled during an ordinary chat run:
+			//      its schedulePlannedTasks call may have skipped the checkpoint
+			//      branch because hasLiveRun was true. Ticking again now (with
+			//      no live run) picks it up. schedulerLocks serializes this
+			//      call, and tick() is a no-op when no graph exists.
+			//   3. UI projection — always, so a stopped run's task states reach
+			//      the client.
+			if (!segmentSuspended && !this.runState.hasSuspendedRun(threadId)) {
+				const reschedule = !signal.aborted;
 				if (checkpoint?.isCheckpointFollowUp) {
-					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId);
+					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId, {
+						reschedule,
+					});
 				} else if (plannedBuild?.isPlannedBuildFollowUp) {
-					await this.finalizePlannedBuildFollowUp(user, threadId, plannedBuild);
-				} else {
+					await this.finalizePlannedBuildFollowUp(user, threadId, plannedBuild, { reschedule });
+				} else if (reschedule) {
 					await this.schedulePlannedTasks(user, threadId);
 				}
-				await this.drainPendingCheckpointReentries(user, threadId);
+				if (reschedule) {
+					await this.drainPendingCheckpointReentries(user, threadId);
+				}
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
-				await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+				if (reschedule) {
+					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+				}
 			}
-			this.instanceAiErrorReporter.endRun(runId);
+			if (errorReporterExecutionToken) {
+				this.instanceAiErrorReporter.endRun(runId, errorReporterExecutionToken);
+			}
 		}
 	}
 
@@ -3790,6 +4692,7 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		checkpointTaskId: string,
+		{ reschedule = true }: { reschedule?: boolean } = {},
 	): Promise<void> {
 		try {
 			const { plannedTaskService } = await this.createPlannedTaskState();
@@ -3837,6 +4740,7 @@ export class InstanceAiService {
 			});
 		}
 
+		if (!reschedule) return;
 		await this.schedulePlannedTasks(user, threadId);
 	}
 
@@ -3844,6 +4748,7 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		plannedBuild: PlannedBuildFollowUp,
+		{ reschedule = true }: { reschedule?: boolean } = {},
 	): Promise<void> {
 		try {
 			const { plannedTaskService } = await this.createPlannedTaskState();
@@ -3877,6 +4782,7 @@ export class InstanceAiService {
 			});
 		}
 
+		if (!reschedule) return;
 		await this.schedulePlannedTasks(user, threadId);
 	}
 
@@ -3986,10 +4892,11 @@ export class InstanceAiService {
 		runId: string,
 		user: User,
 		tracing: InstanceAiTraceContext | undefined,
-	): Promise<Awaited<ReturnType<typeof createInstanceAgent>>> {
+	): Promise<InstanceAgent> {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
+		await this.bindAgentPreviewSession(environment.context, user);
 		const mcpServers = await this.buildMcpServers(
 			user,
 			threadId,
@@ -3997,18 +4904,47 @@ export class InstanceAiService {
 			tracing,
 			environment.orchestrationContext.messageGroupId,
 		);
-		const agent = await createInstanceAgent({
+		const { agent, mcpConnectionFailures } = await createInstanceAgent({
 			modelId: environment.modelId,
 			context: environment.context,
 			orchestrationContext: environment.orchestrationContext,
 			mcpServers,
 			mcpManager: this.mcpClientManager,
-			memoryConfig: this.createAgentMemoryOptions(),
+			memoryConfig: this.createAgentMemoryOptions(user, threadId, runId),
 			memory: environment.memory,
 			checkpointStore: this.checkpointStore,
-			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
+			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 		});
+		// Surface MCP connection failures as a non-fatal status event. Publishing
+		// here (rather than at each call site) covers the foreground run and both
+		// resume paths (auto-setup rebuild + process-restart resume), so the user
+		// is informed whenever a server is skipped — including after a resume.
+		// Failures come from createInstanceAgent's result (threaded from the MCP
+		// manager's getRegularTools call), not a shared manager field, so they
+		// reflect this run's config and can't leak another run's server names.
+		if (mcpConnectionFailures.length > 0) {
+			const names = mcpConnectionFailures.map((f) => f.server).join(', ');
+			for (const failure of mcpConnectionFailures) {
+				this.errorReporter.error(
+					new Error(`MCP server "${failure.server}" failed to connect: ${failure.error}`),
+					{
+						level: 'warning',
+						tags: { component: 'instance-ai-mcp', server: failure.server },
+						extra: { runId, threadId, server: failure.server, error: failure.error },
+						shouldIsolate: true,
+					},
+				);
+			}
+			this.eventBus.publish(threadId, {
+				type: 'status',
+				runId,
+				agentId: orchestratorAgentId(runId),
+				payload: {
+					message: `Couldn't reach MCP server${mcpConnectionFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
+				},
+			});
+		}
 		this.subscribeToAgentErrors(agent, threadId, runId);
 		return agent;
 	}
@@ -4022,7 +4958,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	): Promise<{
-		agent: Awaited<ReturnType<typeof createInstanceAgent>>;
+		agent: InstanceAgent;
 		modelId: ModelConfig;
 		orchestrationContext: OrchestrationContext;
 	}> {
@@ -4112,6 +5048,7 @@ export class InstanceAiService {
 				runId: orphan.runId,
 				agentRunId: orphan.checkpointKey,
 				agent,
+				orchestrationContext: environment.orchestrationContext,
 				threadId: orphan.threadId,
 				user,
 				toolCallId: orphan.toolCallId,
@@ -4148,7 +5085,63 @@ export class InstanceAiService {
 		}
 	}
 
-	private async rebuildAgentForAutoSetupResume(
+	/**
+	 * The one-line "you are in project X" fact for the per-turn block, or undefined
+	 * when there is nothing useful to say (no bound project, no workspace adapter, a
+	 * project we can't read).
+	 *
+	 * Best-effort by design: this is a guardrail, not a precondition. A run that cannot
+	 * name its project should be a less-informed run, not a failed one - the write access is
+	 * locked to the bound project either way.
+	 */
+	private async resolveProjectContextSection(
+		context: InstanceAiContext,
+	): Promise<string | undefined> {
+		const projectId = context.projectId;
+		if (!projectId) return undefined;
+
+		// Read per turn, deliberately NOT cached. A cache keyed by project id has no
+		// invalidation path here, so a renamed project would have the agent naming the
+		// old name for the rest of the process's life — and naming the wrong project is
+		// the failure this block exists to prevent.
+		try {
+			const project = await context.workspaceService?.getProject?.(projectId);
+			if (project) return getProjectContextSection({ name: project.name, type: project.type });
+
+			this.logger.warn('Instance AI could not name the bound project for this turn', {
+				projectId,
+				reason: context.workspaceService?.getProject ? 'not-readable' : 'no-workspace-adapter',
+			});
+			return undefined;
+		} catch (error) {
+			this.logger.warn('Instance AI failed to resolve the bound project for this turn', {
+				projectId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			this.errorReporter.error(error, {
+				level: 'warning',
+				tags: { component: 'instance-ai-project-context' },
+				extra: { projectId },
+				shouldIsolate: true,
+			});
+			return undefined;
+		}
+	}
+
+	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
+		const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
+		return await userHasScopes(user, requiredScopes, false, { projectId });
+	}
+
+	private async assertAgentPreviewHandoffScopes(user: User, projectId: string): Promise<void> {
+		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
+			throw new ForbiddenError(
+				'You do not have permission to load or edit agent previews in this project.',
+			);
+		}
+	}
+
+	private async rebuildAgentForResume(
 		user: User,
 		threadId: string,
 		runId: string,
@@ -4157,7 +5150,12 @@ export class InstanceAiService {
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
 	): Promise<
-		{ agent: Awaited<ReturnType<typeof createInstanceAgent>>; modelId: ModelConfig } | undefined
+		| {
+				agent: InstanceAgent;
+				modelId: ModelConfig;
+				orchestrationContext: OrchestrationContext;
+		  }
+		| undefined
 	> {
 		try {
 			const rebuilt = await this.buildFreshInstanceAgent(
@@ -4170,9 +5168,13 @@ export class InstanceAiService {
 				this.threadPushRef.get(threadId),
 			);
 			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
-			return { agent: rebuilt.agent, modelId: rebuilt.modelId };
+			return {
+				agent: rebuilt.agent,
+				modelId: rebuilt.modelId,
+				orchestrationContext: rebuilt.orchestrationContext,
+			};
 		} catch (error: unknown) {
-			this.logger.warn('Failed to rebuild agent for credential auto-setup resume', {
+			this.logger.warn('Failed to rebuild agent for resume', {
 				threadId,
 				runId,
 				error: getErrorMessage(error),
@@ -4211,8 +5213,20 @@ export class InstanceAiService {
 			checkpoint,
 			plannedBuild,
 			runHandoff,
+			orchestrationContext,
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
+
+		const activeRun = this.runState.getActiveRun(threadId);
+		if (activeRun) {
+			this.logger.warn('Rejecting suspended-run confirmation: thread already has an active run', {
+				requestId,
+				threadId,
+				suspendedRunId: runId,
+				activeRunId: activeRun.runId,
+			});
+			return null;
+		}
 
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
@@ -4225,7 +5239,10 @@ export class InstanceAiService {
 			return null;
 		}
 
-		this.runState.activateSuspendedRun(threadId);
+		const resumeExecutionToken = Symbol('instance-ai-resume-execution');
+		if (!this.runState.activateSuspendedRun(threadId, resumeExecutionToken)) {
+			return { ok: true, runId };
+		}
 
 		// The in-memory `suspendedRuns` map carries no resolver callback, so
 		// the suspended-kind DB row has to be dropped explicitly here. The
@@ -4234,22 +5251,7 @@ export class InstanceAiService {
 		// user, from `cancelThread`, or from a liveness timeout.
 		void this.suspendedThreads.dropPendingConfirmation(requestId);
 
-		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
-		// other tools use the flat credentials map. Prefer nodeCredentials when present.
-		const credentialsPayload = data.nodeCredentials ?? data.credentials;
-		const resumeData = {
-			approved: data.approved,
-			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
-			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
-			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
-			...(data.action ? { action: data.action } : {}),
-			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
-			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
-			...(data.answers ? { answers: data.answers } : {}),
-			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
-			...(data.scope ? { scope: data.scope } : {}),
-			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
-		};
+		const resumeData = buildResumeData(data);
 
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
 			baseTracing: tracing,
@@ -4264,9 +5266,14 @@ export class InstanceAiService {
 				toolCallId,
 				approved: data.approved,
 				resumeFields: Object.keys(resumeData),
+				...(data.userInput ? { userInput: data.userInput } : {}),
+				...(data.action ? { action: data.action } : {}),
+				...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
+				...(data.answers ? { answers: data.answers } : {}),
 			},
 			resumeReason: 'approval',
 			metadata: {
+				...(await this.readThreadProvenance(activeUser.id, threadId)),
 				request_id: requestId,
 				pending_tool_call_id: toolCallId,
 				approved: data.approved,
@@ -4277,13 +5284,18 @@ export class InstanceAiService {
 					? { build_task_id: plannedBuild.buildTaskId }
 					: {}),
 			},
+			browserExtension: this.browserSessionService.getExtensionTraceContext(activeUser.id),
+			register: false,
 		});
 		const effectiveTracing = resumeTracing ?? tracing;
+		const unregisteredResumeTracing =
+			resumeTracing && resumeTracing !== tracing ? resumeTracing : undefined;
 
 		let resumeAgent = agent;
 		let resumeModelId = modelId;
-		if (data.autoSetup) {
-			const rebuilt = await this.rebuildAgentForAutoSetupResume(
+		let resumeOrchestrationContext = orchestrationContext;
+		if (data.autoSetup || data.connectedSlugs?.length) {
+			const rebuilt = await this.rebuildAgentForResume(
 				activeUser,
 				threadId,
 				runId,
@@ -4293,11 +5305,37 @@ export class InstanceAiService {
 				messageGroupId,
 			);
 			if (!rebuilt) {
+				const rebuildFailure = 'Agent rebuild failed';
+				await this.tracing.finalizeDetachedTraceRun(
+					`resume-rebuild:${runId}`,
+					unregisteredResumeTracing,
+					{
+						status: 'failed',
+						error: rebuildFailure,
+						metadata: { completion_source: 'resume_rebuild' },
+					},
+				);
 				this.cancelRun(threadId, 'agent_rebuild_failed');
+				// `activateSuspendedRun` above already promoted this run to active, so
+				// `cancelRun` leaves the terminal event to a run loop that was never
+				// started — and the pending confirmation is already dropped, so the
+				// card can't be retried either.
+				await this.emitTerminalRun({
+					threadId,
+					runId,
+					status: 'errored',
+					reason: OPERATIONAL_ERROR_USER_MESSAGE,
+					errorInfo: { errorMessage: rebuildFailure, errorSource: 'exception' },
+					messageGroupId,
+					user: activeUser,
+					snapshotStorage: this.dbSnapshotStorage,
+				});
+				this.runState.clearActiveRun(threadId, resumeExecutionToken);
 				return null;
 			}
 			resumeAgent = rebuilt.agent;
 			resumeModelId = rebuilt.modelId;
+			resumeOrchestrationContext = rebuilt.orchestrationContext;
 		}
 
 		this.startProcessResumedStream(resumeAgent, resumeData, {
@@ -4312,10 +5350,15 @@ export class InstanceAiService {
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
 			tracing: effectiveTracing,
+			orchestrationContext: resumeOrchestrationContext,
 			modelId: resumeModelId,
 			checkpoint,
 			plannedBuild,
 			runHandoff,
+			resumeExecutionToken,
+			messageGroupId,
+			resumeTracing,
+			unregisteredResumeTracing,
 		});
 		return { ok: true, runId };
 	}
@@ -4341,18 +5384,57 @@ export class InstanceAiService {
 			abortController: AbortController;
 			snapshotStorage: DbSnapshotStorage;
 			tracing?: InstanceAiTraceContext;
+			orchestrationContext?: OrchestrationContext;
 			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 			plannedBuild?: PlannedBuildFollowUp;
 			runHandoff?: OrchestratorRunHandoffState;
+			resumeExecutionToken?: symbol;
+			messageGroupId?: string;
+			resumeTracing?: InstanceAiTraceContext;
+			unregisteredResumeTracing?: InstanceAiTraceContext;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 		let completedSetupWorkflowId: string | undefined;
+		let skipPostRunCleanup = false;
+		let resumeClaimed = false;
+		let resumeTraceRegistered = false;
+		let errorReporterExecutionToken: symbol | undefined;
+		/**
+		 * Set once the model run has yielded output. The catch below also wraps
+		 * post-result finalization, so without this a finalization failure after a
+		 * perfectly good turn would be read as "the run produced nothing" and would
+		 * strip that turn's attachments out of history.
+		 */
+		let resumedRunProducedOutput = false;
+		const onResumeClaimed = async () => {
+			if (resumeClaimed) return;
+			resumeClaimed = true;
+
+			if (opts.resumeTracing && !resumeTraceRegistered) {
+				this.tracing.registerTraceContext(
+					opts.runId,
+					opts.threadId,
+					opts.resumeTracing,
+					opts.messageGroupId,
+				);
+				resumeTraceRegistered = true;
+			}
+
+			// Orchestration tools read this shared context at call time. Keep the
+			// suspended trace attached until this process owns the durable resume.
+			if (opts.orchestrationContext && opts.tracing) {
+				opts.orchestrationContext.tracing = opts.tracing;
+			}
+
+			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(opts.runId);
+		};
 
 		try {
-			this.instanceAiErrorReporter.beginRun(opts.runId);
-
+			// Built agents snapshot telemetry while creating the resume runtime, so
+			// configure it before calling resume. Registration of the new trace
+			// context itself remains gated by the durable checkpoint claim above.
 			if (opts.tracing?.getTelemetry && isTelemetryConfigurableAgent(agent)) {
 				try {
 					agent.telemetry(
@@ -4372,13 +5454,17 @@ export class InstanceAiService {
 				}
 			}
 
-			const resumeOptions = this.buildOrchestratorResumeAgentOptions(
-				opts.user,
-				opts.threadId,
-				opts.runId,
-				opts.agentRunId,
-				opts.toolCallId,
-			);
+			const resumeOptions = {
+				...this.buildOrchestratorResumeAgentOptions(
+					opts.user,
+					opts.threadId,
+					opts.runId,
+					opts.agentRunId,
+					opts.toolCallId,
+					opts.signal,
+				),
+				onResumeClaimed,
+			};
 			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
 			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
@@ -4394,7 +5480,7 @@ export class InstanceAiService {
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							stopSignal,
-							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
 				: await resumeAgentRun(agent, resumeData, resumeOptions, {
@@ -4407,9 +5493,14 @@ export class InstanceAiService {
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
-						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
-
+			if (!resumeClaimed) {
+				skipPostRunCleanup = true;
+				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
+				await this.settleUnclaimedResume(opts, claimError, 'stream');
+				return;
+			}
 			if (result.status === 'suspended') {
 				// As in the initial-run path, record suspended-segment usage here.
 				this.emitRunMetrics(opts.threadId, 'suspended', {
@@ -4423,6 +5514,7 @@ export class InstanceAiService {
 						runId: opts.runId,
 						agentRunId: result.agentRunId,
 						agent,
+						orchestrationContext: opts.orchestrationContext,
 						threadId: opts.threadId,
 						user: opts.user,
 						toolCallId: result.suspension.toolCallId,
@@ -4472,13 +5564,13 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: opts.threadId,
-						message: intermediateText,
+						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
 				}
 
 				const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
-				const waitingDecision = this.terminalOutcome.evaluateWaitingResponse(
+				const waitingDecision = await this.terminalOutcome.evaluateWaitingResponse(
 					opts.threadId,
 					opts.runId,
 					result.confirmationEvent,
@@ -4497,22 +5589,14 @@ export class InstanceAiService {
 				}
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(opts.user.id, opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
 				// Persist the refreshed agent tree so repeated HITL waits
 				// survive page refresh after a resume as well.
 				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
-				const suspensionOutputs = {
-					status: 'suspended',
-					runId: opts.runId,
-					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
-					...(result.suspension?.toolCallId
-						? { pendingToolCallId: result.suspension.toolCallId }
-						: {}),
-					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
-				};
+				const suspensionOutputs = buildSuspensionTraceOutputs(opts.runId, result.suspension);
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
@@ -4550,12 +5634,21 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			resumedRunProducedOutput = outputText.length > 0;
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
+			const terminalError =
+				result.status === 'errored'
+					? await this.reclassifyMaskedStreamFailure(result.error, opts.user, {
+							threadId: opts.threadId,
+							runId: opts.runId,
+						})
+					: undefined;
 			if (result.status === 'errored') {
 				this.instanceAiErrorReporter.report(
-					result.error ?? new Error('Instance AI resumed stream errored'),
+					terminalError ?? new Error('Instance AI resumed stream errored'),
 					{
 						component: 'instance-ai-stream',
+						providerStream: true,
 						threadId: opts.threadId,
 						runId: opts.runId,
 						tracing: opts.tracing,
@@ -4565,17 +5658,38 @@ export class InstanceAiService {
 					},
 				);
 			}
+			// A turn that suspended for a confirmation replays its inline files on resume,
+			// so a refusal here strands the thread exactly as it would on the first run.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: true,
+				producedNoOutput: result.status === 'errored' && outputText.length === 0,
+			})
+				? await this.dropTurnAttachments({
+						threadId: opts.threadId,
+						resourceId: opts.user.id,
+					})
+				: undefined;
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+				result.status === 'errored'
+					? getUserFacingErrorMessage(terminalError, undefined, { attachmentRemoved })
+					: undefined;
+			const userFacingErrorCode =
+				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
-				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
-					messageGroupId,
-					workSummary: result.workSummary,
-					errorMessage: userFacingErrorMessage,
-					suppressCompletedFallback:
-						opts.checkpoint?.isCheckpointFollowUp === true ||
-						opts.plannedBuild?.isPlannedBuildFollowUp === true,
-				});
+				await this.terminalOutcome.evaluateTerminalResponse(
+					opts.threadId,
+					opts.runId,
+					result.status,
+					{
+						messageGroupId,
+						workSummary: result.workSummary,
+						errorMessage: userFacingErrorMessage,
+						errorCode: userFacingErrorCode,
+						suppressCompletedFallback:
+							opts.checkpoint?.isCheckpointFollowUp === true ||
+							opts.plannedBuild?.isPlannedBuildFollowUp === true,
+					},
+				);
 			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
@@ -4585,7 +5699,7 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: finalStatus,
 				outputText,
-				metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: finalStatus,
 				}),
 			};
@@ -4607,8 +5721,8 @@ export class InstanceAiService {
 				...(result.status === 'errored'
 					? {
 							errorInfo: {
-								errorMessage: result.error
-									? getErrorMessage(result.error)
+								errorMessage: terminalError
+									? getErrorMessage(terminalError)
 									: 'Instance AI resumed stream errored',
 								errorSource: 'stream' as const,
 							},
@@ -4632,13 +5746,19 @@ export class InstanceAiService {
 				);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
-					message: outputText,
+					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: opts.threadId,
 				});
 			}
 		} catch (error) {
+			if (!resumeClaimed) {
+				skipPostRunCleanup = true;
+				await this.settleUnclaimedResume(opts, error, 'exception');
+				return;
+			}
+
 			if (opts.signal.aborted) {
 				if (this.shouldPreserveHitlOnShutdown(opts.runId)) {
 					return;
@@ -4651,9 +5771,14 @@ export class InstanceAiService {
 				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
 					this.liveness.publishRunTimeoutNotice(opts.threadId, opts.runId);
 				}
-				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'cancelled', {
-					messageGroupId,
-				});
+				await this.terminalOutcome.evaluateTerminalResponse(
+					opts.threadId,
+					opts.runId,
+					'cancelled',
+					{
+						messageGroupId,
+					},
+				);
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'cancelled',
 					reason: cancellationReason,
@@ -4661,7 +5786,7 @@ export class InstanceAiService {
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+					metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 						status: 'cancelled',
 						cancellationReason,
 						runTimeout,
@@ -4685,8 +5810,29 @@ export class InstanceAiService {
 				return;
 			}
 
-			const errorMessage = getErrorMessage(error);
-			const userFacingErrorMessage = getUserFacingErrorMessage(error);
+			const terminalError = await this.reclassifyMaskedStreamFailure(error, opts.user, {
+				threadId: opts.threadId,
+				runId: opts.runId,
+			});
+			// Same reasoning as the resumed errored-result path above: a suspended
+			// file-bearing turn replays its attachments, so a thrown refusal here would
+			// leave them in history too. Gated on the run having produced nothing,
+			// because this catch also covers post-result finalization — a failure there
+			// follows a good turn whose attachments must be left alone.
+			const attachmentRemoved = this.shouldDropTurnAttachments({
+				turnHadAttachments: true,
+				producedNoOutput: !resumedRunProducedOutput,
+			})
+				? await this.dropTurnAttachments({
+						threadId: opts.threadId,
+						resourceId: opts.user.id,
+					})
+				: undefined;
+			const errorMessage = getErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError, undefined, {
+				attachmentRemoved,
+			});
+			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			const errCtx: InstanceAiObservabilityContext = {
@@ -4701,10 +5847,14 @@ export class InstanceAiService {
 				error: errorMessage,
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
-			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
-			this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
+			this.instanceAiErrorReporter.report(terminalError, {
+				component: 'instance-ai-run',
+				...errCtx,
+			});
+			await this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
 				messageGroupId,
 				errorMessage: userFacingErrorMessage,
+				errorCode: userFacingErrorCode,
 			});
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: 'error',
@@ -4713,7 +5863,7 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: 'error',
 				}),
 			};
@@ -4735,39 +5885,234 @@ export class InstanceAiService {
 			);
 			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 		} finally {
-			this.runState.clearActiveRun(opts.threadId);
+			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
+			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// See note in executeRun's finally — keep threadPushRef alive for
 			// post-run planned-task dispatch.
-			if (messageTraceFinalization) {
-				await this.tracing.maybeFinalizeRunTraceRoot(opts.runId, messageTraceFinalization);
-				if (messageTraceFinalization.status !== 'cancelled') {
+			if (!skipPostRunCleanup && messageTraceFinalization) {
+				if (opts.tracing) {
+					await this.tracing.finalizeMessageTraceRoot(
+						opts.runId,
+						opts.tracing,
+						messageTraceFinalization,
+					);
+				}
+				if (messageTraceFinalization.status !== 'cancelled' && !segmentSuspended) {
 					this.liveness.consumeRunTimeout(opts.runId);
 				}
+			}
+			// Resumed runs are user-driven, so they never extend the failure
+			// streak — but a healthy one resets it before the reschedule below.
+			if (!skipPostRunCleanup) {
+				this.updateInternalFollowUpFailureStreak(
+					opts.threadId,
+					messageTraceFinalization?.status,
+					false,
+				);
 			}
 			// Post-run planned-task wiring — mirror the executeRun finally.
 			// Resumed ordinary-chat runs also need to drive the scheduler in case
 			// a background task settled while they were active or suspended and
 			// the orchestrate-checkpoint branch was skipped because of hasLiveRun.
-			if (!this.runState.hasSuspendedRun(opts.threadId)) {
+			if (
+				!skipPostRunCleanup &&
+				!segmentSuspended &&
+				!this.runState.hasSuspendedRun(opts.threadId)
+			) {
+				const reschedule = !opts.signal.aborted;
 				if (opts.checkpoint?.isCheckpointFollowUp) {
 					await this.finalizeCheckpointFollowUp(
 						opts.user,
 						opts.threadId,
 						opts.checkpoint.checkpointTaskId,
+						{ reschedule },
 					);
 				} else if (opts.plannedBuild?.isPlannedBuildFollowUp) {
-					await this.finalizePlannedBuildFollowUp(opts.user, opts.threadId, opts.plannedBuild);
-				} else {
+					await this.finalizePlannedBuildFollowUp(opts.user, opts.threadId, opts.plannedBuild, {
+						reschedule,
+					});
+				} else if (reschedule) {
 					await this.schedulePlannedTasks(opts.user, opts.threadId);
 				}
-				await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
+				if (reschedule) {
+					await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
+				}
+				// The setup claim must land even on a stop: it is what stops a later
+				// run from re-routing setup for a workflow the user already set up.
 				if (completedSetupWorkflowId) {
 					await this.markWorkflowSetupHandled(opts.threadId, completedSetupWorkflowId, opts.runId);
 				}
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
-				await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (reschedule) {
+					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				}
 			}
-			this.instanceAiErrorReporter.endRun(opts.runId);
+			if (errorReporterExecutionToken) {
+				this.instanceAiErrorReporter.endRun(opts.runId, errorReporterExecutionToken);
+			}
+		}
+	}
+
+	private async settleUnclaimedResume(
+		opts: UnclaimedResumeContext,
+		error: unknown,
+		errorSource: NonNullable<RunFinishErrorInfo['errorSource']>,
+	): Promise<void> {
+		const outcome = classifyUnclaimedResume(error, {
+			aborted: opts.signal.aborted,
+			preserveHitl: this.shouldPreserveHitlOnShutdown(opts.runId),
+		});
+
+		switch (outcome.kind) {
+			case 'preserve-hitl':
+				return;
+
+			case 'stale':
+				await this.tracing.finalizeDetachedTraceRun(
+					`stale-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'cancelled',
+						outputs: { runId: opts.runId },
+						metadata: { completion_source: 'stale_resume' },
+					},
+				);
+				return;
+
+			case 'cancelled': {
+				const reason = this.liveness.consumeRunTimeout(opts.runId).timedOut
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
+					: getAbortReason(opts.signal);
+				await this.tracing.finalizeDetachedTraceRun(
+					`cancelled-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'cancelled',
+						outputs: { runId: opts.runId },
+						metadata: { completion_source: 'resume_cancelled', cancellation_reason: reason },
+					},
+				);
+				await this.emitTerminalRun({
+					threadId: opts.threadId,
+					runId: opts.runId,
+					status: 'cancelled',
+					reason,
+					messageGroupId: opts.messageGroupId,
+					user: opts.user,
+					snapshotStorage: opts.snapshotStorage,
+				});
+				return;
+			}
+
+			case 'errored':
+				this.instanceAiErrorReporter.report(error, {
+					component: 'instance-ai-resume-claim',
+					threadId: opts.threadId,
+					runId: opts.runId,
+					tracing: opts.tracing,
+					agentId: orchestratorAgentId(opts.runId),
+					userId: opts.user.id,
+					messageGroupId: opts.messageGroupId,
+				});
+				await this.tracing.finalizeDetachedTraceRun(
+					`unclaimed-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'failed',
+						error: outcome.errorMessage,
+						metadata: { completion_source: 'resume_claim' },
+					},
+				);
+				await this.emitTerminalRun({
+					threadId: opts.threadId,
+					runId: opts.runId,
+					status: 'errored',
+					reason: outcome.reason,
+					errorCode: outcome.errorCode,
+					errorInfo: { errorMessage: outcome.errorMessage, errorSource },
+					// The resume trace context is never registered before the claim, so the
+					// message group has to come from the suspended run, not the trace registry.
+					messageGroupId: opts.messageGroupId,
+					user: opts.user,
+					snapshotStorage: opts.snapshotStorage,
+				});
+				return;
+
+			default:
+				assertNever(outcome);
+		}
+	}
+
+	/**
+	 * Terminalizes a run that ended in a stop or a failure. `publishRunFinish` is
+	 * the one step that has to land — without it the chat hangs forever — so every
+	 * DB-touching step around it is best-effort. `saveAgentTreeSnapshot` rebuilds
+	 * the agent tree by folding the event bus, so it has to come last.
+	 */
+	private async emitTerminalRun(args: {
+		threadId: string;
+		runId: string;
+		status: 'cancelled' | 'errored';
+		reason: string;
+		errorCode?: TerminalErrorCode;
+		errorInfo?: RunFinishErrorInfo;
+		messageGroupId?: string;
+		user: User;
+		snapshotStorage: DbSnapshotStorage;
+	}): Promise<void> {
+		const { threadId, runId, status } = args;
+		const context = { threadId, runId };
+
+		await this.bestEffort(
+			'Failed to evaluate the terminal response for a settling run',
+			context,
+			async () =>
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, status, {
+					messageGroupId: args.messageGroupId,
+					...(status === 'errored' ? { errorMessage: args.reason, errorCode: args.errorCode } : {}),
+				}),
+		);
+
+		const archivedWorkflowIds =
+			(await this.bestEffort(
+				'Failed to reap temporary workflows for a settling run',
+				context,
+				async () =>
+					await this.temporaryWorkflowService.reapForRun(
+						threadId,
+						args.user,
+						undefined,
+						this.backgroundTasks.getRunningTasks(threadId).length,
+					),
+			)) ?? [];
+
+		this.publishRunFinish(
+			threadId,
+			runId,
+			status,
+			args.reason,
+			archivedWorkflowIds,
+			args.user.id,
+			args.errorInfo,
+		);
+
+		await this.bestEffort(
+			'Failed to save the agent tree snapshot for a settling run',
+			context,
+			async () => await this.saveAgentTreeSnapshot(threadId, runId, args.snapshotStorage),
+		);
+	}
+
+	private async bestEffort<T>(
+		failureMessage: string,
+		context: { threadId: string; runId: string },
+		step: () => T | Promise<T>,
+	): Promise<Awaited<T> | undefined> {
+		try {
+			return await step();
+		} catch (error) {
+			this.logger.warn(failureMessage, { ...context, error: getErrorMessage(error) });
+			return undefined;
 		}
 	}
 
@@ -5017,6 +6362,37 @@ export class InstanceAiService {
 		return { status: 'limit-reached' };
 	}
 
+	/** Snapshot every Agent the editor attached, as it stands before this turn
+	 *  acts on it. Best-effort: it only feeds eval-seed authoring. */
+	private async snapshotAttachedAgents(
+		attachments: InstanceAiResourceAttachment[],
+		orchestrationContext: OrchestrationContext,
+		tracing: InstanceAiTraceContext | undefined,
+	): Promise<void> {
+		const delegate = orchestrationContext.domainContext?.builderDelegate;
+		if (!delegate || !tracing) return;
+		for (const attachment of attachments) {
+			if (attachment.type !== 'agent') continue;
+			let artifact: AgentSnapshotArtifact | null = null;
+			try {
+				artifact = (await delegate.readAgentArtifact?.(attachment.id)) ?? null;
+			} catch (error) {
+				this.logger.debug(
+					`[agent-snapshot] attached read for ${attachment.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				continue;
+			}
+			if (!artifact) continue;
+			await emitAgentSnapshotTraceEvent(tracing, {
+				agentId: attachment.id,
+				projectId: attachment.projectId,
+				reason: 'attached',
+				artifact,
+				logger: this.logger,
+			});
+		}
+	}
+
 	private async buildMessageWithRunningTasks(threadId: string, message: string): Promise<string> {
 		return await enrichMessageWithBackgroundTasks(
 			message,
@@ -5029,6 +6405,7 @@ export class InstanceAiService {
 	}
 
 	private trackConfirmationRequest(
+		userId: string,
 		threadId: string,
 		confirmationEvent: { payload: Record<string, unknown> },
 	): void {
@@ -5037,6 +6414,8 @@ export class InstanceAiService {
 		payload.inputThreadId = inputThreadId;
 
 		const inputType = payload.inputType as string | undefined;
+		const mcpConnectServers = mcpConnectRequestSchema.safeParse(payload.mcpConnectRequest).data
+			?.servers;
 		let type: string;
 		if (inputType) {
 			type = inputType;
@@ -5044,6 +6423,8 @@ export class InstanceAiService {
 			type = 'setup';
 		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
 			type = 'credential-setup';
+		} else if (mcpConnectServers) {
+			type = 'mcp-connect';
 		} else {
 			type = 'approval';
 		}
@@ -5055,6 +6436,8 @@ export class InstanceAiService {
 			numSteps = payload.setupRequests.length;
 		} else if (Array.isArray(payload.credentialRequests)) {
 			numSteps = payload.credentialRequests.length;
+		} else if (mcpConnectServers) {
+			numSteps = mcpConnectServers.length;
 		}
 
 		if (inputType === 'plan-review') {
@@ -5068,12 +6451,49 @@ export class InstanceAiService {
 			}
 		}
 
+		const credentialRequests = (
+			Array.isArray(payload.credentialRequests) ? payload.credentialRequests : []
+		).filter(
+			(request): request is { credentialType?: unknown; setupHint?: unknown } =>
+				typeof request === 'object' && request !== null,
+		);
+
+		// Whether any requested credential is a recipe-driven Templated Custom Auth
+		// one (recipe-seeded modal), to compare completion against plain types.
+		const containsTemplatedCred = credentialRequests.some(
+			(request) =>
+				request.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE ||
+				(request.setupHint !== null && request.setupHint !== undefined),
+		);
+
 		this.telemetry.track('Builder asked for input', {
+			user_id: userId,
 			thread_id: threadId,
 			input_thread_id: inputThreadId,
 			type,
 			num_steps: numSteps,
+			contains_templated_cred: containsTemplatedCred,
 		});
+
+		// Recipe content at spec time — production visibility into template and
+		// link quality (the offline eval suite grades the same fields). One event
+		// per recipe; secret-free by construction: recipes are agent-authored
+		// before any user input.
+		for (const request of credentialRequests) {
+			const parsedHint = credentialSetupHintSchema.safeParse(request.setupHint);
+			if (!parsedHint.success) continue;
+			const hint = parsedHint.data;
+			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED, {
+				thread_id: threadId,
+				input_thread_id: inputThreadId,
+				template: hint.template,
+				placeholders: hint.placeholders,
+				test_url: hint.testUrl,
+				docs_url: hint.docsUrl,
+				service_host: hint.serviceHost,
+				accepted_status_codes: hint.acceptedStatusCodes,
+			});
+		}
 	}
 
 	private async finalizeCancelledSuspendedRun(
@@ -5118,7 +6538,7 @@ export class InstanceAiService {
 		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
 			reason,
-			metadata: this.tracing.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
+			metadata: await this.tracing.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
 				status: 'cancelled',
 				cancellationReason: reason,
 				...(runTimeout ? { runTimeout } : {}),
@@ -5160,13 +6580,121 @@ export class InstanceAiService {
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
+		this.emitBrowserCredentialSetupOutcomes(threadId, runId, status, reason);
 		if (status === 'errored') {
 			this.telemetry.track('Builder generation errored', {
 				thread_id: threadId,
 				run_id: runId,
-				error_message: errorInfo?.errorMessage ?? reason ?? 'unknown',
+				error_message: redactTelemetryText(errorInfo?.errorMessage ?? reason ?? 'unknown'),
 				...(errorInfo?.errorSource ? { error_source: errorInfo.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
+			});
+		}
+	}
+
+	/**
+	 * Per-run bookkeeping behind `context.browserCredentialSetup` (NODE-5511).
+	 * `markPending` opens an attempt when the user clicks auto-setup on the
+	 * credential card; `markCreated`/`markCreateFailed` resolve the latest open
+	 * attempt for the type — or open an implicit `'conversation'` attempt when
+	 * there is none, so LLM-initiated creations (user asked directly in chat,
+	 * no setup card involved) still produce a terminal telemetry event.
+	 */
+	private createBrowserCredentialSetupTracker(
+		runId: string,
+		userId: string,
+	): NonNullable<InstanceAiContext['browserCredentialSetup']> {
+		const getOrCreateAttempts = () => {
+			let pending = this.pendingBrowserCredentialSetups.get(runId);
+			if (!pending) {
+				pending = { userId, attempts: [] };
+				this.pendingBrowserCredentialSetups.set(runId, pending);
+			}
+			return pending.attempts;
+		};
+		const resolveOpenAttempt = (credentialType: string) => {
+			const attempts = getOrCreateAttempts();
+			let attempt = attempts.findLast((a) => a.credentialType === credentialType && !a.created);
+			if (!attempt) {
+				attempt = {
+					credentialType,
+					setupMethod: 'conversation',
+					startedAt: Date.now(),
+					created: false,
+				};
+				attempts.push(attempt);
+			}
+			return attempt;
+		};
+		return {
+			markPending: (credentialType: string, attemptId?: string) => {
+				const attempts = getOrCreateAttempts();
+				if (attemptId && attempts.some((attempt) => attempt.attemptId === attemptId)) {
+					return;
+				}
+				attempts.push({
+					credentialType,
+					setupMethod: 'setup_card',
+					attemptId,
+					startedAt: Date.now(),
+					created: false,
+				});
+			},
+			markCreated: (credentialType: string) => {
+				const attempt = resolveOpenAttempt(credentialType);
+				attempt.created = true;
+				attempt.errorCode = undefined;
+			},
+			markCreateFailed: (credentialType: string, errorCode: string) => {
+				resolveOpenAttempt(credentialType).errorCode = errorCode;
+			},
+		};
+	}
+
+	/**
+	 * Emit one terminal telemetry event per browser-assisted credential setup
+	 * attempt of the finished run (NODE-5511). Consumes the pending record so
+	 * every attempt yields exactly one success or failure event. When the flow
+	 * itself never failed, the run's own termination (user stop, timeout,
+	 * stream error) is reported as the error code so aborts aren't counted as
+	 * flow failures.
+	 */
+	private emitBrowserCredentialSetupOutcomes(
+		threadId: string,
+		runId: string,
+		runStatus: 'completed' | 'cancelled' | 'errored',
+		runFinishReason?: string,
+	): void {
+		const browserSetup = this.pendingBrowserCredentialSetups.get(runId);
+		if (!browserSetup) return;
+		this.pendingBrowserCredentialSetups.delete(runId);
+		const terminalErrorCode =
+			runStatus === 'completed'
+				? 'not_attempted'
+				: runStatus === 'errored'
+					? 'run_errored'
+					: runFinishReason === INSTANCE_AI_RUN_TIMEOUT_REASON
+						? 'run_timed_out'
+						: 'run_cancelled';
+		for (const attempt of browserSetup.attempts) {
+			this.telemetry.track('Instance AI Browser Use credential setup completed', {
+				user_id: browserSetup.userId,
+				credential_type: attempt.credentialType,
+				status: attempt.created ? 'success' : 'failure',
+				...(attempt.created
+					? {}
+					: {
+							failure_stage: failureStageForErrorCode(attempt.errorCode),
+							error_code: attempt.errorCode ?? terminalErrorCode,
+						}),
+				// The flow never runs a credential test, so validation support is unknown.
+				is_valid: null,
+				is_new: true,
+				setup_method: attempt.setupMethod,
+				thread_id: threadId,
+				run_id: runId,
+				...(attempt.attemptId ? { credential_setup_attempt_id: attempt.attemptId } : {}),
+				duration_ms: Date.now() - attempt.startedAt,
 			});
 		}
 	}
@@ -5342,6 +6870,18 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Read-own-writes barrier for run-scoped reads: settle the thread's drain
+	 * (including open coalesce buffers) so everything published before this call
+	 * is visible, then read the log. Every caller is a run boundary —
+	 * terminal-guard inputs, trace metadata, snapshot builds — where closing the
+	 * open segment early is correct anyway.
+	 */
+	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
+		await this.eventLog.flush(threadId);
+		return await this.eventLog.getEventsForRuns(threadId, runIds);
+	}
+
+	/**
 	 * Build an agent tree from in-memory events and persist it as a thread metadata snapshot.
 	 * @param isUpdate If true, updates the existing snapshot for this runId (background task completion).
 	 */
@@ -5363,10 +6903,14 @@ export class InstanceAiService {
 					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
 					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
 				}
-				events = this.eventBus.getEventsForRuns(threadId, groupRunIds);
+				events = await this.readRunEvents(threadId, groupRunIds);
 			} else {
-				events = this.eventBus.getEventsForRun(threadId, runId);
+				events = await this.readRunEvents(threadId, [runId]);
 			}
+			// The tree input comes from the DB, so long runs cannot out-evict their
+			// own snapshot input (the empty-agentTree bug class). The snapshot write
+			// itself stays for now so pre-log threads keep rendering; history moves
+			// to fold-on-read separately.
 			if (isUpdate && events.length === 0) {
 				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
 					threadId,

@@ -129,7 +129,7 @@ import { proxyFetch } from '@n8n/ai-utilities';
 describe('microsoft-utils', () => {
 	beforeAll(async () => {
 		const actualMcpUtils = await vi.hoisted(
-			async () => await import('../../../mcp/McpClientTool/utils'),
+			async () => await import('../../../mcp/McpClientTool/utils.js'),
 		);
 
 		vi.mock('../../../mcp/McpClientTool/utils', async () => ({

@@ -1,12 +1,12 @@
 import type { Run } from 'langsmith/schemas';
 
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import {
 	parseTargetOutput,
 	reshapeLangSmithRuns,
 	sentinelOutcomeFromVerdicts,
-} from '../cli/reshape';
-import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
+} from '../run/reshape';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
@@ -135,6 +135,32 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.buildError).toBe('Build failed: agent produced no workflow');
 	});
 
+	it('carries `claude` build spend from any row of the case (first defined wins)', () => {
+		const cases = [withFile('airtable', [scenario('s1'), scenario('s2')])];
+		const rows = [
+			row(
+				{ testCaseFile: 'airtable', scenarioName: 's1', _iteration: 0 },
+				{ buildSuccess: true, passed: true, score: 1, reasoning: 'ok' },
+			),
+			row(
+				{ testCaseFile: 'airtable', scenarioName: 's2', _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: true,
+					score: 1,
+					reasoning: 'ok',
+					buildCostUsd: 0.37,
+					buildTurns: 6,
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		expect(result[0][0].buildCostUsd).toBe(0.37);
+		expect(result[0][0].buildTurns).toBe(6);
+	});
+
 	it('attaches build-expectation verdicts by iteration:fileSlug even with no threadId (prebuilt/MCP path)', () => {
 		// Prebuilt/MCP builds have no threadId. Transcript stays threadId-gated (so it
 		// remains undefined here), but outcome-expectation verdicts must still attach via
@@ -179,6 +205,9 @@ describe('reshapeLangSmithRuns', () => {
 		expect(s2.success).toBe(false);
 		expect(s2.reasoning).toBe('No run result for this scenario');
 		expect(s2.score).toBe(0);
+		// Unowned and unmeasured: visible as a gap, but out of the pass rate.
+		expect(s2.attribution).toBe('verification_gap');
+		expect(s2.incomplete).toBe(true);
 	});
 
 	it('skips a malformed run output rather than scoring it as a failure', () => {
@@ -190,6 +219,8 @@ describe('reshapeLangSmithRuns', () => {
 		const s1 = result[0][0].executionScenarioResults[0];
 		expect(s1.success).toBe(false);
 		expect(s1.reasoning).toBe('Malformed run output — skipped');
+		expect(s1.attribution).toBe('verification_gap');
+		expect(s1.incomplete).toBe(true);
 	});
 
 	it('groups runs into separate iterations by the injected _iteration index', () => {

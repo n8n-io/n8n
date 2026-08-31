@@ -21,16 +21,20 @@ export async function workflowAutoDeactivated(
 	workflowsStore.setWorkflowInactive(data.workflowId);
 
 	if (workflowDocumentStore.workflowId === data.workflowId) {
-		// Only update workflow if there are no unsaved changes
-		if (!uiStore.stateIsDirty) {
-			const updatedWorkflow = await workflowsListStore.fetchWorkflow(data.workflowId);
-			if (!updatedWorkflow.checksum) {
-				throw new Error('Failed to fetch workflow');
-			}
+		const updatedWorkflow = await workflowsListStore.fetchWorkflow(data.workflowId);
+		if (!updatedWorkflow.checksum) {
+			throw new Error('Failed to fetch workflow');
+		}
+
+		if (uiStore.stateIsDirty) {
+			// Unsaved changes in the editor: reflect the deactivation locally and refresh the
+			// expectedChecksum so the next save doesn't 409, but don't re-hydrate — that would
+			// discard the in-progress edits.
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
+		} else {
 			// initializeWorkspace calls initState which sets the document store
 			await initializeWorkspace(updatedWorkflow);
-		} else {
-			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 		}
 
 		bannersStore.pushBannerToStack('WORKFLOW_AUTO_DEACTIVATED');

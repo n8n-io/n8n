@@ -1,5 +1,5 @@
 import { watch, type ComputedRef, type Ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection, WorkflowSetupStep } from '../workflowSetup.types';

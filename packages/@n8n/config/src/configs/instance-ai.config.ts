@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 
@@ -15,6 +15,27 @@ export class InstanceAiConfig {
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
+
+	/**
+	 * Google Cloud project for `google-vertex-anthropic/*` models.
+	 * Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON.
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_PROJECT_ID')
+	vertexProjectId: string = '';
+
+	/**
+	 * Vertex location for `google-vertex-anthropic/*` models (e.g. `global`, `us-east5`).
+	 * Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`.
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_LOCATION')
+	vertexLocation: string = '';
+
+	/**
+	 * Service-account JSON for `google-vertex-anthropic/*` models.
+	 * Omit to use ADC (`gcloud auth application-default login`).
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON')
+	vertexServiceAccountJson: string = '';
 
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
@@ -152,22 +173,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
 
-	/** Scan and redact secrets/PII from agent output before it reaches the user. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
-	outputRedactionEnabled: boolean = true;
-
-	/** Redact credential/secret patterns from agent output. Applies only when output redaction is enabled. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
-	outputRedactionSecrets: boolean = true;
-
-	/** Comma-separated PII categories to redact from agent output. Available: email, phone, credit-card, ssn-us, iban, crypto-wallet, ip, mac, url. Empty = no PII scanning. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
-	outputRedactionPii: string = 'credit-card';
-
-	/** Replacement text substituted for each redacted match in agent output. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
-	outputRedactionPlaceholder: string = '[REDACTED]';
-
 	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
@@ -175,4 +180,33 @@ export class InstanceAiConfig {
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
 	thinkingEnabled: boolean = true;
+
+	/**
+	 * Let the assistant discover and connect MCP registry servers.
+	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
+	 */
+	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
+	mcpConnectionsEnabled: boolean = false;
+
+	/**
+	 * Force-enable canvas-selected-nodes chat context in Instance AI.
+	 * Acts as an operator-level override of the PostHog rollout flag
+	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
+	 * `false` falls back to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
+	canvasNodeContextEnabled: boolean = false;
+
+	/**
+	 * Activation-capped trial variant for n8n cloud experiment.
+	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
+	activationCapped: boolean = false;
+
+	/**
+	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
+	activationLockMessageThreshold: number = 1;
 }

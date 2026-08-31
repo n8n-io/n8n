@@ -3,7 +3,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { isExpression } from '@/app/utils/expressions';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
-import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
+import { isResourceLocatorValue, NodeHelpers, type INodeParameters } from 'n8n-workflow';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { buildSectionId } from '../workflowSetup.helpers';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
@@ -37,11 +37,17 @@ export function useWorkflowSetupSections(
 
 			const node = {
 				...req.node,
-				parameters: resolveParameterDefaults(req.node),
+				parameters: dropStaleResourceLocatorCache(
+					resolveParameterDefaults(req.node),
+					parameterNames,
+				),
 			};
 			const existingCred = credentialType ? req.node.credentials?.[credentialType] : undefined;
+			// A preferNewCredential request opens the card unselected, so don't seed the
+			// node's existing credential, or the step reads as complete and Apply
+			// resubmits the one being replaced.
 			const currentCredentialId =
-				credentialType === undefined
+				credentialType === undefined || req.preferNewCredential === true
 					? null
 					: existingCred !== undefined && '__aiGatewayManaged' in existingCred
 						? AI_GATEWAY_MANAGED_TAG
@@ -55,6 +61,8 @@ export function useWorkflowSetupSections(
 				currentCredentialId,
 				parameterNames,
 				credentialTargetNodes: [{ id: req.node.id, name: req.node.name, type: req.node.type }],
+				...(req.setupHint ? { setupHint: req.setupHint } : {}),
+				...(req.preferNewCredential ? { preferNewCredential: true } : {}),
 			};
 
 			result.push(section);
@@ -79,6 +87,32 @@ export function useWorkflowSetupSections(
 	}
 
 	return { sections };
+}
+
+/**
+ * A resource locator with a cached display name but no value renders as if a
+ * resource were selected, while its "required" issue keeps the section
+ * incomplete — the user can't tell why they can't continue. Drop the stale
+ * cache so the field honestly shows as unset.
+ */
+function dropStaleResourceLocatorCache(
+	parameters: INodeParameters,
+	parameterNames: string[],
+): INodeParameters {
+	let result = parameters;
+	for (const name of parameterNames) {
+		const parameter = result[name];
+		if (!isResourceLocatorValue(parameter)) continue;
+		const isEmpty =
+			parameter.value === '' || parameter.value === null || parameter.value === undefined;
+		if (!isEmpty) continue;
+		if (parameter.cachedResultName === undefined && parameter.cachedResultUrl === undefined) {
+			continue;
+		}
+		const { cachedResultName, cachedResultUrl, ...rest } = parameter;
+		result = { ...result, [name]: rest };
+	}
+	return result;
 }
 
 /**

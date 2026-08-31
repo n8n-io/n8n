@@ -1,4 +1,4 @@
-import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import type { InstanceAiCredentialSetupHint, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import type { INodeParameters } from 'n8n-workflow';
 
 /**
@@ -13,6 +13,9 @@ export interface WorkflowSetupSection {
 	currentCredentialId: string | null;
 	parameterNames: string[];
 	credentialTargetNodes: Array<{ id: string; name: string; type: string }>;
+	setupHint?: InstanceAiCredentialSetupHint;
+	/** The user asked for a fresh credential: don't preselect an existing one. */
+	preferNewCredential?: boolean;
 }
 
 /**
@@ -39,6 +42,9 @@ export type WorkflowSetupStep =
 export interface WorkflowSetupApplyPayload {
 	nodeCredentials?: Record<string, Record<string, string>>;
 	nodeParameters?: Record<string, INodeParameters>;
+	/** Nodes the user skipped. Sent so the backend can tell a dismissed card apart from one
+	 *  that just isn't filled in yet, and stop asking for it later in the conversation. */
+	skippedNodes?: string[];
 }
 
 export type TerminalState = 'applying' | 'applied' | 'partial' | 'deferred';

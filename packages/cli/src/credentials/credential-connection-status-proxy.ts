@@ -1,8 +1,10 @@
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
-import type { ICredentialConnectionStatusProvider } from './credential-connection-status-provider.interface';
+import type {
+	ICredentialConnectionStatusProvider,
+	UserConnection,
+} from './credential-connection-status-provider.interface';
 
 /**
  * Proxy between the core credentials service and module-owned per-user
@@ -18,9 +20,12 @@ export class CredentialConnectionStatusProxy implements ICredentialConnectionSta
 		this.provider = provider;
 	}
 
-	async findConnectedCredentialIds(userId: string, credentialIds: string[]): Promise<Set<string>> {
-		if (!this.provider || credentialIds.length === 0) return new Set();
-		return await this.provider.findConnectedCredentialIds(userId, credentialIds);
+	async findMyConnections(
+		userId: string,
+		credentialIds: string[],
+	): Promise<Map<string, UserConnection>> {
+		if (!this.provider || credentialIds.length === 0) return new Map();
+		return await this.provider.findMyConnections(userId, credentialIds);
 	}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {

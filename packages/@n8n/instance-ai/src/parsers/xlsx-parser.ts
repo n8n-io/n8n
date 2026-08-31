@@ -26,7 +26,7 @@ export async function extractXlsxAsRows(
 	}
 	assertOoxmlWithinBounds(decoded, attachment.fileName);
 
-	const XLSX = await import('xlsx');
+	const XLSX = await import('@e965/xlsx');
 
 	let workbook: ReturnType<typeof XLSX.read>;
 	try {

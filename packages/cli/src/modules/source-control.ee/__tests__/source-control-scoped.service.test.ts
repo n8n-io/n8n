@@ -54,4 +54,19 @@ describe('SourceControlScopedService', () => {
 			await expect(service.ensureIsAllowedToGetStatus(req)).rejects.toThrow(ForbiddenError);
 		});
 	});
+
+	describe('getCredentialsInAdminProjectsFromContextFilter', () => {
+		const context = mock<SourceControlContext>({
+			user: req.user,
+			hasAccessToAllProjects: () => true,
+		});
+
+		it('excludes instance credentials regardless of the instance credential scope', () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			expect(service.getCredentialsInAdminProjectsFromContextFilter(context)).toEqual({
+				usageScope: 'project',
+			});
+		});
+	});
 });

@@ -13,8 +13,8 @@ and this guide explains how to develop against them without friction.
 ## The branch model
 
 `3.x` is not a divergent fork — it is simply **"whatever is on `master`, plus the
-breaking-change commits"**. Their histories stay in lockstep via a daily sync, so
-merging `3.x` back into `master` at release time is painless.
+breaking-change commits"**. A daily sync keeps that literally true by replaying those
+commits on top of `master`, so merging `3.x` back into `master` at release time is painless.
 
 ```mermaid
 flowchart LR
@@ -27,7 +27,7 @@ flowchart LR
     end
     F --> master
     D --> master
-    master -- "daily sync (util-sync-master-to-3x.yml)" --> threex
+    master -- "daily sync: replay 3.x commits<br/>onto master (util-sync-master-to-3x.yml)" --> threex
     B --> threex
     threex -. "merged to master at v3 release" .-> master
 ```
@@ -107,9 +107,11 @@ Override flags locally without touching PostHog:
 
 ## Introducing a breaking change (on `3.x`)
 
-Breaking changes go **only on `3.x`**, via a PR that targets `3.x` directly
-(branch off the latest `3.x`, open the PR against `3.x`). Do not land breaking
-changes on `master` — the sync guarantees `master` stays releasable as v2.
+Breaking changes go **only on `3.x`**, via a PR that targets `3.x` directly. Branch off
+**latest `master`** and open the PR against `3.x` — since `3.x` is `master` plus the breaking
+commits, such a PR merges cleanly and is immune to the daily force-push (see
+[How the daily sync works](#how-the-daily-sync-works)). Do not land breaking changes on
+`master` — the sync guarantees `master` stays releasable as v2.
 
 - Track the change in the [v3 breaking-changes tracker](https://www.notion.so/n8n/1a75b6e0c94f802caca3ce378d0d8046)
   and the [Release v3 Linear project](https://linear.app/n8n/project/release-v3-7d7032bebbec/activity).
@@ -122,24 +124,88 @@ of the breaking removal on `3.x`.
 
 ## How the daily sync works
 
-[`util-sync-master-to-3x.yml`](./workflows/util-sync-master-to-3x.yml) runs daily
-and merges `master` into `3.x`:
+[`util-sync-master-to-3x.yml`](./workflows/util-sync-master-to-3x.yml) runs daily and
+**replays the `3.x`-only commits on top of `master`** (a rebase), then force-pushes `3.x`:
 
-1. **Fast-forward** when `3.x` hasn't diverged.
-2. **Three-way merge** when it has.
-3. On a **merge conflict** it opens a **draft conflict PR** (labeled
-   `automation:v3-sync`) and posts to the **`#alerts-v3-sync`** Slack channel.
-   **Syncs pause until that PR is resolved and merged** — so conflicts never pile
-   up silently.
+1. **Nothing to do** when `3.x` already contains `master`.
+2. **Replay + force-push** otherwise. A clean sync adds **no commit of its own** — `3.x`
+   stays literally "master + the breaking commits", every replayed commit kept as-is with its
+   original message and author. Nothing is ever squashed. Merge commits in the range (breaking
+   PRs merged into `3.x`) are flattened away, and a breaking commit that also landed on
+   `master` is dropped as empty.
+3. Conflicts confined to **mechanical files** — tool-generated content with a deterministic
+   resolution (`pnpm-lock.yaml`, `packages/frontend/editor-ui/data/node-popularity.json`,
+   `.github/test-metrics/e2e-impact-map.json`) — are **auto-resolved during the replay**,
+   exactly as a human resolver would: the lockfile is regenerated with
+   `pnpm install --lockfile-only` (pnpm merges its own conflict markers), bot-maintained data
+   files take `master`'s side. The resolution is folded into the stalled commit, so this
+   still adds **no commit and no PR**. The list lives in `MECHANICAL_PATHS` in
+   [`sync-master-to-3x.mjs`](./scripts/sync-master-to-3x.mjs).
+4. On a **real code conflict**, `3.x` is left **untouched** and a **draft conflict PR**
+   (labeled `automation:v3-sync`) carrying the conflict markers is opened on
+   `sync/master-to-3x` — with the mechanical files already pre-resolved — plus a post to the
+   **`#alerts-v3-sync`** Slack channel. **Syncs pause until that PR is merged** — so
+   conflicts never pile up silently.
 
-**Who gets pinged.** The conflict is attributed to the authors of the `3.x`
-breaking commits touching the conflicted files (computed by
-`.github/scripts/sync-conflict-owners.mjs`: the `master..HEAD` commits per
-conflicted file, mapped to GitHub accounts). Those authors are **requested as
-reviewers** on the conflict PR and listed in the `#alerts-v3-sync` message. So if you
-authored the breaking commit that caused a conflict, you'll be nudged to resolve
-it: fix the conflict markers on the `sync/master-to-3x` branch and merge the PR;
-the next daily run then resumes normally.
+Whatever route it takes, the sync verifies that the content it is about to push is **exactly
+the tree a merge of `3.x` and `master` produces** (`git merge-tree`), and that no conflict
+markers are present. When mechanical files had to be regenerated, the exactness check applies
+to every path **except** those files, and a regenerated lockfile must additionally be
+consistent with the manifests in the pushed tree. Any check failing fails the run instead of
+rewriting `3.x`.
+
+> **`3.x` is force-pushed daily.** Branch breaking-change PRs off **`master`** and target
+> `3.x` — then your merge-base is a `master` commit that survives every rewrite and your
+> diff stays clean. If you branch off `3.x` itself, re-base after a sync
+> (`git rebase --onto origin/3.x <old-3.x-tip> <your-branch>`). Commit links on
+> already-merged `3.x` PRs keep working but point at commits no longer on any branch.
+
+### Resolving a conflict PR
+
+The conflict branch is `master` merged into `3.x` with the **conflict markers committed**, so
+you see exactly what clashed — and the required checks stay red until they're gone, so the PR
+can't be merged half-resolved. Mechanical files arrive **pre-resolved** (listed in the PR
+under "Auto-resolved for you"), so only the real code conflicts need you:
+
+```bash
+git fetch origin sync/master-to-3x && git switch sync/master-to-3x
+# fix the conflict markers, then commit them in ONE commit of your own
+git push origin sync/master-to-3x
+```
+
+If the PR says the lockfile was **deferred** (a `package.json` / `pnpm-workspace.yaml` is
+conflicted too), resolve the manifests first, then regenerate it with
+`pnpm install --lockfile-only` and include the result in your fix commit.
+
+Watch for the **"Deleted on one side, changed on the other"** section. Git leaves no markers
+for a delete/modify, so the branch looks clean where it is not: the merge keeps `3.x`'s side
+(its deletion, or its file when `master` deleted it). Confirm that is right, and check
+whether `master`'s change has to be carried over by hand — when a breaking commit re-recorded
+or renamed a file, `master`'s edit to the old one usually belongs on the replacement, and no
+automation can find that for you. The PR names the `master` commit behind each conflicted
+path so you can see what the change was.
+
+Then **merge the PR with the normal merge button.** `master`'s commits arrive as-is and your
+fix stays its own commit. **Never close a conflict PR unmerged** — closing resolves nothing and
+the same conflict reopens on the next sync.
+
+`3.x` never holds markers at its tip, so nightly images keep building; the merge commit that
+carries them drops out of `3.x`'s history at the next sync (the replay takes the queue's
+commits only).
+
+The next sync then makes `3.x` linear again. The plain replay stalls at that point (a fix
+recorded around a merge commit leaves no patch to replay), so it replays a second time with
+`3.x`'s side favoured, and your fix commit — which is in the queue — does the real work.
+Stalls that favouring cannot settle on its own (e.g. modify/delete, when `master` touched a
+file a breaking commit deletes) are resolved toward `3.x`'s side during the replay. Nothing
+is squashed, and the tree guard proves the result is exactly the merge of `3.x` and
+`master`.
+
+**Who gets pinged.** The conflict is attributed to the authors of the `3.x` commits behind the
+conflicted files, plus the `master` commits that touched the same files
+(`.github/scripts/sync-conflict-owners.mjs`, mapped to GitHub accounts). Both sides are named
+in the PR body and the `#alerts-v3-sync` message. **Nobody is requested as a reviewer** — the
+resolver picks the PR up themselves.
 
 ## Trialing v3
 
@@ -149,7 +215,23 @@ the next daily run then resumes normally.
 ```bash
 docker pull n8nio/n8n:v3-nightly              # latest v3 nightly
 docker pull n8nio/n8n:v3-nightly-20260625     # a specific build date
+docker pull n8nio/n8n:v3-rc                   # latest release candidate
+docker pull n8nio/n8n:v3-rc-20260625          # latest RC of that day
+docker pull n8nio/n8n:v3-rc-20260625.2        # one exact RC, never overwritten
 ```
+
+Every Monday's nightly is also retagged as a release candidate, and a maintainer can
+publish extra RCs any day (`force_rc` on a manual run). Each publish claims the next
+rolling number for the day — `v3-rc-<date>.1`, `.2`, … — and moves `v3-rc` and
+`v3-rc-<date>` onto it, so:
+
+- **`v3-rc-<date>.N`** — pin this to hold a build still. Immutable.
+- **`v3-rc` / `v3-rc-<date>`** — track the newest RC overall / of that day. These move.
+
+The retag covers the whole set — `n8nio/n8n`, `n8nio/runners` and
+`n8nio/runners:v3-rc[-<date>.N]-distroless` — so pinning one RC across a stack gives
+images built from one `3.x` commit, unlike `v3-nightly`, which moves daily and can be
+mid-build when you pull. The same tags exist on GHCR (`ghcr.io/n8n-io/…`).
 
 Use these to trial v3 in docker/kubernetes before release. Do **not** use them in
 production.

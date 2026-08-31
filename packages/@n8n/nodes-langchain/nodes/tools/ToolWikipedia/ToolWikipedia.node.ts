@@ -1,7 +1,9 @@
 import { WikipediaQueryRun } from '@langchain/community/tools/wikipedia_query_run';
 import {
 	type IExecuteFunctions,
+	BaseError,
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -70,7 +72,25 @@ export class ToolWikipedia implements INodeType {
 			if (item === undefined) {
 				continue;
 			}
-			const result = await WikiTool.invoke(item.json);
+
+			let result: string;
+			try {
+				result = await WikiTool.invoke(item.json);
+			} catch (error) {
+				if (error instanceof BaseError) throw error;
+				// warning-level errors are user-facing and skipped by error reporting;
+				// keep programming errors at error level to preserve their visibility
+				const isProgrammerError =
+					error instanceof TypeError ||
+					error instanceof RangeError ||
+					error instanceof ReferenceError ||
+					error instanceof SyntaxError;
+				throw new NodeOperationError(this.getNode(), error as Error, {
+					itemIndex,
+					level: isProgrammerError ? 'error' : 'warning',
+				});
+			}
+
 			response.push({
 				json: { response: result },
 				pairedItem: { item: itemIndex },

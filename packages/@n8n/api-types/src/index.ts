@@ -1,10 +1,11 @@
-export { Z, type ZodClass } from './zod-class';
+export { Z, type ZodClass, type ZodArrayClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';
 export type * from './push';
 export type * from './scaling';
-export type * from './frontend-settings';
+export * from './frontend-settings';
 export type * from './user';
+export type * from './consent';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
@@ -13,6 +14,10 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
+export * from './workflow-review-activity';
+export type * from './workflow-review-eligible-reviewer';
+export * from './workflow-review-request-summary';
+export * from './workflow-publish-blocked-details';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -108,6 +113,7 @@ export type {
 } from './push/chat-hub';
 
 export type { Collaborator } from './push/collaboration';
+export type { WorkflowPublicationStatusMessage } from './push/workflow';
 export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
 export type { SendWorkerStatusMessage } from './push/worker';
@@ -118,6 +124,8 @@ export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
+export { n8nIdSchema } from './schemas/id.schema';
+export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
@@ -161,6 +169,18 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
+export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+
+export {
+	policyCheckFailureSchema,
+	type PolicyCheckFailure,
+} from './schemas/policy-check-failure.schema';
+
+export {
+	contentImportPolicyResultSchema,
+	type ContentImportPolicyResult,
+} from './schemas/content-import-policy-result.schema';
+
 export {
 	insightsSummarySchema,
 	type InsightsSummaryType,
@@ -177,6 +197,7 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type UserProject,
 	usersListSchema,
 	userBaseSchema,
 	userDetailSchema,
@@ -201,12 +222,16 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableColumnTypeSchema,
 	dataTableIdSchema,
+	dataTableNameSchema,
 } from './schemas/data-table.schema';
 
-export type {
-	DataTableFilter,
-	DataTableFilterConditionType,
+export {
+	type DataTableFilter,
+	type DataTableFilterConditionType,
+	FilterConditionSchema,
+	dataTableFilterTypeSchema,
 } from './schemas/data-table-filter.schema';
 
 export type {
@@ -240,6 +265,7 @@ export type {
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
 export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
@@ -277,11 +303,16 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
+	buildDataTablesSessionGrantKey,
+	buildSetupSkipGrantKey,
+	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	WEB_SEARCH_GRANT_KEY,
 	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
 	instanceAiAgentStatusSchema,
@@ -301,8 +332,17 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
+	mcpConnectServerSchema,
+	mcpConnectRequestSchema,
+	mcpConnectResumeSchema,
+	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
+	credentialSetupHintSchema,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
+	shouldAutoResolveCredential,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
@@ -315,39 +355,88 @@ export {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	CANVAS_NODE_CONTEXT_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
+	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
 	instanceAiCredentialHandoffContextSchema,
+	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
 	instanceAiSandboxProviderSchema,
+	instanceAiConnectionSchema,
 	isInstanceAiSandboxProvider,
+	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
+	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	INSTANCE_AI_CATALOG_PROVIDERS,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalSeedDataTableRowsRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
+	base64EncodedSize,
+	exceedsAttachmentSizeLimit,
+	formatAttachmentSizeLimit,
+	formatTotalAttachmentSizeLimit,
+	MAX_ATTACHMENT_DECODED_BYTES,
+	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
+	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
+	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
+	instanceAiEvalSeedDataTableSchema,
+	instanceAiEvalSeedAgentSchema,
+	findUnbackedSeedWorkflowTools,
 	applyBranchReadOnlyOverrides,
+	deriveInstanceAiSetupState,
+	INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+} from './schemas/instance-ai.schema';
+
+export type {
+	InstanceAiThreadSource,
+	InstanceAiThreadSourcePersisted,
+	InstanceAiThreadOrigin,
+	InstanceAiCatalogProvider,
+	InstanceAiCatalogModel,
+	InstanceAiModelCatalogResponse,
+	InstanceAiCredits,
+	InstanceAiComponentSource,
+	InstanceAiWebSearchSource,
+	InstanceAiSetupState,
+	InstanceAiSetupStateInput,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -360,9 +449,16 @@ export type {
 	InstanceAiConfirmation,
 	InstanceAiConfirmationInputType,
 	InstanceAiChannelConfig,
+	InstanceAiMcpConnectServer,
+	InstanceAiMcpConnectRequest,
+	InstanceAiMcpConnectResume,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
+	InstanceAiApprovalResumeData,
+	InstanceAiCredentialPlaceholderDef,
+	InstanceAiTargetApproval,
 	InstanceAiCredentialRequest,
+	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
 	InstanceAiAgentKind,
 	TaskItem,
@@ -386,6 +482,7 @@ export type {
 	McpToolCallRequest,
 	McpToolCallResult,
 	InstanceAiEvent,
+	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
 	InstanceAiSendMessageResponse,
 	InstanceAiToolCallState,
@@ -411,16 +508,24 @@ export type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiConfirmResponse,
 	InstanceAiAdminSettingsResponse,
+	InstanceAiEnvManagedFields,
+	InstanceAiVerificationFailure,
+	InstanceAiVerificationResponse,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiModelCredential,
+	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
+	InstanceAiConnectionUpdate,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
+	InstanceAiNodesAttachment,
+	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
 	DomainAccessGrants,
@@ -428,6 +533,7 @@ export type {
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
 	InstanceAiCredentialHandoffContext,
+	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
@@ -444,8 +550,14 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalAgentToolCallRecord,
+	InstanceAiEvalAgentModelTurnRecord,
+	InstanceAiEvalAgentScenarioSeed,
+	InstanceAiEvalAgentSkippedFeature,
+	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedAgent,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -491,10 +603,33 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
+	MCP_CANVAS_GROUPS_FLAG,
+	MCP_AGENT_SCOPES,
+	MCP_INSTANCE_SCOPES,
+	MCP_CLIENT_BRAND_MATCHERS,
+	MCP_CLIENT_TYPE_FILTERS,
+	MCP_CLIENT_TYPE_FILTER_BUCKETS,
+	MCP_CLIENT_CONNECTED_PERIODS,
+	getMcpClientType,
+	getMcpClientBrand,
+	type McpScope,
+	type McpClientType,
+	type McpClientBrandName,
+	type McpClientTypeFilter,
+	type McpClientConnectedPeriod,
 } from './schemas/mcp.schema';
 
 export {
 	EVAL_COLLECTIONS_FLAG,
+	RESERVED_METRIC_KEYS,
+	ONE_TO_FIVE_METRIC_KEYS,
+	normalizeMetricScore,
+	normalizedScores,
+	averageNormalizedScore,
+	metricScaleFromConfig,
+	metricScalesFromConfig,
+	metricScalesFromSnapshot,
+	type MetricScale,
 	evalCollectionVersionEntrySchema,
 	createEvaluationCollectionSchema,
 	CreateEvaluationCollectionDto,
@@ -513,6 +648,51 @@ export {
 	type EvalVersionEntry,
 	type EvalVersionsResponse,
 } from './schemas/eval-collections.schema';
+
+export {
+	AGENT_EVALS_FLAG,
+	agentEvalColumnMappingSchema,
+	agentEvalRunStatusSchema,
+	agentEvalResultStatusSchema,
+	agentEvalVoteSchema,
+	createAgentEvalDatasetSchema,
+	updateAgentEvalDatasetSchema,
+	UpdateAgentEvalDatasetDto,
+	createAgentEvalRunSchema,
+	CreateAgentEvalRunDto,
+	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	AgentEvalRunDetailQueryDto,
+	agentEvalCorrectionSchema,
+	AGENT_EVAL_MAX_COMMENT_CHARS,
+	AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS,
+	createAgentEvalRatingSchema,
+	CreateAgentEvalRatingDto,
+	agentEvalDraftCaseSchema,
+	generateDraftCasesOptionsSchema,
+	GenerateDraftCasesOptionsDto,
+} from './schemas/agent-evals.schema';
+export type {
+	AgentEvalColumnMapping,
+	AgentEvalRunStatus,
+	AgentEvalResultStatus,
+	AgentEvalVote,
+	AgentEvalCorrection,
+	CreateAgentEvalDatasetDto,
+	UpdateAgentEvalDatasetPayload,
+	CreateAgentEvalRunPayload,
+	CreateAgentEvalRatingPayload,
+	AgentEvalPage,
+	AgentEvalDatasetRecord,
+	AgentEvalRunRecord,
+	AgentEvalResultRecord,
+	AgentEvalRatingRecord,
+	AgentEvalRunList,
+	AgentEvalRunDetail,
+	AgentEvalRunSummary,
+	AgentEvalDraftCase,
+	GenerateDraftCasesOptions,
+	GenerateDraftCasesResult,
+} from './schemas/agent-evals.schema';
 
 export {
 	aiInsightsStatusSchema,
@@ -535,8 +715,22 @@ export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.s
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,
+	X_N8N_RUN_ID_HEADER,
+	X_N8N_THREAD_ID_HEADER,
 	N8N_PROXY_FEATURES,
 	buildProxyHeaders,
 	type N8nProxyFeature,
+	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	MOONSHOTAI_KIMI_K3_MODEL_ID,
+	MOONSHOTAI_KIMI_K3_MODEL_NAME,
+	MOONSHOTAI_KIMI_K3_PROVIDER,
+	isMoonshotaiKimiK3ModelId,
+} from './constants/instance-ai-models';
+export {
+	BLOCK_ACCESS_ASSIGNMENT,
+	SSO_ERROR_ACCESS_DENIED,
+	SSO_ERROR_QUERY_PARAM,
+} from './constants/role-mapping';

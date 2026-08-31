@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useEvaluationStore } from '../evaluation.store';
@@ -216,6 +216,8 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 			:current-metrics="run?.metrics"
 			:previous-metrics="previousRun?.metrics"
 			:metric-sources="metricSources"
+			:metric-scales="run?.metricScales"
+			:previous-metric-scales="previousRun?.metricScales"
 			:case-values-by-key="caseValuesByKey"
 			class="mb-m"
 		/>
@@ -231,6 +233,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 				:test-case="testCase"
 				:index="index + 1"
 				:metric-sources="metricSources"
+				:metric-scales="run?.metricScales"
 				@view="openRelatedExecution"
 				@cancel="cancelPendingCase"
 				@rerun="rerunRun"
@@ -244,7 +247,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 	height: fit-content;
 	width: 100%;
 	max-width: var(--content-container--width);
-	padding: var(--spacing--lg) 0 var(--spacing--3xl) 0;
+	padding: var(--spacing--lg) var(--spacing--2xl) var(--spacing--3xl);
 }
 
 .header {

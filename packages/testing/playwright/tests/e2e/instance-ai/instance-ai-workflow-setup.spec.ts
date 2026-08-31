@@ -465,8 +465,8 @@ test.describe(
 				'Setup confirmation replay is not yet stable on the multi-main project',
 			);
 			test.fixme(
-				testInfo.project.name.includes('sqlite'),
-				'Setup confirmation proxy replay is flaky on sqlite:e2e and was gating community/fork PRs while internal PRs skipped on multi-main. Quarantined until the replay is stabilised (DEVP-366). Nightly coverage project still runs the suite.',
+				testInfo.project.name.includes('sqlite') || testInfo.project.name.includes('coverage'),
+				'Setup confirmation proxy replay is flaky on sqlite:e2e and in the coverage nightly, and was gating community/fork PRs while internal PRs skipped on multi-main. Quarantined on every lane (including coverage) until the replay is stabilised (DEVP-366).',
 			);
 		});
 

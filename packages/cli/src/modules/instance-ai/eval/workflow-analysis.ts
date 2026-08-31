@@ -1,6 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+// AI root node types (single source in @n8n/workflow-sdk mock-data) — lets
+// the typo guard accept a no-sub-node Agent.
+import { isAiRootNodeType } from '@n8n/workflow-sdk';
 import {
 	findAiRootNodeNames,
 	type INode,
@@ -14,20 +17,7 @@ import {
 import { buildDateAnchors } from './date-anchors';
 import { extractNodeConfig } from './node-config';
 
-/**
- * AI root node types — lets the typo guard accept a no-sub-node Agent.
- * Keep in sync with new agent/chain types in `@n8n/n8n-nodes-langchain`.
- */
-const AI_ROOT_NODE_TYPES = new Set<string>([
-	'@n8n/n8n-nodes-langchain.agent',
-	'@n8n/n8n-nodes-langchain.chainLlm',
-	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
-	'@n8n/n8n-nodes-langchain.chainSummarization',
-]);
-
-export function isAiRootNodeType(nodeType: string): boolean {
-	return AI_ROOT_NODE_TYPES.has(nodeType);
-}
+export { isAiRootNodeType };
 
 /** Sources of `ai_*` connections — LLM/tool/memory sub-nodes. Handled via their root, never pinned individually. */
 function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
@@ -104,7 +94,12 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
  * verification runs, so scenario outcomes become a coin flip on build-phase leftovers. */
 const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
 
-function isDataTableRead(node: INode): boolean {
+/** Of the read operations, only `get` emits stored rows — `rowExists`/`rowNotExists`
+ *  return the input item passed straight through, so the table's column contract
+ *  does not describe their output. */
+const DATA_TABLE_ROW_EMITTING_OPERATIONS = new Set(['get']);
+
+export function isDataTableRead(node: INode): boolean {
 	if (node.type !== 'n8n-nodes-base.dataTable') return false;
 	const params = node.parameters as { resource?: string; operation?: string } | undefined;
 	// Node defaults: resource 'row', operation 'insert' (a write) — only pin explicit reads.
@@ -112,6 +107,15 @@ function isDataTableRead(node: INode): boolean {
 		(params?.resource ?? 'row') === 'row' &&
 		DATA_TABLE_READ_OPERATIONS.has(params?.operation ?? 'insert')
 	);
+}
+
+/** True for Data Table reads whose output IS stored rows — the only reads a real
+ *  column contract applies to. Still pinned like any other read; they just get
+ *  prompt-only generation instead of enforced column names. */
+export function emitsDataTableRows(node: INode): boolean {
+	if (!isDataTableRead(node)) return false;
+	const params = node.parameters as { operation?: string } | undefined;
+	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');
 }
 
 /** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads. */

@@ -1478,6 +1478,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1595,6 +1596,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1726,6 +1728,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1866,6 +1869,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1921,6 +1925,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: capturedWorkflowData,
 								runData,
 								newStaticData: {},
@@ -2054,6 +2059,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2194,6 +2200,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2281,6 +2288,7 @@ describe('chatHub', () => {
 								});
 								await watcherService.handleWorkflowExecuteAfter({
 									type: 'workflowExecuteAfter',
+									mode: runData.mode,
 									workflow: capturedWorkflowData,
 									runData,
 									newStaticData: {},
@@ -2494,6 +2502,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2628,6 +2637,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2743,6 +2753,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2858,6 +2869,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},

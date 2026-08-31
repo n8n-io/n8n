@@ -9,14 +9,21 @@ export {
 	N8N_SANDBOX_HOME,
 	N8N_SANDBOX_WORKSPACE_ROOT,
 	getPromptWorkspaceRoot,
-	getPromptSandboxInstructions,
-	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	type SandboxWorkspace,
 } from './workspace-root';
-export { runInSandbox, type SandboxCommandTarget } from './run-in-sandbox';
+export {
+	runInSandbox,
+	type RunInSandboxOptions,
+	type SandboxCommandTarget,
+} from './run-in-sandbox';
 export { loadDaytona } from './lazy-daytona';
+export { SandboxAcquisitionError, SandboxNameConflictError, SandboxNotReadyError } from './errors';
 export { createFilesystem, createSandbox } from './create-workspace';
+export type {
+	BaseFilesystemOptions,
+	FilesystemLifecycleHook,
+} from '../filesystem/base-filesystem';
 export type {
 	CommandResult,
 	CopyOptions,

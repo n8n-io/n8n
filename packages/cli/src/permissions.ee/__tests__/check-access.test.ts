@@ -21,8 +21,10 @@ describe('userHasScopes', () => {
 	let findByWorkflowMock: Mock;
 	let findByCredentialMock: Mock;
 	let findByGlobalCredentialMock: Mock;
+	let instanceCredentialExistsMock: Mock;
 	let findGlobalCredentialByIdMock: Mock;
 	let hasGlobalReadOnlyAccessMock: Mock;
+	let hasGlobalConnectAccessMock: Mock;
 	let roleServiceMock: Mock;
 	let mockQueryBuilder: any;
 
@@ -30,8 +32,10 @@ describe('userHasScopes', () => {
 		findByWorkflowMock = vi.fn();
 		findByCredentialMock = vi.fn();
 		findByGlobalCredentialMock = vi.fn();
+		instanceCredentialExistsMock = vi.fn();
 		findGlobalCredentialByIdMock = vi.fn();
 		hasGlobalReadOnlyAccessMock = vi.fn();
+		hasGlobalConnectAccessMock = vi.fn();
 		roleServiceMock = vi.fn();
 
 		Container.set(
@@ -52,6 +56,7 @@ describe('userHasScopes', () => {
 			CredentialsRepository,
 			mock<CredentialsRepository>({
 				findBy: findByGlobalCredentialMock,
+				existsBy: instanceCredentialExistsMock,
 			}),
 		);
 
@@ -60,6 +65,7 @@ describe('userHasScopes', () => {
 			mock<CredentialsFinderService>({
 				findGlobalCredentialById: findGlobalCredentialByIdMock,
 				hasGlobalReadOnlyAccess: hasGlobalReadOnlyAccessMock,
+				hasGlobalConnectAccess: hasGlobalConnectAccessMock,
 			}),
 		);
 
@@ -93,12 +99,51 @@ describe('userHasScopes', () => {
 		findByWorkflowMock.mockReset();
 		findByCredentialMock.mockReset();
 		findByGlobalCredentialMock.mockReset();
+		instanceCredentialExistsMock.mockReset();
 		findGlobalCredentialByIdMock.mockReset();
 		hasGlobalReadOnlyAccessMock.mockReset();
+		hasGlobalConnectAccessMock.mockReset();
 		roleServiceMock.mockReset();
 
 		// Default mock responses
 		mockQueryBuilder.getRawMany.mockResolvedValue([{ id: 'projectId' }]);
+	});
+
+	describe('instance credential management', () => {
+		it('allows the dedicated global scope through legacy credential route checks', async () => {
+			instanceCredentialExistsMock.mockResolvedValue(true);
+			const user = {
+				id: 'userId',
+				role: {
+					...GLOBAL_MEMBER_ROLE,
+					scopes: [{ slug: 'credential:manageInstance' }],
+				},
+			} as unknown as User;
+
+			await expect(
+				userHasScopes(user, ['credential:update'], false, { credentialId: 'instance-cred' }),
+			).resolves.toBe(true);
+			expect(instanceCredentialExistsMock).toHaveBeenCalledWith({
+				id: 'instance-cred',
+				usageScope: 'instance',
+			});
+		});
+
+		it('does not use the dedicated scope for sharing operations', async () => {
+			findByCredentialMock.mockResolvedValue([]);
+			const user = {
+				id: 'userId',
+				role: {
+					...GLOBAL_MEMBER_ROLE,
+					scopes: [{ slug: 'credential:manageInstance' }],
+				},
+			} as unknown as User;
+
+			await expect(
+				userHasScopes(user, ['credential:share'], false, { credentialId: 'instance-cred' }),
+			).rejects.toThrow(NotFoundError);
+			expect(instanceCredentialExistsMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('resource not found scenarios', () => {
@@ -491,6 +536,66 @@ describe('userHasScopes', () => {
 
 			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
 			const scopes = ['credential:read'] as Scope[];
+
+			const result = await userHasScopes(user, scopes, false, { credentialId });
+
+			expect(result).toBe(false);
+		});
+
+		it('should grant connect access to a global end-user credential when user lacks project access', async () => {
+			const credentialId = 'global-cred-123';
+			roleServiceMock.mockResolvedValue(['credential:owner']);
+			mockQueryBuilder.getRawMany.mockResolvedValue([]); // No project access
+
+			findByCredentialMock.mockResolvedValue([
+				{
+					credentialsId: credentialId,
+					projectId: 'otherProjectId',
+					role: 'credential:owner',
+				},
+			]);
+
+			hasGlobalReadOnlyAccessMock.mockReturnValue(false);
+			hasGlobalConnectAccessMock.mockReturnValue(true);
+			findGlobalCredentialByIdMock.mockResolvedValue({
+				id: credentialId,
+				isGlobal: true,
+				isResolvable: true,
+			});
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+			const scopes = ['credential:connect'] as Scope[];
+
+			const result = await userHasScopes(user, scopes, false, { credentialId });
+
+			expect(hasGlobalConnectAccessMock).toHaveBeenCalledWith(scopes);
+			expect(findGlobalCredentialByIdMock).toHaveBeenCalledWith(credentialId);
+			expect(result).toBe(true);
+		});
+
+		it('should not grant connect access to a global credential that is not an end-user credential', async () => {
+			const credentialId = 'global-cred-123';
+			roleServiceMock.mockResolvedValue(['credential:owner']);
+			mockQueryBuilder.getRawMany.mockResolvedValue([]); // No project access
+
+			findByCredentialMock.mockResolvedValue([
+				{
+					credentialsId: credentialId,
+					projectId: 'otherProjectId',
+					role: 'credential:owner',
+				},
+			]);
+
+			hasGlobalReadOnlyAccessMock.mockReturnValue(false);
+			hasGlobalConnectAccessMock.mockReturnValue(true);
+			findGlobalCredentialByIdMock.mockResolvedValue({
+				id: credentialId,
+				isGlobal: true,
+				isResolvable: false,
+			});
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+			const scopes = ['credential:connect'] as Scope[];
 
 			const result = await userHasScopes(user, scopes, false, { credentialId });
 

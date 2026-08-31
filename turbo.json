@@ -1,6 +1,11 @@
 {
 	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
 	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	"boundaries": {
+		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system
+		// icon barrel), not a real package — declare it so boundaries doesn't flag it.
+		"implicitDependencies": ["~icons"]
+	},
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
@@ -22,12 +27,17 @@
 			"env": ["RELEASE"]
 		},
 		"typecheck": {
-			"dependsOn": ["^typecheck", "^build"]
+			"dependsOn": ["^build"]
 		},
 		"format": {},
 		"format:check": {},
 		"lint": {
 			"dependsOn": ["^build", "@n8n/eslint-config#build"]
+		},
+		// The n8n-nodes-base lint script also validates load-options methods
+		// against dist/methods/*.json, which only its own build emits.
+		"n8n-nodes-base#lint": {
+			"dependsOn": ["^build", "build", "@n8n/eslint-config#build"]
 		},
 		"lint:fix": {},
 		"lint:styles": {
@@ -40,16 +50,6 @@
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
 			"env": ["COVERAGE_ENABLED"]
-		},
-		"n8n-nodes-base#test": {
-			"inputs": ["$TURBO_DEFAULT$", "../cli/src/public-api/v1/**/*.yml"]
-		},
-		"n8n-nodes-base#test:changed": {
-			"dependsOn": ["^build", "build"],
-			"inputs": ["$TURBO_DEFAULT$", "../cli/src/public-api/v1/**/*.yml"],
-			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
-			"cache": false
 		},
 		"test:changed": {
 			"dependsOn": ["^build", "build"],

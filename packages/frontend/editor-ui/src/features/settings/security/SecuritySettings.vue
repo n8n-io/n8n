@@ -14,16 +14,16 @@ import {
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import DataRedactionSection from './DataRedactionSection.vue';
 import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -32,7 +32,7 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -45,12 +45,6 @@ const isEnforceMFAEnabled = computed(
 
 const isPersonalSpacePolicyLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy],
-);
-
-const isWorkflowReviewsAvailable = computed(
-	() =>
-		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] &&
-		checkEnvFeatureFlag.value('WORKFLOW_REVIEWS'),
 );
 
 async function onUpdateMfaEnforced(value: string | number | boolean) {

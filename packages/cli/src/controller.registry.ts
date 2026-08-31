@@ -22,7 +22,8 @@ import assert from 'node:assert';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper';
+import { reportError, send, sendErrorResponse } from '@/response-helper';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { AbstractServer } from './abstract-server';
 import { NotFoundError } from './errors/response-errors/not-found.error';
@@ -45,6 +46,8 @@ export class ControllerRegistry {
 
 	activate(app: Application) {
 		for (const controllerClass of this.metadata.controllerClasses) {
+			const metadata = this.metadata.getControllerMetadata(controllerClass);
+			if (metadata.isPublicApi) continue;
 			this.activateController(app, controllerClass);
 		}
 	}
@@ -119,7 +122,18 @@ export class ControllerRegistry {
 			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
-						await handler(req, res);
+						try {
+							await handler(req, res);
+						} catch (e) {
+							// Template routes skip `send()`, so without this a thrown error
+							// reaches Express's default handler, which cannot read
+							// `httpStatusCode` off a ResponseError and answers 500 — and in
+							// production with a body of just "Internal Server Error".
+							const error = ensureError(e);
+							reportError(error, { extra: { method: req.method, path: req.path } });
+							if (res.headersSent) throw error;
+							sendErrorResponse(res, error);
+						}
 					}
 				: send(handler);
 

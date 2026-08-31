@@ -197,6 +197,7 @@ describe('GET /credentials', () => {
 			expect(cred1.scopes).toEqual(
 				[
 					'credential:connect',
+					'credential:createEndUser',
 					'credential:move',
 					'credential:read',
 					'credential:update',
@@ -237,6 +238,7 @@ describe('GET /credentials', () => {
 			expect(cred2.scopes).toEqual(
 				[
 					'credential:connect',
+					'credential:createEndUser',
 					'credential:delete',
 					'credential:move',
 					'credential:read',
@@ -263,8 +265,10 @@ describe('GET /credentials', () => {
 				[
 					'credential:connect',
 					'credential:create',
+					'credential:createEndUser',
 					'credential:delete',
 					'credential:list',
+					'credential:manageInstance',
 					'credential:move',
 					'credential:read',
 					'credential:share',
@@ -280,8 +284,10 @@ describe('GET /credentials', () => {
 				[
 					'credential:connect',
 					'credential:create',
+					'credential:createEndUser',
 					'credential:delete',
 					'credential:list',
+					'credential:manageInstance',
 					'credential:move',
 					'credential:read',
 					'credential:share',
@@ -348,6 +354,7 @@ describe('GET /credentials', () => {
 		expect(ownedCred.scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:createEndUser',
 				'credential:move',
 				'credential:read',
 				'credential:update',
@@ -412,15 +419,17 @@ describe('GET /credentials', () => {
 		expect(ownedCred.scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:create',
+				'credential:createEndUser',
+				'credential:delete',
+				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
-				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
 				'credential:unshare',
-				'credential:delete',
-				'credential:create',
-				'credential:list',
+				'credential:update',
 			].sort(),
 		);
 
@@ -429,15 +438,17 @@ describe('GET /credentials', () => {
 		expect(sharedCred.scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:create',
+				'credential:createEndUser',
+				'credential:delete',
+				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
-				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
 				'credential:unshare',
-				'credential:delete',
-				'credential:create',
-				'credential:list',
+				'credential:update',
 			].sort(),
 		);
 
@@ -449,15 +460,17 @@ describe('GET /credentials', () => {
 		expect(teamCredAsViewer.scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:create',
+				'credential:createEndUser',
+				'credential:delete',
+				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
-				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
 				'credential:unshare',
-				'credential:delete',
-				'credential:create',
-				'credential:list',
+				'credential:update',
 			].sort(),
 		);
 	});
@@ -866,6 +879,7 @@ describe('POST /credentials', () => {
 		expect(scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:createEndUser',
 				'credential:delete',
 				'credential:move',
 				'credential:read',
@@ -1255,8 +1269,10 @@ describe('PATCH /credentials/:id', () => {
 			[
 				'credential:connect',
 				'credential:create',
+				'credential:createEndUser',
 				'credential:delete',
 				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
 				'credential:share',
@@ -1554,9 +1570,11 @@ describe('PATCH /credentials/:id', () => {
 	});
 
 	test('should create credential with isResolvable set to true', async () => {
+		// End-user credentials are only available in team projects
+		const teamProject = await createTeamProject(undefined, owner);
 		const response = await authOwnerAgent
 			.post('/credentials')
-			.send({ ...randomCredentialPayload(), isResolvable: true });
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: teamProject.id });
 
 		expect(response.statusCode).toBe(200);
 
@@ -1594,8 +1612,10 @@ describe('PATCH /credentials/:id', () => {
 	});
 
 	test('should allow updating isResolvable field', async () => {
+		// End-user credentials are only available in team projects
+		const teamProject = await createTeamProject(undefined, owner);
 		const savedCredential = await saveCredential(randomCredentialPayload({ isResolvable: false }), {
-			user: owner,
+			project: teamProject,
 			role: 'credential:owner',
 		});
 

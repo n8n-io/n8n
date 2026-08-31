@@ -408,6 +408,7 @@ export const description: INodeProperties[] = [
 		name: 'title',
 		type: 'string',
 		default: '',
+		required: true,
 		displayOptions: { show: { resource: ['databasePage'], operation: ['create'] } },
 		description: 'Page title',
 	},

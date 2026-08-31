@@ -72,6 +72,7 @@ describe('createWriteSandboxFileTool', () => {
 				workspace,
 				'/home/user/workspace/src/workflow.ts',
 				'export default {}',
+				{ abortSignal: undefined },
 			);
 		});
 	});
@@ -98,6 +99,7 @@ describe('createWriteSandboxFileTool', () => {
 				workspace,
 				'/home/user/workspace/src/index.ts',
 				'console.log("hello")',
+				{ abortSignal: undefined },
 			);
 		});
 	});
@@ -195,6 +197,7 @@ describe('createWriteSandboxFileTool', () => {
 				workspace,
 				'/home/user/workspace/chunks/helper.ts',
 				'export const x = 1;',
+				{ abortSignal: undefined },
 			);
 		});
 

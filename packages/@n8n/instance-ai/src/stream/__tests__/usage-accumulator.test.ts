@@ -66,6 +66,49 @@ describe('UsageAccumulator', () => {
 		expect(usage[0].uncachedInput).toBe(1);
 	});
 
+	it('falls back to promptTokens when inputTokenDetails are missing', () => {
+		const acc = new UsageAccumulator();
+
+		acc.observe({
+			type: 'finish',
+			model: 'openai/gpt-4o',
+			usage: {
+				promptTokens: 100,
+				completionTokens: 20,
+				totalTokens: 120,
+			},
+		});
+
+		expect(acc.toUsage().usage).toEqual([
+			{
+				type: 'llmTokens',
+				model: 'openai/gpt-4o',
+				uncachedInput: 100,
+				cacheRead: 0,
+				cacheWrite: 0,
+				output: 20,
+			},
+		]);
+	});
+
+	it('falls back to promptTokens when inputTokenDetails contain no usable counts', () => {
+		const acc = new UsageAccumulator();
+
+		acc.observe({
+			type: 'finish',
+			model: 'openai/gpt-4o',
+			usage: {
+				promptTokens: 100,
+				completionTokens: 20,
+				totalTokens: 120,
+				inputTokenDetails: { noCache: 0, cacheRead: 0, cacheWrite: 0 },
+			},
+		});
+
+		const usage = acc.toUsage().usage ?? [];
+		expect(usage[0].uncachedInput).toBe(100);
+	});
+
 	it('accumulates per model, keeping separate items for different models', () => {
 		const acc = new UsageAccumulator();
 

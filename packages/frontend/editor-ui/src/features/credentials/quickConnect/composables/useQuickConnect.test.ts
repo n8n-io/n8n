@@ -1,6 +1,6 @@
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useQuickConnect } from './useQuickConnect';
 import type { QuickConnectOption } from '@n8n/api-types';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
@@ -10,7 +10,7 @@ import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 import type * as i18n from '@n8n/i18n';
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return { useTelemetry: () => ({ track }) };
 });
@@ -32,7 +32,7 @@ vi.mock('../../composables/useCredentialOAuth', () => ({
 const { mockToastShowError } = vi.hoisted(() => ({
 	mockToastShowError: vi.fn(),
 }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockToastShowError,
 	}),
@@ -96,7 +96,7 @@ const mockUsersState = vi.hoisted(() => ({
 		lastName?: string | null;
 	} | null,
 }));
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => mockUsersState,
 }));
 

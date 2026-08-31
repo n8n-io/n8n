@@ -10,13 +10,37 @@ export interface OriginValidationResult {
 }
 
 /**
+ * Validates the origin of a WebSocket handshake. Handshakes always carry an
+ * `Origin` (RFC 6455), so a missing one is a failure.
+ */
+export function validateWebSocketOrigin(headers: Request['headers']): OriginValidationResult {
+	return validateOriginAgainstExpectedHost(headers);
+}
+
+/**
+ * Validates the origin of an SSE request.
+ *
+ * A same-origin GET sends no `Origin` (Fetch spec), and that is exactly what
+ * `EventSource` issues, so SSE connections can never satisfy a plain origin check.
+ */
+export function validateSseOrigin(headers: Request['headers']): OriginValidationResult {
+	// Only a fully absent header qualifies — an empty or opaque (`null`) origin
+	// still fails, so sandboxed-iframe and cross-origin requests cannot use this path.
+	if (headers.origin === undefined && isSameOriginFetch(headers)) {
+		return { isValid: true };
+	}
+
+	return validateOriginAgainstExpectedHost(headers);
+}
+
+/**
  * Validates origin headers against expected host from proxy headers.
  * Handles X-Forwarded-Host, X-Forwarded-Proto, and RFC 7239 Forwarded headers.
  *
  * @param headers HTTP request headers
  * @returns Validation result with details about the origin check
  */
-export function validateOriginHeaders(headers: Request['headers']): OriginValidationResult {
+function validateOriginAgainstExpectedHost(headers: Request['headers']): OriginValidationResult {
 	// Parse and normalize the origin using native URL class
 	const originInfo = parseOrigin(headers.origin ?? '');
 
@@ -143,6 +167,15 @@ function getFirstHeaderValue(header: string | string[] | undefined): string | un
 	if (!header) return undefined;
 	if (typeof header === 'string') return header;
 	return header[0]; // Take first value from array
+}
+
+/**
+ * `Sec-Fetch-Site` is a forbidden header name, so page scripts cannot spoof it.
+ * `same-site` is deliberately not accepted: SameSite=Lax cookies reach sibling
+ * subdomains, so a same-site attacker would otherwise qualify.
+ */
+function isSameOriginFetch(headers: Request['headers']): boolean {
+	return getFirstHeaderValue(headers['sec-fetch-site']) === 'same-origin';
 }
 
 /**

@@ -47,7 +47,9 @@ const GEOMETRY = {
 
 const geo = computed(() => GEOMETRY[props.variant]);
 
-const CRITICAL_COLOR = 'var(--color--red-700)';
+// Semantic danger token (not the `--color--red-*` primitive scale): it adapts
+// to dark theme and stays distinct from the version palette's red hue.
+const CRITICAL_COLOR = 'var(--icon-color--danger)';
 
 const clamp01 = (v: number, max: number) => {
 	if (!Number.isFinite(v)) return 0;

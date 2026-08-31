@@ -1,3 +1,5 @@
+import { isAbortError } from '@n8n/agents';
+
 import type { Logger } from '../../logger';
 import { sanitizeWebContent, wrapUntrustedData } from '../web-research/sanitize-web-content';
 
@@ -171,12 +173,17 @@ export function parseN8nDocsRegistry(
 
 async function fetchText(
 	url: string,
-	options: { maxLength: number; maxBytes?: number },
+	options: { maxLength: number; maxBytes?: number; abortSignal?: AbortSignal },
 ): Promise<FetchTextResult> {
+	const timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+	const signal = options.abortSignal
+		? AbortSignal.any([timeoutSignal, options.abortSignal])
+		: timeoutSignal;
+
 	const response = await globalThis.fetch(url, {
 		headers: { accept: 'text/markdown,text/plain,*/*' },
 		redirect: 'follow',
-		signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+		signal,
 	});
 
 	const finalUrl = normalizeAllowedDocsFetchUrl(response.url || url);
@@ -207,11 +214,12 @@ async function fetchText(
 	};
 }
 
-async function fetchRegistry(): Promise<ParsedN8nDocsRegistry> {
+async function fetchRegistry(abortSignal?: AbortSignal): Promise<ParsedN8nDocsRegistry> {
 	const fetchedAt = new Date().toISOString();
 	const response = await fetchText(N8N_DOCS_REGISTRY_URL, {
 		maxLength: REGISTRY_MAX_BYTES,
 		maxBytes: REGISTRY_MAX_BYTES,
+		abortSignal,
 	});
 	const registry = parseN8nDocsRegistry(response.text, fetchedAt);
 	if (registry.entries.length === 0) {
@@ -224,6 +232,7 @@ async function fetchRegistry(): Promise<ParsedN8nDocsRegistry> {
 
 export async function getN8nDocsRegistry(
 	context: N8nDocsRegistryContext,
+	abortSignal?: AbortSignal,
 ): Promise<N8nDocsRegistryResult> {
 	const now = Date.now();
 	if (registryCache && now - registryFetchedAtMs < REGISTRY_CACHE_TTL_MS) {
@@ -231,10 +240,16 @@ export async function getN8nDocsRegistry(
 	}
 
 	try {
-		registryFetchPromise ??= fetchRegistry();
-		const registry = await registryFetchPromise;
+		// Don't share an in-flight registry fetch across abortable callers — a
+		// cancelled run would abort a shared promise used by other runs.
+		const registry = abortSignal
+			? await fetchRegistry(abortSignal)
+			: await (registryFetchPromise ??= fetchRegistry());
 		return { registry };
 	} catch (error) {
+		if (isAbortError(error) || abortSignal?.aborted) {
+			throw error;
+		}
 		const message = getFetchErrorMessage(error);
 		context.logger?.warn('Failed to fetch n8n docs registry', { error: message });
 		if (registryCache) {
@@ -245,15 +260,18 @@ export async function getN8nDocsRegistry(
 		}
 		return { error: message, hint: `Could not load n8n docs registry: ${message}` };
 	} finally {
-		registryFetchPromise = undefined;
+		if (!abortSignal) {
+			registryFetchPromise = undefined;
+		}
 	}
 }
 
 export async function readN8nDocsEntry(
 	entry: N8nDocsRegistryEntry,
 	maxContentLength: number,
+	abortSignal?: AbortSignal,
 ): Promise<N8nDocsDocument> {
-	const fetched = await fetchText(entry.url, { maxLength: maxContentLength });
+	const fetched = await fetchText(entry.url, { maxLength: maxContentLength, abortSignal });
 	const sanitized = sanitizeWebContent(fetched.text);
 	const publicUrl = toPublicDocsUrl(fetched.url);
 	return {

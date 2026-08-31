@@ -7,6 +7,13 @@ export function hasSubMenu<T, D>(item: DropdownMenuItemProps<T, D>): boolean {
 	return (item.children && item.children.length > 0) || !!item.loading || !!item.searchable;
 }
 
+/** Whether a searchable item can be highlighted/selected via keyboard navigation. */
+export function isNavigableItem<T, D>(
+	item: DropdownMenuItemProps<T, D> | undefined,
+): item is DropdownMenuItemProps<T, D> {
+	return !!item && !item.disabled && !item.header;
+}
+
 export function getNextValidIndex<T, D>(
 	items: Array<DropdownMenuItemProps<T, D>>,
 	current: number,
@@ -14,7 +21,7 @@ export function getNextValidIndex<T, D>(
 ): number {
 	let next = current + direction;
 
-	while (next >= 0 && next < items.length && items[next].disabled) {
+	while (next >= 0 && next < items.length && !isNavigableItem(items[next])) {
 		next += direction;
 	}
 

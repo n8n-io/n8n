@@ -3,7 +3,7 @@ export default {
 	packageManager: 'pnpm',
 	testRunner: 'vitest',
 	plugins: ['@stryker-mutator/vitest-runner'],
-	// Use the Stryker-specific vitest config (vm-engine only) — see
+	// Use the Stryker-specific vitest config (legacy-engine only) — see
 	// vitest.stryker.config.ts for the rationale.
 	vitest: {
 		configFile: 'vitest.stryker.config.ts',
@@ -23,7 +23,7 @@ export default {
 	jsonReporter: { fileName: 'reports/mutation/raw.json' },
 	// Cap low: a string/utils mutant running 15s+ is a spinning loop-condition mutant; fail it fast.
 	timeoutMS: 15_000,
-	// Each Stryker worker spawns vitest with one project (vm-engine, via
+	// Each Stryker worker spawns vitest with one project (legacy-engine, via
 	// vitest.stryker.config.ts). Default 4 is fine on CI runners; lower
 	// locally if you hit OOM during the initial dry run via
 	// `STRYKER_CONCURRENCY=1`.

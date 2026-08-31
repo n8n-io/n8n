@@ -14,8 +14,7 @@ const props = defineProps<{
 	selectedVersionIds: Set<string>;
 	datasetLabel: string;
 	workflowId: string;
-	// Stable avatar-color index per row key, so re-sorting/filtering the table
-	// doesn't recolor rows. Falls back to display order when not provided.
+	// Stable avatar-color index per row key so re-sort/filter won't recolor; falls back to display order.
 	colorIndexByKey?: Record<string, number>;
 }>();
 
@@ -26,10 +25,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const router = useRouter();
 
-// The "View" action opens the version in a new browser tab for now — a
-// same-page in-app preview is tracked as follow-up. Versioned rows link to
-// the workflow-history snapshot; the "Current draft" row (null version) links
-// to the workflow editor.
+// "View" opens in a new tab: versioned rows link to the workflow-history snapshot,
+// the "Current draft" row (null version) to the workflow editor.
 const versionHref = (v: EvalVersionEntry) =>
 	router.resolve(
 		v.workflowVersionId
@@ -40,9 +37,8 @@ const versionHref = (v: EvalVersionEntry) =>
 			: { name: VIEWS.WORKFLOW, params: { workflowId: props.workflowId } },
 	).href;
 
-// Canonical key for a version row. `workflowVersionId === null` represents
-// the "Current draft" row — the server will snapshot it on submit, so we
-// must still be able to select it (see `versionRowKey`).
+// Canonical row key. workflowVersionId === null is the "Current draft" row, which stays
+// selectable because the server snapshots it on submit (see versionRowKey).
 
 interface Row {
 	key: string;
@@ -118,7 +114,11 @@ const formatRunAt = (iso: string | null) => {
 		<div
 			v-for="row in rows"
 			:key="row.key"
-			:class="[$style.row, row.checked && $style.row_selected]"
+			:class="[
+				$style.row,
+				row.checked && $style.row_selected,
+				row.version.workflowVersionId === null && $style.row_draft,
+			]"
 			data-test-id="versions-table-row"
 			@click="emit('toggle-version', row.key)"
 		>
@@ -227,6 +227,13 @@ const formatRunAt = (iso: string | null) => {
 
 .row_selected {
 	background: var(--background--subtle);
+}
+
+// Primary wash + left accent bar marks the live draft, winning over the selected tint.
+.row_draft,
+.row_draft:hover {
+	background: var(--color--primary--tint-3);
+	box-shadow: inset 3px 0 0 var(--color--primary);
 }
 
 .col_check {

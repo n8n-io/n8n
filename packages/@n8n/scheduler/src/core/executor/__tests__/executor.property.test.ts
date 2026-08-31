@@ -5,7 +5,7 @@ import type { ClaimedTask } from '../../types';
 import { Executor } from '../executor';
 import type { PrecisionTimer } from '../precision-timer';
 import type { ExecutorTaskStore } from '../store';
-import type { TaskHandler, TaskHandlerRegistry } from '../task-handler';
+import type { DispatchReporter, TaskHandler, TaskHandlerRegistry } from '../task-handler';
 
 const HOST = 'main-property';
 const TASK_TYPE = 'property-test-task';
@@ -26,12 +26,12 @@ const claimedTask = (id: string): ClaimedTask => ({
 /**
  * The claim/dispatch exactly-once invariant, fuzzed over randomised batches:
  * every claimed task dispatches to its handler at most once, and a task whose
- * `markStarted` guard finds nothing to start (already reclaimed or deleted) is
- * never dispatched. Store, registry and timer are all mocked, and each fire
- * callback is invoked by hand, so the detached-fire path stays deterministic.
+ * `beginDispatch` claims no row (already reclaimed or deleted) is never
+ * dispatched. Store, registry and timer are all mocked, and each fire callback is
+ * invoked by hand, so the detached-fire path stays deterministic.
  */
 describe('Executor claim/dispatch (fast-check)', () => {
-	it('dispatches each claimed task at most once, and never dispatches one whose markStarted found nothing to start', async () => {
+	it('dispatches each claimed task at most once, and never dispatches one whose beginDispatch claims no row', async () => {
 		await fc.assert(
 			fc.asyncProperty(
 				fc.uniqueArray(
@@ -44,19 +44,23 @@ describe('Executor claim/dispatch (fast-check)', () => {
 					const timer = mock<PrecisionTimer>();
 					const tasks = entries.map((entry) => claimedTask(entry.id));
 					const executeCalls: string[] = [];
-					const handlerExecute = vi.fn().mockResolvedValue(undefined);
+					const handlerExecute = vi.fn(async (_task: ClaimedTask, report: DispatchReporter) => {
+						await Promise.resolve();
+						return report.notDispatched();
+					});
 					const handler: TaskHandler = { execute: handlerExecute };
 
 					registry.registeredTypes.mockReturnValue([TASK_TYPE]);
 					registry.resolve.mockReturnValue(handler);
 					store.claimDueTasks.mockResolvedValue(tasks);
 					// One resolved value per task, in claim order. `claimAndSchedule` schedules
-					// them in that order, and each callback below calls `markStarted`
+					// them in that order, and each callback below calls `beginDispatch`
 					// synchronously before its first await, so the queued values line up.
 					for (const entry of entries) {
-						store.markStarted.mockResolvedValueOnce(entry.started ? 1 : 0);
+						store.beginDispatch.mockResolvedValueOnce(entry.started ? 1 : 0);
 					}
 					store.completeTask.mockResolvedValue(1);
+					store.markDispatched.mockResolvedValue(1);
 
 					const executor = new Executor(store, registry, timer, {
 						leaseSeconds: 60,
@@ -72,7 +76,7 @@ describe('Executor claim/dispatch (fast-check)', () => {
 					await new Promise((resolve) => setImmediate(resolve));
 
 					for (const call of handlerExecute.mock.calls) {
-						executeCalls.push((call[0] as ClaimedTask).id);
+						executeCalls.push(call[0].id);
 					}
 
 					for (const entry of entries) {

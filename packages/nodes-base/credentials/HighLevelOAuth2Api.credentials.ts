@@ -68,7 +68,7 @@ export class HighLevelOAuth2Api implements ICredentialType {
 			type: 'notice',
 			default: '',
 			displayOptions: {
-				hideOnCloud: true,
+				showOnDeployment: 'hosted',
 			},
 		},
 	];

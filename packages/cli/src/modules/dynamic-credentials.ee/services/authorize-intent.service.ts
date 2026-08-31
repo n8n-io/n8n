@@ -15,6 +15,12 @@ export type AuthorizeIntent = {
 	resolverId: string;
 	/** Caller identity (the bearer/subject) the credential connection must be bound to. */
 	identity: string;
+	/**
+	 * The n8n user the link was issued for, when the resolver maps to one. Set only
+	 * for resolvers implementing `resolveOwningUserId`; absent for external-subject
+	 * resolvers, which leaves the link unbound (any clicker with the token proceeds).
+	 */
+	userId?: string;
 	metadata?: Record<string, unknown>;
 };
 

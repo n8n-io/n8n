@@ -4,6 +4,7 @@ import { useConsentStore } from '@/app/stores/consent.store';
 import OAuthConsentView from '@/app/views/OAuthConsentView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 
 vi.mock('@n8n/rest-api-client/api/consent');
 
@@ -22,6 +23,7 @@ describe('OAuthConsentView', () => {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
 			redirectUri: 'https://legitimate-client.com/callback',
+			scopes: [],
 		};
 		consentStore.consentDetails = details;
 		consentStore.fetchConsentDetails.mockImplementation(async () => {
@@ -51,6 +53,7 @@ describe('OAuthConsentView', () => {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
 			resourceName: 'My Workflow',
+			scopes: [],
 		};
 		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
 
@@ -149,11 +152,11 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(allowButton);
 		await waitAllPromises();
 
-		expect(consentStore.approveConsent).toHaveBeenCalledWith(true);
+		expect(consentStore.approveConsent).toHaveBeenCalledWith(true, undefined);
 		expect(window.location.href).toBe(redirectUrl);
 	});
 
-	it('should disable allow button until redirect URL is trusted', async () => {
+	it('should disable the allow button until the redirect URL is acknowledged', async () => {
 		const { getByTestId, getByLabelText } = renderComponent();
 		await waitAllPromises();
 
@@ -163,5 +166,284 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(getByLabelText('I recognize and trust this URL'));
 
 		expect(allowButton).not.toBeDisabled();
+	});
+
+	it('should show the redirect URL inside the redirect callout', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByTestId('consent-redirect-warning')).toBeVisible();
+		expect(getByTestId('consent-redirect-uri')).toHaveTextContent(
+			'https://legitimate-client.com/callback',
+		);
+	});
+
+	it('should render the trust checkbox outside the redirect callout', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByTestId('consent-redirect-warning')).not.toContainElement(
+			getByTestId('consent-redirect-confirm'),
+		);
+	});
+
+	describe('first-party consent', () => {
+		const firstPartyDetails = {
+			clientName: 'My Form',
+			clientId: 'c1',
+			redirectUri: 'https://instance.example/form/abc',
+			resourceName: 'Feedback workflow',
+			scopes: [],
+			isFirstParty: true,
+			uiHints: { icon: 'square-pen', consentType: 'form' },
+		};
+
+		beforeEach(() => {
+			consentStore.consentDetails = firstPartyDetails;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = firstPartyDetails;
+				return firstPartyDetails;
+			});
+		});
+
+		it('should hide the trust checkbox and enable Allow without acknowledgement', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(queryByTestId('consent-redirect-confirm')).toBeNull();
+			expect(getByTestId('consent-allow-button')).not.toBeDisabled();
+		});
+
+		it('should not show the redirect URL or the redirect callout', async () => {
+			const { queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(queryByTestId('consent-redirect-warning')).toBeNull();
+			expect(queryByTestId('consent-redirect-uri')).toBeNull();
+		});
+
+		it('should render the first-party heading and resource-driven description', async () => {
+			const { getByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByText('"Feedback workflow" wants to run using your n8n login')).toBeVisible();
+			expect(
+				getByText(
+					'Running this form executes its workflow using your account and any connected credentials. Only continue if you trust the creator of this form.',
+				),
+			).toBeVisible();
+		});
+	});
+
+	describe('scope selection', () => {
+		const scopedDetails = {
+			clientName: 'Test MCP Client',
+			clientId: 'test-client-id',
+			redirectUri: 'https://legitimate-client.com/callback',
+			scopes: ['workflow:read', 'workflow:write', 'execution:read'],
+		};
+
+		beforeEach(() => {
+			consentStore.consentDetails = scopedDetails;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = scopedDetails;
+				return scopedDetails;
+			});
+		});
+
+		it('should render the scope picker instead of the static permission list', async () => {
+			const { getByTestId, queryByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-scopes')).toBeVisible();
+			expect(queryByText('Get a list of your workflows')).toBeNull();
+		});
+
+		it('should preselect all scopes on a first-time consent', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('scopes-count')).toHaveTextContent('3 of 3 scopes selected');
+		});
+
+		it('should preselect the scopes from the previous grant', async () => {
+			const requestedDetails = { ...scopedDetails, previousScopes: ['workflow:read'] };
+			consentStore.consentDetails = requestedDetails;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = requestedDetails;
+				return requestedDetails;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+		});
+
+		it('should send the selected scopes on approval', async () => {
+			consentStore.approveConsent.mockResolvedValue({
+				status: 'approved',
+				redirectUrl: 'https://legitimate-client.com/callback?code=abc',
+			});
+
+			const { getByTestId, getByLabelText } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByLabelText('I recognize and trust this URL'));
+			await userEvent.click(getByTestId('consent-allow-button'));
+			await waitAllPromises();
+
+			expect(consentStore.approveConsent).toHaveBeenCalledWith(true, [
+				'workflow:read',
+				'workflow:write',
+				'execution:read',
+			]);
+		});
+
+		it('should keep a custom scope selection when the trust checkbox is toggled', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+			await userEvent.click(getByTestId('scope-group-executions'));
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+
+			await userEvent.click(getByLabelText('I recognize and trust this URL'));
+
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+			expect(getByTestId('scopes-mode-custom')).toBeChecked();
+		});
+
+		it('should show a tool count pill per scope group when scope tools are provided', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'get_workflow_details'],
+					'workflow:write': ['update_workflow', 'search_workflows'],
+					'execution:read': ['get_workflow_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-tree-toggle'));
+
+			// workflows group tools are deduplicated across its scopes
+			expect(getByTestId('scope-group-tools-workflows')).toHaveTextContent('3 tools');
+			// a single tool uses the singular form (not "1 tools")
+			expect(getByTestId('scope-group-tools-executions')).toHaveTextContent(/1 tool\b/);
+		});
+
+		it('should not render tool pills when scope tools are absent', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-tree-toggle'));
+
+			expect(queryByTestId('scope-group-tools-workflows')).not.toBeInTheDocument();
+		});
+
+		it('should open the tools popover on keyboard focus and link it to the pill', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'get_workflow_details'],
+					'workflow:write': ['update_workflow', 'search_workflows'],
+					'execution:read': ['get_workflow_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-tree-toggle'));
+
+			const pill = getByTestId('scope-group-tools-workflows');
+			expect(pill).toHaveAttribute('tabindex', '0');
+
+			pill.focus();
+			await waitAllPromises();
+
+			const popover = getByTestId('scope-group-tools-popover-workflows');
+			expect(popover).toBeInTheDocument();
+
+			// The trigger is described by a hidden role="tooltip" node holding the
+			// flattened popover text — this is what a screen reader announces.
+			const describedBy = pill.getAttribute('aria-describedby');
+			expect(describedBy).toBeTruthy();
+			const description = document.getElementById(describedBy as string);
+			expect(description).toHaveAttribute('role', 'tooltip');
+			expect(description).toHaveTextContent('3 of 3 tools enabled');
+
+			pill.blur();
+			await waitAllPromises();
+
+			expect(queryByTestId('scope-group-tools-popover-workflows')).not.toBeInTheDocument();
+		});
+
+		it('should expose per-tool enabled state as text in the tools popover', async () => {
+			const detailsWithTools = {
+				...scopedDetails,
+				scopeTools: {
+					'workflow:read': ['search_workflows', 'get_workflow_details'],
+					'workflow:write': ['update_workflow', 'search_workflows'],
+					'execution:read': ['get_workflow_execution'],
+				},
+			};
+			consentStore.consentDetails = detailsWithTools;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = detailsWithTools;
+				return detailsWithTools;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+			await userEvent.click(getByTestId('scope-group-executions'));
+
+			const workflowsPill = getByTestId('scope-group-tools-workflows');
+			workflowsPill.focus();
+			await waitAllPromises();
+
+			const workflowsPopover = getByTestId('scope-group-tools-popover-workflows');
+			expect(workflowsPopover).toHaveTextContent('0 of 3 tools enabled');
+			expect(within(workflowsPopover).getAllByText('not enabled')).toHaveLength(3);
+
+			workflowsPill.blur();
+			await waitAllPromises();
+
+			const executionsPill = getByTestId('scope-group-tools-executions');
+			executionsPill.focus();
+			await waitAllPromises();
+
+			const executionsPopover = getByTestId('scope-group-tools-popover-executions');
+			expect(executionsPopover).toHaveTextContent('1 of 1 tools enabled');
+			expect(within(executionsPopover).getAllByText('enabled')).toHaveLength(1);
+		});
+
+		it('should disable Allow when no scopes are selected', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByLabelText('I recognize and trust this URL'));
+			expect(getByTestId('consent-allow-button')).not.toBeDisabled();
+
+			// Custom mode starts with an empty selection
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+
+			expect(getByTestId('consent-allow-button')).toBeDisabled();
+		});
 	});
 });

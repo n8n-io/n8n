@@ -1,35 +1,10 @@
 /**
- * Relative-time anchors injected into eval LLM prompts.
+ * Relative-time anchors injected into eval LLM prompts — Phase 1 hints,
+ * Phase 1.5 pin data, Phase 2 HTTP mocks must all include them and derive
+ * every temporal value from them.
  *
- * Mock data commonly flows into workflows that compare timestamps against the
- * real execution clock (`$now`, `Date.now()`); values from LLM training data
- * (months in the past) get silently filtered out and scenarios fail. Every
- * eval prompt that produces dates — Phase 1 hints, Phase 1.5 pin data,
- * Phase 2 HTTP mocks — must include these anchors and derive all temporal
- * values from them.
+ * The implementation lives in `@n8n/workflow-sdk` (`mock-data/date-anchors`),
+ * shared with pin-data/fixture generation; this module keeps the local import
+ * path for the eval pipeline.
  */
-
-/**
- * Renders a stable block of relative-time anchors (today, yesterday,
- * 7 days ago, etc.) the model integrates as data rather than a rule.
- */
-export function buildDateAnchors(now: Date): string {
-	const labels: Array<[string, number]> = [
-		['today', 0],
-		['yesterday', -1],
-		['7 days ago', -7],
-		['14 days ago', -14],
-		['30 days ago', -30],
-		['1 day from now', 1],
-		['7 days from now', 7],
-	];
-	const lines = labels.map(([label, dayOffset]) => {
-		const d = new Date(now);
-		d.setUTCDate(d.getUTCDate() + dayOffset);
-		const isoDate = d.toISOString().slice(0, 10);
-		return label === 'today'
-			? `- ${label}: ${isoDate} (full timestamp ${now.toISOString()})`
-			: `- ${label}: ${isoDate}`;
-	});
-	return lines.join('\n');
-}
+export { buildDateAnchors } from '@n8n/workflow-sdk';

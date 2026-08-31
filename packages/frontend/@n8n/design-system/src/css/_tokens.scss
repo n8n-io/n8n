@@ -247,8 +247,10 @@
 	--tag--padding: 0 var(--spacing--4xs);
 	--tag--color--background: var(--color--neutral-125);
 	--tag--color--background--hover: var(--color--neutral-150);
+	--tag--color--background--active: var(--color--neutral-200);
 	--tag--border-color: var(--color--neutral-150);
 	--tag--border-color--hover: var(--color--neutral-200);
+	--tag--border-color--active: var(--color--neutral-250);
 	--tag--radius: var(--radius);
 	--tag--color--text: var(--color--text);
 	--tag--font-size: var(--font-size--2xs);
@@ -355,13 +357,14 @@
 
 	// NDV
 	--run-data--color--background: var(--color--neutral-150);
-	--ndvv2--run-data--color--background: var(--color--neutral-125);
+	--ndv--run-data--color--background: var(--color--neutral-125);
 	--ndv--droppable-parameter--color: var(--color--secondary);
 	--ndv--droppable-parameter--color--background: var(--color--purple-alpha-100);
 	--ndv--droppable-parameter--color--background--active: var(--color--green-alpha-100);
 	--ndv--back--color--text: var(--color--neutral-white);
 	--ndv--background--color: var(--color--background--light-3);
 	--ndv--header--color: var(--color--background);
+	--ndv--header--height: calc(var(--height--xl) + var(--spacing--5xs));
 
 	// Notice
 	--notice--border-color--warning: var(--color--warning--tint-1);
@@ -876,8 +879,10 @@
 	// Tag
 	--tag--color--background: var(--color--neutral-700);
 	--tag--color--background--hover: var(--color--neutral-600);
+	--tag--color--background--active: var(--color--neutral-500);
 	--tag--border-color: var(--color--neutral-800);
 	--tag--border-color--hover: var(--color--neutral-700);
+	--tag--border-color--active: var(--color--neutral-600);
 	--tag--color--text: var(--color--text--shade-1);
 
 	// Variables
@@ -965,13 +970,12 @@
 
 	// NDV
 	--run-data--color--background: var(--color--neutral-900);
-	--ndvv2--run-data--color--background: var(--color--neutral-900);
+	--ndv--run-data--color--background: var(--color--neutral-900);
 	--ndv--droppable-parameter--color: var(--color--orange-500);
 	--ndv--droppable-parameter--color--background: var(--color--orange-alpha-100);
 	--ndv--droppable-parameter--color--background--active: var(--color--green-alpha-100);
 	--ndv--back--color--text: var(--color--neutral-white);
 	--ndv--background--color: var(--color--background--light-1);
-	--ndv--header--color: var(--color--neutral-750);
 
 	// Notice
 	--notice--border-color--warning: var(--color--gold-200);
@@ -1236,8 +1240,6 @@
 	--command-bar-item--color--background--hover: var(--color--background--light-1);
 	--command-bar--shadow:
 		0 15px 45px 0 var(--color--black-alpha-400), 0 5px 10px 0 var(--color--black-alpha-200);
-
-	--shadow-color: var(--color--black-alpha-250);
 }
 
 :root {
@@ -1245,11 +1247,12 @@
 	@include theme;
 }
 
-body[data-theme='light'] {
+[data-theme='light'] {
+	@include theme;
 	color-scheme: light;
 }
 
-body[data-theme='dark'] {
+[data-theme='dark'] {
 	@include theme-dark;
 	color-scheme: dark;
 }

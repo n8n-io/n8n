@@ -58,6 +58,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		this,
 		'GET',
 		`/mailFolders/${folderId}`,
+		index,
 		{},
 		qs,
 	);

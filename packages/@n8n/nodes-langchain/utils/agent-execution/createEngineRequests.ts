@@ -78,6 +78,13 @@ function extractThinkingMetadata(
 		}
 	}
 
+	// Extract DeepSeek reasoning_content (must be echoed back on tool-calling turns)
+	let reasoningContent: string | undefined;
+	if (effectiveAdditionalKwargs) {
+		const rc = effectiveAdditionalKwargs.reasoning_content;
+		if (typeof rc === 'string' && rc.length > 0) reasoningContent = rc;
+	}
+
 	// Extract thinking content and additional thought signatures from messageLog
 	let thinkingContent: string | undefined;
 	let thinkingType: 'thinking' | 'redacted_thinking' | undefined;
@@ -153,7 +160,19 @@ function extractThinkingMetadata(
 					}
 				}
 
-				if (thoughtSignature || thinkingContent) break;
+				// DeepSeek reasoning_content (fallback for the non-streaming path, where
+				// ToolCallRequest.additionalKwargs isn't populated from the raw AIMessage).
+				// Independent of the thoughtSignature gate above - must run regardless of
+				// whether a Gemini signature was found.
+				if (!reasoningContent && 'additional_kwargs' in message) {
+					const msgAdditionalKwargs = message.additional_kwargs as
+						| Record<string, unknown>
+						| undefined;
+					const rc = msgAdditionalKwargs?.reasoning_content;
+					if (typeof rc === 'string' && rc.length > 0) reasoningContent = rc;
+				}
+
+				if (thoughtSignature || thinkingContent || reasoningContent) break;
 			}
 		}
 	}
@@ -169,6 +188,10 @@ function extractThinkingMetadata(
 			thinkingType,
 			...(thinkingSignature ? { thinkingSignature } : {}),
 		};
+	}
+
+	if (reasoningContent) {
+		result.deepseek = { reasoningContent };
 	}
 
 	return result;

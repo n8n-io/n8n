@@ -1,3 +1,10 @@
+@mixin reduced-motion {
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+		transition: none;
+	}
+}
+
 // Shimmer - animated gradient for loading/skeleton states
 @mixin shimmer {
 	background: linear-gradient(
@@ -68,6 +75,63 @@
 	animation: collapsibleSlideUp
 		var(--animation--collapsible-slide--duration, var(--duration--snappy))
 		var(--animation--collapsible-slide--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+// The settings-surface blur motion (originating in N8nSettingsRow's expand
+// region): a height/visibility change paired with an opacity fade and a subtle
+// blur that reads as motion blur. No global duration token equals 350ms
+// (snappy=200, base=400) and the curve has no token either, so the canonical
+// values live here for every blurred mixin (and N8nSettingsRow) to share.
+$blur-motion-duration: 350ms;
+$blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
+
+// Blurred variants of the collapsible slide: height + opacity + blur together.
+@mixin collapsible-slide-down-blurred {
+	animation: collapsibleSlideDownBlurred
+		var(--animation--collapsible-slide-blurred--duration, #{$blur-motion-duration})
+		var(--animation--collapsible-slide-blurred--easing, #{$blur-motion-easing});
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@mixin collapsible-slide-up-blurred {
+	animation: collapsibleSlideUpBlurred
+		var(--animation--collapsible-slide-blurred--duration, #{$blur-motion-duration})
+		var(--animation--collapsible-slide-blurred--easing, #{$blur-motion-easing});
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+// Blur swap - paired enter/leave for swapping an element in place (e.g. a copy
+// button's icon becoming a check mark): the outgoing element blurs and fades
+// away while the incoming one sharpens into position, reading as one
+// continuous morph. Pair with an absolutely-positioned leave element so both
+// occupy the same spot during the swap. Override --animation--blur-swap--blur
+// for small glyphs (icons dissolve at the surface-level 4px default).
+//
+// Unlike the collapsible motion above, the swap has no height change to carry
+// it, so it leans on a stronger deceleration (ease-out-quint) rather than a
+// longer run: the new state lands fast, then settles softly, without dragging.
+@mixin blur-swap-in {
+	animation: blurSwapIn var(--animation--blur-swap--duration, 250ms)
+		var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@mixin blur-swap-out {
+	animation: blurSwapOut var(--animation--blur-swap--duration, 250ms)
+		var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
 
 	@media (prefers-reduced-motion: reduce) {
 		animation: none;
@@ -167,6 +231,57 @@
 	}
 	to {
 		height: 0;
+	}
+}
+
+/* The filter only exists inside the keyframes: once the animation finishes the
+ * element returns to its unfiltered base styles, so no stacking context (or
+ * compositing surface) stays active on settled content. */
+@keyframes collapsibleSlideDownBlurred {
+	from {
+		height: 0;
+		opacity: 0;
+		filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+	}
+	to {
+		height: var(--reka-collapsible-content-height);
+		opacity: 1;
+		filter: blur(0);
+	}
+}
+
+@keyframes collapsibleSlideUpBlurred {
+	from {
+		height: var(--reka-collapsible-content-height);
+		opacity: 1;
+		filter: blur(0);
+	}
+	to {
+		height: 0;
+		opacity: 0;
+		filter: blur(var(--animation--collapsible-slide-blurred--blur, 4px));
+	}
+}
+
+@keyframes blurSwapIn {
+	from {
+		opacity: 0;
+		filter: blur(var(--animation--blur-swap--blur, 4px));
+	}
+	to {
+		opacity: 1;
+		filter: blur(0);
+	}
+}
+
+@keyframes blurSwapOut {
+	from {
+		opacity: 1;
+		filter: blur(0);
+	}
+	to {
+		opacity: 0;
+		filter: blur(var(--animation--blur-swap--blur, 4px));
 	}
 }
 

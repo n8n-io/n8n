@@ -6,7 +6,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
 import dateformat from 'dateformat';
-import type { useToast } from '@/app/composables/useToast';
+import type { useToast } from '@n8n/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
 import type { SourceControlTreeRow } from './sourceControl.types';
 
@@ -215,12 +215,14 @@ export const buildFolderFilterOptions = (workflows: SourceControlledFile[]) => {
 	const folderPathSet = new Set<string>();
 
 	for (const workflow of workflows) {
-		const pathSegments = workflow.folderPath ?? [];
-		let path = '';
+		// Include the prior/remote path so a moved workflow's source folder stays selectable.
+		for (const pathSegments of [workflow.folderPath, workflow.remoteFolderPath]) {
+			let path = '';
 
-		for (const segment of pathSegments) {
-			path = path ? `${path}/${segment}` : segment;
-			folderPathSet.add(path);
+			for (const segment of pathSegments ?? []) {
+				path = path ? `${path}/${segment}` : segment;
+				folderPathSet.add(path);
+			}
 		}
 	}
 

@@ -1,12 +1,10 @@
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, type User } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import type { DataTableInfoById } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
-
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
@@ -16,9 +14,14 @@ import { DataTableSizeValidator } from '../data-table-size-validator.service';
 import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
+import { DataTableAccessDeniedError } from '../errors/data-table-access-denied.error';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
+
+import { EventService } from '@/events/event.service';
+import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;
@@ -31,6 +34,8 @@ describe('DataTableService', () => {
 	let mockRoleService: Mocked<RoleService>;
 	let mockCsvImportService: Mocked<DataTableCsvImportService>;
 	let mockEventService: Mocked<EventService>;
+	let mockProjectRepository: Mocked<ProjectRepository>;
+	let mockProjectService: Mocked<ProjectService>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -46,6 +51,8 @@ describe('DataTableService', () => {
 		mockRoleService = mockInstance(RoleService);
 		mockCsvImportService = mockInstance(DataTableCsvImportService);
 		mockEventService = mockInstance(EventService);
+		mockProjectRepository = mockInstance(ProjectRepository);
+		mockProjectService = mockInstance(ProjectService);
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
@@ -60,6 +67,8 @@ describe('DataTableService', () => {
 			mockRoleService,
 			mockCsvImportService,
 			mockEventService,
+			mockProjectRepository,
+			mockProjectService,
 		);
 
 		vi.clearAllMocks();
@@ -476,6 +485,75 @@ describe('DataTableService', () => {
 		});
 	});
 
+	describe('findDataTablesByIdsForUser', () => {
+		const adminUser = {
+			id: 'user-admin',
+			role: { slug: 'global:owner', scopes: [{ slug: 'dataTable:read' }] },
+		} as unknown as User;
+
+		const regularUser = {
+			id: 'user-regular',
+			role: { slug: 'global:member', scopes: [] },
+		} as unknown as User;
+
+		it('returns an empty array without querying when given no ids', async () => {
+			const result = await dataTableService.findDataTablesByIdsForUser([], regularUser, [
+				'dataTable:read',
+			]);
+
+			expect(result).toEqual([]);
+			expect(mockDataTableRepository.find).not.toHaveBeenCalled();
+			expect(mockRoleService.rolesWithScope).not.toHaveBeenCalled();
+		});
+
+		it('queries by id only for a user with the matching global scope', async () => {
+			mockDataTableRepository.find.mockResolvedValue([]);
+
+			await dataTableService.findDataTablesByIdsForUser(['dt-1', 'dt-2'], adminUser, [
+				'dataTable:read',
+			]);
+
+			expect(mockDataTableRepository.find).toHaveBeenCalledWith({
+				where: { id: In(['dt-1', 'dt-2']) },
+				relations: { columns: true, project: true },
+			});
+			expect(mockRoleService.rolesWithScope).not.toHaveBeenCalled();
+		});
+
+		it('filters by accessible projects for a user without the global scope', async () => {
+			mockRoleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['proj-1']);
+			mockDataTableRepository.find.mockResolvedValue([]);
+
+			await dataTableService.findDataTablesByIdsForUser(['dt-1'], regularUser, ['dataTable:read']);
+
+			expect(mockRoleService.rolesWithScope).toHaveBeenCalledWith('project', ['dataTable:read']);
+			expect(mockProjectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				regularUser.id,
+				['project:admin', 'project:editor'],
+			);
+			expect(mockDataTableRepository.find).toHaveBeenCalledWith({
+				where: {
+					id: In(['dt-1']),
+					projectId: In(['proj-1']),
+				},
+				relations: { columns: true, project: true },
+			});
+		});
+
+		it('returns an empty array without querying the repository when the user has no accessible projects', async () => {
+			mockRoleService.rolesWithScope.mockResolvedValue([]);
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			const result = await dataTableService.findDataTablesByIdsForUser(['dt-1'], regularUser, [
+				'dataTable:read',
+			]);
+
+			expect(result).toEqual([]);
+			expect(mockDataTableRepository.find).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('importCsvToExistingTable', () => {
 		const projectId = 'test-project-id';
 		const dataTableId = 'test-data-table-id';
@@ -602,6 +680,83 @@ describe('DataTableService', () => {
 			).rejects.toThrow();
 
 			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
+		});
+	});
+
+	describe('getOne', () => {
+		const projectId = 'test-project-id';
+		const dataTableId = 'test-data-table-id';
+
+		it('should return the data table with columns when it exists', async () => {
+			const mockDataTable = {
+				id: dataTableId,
+				name: 'Test Table',
+				projectId,
+				columns: [],
+				project: { id: projectId },
+			} as unknown as DataTable;
+			mockDataTableRepository.findOne.mockResolvedValue(mockDataTable);
+
+			const result = await dataTableService.getOne(dataTableId, projectId);
+
+			expect(result).toEqual(mockDataTable);
+			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
+				where: { id: dataTableId, project: { id: projectId } },
+				relations: ['project', 'columns'],
+			});
+		});
+
+		it('should throw DataTableNotFoundError when the table is missing', async () => {
+			mockDataTableRepository.findOne.mockResolvedValue(null);
+
+			await expect(dataTableService.getOne(dataTableId, projectId)).rejects.toThrow(
+				DataTableNotFoundError,
+			);
+		});
+	});
+
+	describe('resolveOwningProjectId', () => {
+		const projectId = 'test-project-id';
+		const user = { id: 'user-1' } as User;
+
+		it('should return the personal project when no projectId is given', async () => {
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as never);
+
+			const result = await dataTableService.resolveOwningProjectId(user);
+
+			expect(result).toBe(projectId);
+			expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(user.id);
+		});
+
+		it('should return the given project when the user has create scope', async () => {
+			mockProjectService.findProject.mockResolvedValue({ id: projectId } as never);
+			mockProjectService.getProjectWithScope.mockResolvedValue({ id: projectId } as never);
+
+			const result = await dataTableService.resolveOwningProjectId(user, projectId);
+
+			expect(result).toBe(projectId);
+			expect(mockProjectService.getProjectWithScope).toHaveBeenCalledWith(user, projectId, [
+				'dataTable:create',
+			]);
+		});
+
+		it('should throw ProjectNotFoundError when the project does not exist', async () => {
+			mockProjectService.findProject.mockResolvedValue(null);
+
+			await expect(dataTableService.resolveOwningProjectId(user, projectId)).rejects.toThrow(
+				ProjectNotFoundError,
+			);
+		});
+
+		it('should throw DataTableAccessDeniedError when the user cannot create in the project', async () => {
+			mockProjectService.findProject.mockResolvedValue({ id: projectId } as never);
+			mockProjectService.getProjectWithScope.mockResolvedValue(null);
+
+			await expect(dataTableService.resolveOwningProjectId(user, projectId)).rejects.toThrow(
+				DataTableAccessDeniedError,
+			);
 		});
 	});
 });

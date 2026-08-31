@@ -9,10 +9,14 @@ import {
 } from '@n8n/db';
 import { StructuredToolkit } from 'n8n-core';
 import {
+	Expression,
 	NodeConnectionTypes,
+	type IExecuteFunctions,
 	type INodeCredentialsDetails,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -26,9 +30,11 @@ import {
 	isUsableAsAgentTool,
 } from '../ephemeral-node-executor';
 
-// vitest-mock-extended's recursive DeepPartial narrows nested objects (e.g. `defaults`),
-// so a full INodeTypeDescription isn't assignable to the partial. Cast through this helper.
-const mockNodeType = (overrides: object = {}) => mock<INodeType>(overrides as never);
+// Assign overrides onto an empty mock instead of passing them to mock():
+// mock(overrides) deep-wraps nested objects in proxies and mutates shared
+// fixtures (e.g. `toolDescription`) in place, stacking a proxy layer per call.
+// Assigning also sidesteps DeepPartial narrowing of nested objects like `defaults`.
+const mockNodeType = (overrides: object = {}) => Object.assign(mock<INodeType>(), overrides);
 
 const mockGetBase = vi.fn();
 
@@ -243,20 +249,25 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.status).toBe('success');
 		});
 
-		it('returns a structured error when the operation is on the blacklist (sendAndWait)', async () => {
-			nodeTypes.getByNameAndVersion.mockReturnValue(mockNodeType({ description: toolDescription }));
+		it.each(['sendAndWait', 'dispatchAndWait'])(
+			'returns a structured error when operation %s is unsupported',
+			async (operation) => {
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mockNodeType({ description: toolDescription }),
+				);
 
-			const result = await executor.executeInline({
-				nodeType: 'n8n-nodes-base.slack',
-				nodeTypeVersion: 1,
-				nodeParameters: { operation: 'sendAndWait' },
-				inputData: [],
-				projectId: 'p-1',
-			});
+				const result = await executor.executeInline({
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: { operation },
+					inputData: [],
+					projectId: 'p-1',
+				});
 
-			expect(result.status).toBe('error');
-			expect(result.error).toMatch(/not supported for agent tool execution/);
-		});
+				expect(result.status).toBe('error');
+				expect(result.error).toMatch(/not supported for agent tool execution/);
+			},
+		);
 	});
 
 	describe('resolveInlineCredentials (via executeInline)', () => {
@@ -391,6 +402,26 @@ describe('EphemeralNodeExecutor', () => {
 				}),
 			).rejects.toThrow(/has type .* but the node expects credential slot/);
 		});
+
+		it('passes an n8n Connect managed credential through without a project lookup', async () => {
+			mockToolNodeWithSupplyData();
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentialDetails: {
+					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			// Managed credentials are minted per execution (CredentialsHelper.getDecrypted),
+			// so there is no stored row to resolve — the project lookup must be skipped.
+			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('executeInline routing', () => {
@@ -512,6 +543,55 @@ describe('EphemeralNodeExecutor', () => {
 		// Use plain objects so `typeof nodeType.supplyData === 'function'`
 		// reliably returns false — vitest-mock-extended auto-proxies every
 		// property as callable, which would route us to the supplyData path.
+
+		it('passes the project ID to data table helpers', async () => {
+			const getDataTableProxy = vi.fn().mockResolvedValue({});
+			mockGetBase.mockResolvedValue({
+				'data-table': { dataTableProxyProvider: { getDataTableProxy } },
+			});
+			const execute = vi.fn(async function (this: IExecuteFunctions) {
+				await this.helpers.getDataTableProxy?.('table-id');
+				return [[{ json: { ok: true } }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dataTableTool',
+				nodeTypeVersion: 1.1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(getDataTableProxy).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'table-id',
+				'p-1',
+			);
+		});
+
+		it('does not add data table project context for other node types', async () => {
+			const additionalData = {};
+			mockGetBase.mockResolvedValue(additionalData);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn().mockResolvedValue([[{ json: { ok: true } }]]),
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(additionalData).not.toHaveProperty('dataTableProjectId');
+		});
 
 		it('runs nodeType.execute and returns its first output batch on success', async () => {
 			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true, count: 3 } }]]);
@@ -688,5 +768,125 @@ describe('EphemeralNodeExecutor', () => {
 				expect.objectContaining({ error: 'MCP server unreachable' }),
 			);
 		});
+	});
+
+	describe('executeInline → eval instrumentation', () => {
+		it('applies the additionalData decoration and node name override when set', async () => {
+			let executedNodeName: string | undefined;
+			const execute = vi.fn().mockImplementation(async function (this: {
+				getNode(): { name: string };
+			}) {
+				executedNodeName = this.getNode().name;
+				return [[{ json: { ok: true } }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const base: Record<string, unknown> = { credentialsHelper: {} };
+			mockGetBase.mockResolvedValue(base);
+			const configureAdditionalData = vi.fn((additionalData: Record<string, unknown>) => {
+				additionalData.evalLlmMockHandler = vi.fn();
+			});
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+				nodeName: 'Slack_Tool',
+				configureAdditionalData: configureAdditionalData as unknown as (
+					additionalData: IWorkflowExecuteAdditionalData,
+				) => void,
+			});
+
+			expect(result.status).toBe('success');
+			expect(configureAdditionalData).toHaveBeenCalledTimes(1);
+			expect(configureAdditionalData).toHaveBeenCalledWith(base);
+			expect(base.evalLlmMockHandler).toBeDefined();
+			expect(executedNodeName).toBe('Slack_Tool');
+		});
+
+		it('keeps the default node name and untouched additionalData when unset', async () => {
+			let executedNodeName: string | undefined;
+			const execute = vi.fn().mockImplementation(async function (this: {
+				getNode(): { name: string };
+			}) {
+				executedNodeName = this.getNode().name;
+				return [[{ json: {} }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const base: Record<string, unknown> = {};
+			mockGetBase.mockResolvedValue(base);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			expect(executedNodeName).toBe('Target Node');
+			expect(base.evalLlmMockHandler).toBeUndefined();
+		});
+	});
+
+	it('resolves expressions when invoking a supplyData tool with the VM engine', async () => {
+		await Expression.initExpressionEngine({
+			engine: 'vm',
+			bridgeTimeout: 1000,
+			bridgeMemoryLimit: 128,
+			poolSize: 1,
+			maxCodeCacheSize: 10,
+		});
+
+		try {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({
+					description: {
+						...toolDescription,
+						properties: [
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+					async supplyData(this: ISupplyDataFunctions) {
+						const resolvedValue = this.getNodeParameter('value', 0);
+						return {
+							response: {
+								invoke: async () => resolvedValue,
+							},
+						};
+					},
+				}),
+			);
+
+			const result = await executor.executeInline({
+				nodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				nodeTypeVersion: 1,
+				nodeParameters: { value: '={{ 1 + 1 }}' },
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(result).toEqual({
+				status: 'success',
+				data: [{ json: { response: 2 } }],
+			});
+		} finally {
+			await Expression.disposeExpressionEngine();
+		}
 	});
 });

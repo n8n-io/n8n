@@ -130,7 +130,38 @@ describe('nodes tool', () => {
 				{} as never,
 			);
 
-			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({ query: 'http' });
+			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+				query: 'http',
+				gatewayCreditsOnly: undefined,
+			});
+			expect(result).toEqual({ nodes });
+		});
+
+		it('should forward gatewayCreditsOnly to nodeService.listAvailable', async () => {
+			const nodes = [
+				{
+					name: 'n8n-nodes-base.openAi',
+					displayName: 'OpenAI',
+					description: 'Use OpenAI',
+					group: ['transform'],
+					version: 1,
+					aiGateway: { supported: true },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listAvailable as Mock).mockResolvedValue(nodes);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'list', gatewayCreditsOnly: true } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+				query: undefined,
+				gatewayCreditsOnly: true,
+			});
 			expect(result).toEqual({ nodes });
 		});
 	});
@@ -207,6 +238,39 @@ describe('nodes tool', () => {
 					expect.objectContaining({
 						name: 'n8n-nodes-base.slackTool',
 						discriminators: { resource: ['message'] },
+					}),
+				],
+			});
+		});
+
+		it('surfaces aiGateway meta from searchable nodes through the search handler', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.firecrawl',
+					displayName: 'Firecrawl',
+					description: 'Scrape and crawl the web',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					aiGateway: { supported: true, minVersion: 1 },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue(null);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', query: 'firecrawl', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				results: [
+					expect.objectContaining({
+						name: 'n8n-nodes-base.firecrawl',
+						aiGateway: { supported: true, minVersion: 1 },
 					}),
 				],
 			});

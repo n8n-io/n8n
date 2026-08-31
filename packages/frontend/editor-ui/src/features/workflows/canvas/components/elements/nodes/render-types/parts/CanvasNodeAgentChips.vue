@@ -1,18 +1,26 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { N8nActionDropdown } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import AgentChipButton from '@/features/agents/components/AgentChipButton.vue';
 import { type AgentCardChip, MAX_INLINE_AGENT_CHIPS } from './canvasNodeAgentChips.utils';
+import type { AgentCapabilityActivityKey } from '@/features/agents/utils/agentCapabilityActivity';
 
 const props = withDefaults(
 	defineProps<{
 		chips: AgentCardChip[];
 		maxInline?: number;
+		isReadOnly?: boolean;
+		activeCapabilityKeys?: ReadonlySet<AgentCapabilityActivityKey>;
 	}>(),
-	{ maxInline: MAX_INLINE_AGENT_CHIPS },
+	{
+		maxInline: MAX_INLINE_AGENT_CHIPS,
+		isReadOnly: false,
+		activeCapabilityKeys: () => new Set<AgentCapabilityActivityKey>(),
+	},
 );
 
 const i18n = useI18n();
@@ -29,6 +37,9 @@ const inlineChips = computed(() =>
 	})),
 );
 const overflowChips = computed(() => props.chips.slice(props.maxInline));
+const isChipActive = (chip: AgentCardChip) =>
+	(chip.activityKeys ?? []).some((key) => props.activeCapabilityKeys.has(key));
+const isOverflowActive = computed(() => overflowChips.value.some(isChipActive));
 const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	overflowChips.value.map((chip) => ({ id: chip.key, label: chip.label, icon: chip.icon })),
 );
@@ -39,34 +50,52 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 		<span
 			v-for="chip in inlineChips"
 			:key="chip.key"
-			:class="$style.chip"
-			data-test-id="canvas-node-agent-chip"
+			:class="[$style.chipWrapper, { [$style.running]: isChipActive(chip) }]"
 		>
-			<NodeIcon
-				v-if="chip.nodeTypeDescription"
-				:node-type="chip.nodeTypeDescription"
-				:size="16"
-				:class="$style.nodeIcon"
-			/>
-			<N8nIcon v-else :icon="chip.icon" :size="16" :class="$style.chipIcon" />
-			<N8nText size="small" :class="$style.chipLabel">{{ chip.label }}</N8nText>
+			<AgentChipButton
+				:icon="chip.nodeTypeDescription ? undefined : chip.icon"
+				:clickable="false"
+				:aria-busy="isChipActive(chip)"
+				data-test-id="canvas-node-agent-chip"
+			>
+				<template v-if="chip.nodeTypeDescription" #icon>
+					<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
+				</template>
+				{{ chip.label }}
+			</AgentChipButton>
+		</span>
+		<span
+			v-if="overflowChips.length && isReadOnly"
+			:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
+		>
+			<AgentChipButton
+				:clickable="false"
+				:aria-busy="isOverflowActive"
+				data-test-id="canvas-node-agent-chips-overflow"
+			>
+				{{
+					i18n.baseText('agentNode.card.moreChips', {
+						interpolate: { count: overflowChips.length },
+					})
+				}}
+			</AgentChipButton>
 		</span>
 		<N8nActionDropdown
-			v-if="overflowChips.length"
+			v-else-if="overflowChips.length"
 			:items="overflowItems"
 			placement="bottom-start"
 			:class="['nodrag', 'nowheel']"
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			<template #activator>
-				<span :class="[$style.chip, $style.overflow]">
-					<N8nText size="small" :class="$style.chipLabel">
+				<span :class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]">
+					<AgentChipButton :aria-busy="isOverflowActive">
 						{{
 							i18n.baseText('agentNode.card.moreChips', {
 								interpolate: { count: overflowChips.length },
 							})
 						}}
-					</N8nText>
+					</AgentChipButton>
 				</span>
 			</template>
 		</N8nActionDropdown>
@@ -74,42 +103,34 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 </template>
 
 <style lang="scss" module>
+@use '../_canvasNodeStyles.scss' as styles;
+
 .chips {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 }
 
-.chip {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	max-width: 100%;
-	padding: var(--spacing--5xs) var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius--full);
-	background: var(--background--surface);
-	box-shadow: var(--shadow--xs);
-}
-
-.overflow {
-	cursor: pointer;
-}
-
-.chipIcon {
-	flex-shrink: 0;
-	color: var(--text-color--subtle);
-}
-
 .nodeIcon {
 	flex-shrink: 0;
 }
 
-.chipLabel {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	color: var(--text-color--subtle);
+.chipWrapper {
+	display: inline-flex;
+	position: relative;
+	isolation: isolate;
+	border-radius: var(--radius--full);
 }
+
+/* stylelint-disable */
+.running::after {
+	@include styles.status-animated-after;
+	@include styles.status-running-animation;
+
+	border-radius: inherit;
+	pointer-events: none;
+}
+
+@include styles.status-animation-definitions;
+/* stylelint-enable */
 </style>

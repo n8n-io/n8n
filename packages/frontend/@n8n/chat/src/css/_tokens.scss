@@ -21,6 +21,7 @@
 	--chat--font-family:
 		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell,
 		'Helvetica Neue', sans-serif;
+	--chat--font-family--monospace: ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
 	/* Window Dimensions */
 	--chat--window--width: 400px;
@@ -136,4 +137,39 @@
 	--chat--footer--background: var(--chat--color-light);
 	--chat--footer--color: var(--chat--color-dark);
 	--chat--footer--border-top: 1px solid var(--chat--color-light-shade-100);
+}
+
+.n8n-chat {
+	/* Keep the shared Markdown styles self-contained when chat is embedded outside the n8n app. */
+	--spacing--5xs: calc(var(--chat--spacing) / 8);
+	--spacing--4xs: calc(var(--chat--spacing) / 4);
+	--spacing--2xs: calc(var(--chat--spacing) / 2);
+	--font-family--monospace: var(--chat--font-family--monospace);
+	--font-size--3xs: calc(var(--chat--message--font-size) * 5 / 8);
+	--font-size--xs: calc(var(--chat--message--font-size) * 13 / 16);
+	--font-size--sm: calc(var(--chat--message--font-size) * 7 / 8);
+	--font-size--md: var(--chat--message--font-size);
+	--font-size--lg: calc(var(--chat--message--font-size) * 9 / 8);
+	--font-size--xl: calc(var(--chat--message--font-size) * 5 / 4);
+	--font-weight--regular: 400;
+	--font-weight--medium: 500;
+	--font-weight--bold: 600;
+	--line-height--md: 1.3;
+	--line-height--lg: 1.35;
+	--line-height--xl: var(--chat--message-line-height);
+	--radius--sm: calc(var(--chat--border-radius) / 2);
+	--radius--lg: calc(var(--chat--border-radius) * 2);
+	--radius--xl: calc(var(--chat--border-radius) * 3);
+	--border-width: 1px;
+	--border-style: solid;
+	--color--primary: var(--chat--color--primary);
+	--color--background: var(--chat--color-light);
+	--color--foreground: var(--chat--color-light-shade-50);
+	--color--foreground--shade-1: var(--chat--color-light-shade-100);
+	--color--foreground--tint-1: var(--chat--color-light);
+	--color--neutral-200: var(--chat--color-light-shade-50);
+	--color--neutral-300: var(--chat--color-light-shade-100);
+	--color--text: currentColor;
+	--color--text--shade-1: currentColor;
+	--color--text--tint-1: currentColor;
 }

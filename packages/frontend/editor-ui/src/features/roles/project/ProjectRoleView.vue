@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import {
 	N8nButton,
 	N8nFormInput,
@@ -14,7 +14,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
@@ -151,6 +151,7 @@ async function createProjectRole() {
 		telemetry.track('User successfully created new role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions: role.scopes,
 		});
 
@@ -208,6 +209,7 @@ async function updateProjectRole(slug: string) {
 		telemetry.track('User updated role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions_from: initialState.value?.scopes,
 			permissions_to: role.scopes,
 		});

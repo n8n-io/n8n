@@ -2,12 +2,17 @@ import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
-import { createElapsedLogger, pollContainerHttpEndpoint } from './helpers/utils';
+import {
+	createElapsedLogger,
+	pollContainerHttpEndpoint,
+	waitForContainerLogMessages,
+} from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
 import type { N8NStartupDiagnostics } from './services/n8n';
 import { createN8NInstances, N8NStartupError } from './services/n8n';
 import { helperFactories, services } from './services/registry';
+import type { TaskRunnerResult } from './services/task-runner';
 import type {
 	FileToMount,
 	HelperContext,
@@ -39,6 +44,12 @@ export interface N8NStack {
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
+	/**
+	 * Same mains addressed by their network alias, for callers running *inside* the
+	 * stack's network — e.g. an HTTP Request node executed by a worker container,
+	 * which cannot reach the host-mapped ports in `baseUrl`/`mainUrls`.
+	 */
+	internalMainUrls: string[];
 	startupDiagnostics: N8NStartupDiagnostics;
 }
 
@@ -213,6 +224,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
+		// Earliest log line the readiness gate below may accept
+		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
 		const n8nStartupStart = performance.now();
 		const n8nResult = await createN8NInstances({
 			mains,
@@ -243,16 +256,40 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			log('Load balancer ready');
 		}
 
+		// The runner container starts before the instance whose broker it dials, so it
+		// can only register once that instance is up. Each launcher must have
+		// registered before a test executes code, otherwise the first execution races
+		// the registration. Which instance owns the broker varies by topology, so the
+		// runner's own log is the one place the signal is observable. Match each
+		// launcher separately, so one launcher reconnecting cannot stand in for the
+		// other, and only from this run, since a reused container keeps its old logs.
+		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
+		if (taskRunnerResult) {
+			await waitForContainerLogMessages(
+				taskRunnerResult.container,
+				[
+					/\[launcher:js\].*Received message `broker:runnerregistered`/,
+					/\[launcher:py\].*Received message `broker:runnerregistered`/,
+				],
+				{ since: n8nStartedAtSeconds },
+			);
+			log('Task runners registered with broker');
+		}
+
 		ctx.baseUrl = baseUrl;
 
-		// Build direct main URLs (bypassing load balancer)
+		// Build direct main URLs (bypassing load balancer). `mainUrls` are host-mapped
+		// and only reachable from the test process; `internalMainUrls` use the network
+		// alias and are what other containers (workers running a node) must dial.
 		const mainUrls: string[] = [];
+		const internalMainUrls: string[] = [];
 		for (let i = 1; i <= mains; i++) {
-			const mainNamePattern = mains > 1 ? `-n8n-main-${i}` : '-n8n';
-			const mainContainer = containers.find((c) => c.getName().endsWith(mainNamePattern));
+			const mainNameSuffix = mains > 1 ? `-n8n-main-${i}` : '-n8n';
+			const mainContainer = containers.find((c) => c.getName().endsWith(mainNameSuffix));
 			if (mainContainer) {
 				const mainPort = mainContainer.getMappedPort(5678);
 				mainUrls.push(`http://localhost:${mainPort}`);
+				internalMainUrls.push(`http://${uniqueProjectName}${mainNameSuffix}:5678`);
 			}
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);
@@ -339,6 +376,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				return container ? await container.stop() : null;
 			},
 			mainUrls,
+			internalMainUrls,
 			startupDiagnostics: n8nResult.diagnostics,
 		};
 	} catch (error) {

@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "revised_prompt": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

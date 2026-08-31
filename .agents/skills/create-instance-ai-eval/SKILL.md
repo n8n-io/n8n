@@ -1,37 +1,119 @@
 ---
 name: n8n:create-instance-ai-eval
 description: >-
-  Authors a new Instance AI workflow eval case in
-  packages/@n8n/instance-ai/evaluations/data/workflows — build cases,
-  behaviour/process cases, credential cases, and seeded (mid-conversation)
-  cases — with intent-driven expectations calibrated against a real build. Use
-  when adding or changing an Instance AI workflow eval, or debugging why one is
-  flaky.
+  Authors a new Instance AI workflow eval case — written locally as JSON,
+  calibrated against a real build, then pushed to the LangTracer suite CI runs
+  — build cases, behaviour/process cases, credential cases, and seeded
+  (mid-conversation) cases — with intent-driven expectations. Use when adding
+  or changing an Instance AI workflow eval, or debugging why one is flaky.
 ---
 
 # Create an Instance AI workflow eval
 
-Each eval is **one JSON file** in
-`packages/@n8n/instance-ai/evaluations/data/workflows/`. The loader
-auto-discovers `*.json` and validates against
-[`schema.ts`](../../../packages/@n8n/instance-ai/evaluations/data/workflows/schema.ts)
-(`.strict()` — unknown keys fail at load). No registration step. The eval
+Each eval is **one JSON case** — authored locally as a file in
+`packages/@n8n/instance-ai/evaluations/data/workflows/` (the disk loader
+auto-discovers `*.json`, no registration step), with a LangTracer suite as its
+durable home. Cases validate against
+[`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts)
+(`.strict()` — unknown keys fail at load). The eval
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) is the
 exhaustive field reference; this skill is the opinionated *how*.
 
 > **Committing new case JSONs into the repo is no longer the recommended
 > approach.** Author the file locally (uncommitted), calibrate it against a real
-> build, then **push it to a curated lang-tracer suite** with
-> `eval:langtracer-push` (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)).
+> build, then **push it to a lang-tracer suite** with `eval:langtracer-push`
+> (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)) —
+> `--suite baseline` for the consolidated corpus n8n CI runs, or a dedicated
+> capability suite like `agents`.
 > The suite is the home for the case; the eval CLI reads it back via
 > `--source langtracer`. You still write the JSON file — it's just the input to
 > the push, not a committed artifact.
 >
-> **Exception — seeded cases.** The case-write API can't hold any seeding mode, so
-> seeded cases are never pushed. A `seedThread` case is a local throwaway (don't
-> commit it either — it dies when its trace is pruned); a `seedFile` or
-> `priorConversation` case isn't transient and has no suite home, so it's the one
-> sanctioned exception — it lives as committed JSON. See [`case-shapes.md`](case-shapes.md).
+> **Seeded cases.** An `inline` seed pushes with the case — the case-write API
+> stores it verbatim, so the suite is its home like any other case. Only a
+> `seed.mode: "replay"` case is refused (listed under `skipped:`): it's
+> reconstructed from a LangSmith trace at run time, so it dies when that trace is
+> pruned and has no durable home. Don't commit a replay case either — derive a
+> synthetic case from it. See [`case-shapes.md`](case-shapes.md).
+
+## Set the autonomy level first
+
+**Before you source, draft, or run anything, decide how hands-on the driver
+wants to be — and say it back.** This skill runs at one of two autonomy levels.
+If the request makes the level clear ("just author and calibrate it yourself" vs.
+"stop me at each step", or an explicit mode), adopt it, state it in one line, and
+note how to override (e.g. "say 'stop me at calibration' to add a checkpoint").
+**If it's not clear, ask the driver one question** offering the two levels
+*before* doing any work.
+
+The skill has four natural decision **gates** — **selection** (which real
+failure to encode), **shape + expectations** (archetype, must-haves, scope
+trim), **calibration** (classify each red and resolve keep/loosen/drop), and
+**push** (kind + tier). The level decides what happens at each gate:
+
+| Level | Who decides when to stop | Behaviour |
+|---|---|---|
+| **autonomous** | agent | Runs all four gates start-to-finish; reports a **decision log** at the end for the driver to review — with the pushed case, its suite, and the source thread as **links** ([Share links, never bare ids](#share-links-never-bare-ids)), and a Linear ticket **proposal** for any kept capability-gap red ([Capability gap → propose a Linear ticket](#capability-gap--propose-a-linear-ticket)). |
+| **checkpoint** | driver, per gate | Stops at each gate with a compact **proposal + recommendation**; driver says "go" or redirects. At the **calibration** gate, hands the driver a link to the just-built thread on the live instance plus login credentials so they can review the real conversation and workflow themselves before confirming (below). |
+
+**Calibration is special-cased at both levels.** A calibration verdict that
+flips a case's *meaning* — a real capability-gap red vs. a harness-caused red, or
+any loosening that would let a known-bad build pass — is **surfaced explicitly**
+(interactively in checkpoint; in the decision log in autonomous), never silently
+committed. It's the one call where a quiet mistake corrupts the suite, so it
+never fully auto-commits.
+
+**Checkpoint calibration — review the real thread on the instance.** Because the
+calibration verdict is trust-critical, in checkpoint mode you don't ask the
+driver to trust your reading of the run. You built the case against a live
+instance with `--keep-workflows` (step 4), so the thread and the workflow are
+still there — hand the driver a direct link and let them look:
+
+- **Thread:** `<base-url>/assistant/<threadId>` — the exact conversation the case
+  ran (the run prints the `threadId`; the built workflow prints as `BUILT (<id>)`
+  and opens at `<base-url>/workflow/<id>`).
+- **Login:** the email + password the eval signs in with (the owner you seeded on
+  the instance — see [`running-evals.md`](running-evals.md); the default local
+  seed is `nathan@n8n.io` / `PlaywrightTest123`).
+
+Present, per red: the assertion, whether it went green/red, your proposed
+classification (real capability gap / harness limitation / noise) and
+keep/loosen/drop, and the review link. The driver logs in, reads the thread and
+the workflow, and confirms or redirects before you write the verdict back into
+the case `description`.
+
+## Share links, never bare ids
+
+Every lang-tracer entity has a shareable web page, but the CLI and the MCP hand
+you **numeric ids** — `eval:langtracer-push` prints `+ created <slug> (#621)`,
+`get_eval_run` returns a run number, `list_conversations` returns thread ids.
+An id is unclickable: the driver has to go find it. **Whenever you name a case,
+suite, thread, cluster, or run in anything a human reads** — a checkpoint
+proposal, the end-of-run decision log, a PR description, a Linear ticket, a Slack
+message — render it as a link, keeping the id in the label:
+
+```
+pushed as [#621](https://lang-tracer.n8n-maintenance.workers.dev/test-cases/621)
+```
+
+Build links off the **web base** (`LANGTRACER_URL`, in production
+`https://lang-tracer.n8n-maintenance.workers.dev`). Never off the API bases —
+`${LANGTRACER_URL}/api/v1` and `/api/mcp` are machine endpoints, and a link into
+either 404s for the driver or dumps JSON.
+
+| Entity | URL | Where the id comes from |
+|---|---|---|
+| Test case | `<base>/test-cases/<id>` | push output `(#<id>)`; `create_test_case` / `search_test_cases` |
+| Suite | `<base>/suites/<suiteId>` | push header `Suite "<slug>" (#<id>)`; `list_suites` |
+| Source conversation | `<base>/conversations/<threadId>` | `list_conversations` / `get_conversation` |
+| Cluster report | `<base>/clusters/<id>` | `list_cluster_runs` / `get_latest_cluster_run` |
+| Eval run (sweep) | `<base>/results?sweep=<runId>` | `list_eval_runs` / `get_eval_run` (`runId` *is* `sweeps.id`, the "run #N") |
+
+Two links that are **not** lang-tracer and don't take this base: the built thread
+(`<base-url>/assistant/<threadId>`) and workflow (`<base-url>/workflow/<id>`) live
+on the **n8n instance** the eval ran against. When both are relevant — reviewing a
+calibration red, writing a capability-gap ticket — give both, labelled, so nobody
+has to guess which host a link points at.
 
 ## Where the best cases come from
 
@@ -40,7 +122,7 @@ connections help you find and verify one: **LangTracer** clusters real
 conversations into capability-gap themes (discover what actually fails, at
 scale), and **LangSmith** holds the raw traces (verify exactly what happened in a
 run). LangTracer is the discovery layer; the durable artifact is almost always a
-synthetic case you author from what you learn (use `seedThread` only per
+synthetic case you author from what you learn (use `seed.mode: "replay"` only per
 [`case-shapes.md`](case-shapes.md)). See
 [`sourcing-cases.md`](sourcing-cases.md) for connecting the MCPs and the
 discover → verify → encode workflow.
@@ -56,7 +138,7 @@ case can still assert outcome), but the primary shape drives the work.
 | **Build** (default) | Does the workflow the agent builds actually *work*? | `outcomeExpectations` + `executionScenarios` |
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
-| **Seeded** | Reproduce a conversation mid-thread and drive the turn under test | `seedThread` / `priorConversation` / `seedFile` |
+| **Seeded** | Start mid-thread, with prior work already in place, and drive the turn under test | `seed` (authored `mode: "inline"`; `"replay"` for a local check) |
 
 **Build** is documented in full below. The other three, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
@@ -83,6 +165,12 @@ need + constraint ("I need field X and the built-in node doesn't expose it, so
 pull it straight from the API") — not as an implementation spec ("use an HTTP
 Request node").
 
+**Write the conversation in English** unless the user asked otherwise (or the
+case exists specifically to test non-English handling). Sourced real threads are
+frequently non-English — translate the intent into English when you rewrite the
+prompt in the user's voice; the failure mode is the anchor, not the original
+language.
+
 **Trim to the smallest multi-turn conversation that reproduces the issue.**
 Real sourced threads are long (dozens of turns of setup, debugging, and
 tangents) — do **not** transcribe them. Distill to the fewest turns that still
@@ -108,6 +196,15 @@ scoped to feed posts so it builds in budget"). Keep the capability under test; c
 the combinatorial bulk. A case that never builds tests nothing.
 
 ## Workflow
+
+These steps map to the four gates from [Set the autonomy level first](#set-the-autonomy-level-first):
+sourcing (before step 1) is the **selection** gate; steps 1–2 are the **shape +
+expectations** gate; steps 5–6 are the **calibration** gate; steps 7–8 are the
+**push** gate. In *autonomous* mode you flow through all of them and summarize in
+a decision log; in *checkpoint* mode you pause at each with a proposal, and at
+calibration you hand the driver the thread link + login to review the real build
+(see [Set the autonomy level first](#set-the-autonomy-level-first)). Calibration
+(step 6) always surfaces meaning-flipping verdicts explicitly regardless of level.
 
 1. **State the must-haves first.** From the conversation alone, list what every
    correct workflow must do (trigger type, essential operations, gating
@@ -143,9 +240,17 @@ the combinatorial bulk. A case that never builds tests nothing.
    [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
    case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
    (or delete it once it's in the suite). Committing new case JSONs into the repo
-   is no longer the approach. (Exception: seeded cases can't be pushed — a
-   `seedFile`/`priorConversation` case stays committed JSON, a `seedThread` case is
-   a local throwaway; see [`case-shapes.md`](case-shapes.md).)
+   is no longer the approach. (An `inline` seed pushes with the case; only a
+   `replay` case is refused — it's a local throwaway; see
+   [`case-shapes.md`](case-shapes.md).) For a sourced case,
+   finish by **linking it to its source thread/finding** over the MCP — see
+   [Link the pushed case to its source](#link-the-pushed-case-to-its-source-provenance-step--always-do-this).
+8. **Hand back links, and a ticket proposal if the case found a gap.** Report the
+   pushed case as `<base>/test-cases/<id>`, not `#<id>` ([Share links, never bare
+   ids](#share-links-never-bare-ids)), and if calibration kept a real
+   capability-gap red, propose a Linear ticket for it ([Capability gap → propose a
+   Linear ticket](#capability-gap--propose-a-linear-ticket)) rather than leaving the
+   gap as a red case nobody owns.
 
 `--iterations N` is available to measure flakiness (pass@k / pass^k) — reach for
 it when you suspect a case is non-deterministic or before promoting it to a
@@ -181,25 +286,46 @@ Calibration exists to right-size assertions, **not** to make a case pass. When a
 run turns a scenario or expectation red, classify the red first — then keep it.
 
 **First rule out the environment.** Before reading any red as a signal about a
-case, check the shape of the failures across the run. If **every scenario fails
-with the *same* execution error** while the builds succeed and `outcomeExpectations`
-pass, that is almost never the cases — it's a broken environment, most often a
-**stale `packages/core` / `packages/cli` dist** after a branch or worktree switch
-(a refactor moved a runtime export and the built dist still calls the old one;
-e.g. `(0 , n8n_workflow_1.createDeferredPromise) is not a function` after
-`createDeferredPromise` moved to `@n8n/utils`). Fix it, don't calibrate around it:
-run a full ordered `pnpm build` (a targeted `--filter` build can fail on unrelated
-stale-dep type errors), then **restart the instance** — the running node process
-holds the old dist in memory, so rebuilding on disk changes nothing until restart
-(and `kill` by env-var pattern misses it — kill the actual `lsof -t -iTCP:<port>`
-PID). Re-probe one case, confirm executions run, then re-run the batch. Only once
-uniform environment failures are excluded do the three categories below apply:
+case, check the shape of the failures across the run. If **every case fails the
+same way** — every scenario with the *same* execution error while builds succeed,
+*or* every **build** erroring identically before it starts (an `Agent error:
+Something went wrong…` with **zero tool calls**) — that is almost never the cases;
+it's a broken environment, most often a **stale dist** after a branch or worktree
+switch. Two shapes to know:
+
+- **Stale `packages/core` / `packages/cli` dist** — a refactor moved a runtime
+  export and the built dist still calls the old one, so *builds succeed but every
+  execution fails the same way* (e.g. `(0 , n8n_workflow_1.createDeferredPromise)
+  is not a function` after `createDeferredPromise` moved to `@n8n/utils`).
+- **Stale/half-built `@n8n/instance-ai` dist** — every run errors *before building*
+  (`Agent error…`, zero tool calls) and the instance log shows `Cannot find module
+  '@/utils/...'` from `dist/skills/*.js`: the build's `tsc-alias` step (which
+  rewrites `@/` path aliases to relative requires) didn't complete, so the dist is
+  internally inconsistent.
+
+- **Out-of-sync `node_modules`** — `pnpm build` itself dies early with `Cannot find
+  module '@n8n/<pkg>'` even though that package is a declared `workspace:*`
+  dependency *and* has a `dist/`. The workspace symlink is missing from the
+  consumer's `node_modules` (typical after a branch or worktree switch). Confirm
+  with `ls -d packages/<consumer>/node_modules/@n8n/<pkg>`; fix with a plain
+  `pnpm install` — no need for the heavier `pnpm reset --full`.
+
+Fix it, don't calibrate around it: run a full ordered `pnpm build` (a targeted
+`--filter` build can fail on unrelated stale-dep type errors; for the instance-ai
+shape, `cd packages/@n8n/instance-ai && pnpm build` runs `tsc && tsc-alias`), then
+**restart the instance** — the running node process holds the old dist in memory,
+so rebuilding on disk changes nothing until restart (and `kill` by env-var pattern
+misses it — kill the actual `lsof -t -iTCP:<port>` PID). Re-probe one case, confirm
+it builds and executes, then re-run the batch. Only once uniform environment
+failures are excluded do the three categories below apply:
 
 - **Real build / capability gap** — the agent's workflow is wrong or missing
   something the user asked for (a miswired branch, a missing retry, wrong field
   keys). This is exactly what the eval is for. **Keep it red.** Don't loosen the
   assertion or drop the scenario; a currently-red gap is the capability signal
-  today, and a re-introduction guard once the builder improves.
+  today, and a re-introduction guard once the builder improves. Then **propose a
+  Linear ticket** for the gap — see [Capability gap → propose a Linear
+  ticket](#capability-gap--propose-a-linear-ticket).
 - **Harness limitation** — the build is correct but the mock/execution layer
   can't exercise the path (see "Known harness limitations", below). **Keep the
   scenario and say so in its `description`** — that this red is harness-caused,
@@ -210,6 +336,13 @@ uniform environment failures are excluded do the three categories below apply:
   This is the only real "noise". Confirm it with `--iterations N` before calling
   it flaky, then de-tier and note it; deletion is the last resort.
 
+**Annotate every kept red in the case `description` with a scannable prefix** so a
+future reader tells the two apart at a glance. Use `Harness note: …` for a
+harness-caused red (name the limitation and why the build is still correct), and
+`Capability-gap finding: current build reds because <X> — a real builder bug
+(flips to a regression guard once fixed)` for a real gap. Consistent prefixes keep
+the corpus greppable and stop harness reds from being misread as product bugs.
+
 The one move to never make is **working around a red by weakening what the case
 checks** — deleting a failing scenario, loosening an assertion until a wrong
 build would pass, or quietly converting to build-only. That makes the suite look
@@ -217,6 +350,73 @@ greener than the product is, which is the opposite of the eval's job: bugs and
 harness gaps are the deliverable, so **highlight them, don't engineer around
 them**. If you catch yourself editing a case so that a known-bad build would now
 pass, stop.
+
+**Who confirms the classification depends on the autonomy level.** In
+*checkpoint* mode the keep/loosen/drop decision is the driver's to confirm: you
+hand them the thread link + login (see [Set the autonomy level
+first](#set-the-autonomy-level-first)) so they can review the real conversation
+and workflow, then you write the agreed `Harness note:` / `Capability-gap
+finding:` prefix back into the case `description`. In *autonomous* mode the agent
+proposes it explicitly in the end-of-run decision log. Either way the
+classification is stated in the open, never silently committed — misreading a
+harness red as a real gap (or the reverse) is the one calibration mistake that
+quietly corrupts the suite.
+
+### Capability gap → propose a Linear ticket
+
+A kept capability-gap red is a **product bug you just characterised better than
+any bug report would**. But a red case in a suite doesn't assign itself to anyone:
+without a ticket the gap sits in CI as permanent noise, and the next person to
+read the run assumes someone already owns it. So once a red is classified as a
+real gap (and the driver has confirmed it, per the autonomy level), **propose a
+Linear ticket for it.**
+
+**Propose, don't create.** Per [AGENTS.md](../../../AGENTS.md), never open a
+Linear ticket unasked. Put the draft in front of the driver — interactively in
+checkpoint mode, in the decision log in autonomous mode — with a title, a team,
+and the body, and let them say go. Skip the proposal in two cases:
+
+- **The gap already has a ticket.** Check the case's linked issues on its page,
+  and run `get_linear_ticket_context <TEAM-N>` on any candidate identifier the
+  driver or the source thread mentions, before you draft a duplicate.
+- **The red isn't a capability gap.** A `Harness note:` red is a
+  lang-tracer/harness issue, and genuine non-determinism is a case-hygiene chore.
+  Neither belongs in the builder's queue.
+
+The draft body should carry what makes the gap actionable, all of it already in
+hand from calibration:
+
+- **The eval case**, as a link — `<base>/test-cases/<id>` (see [Share links, never
+  bare ids](#share-links-never-bare-ids)). This is the reproducer; it's the most
+  valuable line in the ticket.
+- **What failed, verbatim** — the failing `outcomeExpectation` /
+  `processExpectation` or scenario name, plus the judge's stated reason. Not a
+  paraphrase: the exact text is what the fixer will grep for.
+- **What the build did instead** — the specific defect (miswired branch, wrong
+  field key, missing gate), and links to the real evidence: the source conversation
+  (`<base>/conversations/<threadId>`) and the built thread + workflow on the eval
+  instance (`<base-url>/assistant/<threadId>`, `<base-url>/workflow/<id>`).
+- **Blast radius, if you know it** — the cluster theme or the number of real
+  conversations behind the gap (`<base>/clusters/<id>`) is what turns "one red
+  case" into a prioritisable bug.
+
+**File it from the case page so the link is made.** The `<base>/test-cases/<id>`
+page has a *Create Linear issue* dialog that creates the ticket **and** links it to
+the case; that link is what makes `get_linear_ticket_context <TEAM-N>` later return
+the case, its scenarios, the source conversation, and its analysis in one call. The
+case↔ticket link is only writable from that UI — lang-tracer's MCP and `/api/v1`
+are read-only for it — so if the ticket gets created some other way (a Linear MCP,
+if your harness has one, or Linear directly), say plainly that it isn't linked, ask
+the driver to link it on the case page, and meanwhile put the identifier + URL in
+the case `description` via `update_test_case` so the provenance isn't lost.
+
+Then extend the description prefix with the ticket, so the corpus stays greppable
+in both directions: `Capability-gap finding: current build reds because <X> — a
+real builder bug (flips to a regression guard once fixed). Tracked in
+[<TEAM-123>](<ticket url>)`. And when the *build itself* is wrong — not just a
+scenario red under a correct build — push it with `--set-kind capability_gap` into
+a suite of that kind (see
+[Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)).
 
 ## Example
 
@@ -287,8 +487,8 @@ What each piece is doing:
   never spoken. Here it withholds values until asked and rejects a plan that
   misses the label filter. Keep the whole script in one turn and encode ordering
   inside it (don't fabricate assistant "done" turns to sequence steps — see
-  [`case-shapes.md`](case-shapes.md)). `applies-each-change-when-asked` is a good
-  real example.
+  [`case-shapes.md`](case-shapes.md)). `applies-each-change-when-asked` (in the
+  `baseline` LangTracer suite) is a good real example.
 - **`dataSetup` describes only what external services return.** That's the layer
   the harness controls (below).
 
@@ -313,7 +513,14 @@ nodes get LLM-generated pin data). So:
   byte-exact — don't assert exact values off them), and *writes/inserts* aren't
   pinned (they hit the real per-thread table, recreated schema-only with **no
   rows**), so read-after-write within one run isn't faithful — the read reflects
-  `dataSetup`, not what the run just wrote.
+  `dataSetup`, not what the run just wrote. A third caveat: only Data Table
+  *reads* are seedable this way — **dedup / change-detection built on workflow
+  static data** (`removeItemsSeenInPreviousExecutions`, `$getWorkflowStaticData`)
+  is **not** seedable, because static data starts empty every run, so such a
+  scenario reds vacuously (it sees everything as "new"). To get a seedable
+  change-detection scenario, steer the build toward a Data Table; otherwise
+  accept the static-data red as a harness limit and carry the logic in
+  `outcomeExpectations`. Note the agent may *choose* static-data dedup on its own.
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").
   Say "fewer than the original 10".
 
@@ -340,10 +547,18 @@ red is harness-caused (per "A red is signal", above):
 - **Mock response shape** — the LLM-generated mock response can omit the real
   envelope, crashing a downstream parse/format node. Recurring, reproducible
   shapes to expect (all produce a red on a *correct* build):
-  - **OpenAI** mock returns a plain `{content: "..."}` instead of the Responses
-    API envelope (`output[0].content[0].text`), so a LangChain chain / **Structured
-    Output Parser** receives an empty response and crashes. Any build with an
-    OpenAI chat model feeding a structured-output/parser node can red on this.
+  - **OpenAI structured output** — historically the mock returned a plain
+    `{content: "..."}` instead of the Responses envelope
+    (`output[0].content[0].text`), so a **Structured Output Parser** /
+    **Information Extractor** / **Text Classifier** got nothing and errored with
+    **`Model output doesn't fit required format`**. The Responses-envelope
+    normalizer (PR #33578, merged) fixes the flat-envelope case, so many of these
+    now execute cleanly. A **narrower residual red remains** for structured-output
+    schemas declared with strict **`additionalProperties: false`**: the normalized
+    `output` wrapper (and any extra fields the mock invents, e.g. `subject`/`date`)
+    violate the strict schema, so the node still rejects the mock output. Both the
+    old and residual forms are the *mock*, not the build — carry correctness in
+    `outcomeExpectations` and note the red as harness-caused.
   - **Gmail** mock returns headers as top-level capitalized fields (`From`,
     `Subject`) instead of under `payload.headers`, so a Code/Filter node reading
     the sender/subject gets empty strings (e.g. a "drop no-reply senders" safety
@@ -351,6 +566,10 @@ red is harness-caused (per "A red is signal", above):
     `outcomeExpectations`, not its runtime effect in a scenario.
   - A less-common API (e.g. Gemini's top-level `candidates`) can omit its envelope
     the same way.
+  - **Google Drive resumable upload** — the initiate-upload mock omits the
+    `Location` header carrying the session URL, so a Drive file-upload node fails
+    with a 400. Any build that uploads a generated image/file to Drive can red on
+    this.
 - **Agent-tool nodes can't be executed standalone.** An AI-Agent *tool* node
   (`toolHttpRequest` and other `supplyData`-only LangChain nodes with no `execute`
   method) only runs when the agent invokes it; the harness executing it directly
@@ -358,6 +577,12 @@ red is harness-caused (per "A red is signal", above):
   red for chat-trigger / AI-agent build cases whose tool is an HTTP-request tool —
   the build is correct, so carry correctness in `outcomeExpectations` (agent wired
   to trigger + model + tool) and note the execution red as harness-caused.
+- **Poll/wait loops can't be fast-forwarded.** A workflow that submits an async
+  job then polls for completion (generate → poll status until ready → download)
+  can't advance the mocked status deterministically, and a `Wait` node runs in
+  real time, so the scenario reds with an execution timeout (`framework_issue`).
+  The build is correct — carry it in `outcomeExpectations` and note the red as
+  harness-caused.
 - **A build can time out and produce no scored result at all** — the run reports
   `BUILD FAILED: Run timed out` and zero graded expectations. Don't assume "spec
   too big": the more common cause is a **single-prompt case where the agent asks
@@ -366,10 +591,14 @@ red is harness-caused (per "A red is signal", above):
   — only confirmations auto-approve). Before treating a timeout as spec size,
   **classify it**: read the agent's final response in the report / trace (did it
   ask a question? flag an infeasibility? or genuinely churn through a huge
-  build?), and **re-run the case solo (`--concurrency 1`)** — concurrency makes a
-  stalled build hit the cap and masks the real reason, which a solo run surfaces
-  in seconds. Fix per cause: a clarifying-question stall → author multi-turn with
-  a director note that pre-answers it; a genuine infeasibility → it's an
+  build?), and **re-run the case solo (`--concurrency 1`)** — concurrency both
+  masks a stalled build (it hits the cap) *and* can time out a perfectly healthy
+  build purely by queueing it behind the per-instance build cap (default 4), so a
+  solo run either surfaces the real reason in seconds or simply passes outright.
+  Fix per cause: a solo run that now passes → it was **concurrency contention**,
+  not the case (split big batches across lanes — see
+  [`running-evals.md`](running-evals.md)); a clarifying-question stall → author
+  multi-turn with a director note that pre-answers it; a genuine infeasibility → it's an
   infeasibility/honesty behaviour case (`processExpectations`), not a build case;
   a true oversized spec → the timeout is itself a finding, but note it so the
   zero isn't mistaken for a scored failure.
@@ -507,32 +736,76 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 
 ```bash
 cd packages/@n8n/instance-ai
-# preview first — no writes:
-dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --dry-run --changed
+# preview first — no writes (use `npx dotenvx`; the bare `dotenvx` binary is usually not on PATH):
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
 # then push (drop --dry-run):
-dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional
   `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
   `data/workflows/*.json`, ideal right after authoring an uncommitted case),
   `--filter`/`--tier` (with `--exclude` as a modifier).
+- **Multiple positional slugs? Skip pnpm — call the script directly.** `pnpm
+  eval:langtracer-push … slugA slugB` forwards the slugs as one joined argument
+  (`"slugA slugB"`), so no case file matches and nothing is pushed. Either use a
+  no-positional selector through pnpm (`--changed`), or run the script directly so
+  each slug is its own argv: `npx dotenvx run -f .env.eval -- npx tsx
+  evaluations/cli/langtracer-push.ts --suite <slug> <slug1> <slug2> …`.
 - **Env:** `LANGTRACER_URL` + `LANGTRACER_API_KEY` (an `lt_` bearer; one key works
-  for MCP + REST) — put them in `.env.eval` and run under `dotenvx`.
+  for MCP + REST) — put them in `.env.eval` and run under `npx dotenvx`.
 - **Options:** `--set-kind regression|capability_gap` (default `regression`, must
-  match the suite's kind), `--contains-user-data` (default is `synthetic`).
+  match the suite's kind), `--contains-user-data` (default is `synthetic`). A case
+  whose **build is correct** (outcome expectations green) but that carries a
+  **currently-red execution scenario** from a builder bug is still a `regression`
+  case — it guards the fix; reserve `capability_gap` for cases where the *build
+  itself* is wrong.
 - **Scenarios sync on update too:** `PATCH /cases/:id` reconciles
   `executionScenarios` by name (update in place, insert new, delete missing —
   lang-tracer #48), so scenario edits re-push like any other field. A lang-tracer
   deployment predating that change silently ignores the key; if a pushed scenario
   edit doesn't land, update the scenario in the lang-tracer UI.
-- **Seeded cases can't be pushed:** the case-write API rejects every seeding mode
-  (`seedThread` / `seedFile` / `priorConversation`), so the push lists them under
-  `skipped:` and they never reach the suite. A `seedThread` case shouldn't be
-  committed either — it dies when its trace is pruned or deleted — so derive a
-  durable synthetic case as the artifact instead. A `seedFile`/`priorConversation`
-  case isn't transient and has no suite home, so it's the one exception to
-  "don't commit the JSON" — it lives as a committed artifact.
+- **Report what was pushed as links, not `#ids`.** The CLI prints `+ created
+  <slug> (#621)` / `~ updated <slug> (#621, rev 3)` and a suite header — that's the
+  id, and nothing more. Turn each one into `<base>/test-cases/<id>` (and the suite
+  into `<base>/suites/<suiteId>`) in whatever you hand the driver, so they can open
+  the case they just authored instead of hunting for it. See [Share links, never
+  bare ids](#share-links-never-bare-ids).
+- **An `inline` seed pushes with the case:** the case-write API stores it
+  verbatim, so a seeded case lives in a suite like any other. Only a `replay`
+  case is refused — the push lists it under `skipped:`, because it's
+  reconstructed from a LangSmith trace at run time and dies when that trace is
+  pruned or deleted. Don't commit a replay case either; derive a durable
+  synthetic case as the artifact instead.
+
+### Link the pushed case to its source (provenance step — always do this)
+
+A sourced case that isn't linked back to the conversation/finding it encodes is
+an orphan: six months later nobody can tell what real failure it guards. The
+push CLI doesn't carry provenance, so after pushing, link the case over the
+lang-tracer MCP with one **`update_test_case`** call on the new case id (the
+push prints it):
+
+1. **`sourceThreadId`** — the source conversation's thread id (plus
+   **`sourceRunId`** when the case anchors to one specific run/step within it).
+   This is the DB-level link every by-version rollup, conversation float, and
+   `?sourceThreadId=` query joins on — the tags/description below are the
+   human-readable layer on top, not a substitute. The thread must already be
+   imported into lang-tracer (running `get_conversation_analysis` on it, as the
+   sourcing flow does, is enough); `source_kind` is derived server-side, and
+   the link is only editable on authored cases — promotion-recorded provenance
+   is immutable.
+2. **`expectedBehavior`** — the rule the case enforces, one paragraph — and
+   **`failurePattern`** — what actually happened in the source thread, with
+   turn references. Copy/adapt these from the analysis's `extractedCases`
+   entry when the case came from `get_conversation_analysis`.
+
+Then **`add_case_tags`** (additive; targets the LT-side `tags` array, not
+`evalTags`, so nothing round-trips into eval runs): add a capability tag (e.g.
+`instruction-persistence`). Tag normalization is aggressive (lowercase, kebab);
+colon-form tags get silently dropped. And keep the thread id + turn refs in
+the case `description` too (the drafter's habit of "Sourced from thread <id>"
+is the convention) — the description is the only field shown everywhere.
 
 ## Running
 
@@ -544,7 +817,9 @@ existing workflows). Narrow a run with `--filter <slug>` / `--tier <name>` /
 `--exclude`. See [`running-evals.md`](running-evals.md) for the run recipes,
 parallel lanes, tiers, and baselines, and the
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) for the full
-flag list.
+flag list. Run with `--keep-workflows` when you want to review a build by hand —
+in *checkpoint* mode calibration this is how the driver opens the built thread
+(`<base-url>/assistant/<threadId>`) and workflow on the instance.
 
 ## Other eval harnesses (not this skill)
 

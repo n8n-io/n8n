@@ -1,4 +1,4 @@
-import { WorkflowActivationError } from '../../src/errors';
+import { WorkflowActivationError, WorkflowOperationError } from '../../src/errors';
 
 describe('WorkflowActivationError', () => {
 	it('should default to `error` level', () => {
@@ -43,5 +43,33 @@ describe('WorkflowActivationError', () => {
 		const error = new WorkflowActivationError('Generic wrapper message', { cause: richCause });
 
 		expect(error.description).toBe('Actionable detail');
+	});
+
+	describe('with a frozen Error.prototype', () => {
+		const descriptors = {
+			name: Object.getOwnPropertyDescriptor(Error.prototype, 'name')!,
+			constructor: Object.getOwnPropertyDescriptor(Error.prototype, 'constructor')!,
+		};
+
+		beforeAll(() => {
+			for (const [key, descriptor] of Object.entries(descriptors)) {
+				Object.defineProperty(Error.prototype, key, { ...descriptor, writable: false });
+			}
+		});
+
+		afterAll(() => {
+			for (const [key, descriptor] of Object.entries(descriptors)) {
+				Object.defineProperty(Error.prototype, key, descriptor);
+			}
+		});
+
+		it('should wrap an ExecutionBaseError cause without writing through the prototype', () => {
+			const operationCause = new WorkflowOperationError('operation failed');
+
+			const error = new WorkflowActivationError('activation failed', { cause: operationCause });
+
+			expect(error.name).toBe('WorkflowActivationError');
+			expect(error.description).toBe('operation failed');
+		});
 	});
 });

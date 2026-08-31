@@ -1,4 +1,3 @@
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 import { InMemoryMemory } from '../memory/memory-store';
 
 describe('observation log store', () => {
@@ -22,7 +21,7 @@ describe('observation log store', () => {
 			parentId: null,
 			status: 'active',
 			supersededBy: null,
-			tokenCount: estimateObservationTokens('User chose the observation log model.'),
+			tokenCount: 7,
 			createdAt,
 		});
 
@@ -149,5 +148,30 @@ describe('observation log store', () => {
 				expect.objectContaining({ id: child.id, status: 'superseded' }),
 			]),
 		);
+	});
+
+	it('persists concurrent appends to the same initially empty scope', async () => {
+		const store = new InMemoryMemory();
+
+		const [[first], [second]] = await Promise.all([
+			store.appendObservationLogEntries([
+				{
+					observationScopeId: 'thread-1',
+					marker: 'info',
+					text: 'First concurrent observation',
+				},
+			]),
+			store.appendObservationLogEntries([
+				{
+					observationScopeId: 'thread-1',
+					marker: 'info',
+					text: 'Second concurrent observation',
+				},
+			]),
+		]);
+
+		const persisted = await store.getObservationLog({ observationScopeId: 'thread-1' });
+		expect(persisted).toEqual(expect.arrayContaining([first, second]));
+		expect(persisted).toHaveLength(2);
 	});
 });

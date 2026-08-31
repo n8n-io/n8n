@@ -94,4 +94,62 @@ describe('AwsAssumeRole Credential', () => {
 			}),
 		);
 	});
+
+	it('should sign a vpce Bedrock request with the bedrock service namespace', async () => {
+		const requestOptions: IHttpRequestOptions = {
+			qs: {},
+			body: {},
+			headers: {},
+			baseURL: '',
+			url: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/model/anthropic.claude-v2/invoke',
+			method: 'POST',
+		};
+
+		await aws.authenticate(credentials, requestOptions);
+
+		expect(MockSignatureV4).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				region: 'us-east-1',
+				service: 'bedrock',
+			}),
+		);
+		expect(mockSmithySignFn).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				hostname: 'vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+			}),
+		);
+	});
+
+	it('should sign a vpce host for a non-Bedrock service using its own service name', async () => {
+		const requestOptions: IHttpRequestOptions = {
+			qs: {},
+			body: {},
+			headers: {},
+			baseURL: '',
+			url: 'https://vpce-0abc123.sqs.us-west-2.vpce.amazonaws.com/',
+			method: 'POST',
+		};
+
+		await aws.authenticate(credentials, requestOptions);
+
+		expect(MockSignatureV4).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				region: 'us-west-2',
+				service: 'sqs',
+			}),
+		);
+	});
+
+	it('should throw when the vpce host has an unsupported region label', async () => {
+		const requestOptions: IHttpRequestOptions = {
+			qs: {},
+			body: {},
+			headers: {},
+			baseURL: '',
+			url: 'https://vpce-0abc123.sqs.not-a-region.vpce.amazonaws.com/',
+			method: 'POST',
+		};
+
+		await expect(aws.authenticate(credentials, requestOptions)).rejects.toThrow('not-a-region');
+	});
 });

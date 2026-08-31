@@ -118,6 +118,85 @@
                 }
             }
         },
+        "checklists": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "creator": {
+                        "type": "integer"
+                    },
+                    "date_created": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "assignee": {
+                                    "type": "null"
+                                },
+                                "date_created": {
+                                    "type": "string"
+                                },
+                                "due_date": {
+                                    "type": "null"
+                                },
+                                "due_date_time": {
+                                    "type": "null"
+                                },
+                                "group_assignee": {
+                                    "type": "null"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "orderindex": {
+                                    "type": "integer"
+                                },
+                                "parent": {
+                                    "type": "null"
+                                },
+                                "resolved": {
+                                    "type": "boolean"
+                                },
+                                "sent_due_date_notif": {
+                                    "type": "boolean"
+                                },
+                                "start_date": {
+                                    "type": "null"
+                                },
+                                "start_date_time": {
+                                    "type": "null"
+                                }
+                            }
+                        }
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "orderindex": {
+                        "type": "integer"
+                    },
+                    "resolved": {
+                        "type": "integer"
+                    },
+                    "task_id": {
+                        "type": "string"
+                    },
+                    "unresolved": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "creator": {
             "type": "object",
             "properties": {
@@ -152,6 +231,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "required": {
+                        "type": "boolean"
+                    },
                     "type": {
                         "type": "string"
                     },
@@ -175,13 +257,28 @@
                                         "name": {
                                             "type": "string"
                                         },
+                                        "orderindex": {
+                                            "type": "integer"
+                                        },
+                                        "relationship": {
+                                            "type": "string"
+                                        },
                                         "width": {
                                             "type": "integer"
                                         }
                                     }
                                 }
                             },
+                            "include_guests": {
+                                "type": "boolean"
+                            },
+                            "include_team_members": {
+                                "type": "boolean"
+                            },
                             "linked_subcategory_access": {
+                                "type": "boolean"
+                            },
+                            "new_drop_down": {
                                 "type": "boolean"
                             },
                             "options": {
@@ -200,6 +297,12 @@
                                         }
                                     }
                                 }
+                            },
+                            "single_user": {
+                                "type": "boolean"
+                            },
+                            "sorting": {
+                                "type": "string"
                             },
                             "subcategory_id": {
                                 "type": "string"
@@ -250,6 +353,9 @@
                 }
             }
         },
+        "description": {
+            "type": "string"
+        },
         "folder": {
             "type": "object",
             "properties": {
@@ -264,6 +370,29 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "group_assignees": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "initials": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -304,6 +433,20 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "locations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -410,6 +553,9 @@
         "team_id": {
             "type": "string"
         },
+        "text_content": {
+            "type": "string"
+        },
         "time_spent": {
             "type": "integer"
         },
@@ -437,5 +583,5 @@
             }
         }
     },
-    "version": 1
+    "version": 3
 }
