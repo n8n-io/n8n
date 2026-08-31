@@ -160,6 +160,7 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('OpenAI')).toBeTruthy();
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
 	});
+
 	it('keeps connected items in their own category when the connected tab is omitted', () => {
 		const { queryByText, queryAllByText } = renderWith({
 			categories: ['mcp'],
