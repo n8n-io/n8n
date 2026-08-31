@@ -224,16 +224,27 @@ jobs:
           done' > /dev/null 2>&1 &
           echo $! > eval-diag/sampler.pid
 
-      # Only needed when there's no hosted deployment to point at. The guard lives
-      # in the script because the `secrets` context isn't available to `step.if`.
+      # Only needed when there's no usable hosted deployment to point at. The guard
+      # lives in the script because the `secrets` context isn't available to
+      # `step.if`. `SANDBOX_HOSTED_OK` carries the decision to the next step, so a
+      # deployment that fails the preflight is never handed to n8n.
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
         env:
           HOSTED_SANDBOX_URL: ${{ secrets.N8N_SANDBOX_SERVICE_URL }}
+          HOSTED_SANDBOX_API_KEY: ${{ secrets.N8N_SANDBOX_SERVICE_API_KEY }}
         run: |
           if [ -n "$HOSTED_SANDBOX_URL" ]; then
-            echo "Hosted sandbox service configured — skipping the local stack."
-            exit 0
+            # Authenticated so a revoked key fails here rather than mid-eval;
+            # /healthz is unauthenticated and would pass with a bad key.
+            if curl -fsS -m 10 -o /dev/null \
+              -H "X-Api-Key: $HOSTED_SANDBOX_API_KEY" \
+              "${HOSTED_SANDBOX_URL%/}/sandboxes"; then
+              echo "Hosted sandbox service healthy — skipping the local stack."
+              echo "SANDBOX_HOSTED_OK=true" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "::warning::Hosted sandbox service is not usable — falling back to the local sandbox stack."
           fi
           pnpm --filter n8n-containers services --services sandbox --network n8n-eval-net --name n8n-svc-sandbox
 
@@ -283,7 +294,7 @@ jobs:
               -e DAYTONA_API_URL=https://app.daytona.io/api
               -e DAYTONA_API_KEY="$DAYTONA_API_KEY"
             )
-          elif [ -n "$HOSTED_SANDBOX_URL" ]; then
+          elif [ "$SANDBOX_HOSTED_OK" = "true" ]; then
             SANDBOX_ARGS+=(
               -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
               -e N8N_SANDBOX_SERVICE_URL="$HOSTED_SANDBOX_URL"

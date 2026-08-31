@@ -50,9 +50,10 @@ export function collectExternalEnv(
 		const service = SERVICE_REGISTRY[name];
 		const result = stack.serviceResults[name];
 		if (!result) {
-			// Nothing started because a hosted deployment stands in for it — the
-			// dev loop still needs its connection env.
-			Object.assign(env, service.hostedEnv?.() ?? {});
+			// Nothing started because a hosted deployment stands in for it. Reuse what
+			// the stack already resolved instead of re-probing, so the .env cannot
+			// disagree with the decision the stack actually made.
+			Object.assign(env, stack.hostedServiceEnv[name] ?? {});
 			continue;
 		}
 		Object.assign(env, service.env?.(result, true) ?? {}, service.extraEnv?.(result, true) ?? {});

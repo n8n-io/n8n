@@ -12,11 +12,26 @@ Set `N8N_SANDBOX_SERVICE_URL` and `N8N_SANDBOX_SERVICE_API_KEY` and the stack
 points n8n at that deployment and starts no sandbox containers. CI supplies both
 as repository secrets, so internal runs use the hosted service.
 
-With either var missing — fork PRs get no secrets — the `sandbox` service falls
-back to booting the local stack (cert bootstrap + API + privileged dind runner
-+ image load, a couple of minutes). Nothing else changes: the provider is
-`n8n-sandbox` on both paths. The stack logs which one it picked
-(`Using hosted: Sandbox service (API + runner)`).
+The stack falls back to booting the local stack (cert bootstrap + API +
+privileged dind runner + image load, a couple of minutes) when either:
+
+- a var is missing — fork PRs get no secrets; or
+- the deployment fails a preflight check. Before claiming the deployment, the
+  `sandbox` service calls `GET /sandboxes` on it with a 10s timeout. Anything
+  other than a 2xx — service down, DNS failure, no egress, revoked key — means
+  the run uses local containers instead of going red. `/healthz` is deliberately
+  *not* used: it is unauthenticated and returns a static 200, so it would pass
+  with a wrong key.
+
+Nothing else changes between the two paths: the provider is `n8n-sandbox`
+either way. The stack logs which one it picked (`Using hosted: Sandbox service
+(API + runner)`), and a failed preflight prints a warning — a GitHub Actions
+`::warning::` annotation in CI, so a silent downgrade to the slow path is
+visible in the run summary.
+
+The preflight only covers stack startup. A deployment that dies mid-run still
+fails the tests it was serving; the check narrows the window, it does not close
+it.
 
 ## Two run modes
 

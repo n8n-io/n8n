@@ -115,9 +115,13 @@ export interface Service<TResult extends ServiceResult = ServiceResult> {
 	 * local containers: `start()` is skipped and this env is handed to n8n
 	 * instead. Return `undefined` to fall back to the local stack.
 	 *
-	 * @example () => process.env.FOO_URL ? { FOO_URL: process.env.FOO_URL } : undefined
+	 * Implementations may probe the deployment before claiming it. They must
+	 * resolve, never reject: an unreachable deployment is `undefined` (use the
+	 * local stack), not an error that takes the whole stack down with it.
+	 *
+	 * @example async () => (await reachable()) ? { FOO_URL: process.env.FOO_URL } : undefined
 	 */
-	hostedEnv?(ctx?: StartContext): Record<string, string> | undefined;
+	hostedEnv?(ctx?: StartContext): Promise<Record<string, string> | undefined>;
 	/** Starts container, returns connection details for env() */
 	start(
 		network: StartedNetwork,
