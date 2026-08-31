@@ -497,8 +497,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				const retryLater = retryable.slice(maxResults);
 				const stillFailing: Array<[string, number]> = [];
 				const fetchQs = buildFetchQs();
+				let retried = 0;
 
 				for (const [id, attempts] of retryNow) {
+					retried += 1;
 					try {
 						await fetchAndProcessMessage(id, fetchQs);
 						budget -= 1;
@@ -514,9 +516,21 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							stillFailing.push([id, attempted]);
 						}
 					}
+
+					// Checked after the fetch so every poll retries at least one id. This
+					// pass runs before the queue and the scan, so without it a slow set of
+					// retries could spend the whole poll.
+					if (Date.now() >= pollDeadline) break;
 				}
 
-				nodeStaticData.failedFetches = [...retryLater, ...stillFailing, ...givenUp];
+				// Ids this poll did not reach keep their counts and go to the front, so
+				// the next poll starts with them.
+				nodeStaticData.failedFetches = [
+					...retryNow.slice(retried),
+					...retryLater,
+					...stillFailing,
+					...givenUp,
+				];
 			}
 
 			// Process pending messages from a previous poll next. These are IDs a scan

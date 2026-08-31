@@ -3,7 +3,7 @@ import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { GmailTrigger, MAX_LIST_PAGES, MAX_PENDING_FETCH_ATTEMPTS } from '../GmailTrigger.node';
+import { GmailTrigger, MAX_SCAN_PAGES, MAX_PENDING_FETCH_ATTEMPTS } from '../GmailTrigger.node';
 import type { Message, ListMessage, MessageListResponse } from '../types';
 
 vi.mock('mailparser');
@@ -1720,7 +1720,7 @@ describe('GmailTrigger', () => {
 			// after the cap is not mocked: a loop that overruns the cap hits an
 			// unmatched request, poll() swallows the error and returns null, and the
 			// assertions below fail.
-			const pages = Array.from({ length: MAX_LIST_PAGES }, (_, page) => [`p${page}a`, `p${page}b`]);
+			const pages = Array.from({ length: MAX_SCAN_PAGES }, (_, page) => [`p${page}a`, `p${page}b`]);
 			const allIds = pages.flat();
 			pages.forEach((ids, page) =>
 				mockList(listPage(ids, `token-${page + 1}`), page === 0 ? undefined : `token-${page}`),
@@ -2367,7 +2367,7 @@ describe('GmailTrigger', () => {
 			// forever: no backlog progress, no new mail, no warning. Two polls already
 			// found nothing, so this one must give up — advance and start fresh.
 			const initialTimestamp = 1000000;
-			const pages = Array.from({ length: MAX_LIST_PAGES }, (_, page) => [`h${page}a`, `h${page}b`]);
+			const pages = Array.from({ length: MAX_SCAN_PAGES }, (_, page) => [`h${page}a`, `h${page}b`]);
 			const handledIds = pages.flat();
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': {
@@ -2502,6 +2502,35 @@ describe('GmailTrigger', () => {
 			// cursor must hold so the unlisted remainder stays reachable.
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['1']);
+		});
+
+		it('should stop retrying set-aside ids when the poll budget is exhausted', async () => {
+			// The retry pass runs before everything else, so without a deadline of its
+			// own it could spend the whole poll on retries and leave nothing for the
+			// queue or the scan.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					failedFetches: [
+						['Q1', 1],
+						['Q2', 1],
+					],
+				},
+			};
+
+			mockLabels();
+			mockGet('Q1', 2_000_000_000_000);
+			// No mock for 'Q2': this poll must stop before reaching it.
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+				pollBudgetMs: 0,
+			});
+
+			// One retry always happens, and the untouched entry keeps its count.
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['Q1']);
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([['Q2', 1]]);
 		});
 
 		it('should stop draining pending ids when the poll budget is exhausted', async () => {
@@ -2681,7 +2710,7 @@ describe('GmailTrigger', () => {
 			};
 
 			mockLabels();
-			const pages = Array.from({ length: MAX_LIST_PAGES }, (_, page) => [`n${page}a`, `n${page}b`]);
+			const pages = Array.from({ length: MAX_SCAN_PAGES }, (_, page) => [`n${page}a`, `n${page}b`]);
 			const allIds = pages.flat();
 			pages.forEach((ids, page) =>
 				mockList(listPage(ids, `token-${page + 1}`), page === 0 ? undefined : `token-${page}`),
