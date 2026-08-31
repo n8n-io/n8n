@@ -1,0 +1,19 @@
+packages/cli/test/integration/user.repository.test.ts
+  s_1cffc118a8bd7e::t_38b1fc836aa9b4 86-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e46a5164d4a7165a1771f6b058cee3f2e06f25dc",
+  "prompts": {},
+  "sessions": {
+    "s_1cffc118a8bd7e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "27515cbd-cd65-4ec9-a2f2-60e46985ca0d",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
