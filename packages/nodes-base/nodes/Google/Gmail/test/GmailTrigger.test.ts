@@ -2005,9 +2005,58 @@ describe('GmailTrigger', () => {
 			});
 
 			expect(response).toBeNull();
-			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([]);
-			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toContain('GONE');
-			// Not queued for a fetch either: the scan skipped it.
+			// The id stays in the list with no attempts left, which is what the scan
+			// skips — so it is not queued for a fetch either.
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([
+				['GONE', MAX_PENDING_FETCH_ATTEMPTS],
+			]);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
+		});
+
+		it('should keep remembering a given-up id after the cursor moves on', async () => {
+			// The boundary set is replaced whenever the cursor advances, so it cannot
+			// carry a give-up. The message was never fetched, so its date is unknown
+			// and "until the cursor passes it" is not something the poll can decide.
+			// The set-aside list keeps the id instead, which is what the scan skips.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					failedFetches: [['GONE', MAX_PENDING_FETCH_ATTEMPTS - 1]],
+				},
+			};
+
+			mockLabels();
+			mockGetError('GONE');
+			// A deliverable message in the same scan moves the cursor forward.
+			mockList(listPage(['OK']));
+			mockGet('OK', 2_000_000_000_000);
+
+			const first = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(first.response?.[0]?.map((item) => item.json.id)).toEqual(['OK']);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(2_000_000_000);
+			// The id is still remembered, with no attempts left.
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([
+				['GONE', MAX_PENDING_FETCH_ATTEMPTS],
+			]);
+
+			// Second poll: the scan finds the message again, and the poll must neither
+			// fetch it nor start its attempts over. Its fetch is not mocked.
+			mockLabels();
+			mockList(listPage(['GONE']));
+
+			const second = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(second.response).toBeNull();
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([
+				['GONE', MAX_PENDING_FETCH_ATTEMPTS],
+			]);
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
 		});
 
@@ -2032,7 +2081,11 @@ describe('GmailTrigger', () => {
 				workflowStaticData,
 			});
 
-			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([['FRESH', 1]]);
+			// OLD used up its attempts and is kept with none left; FRESH keeps its own.
+			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([
+				['OLD', MAX_PENDING_FETCH_ATTEMPTS],
+				['FRESH', 1],
+			]);
 		});
 
 		it('should not spend the delivery budget on failed fetches', async () => {

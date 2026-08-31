@@ -438,16 +438,23 @@ export class GmailTrigger implements INodeType {
 
 			// A message whose fetch failed waits in its own list rather than in the
 			// queue, so it can be retried without holding up everything behind it.
-			// Retry those first, because they have waited longest, and give up on one
-			// only once it has used up its attempts. A failed fetch carries no message, so it
-			// costs no budget; only a success does.
+			// Retry those first, because they have waited longest. A failed fetch
+			// carries no message, so it costs no budget; only a success does.
 			const setAside = nodeStaticData.failedFetches ?? [];
-			if (shouldLimitMessages && setAside.length > 0) {
+			// An id that used up its attempts stays in the list with no attempts left.
+			// That is what makes giving up outlast the poll: the scan below skips every
+			// id in this list, while the boundary set is replaced whenever the cursor
+			// advances. The message was never fetched, so its date is unknown and the
+			// poll cannot tell when the cursor passed it.
+			const retryable = setAside.filter(([, attempts]) => attempts < MAX_PENDING_FETCH_ATTEMPTS);
+			const givenUp = setAside.filter(([, attempts]) => attempts >= MAX_PENDING_FETCH_ATTEMPTS);
+
+			if (shouldLimitMessages && retryable.length > 0) {
 				// Bounded per tick, and the untried tail moves to the front, so a long
 				// list cannot spend the whole poll on doomed requests or starve its own
 				// later entries.
-				const retryNow = setAside.slice(0, maxResults);
-				const retryLater = setAside.slice(maxResults);
+				const retryNow = retryable.slice(0, maxResults);
+				const retryLater = retryable.slice(maxResults);
 				const stillFailing: Array<[string, number]> = [];
 				const fetchQs = buildFetchQs();
 
@@ -462,21 +469,14 @@ export class GmailTrigger implements INodeType {
 								`Gmail Trigger cannot fetch message ${id} after ${attempted} attempts; skipping it`,
 								{ node: node.name },
 							);
-							// Giving up has to outlast this poll. An id that only leaves the
-							// set-aside list is in no stored state, so the next scan finds it
-							// again and starts the attempts over. The boundary set is what the
-							// scan already skips, so it goes there.
-							nodeStaticData.possibleDuplicates = [
-								...(nodeStaticData.possibleDuplicates ?? []),
-								id,
-							];
+							givenUp.push([id, attempted]);
 						} else {
 							stillFailing.push([id, attempted]);
 						}
 					}
 				}
 
-				nodeStaticData.failedFetches = [...retryLater, ...stillFailing];
+				nodeStaticData.failedFetches = [...retryLater, ...stillFailing, ...givenUp];
 			}
 
 			// Process pending messages from a previous poll next. These are IDs a scan
