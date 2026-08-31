@@ -19,6 +19,13 @@ const TRACER_NAME = 'n8n-workflow';
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
+/**
+ * Marker span emitted (and ended) at execution start. A span is only exported once it
+ * ends, so without this nothing identifiable reaches the collector until the first node
+ * or the workflow itself finishes.
+ */
+const WORKFLOW_START_SPAN_NAME = 'workflow.execute.started';
+
 function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
@@ -84,6 +91,7 @@ export class ExecutionLevelTracer {
 			);
 
 			this.activeWorkflowSpans.set(params.executionId, { span, identity });
+			this.emitStartMarker(span, identity);
 
 			return toTracingParentContext(span);
 		} catch (error) {
@@ -262,6 +270,21 @@ export class ExecutionLevelTracer {
 				attributes: { [ATTR.CONTINUATION_REASON]: 'resume' },
 			},
 		];
+	}
+
+	/**
+	 * Starts and immediately ends a child of the workflow span, so one identified span is
+	 * exported at execution start rather than at execution end. Being a child keeps it in
+	 * the same trace and inherits the root's sampling decision; it does not affect the
+	 * traceparent handed back to callers, which still points at the root span.
+	 */
+	private emitStartMarker(workflowSpan: Span, identity: Attributes): void {
+		const marker = this.tracer.startSpan(
+			WORKFLOW_START_SPAN_NAME,
+			{ attributes: identity },
+			trace.setSpan(context.active(), workflowSpan),
+		);
+		marker.end();
 	}
 
 	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {

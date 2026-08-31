@@ -115,6 +115,29 @@ describe('OTEL Workflow Tracing Integration', () => {
 		}
 	});
 
+	it('should export an identified start marker ahead of the workflow span', async () => {
+		const toNanos = ([seconds, nanos]: [number, number]) => seconds * 1e9 + nanos;
+
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const spans = otel.getFinishedSpans();
+		const marker = spans.find((s) => s.name === 'workflow.execute.started');
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+
+		expect(marker).toBeDefined();
+		expect(marker!.attributes['n8n.execution.id']).toBe(executionId);
+		expect(marker!.attributes['n8n.workflow.id']).toBe(workflow.id);
+		expect(marker!.attributes['n8n.project.id']).toBe(project.id);
+
+		// Same trace as the root, but it leaves the process first - which is the whole point:
+		// monitoring can identify the execution before it finishes.
+		expect(marker!.spanContext().traceId).toBe(workflowSpan.spanContext().traceId);
+		expect(toNanos(marker!.endTime)).toBeLessThan(toNanos(workflowSpan.endTime));
+	});
+
 	it('should persist tracingContext to the execution entity after root span creation', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
