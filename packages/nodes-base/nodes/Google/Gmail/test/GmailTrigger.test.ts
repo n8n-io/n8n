@@ -1999,6 +1999,32 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 		});
 
+		it('should still deliver messages when the labels lookup for simplifying fails', async () => {
+			// Simplifying needs a labels request of its own. If that fails, the poll
+			// must not stall: a failure that repeats would otherwise block delivery
+			// on every tick. Fall back to the raw shape instead.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			// Earlier tests can leave unconsumed interceptors behind, and this test
+			// needs the labels lookup to be the one request that fails.
+			nock.cleanAll();
+			nock(baseUrl).get('/gmail/v1/users/me/labels').reply(500, { error: 'transient' });
+			mockList(listPage(['1']));
+			mockGet('1', 2_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
+			// Unsimplified shape: raw labelIds survive because simplifying failed.
+			expect(response?.[0]?.[0]?.json.labelIds).toEqual(['testLabelId']);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(2_000_000_000);
+		});
+
 		it('should forget earlier drain failures once a fetch succeeds', async () => {
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': {
