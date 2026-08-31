@@ -37,9 +37,11 @@ const MAX_LIST_PAGES = 20;
 // the cursor and accepts skipping any unlisted remainder.
 const MAX_TRACKED_BACKLOG_IDS = 5_000;
 // Consecutive failed fetches of the same queued message before the poll skips
-// it. The count is per node, not per id, which is enough: the queue only moves
-// on a success or a skip, so the failing id stays at its head.
-const MAX_PENDING_FETCH_ATTEMPTS = 3;
+// it. Only failures that may be transient are counted, so the bound is generous:
+// a rate-limited or briefly failing message must survive the outage. The count
+// is per node, not per id, which is enough: the queue only moves on a success or
+// a skip, so the failing id stays at its head.
+export const MAX_PENDING_FETCH_ATTEMPTS = 20;
 
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -436,8 +438,9 @@ export class GmailTrigger implements INodeType {
 						// The queue is drained before any listing and nothing else evicts
 						// from it, so an id that can never be fetched — deleted since it was
 						// listed, or one that always breaks parsing — would block the queue
-						// and every new message behind it. Retry it a few times, then skip
-						// it and let the tick fail as before.
+						// and every new message behind it. Retry it across polls, since most
+						// failures here pass on their own, and skip it once the bound runs
+						// out. The tick fails either way, as it did before.
 						const attempts = (nodeStaticData.pendingFetchAttempts ?? 0) + 1;
 						if (attempts >= MAX_PENDING_FETCH_ATTEMPTS) {
 							this.logger.warn(

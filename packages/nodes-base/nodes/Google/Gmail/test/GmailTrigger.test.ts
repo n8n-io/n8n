@@ -3,7 +3,7 @@ import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
-import { GmailTrigger } from '../GmailTrigger.node';
+import { GmailTrigger, MAX_PENDING_FETCH_ATTEMPTS } from '../GmailTrigger.node';
 import type { Message, ListMessage, MessageListResponse } from '../types';
 
 vi.mock('mailparser');
@@ -1947,16 +1947,39 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].pendingFetchAttempts).toBe(1);
 		});
 
+		it('should keep retrying a queued message while the failure may be transient', async () => {
+			// Rate limits and 5xx come and go, and this node never retries a request
+			// itself. Dropping such an id early would lose the message.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					pendingMessageIds: ['P1', 'P2'],
+					pendingFetchAttempts: 3,
+				},
+			};
+
+			mockLabels();
+			mockGetError('P1');
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(response).toBeNull();
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['P1', 'P2']);
+			expect(workflowStaticData['Gmail Trigger'].pendingFetchAttempts).toBe(4);
+		});
+
 		it('should skip a pending id that keeps failing so the queue can drain', async () => {
-			// A message that can never be fetched — deleted since it was listed, or
-			// one that always breaks parsing — would otherwise be retried before
-			// every listing forever, blocking both the queue and all new mail.
+			// Even a failure that looks transient has to be given up on eventually,
+			// or one message blocks its queue and all new mail for good.
 			const initialTimestamp = 1000000;
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': {
 					lastTimeChecked: initialTimestamp,
 					pendingMessageIds: ['GONE', 'P2'],
-					pendingFetchAttempts: 2,
+					pendingFetchAttempts: MAX_PENDING_FETCH_ATTEMPTS - 1,
 				},
 			};
 
