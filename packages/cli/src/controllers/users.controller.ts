@@ -47,8 +47,6 @@ export class UsersController {
 		private readonly urlService: UrlService,
 	) {}
 
-	static ERROR_MESSAGES = UserService.ERROR_MESSAGES;
-
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
 		listQueryOptions: UsersListFilterDto,

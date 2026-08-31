@@ -29,6 +29,12 @@ import type { IUserSettings } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
+import { JwtService } from './jwt.service';
+import { OwnershipService } from './ownership.service';
+import { ProjectService } from './project.service.ee';
+import { PublicApiKeyService } from './public-api-key.service';
+import { RoleService } from './role.service';
+
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -44,23 +50,16 @@ import { UrlService } from '@/services/url.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
-import { JwtService } from './jwt.service';
-import { OwnershipService } from './ownership.service';
-import { ProjectService } from './project.service.ee';
-import { PublicApiKeyService } from './public-api-key.service';
-import { RoleService } from './role.service';
+export const CHANGE_ROLE_ERROR_MESSAGES = {
+	NO_USER: 'Target user not found',
+	NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
+	NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
+	CANNOT_CHANGE_OWN_ROLE: 'Cannot change your own global role',
+	INSTANCE_ROLES_MANAGED: 'Instance roles are managed automatically and cannot be changed manually',
+} as const;
 
 @Service()
 export class UserService {
-	static ERROR_MESSAGES = {
-		CHANGE_ROLE: {
-			NO_USER: 'Target user not found',
-			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
-			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
-			CANNOT_CHANGE_OWN_ROLE: 'Cannot change your own global role',
-		},
-	} as const;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
@@ -663,35 +662,30 @@ export class UserService {
 		const provisioningService = await this.getProvisioningService();
 
 		if (await provisioningService.isInstanceRoleManaged()) {
-			throw new ForbiddenError(
-				'Instance roles are managed automatically and cannot be changed manually',
-			);
+			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.INSTANCE_ROLES_MANAGED);
 		}
 
-		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER, CANNOT_CHANGE_OWN_ROLE } =
-			UserService.ERROR_MESSAGES.CHANGE_ROLE;
-
 		if (actor.id === id) {
-			throw new ForbiddenError(CANNOT_CHANGE_OWN_ROLE);
+			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.CANNOT_CHANGE_OWN_ROLE);
 		}
 
 		const targetUser = await this.userRepository.findByIdWithRole(id);
 		if (targetUser === null) {
-			throw new NotFoundError(NO_USER);
+			throw new NotFoundError(CHANGE_ROLE_ERROR_MESSAGES.NO_USER);
 		}
 
 		if (
 			actor.role.slug === GLOBAL_ADMIN_ROLE.slug &&
 			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
 		) {
-			throw new ForbiddenError(NO_ADMIN_ON_OWNER);
+			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.NO_ADMIN_ON_OWNER);
 		}
 
 		if (
 			actor.role.slug === GLOBAL_OWNER_ROLE.slug &&
 			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
 		) {
-			throw new ForbiddenError(NO_OWNER_ON_OWNER);
+			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.NO_OWNER_ON_OWNER);
 		}
 
 		await this.changeUserRole(targetUser, payload);
