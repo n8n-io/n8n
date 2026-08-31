@@ -679,6 +679,16 @@ Follow these rules strictly when generating workflows:
    branch the inserted node in parallel from the data producer, reorder it
    upstream of the data producer, or have B reference `$('Data Node')`
    explicitly.
+8. A polling trigger (Gmail Trigger, Outlook Trigger, or similar) feeding an
+   action that creates or writes records must guarantee each polled item is
+   processed exactly once — poll cursors reset on republish and re-deliver
+   every still-matching item as a duplicate. Either restrict the trigger to
+   unread/unprocessed items AND mark each item handled (mark as read, move to
+   a folder, apply a label) once its record exists, or record handled ids in a
+   Data Table and skip ids already seen. An unread filter alone is not enough:
+   if no step ever marks the item read, it never excludes anything. Wire the
+   mark-as-handled step AFTER the record-creating node, so a mid-run failure
+   cannot consume an item without producing its output.
 
 ## Tool Naming Rules
 
