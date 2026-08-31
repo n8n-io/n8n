@@ -120,16 +120,16 @@ describe('InstanceAiPendingConfirmationRepository.claim', () => {
 	});
 });
 
-describe('InstanceAiPendingConfirmationRepository.isPastExpiry', () => {
-	function buildRepoWithCount(countResult: number) {
-		const repo = Object.create(
-			InstanceAiPendingConfirmationRepository.prototype,
-		) as InstanceAiPendingConfirmationRepository;
-		const countMock = vi.fn(async (_opts?: { where: Record<string, unknown> }) => countResult);
-		Object.defineProperty(repo, 'count', { value: countMock, configurable: true });
-		return { repo, countMock };
-	}
+function buildRepoWithCount(countResult: number) {
+	const repo = Object.create(
+		InstanceAiPendingConfirmationRepository.prototype,
+	) as InstanceAiPendingConfirmationRepository;
+	const countMock = vi.fn(async (_opts?: { where: Record<string, unknown> }) => countResult);
+	Object.defineProperty(repo, 'count', { value: countMock, configurable: true });
+	return { repo, countMock };
+}
 
+describe('InstanceAiPendingConfirmationRepository.isPastExpiry', () => {
 	it('is true when the user owns a row with expiresAt in the past', async () => {
 		const now = new Date('2026-05-13T12:00:00.000Z');
 		const { repo, countMock } = buildRepoWithCount(1);
@@ -156,5 +156,24 @@ describe('InstanceAiPendingConfirmationRepository.isPastExpiry', () => {
 
 		await expect(repo.isPastExpiry('req-1', 'attacker-user', new Date())).resolves.toBe(false);
 		expect(countMock.mock.calls[0][0]!.where).toMatchObject({ userId: 'attacker-user' });
+	});
+});
+
+describe('InstanceAiPendingConfirmationRepository.hasActionableForRun', () => {
+	it('is true when the run still owns a claimable row', async () => {
+		const { repo, countMock } = buildRepoWithCount(1);
+
+		await expect(repo.hasActionableForRun('run-1', new Date())).resolves.toBe(true);
+		// Same liveness predicate as claim/findLiveRequestIds: null expiresAt
+		// (timeout disabled) or a future one counts, a past one does not.
+		const where = countMock.mock.calls[0][0]!.where;
+		expect(where).toMatchObject({ runId: 'run-1' });
+		expect(where).toHaveProperty('expiresAt');
+	});
+
+	it('is false when the row is gone or past expiry', async () => {
+		const { repo } = buildRepoWithCount(0);
+
+		await expect(repo.hasActionableForRun('run-1', new Date())).resolves.toBe(false);
 	});
 });
