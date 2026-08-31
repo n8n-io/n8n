@@ -152,8 +152,6 @@ function candidatesFor(
 				// Already archived means already removed.
 				!isArchived &&
 				!retained.has(id) &&
-				// Package imports limit removal to represented folders.
-				// Git pulls include every folder in this project's removal pass.
 				(isGitPull || parentFolderId === null || packageFolderIds.has(parentFolderId)),
 		)
 		.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId }));

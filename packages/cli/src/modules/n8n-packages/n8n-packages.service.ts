@@ -385,8 +385,6 @@ export class N8nPackagesService {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
-		// Import from a directory only supports project packages, mirroring the directory
-		// export used by Git connections. A metadata-only manifest is the valid empty export.
 		if (!isProjectPackage(manifest)) {
 			if (hasContentWithoutProjects(manifest)) {
 				throw new BadRequestError('Directory packages must contain projects');
@@ -482,7 +480,6 @@ function hasContentWithoutProjects(manifest: PackageManifest): boolean {
 	);
 }
 
-/** A successful import that touched nothing — used for an empty working copy. */
 function emptyImportResult(manifest: PackageManifest): ImportResult {
 	return buildImportResult({
 		package: toPackageSummary(manifest),

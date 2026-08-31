@@ -25,7 +25,7 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 		clone: vi.fn(),
 	};
 	instance.env.mockReturnValue(instance);
-	// Minimal stand-in for simple-git's GitPluginError (carries the `plugin` name).
+	// Match simple-git's timeout error shape.
 	class GitPluginError extends Error {
 		constructor(
 			readonly task: unknown,
@@ -148,7 +148,7 @@ describe('GitConnectionsGitService (git operations)', () => {
 	logger.scoped.mockReturnValue(logger);
 	const gitService = new GitConnectionsGitService(logger);
 
-	// HTTPS so withGit takes the credential-helper path and writes no key files.
+	// Use HTTPS to avoid temporary SSH key files in unit tests.
 	const httpsConnection = () =>
 		({
 			id: '1',
@@ -206,9 +206,7 @@ describe('GitConnectionsGitService (git operations)', () => {
 			});
 
 		beforeEach(() => {
-			// check-ref-format (branch validation) and the init/remote plumbing all go
-			// through raw; create the target folder when git "init" runs so the rename
-			// into place succeeds, mirroring what a real clone/init would leave on disk.
+			// Mirror filesystem side effects needed by rename assertions.
 			mockGit.raw.mockImplementation(async (args: unknown) => {
 				if (Array.isArray(args) && args[0] === 'init') {
 					await mkdir(String(args[args.length - 1]), { recursive: true });
@@ -231,12 +229,10 @@ describe('GitConnectionsGitService (git operations)', () => {
 				nextRepositoryFolder(),
 				['--branch', 'main', '--single-branch', '--no-tags', '--progress'],
 			);
-			// Cloned copy is moved into place as the working copy.
 			await expect(stat(repositoryFolder())).resolves.toBeDefined();
 		});
 
 		it('bootstraps a working copy on the target branch when the remote is empty', async () => {
-			// Branch lookup and the follow-up "any heads?" lookup both come back empty.
 			mockGit.listRemote.mockResolvedValue('');
 
 			await call();

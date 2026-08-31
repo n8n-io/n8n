@@ -123,8 +123,7 @@ describe('importPackageFromDirectory', () => {
 			project,
 		);
 
-		// Leave the project and workflow in place but drift them away from the working
-		// copy, so the import must rewrite them rather than create fresh entities.
+		// Drift existing rows to exercise overwrite.
 		await Container.get(ProjectRepository).update(project.id, { name: 'Alpha Project (edited)' });
 		await Container.get(WorkflowRepository).update(workflow.id, { name: 'WF One (edited)' });
 

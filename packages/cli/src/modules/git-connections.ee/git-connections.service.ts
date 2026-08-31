@@ -67,12 +67,7 @@ type ProjectReconciliationResult = {
 	deletedProjectIds: string[];
 };
 
-/**
- * Fixed import policy for a pull: the Git working copy is the source of truth, so
- * the instance is overwritten to match it. Credentials arrive as id-matched refs
- * with no secrets, so missing ones become stubs the operator fills in. There is
- * no UI to choose these, so they are pinned here rather than accepted per call.
- */
+// Pull treats the working copy as source of truth; callers cannot override this policy.
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
@@ -263,7 +258,6 @@ export class GitConnectionsService {
 				stagePathspec: EXPORT_SUBFOLDER,
 			});
 
-			// The working copy is synced to this commit; record it as the base.
 			connection.baseCommit = head;
 			await this.repository.save(connection);
 
@@ -345,11 +339,6 @@ export class GitConnectionsService {
 		});
 	}
 
-	/**
-	 * Resets the local clone to the configured branch tip (fetch + hard reset —
-	 * no merge, so no conflicts), then imports projects into the instance,
-	 * overwriting to match.
-	 */
 	async pull(connectionId: string, actor: User): Promise<GitConnectionPullResultDto> {
 		const connection = await this.getEntity(connectionId);
 		const { branchName } = connection;
@@ -386,7 +375,6 @@ export class GitConnectionsService {
 		const importedProjectIds = result.projects.map((project) => project.localId);
 		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
 
-		// The working copy — and now the instance — match this remote commit.
 		connection.baseCommit = head;
 		await this.repository.save(connection);
 
@@ -412,7 +400,6 @@ export class GitConnectionsService {
 		return { deletedProjectIds: removedProjectIds };
 	}
 
-	/** Commit identity for a push: the actor's name/email, with an n8n fallback. */
 	private commitAuthor(user: User): { name: string; email: string } {
 		const name =
 			user.firstName && user.lastName
@@ -429,7 +416,6 @@ export class GitConnectionsService {
 		}
 	}
 
-	/** Maps package import and connection reconciliation outcomes to pull response counts. */
 	private toPullCounts({
 		importResult,
 		projectReconciliation,
@@ -458,8 +444,7 @@ export class GitConnectionsService {
 					.length,
 				deleted: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'deleted')
 					.length,
-				// The publish sweep runs after content is written and can't be rolled back, so a
-				// blocked/failed publish never fails the pull — surface it here instead.
+				// Publishing happens after writes, so failures are reported without failing the pull.
 				publishing: tally(
 					importResult.workflows.map(({ publishing }) => ({ status: publishing.state })),
 					['published', 'unpublished', 'unchanged', 'blocked', 'failed'] as const,

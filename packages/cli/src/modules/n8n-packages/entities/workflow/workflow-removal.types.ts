@@ -13,7 +13,7 @@ export interface WorkflowRemovalRequest {
 	deletionPolicy: OverwriteDeletionPolicy;
 	/** The decided plan for the package's own workflows; their target ids are retained. */
 	workflowItems: WorkflowPlanItem[];
-	/** Folders the package defines, used to bound package-folder reconciliation. */
+	/** Folders the package defines. Workflows filed elsewhere are out of scope. */
 	packageFolderIds: string[];
 	/** Sub-workflow ids the package references but does not carry; retained so parents can publish. */
 	subWorkflowRequirementIds?: string[];

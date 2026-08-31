@@ -49,10 +49,7 @@ export class GitConnectionsGitService {
 		}
 	}
 
-	/**
-	 * Accept only `http(s)://` URLs without embedded credentials. Credentials must
-	 * come through the encrypted fields, not the stored/returned `repositoryUrl`.
-	 */
+	// Credentials must come from encrypted fields, never the repository URL.
 	private validateHttpsRepositoryUrl(repositoryUrl: string) {
 		let url: URL;
 		try {
@@ -68,13 +65,7 @@ export class GitConnectionsGitService {
 		}
 	}
 
-	/**
-	 * Only accept `ssh://host/path` and scp-like `user@host:path`. Reject a
-	 * leading `-` (option injection), the `::` transport-helper form (e.g.
-	 * `ext::<cmd>`, which runs arbitrary commands), and any non-ssh scheme (e.g.
-	 * `file://`, `http://`) — git's remote transports would otherwise let a URL
-	 * clone local paths off the host or execute commands.
-	 */
+	// Accept only SSH remotes; Git transport helpers and local paths can execute or expose host data.
 	private validateSshRepositoryUrl(repositoryUrl: string) {
 		const error = new BadRequestError(
 			'SSH connections require an ssh:// or user@host:path repository URL',
@@ -91,23 +82,14 @@ export class GitConnectionsGitService {
 			} catch {
 				throw error;
 			}
-			// A bare username is the legitimate SSH user (e.g. `git@`); a password in
-			// the userinfo would be stored/returned in `repositoryUrl` and treated by
-			// git as part of the SSH user. Credentials must come through the encrypted fields.
 			if (url.password) throw new BadRequestError('Repository URL must not contain credentials');
 			if (!url.hostname || !url.pathname || url.pathname === '/') throw error;
 			return;
 		}
 
-		// On Windows, git reads a drive-letter prefix (`C:\path`, `C:/path`) as a
-		// local filesystem path rather than a `host:path` remote, so it would clone
-		// off the host's disk. Reject it before the scp-like check treats the drive
-		// letter as a hostname. This is a Windows-only interpretation; on other
-		// platforms git treats `c:path` as a scp-like remote to host `c`, which is a
-		// legitimate one-character SSH alias, so only guard when running on Windows.
+		// On Windows, Git interprets drive-letter prefixes as local paths.
 		if (process.platform === 'win32' && /^[a-zA-Z]:/.test(repositoryUrl)) throw error;
 
-		// scp-like: [user@]host:path, host must not start with `-`.
 		const isScpLike = /^(?:[a-zA-Z0-9_.-]+@)?[a-zA-Z0-9._][a-zA-Z0-9._-]*:[^\s]+$/.test(
 			repositoryUrl,
 		);
@@ -143,8 +125,7 @@ export class GitConnectionsGitService {
 		await rm(nextRepositoryFolder, { recursive: true, force: true });
 
 		try {
-			// Clone runs with cwd = rootFolder so it can write repository-next beside
-			// the eventual working copy; known_hosts still lives under sshDir.
+			// Clone from the root so repository-next sits beside the working copy.
 			await this.withGit({ connection, credentials, repoDir: rootFolder, sshDir }, async (git) => {
 				const branchRefs = await git.listRemote([
 					'--heads',
@@ -152,16 +133,12 @@ export class GitConnectionsGitService {
 					`refs/heads/${branchName}`,
 				]);
 				if (!branchRefs.trim()) {
-					// The branch has no ref on the remote. If the remote is entirely empty
-					// (a freshly created repo), bootstrap a working copy on the target
-					// branch so the first push creates it upstream. If the remote already
-					// has branches, the requested one is genuinely missing — surface that.
+					// Bootstrap only an empty remote; otherwise the requested branch is missing.
 					const anyRefs = await git.listRemote(['--heads', connection.repositoryUrl]);
 					if (anyRefs.trim()) {
 						throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
 					}
-					// branchName is validated with check-ref-format, so it is safe as a
-					// single argv element here (no shell, no injection).
+					// branchName is check-ref-format validated and passed without a shell.
 					await git.raw(['init', `--initial-branch=${branchName}`, nextRepositoryFolder]);
 					await git.raw([
 						'-C',
@@ -177,8 +154,7 @@ export class GitConnectionsGitService {
 						branchName,
 						'--single-branch',
 						'--no-tags',
-						// Emit progress so the stall-timeout backstop keeps resetting during a
-						// healthy transfer and only fires when the connection genuinely stalls.
+						// Keep the stall timeout fed during a healthy transfer.
 						'--progress',
 					]);
 				}
@@ -188,8 +164,7 @@ export class GitConnectionsGitService {
 		} catch (error) {
 			await rm(nextRepositoryFolder, { recursive: true, force: true });
 			if (error instanceof BadRequestError) throw error;
-			// Withhold the raw git output (it can echo the credential-helper config);
-			// log only a redacted subset that lets an operator correlate the failure.
+			// Raw Git output can include credential-helper config.
 			this.logger.warn('Failed to connect to Git repository', {
 				connectionId: connection.id,
 				branchName,
@@ -198,27 +173,20 @@ export class GitConnectionsGitService {
 		}
 	}
 
-	/** True only when `<rootFolder>/repository` is itself a git working-copy root. */
 	async hasWorkingCopy(rootFolder: string): Promise<boolean> {
 		const { repositoryFolder } = this.connectionPaths(rootFolder);
 		try {
-			// IS_REPO_ROOT (not the default in-tree check) so a working copy that
-			// happens to sit under a parent git checkout does not read as connected.
+			// Do not accept a directory merely nested under another working copy.
 			return await simpleGit({
 				baseDir: repositoryFolder,
 				binary: 'git',
 				maxConcurrentProcesses: 1,
 			}).checkIsRepo(CheckRepoActions.IS_REPO_ROOT);
 		} catch {
-			// Directory missing or not a repo.
 			return false;
 		}
 	}
-	/**
-	 * Commit the already-exported working copy and push it to the remote branch.
-	 * Stages only `stagePathspec` so files the user keeps at the repository root
-	 * stay out of the commit. Returns the pushed commit SHA and the resulting HEAD.
-	 */
+
 	async commitAndPush({
 		connection,
 		credentials,
@@ -250,8 +218,7 @@ export class GitConnectionsGitService {
 					config: [`user.name=${author.name}`, `user.email=${author.email}`],
 				},
 				async (git) => {
-					// `--all` under the pathspec stages deletions too — the export does
-					// rm + rename, so removed entities must be committed as deletions.
+					// Scope staging to the export while including removed entities.
 					await git.add(['--all', '--', stagePathspec]);
 					await git.commit(commitMessage);
 
@@ -270,11 +237,6 @@ export class GitConnectionsGitService {
 		}
 	}
 
-	/**
-	 * Refresh the working copy to exactly match the remote branch tip: fetch, then
-	 * hard-reset to `origin/<branch>`. No merge/pull, so it can never raise a
-	 * conflict. Returns the new HEAD.
-	 */
 	async refreshWorkingCopy({
 		connection,
 		credentials,
@@ -303,23 +265,17 @@ export class GitConnectionsGitService {
 		}
 	}
 
-	/**
-	 * Remove the cached working copy but keep `.ssh/known_hosts`, so a pinned
-	 * host key survives credential rotation and reconnects (preserving MITM
-	 * protection). Used when auth/target changes invalidate the clone.
-	 */
+	// Preserve the pinned host key when authentication or target settings change.
 	async resetWorkingCopy(rootFolder: string) {
 		const { repositoryFolder, nextRepositoryFolder } = this.connectionPaths(rootFolder);
 		await rm(repositoryFolder, { recursive: true, force: true });
 		await rm(nextRepositoryFolder, { recursive: true, force: true });
 	}
 
-	/** Remove everything for a connection, including the pinned host key. */
 	async cleanup(rootFolder: string) {
 		await rm(rootFolder, { recursive: true, force: true });
 	}
 
-	/** On-disk layout under a connection's root folder. */
 	private connectionPaths(rootFolder: string) {
 		return {
 			repositoryFolder: path.join(rootFolder, 'repository'),
@@ -328,13 +284,7 @@ export class GitConnectionsGitService {
 		};
 	}
 
-	/**
-	 * Run a git operation with credentials wired in and torn down afterwards.
-	 * Auth is configured per connection type: HTTPS goes through a credential
-	 * helper, SSH writes the private key to a temporary file referenced via
-	 * `GIT_SSH_COMMAND`. The `finally` block removes that temporary key material
-	 * so it never outlives the operation, regardless of success or failure.
-	 */
+	// Configure credentials per operation and remove temporary SSH key material afterwards.
 	private async withGit<T>(
 		{
 			connection,
@@ -345,11 +295,8 @@ export class GitConnectionsGitService {
 		}: {
 			connection: GitConnection;
 			credentials: PlainCredentials;
-			/** Directory simple-git uses as its process cwd (working-copy root, or clone parent). */
 			repoDir: string;
-			/** Directory that holds `known_hosts` (the pinned host key). Unused for HTTPS. */
 			sshDir: string;
-			/** Extra per-invocation `-c` config entries, e.g. `user.name=…`. */
 			config?: string[];
 		},
 		operation: (git: SimpleGit) => Promise<T>,
@@ -382,8 +329,7 @@ export class GitConnectionsGitService {
 				const privateKeyPath = path.join(temporaryFolder, 'private-key');
 				await writeFile(privateKeyPath, credentials.privateKey, { mode: 0o600 });
 				await chmod(privateKeyPath, 0o600);
-				// Host key lives in sshDir, not the git working copy, so a key pinned at
-				// clone time keeps protecting later fetch/push after resetWorkingCopy.
+				// Keep the host key outside the resettable working copy.
 				await mkdir(sshDir, { recursive: true });
 				const sshCommand = buildSshCommand({
 					privateKeyPath,
@@ -403,13 +349,7 @@ export class GitConnectionsGitService {
 		}
 	}
 
-	/**
-	 * Map a git operation failure to a response error. The stall backstop is the
-	 * one transient signal we can detect without inspecting git's output, so it
-	 * becomes a retryable 503; everything else is redacted to a generic 400 (raw
-	 * git output can echo the credential-helper config, so it is never surfaced or
-	 * logged — only a correlatable subset is).
-	 */
+	// Timeouts are retryable; all other Git errors are redacted because output may contain secrets.
 	private mapGitError(error: unknown, ctx: { connectionId: string; branchName: string }): Error {
 		if (error instanceof BadRequestError || error instanceof ServiceUnavailableError) return error;
 

@@ -44,9 +44,7 @@ export class CloneGitConnectionDto extends Z.class({
 
 export class PushGitConnectionDto extends Z.class(
 	{
-		// Required: every push produces a commit, so the caller must supply its message.
 		commitMessage: z.string().trim().min(1).max(1000),
-		// Overwrite the remote branch even when it has diverged. Off by default.
 		force: z.boolean().optional(),
 	},
 	{ strict: true },
@@ -86,7 +84,6 @@ export const gitConnectionExportCountsSchema = z.object({
 	tags: z.number().int().nonnegative(),
 });
 
-/** Outcome of a push: which connection, per-entity counts, and the pushed commit. */
 export const gitConnectionPushResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionExportCountsSchema,
@@ -97,23 +94,6 @@ export class GitConnectionPushResultDto extends Z.class(gitConnectionPushResultS
 
 const count = () => z.number().int().nonnegative();
 
-/**
- * Per-entity counts of what a pull changed in the instance, broken down by
- * outcome. Import overwrites the instance to match the working copy, so
- * `created` vs `updated` matters; a bare total would hide it. Kept to counts
- * (not per-entity lists) so the payload stays O(1) for a large working copy.
- *
- * `workflows.publishing` reports the publish sweep that runs after content is
- * written: a workflow can be created/updated yet fail to activate (e.g.
- * `blocked` on a stubbed credential). That phase runs post-write and cannot be
- * rolled back, so it never fails the pull — it is reported here instead.
- * `projects.deleted`, `workflows.archived`/`deleted`, and `folders.removed`
- * report reconciliation removals, including destructive hard deletes.
- *
- * `dataTables` only has `matched`/`created`: a table referenced by the working
- * copy is matched by id (used as-is) or created when missing. Any table that
- * cannot be resolved blocks the pull before writing, so it never lands here.
- */
 export const gitConnectionImportCountsSchema = z.object({
 	projects: z.object({ created: count(), updated: count(), skipped: count(), deleted: count() }),
 	folders: z.object({ created: count(), skipped: count(), removed: count() }),
@@ -149,11 +129,9 @@ export const gitConnectionImportCountsSchema = z.object({
 	}),
 });
 
-/** Outcome of a pull: which connection, per-entity counts, and the imported commit. */
 export const gitConnectionPullResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionImportCountsSchema,
-	// The remote commit the working copy was reset to and imported from.
 	commitSha: z.string(),
 });
 

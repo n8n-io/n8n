@@ -347,7 +347,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 				},
 				commitSha: 'newsha',
 			});
-			// Commits and pushes the export with the actor's identity and given message.
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
 				expect.objectContaining({
 					rootFolder: path.join(n8nFolder, 'git-connections', '1'),
@@ -359,7 +358,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 					credentials: { type: 'ssh', privateKey: 'PRIV' },
 				}),
 			);
-			// Records the pushed commit as the new base.
 			expect((repository.save.mock.calls.at(-1)?.[0] as GitConnection).baseCommit).toBe('newsha');
 			// The stale export is gone; only the freshly written package remains.
 			await expect(stat(path.join(exportFolder, 'stale.json'))).rejects.toThrow();
@@ -693,7 +691,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 				},
 				{ sourceDir: exportFolder },
 			);
-			// Refreshes the working copy from the remote before importing.
 			expect(gitService.refreshWorkingCopy).toHaveBeenCalledWith(
 				expect.objectContaining({
 					rootFolder: path.join(n8nFolder, 'git-connections', '1'),
@@ -701,7 +698,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 					credentials: { type: 'ssh', privateKey: 'PRIV' },
 				}),
 			);
-			// Records the imported commit as the new base.
 			expect((repository.save.mock.calls.at(-1)?.[0] as GitConnection).baseCommit).toBe(
 				'remotesha',
 			);

@@ -64,7 +64,6 @@ export interface ExportPackageResult {
 export type PushGitConnectionResult = {
 	connectionId: string;
 	counts: ExportPackageCounts;
-	/** The pushed commit. */
 	commitSha: string;
 };
 
@@ -100,7 +99,6 @@ export interface ImportPackageCounts {
 export type PullGitConnectionResult = {
 	connectionId: string;
 	counts: ImportPackageCounts;
-	/** The remote commit the working copy was reset to and imported from. */
 	commitSha: string;
 };
 
