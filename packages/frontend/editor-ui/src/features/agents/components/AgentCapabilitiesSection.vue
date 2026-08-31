@@ -98,10 +98,7 @@ const selectedSubAgentIds = computed(() =>
 const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
 const availableSubAgents = computed(() =>
 	(projectAgents.value ?? []).filter(
-		(agent) =>
-			agent.id !== props.agentId &&
-			Boolean(agent.activeVersionId) &&
-			!selectedSubAgentIdSet.value.has(agent.id),
+		(agent) => agent.id !== props.agentId && !selectedSubAgentIdSet.value.has(agent.id),
 	),
 );
 const selectedSubAgents = computed(() =>
@@ -525,6 +522,7 @@ function openExistingSubAgentModal(subAgent: {
 				id: subAgent.id,
 				name: subAgent.name,
 			},
+			agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(subAgent.id)}`,
 			useWhen: subAgent.useWhen,
 			invalidReasons: subAgent.invalidReasons,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {

@@ -13,18 +13,35 @@ env:
   # Node. dockerize-n8n.mjs reads this env for the image builds. Keep in sync with
   # NODE_VERSION in docker-build-push.yml, which is what the published images use.
   NODE_VERSION: '26.7.0'
+  # Also build the distroless runners image and exec-check
+  # both runners images' interpreters, so a broken runtime assembly (e.g. a
+  # missing shared library after a Node bump) fails at PR time. The smoke
+  # script derives the images to check from this same flag.
+  DOCKER_BUILD_DISTROLESS: 'true'
 
 on:
   schedule:
     - cron: '0 3 * * *' # 3:00 AM UTC, after the nightly Docker build at midnight
   pull_request:
     paths:
+      - 'docker/docker-bake.hcl'
       - 'docker/images/n8n/**'
       - 'docker/images/n8n-base/**'
       - 'docker/images/runners/**'
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
       - 'scripts/smoke-n8n-image.mjs'
+      - '.github/scripts/docker/kafka-native-smoke-check.mjs'
+      # These drive the build and the image distribution, so a change here can
+      # break the chain without touching a Dockerfile.
+      - '.github/actions/build-n8n-docker/action.yml'
+      - '.github/actions/load-n8n-docker/action.yml'
+      - '.github/workflows/docker-build-push.yml'
+      # Patched native dependencies change here. pnpm-workspace.yaml is
+      # excluded: it changes too often for a two-arch no-cache build. A native
+      # catalog bump that slips past this is still caught before it ships, by
+      # verify-pushed-images in docker-build-push.yml.
+      - 'patches/**'
   workflow_dispatch:
 
 concurrency:
@@ -33,8 +50,20 @@ concurrency:
 
 jobs:
   docker-smoke-test:
-    name: 'Docker Build (no cache)'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    name: 'Docker Build (no cache, ${{ matrix.platform }})'
+    # Both architectures build natively: the runtime images assemble binaries
+    # across images with arch-specific paths (e.g. the ELF interpreter lives at
+    # /lib/ld-linux-aarch64.so.1 only on arm64), so amd64 alone can miss
+    # arm64-only runtime breaks.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: amd64
+            runner: blacksmith-4vcpu-ubuntu-2204
+          - platform: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+    runs-on: ${{ matrix.runner }}
     if: ${{ !github.event.pull_request.head.repo.fork }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -53,6 +82,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           build-command: 'pnpm build:docker:clean'
           enable-docker-cache: true
+          # Use a separate key. This job builds with --no-cache. A shared key
+          # would write an empty snapshot over the release layers.
+          docker-cache-key: docker-smoke
 
       - uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
 

@@ -41,7 +41,11 @@ export interface ResumableStreamContext {
 	onActivity?: () => void;
 	/** Stop consuming after the current chunk has been mapped and published. */
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	/**
+	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
+	 * default policy, which on the durable-log path would persist redacted text
+	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
+	 */
 	outputRedaction?: RedactionOptions | false;
 }
 

@@ -76,7 +76,9 @@ export class V1StepExecutor implements IStepExecutor {
 	}
 
 	private validateExpressionEngine(): void {
-		if (Expression.getActiveImplementation() !== 'vm') {
+		// Any isolated engine works here — v1 steps only need the pooled
+		// evaluator that initExpressionEngine() sets up; 'legacy' has none.
+		if (Expression.getActiveImplementation() === 'legacy') {
 			throw new VmExpressionEngineRequiredError();
 		}
 	}

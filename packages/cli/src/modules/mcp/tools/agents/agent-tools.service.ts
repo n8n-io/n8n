@@ -467,7 +467,7 @@ export class McpAgentToolsService {
 			name: 'search_agents',
 			config: {
 				description:
-					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
+					'Search Agents the current user can access. Use excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
 				inputSchema: searchAgentsInput,
 				annotations: {
 					title: 'Search Agents',
@@ -938,7 +938,7 @@ export class McpAgentToolsService {
 			name: 'discover_agent_assets',
 			config: {
 				description:
-					'Discover model catalogs, chat integrations, attachable workflows, published sub-agents, or MCP registry servers.',
+					'Discover model catalogs, chat integrations, attachable workflows, saved sub-agents, or MCP registry servers.',
 				inputSchema: discoverAssetsInput,
 				annotations: {
 					title: 'Discover Agent Assets',
@@ -1589,7 +1589,6 @@ export class McpAgentToolsService {
 			case 'subagents': {
 				const summaries = await this.agentsService.findSummariesInProjects([input.projectId], {
 					query: input.query?.trim() || undefined,
-					publishedOnly: true,
 					excludeAgentId: input.excludeAgentId,
 				});
 				return summaries.map((agent) => ({ agentId: agent.id, name: agent.name }));

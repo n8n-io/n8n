@@ -6,6 +6,7 @@ import type {
 	SandboxFilesystem,
 	SandboxInstance,
 } from './types';
+import type { BaseFilesystemOptions } from '../filesystem/base-filesystem';
 import { DaytonaFilesystem } from '../filesystem/daytona-filesystem';
 import { N8nSandboxFilesystem } from '../filesystem/n8n-sandbox-filesystem';
 
@@ -69,19 +70,23 @@ function buildSandbox(
 	throw new Error(`Unsupported sandbox provider: ${String(exhaustiveProvider)}`);
 }
 
-export function createFilesystem(sandbox: undefined): undefined;
-export function createFilesystem(sandbox: SandboxInstance): SandboxFilesystem;
+export function createFilesystem(sandbox: undefined, options?: BaseFilesystemOptions): undefined;
+export function createFilesystem(
+	sandbox: SandboxInstance,
+	options?: BaseFilesystemOptions,
+): SandboxFilesystem;
 export function createFilesystem(
 	sandbox: SandboxInstance | undefined,
+	options?: BaseFilesystemOptions,
 ): SandboxFilesystem | undefined {
 	if (!sandbox) return undefined;
 
 	if (sandbox instanceof N8nSandboxServiceSandbox) {
-		return new N8nSandboxFilesystem(sandbox);
+		return new N8nSandboxFilesystem(sandbox, options);
 	}
 
 	if (sandbox instanceof DaytonaSandbox) {
-		return new DaytonaFilesystem(sandbox);
+		return new DaytonaFilesystem(sandbox, options);
 	}
 
 	throw new Error(`Unsupported sandbox instance: ${sandbox.name}`);

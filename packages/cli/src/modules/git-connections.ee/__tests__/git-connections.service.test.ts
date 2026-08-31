@@ -86,6 +86,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		userHasScopesMock.mockResolvedValue(true);
+		repository.count.mockResolvedValue(0);
 		repository.create.mockImplementation((input) => input as GitConnection);
 		repository.save.mockImplementation(async (input) => {
 			const entity = input as GitConnection;
@@ -98,6 +99,21 @@ describe('GitConnectionsService (credential state machine)', () => {
 	});
 
 	describe('create', () => {
+		it('rejects a second connection without doing any key generation', async () => {
+			repository.count.mockResolvedValue(1);
+
+			await expect(
+				service.create({
+					name: 'c',
+					repositoryUrl: 'git@github.com:o/r.git',
+					connectionType: 'ssh',
+				} as CreateGitConnectionDto),
+			).rejects.toThrow(ConflictError);
+
+			expect(gitService.generateSshKeyPair).not.toHaveBeenCalled();
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
 		it('generates and encrypts an SSH key pair for ssh connections', async () => {
 			await service.create({
 				name: 'c',
@@ -245,10 +261,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
-			gitConnectionProjectRepository.findProjectIdsByConnection.mockResolvedValue([
-				'project-a',
-				'project-b',
-			]);
+			projectRepository.findTeamProjectIds.mockResolvedValue(['project-a', 'project-b']);
 			n8nPackagesService.exportPackageToDirectory.mockImplementation(
 				async (_request, { targetDir }) => {
 					await mkdir(path.join(targetDir, 'projects', 'alpha'), { recursive: true });
@@ -272,21 +285,21 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await rm(n8nFolder, { recursive: true, force: true });
 		});
 
-		it('exports all linked projects into the n8n-export subfolder, leaving the root untouched', async () => {
+		it('exports all team projects into the n8n-export subfolder, leaving the root untouched', async () => {
 			const repositoryFolder = path.join(n8nFolder, 'git-connections', '1', 'repository');
 			const exportFolder = path.join(repositoryFolder, 'n8n-export');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
 			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/main');
 			// A file the user keeps at the repository root must survive the export.
 			await writeFile(path.join(repositoryFolder, 'README.md'), '# my repo');
-			// A stale export from a project that is no longer linked must be removed.
+			// A stale export from a project that no longer exists must be removed.
 			await mkdir(exportFolder, { recursive: true });
 			await writeFile(path.join(exportFolder, 'stale.json'), '{}');
 
 			const result = await exportService.push('1', actor);
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
-			expect(gitConnectionProjectRepository.findProjectIdsByConnection).toHaveBeenCalledWith('1');
+			expect(projectRepository.findTeamProjectIds).toHaveBeenCalled();
 			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
 				{
 					user: actor,
@@ -334,7 +347,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await mkdir(exportFolder, { recursive: true });
 			await writeFile(path.join(exportFolder, 'manifest.json'), '{"previous":true}');
 			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
-				new BadRequestError('A linked project dependency is missing'),
+				new BadRequestError('A project dependency is missing'),
 			);
 
 			await expect(exportService.push('1', actor)).rejects.toThrow(BadRequestError);
@@ -356,7 +369,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await expect(exportService.push('missing', actor)).rejects.toThrow(
 				'Git connection not found',
 			);
-			expect(gitConnectionProjectRepository.findProjectIdsByConnection).not.toHaveBeenCalled();
+			expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 	});
