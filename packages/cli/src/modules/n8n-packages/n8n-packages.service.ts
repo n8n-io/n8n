@@ -384,7 +384,6 @@ export class N8nPackagesService {
 		return result;
 	}
 
-	/** Routes a read manifest to the importer for its package shape (project vs workflow). */
 	private async dispatchImport(
 		request: ImportRequest,
 		reader: PackageReader,
@@ -455,7 +454,6 @@ function isProjectPackage(manifest: PackageManifest): boolean {
 	return (manifest.projects?.length ?? 0) > 0;
 }
 
-/** A successful import that touched nothing — used for an empty working copy. */
 function emptyImportResult(manifest: PackageManifest): ImportResult {
 	return buildImportResult({
 		package: toPackageSummary(manifest),

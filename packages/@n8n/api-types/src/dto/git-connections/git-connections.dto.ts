@@ -121,7 +121,6 @@ export const gitConnectionImportCountsSchema = z.object({
 	}),
 });
 
-/** Outcome of a pull: which connection, and per-entity counts of what was imported into the instance. */
 export const gitConnectionPullResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionImportCountsSchema,

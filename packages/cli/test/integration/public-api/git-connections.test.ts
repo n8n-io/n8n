@@ -330,7 +330,6 @@ describe('Git connections in Public API', () => {
 		const id = await createConnection(agent);
 		const teamProjectCount = (await Container.get(ProjectRepository).findTeamProjectIds()).length;
 
-		// Push writes every team project to the working copy; pull imports them straight back.
 		const pushResponse = await agent.post(`/git-connections/${id}/push`);
 		expect(pushResponse.status, JSON.stringify(pushResponse.body)).toBe(200);
 

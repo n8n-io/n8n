@@ -25,12 +25,6 @@ export interface PackageImportScope {
 	tagRequest: TagImportRequest;
 }
 
-/**
- * What an importer hands back: the caller-facing result plus the per-project
- * scopes that describe what was imported. Importers produce this data but do not
- * emit telemetry — the service decides whether to fire `n8n-package-imported`
- * (user-facing tar import) or stay silent (internal directory read).
- */
 export interface ImportOutcome {
 	result: ImportResult;
 	scopes: PackageImportScope[];

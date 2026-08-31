@@ -60,12 +60,7 @@ type ManageProjectLinkOptions = {
 	projectId: string;
 };
 
-/**
- * Fixed import policy for a pull: the Git working copy is the source of truth, so
- * the instance is overwritten to match it. Credentials arrive as id-matched refs
- * with no secrets, so missing ones become stubs the operator fills in. There is
- * no UI to choose these, so they are pinned here rather than accepted per call.
- */
+// Pull treats the working copy as source of truth; callers cannot override this policy.
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
@@ -314,7 +309,6 @@ export class GitConnectionsService {
 	}
 
 	async pull(connectionId: string, actor: User): Promise<GitConnectionPullResultDto> {
-		// Validates the connection exists (throws NotFound otherwise) before any import work.
 		await this.getEntity(connectionId);
 		const importFolder = path.join(this.rootFolder(connectionId), 'repository', EXPORT_SUBFOLDER);
 
@@ -331,10 +325,7 @@ export class GitConnectionsService {
 			{ sourceDir: importFolder },
 		);
 
-		// Reconcile the connection's project links to the imported set: newly
-		// imported projects get linked (so a later push exports them instead of
-		// overwriting the working copy with an empty export), and projects deleted
-		// upstream get unlinked (so the next push doesn't resurrect them).
+		// Keep links aligned so later pushes preserve the pulled project set.
 		await this.gitConnectionProjectRepository.syncConnectionProjects(
 			connectionId,
 			result.projects.map((project) => project.localId),
@@ -351,7 +342,6 @@ export class GitConnectionsService {
 		}
 	}
 
-	/** Collapses the engine's per-entity import result into the counts the pull endpoint returns. */
 	private toImportCounts(result: ImportResult): GitConnectionPullResultDto['counts'] {
 		const tally = <S extends string>(rows: Array<{ status: S }>, statuses: readonly S[]) => {
 			const counts = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<S, number>;
@@ -369,8 +359,7 @@ export class GitConnectionsService {
 				...tally(result.workflows, ['created', 'updated', 'skipped'] as const),
 				archived: result.removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
 				deleted: result.removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
-				// The publish sweep runs after content is written and can't be rolled back, so a
-				// blocked/failed publish never fails the pull — surface it here instead.
+				// Publishing happens after writes, so failures are reported without failing the pull.
 				publishing: tally(
 					result.workflows.map(({ publishing }) => ({ status: publishing.state })),
 					['published', 'unpublished', 'unchanged', 'blocked', 'failed'] as const,

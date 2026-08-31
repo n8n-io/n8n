@@ -244,7 +244,6 @@ export type ImportRequest = {
 	ImportVariableProperties &
 	ImportTagProperties;
 
-/** The tar-based public import: an {@link ImportRequest} carrying the archive bytes. */
 export type ImportPackageRequest = ImportRequest & {
 	packageBuffer: Buffer;
 };
@@ -271,14 +270,8 @@ export type ResolvedImportFolderProperties = ImportFolderProperties & {
 	folderConflictPolicy: FolderConflictPolicy;
 };
 
-/**
- * A source-agnostic import with the folder policy settled — what every importer
- * reads without re-deriving what the caller omitted. Carries no package bytes, so
- * it fits the directory read as well as the tar import.
- */
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
 
-/** The tar-based {@link ResolvedImportRequest}, carrying the archive bytes. */
 export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
 
 export type ImportFolderProperties = {
