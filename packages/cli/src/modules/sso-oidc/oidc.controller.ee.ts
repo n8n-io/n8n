@@ -206,7 +206,7 @@ export class OidcController {
 			this.eventService.emit('user-login-failed', {
 				userEmail: 'unknown',
 				authenticationMethod: 'oidc',
-				reason: callbackUrl.searchParams.get('error') ?? 'oidc_callback_failed',
+				reason: callbackUrl.searchParams.get('error')?.slice(0, 100) ?? 'oidc_callback_failed',
 			});
 			return res.redirect(this.urlService.getInstanceBaseUrl() + SSO_LOGIN_FAILED_REDIRECT_PATH);
 		}
