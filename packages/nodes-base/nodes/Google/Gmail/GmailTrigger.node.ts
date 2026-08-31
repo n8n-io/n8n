@@ -57,7 +57,7 @@ export class GmailTrigger implements INodeType {
 				{
 					nodeType: 'n8n-nodes-base.gmail',
 					relationHint:
-						'Mark polled emails as handled after processing (message markAsRead or addLabels) so they are not picked up again',
+						'Mark polled emails as handled after processing (message markAsRead, or addLabels when the trigger query excludes that label) so they are not picked up again',
 				},
 				{
 					nodeType: 'n8n-nodes-base.dataTable',
@@ -68,7 +68,7 @@ export class GmailTrigger implements INodeType {
 				{
 					content: `<patterns>
 <pattern title="Do not reprocess the same email">
-When this trigger feeds an action that creates records (tasks, rows, tickets, messages), guarantee each email is handled exactly once: keep \`readStatus: 'unread'\` AND add a Gmail \`markAsRead\` (or \`addLabels\`) step, or record handled message ids in a Data Table and skip ids already seen. The unread filter alone changes nothing if no step ever marks the email read. Wire the mark-as-handled step AFTER the record-creating node, so a mid-run failure cannot consume an email without producing its record.
+When this trigger feeds an action that creates records (tasks, rows, tickets, messages), ensure each email is handled once: keep \`readStatus: 'unread'\` AND add a Gmail \`markAsRead\` step (\`addLabels\` works only if this trigger's \`q\` also excludes that label — a label does not mark the email read), or record handled message ids in a Data Table — look the id up before creating the record, skip ids already seen, insert it after the create succeeds. The unread filter alone changes nothing if no step ever marks the email read. Wire the mark-as-handled step AFTER the record-creating node, so a mid-run failure cannot consume an email without producing its record.
 </pattern>
 </patterns>`,
 				},

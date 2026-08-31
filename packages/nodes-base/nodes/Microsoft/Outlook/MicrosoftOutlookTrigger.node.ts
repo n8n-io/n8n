@@ -43,7 +43,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 				{
 					content: `<patterns>
 <pattern title="Do not reprocess the same email">
-When this trigger feeds an action that creates records (tasks, rows, tickets, messages), guarantee each email is handled exactly once: filter to unread emails AND add an Outlook step that marks each email handled — message \`update\` with \`isRead: true\`, or message \`move\` to a processed folder — or record handled message ids in a Data Table and skip ids already seen. The unread filter alone changes nothing if no step ever marks the email read. Wire the mark-as-handled step AFTER the record-creating node, so a mid-run failure cannot consume an email without producing its record.
+When this trigger feeds an action that creates records (tasks, rows, tickets, messages), ensure each email is handled once: filter to unread emails AND add an Outlook step that marks each email handled — message \`update\` with \`isRead: true\`, or message \`move\` to a processed folder — or record handled message ids in a Data Table — look the id up before creating the record, skip ids already seen, insert it after the create succeeds. The unread filter alone changes nothing if no step ever marks the email read. Wire the mark-as-handled step AFTER the record-creating node, so a mid-run failure cannot consume an email without producing its record.
 </pattern>
 </patterns>`,
 				},
