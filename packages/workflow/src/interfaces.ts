@@ -76,23 +76,33 @@ export interface IBinaryData {
 	id?: string;
 }
 
+// NODE-5850
 // All properties in this interface except for
 // "includeCredentialsOnRefreshOnBody" will get
 // removed once we add the OAuth2 hooks to the
 // credentials file.
 export interface IOAuth2Options {
+	// Whether to send the client credentials in the refresh request body
 	includeCredentialsOnRefreshOnBody?: boolean;
+	// Whether to return token-expiration errors without attempting a refresh
 	skipTokenRefresh?: boolean;
+	// Which key to use to get the token from stored credentials
 	property?: string;
+	// Which key to use to get the refreshed access token from stored credentials. The destination is `property` field
+	refreshProperty?: string;
+	// Type of the token, e.g. "Bearer"
 	tokenType?: string;
+	// Whether to retain the token type prefix in the Authorization header
 	keepBearer?: boolean;
+	// Status code to check for token expiration
 	tokenExpiredStatusCode?: number;
+	// Additional header name under which to include the raw access token
 	keyToIncludeInAccessTokenHeader?: string;
 }
 
 export type CredentialOAuth2Options = Pick<
 	IOAuth2Options,
-	'property' | 'tokenType' | 'keyToIncludeInAccessTokenHeader'
+	'property' | 'refreshProperty' | 'tokenType' | 'keyToIncludeInAccessTokenHeader'
 >;
 
 export interface IConnection {

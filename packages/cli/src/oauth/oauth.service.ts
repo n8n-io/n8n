@@ -18,6 +18,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
+	applyOAuth2RefreshToken,
 	getOAuth2AuthHeaders,
 	jsonParse,
 	OperationalError,
@@ -784,11 +785,13 @@ export class OauthService {
 			return null;
 		}
 
+		const oauth2 = this.getOAuth2Options(credential.type);
 		const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
 			oauthTokenData,
 			refreshed.data,
 			resource,
 		);
+		applyOAuth2RefreshToken(refreshedTokenData, refreshed.data, oauth2);
 
 		try {
 			await this.encryptAndSaveData(credential, { oauthTokenData: refreshedTokenData });
@@ -799,11 +802,7 @@ export class OauthService {
 			});
 		}
 
-		const credentialType = credential.type ?? 'oAuth2Api';
-		return getOAuth2AuthHeaders(
-			{ oauthTokenData: refreshedTokenData },
-			this.getOAuth2Options(credentialType),
-		);
+		return getOAuth2AuthHeaders({ oauthTokenData: refreshedTokenData }, oauth2);
 	}
 
 	/**

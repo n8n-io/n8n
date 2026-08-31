@@ -55,7 +55,10 @@ export class SlackOAuth2Api implements ICredentialType {
 
 	oauth2 = {
 		tokenType: 'Bearer',
+		// initial slack authentication returns the access token in authed_user
 		property: 'authed_user.access_token',
+		// refreshes return the token unnested
+		refreshProperty: 'access_token',
 	};
 
 	displayName = 'Slack OAuth2 API';

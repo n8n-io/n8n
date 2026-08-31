@@ -5383,6 +5383,49 @@ describe('OauthService', () => {
 			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
 		});
 
+		it('persists and returns a refreshed token at the configured nested property', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const refreshed = {
+				data: { access_token: 'new-user-token', token_type: 'bearer' },
+				accessToken: 'new-user-token',
+			};
+			const mockToken = { refresh: vi.fn().mockResolvedValue(refreshed), client: {} };
+			const credential = makeCredential({ isGlobal: true, type: 'slackOAuth2Api' });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: {
+					access_token: 'bot-token',
+					authed_user: { access_token: 'stale-user-token' },
+					refresh_token: 'refresh-tok',
+					token_type: 'bearer',
+				},
+			} as unknown as OAuth2CredentialData);
+			credentialsHelper.getOAuth2Options.mockReturnValueOnce({
+				property: 'authed_user.access_token',
+				refreshProperty: 'access_token',
+			});
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer new-user-token' });
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
+				oauthTokenData: expect.objectContaining({
+					access_token: 'new-user-token',
+					authed_user: { access_token: 'new-user-token' },
+				}),
+			});
+		});
+
 		describe('outbound network policy', () => {
 			const captureRefreshClientOptions = async () => {
 				const { ClientOAuth2 } = await import('@n8n/client-oauth2');

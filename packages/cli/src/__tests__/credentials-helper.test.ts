@@ -1877,10 +1877,7 @@ describe('CredentialsHelper', () => {
 	});
 
 	describe('getOAuth2Options', () => {
-		const credentialType = (
-			name: string,
-			oauth2?: ICredentialType['oauth2'],
-		): ICredentialType => ({
+		const credentialType = (name: string, oauth2?: ICredentialType['oauth2']): ICredentialType => ({
 			name,
 			displayName: name,
 			properties: [],
@@ -1906,9 +1903,7 @@ describe('CredentialsHelper', () => {
 			credentialTypes.isOAuthCredentialType.mockReturnValue(true);
 			credentialTypes.getParentTypes.mockReturnValue(['parentOAuth2Api', 'oAuth2Api']);
 			credentialTypes.getByName.mockImplementation((type) =>
-				type === 'parentOAuth2Api'
-					? credentialType(type, parentOAuth2)
-					: credentialType(type),
+				type === 'parentOAuth2Api' ? credentialType(type, parentOAuth2) : credentialType(type),
 			);
 
 			expect(buildHelper(credentialTypes).getOAuth2Options('childOAuth2Api')).toBe(parentOAuth2);

@@ -9,6 +9,7 @@ describe('SlackOAuth2Api Credential', () => {
 		expect(credential.oauth2).toEqual({
 			tokenType: 'Bearer',
 			property: 'authed_user.access_token',
+			refreshProperty: 'access_token',
 		});
 
 		const authUrlProperty = credential.properties.find((p) => p.name === 'authUrl');

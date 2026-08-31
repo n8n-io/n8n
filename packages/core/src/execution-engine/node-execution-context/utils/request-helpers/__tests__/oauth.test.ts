@@ -1235,7 +1235,7 @@ describe('requestOAuth2 - concurrent refresh serialization', () => {
 		);
 	});
 
-	test('refreshes when oAuth2Options.property resolves to an unchanged nested token', async () => {
+	test('updates the nested token from oAuth2Options.refreshProperty after refreshing', async () => {
 		// Slack-style credential: the signing token comes from a nested path, not the
 		// top-level access_token. The fencing check must compare the same nested value,
 		// otherwise it always reports "rotated elsewhere" and never refreshes.
@@ -1267,7 +1267,7 @@ describe('requestOAuth2 - concurrent refresh serialization', () => {
 			{ method: 'GET', url: `${baseUrl}/data` },
 			mockNode,
 			mockAdditionalData,
-			{ tokenType: 'Bearer', property },
+			{ tokenType: 'Bearer', property, refreshProperty: 'access_token' },
 			true,
 		);
 
@@ -1275,7 +1275,21 @@ describe('requestOAuth2 - concurrent refresh serialization', () => {
 		expect(tokenScope.isDone()).toBe(true);
 		expect(
 			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
-		).toHaveBeenCalledTimes(1);
+		).toHaveBeenCalledWith(
+			mockNode.credentials!.testOAuth2,
+			'testOAuth2',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					authed_user: { access_token: 'new-token' },
+				}),
+			}),
+			mockAdditionalData,
+		);
+		expect(mockThis.helpers.httpRequest).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer new-token' }),
+			}),
+		);
 	});
 
 	test('adopts the stored token when oAuth2Options.property nested token already rotated', async () => {

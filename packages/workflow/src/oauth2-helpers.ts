@@ -1,7 +1,21 @@
 import { isRecord } from '@n8n/utils/is-record';
 import get from 'lodash/get';
+import set from 'lodash/set';
 
 import type { CredentialOAuth2Options, ICredentialDataDecryptedObject } from './interfaces';
+
+export function applyOAuth2RefreshToken(
+	tokenData: Record<string, unknown>,
+	refreshData: Record<string, unknown>,
+	oauth2?: CredentialOAuth2Options,
+): void {
+	if (!oauth2?.property || !oauth2.refreshProperty) return;
+
+	const refreshedAccessToken = get(refreshData, oauth2.refreshProperty);
+	if (typeof refreshedAccessToken !== 'string' || refreshedAccessToken.length === 0) return;
+
+	set(tokenData, oauth2.property, refreshedAccessToken);
+}
 
 export function getOAuth2AuthHeaders(
 	credentialData: ICredentialDataDecryptedObject,
