@@ -6,6 +6,7 @@ packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
   s_6ed9d39c972411::t_1f4b97bbb99c3b 329-330
   s_6ed9d39c972411::t_b46e7cf0063b87 576-578
   s_6ed9d39c972411::t_3933ed462e52d6 450-451
+  s_6ed9d39c972411::t_e07dd9d3cfe620 489-491
 ---
 {
   "schema_version": "authorship/3.0.0",
