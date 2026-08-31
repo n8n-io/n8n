@@ -845,8 +845,6 @@ describe('GmailTrigger', () => {
 
 			// 1 message with maxResults=5, all fetched — advance normally
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(2000000000);
-			// No pending messages left — the fetch loop always writes the (empty)
-			// remainder, so the key exists
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
 		});
 
@@ -1424,7 +1422,7 @@ describe('GmailTrigger', () => {
 			//
 			// Poll 1: list [3,2,1] → emit [3,2], pending=['1'], lastTimeChecked=3000000000.
 			// Poll 2: drain '1', then list after:3000000000 is boundary-inclusive and
-			//   returns [4,3,2,1]. The pre-fetch filter at GmailTrigger.node.ts:450 only
+			//   returns [4,3,2,1]. The pre-fetch filter only
 			//   knows about possibleDuplicates={3,2}, so '1' falls through to overflow
 			//   and is re-added to pendingMessageIds — even though '1' was just drained.
 			// Poll 3 would then drain '1' again → the observed duplicate.
@@ -1504,8 +1502,8 @@ describe('GmailTrigger', () => {
 
 		it('should not re-emit pending messages drained during an early-return poll', async () => {
 			// Alternative failure path: with maxResults=1 and several same-second msgs,
-			// poll 2 early-returns at GmailTrigger.node.ts:417 because pending is still
-			// non-empty. The early-return skips the state update at lines 504-533, so
+			// poll 2 takes the early return because the queue is still non-empty. That
+			// path skips the state update at the end of poll(), so
 			// possibleDuplicates never records emails drained in poll 2. Poll 3's list
 			// call then finds those same-second emails unchanged in possibleDuplicates
 			// and they get re-queued as pending — causing duplicate emission later.
@@ -1616,11 +1614,12 @@ describe('GmailTrigger', () => {
 		});
 	});
 
-	describe('v1.4 - multi-page backlog pagination', () => {
-		// Contract under test: the scan follows nextPageToken up to 20 pages.
-		// lastTimeChecked advances only when the token was exhausted; otherwise the
-		// cursor holds so older mail it never scanned stays reachable. Give-up valve: once
-		// 5000 ids are already tracked, the poll advances instead of holding again.
+	describe('v1.4 - backlog scan, drain and retry', () => {
+		// Contract under test: the scan follows nextPageToken up to MAX_SCAN_PAGES.
+		// lastTimeChecked advances when the scan exhausted the token, or when a
+		// give-up valve fires: no progress past the cap, or MAX_TRACKED_BACKLOG_IDS
+		// ids already stored. Otherwise the cursor holds, so mail the poll never
+		// scanned stays reachable.
 		const listPage = (ids: string[], nextPageToken?: string): MessageListResponse => ({
 			messages: ids.map((id) => createListMessage({ id })),
 			resultSizeEstimate: ids.length,
@@ -1895,7 +1894,7 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].failedFetches).toEqual([['P2', 1]]);
 			// The cursor must keep holding: P1's date (5e9 s, far past the 1e6
 			// boundary) must not become the new cursor while the window was never
-			// listed.
+			// scanned.
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual([]);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
@@ -1903,7 +1902,7 @@ describe('GmailTrigger', () => {
 			);
 		});
 
-		it('should quarantine a failed id and keep draining the rest of the queue', async () => {
+		it('should set aside a failed id and keep draining the rest of the queue', async () => {
 			// A failed fetch must not stop the tick: the id moves aside, the other
 			// queued ids are still fetched, and the scan still runs so new mail
 			// keeps arriving.
@@ -1958,7 +1957,7 @@ describe('GmailTrigger', () => {
 		});
 
 		it('should not deliver a recovered id twice when the scan re-scans it', async () => {
-			// A quarantined id is still inside the query window, so a held cursor
+			// A set-aside id is still inside the query window, so a held cursor
 			// re-scans it. Once its retry succeeds it must join the boundary set
 			// before the scan runs, or the same tick delivers it twice.
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
@@ -2060,7 +2059,7 @@ describe('GmailTrigger', () => {
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['OK1', 'OK2']);
 		});
 
-		it('should count quarantined ids towards the tracked-id bound', async () => {
+		it('should count set-aside ids towards the stored-id bound', async () => {
 			// Set-aside ids are stored state like the queue is, so they must not let a
 			// held cursor grow that state past the bound unnoticed. One retry succeeds
 			// (so the poll reaches its cursor decision) and one stays set aside: 4999
@@ -2133,9 +2132,6 @@ describe('GmailTrigger', () => {
 				'Gmail Trigger': { lastTimeChecked: 1000000 },
 			};
 
-			// Earlier tests can leave unconsumed interceptors behind, and this test
-			// needs the labels lookup to be the one request that fails.
-			nock.cleanAll();
 			nock(baseUrl).get('/gmail/v1/users/me/labels').reply(500, { error: 'transient' });
 			mockList(listPage(['1']));
 			mockGet('1', 2_000_000_000_000);
@@ -2227,7 +2223,7 @@ describe('GmailTrigger', () => {
 			]);
 		});
 
-		it('should retry only as many quarantined ids as one poll allows', async () => {
+		it('should retry only as many set-aside ids as one poll allows', async () => {
 			// The list can grow past what a poll should spend on requests, so each
 			// poll takes a slice and moves the rest to the front for the next one.
 			const workflowStaticData: Record<string, Record<string, unknown>> = {

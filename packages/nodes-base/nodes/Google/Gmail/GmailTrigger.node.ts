@@ -30,16 +30,16 @@ import type {
 	MessageListResponse,
 } from './types';
 
-// Bounds how many pages one poll scans for new messages. Hitting the cap does
-// not lose mail: the leftover page token makes the poll hold the cursor (see
-// poll below).
+// Bounds how many pages one poll scans for new messages. A leftover page token
+// holds the cursor, so mail beyond the cap stays reachable until a give-up valve
+// decides to skip it.
 const MAX_SCAN_PAGES = 20;
-// Tracked-id count (pending + boundary ids) at which the poll stops holding
-// the cursor and accepts skipping whatever it did not scan.
+// Count of stored ids (queued + boundary + set aside) at which the poll stops
+// holding the cursor and accepts skipping whatever it did not scan.
 const MAX_TRACKED_BACKLOG_IDS = 5_000;
-// Attempts a single message gets before the poll gives up on it. Failures here
-// cannot be told apart from rate limits, which this node does not retry on its
-// own, so a message gets several polls to come back before it is skipped.
+// Attempts one set-aside id gets before the poll drops it with a warning. A
+// failed fetch cannot be told apart from a rate limit, and this node does not
+// retry inside a poll, so an id gets several polls to come back.
 export const MAX_PENDING_FETCH_ATTEMPTS = 10;
 
 export class GmailTrigger implements INodeType {
@@ -438,16 +438,16 @@ export class GmailTrigger implements INodeType {
 
 			// A message whose fetch failed waits in its own list rather than in the
 			// queue, so it can be retried without holding up everything behind it.
-			// Retry those first — they are the oldest — and give up on one only once
-			// it has used up its attempts. A failed fetch carries no message, so it
+			// Retry those first, because they have waited longest, and give up on one
+			// only once it has used up its attempts. A failed fetch carries no message, so it
 			// costs no budget; only a success does.
-			const quarantined = nodeStaticData.failedFetches ?? [];
-			if (shouldLimitMessages && quarantined.length > 0) {
+			const setAside = nodeStaticData.failedFetches ?? [];
+			if (shouldLimitMessages && setAside.length > 0) {
 				// Bounded per tick, and the untried tail moves to the front, so a long
 				// list cannot spend the whole poll on doomed requests or starve its own
 				// later entries.
-				const retryNow = quarantined.slice(0, maxResults);
-				const retryLater = quarantined.slice(maxResults);
+				const retryNow = setAside.slice(0, maxResults);
+				const retryLater = setAside.slice(maxResults);
 				const stillFailing: Array<[string, number]> = [];
 				const fetchQs = buildFetchQs();
 
@@ -499,7 +499,7 @@ export class GmailTrigger implements INodeType {
 					} catch (error) {
 						// Set the message aside instead of ending the tick: the rest of the
 						// queue, and the scan below, must still run. The error is logged
-						// here because it no longer reaches the catch at the end of poll().
+						// here, because this error never reaches the catch at the end of poll().
 						this.logger.warn(`Gmail Trigger could not fetch message ${id}; will retry it`, {
 							node: node.name,
 							error,
@@ -507,10 +507,10 @@ export class GmailTrigger implements INodeType {
 						newlyFailed.push([id, 1]);
 					}
 
-					// An id leaves the queue once it has been handled either way — it was
-					// delivered, or it now waits in failedFetches. Trimming per iteration
-					// keeps every unhandled id stored, since a later throw is swallowed by
-					// the catch below while the cursor can still advance.
+					// Trim per iteration so every id this loop has not handled yet stays
+					// stored: a later throw is swallowed while the cursor can still
+					// advance. A failed id leaves the queue for the set-aside list, which
+					// is written once the loop ends.
 					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
 				}
 
@@ -519,7 +519,9 @@ export class GmailTrigger implements INodeType {
 				}
 			}
 
-			// While queued IDs remain, don't scan for new messages yet.
+			// While queued ids remain, do not scan: the queue write after a scan replaces
+			// the whole queue, so scanning now would drop the ids this poll could not
+			// reach.
 			if (shouldLimitMessages && (nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
 				await simplifyResponseData();
 
@@ -614,6 +616,9 @@ export class GmailTrigger implements INodeType {
 							{ node: node.name },
 						);
 						nodeStaticData.lastTimeChecked = +now;
+						// The cursor jumped to now, so ids from the old window are no longer
+						// at the boundary. Keeping them would grow the stored-id count for
+						// nothing — every other path merges the set instead.
 						nodeStaticData.possibleDuplicates = [];
 					}
 					return null;
@@ -628,7 +633,7 @@ export class GmailTrigger implements INodeType {
 				beyondBudgetIds = messages.slice(budget).map((m) => m.id);
 			}
 
-			// Queue every listed id before fetching any of them, so a throw on the
+			// Queue every scanned id before fetching any of them, so a throw on the
 			// first fetch cannot leave ids in no stored state: the loop below trims
 			// this back down as each fetch succeeds. Stays gated on the version
 			// check, or a pre-1.4 node would store a queue its own drain path
