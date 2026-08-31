@@ -11,8 +11,12 @@
  * release breaks nobody. Running it as a required check on the PR is what makes
  * that safe, since a removal then cannot merge in the first place.
  *
+ * The baseline comes from the credential metadata attached to the latest GitHub
+ * release by sbom-generation-callable.yml, not from a package registry, so it
+ * does not depend on how n8n is distributed.
+ *
  * Needs the local packages built (it reads their generated dist/types). Network
- * failures warn and exit 0: a CDN outage should not block a merge for a guard
+ * failures warn and exit 0: an outage should not block a merge for a guard
  * against a rare mistake. Every outcome, including a skip, is written to the job
  * summary, so a dead check does not read as a passing one.
  *
@@ -27,9 +31,19 @@ import { scopesByCredential, diffScopes } from './credential-scopes.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 const PACKAGES = [
-	{ name: 'n8n-nodes-base', dir: path.resolve(here, '..') },
-	{ name: '@n8n/n8n-nodes-langchain', dir: path.resolve(here, '../../@n8n/nodes-langchain') },
+	{
+		name: 'n8n-nodes-base',
+		dir: path.resolve(here, '..'),
+		asset: 'credentials-n8n-nodes-base.json',
+	},
+	{
+		name: '@n8n/n8n-nodes-langchain',
+		dir: path.resolve(here, '../../@n8n/nodes-langchain'),
+		asset: 'credentials-n8n-nodes-langchain.json',
+	},
 ];
+
+const LATEST_RELEASE = 'https://api.github.com/repos/n8n-io/n8n/releases/latest';
 
 const ALLOWED_REMOVALS = path.resolve(here, '../credentials/scope-removals.json');
 const TYPES_FILE = 'dist/types/credentials.json';
@@ -49,10 +63,16 @@ const skip = (message) => {
 	report([`### OAuth scope check skipped`, '', message]);
 };
 
+// Anonymous GitHub API calls are rate limited per IP, which a busy runner can
+// exhaust. The workflow's own token lifts that and needs no extra permission.
+const headers = process.env.GITHUB_TOKEN
+	? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
+	: {};
+
 const fetchJson = async (url) => {
 	for (let attempt = 1; ; attempt++) {
 		try {
-			const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+			const response = await fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
 			if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
 			return await response.json();
 		} catch (error) {
@@ -78,12 +98,12 @@ const isAllowed = (credential, { scope }) => {
 
 let release;
 try {
-	release = await fetchJson('https://registry.npmjs.org/n8n/latest');
+	release = await fetchJson(LATEST_RELEASE);
 } catch (error) {
-	skip(`could not resolve the released n8n version (${error.message}).`);
+	skip(`could not resolve the latest n8n release (${error.message}).`);
 	process.exit(0);
 }
-const dependencies = release.dependencies ?? {};
+const assets = new Map((release.assets ?? []).map((asset) => [asset.name, asset]));
 
 // Both sides are resolved as one set of credentials per side, because `extends`
 // crosses packages: langchain credentials inherit from nodes-base's `oAuth2Api`.
@@ -93,7 +113,7 @@ const local = [];
 const checkedCredentials = new Set();
 const compared = [];
 
-for (const { name, dir } of PACKAGES) {
+for (const { name, dir, asset } of PACKAGES) {
 	const localFile = path.join(dir, TYPES_FILE);
 	// Not a soft failure: skipping here would silently disable the check if a
 	// build stops emitting the metadata or it moves.
@@ -106,27 +126,27 @@ for (const { name, dir } of PACKAGES) {
 		process.exit(1);
 	}
 
-	const version = dependencies[name];
-	if (!version) {
-		skip(`n8n@${release.version} does not depend on ${name}, so its scopes were not checked.`);
+	const published = assets.get(asset);
+	if (!published) {
+		skip(
+			`${release.tag_name} has no \`${asset}\`, so ${name} scopes were not checked. Releases only carry it from the one after #36252.`,
+		);
 		continue;
 	}
 
 	let released;
 	try {
-		released = await fetchJson(
-			`https://cdn.jsdelivr.net/npm/${name}@${encodeURIComponent(version)}/${TYPES_FILE}`,
-		);
+		released = await fetchJson(published.browser_download_url);
 		if (!Array.isArray(released)) throw new Error('metadata is not an array of credentials');
 	} catch (error) {
-		skip(`could not read ${name}@${version} (${error.message}), so its scopes were not checked.`);
+		skip(`could not read ${asset} from ${release.tag_name} (${error.message}).`);
 		continue;
 	}
 
 	baseline.push(...released);
 	local.push(...JSON.parse(readFileSync(localFile, 'utf8')));
 	for (const credential of released) checkedCredentials.add(credential.name);
-	compared.push(`${name}@${version}`);
+	compared.push(name);
 }
 
 if (compared.length === 0) process.exit(0);
@@ -147,7 +167,7 @@ for (const entry of allowances) {
 
 if (advisories.length > 0) {
 	report([
-		`### OAuth scope expressions changed (vs n8n@${release.version})`,
+		`### OAuth scope expressions changed (vs ${release.tag_name})`,
 		'',
 		...advisories.flatMap((entry) => [
 			`- \`${entry.credential}\``,
@@ -161,13 +181,13 @@ if (advisories.length > 0) {
 
 if (removals.length === 0) {
 	report([
-		`OAuth scopes checked against ${compared.join(', ')} (n8n@${release.version}): no scope removed.`,
+		`OAuth scopes checked against ${release.tag_name} (${compared.join(', ')}): no scope removed.`,
 	]);
 	process.exit(0);
 }
 
 report([
-	`### OAuth scopes removed (vs ${compared.join(', ')} from n8n@${release.version})`,
+	`### OAuth scopes removed (vs ${release.tag_name})`,
 	'',
 	...removals.map((entry) => `- \`${entry.credential}\`: \`${entry.scope}\``),
 	'',
