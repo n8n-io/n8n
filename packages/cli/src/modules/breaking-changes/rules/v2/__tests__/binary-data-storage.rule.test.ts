@@ -49,5 +49,13 @@ describe('BinaryDataStorageRule', () => {
 			expect(result.instanceIssues[0].title).toBe('Binary data storage mode changed');
 			expect(result.recommendations).toHaveLength(0);
 		});
+
+		it('should be affected when the env value carries quotes or whitespace', async () => {
+			process.env.N8N_DEFAULT_BINARY_DATA_MODE = ' "default" ';
+			executionsConfig.mode = 'regular';
+			const result = await rule.detect();
+
+			expect(result.isAffected).toBe(true);
+		});
 	});
 });
