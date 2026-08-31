@@ -1775,6 +1775,77 @@ export class WorkflowExecute {
 		];
 	}
 
+	/** The pinned output of a node, or undefined if the node has none. */
+	private getPinnedOutput(node: INode): INodeExecutionData[][] | undefined {
+		const { pinData } = this.runExecutionData.resultData;
+		if (!pinData || node.disabled || pinData[node.name] === undefined) {
+			return undefined;
+		}
+
+		return [pinData[node.name]]; // always zeroth runIndex
+	}
+
+	/**
+	 * Collect the results of the sub-nodes an AI agent asked for, so the agent can
+	 * resume with them. Does nothing if the node is not resuming from a tool call.
+	 */
+	private collectSubNodeResults(
+		executionData: IExecuteData,
+		subNodeExecutionResults: EngineResponse,
+	): void {
+		const { subNodeExecutionData } = executionData.metadata ?? {};
+		if (!subNodeExecutionData) return;
+
+		subNodeExecutionResults.metadata = subNodeExecutionData.metadata;
+		for (const subNode of subNodeExecutionData.actions) {
+			const nodeRunData = this.runExecutionData.resultData.runData[subNode.nodeName];
+			if (nodeRunData?.[subNode.runIndex]) {
+				subNodeExecutionResults.actionResponses.push({
+					data: nodeRunData[subNode.runIndex],
+					action: subNode.action,
+				});
+			}
+		}
+	}
+
+	/**
+	 * Post-process the raw output of a node: move binary data to the configured storage,
+	 * collect the hints it reported and route items to the error output if it is enabled.
+	 * Returns the output data and the close function the node asked to run at the end.
+	 */
+	private async processNodeOutput(
+		runNodeData: IRunNodeResponse,
+		workflow: Workflow,
+		executionData: IExecuteData,
+		taskStartedData: ITaskStartedData,
+		runIndex: number,
+	): Promise<{
+		nodeSuccessData: INodeExecutionData[][] | null | undefined;
+		closeFunction: Promise<void> | undefined;
+	}> {
+		const converted = await convertBinaryData(
+			workflow.id,
+			this.additionalData.executionId,
+			runNodeData,
+			workflow.settings.binaryMode,
+		);
+
+		const nodeSuccessData = converted.data;
+
+		if (converted.hints?.length) {
+			taskStartedData.hints!.push(...converted.hints);
+		}
+
+		if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
+			this.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, runIndex);
+		}
+
+		// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
+		const closeFunction = converted.closeFunction?.();
+
+		return { nodeSuccessData, closeFunction };
+	}
+
 	/** True while there are nodes queued for execution. */
 	private isExecutionStackNotEmpty(): boolean {
 		return this.runExecutionData.executionData!.nodeExecutionStack.length !== 0;
@@ -1925,27 +1996,12 @@ export class WorkflowExecute {
 								}
 							}
 
-							const { pinData } = this.runExecutionData.resultData;
+							const pinnedOutput = this.getPinnedOutput(executionNode);
 
-							if (pinData && !executionNode.disabled && pinData[executionNode.name] !== undefined) {
-								const nodePinData = pinData[executionNode.name];
-
-								nodeSuccessData = [nodePinData]; // always zeroth runIndex
+							if (pinnedOutput) {
+								nodeSuccessData = pinnedOutput;
 							} else {
-								if (executionData.metadata?.subNodeExecutionData) {
-									subNodeExecutionResults.metadata =
-										executionData.metadata.subNodeExecutionData.metadata;
-									for (const subNode of executionData.metadata.subNodeExecutionData.actions) {
-										const nodeRunData = this.runExecutionData.resultData.runData[subNode.nodeName];
-										if (nodeRunData && nodeRunData[subNode.runIndex]) {
-											const data = nodeRunData[subNode.runIndex];
-											subNodeExecutionResults.actionResponses.push({
-												data,
-												action: subNode.action,
-											});
-										}
-									}
-								}
+								this.collectSubNodeResults(executionData, subNodeExecutionResults);
 
 								Logger.debug(`Running node "${executionNode.name}" started`, {
 									node: executionNode.name,
@@ -1996,28 +2052,16 @@ export class WorkflowExecute {
 									continue executionLoop;
 								}
 
-								runNodeData = await convertBinaryData(
-									workflow.id,
-									this.additionalData.executionId,
+								const nodeOutput = await this.processNodeOutput(
 									runNodeData,
-									workflow.settings.binaryMode,
+									workflow,
+									executionData,
+									taskStartedData,
+									runIndex,
 								);
-
-								nodeSuccessData = runNodeData.data;
-
-								if (runNodeData.hints?.length) {
-									taskStartedData.hints!.push.apply(taskStartedData.hints!, runNodeData.hints);
-								}
-
-								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
-									this.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, runIndex);
-								}
-
-								if (runNodeData.closeFunction) {
-									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
-
-									closeFunction = runNodeData.closeFunction();
-								}
+								nodeSuccessData = nodeOutput.nodeSuccessData;
+								// Keep the close function of an earlier node if this one registered none
+								closeFunction = nodeOutput.closeFunction ?? closeFunction;
 							}
 
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, {
