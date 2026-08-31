@@ -849,7 +849,7 @@ describe('Integration: Concurrent execution pooling', () => {
 	});
 });
 
-describe('Integration: nested evaluation time budget', () => {
+describe(`Integration: nested evaluation time budget (${engineName})`, () => {
 	const TIMEOUT_MS = 400;
 	const BURN_MS = 150;
 	const DEPTH = 8;
@@ -859,7 +859,7 @@ describe('Integration: nested evaluation time budget', () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: TIMEOUT_MS }),
+			createBridge: () => newBridge({ timeout: TIMEOUT_MS }),
 			maxCodeCacheSize: 1024,
 		});
 		await evaluator.initialize();

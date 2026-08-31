@@ -1138,12 +1138,23 @@ export class QuickJsBridge implements RuntimeBridge {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
 
+		// A nested call runs on what is left of the configured timeout, so the
+		// chain shares one budget (mirrors IsolatedVmBridge). A configured
+		// timeout of 0 means "no limit", so there is nothing to share.
+		const elapsedMs = options?.elapsedMs ?? 0;
+		const nested = elapsedMs > 0 && this.config.timeout > 0;
+		let timeout = this.config.timeout;
+		if (nested) {
+			timeout = Math.trunc(this.config.timeout - elapsedMs);
+			if (timeout <= 0) throw this.timeoutError(true);
+		}
+
 		const callbackHandles = this.createCallbackHandles(data);
 		let wrapperFn: import('quickjs-emscripten').QuickJSHandle | undefined;
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
-		this.deadlines.push(Date.now() + this.config.timeout);
+		this.deadlines.push(Date.now() + timeout);
 		try {
 			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
 
@@ -1201,7 +1212,7 @@ export class QuickJsBridge implements RuntimeBridge {
 						: errDump,
 				);
 				if (errStr.includes('interrupted')) {
-					throw new TimeoutError(`Expression timed out after ${this.config.timeout}ms`, {});
+					throw this.timeoutError(nested);
 				}
 				if (
 					typeof errDump === 'object' &&
@@ -1236,7 +1247,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			if (errorMessage.includes('interrupted')) {
-				throw new TimeoutError(`Expression timed out after ${this.config.timeout}ms`, {});
+				throw this.timeoutError(nested);
 			}
 			if (errorMessage.includes('out of memory') || errorMessage.includes('memory')) {
 				throw new MemoryLimitError(
@@ -1252,6 +1263,19 @@ export class QuickJsBridge implements RuntimeBridge {
 				handle.dispose();
 			}
 		}
+	}
+
+	/**
+	 * Always names the configured limit, never the reduced budget a nested call
+	 * ran on — reporting "timed out after 137ms" would misstate the limit.
+	 */
+	private timeoutError(nested: boolean): TimeoutError {
+		return new TimeoutError(
+			nested
+				? `Nested expressions timed out after sharing the ${this.config.timeout}ms limit`
+				: `Expression timed out after ${this.config.timeout}ms`,
+			{},
+		);
 	}
 
 	private reconstructError(data: ErrorSentinel): Error {
