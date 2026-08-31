@@ -188,7 +188,9 @@ export const sandbox: Service<SandboxResult> = {
 			const message = `Hosted sandbox service is not usable (${health}) — falling back to the local sandbox stack`;
 			// GitHub surfaces `::warning::` in the run summary, so the downgrade doesn't
 			// hide behind thousands of lines of test output.
-			console.warn(process.env.GITHUB_ACTIONS === 'true' ? `::warning::${message}` : `⚠ ${message}`);
+			console.warn(
+				process.env.GITHUB_ACTIONS === 'true' ? `::warning::${message}` : `⚠ ${message}`,
+			);
 			return undefined;
 		}
 
