@@ -43,9 +43,13 @@ const validationError = ref('');
 const generationError = ref('');
 const isGenerating = ref(false);
 const fallbackUsed = ref(false);
+// Keeps the switch on while a first-time generate is in flight — the persisted
+// `mock.enabled` only flips once generation succeeds, and a toggle that doesn't
+// move until then reads as broken. Reverts on failure.
+const pendingEnable = ref(false);
 let lastAppliedItemsJson = JSON.stringify(props.mock?.items ?? []);
 
-const isEnabled = computed(() => props.mock?.enabled ?? false);
+const isEnabled = computed(() => (props.mock?.enabled ?? false) || pendingEnable.value);
 const canGenerate = computed(() => Boolean(props.projectId && props.agentId));
 const itemsByteSize = computed(() => new TextEncoder().encode(itemsText.value).length);
 const isOversized = computed(() => itemsByteSize.value > MAX_TOOL_MOCK_ITEMS_SIZE);
@@ -150,7 +154,12 @@ async function onToggle(next: boolean) {
 		return;
 	}
 
-	await generate();
+	pendingEnable.value = true;
+	try {
+		await generate();
+	} finally {
+		pendingEnable.value = false;
+	}
 }
 </script>
 
@@ -171,7 +180,7 @@ async function onToggle(next: boolean) {
 			</div>
 			<N8nSwitch2
 				:model-value="isEnabled"
-				:disabled="!canGenerate && !isEnabled"
+				:disabled="(!canGenerate && !isEnabled) || isGenerating"
 				data-test-id="agent-tool-mock-toggle"
 				@update:model-value="onToggle"
 			/>

@@ -249,7 +249,38 @@ describe('AgentToolMockSection', () => {
 		expect(wrapper.find('[data-test-id="agent-tool-mock-error"]').exists()).toBe(false);
 	});
 
-	it('surfaces a generation error without enabling the mock', async () => {
+	it('flips the toggle on immediately and shows the generating state while the first generate is in flight', async () => {
+		let resolveGenerate: (value: unknown) => void = () => {};
+		generateAgentToolMockDataMock.mockReturnValueOnce(
+			new Promise((resolve) => (resolveGenerate = resolve)),
+		);
+
+		const { wrapper } = mountSection();
+		await clickToggle(wrapper);
+
+		// Optimistic: the section body opens with the loading indicator before the
+		// endpoint responds, and the switch is guarded against a second toggle.
+		expect(wrapper.find('[data-test-id="agent-tool-mock-generating"]').exists()).toBe(true);
+		expect(
+			wrapper.find('[data-test-id="agent-tool-mock-toggle"]').attributes('disabled'),
+		).toBeDefined();
+
+		resolveGenerate({
+			toolName: 'send_email',
+			mock: { enabled: true, items: [{ id: 1 }] },
+			fallbackUsed: false,
+			config: { name: 'Agent', model: '', instructions: '' },
+			updatedAt: '2026-01-01T00:00:00.000Z',
+			versionId: 'v1',
+		});
+		await nextTick();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="agent-tool-mock-generating"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-tool-mock-items-editor"]').exists()).toBe(true);
+	});
+
+	it('surfaces a generation error and reverts the toggle without enabling the mock', async () => {
 		generateAgentToolMockDataMock.mockRejectedValueOnce(new Error('network down'));
 
 		const { wrapper, section } = mountSection();
@@ -259,6 +290,9 @@ describe('AgentToolMockSection', () => {
 			'network down',
 		);
 		expect(section().emitted('update:mock')).toBeUndefined();
+		// The optimistic enable is rolled back — no body left open on failure.
+		expect(wrapper.find('[data-test-id="agent-tool-mock-generating"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-tool-mock-items-editor"]').exists()).toBe(false);
 	});
 
 	it('disables generation and explains why when the agent has not been saved yet', () => {
