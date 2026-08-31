@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import glob from 'fast-glob';
-import { type NodeLoader } from 'n8n-workflow';
+import { getNodesApiVersion, N8N_NODES_API_VERSION, type NodeLoader } from 'n8n-workflow';
 import path from 'path';
 
 import { LazyPackageDirectoryLoader } from './lazy-package-directory-loader';
@@ -35,13 +35,28 @@ export async function scanDirectoryForPackages(
 
 	for (const packagePath of installedPackagePaths) {
 		try {
-			loaders.push(
-				new LazyPackageDirectoryLoader(
-					path.join(nodeModulesDir, packagePath),
-					options.excludeNodes,
-					options.includeNodes,
-				),
+			const loader = new LazyPackageDirectoryLoader(
+				path.join(nodeModulesDir, packagePath),
+				options.excludeNodes,
+				options.includeNodes,
 			);
+
+			// Checked before any loader is registered so incompatible node code is
+			// never imported. Second line of defence: the install/update guard
+			// rejects these packages up front, this covers versions on disk already.
+			const check = getNodesApiVersion(loader.packageJson);
+			if (!check.compatible) {
+				const requirement =
+					check.reason === 'malformed'
+						? `an invalid n8nNodesApiVersion (${JSON.stringify(check.declared)})`
+						: `node API version ${String(check.declared)}, but this n8n version supports up to ${N8N_NODES_API_VERSION}`;
+				logger.warn(
+					`Skipping package "${loader.packageName}": it requires ${requirement}. Upgrade n8n to use this package, or uninstall it in Settings > Community nodes.`,
+				);
+				continue;
+			}
+
+			loaders.push(loader);
 		} catch (error) {
 			logger.warn(
 				`Skipping package directory "${packagePath}": failed to load package metadata. The package may be partially installed or corrupted.`,
