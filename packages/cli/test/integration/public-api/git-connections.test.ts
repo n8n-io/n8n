@@ -325,19 +325,21 @@ describe('Git connections in Public API', () => {
 		return response.body.id as string;
 	}
 
-	it('pushes then pulls the working copy back, reporting empty counts', async () => {
+	it('pushes then pulls the working copy back, reporting imported counts', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const id = await createConnection(agent);
+		const teamProjectCount = (await Container.get(ProjectRepository).findTeamProjectIds()).length;
 
-		// Push writes an (empty) export to the working copy; pull imports it straight back.
-		expect((await agent.post(`/git-connections/${id}/push`)).status).toBe(200);
+		// Push writes every team project to the working copy; pull imports them straight back.
+		const pushResponse = await agent.post(`/git-connections/${id}/push`);
+		expect(pushResponse.status, JSON.stringify(pushResponse.body)).toBe(200);
 
 		const pullResponse = await agent.post(`/git-connections/${id}/pull`);
 		expect(pullResponse.status, JSON.stringify(pullResponse.body)).toBe(200);
 		expect(pullResponse.body).toEqual({
 			connectionId: id,
 			counts: {
-				projects: { created: 0, updated: 0, skipped: 0 },
+				projects: { created: 0, updated: teamProjectCount, skipped: 0 },
 				folders: { created: 0, skipped: 0, removed: 0 },
 				workflows: {
 					created: 0,
