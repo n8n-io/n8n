@@ -339,7 +339,7 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	for (const [key, entryValue] of entries.slice(0, maxObjectKeys)) {
 		if (isSensitiveKey(key)) {
 			result[key] = REDACTED_VALUE;
-		} else if (shouldStripBlob(key, entryValue)) {
+		} else if (shouldStripBlob(key, entryValue, maxStringChars)) {
 			result[key] = '[omitted large blob]';
 		} else {
 			result[key] = compactForObserver(entryValue, options);
@@ -355,9 +355,11 @@ function isSensitiveKey(key: string): boolean {
 	return SENSITIVE_KEY_PATTERN.test(key);
 }
 
-function shouldStripBlob(key: string, value: unknown): boolean {
+// Respects the caller's string cap so callers that lift truncation for
+// budget estimation (maxStringChars: Infinity) also count blob-like payloads.
+function shouldStripBlob(key: string, value: unknown, maxStringChars: number): boolean {
 	if (typeof value !== 'string') return false;
-	if (value.length <= DEFAULT_MAX_STRING_CHARS) return false;
+	if (value.length <= maxStringChars) return false;
 	return /blob|base64|data|file|image/i.test(key);
 }
 

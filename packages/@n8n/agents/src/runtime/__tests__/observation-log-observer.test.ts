@@ -261,7 +261,7 @@ describe('renderObserverTranscript', () => {
 							toolName: 'lookup_workflow',
 							input: { workflow: 'daily-report-prod' },
 							state: 'resolved',
-							output: { rows: [{ id: 1 }], blob: 'x'.repeat(80) },
+							output: { rows: [{ id: 1 }], notes: 'x'.repeat(80), blob: 'x'.repeat(80) },
 						},
 					],
 				},
@@ -275,6 +275,7 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('"workflow":"daily-report-prod"');
 		expect(transcript).toContain('tool_result lookup_workflow');
 		expect(transcript).toContain('[truncated');
+		expect(transcript).toContain('"blob":"[omitted large blob]"');
 	});
 
 	it('redacts credential-looking tool inputs and outputs before serialization', () => {

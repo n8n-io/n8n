@@ -334,9 +334,10 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		const list = new AgentMessageList();
 		list.addInput([userMsg('fetch the report')]);
 		// One large tool result dominates the window: the observer rendering
-		// truncates it to ~500 chars — far below every threshold — but the model
-		// receives all 20k chars. The budget must count the full payload, and the
-		// observer's own delta re-check must not skip the run as below-threshold.
+		// strips the blob-keyed string to '[omitted large blob]' — far below
+		// every threshold — but the model receives all 20k chars. The budget
+		// must count the full payload, and the observer's own delta re-check
+		// must not skip the run as below-threshold.
 		list.addResponse([
 			{
 				role: 'assistant',
@@ -347,7 +348,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 						toolName: 'fetch_report',
 						input: { url: 'https://example.com/report' },
 						state: 'resolved',
-						output: 'x'.repeat(20_000),
+						output: { data: 'x'.repeat(20_000) },
 					},
 				],
 			},
