@@ -3860,26 +3860,6 @@ function hasCredentialId(value: unknown): boolean {
 	return typeof id === 'string' && id.trim() !== '';
 }
 
-<<<<<<< HEAD
-=======
-/**
- * Convert the n8n credits managed tag, when written as a credential id, to the
- * runtime sentinel. Build-time resolve already does this; normalizing at save
- * also covers direct saves (e.g. workflows update) so the tag never persists as
- * a real id the runtime would fail to resolve.
- */
-function normalizeManagedCredentialForSave(value: unknown): unknown {
-	if (typeof value !== 'object' || value === null) return value;
-	if (Reflect.get(value, 'id') !== AI_GATEWAY_MANAGED_TAG) return value;
-	const name = Reflect.get(value, 'name');
-	return {
-		id: null,
-		name: typeof name === 'string' && name !== '' ? name : 'Gateway credits',
-		__aiGatewayManaged: true,
-	};
-}
-
->>>>>>> c96e7c0d (feat(core): Rename n8n credits copy to Gateway credits in AI assistant (no-changelog) (#37271))
 function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): WorkflowJSON['nodes'] {
 	return nodes.map((node) => {
 		if (!node.credentials) return node;

@@ -358,25 +358,12 @@ decision after testing.
      only for what a template cannot express: basic auth's base64-encoded
      pair, digest's challenge-response, OAuth flows — or when the user
      explicitly asks for a specific plain type.
-<<<<<<< HEAD
-- `credentials(action="list", type=...)` may include a synthetic n8n credits
-  entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
-  when the type is covered by n8n credits (see n8n credits Preference). It is
+- `credentials(action="list", type=...)` may include a synthetic Gateway
+  credits entry `{ id: null, name: "Gateway credits", type, __aiGatewayManaged: true }`
+  when the type is covered by Gateway credits (see Gateway credits Preference). It is
   not a stored credential: never pass it to `newCredential(...)` and never
   emit `id: null` or the `__aiGatewayManaged` marker in SDK output. Setup
   applies it automatically when the user has no stored credential of that type.
-=======
-- `credentials(action="list", type=...)` may include a Gateway credits entry
-  `{ id: "__AI_GATEWAY_MANAGED__", name: "Gateway credits", type, __aiGatewayManaged: true }`
-  when the type is covered by Gateway credits (see Gateway credits Preference). Treat its
-  `id` like any credential id: to use Gateway credits, write
-  `newCredential('Gateway credits', '__AI_GATEWAY_MANAGED__')` on the node — exactly as
-  you copy a stored credential's id. The build keeps it and attaches Gateway credits,
-  even when the user already has their own credential of that type. Write it
-  whenever the user asks for Gateway credits; otherwise the normal reuse/own-credential
-  rules apply. (When the user has no stored credential of a covered type, the build
-  still auto-attaches Gateway credits even if you didn't write the entry.)
->>>>>>> c96e7c0d (feat(core): Rename n8n credits copy to Gateway credits in AI assistant (no-changelog) (#37271))
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.
@@ -427,14 +414,6 @@ Credential Rules) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).
 
-<<<<<<< HEAD
-=======
-If `credentialResolutionNote` on the build result says Gateway credits are
-depleted, follow that note: tell the user they must top up Gateway credits
-or add their own key on the node. Do not say the workflow works out of the
-box, and do not offer a live test.
-
->>>>>>> c96e7c0d (feat(core): Rename n8n credits copy to Gateway credits in AI assistant (no-changelog) (#37271))
 - If the user explicitly specified their own credential (by name or by
   choosing one from a list), use that credential and do not substitute
   Gateway credits.
