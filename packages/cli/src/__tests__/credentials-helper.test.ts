@@ -50,6 +50,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { MissingExecutionContextError } from '@/modules/dynamic-credentials.ee/errors/missing-execution-context.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -1729,6 +1730,35 @@ describe('CredentialsHelper', () => {
 					{ credentialUsage: 'trigger' },
 				),
 			).rejects.toThrow('Credential resolver is not configured');
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledOnce();
+		});
+
+		test('should defer to the resolver when trigger execution data is unavailable', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new MissingExecutionContextError(),
+			);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{
+						...mockAdditionalData,
+						executionContext: undefined,
+					},
+					nodeCredentials,
+					credentialType,
+					'manual',
+					undefined,
+					true,
+					undefined,
+					{ credentialUsage: 'trigger' },
+				),
+			).rejects.toThrow(MissingExecutionContextError);
 
 			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledOnce();
 		});
