@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import type { A11yChecker } from '../../fixtures/a11y';
 import type { n8nPage } from '../../pages/n8nPage';
 import type { ApiHelpers } from '../../services/api-helper';
 import type { TestUser } from '../../services/user-api-helper';
@@ -102,8 +103,10 @@ export async function viewExecutionsListAsAdmin(
 export async function adminViewsExecutionsList(deps: {
 	n8n: n8nPage;
 	api: ApiHelpers;
+	a11y: A11yChecker;
 }): Promise<void> {
 	const ctx = await setupAdminViewsExecutionsList(deps.api);
 	const adminN8n = await deps.n8n.start.withUser(ctx.admin);
 	await viewExecutionsListAsAdmin(adminN8n, ctx);
+	await deps.a11y.check('page', { page: adminN8n.page });
 }

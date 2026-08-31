@@ -197,6 +197,11 @@ Buckets: `page` (whole document), `canvas`, `ndv`, `node-creator`, `sidebar`,
 `modal`. Defined in `fixtures/a11y.ts` (`A11Y_BUCKETS`). Scans run with WCAG 2.1
 A + AA rules; override per call with `a11y.check('modal', { tags, disableRules })`.
 
+Checks are non-blocking by default and attach an `accessibility-report.html` to
+the Playwright result. Set `A11Y_VIOLATION_THRESHOLD` to a non-negative integer
+to fail a test when the combined number of violations from its checks exceeds
+that value.
+
 ## Test Isolation
 
 Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.

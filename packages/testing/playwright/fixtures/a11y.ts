@@ -1,6 +1,8 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import type { Fixtures, Page } from '@playwright/test';
 import type { Result, TagValue } from 'axe-core';
+import { createHtmlReport } from 'axe-html-reporter';
+import { writeFile } from 'node:fs/promises';
 
 import type { n8nPage } from '../pages/n8nPage';
 
@@ -34,6 +36,8 @@ export type A11yCheckOptions = {
 	tags?: TagValue[];
 	/** Rule ids to skip for this scan, e.g. a known-broken third party widget. */
 	disableRules?: string[];
+	/** Page to scan when a journey uses an isolated browser context. */
+	page?: Page;
 };
 
 type AnalyzeParams = {
@@ -62,6 +66,10 @@ const analyzeWithAxe: A11yAnalyzer = async ({ page, include, tags, disableRules 
  * Callers decide what to do with the violations they get back.
  */
 export class A11yChecker {
+	private readonly violations: A11yViolation[] = [];
+	private completedChecks = 0;
+	private reportUrl: string | undefined;
+
 	constructor(
 		private readonly page: Page,
 		private readonly analyze: A11yAnalyzer = analyzeWithAxe,
@@ -69,19 +77,50 @@ export class A11yChecker {
 
 	async check(bucket: A11yBucket, options: A11yCheckOptions = {}): Promise<A11yViolation[]> {
 		const include = A11Y_BUCKETS[bucket];
+		const page = options.page ?? this.page;
 
 		try {
 			const { violations } = await this.analyze({
-				page: this.page,
+				page,
 				include,
 				tags: options.tags ?? DEFAULT_A11Y_TAGS,
 				disableRules: options.disableRules ?? [],
 			});
+			this.completedChecks++;
+			this.reportUrl = page.url();
+			this.violations.push(...violations);
 			return violations;
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error);
 			console.warn(`[a11y] Scan of bucket "${bucket}" did not run: ${reason}`);
 			return [];
+		}
+	}
+
+	createReport(): string | undefined {
+		if (this.completedChecks === 0) return undefined;
+
+		return createHtmlReport({
+			results: { violations: this.violations, url: this.reportUrl },
+			options: {
+				doNotCreateReportFile: true,
+				customSummary: `${this.violations.length} accessibility violation(s) found`,
+			},
+		});
+	}
+
+	enforceViolationThreshold(rawThreshold = process.env.A11Y_VIOLATION_THRESHOLD): void {
+		if (rawThreshold === undefined || rawThreshold === '') return;
+
+		const threshold = Number(rawThreshold);
+		if (!Number.isInteger(threshold) || threshold < 0) {
+			throw new Error('A11Y_VIOLATION_THRESHOLD must be a non-negative integer');
+		}
+
+		if (this.violations.length > threshold) {
+			throw new Error(
+				`Accessibility violations (${this.violations.length}) exceeded A11Y_VIOLATION_THRESHOLD (${threshold})`,
+			);
 		}
 	}
 }
@@ -98,7 +137,17 @@ type A11yFixtureDeps = {
  * Accessibility fixture. Spread into `test.extend()` to expose `a11y.check(bucket)`.
  */
 export const a11yFixtures: Fixtures<A11yTestFixtures & A11yFixtureDeps> = {
-	a11y: async ({ n8n }, use) => {
-		await use(new A11yChecker(n8n.page));
+	a11y: async ({ n8n }, use, testInfo) => {
+		const checker = new A11yChecker(n8n.page);
+		await use(checker);
+
+		const report = checker.createReport();
+		if (report) {
+			const reportPath = testInfo.outputPath('accessibility-report.html');
+			await writeFile(reportPath, report);
+			await testInfo.attach('accessibility-report.html', { path: reportPath });
+		}
+
+		checker.enforceViolationThreshold();
 	},
 };
