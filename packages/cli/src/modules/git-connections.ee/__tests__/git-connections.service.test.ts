@@ -13,7 +13,6 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import type { EventService } from '@/events/event.service';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -40,7 +39,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const cipher = mock<Cipher>();
 	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/tmp/n8n' });
-	const eventService = mock<EventService>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -53,7 +51,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 		n8nPackagesService,
 		cipher,
 		instanceSettings,
-		eventService,
 		logger,
 	);
 
@@ -271,7 +268,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				mock<InstanceSettings>({ n8nFolder }),
-				eventService,
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -665,7 +661,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				mock<InstanceSettings>({ n8nFolder }),
-				eventService,
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -748,12 +743,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 			const result = await importService.pull('1', actor);
 
 			expect(projectService.deleteProject).toHaveBeenCalledWith(actor, 'removed');
-			expect(eventService.emit).toHaveBeenCalledWith('team-project-deleted', {
-				userId: actor.id,
-				role: actor.role.slug,
-				projectId: 'removed',
-				removalType: 'delete',
-			});
 			expect(result.counts.projects.deleted).toBe(1);
 		});
 

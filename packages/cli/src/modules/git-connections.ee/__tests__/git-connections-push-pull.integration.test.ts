@@ -20,7 +20,6 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -53,7 +52,6 @@ let connectionProjectRepository: GitConnectionProjectRepository;
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
 let packagesService: N8nPackagesService;
-let eventService: EventService;
 let owner: User;
 let testRoot: string;
 let service: GitConnectionsService;
@@ -67,7 +65,6 @@ beforeAll(async () => {
 	projectRepository = Container.get(ProjectRepository);
 	projectService = Container.get(ProjectService);
 	packagesService = Container.get(N8nPackagesService);
-	eventService = Container.get(EventService);
 
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	licenseMocker.setDefaults({
@@ -109,7 +106,6 @@ beforeEach(async () => {
 		packagesService,
 		cipher,
 		instanceSettings,
-		eventService,
 		logger,
 	);
 });

@@ -20,7 +20,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	DataTableMissingMode,
@@ -104,7 +103,6 @@ export class GitConnectionsService {
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly cipher: Cipher,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly eventService: EventService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('git-connections');
@@ -409,12 +407,6 @@ export class GitConnectionsService {
 
 		for (const projectId of removedProjectIds) {
 			await this.projectService.deleteProject(actor, projectId);
-			this.eventService.emit('team-project-deleted', {
-				userId: actor.id,
-				role: actor.role.slug,
-				projectId,
-				removalType: 'delete',
-			});
 		}
 
 		return { deletedProjectIds: removedProjectIds };
