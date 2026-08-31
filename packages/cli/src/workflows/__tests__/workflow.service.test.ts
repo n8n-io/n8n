@@ -1956,6 +1956,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2298,6 +2299,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2464,6 +2466,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2641,6 +2644,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
@@ -2740,6 +2744,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
 			);
 		});
 

@@ -49,6 +49,7 @@ describe('GET /workflows publicationStatus enrichment', () => {
 					versionId,
 					status: s.status,
 					errorMessage: s.errorMessage,
+					triggerKind: 'in-memory' as const,
 				})),
 			);
 		}
