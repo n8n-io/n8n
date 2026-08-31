@@ -13,7 +13,7 @@ clear, when to stay silent, what never to say — lives once in
 
 | Directory   | Agent    | Scope                                               |
 |-------------|----------|-----------------------------------------------------|
-| `security/` | Security | backend packages + nodes                            |
+| `security/` | Security | backend packages, nodes, and the frontend render surface |
 | `backend/`  | Backend  | `cli`, `@n8n/db`, `core`, `workflow`, node packages |
 | `frontend/` | Frontend | `packages/frontend`                                 |
 | `qa-dx/`    | QA & DX  | `.github`, `docker`, `scripts`, `patches`, `packages/testing`, the lint/test/TS config packages, baselines |

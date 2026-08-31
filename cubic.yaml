@@ -106,9 +106,9 @@ reviews:
         - .agents/review-rules/security/code-execution-and-sandboxing.md
         - .agents/review-rules/security/outbound-requests.md
         - .agents/review-rules/security/auth-and-access-control.md
+        - .agents/review-rules/security/rendering-untrusted-content.md
         - .agents/review-rules/security/credentials-and-secrets.md
         - .agents/review-rules/security/node-input-safety.md
-        - .agents/review-rules/security/data-and-infrastructure.md
       include:
         - packages/cli/**
         - packages/@n8n/db/**
@@ -116,15 +116,17 @@ reviews:
         - packages/workflow/**
         - packages/nodes-base/**
         - packages/@n8n/nodes-langchain/**
+        - packages/frontend/**
       exclude:
         - '**/__tests__/**'
         - '**/*.test.ts'
         - '**/*.spec.ts'
+        - '**/*.stories.ts'
         - '**/test/**'
       description: |-
         Flag security defects introduced by this PR, using the linked rules,
-        ordered by how often each class actually shows up. Community and custom
-        nodes carry a higher risk profile than official ones.
+        ordered by how often each class shows up. Community and custom nodes
+        carry a higher risk profile than official ones.
     - name: Backend
       file_paths:
         - .agents/review-rules/backend/controller-request-validation.md
@@ -161,7 +163,6 @@ reviews:
         - .agents/skills/design-system/SKILL.md
         - .agents/review-rules/frontend/design-system.md
         - .agents/review-rules/frontend/workflow-document-store.md
-        - .agents/review-rules/frontend/rendering-untrusted-content.md
         - .agents/review-rules/testing/coverage.md
       include:
         - packages/frontend/**
