@@ -206,7 +206,9 @@ describe('buildTranscriptFromEvents', () => {
 	});
 
 	describe('ask-user routing', () => {
-		const questions = [{ id: 'q1', question: 'Which channels?' }];
+		const questions = [
+			{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
+		];
 
 		it('renders ask-user from confirmation-request and skips the tool-call twin', () => {
 			const turns = buildTranscriptFromEvents({
@@ -222,7 +224,7 @@ describe('buildTranscriptFromEvents', () => {
 						'r1',
 						{
 							kind: 'questions' as const,
-							answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+							answers: [{ questionId: 'q1', selectedOptions: ['Teams'] }],
 						},
 					],
 				]),
@@ -231,8 +233,10 @@ describe('buildTranscriptFromEvents', () => {
 			expect(interactions).toHaveLength(1);
 			expect(interactions[0]).toMatchObject({
 				kind: 'ask-user',
-				questions: [{ id: 'q1', question: 'Which channels?' }],
-				answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+				questions: [
+					{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
+				],
+				answers: [{ questionId: 'q1', selectedOptions: ['Teams'] }],
 			});
 		});
 

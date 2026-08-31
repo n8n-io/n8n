@@ -97,6 +97,7 @@ export const LOCKFILE = 'pnpm-lock.yaml';
 export const MECHANICAL_PATHS = {
 	[LOCKFILE]: 'pnpm-regen',
 	'packages/frontend/editor-ui/data/node-popularity.json': 'take-master',
+	'packages/@n8n/instance-ai/src/tools/nodes/credential-setupability.json': 'take-master',
 	'.github/test-metrics/e2e-impact-map.json': 'take-master',
 };
 

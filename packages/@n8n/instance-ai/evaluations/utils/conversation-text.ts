@@ -235,9 +235,10 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 			}
 			const qs = interaction.questions
 				.map((q) => {
+					const type = q.type ? ` (${q.type})` : '';
 					const opts = q.options && q.options.length > 0 ? ` [${q.options.join(' / ')}]` : '';
 					const answer = answerByQId.get(q.id);
-					return `Q: ${q.question}${opts}${answer ? ` -> A: ${answer}` : ''}`;
+					return `Q${type}: ${q.question}${opts}${answer ? ` -> A: ${answer}` : ''}`;
 				})
 				.join(' | ');
 			return `Asked user: ${qs}`;

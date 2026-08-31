@@ -135,6 +135,7 @@ of the breaking removal on `3.x`.
    `master` is dropped as empty.
 3. Conflicts confined to **mechanical files** — tool-generated content with a deterministic
    resolution (`pnpm-lock.yaml`, `packages/frontend/editor-ui/data/node-popularity.json`,
+   `packages/@n8n/instance-ai/src/tools/nodes/credential-setupability.json`, and
    `.github/test-metrics/e2e-impact-map.json`) — are **auto-resolved during the replay**,
    exactly as a human resolver would: the lockfile is regenerated with
    `pnpm install --lockfile-only` (pnpm merges its own conflict markers), bot-maintained data
