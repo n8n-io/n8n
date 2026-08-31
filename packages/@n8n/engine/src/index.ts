@@ -94,5 +94,5 @@ export type {
 	TriggerOutputs,
 } from './execution';
 
-export { createDataSource, generateId, WorkflowExecution, WorkflowStepExecution } from './database';
+export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';
 export type { EngineStores } from './database';
