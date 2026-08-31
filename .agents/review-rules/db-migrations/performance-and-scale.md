@@ -20,4 +20,6 @@ Every index slows every write, so an index with no query to serve is a finding.
 But grep for the table and column first. Without that grep, say the query pattern
 is unverified.
 
-A nullable column with no backfill is cheap. Do not comment on it.
+A nullable column with no backfill is cheap on Postgres. Do not comment on it.
+On SQLite it is cheap only when added with raw `ALTER TABLE ADD COLUMN`. The DSL
+`addColumns` recreates the whole table. On a hot table, flag that.

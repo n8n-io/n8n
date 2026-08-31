@@ -32,7 +32,8 @@ Also flag:
 - a missing primary key, or one unlike the adjacent tables;
 - a default that is wrong for existing rows;
 - an enum-like string with no CHECK constraint;
-- an index on a boolean, or one that repeats a unique constraint;
+- a standalone index on a boolean, or one that repeats a unique constraint. A
+  partial index with a `WHERE` clause is correct. Do not flag it;
 - an ID type that does not match the column it joins to.
 
 Read the entity in `packages/@n8n/db/src/entities/`. Its type, nullability,
