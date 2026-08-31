@@ -556,6 +556,18 @@ describe('AMQP Trigger Node', () => {
 			});
 		});
 
+		it('should not reopen the receiver when the link reattaches before the timer fires', async () => {
+			await startTrigger();
+
+			vi.useFakeTimers();
+			forceDetach();
+			// a connection-level reconnect can reattach the link while the timer is pending
+			eventHandlers['receiver_open']({ receiver: { add_credit: vi.fn() } });
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(1);
+		});
+
 		it('should leave a connection-level disconnect to rhea, which reattaches links itself', async () => {
 			await startTrigger();
 
@@ -650,7 +662,7 @@ describe('AMQP Trigger Node', () => {
 		});
 
 		it('should report an error instead of reopening when reconnect is disabled', async () => {
-			const { emitError } = await startTrigger({ reconnect: false });
+			const { emitError, logger } = await startTrigger({ reconnect: false });
 
 			vi.useFakeTimers();
 			forceDetach();
@@ -658,6 +670,11 @@ describe('AMQP Trigger Node', () => {
 
 			expect(mockOpenReceiver).toHaveBeenCalledTimes(1);
 			expect(emitError).toHaveBeenCalledWith(expect.any(NodeOperationError));
+			// the peer's reason is most valuable on the detach that is not recoverable
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('detached'), {
+				condition: 'amqp:link:detach-forced',
+				description: 'Idle timeout: 00:10:00',
+			});
 		});
 
 		it('should not reopen the receiver after the trigger was closed', async () => {

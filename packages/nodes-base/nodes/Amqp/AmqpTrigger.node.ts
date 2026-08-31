@@ -181,6 +181,9 @@ export class AmqpTrigger implements INodeType {
 			// rhea sets reconnecting: false once it has exhausted reconnect_limit, and
 			// leaves it unset when reconnect is off - either way nothing will come back
 			if (!containerReconnect || context.reconnecting === false) {
+				this.logger.error('AMQP connection was lost and will not be reconnected', {
+					error: context.error?.message,
+				});
 				this.emitError(
 					new NodeOperationError(
 						this.getNode(),
@@ -195,6 +198,9 @@ export class AmqpTrigger implements INodeType {
 			receiver = context.receiver;
 			receiverReady = true;
 			reattachAttempts = 0;
+			// a link is attached, so a still pending reattach would open a second one
+			clearTimeout(reattachTimer);
+			reattachTimer = undefined;
 			// on reconnect, executions from before the disconnect may still hold slots
 			context.receiver?.add_credit(Math.max(0, pullMessagesNumber - inFlightMessages));
 		});
@@ -297,6 +303,7 @@ export class AmqpTrigger implements INodeType {
 			};
 
 			if (!canReattach()) {
+				this.logger.error('AMQP receiver link was detached and will not be reattached', detail);
 				this.emitError(
 					new NodeOperationError(
 						this.getNode(),
