@@ -61,6 +61,8 @@ export {
 	type PollerFailureState,
 	type PollerFullState,
 } from './poller-state.repository';
+export { TriggerRunnerRepository } from './trigger-runner.repository';
+export { WorkflowTriggerSeatRepository } from './workflow-trigger-seat.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';

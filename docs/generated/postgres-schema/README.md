@@ -115,6 +115,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
+| [public.trigger_runner](public.trigger_runner.md) | 4 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
 | [public.trusted_key_source](public.trusted_key_source.md) | 8 |  | BASE TABLE |
 | [public.user](public.user.md) | 15 |  | BASE TABLE |
@@ -138,6 +139,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 5 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
+| [public.workflow_trigger_seat](public.workflow_trigger_seat.md) | 15 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -1413,6 +1415,12 @@ erDiagram
   timestamp_3__with_time_zone expiresAt
   varchar_255_ jti
 }
+"public.trigger_runner" {
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone lastHeartbeatAt
+  varchar_255_ runnerId
+  timestamp_3__with_time_zone updatedAt
+}
 "public.trusted_key" {
   timestamp_3__with_time_zone createdAt
   text data
@@ -1633,6 +1641,23 @@ erDiagram
   smallint rootCountDelta
   varchar_36_ workflowId
   varchar_128_ workflowName
+}
+"public.workflow_trigger_seat" {
+  varchar_16_ actualState
+  varchar_36_ actualVersionId
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ desiredHolderId
+  varchar_16_ desiredState
+  varchar_36_ desiredVersionId
+  varchar_255_ holderId
+  bigint id
+  text lastError
+  integer leaseEpoch
+  timestamp_3__with_time_zone leaseExpiresAt
+  varchar_36_ nodeId
+  integer seatIndex
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId
 }
 "public.workflows_tags" {
   varchar_36_ tagId FK

@@ -55,6 +55,7 @@ import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
+import { TriggerRunner } from './trigger-runner';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
@@ -88,8 +89,23 @@ import {
 } from './workflow-review-request.ee';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
+import {
+	WorkflowTriggerSeat,
+	TriggerSeatDesiredStateList,
+	type TriggerSeatDesiredState,
+	TriggerSeatActualStateList,
+	type TriggerSeatActualState,
+	type TriggerSeatFence,
+} from './workflow-trigger-seat';
 
 export {
+	TriggerRunner,
+	WorkflowTriggerSeat,
+	TriggerSeatDesiredStateList,
+	type TriggerSeatDesiredState,
+	TriggerSeatActualStateList,
+	type TriggerSeatActualState,
+	type TriggerSeatFence,
 	AgentEvalDataset,
 	type AgentEvalColumnMapping,
 	AgentEvalRun,
@@ -235,6 +251,8 @@ export const entities = {
 	Role,
 	ScheduledJob,
 	ScheduledTask,
+	TriggerRunner,
+	WorkflowTriggerSeat,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

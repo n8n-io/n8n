@@ -115,6 +115,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [test_case_execution](test_case_execution.md) | 16 |  | table |
 | [test_run](test_run.md) | 16 |  | table |
 | [token_exchange_jti](token_exchange_jti.md) | 3 |  | table |
+| [trigger_runner](trigger_runner.md) | 4 |  | table |
 | [trusted_key](trusted_key.md) | 4 |  | table |
 | [trusted_key_source](trusted_key_source.md) | 8 |  | table |
 | [user](user.md) | 15 |  | table |
@@ -137,6 +138,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
 | [workflow_review_request_workflow](workflow_review_request_workflow.md) | 5 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
+| [workflow_trigger_seat](workflow_trigger_seat.md) | 15 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
 ## Relations
@@ -1402,6 +1404,12 @@ erDiagram
   datetime_3_ expiresAt
   varchar_255_ jti PK
 }
+"trigger_runner" {
+  datetime_3_ createdAt
+  datetime_3_ lastHeartbeatAt
+  varchar_255_ runnerId PK
+  datetime_3_ updatedAt
+}
 "trusted_key" {
   datetime_3_ createdAt
   TEXT data
@@ -1614,6 +1622,23 @@ erDiagram
   INTEGER rootCount
   VARCHAR_36_ workflowId
   VARCHAR_128_ workflowName
+}
+"workflow_trigger_seat" {
+  varchar_16_ actualState
+  varchar_36_ actualVersionId
+  datetime_3_ createdAt
+  varchar_255_ desiredHolderId
+  varchar_16_ desiredState
+  varchar_36_ desiredVersionId
+  varchar_255_ holderId
+  INTEGER id
+  TEXT lastError
+  INTEGER leaseEpoch
+  datetime_3_ leaseExpiresAt
+  varchar_36_ nodeId
+  INTEGER seatIndex
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
 }
 "workflows_tags" {
   INTEGER tagId PK
