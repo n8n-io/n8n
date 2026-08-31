@@ -463,6 +463,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			Container.get(WorkflowPublicationOutboxCleanupService).init();
 			Container.get(WorkflowPublicationReconciler).init();
+
+			if (this.globalConfig.workflows.useTriggerSeats) {
+				const { TriggerSeatReconciler } = await import(
+					'@/workflows/triggers/seats/trigger-seat-reconciler.js'
+				);
+				Container.get(TriggerSeatReconciler).init();
+			}
 		} else {
 			await this.activeWorkflowManager.init();
 		}

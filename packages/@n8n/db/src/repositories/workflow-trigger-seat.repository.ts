@@ -191,7 +191,11 @@ export class WorkflowTriggerSeatRepository extends BaseRepository<WorkflowTrigge
 		return result.affected === 1;
 	}
 
-	/** Vacates the seat without bumping the epoch. `false` means it wasn't ours. */
+	/**
+	 * Vacates the seat without bumping the epoch. `false` means it wasn't ours.
+	 * A pending handoff request survives the release, so the requester — not the
+	 * rendezvous ranking — claims the vacancy it asked for.
+	 */
 	async release(
 		seatId: string,
 		runnerId: string,
@@ -204,7 +208,6 @@ export class WorkflowTriggerSeatRepository extends BaseRepository<WorkflowTrigge
 			.set({
 				holderId: null,
 				leaseExpiresAt: null,
-				desiredHolderId: null,
 				updatedAt: () => dbNowLiteral(this.isPostgres),
 			} as QueryDeepPartialEntity<WorkflowTriggerSeat>)
 			.where({ id: seatId, holderId: runnerId, leaseEpoch })
