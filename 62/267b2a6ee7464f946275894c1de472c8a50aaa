@@ -1,0 +1,27 @@
+packages/@n8n/agents/src/__tests__/workspace/scoped-workspace.test.ts
+  s_f3e0cf8bc1e610::t_315688099c5ef6 74-86
+packages/@n8n/agents/src/workspace/scoped-workspace.ts
+  s_f3e0cf8bc1e610::t_c3490b93341eee 225-226
+  s_f3e0cf8bc1e610::t_dc10a7b000c9b0 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "62267b2a6ee7464f946275894c1de472c8a50aaa",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f3e0cf8bc1e610": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d29ad06f-d820-4c0a-a6df-11974076db34",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
