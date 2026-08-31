@@ -57,9 +57,9 @@ describe('ActivityEventRepository', () => {
 			resourceName: 'Lead enrichment',
 		});
 
-		const [entry] = await repository.findByResource('workflow', 'already-gone', 10);
+		const [entry] = await repository.findFeed({ projectIds: [project.id], limit: 10 });
 
-		expect(entry.action).toBe('deleted');
+		expect(entry).toMatchObject({ action: 'deleted', resourceId: 'already-gone' });
 	});
 
 	it('replaces oversized detail with a marker on the way into the column', async () => {

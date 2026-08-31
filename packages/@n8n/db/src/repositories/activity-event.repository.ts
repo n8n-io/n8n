@@ -104,24 +104,6 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		return await this.find({ where, order: { id: 'DESC' }, take: query.limit });
 	}
 
-	/**
-	 * Everything recorded about one resource, newest first — the history behind a single entry, and
-	 * the read `IDX_activity_event_resource` exists for.
-	 */
-	async findByResource(
-		resourceType: NonNullable<ActivityEvent['resourceType']>,
-		resourceId: string,
-		limit: number,
-	): Promise<ActivityEvent[]> {
-		if (isEmptyPage(limit)) return [];
-
-		return await this.find({
-			where: { resourceType, resourceId },
-			order: { id: 'DESC' },
-			take: limit,
-		});
-	}
-
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */
 	async deleteOlderThan(cutoff: Date): Promise<number> {
 		return await this.deleteInBatches(

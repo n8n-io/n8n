@@ -123,13 +123,6 @@ describe('ActivityEventRepository', () => {
 				expect(entityManager.find).not.toHaveBeenCalled();
 			},
 		);
-
-		it('reads nothing from a resource history asked for a zero limit', async () => {
-			const entries = await repository.findByResource('workflow', 'workflow1', 0);
-
-			expect(entries).toEqual([]);
-			expect(entityManager.find).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('deleteOlderThan', () => {

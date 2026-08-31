@@ -8,7 +8,7 @@ const PROJECT_TABLE = 'project';
  * Append-only feed of recent instance activity, written from the event bus and read as context for
  * the instance agent. Entries are pointers to resources rather than copies of them.
  */
-export class CreateActivityEventTable1787741452169 implements ReversibleMigration {
+export class CreateActivityEventTable1788190228940 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, createIndex, column }, tablePrefix }: MigrationContext) {
 		await createTable(ACTIVITY_TABLE)
 			.withColumns(
