@@ -2278,7 +2278,7 @@ describe('WorkflowService', () => {
 				),
 			).rejects.toThrow(violation);
 
-			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
 			expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
 		});
 

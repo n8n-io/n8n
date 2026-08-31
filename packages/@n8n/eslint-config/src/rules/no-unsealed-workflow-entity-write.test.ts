@@ -80,5 +80,16 @@ ruleTester.run('no-unsealed-workflow-entity-write', NoUnsealedWorkflowEntityWrit
 			filename: businessLogic,
 			errors: [{ messageId: 'unsealedWrite' }],
 		},
+		// A string-literal or computed `nodes` key is the same node write as `{ nodes }`.
+		{
+			code: "this.workflowRepository.update(id, { 'nodes': [] });",
+			filename: businessLogic,
+			errors: [{ messageId: 'unsealedWrite' }],
+		},
+		{
+			code: "this.workflowRepository.update(id, { ['nodes']: [] });",
+			filename: businessLogic,
+			errors: [{ messageId: 'unsealedWrite' }],
+		},
 	],
 });

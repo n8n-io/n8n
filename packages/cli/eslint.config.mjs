@@ -13,6 +13,12 @@ const acknowledgedProjectOwnedEntities = [
 const INSTANCE_AI_LAZY_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the Instance AI idle-memory guardrail.';
 
+const POLICY_INTERNAL_RESTRICTION = {
+	name: '@n8n/decorators/policy-internal',
+	message:
+		'Only PolicyEnforcementService may mint a policy clearance. Call enforce*/evaluate* instead.',
+};
+
 const instanceAiLazyRuntimeImports = [
 	'@joplin/turndown-plugin-gfm',
 	'@mozilla/readability',
@@ -46,15 +52,7 @@ export default defineConfig(
 			// Only PolicyEnforcementService may reach it; callers use enforce*/evaluate*.
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{
-					paths: [
-						{
-							name: '@n8n/decorators/policy-internal',
-							message:
-								'Only PolicyEnforcementService may mint a policy clearance. Call enforce*/evaluate* instead.',
-						},
-					],
-				},
+				{ paths: [POLICY_INTERNAL_RESTRICTION] },
 			],
 			'n8n-local-rules/project-owned-entity-transfer': [
 				'error',
@@ -185,7 +183,7 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: instanceAiLazyRuntimeImports },
+				{ paths: [POLICY_INTERNAL_RESTRICTION, ...instanceAiLazyRuntimeImports] },
 			],
 		},
 	},

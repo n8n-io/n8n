@@ -20,7 +20,10 @@ const receiverName = (node: TSESTree.Node): string | undefined => {
 const hasNodesKey = (node: TSESTree.Node) =>
 	node.type === 'ObjectExpression' &&
 	node.properties.some(
-		(p) => p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'nodes',
+		(p) =>
+			p.type === 'Property' &&
+			((p.key.type === 'Identifier' && p.key.name === 'nodes') ||
+				(p.key.type === 'Literal' && p.key.value === 'nodes')),
 	);
 
 /**
