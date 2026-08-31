@@ -847,6 +847,12 @@ describe('FixedCollectionParameterNew.vue', () => {
 								default: '',
 							},
 							{
+								displayName: 'Random Seed',
+								name: 'randomSeed',
+								type: 'number',
+								default: null,
+							},
+							{
 								displayName: 'Required Field',
 								name: 'requiredField',
 								type: 'boolean',
@@ -953,6 +959,47 @@ describe('FixedCollectionParameterNew.vue', () => {
 				const events = emitted('valueChanged');
 				expect(events).toBeDefined();
 				expect(events.length).toBeGreaterThan(0);
+			});
+		});
+
+		it('preserves optional values with null defaults when added', async () => {
+			const { getByTestId, emitted } = renderHideOptionalFields();
+			const picker = getByTestId('fixed-collection-add-property');
+			const button = picker.querySelector('button');
+
+			expect(button).toBeInTheDocument();
+
+			if (button) {
+				await userEvent.click(button);
+			}
+
+			await waitFor(async () => {
+				const options = document.querySelectorAll('[class*="itemContainer"]');
+				const randomSeedOption = Array.from(options).find((option) =>
+					option.textContent?.includes('Random Seed'),
+				);
+
+				expect(randomSeedOption).toBeDefined();
+
+				if (randomSeedOption) {
+					await userEvent.click(randomSeedOption);
+				}
+			});
+
+			await waitFor(() => {
+				const events = emitted('valueChanged');
+
+				expect(events).toBeDefined();
+				expect(events.length).toBeGreaterThan(0);
+
+				const lastEvent = events.at(-1);
+
+				expect(lastEvent).toEqual([
+					expect.objectContaining({
+						name: 'parameters.formFields.values[0].randomSeed',
+						value: null,
+					}),
+				]);
 			});
 		});
 

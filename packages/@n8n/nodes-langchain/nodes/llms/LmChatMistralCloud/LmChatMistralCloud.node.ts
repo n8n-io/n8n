@@ -171,7 +171,7 @@ export class LmChatMistralCloud implements INodeType {
 					{
 						displayName: 'Random Seed',
 						name: 'randomSeed',
-						default: undefined,
+						default: null,
 						type: 'number',
 						description:
 							'The seed to use for random sampling. If set, different calls will generate deterministic results.',
@@ -191,7 +191,7 @@ export class LmChatMistralCloud implements INodeType {
 			temperature: 0.7,
 			maxTokens: -1,
 			safeMode: false,
-			randomSeed: undefined,
+			randomSeed: null,
 		}) as Partial<ChatMistralAIInput>;
 
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
