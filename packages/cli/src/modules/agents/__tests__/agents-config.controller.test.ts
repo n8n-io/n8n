@@ -4,6 +4,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentToolMockService } from '../agent-tool-mock.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsConfigController } from '../agents-config.controller';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -22,6 +23,7 @@ describe('AgentsConfigController route access scopes', () => {
 		['putConfig', 'agent:update'],
 		['deleteTool', 'agent:update'],
 		['getValidation', 'agent:read'],
+		['generateToolMockData', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -36,6 +38,7 @@ describe('AgentsConfigController getValidation', () => {
 			mock<AgentConfigService>(),
 			mock<AgentCustomToolsService>(),
 			agentValidationService,
+			mock<AgentToolMockService>(),
 			mock<CredentialsService>(),
 			agentRepository,
 		);

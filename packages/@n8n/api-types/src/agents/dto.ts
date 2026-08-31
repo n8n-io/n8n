@@ -8,6 +8,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
+import type { AgentJsonConfig, AgentJsonNodeToolMockConfig } from './agent-json-config.schema';
 import { AgentVectorStoreConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
@@ -295,4 +296,32 @@ export interface VectorStoreTestResult {
 	success: boolean;
 	message?: string;
 	warning?: string;
+}
+
+/**
+ * Generate (or regenerate) stored mock output items for a node tool
+ * (AGENT-716). `toolName` matches a `type: 'node'` tool's `name` in the
+ * agent's config — node tool names are the tool identity there, there is no
+ * separate id. `source` records who triggered generation: the UI ('user') or
+ * the agent builder's `mock_tool` tool ('builder').
+ */
+export class GenerateAgentToolMockDto extends Z.class({
+	toolName: z.string().min(1),
+	source: z.enum(['user', 'builder']).optional().default('user'),
+}) {}
+
+/**
+ * Response for `POST /:agentId/tools/mock-data`. Mirrors
+ * `AgentConfigService.updateConfig`'s return shape (`config`/`updatedAt`/
+ * `versionId`) plus the generated mock itself, so callers can apply either
+ * the whole refreshed config or just the one tool's mock without a refetch.
+ */
+export interface GenerateAgentToolMockResult {
+	toolName: string;
+	mock: AgentJsonNodeToolMockConfig;
+	/** True when generation was unavailable/failed and a schema-derived placeholder item was stored instead. */
+	fallbackUsed: boolean;
+	config: AgentJsonConfig;
+	updatedAt: string;
+	versionId: string | null;
 }

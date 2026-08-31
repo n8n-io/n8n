@@ -1,15 +1,22 @@
-import { type AgentConfigValidationResponse, UpdateAgentConfigDto } from '@n8n/api-types';
+import {
+	type AgentConfigValidationResponse,
+	type GenerateAgentToolMockResult,
+	GenerateAgentToolMockDto,
+	UpdateAgentConfigDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, ProjectScope, Put, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Param, Post, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentConfigService } from './agent-config.service';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { AgentToolMockService } from './agent-tool-mock.service';
 import { AgentValidationService } from './agent-validation.service';
 import { AgentRepository } from './repositories/agent.repository';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsConfigController {
@@ -17,6 +24,7 @@ export class AgentsConfigController {
 		private readonly agentConfigService: AgentConfigService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentValidationService: AgentValidationService,
+		private readonly agentToolMockService: AgentToolMockService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
 	) {}
@@ -86,5 +94,29 @@ export class AgentsConfigController {
 			modifiedBy: 'user',
 		});
 		return { ok: true };
+	}
+
+	/**
+	 * Generate (or regenerate) stored mock output items for a node tool
+	 * (AGENT-716) and persist them on the tool's config. Reused by the tool
+	 * config modal's "Generate"/"Regenerate" actions and the builder's
+	 * `mock_tool` tool — the latter passes `source: 'builder'`.
+	 */
+	@Post('/:agentId/tools/mock-data')
+	@ProjectScope('agent:update')
+	async generateToolMockData(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: GenerateAgentToolMockDto,
+	): Promise<GenerateAgentToolMockResult> {
+		const { projectId } = req.params;
+		return await this.agentToolMockService.generateAndPersist(
+			agentId,
+			projectId,
+			payload.toolName,
+			req.user,
+			payload.source,
+		);
 	}
 }
