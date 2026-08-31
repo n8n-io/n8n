@@ -169,6 +169,20 @@ async function getWorkflowRunner(): Promise<WorkflowRunner> {
 	return Container.get(WorkflowRunner);
 }
 
+/**
+ * The access grants `filterToolsForUser` verified when it built a runtime's
+ * tool list. Its presence implies at least one node/workflow tool was kept,
+ * which always requires `workflow:execute` on the project. Cached runtimes
+ * re-check these grants periodically so access revoked after the build stops
+ * being honored (see `AgentRuntimeCacheService`).
+ */
+export interface UserToolAccessSnapshot {
+	/** Credential ids that passed a `credential:read` check. */
+	credentialIds: string[];
+	/** Workflow ids that passed a `workflow:execute` check. */
+	workflowIds: string[];
+}
+
 @Service()
 export class AgentRuntimeReconstructionService {
 	constructor(
@@ -204,7 +218,11 @@ export class AgentRuntimeReconstructionService {
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 		/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 		supportsHitl?: boolean,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	): Promise<{
+		agent: RuntimeAgent;
+		toolRegistry: ToolRegistry;
+		userToolAccessSnapshot?: UserToolAccessSnapshot;
+	}> {
 		let config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -215,11 +233,11 @@ export class AgentRuntimeReconstructionService {
 		// chat, resume, task-now), drop node/workflow tools the user can't
 		// execute or lacks credential/workflow access to before the runtime is
 		// built, so denied tools never reach the LLM or the executor.
+		let userToolAccessSnapshot: UserToolAccessSnapshot | undefined;
 		if (user && config.tools?.length) {
-			config = {
-				...config,
-				tools: await this.filterToolsForUser(config.tools, agentEntity.projectId, user),
-			};
+			const filtered = await this.filterToolsForUser(config.tools, agentEntity.projectId, user);
+			config = { ...config, tools: filtered.tools };
+			userToolAccessSnapshot = filtered.snapshot;
 		}
 
 		const toolsByName: Record<string, string> = {};
@@ -234,7 +252,7 @@ export class AgentRuntimeReconstructionService {
 			agentEntity.projectId,
 		);
 
-		return await this.reconstructRuntime({
+		const runtime = await this.reconstructRuntime({
 			config,
 			memoryOwnerAgentId: agentEntity.id,
 			projectId: agentEntity.projectId,
@@ -254,6 +272,10 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 			sandboxPrincipalHash,
 		});
+		return {
+			...runtime,
+			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
+		};
 	}
 
 	/**
@@ -269,10 +291,13 @@ export class AgentRuntimeReconstructionService {
 		tools: AgentJsonToolConfig[],
 		projectId: string,
 		user: User,
-	): Promise<AgentJsonToolConfig[]> {
+	): Promise<{ tools: AgentJsonToolConfig[]; snapshot?: UserToolAccessSnapshot }> {
 		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
 
 		const filtered: AgentJsonToolConfig[] = [];
+		const grantedCredentialIds = new Set<string>();
+		const grantedWorkflowIds = new Set<string>();
+		let keptGatedTool = false;
 		for (const ref of tools) {
 			if (ref.type === 'custom') {
 				filtered.push(ref);
@@ -296,6 +321,8 @@ export class AgentRuntimeReconstructionService {
 				);
 				if (accessibleCredentials.some((credential) => credential === null)) continue;
 
+				for (const id of credentialIds) grantedCredentialIds.add(id);
+				keptGatedTool = true;
 				filtered.push(ref);
 				continue;
 			}
@@ -311,10 +338,52 @@ export class AgentRuntimeReconstructionService {
 			);
 			if (!accessibleWorkflow) continue;
 
+			grantedWorkflowIds.add(workflow.id);
+			keptGatedTool = true;
 			filtered.push(ref);
 		}
 
-		return filtered;
+		return {
+			tools: filtered,
+			...(keptGatedTool
+				? {
+						snapshot: {
+							credentialIds: [...grantedCredentialIds],
+							workflowIds: [...grantedWorkflowIds],
+						},
+					}
+				: {}),
+		};
+	}
+
+	/**
+	 * Re-run the access checks recorded in `snapshot` against current DB state.
+	 * Returns false when any grant no longer holds — a runtime built from that
+	 * snapshot is over-privileged and must be rebuilt so its tool list is
+	 * re-filtered.
+	 */
+	async userStillHasToolAccess(
+		snapshot: UserToolAccessSnapshot,
+		projectId: string,
+		user: User,
+	): Promise<boolean> {
+		if (!(await userHasScopes(user, ['workflow:execute'], false, { projectId }))) return false;
+
+		const credentials = await Promise.all(
+			snapshot.credentialIds.map(
+				async (id) =>
+					await this.credentialsFinderService.findCredentialForUser(id, user, ['credential:read']),
+			),
+		);
+		if (credentials.some((credential) => credential === null)) return false;
+
+		const workflows = await Promise.all(
+			snapshot.workflowIds.map(
+				async (id) =>
+					await this.workflowFinderService.findWorkflowForUser(id, user, ['workflow:execute']),
+			),
+		);
+		return workflows.every((workflow) => Boolean(workflow));
 	}
 
 	/**
@@ -333,10 +402,10 @@ export class AgentRuntimeReconstructionService {
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = params.config;
 		if (params.user && config.tools?.length) {
-			config = {
-				...config,
-				tools: await this.filterToolsForUser(config.tools, params.projectId, params.user),
-			};
+			// Sub-agent runtimes are built per delegation and never cached, so the
+			// grant snapshot is not needed here.
+			const filtered = await this.filterToolsForUser(config.tools, params.projectId, params.user);
+			config = { ...config, tools: filtered.tools };
 		}
 
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(config, params.projectId);
