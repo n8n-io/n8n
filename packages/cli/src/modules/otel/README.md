@@ -135,3 +135,39 @@ Start n8n & point it at the jaeger instance
 cd packages/cli
 N8N_OTEL_ENABLED=true N8N_OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 pnpm run dev
 ```
+
+### Wire protocol (OTLP/HTTP vs OTLP/gRPC)
+
+`N8N_OTEL_EXPORTER_OTLP_PROTOCOL` selects how spans are delivered. It mirrors the
+upstream `OTEL_EXPORTER_OTLP_PROTOCOL` spec and accepts:
+
+| Value                     | Exporter                                   | Conventional port |
+| ------------------------- | ------------------------------------------ | ----------------- |
+| `http/protobuf` (default) | `@opentelemetry/exporter-trace-otlp-proto` | 4318              |
+| `grpc`                    | `@opentelemetry/exporter-trace-otlp-grpc`  | 4317              |
+
+```
+cd packages/cli
+N8N_OTEL_ENABLED=true \
+  N8N_OTEL_EXPORTER_OTLP_PROTOCOL=grpc \
+  N8N_OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317 \
+  pnpm run dev
+```
+
+Notes:
+
+- Pick `grpc` only when the collector requires it (or for high span volume through
+  infrastructure that passes HTTP/2 through cleanly). `http/protobuf` traverses
+  proxies and firewalls more reliably and is easier to debug.
+- The endpoint scheme controls TLS for **both** protocols: `https://` uses TLS,
+  `http://` does not. There is no `grpc://` scheme.
+- gRPC endpoints take **no URL path**, so `N8N_OTEL_EXPORTER_OTLP_TRACING_PATH` is
+  ignored when the protocol is `grpc`.
+- `N8N_OTEL_EXPORTER_OTLP_HEADERS` entries are sent as gRPC metadata. Keys are
+  lowercased (gRPC metadata keys are lowercase ASCII); an entry grpc-js rejects is
+  skipped with a warning instead of failing startup.
+- The startup connectivity check is a plain TCP connect for `grpc` (an HTTP `HEAD`
+  request is meaningless against an HTTP/2-only server). It proves the port is
+  open, not that OTLP/gRPC is served there — use "Send test trace" in
+  Settings → OpenTelemetry for the real check.
+- Custom CAs and mTLS are not configurable beyond `NODE_EXTRA_CA_CERTS`.

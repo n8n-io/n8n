@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { context, diag, metrics, propagation, trace } from '@opentelemetry/api';
+import { OTLPTraceExporter as OTLPGrpcTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
 import { mock } from 'vitest-mock-extended';
@@ -21,9 +22,54 @@ const outboundHttp = {
 	transport: () => ({ asCustomFetch: () => fetchMock }),
 } as unknown as OutboundHttp;
 
+// The TCP connectivity check for gRPC endpoints, obtained via net.connect().
+// Hoisted because `node:net` is imported statically by the service under test.
+const { netConnect } = vi.hoisted(() => ({ netConnect: vi.fn() }));
+
+type SocketListener = (arg?: unknown) => void;
+
+/** Fake `net.Socket` whose `connect`/`error`/`timeout` events the test drives. */
+function createFakeSocket() {
+	const listeners = new Map<string, SocketListener[]>();
+	const socket = {
+		once: vi.fn((event: string, listener: SocketListener) => {
+			listeners.set(event, [...(listeners.get(event) ?? []), listener]);
+			return socket;
+		}),
+		setTimeout: vi.fn(),
+		destroy: vi.fn(),
+	};
+	return {
+		socket,
+		emit(event: string, arg?: unknown) {
+			const registered = listeners.get(event) ?? [];
+			listeners.set(event, []); // `once` semantics: fire at most once
+			for (const listener of registered) listener(arg);
+		},
+	};
+}
+
+const { metadataEntries, MetadataMock } = vi.hoisted(() => {
+	const entries = new Map<string, string>();
+	const legalKey = /^[:0-9a-z_.-]+$/;
+
+	/** Stand-in for grpc-js `Metadata`, mirroring its key validation. */
+	class MetadataMock {
+		set(key: string, value: string) {
+			if (!legalKey.test(key)) {
+				throw new Error(`Metadata key "${key}" contains illegal characters`);
+			}
+			entries.set(key, value);
+		}
+	}
+
+	return { metadataEntries: entries, MetadataMock };
+});
+
 // Per-test control of what the throwaway exporter reports back, plus span/shutdown spies.
 let mockExportImpl: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) => void;
 const mockExporterShutdown = vi.fn().mockResolvedValue(undefined);
+const mockGrpcExporterShutdown = vi.fn().mockResolvedValue(undefined);
 const mockProviderShutdown = vi.fn().mockResolvedValue(undefined);
 const mockSpanEnd = vi.fn();
 const mockStartSpan = vi.fn();
@@ -47,6 +93,20 @@ vi.mock('@opentelemetry/exporter-trace-otlp-proto', () => ({
 		};
 	}),
 }));
+
+vi.mock('@opentelemetry/exporter-trace-otlp-grpc', () => ({
+	OTLPTraceExporter: vi.fn().mockImplementation(function () {
+		return {
+			export: (spans: unknown[], resultCallback: (result: { error?: Error }) => void) =>
+				mockExportImpl(spans, resultCallback),
+			shutdown: mockGrpcExporterShutdown,
+		};
+	}),
+}));
+
+vi.mock('@grpc/grpc-js', () => ({ Metadata: MetadataMock }));
+
+vi.mock('node:net', () => ({ connect: netConnect }));
 
 vi.mock('@opentelemetry/sdk-trace-base', () => ({
 	BasicTracerProvider: vi.fn().mockImplementation(function (config: {
@@ -98,6 +158,12 @@ const enabledSettings: OtelConfig = {
 
 const disabledSettings: OtelConfig = { ...enabledSettings, enabled: false };
 
+const grpcSettings: OtelConfig = {
+	...enabledSettings,
+	exporterProtocol: 'grpc',
+	exporterEndpoint: 'http://collector.example.com:4317',
+};
+
 async function flushPromises() {
 	return await new Promise<void>((resolve) => setImmediate(resolve));
 }
@@ -107,13 +173,17 @@ describe('OtelService', () => {
 	let instanceSettings: ReturnType<typeof mock<InstanceSettings>>;
 	let logger: ReturnType<typeof mock<Logger>>;
 	let service: OtelService;
+	let fakeSocket: ReturnType<typeof createFakeSocket>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		metadataEntries.clear();
 		otelSettingsService = mock<OtelSettingsService>();
 		instanceSettings = mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' });
 		logger = mock<Logger>();
 		fetchMock.mockResolvedValue({ ok: true });
+		fakeSocket = createFakeSocket();
+		netConnect.mockReturnValue(fakeSocket.socket);
 		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp);
 	});
 
@@ -134,6 +204,23 @@ describe('OtelService', () => {
 			expect(start).toHaveBeenCalledTimes(1);
 		});
 
+		it('builds the HTTP exporter with the traces path and no gRPC exporter', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...enabledSettings,
+				exporterHeaders: 'auth=token',
+			});
+
+			await service.init();
+
+			expect(OTLPTraceExporter).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'http://localhost:4318/v1/traces',
+					headers: { auth: 'token' },
+				}),
+			);
+			expect(OTLPGrpcTraceExporter).not.toHaveBeenCalled();
+		});
+
 		it('logs connectivity failure and still finishes startup', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
@@ -145,6 +232,123 @@ describe('OtelService', () => {
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
 				expect.objectContaining({ endpoint: 'http://localhost:4318/v1/traces' }),
+			);
+		});
+	});
+
+	describe('gRPC protocol', () => {
+		it('builds the gRPC exporter with the endpoint as-is and never the HTTP one', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+
+			await service.init();
+
+			expect(OTLPGrpcTraceExporter).toHaveBeenCalledWith(
+				expect.objectContaining({ url: 'http://collector.example.com:4317' }),
+			);
+			expect(OTLPTraceExporter).not.toHaveBeenCalled();
+			expect(start).toHaveBeenCalledTimes(1);
+		});
+
+		it('converts exporter headers into lowercased gRPC metadata', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...grpcSettings,
+				exporterHeaders: 'Authorization=Bearer abc,x-tenant=acme',
+			});
+
+			await service.init();
+
+			expect(OTLPGrpcTraceExporter).toHaveBeenCalledWith(
+				expect.objectContaining({ metadata: expect.any(MetadataMock) }),
+			);
+			expect(Object.fromEntries(metadataEntries)).toEqual({
+				authorization: 'Bearer abc',
+				'x-tenant': 'acme',
+			});
+		});
+
+		it('warns and skips metadata keys that grpc-js rejects', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...grpcSettings,
+				exporterHeaders: 'bad key=value,x-tenant=acme',
+			});
+
+			await service.init();
+
+			expect(Object.fromEntries(metadataEntries)).toEqual({ 'x-tenant': 'acme' });
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('bad key'));
+			expect(start).toHaveBeenCalledTimes(1);
+		});
+
+		it('probes the endpoint over TCP instead of HTTP', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+
+			await service.init();
+			fakeSocket.emit('connect');
+			await flushPromises();
+
+			expect(netConnect).toHaveBeenCalledWith({ host: 'collector.example.com', port: 4317 });
+			expect(fakeSocket.socket.setTimeout).toHaveBeenCalledWith(2_000);
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(fakeSocket.socket.destroy).toHaveBeenCalledTimes(1);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('defaults to port 4317 when the endpoint carries no port', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...grpcSettings,
+				exporterEndpoint: 'https://collector.example.com',
+			});
+
+			await service.init();
+			fakeSocket.emit('connect');
+			await flushPromises();
+
+			expect(netConnect).toHaveBeenCalledWith({ host: 'collector.example.com', port: 4317 });
+		});
+
+		it('logs a single connectivity failure when the TCP connect is refused', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+
+			await service.init();
+			fakeSocket.emit('error', new Error('connect ECONNREFUSED'));
+			fakeSocket.emit('timeout');
+			await flushPromises();
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
+				{ endpoint: 'http://collector.example.com:4317', error: 'connect ECONNREFUSED' },
+			);
+			expect(fakeSocket.socket.destroy).toHaveBeenCalledTimes(1);
+		});
+
+		it('logs a connectivity failure when the TCP connect times out', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+
+			await service.init();
+			fakeSocket.emit('timeout');
+			await flushPromises();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
+				expect.objectContaining({ error: expect.stringContaining('timed out') }),
+			);
+		});
+
+		it('logs a connectivity failure instead of throwing when the endpoint is unparseable', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...grpcSettings,
+				exporterEndpoint: 'not a valid endpoint',
+			});
+
+			await service.init();
+			await flushPromises();
+
+			expect(netConnect).not.toHaveBeenCalled();
+			expect(start).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
+				expect.objectContaining({ endpoint: 'not a valid endpoint' }),
 			);
 		});
 	});
@@ -370,6 +574,52 @@ describe('OtelService', () => {
 
 			expect(BasicTracerProvider).toHaveBeenCalledTimes(1);
 			expect(start).not.toHaveBeenCalled();
+		});
+
+		describe('over gRPC', () => {
+			const grpcConnection: OtelConnectionParams = {
+				...connection,
+				exporterProtocol: 'grpc',
+				exporterEndpoint: 'https://collector.example.com:4317',
+			};
+
+			it('builds the gRPC exporter with the endpoint as-is, metadata and supplied timeout', async () => {
+				await service.sendTestTrace(grpcConnection);
+
+				expect(OTLPGrpcTraceExporter).toHaveBeenCalledWith({
+					url: 'https://collector.example.com:4317',
+					metadata: expect.any(MetadataMock),
+					timeoutMillis: 3_000,
+				});
+				expect(Object.fromEntries(metadataEntries)).toEqual({ auth: 'token' });
+				expect(OTLPTraceExporter).not.toHaveBeenCalled();
+			});
+
+			it('returns success when the gRPC exporter reports no error', async () => {
+				const result = await service.sendTestTrace(grpcConnection);
+
+				expect(result).toEqual({ success: true });
+			});
+
+			it("returns failure with the gRPC exporter's error message", async () => {
+				mockExportImpl = (_spans, resultCallback) =>
+					resultCallback({ error: new Error('14 UNAVAILABLE: No connection established') });
+
+				const result = await service.sendTestTrace(grpcConnection);
+
+				expect(result).toEqual({
+					success: false,
+					error: '14 UNAVAILABLE: No connection established',
+				});
+			});
+
+			it('shuts down the throwaway provider and gRPC exporter when done', async () => {
+				await service.sendTestTrace(grpcConnection);
+
+				expect(mockProviderShutdown).toHaveBeenCalledTimes(1);
+				expect(mockGrpcExporterShutdown).toHaveBeenCalledTimes(1);
+				expect(mockExporterShutdown).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

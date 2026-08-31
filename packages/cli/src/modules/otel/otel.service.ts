@@ -1,3 +1,4 @@
+import type { Metadata } from '@grpc/grpc-js';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
@@ -9,19 +10,40 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
 	BasicTracerProvider,
 	type ReadableSpan,
+	type SpanExporter,
 	type SpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
+import { connect } from 'node:net';
 
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
+import type { OtlpProtocol } from './otel.constants';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
 
 import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
+
+/** Connection parameters plus an optional per-export deadline. */
+type OtelExporterParams = OtelConnectionParams & { timeoutMillis?: number };
+
+/** What the startup connectivity check dials, and how. */
+type OtlpProbeTarget = { protocol: OtlpProtocol; url: string };
+
+/**
+ * Conventional OTLP/gRPC port, used by the startup probe when the endpoint URL
+ * carries none. This deliberately diverges from the exporter, which hands
+ * grpc-js `URL.host` and lets its resolver default to 443 — and since `URL.host`
+ * elides a scheme's default port, `http://host:80` and `https://host:443` also
+ * reach the probe port-less. The probe is advisory (an open port is not proof of
+ * an OTLP service); the test trace is the real check, so don't align one side of
+ * this divergence without the other.
+ */
+const DEFAULT_OTLP_GRPC_PORT = 4317;
 
 @Service()
 export class OtelService {
@@ -38,30 +60,26 @@ export class OtelService {
 
 	async init(): Promise<void> {
 		const settings = await this.otelSettingsService.loadSettings();
-		this.start(settings);
+		await this.start(settings);
 	}
 
 	async restart(): Promise<void> {
 		await this.shutdown();
 		const settings = await this.otelSettingsService.loadSettings();
-		this.start(settings);
+		await this.start(settings);
 	}
 
 	/**
 	 * Sends a single `n8n.test_trace` span to the given OTLP endpoint and waits
 	 * for the exporter's result. Unlike the long-running SDK (which batches spans
 	 * fire-and-forget), this uses a throwaway provider/exporter so the collector's
-	 * response — success, an HTTP rejection, or a network error — can be reported
-	 * back to the caller. Runs independently of the active OTel configuration.
+	 * response — success, a rejection (HTTP status or gRPC status code), or a
+	 * network error — can be reported back to the caller. Runs independently of
+	 * the active OTel configuration.
 	 */
 	async sendTestTrace(connection: OtelConnectionParams): Promise<OtelTestTraceResult> {
-		const url = this.buildOtlpTracesUrl(
-			connection.exporterEndpoint,
-			connection.exporterTracingPath,
-		);
-		const exporter = new OTLPTraceExporter({
-			url,
-			headers: this.parseOtlpHeaders(connection.exporterHeaders),
+		const exporter = await this.createTraceExporter({
+			...connection,
 			timeoutMillis: connection.startupConnectivityTimeoutMs,
 		});
 
@@ -100,15 +118,13 @@ export class OtelService {
 		}
 	}
 
-	private start(settings: OtelConfig): void {
+	private async start(settings: OtelConfig): Promise<void> {
 		this.hasLoggedStartupConnectivityFailure = false;
 		if (!settings.enabled) return;
 
 		this.configureDiagnosticsLogger();
-		void this.checkEndpointReachability(
-			this.startSdk(settings),
-			settings.startupConnectivityTimeoutMs,
-		);
+		const probeTarget = await this.startSdk(settings);
+		void this.checkEndpointReachability(probeTarget, settings.startupConnectivityTimeoutMs);
 	}
 
 	async shutdown(): Promise<void> {
@@ -124,12 +140,8 @@ export class OtelService {
 		metrics?.disable();
 	}
 
-	private startSdk(settings: OtelConfig): string {
-		const otlpTracesUrl = this.buildOtlpTracesUrl(
-			settings.exporterEndpoint,
-			settings.exporterTracingPath,
-		);
-		const otlpHeaders = this.parseOtlpHeaders(settings.exporterHeaders);
+	private async startSdk(settings: OtelConfig): Promise<OtlpProbeTarget> {
+		const traceExporter = await this.createTraceExporter(settings);
 
 		this.sdk = new NodeSDK({
 			resource: resourceFromAttributes({
@@ -138,15 +150,72 @@ export class OtelService {
 				[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
 				[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 			}),
-			traceExporter: new OTLPTraceExporter({
-				url: otlpTracesUrl,
-				headers: otlpHeaders,
-			}),
+			traceExporter,
 			sampler: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 		});
 
 		this.sdk.start();
-		return otlpTracesUrl;
+		return { protocol: settings.exporterProtocol, url: this.resolveExporterUrl(settings) };
+	}
+
+	/**
+	 * Builds the OTLP trace exporter for the configured wire protocol. The gRPC
+	 * exporter and grpc-js are imported lazily so instances on the default
+	 * HTTP/protobuf protocol never load grpc-js and its HTTP/2 stack.
+	 */
+	private async createTraceExporter(connection: OtelExporterParams): Promise<SpanExporter> {
+		const headers = this.parseOtlpHeaders(connection.exporterHeaders);
+		const url = this.resolveExporterUrl(connection);
+
+		if (connection.exporterProtocol === 'grpc') {
+			const [{ OTLPTraceExporter: OTLPGrpcTraceExporter }, { Metadata }] = await Promise.all([
+				import('@opentelemetry/exporter-trace-otlp-grpc'),
+				import('@grpc/grpc-js'),
+			]);
+
+			return new OTLPGrpcTraceExporter({
+				url,
+				metadata: this.toGrpcMetadata(headers, new Metadata()),
+				timeoutMillis: connection.timeoutMillis,
+			});
+		}
+
+		return new OTLPTraceExporter({ url, headers, timeoutMillis: connection.timeoutMillis });
+	}
+
+	/**
+	 * Where spans are sent: the traces path is appended for HTTP, while gRPC
+	 * endpoints are used as-is — gRPC carries no URL path and the exporter
+	 * derives TLS from the scheme (`https://` → SSL, `http://` → insecure).
+	 */
+	private resolveExporterUrl(
+		connection: Pick<
+			OtelConnectionParams,
+			'exporterProtocol' | 'exporterEndpoint' | 'exporterTracingPath'
+		>,
+	): string {
+		return connection.exporterProtocol === 'grpc'
+			? connection.exporterEndpoint
+			: this.buildOtlpTracesUrl(connection.exporterEndpoint, connection.exporterTracingPath);
+	}
+
+	/**
+	 * Copies parsed OTLP headers into gRPC metadata. Keys are lowercased because
+	 * gRPC metadata keys are lowercase ASCII, and grpc-js throws on anything it
+	 * considers illegal — since headers can come from an env var, an unusable
+	 * entry is skipped with a warning rather than failing startup.
+	 */
+	private toGrpcMetadata(headers: Record<string, string>, metadata: Metadata): Metadata {
+		for (const [key, value] of Object.entries(headers)) {
+			try {
+				metadata.set(key.toLowerCase(), value);
+			} catch (error) {
+				this.logger.warn(
+					`Skipping invalid OTEL exporter header "${key}": ${error instanceof Error ? error.message : String(error)}.`,
+				);
+			}
+		}
+		return metadata;
 	}
 
 	parseOtlpHeaders(headersToSplit: string): Record<string, string> {
@@ -196,25 +265,63 @@ export class OtelService {
 		return `${exporterEndpointWithoutTrailingSlash}${path}`;
 	}
 
-	private async checkEndpointReachability(url: string, timeoutMs: number): Promise<void> {
+	private async checkEndpointReachability(
+		target: OtlpProbeTarget,
+		timeoutMs: number,
+	): Promise<void> {
 		try {
-			// HEAD is used for a cheap connectivity check (no request/response body).
-			// OTLP endpoints are POST-only, so this will often return 4xx, but any
-			// HTTP response means the server is reachable. We only catch network errors.
-			// SSRF is disabled: the OTLP endpoint is admin-configured observability
-			// infrastructure and is commonly an internal/localhost collector.
-			await this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' }).asCustomFetch()(url, {
-				method: 'HEAD',
-				signal: AbortSignal.timeout(timeoutMs),
-			});
+			if (target.protocol === 'grpc') {
+				await this.probeTcpPort(target.url, timeoutMs);
+			} else {
+				await this.probeHttpEndpoint(target.url, timeoutMs);
+			}
 		} catch (error) {
 			if (this.hasLoggedStartupConnectivityFailure) return;
 			this.hasLoggedStartupConnectivityFailure = true;
 
 			this.logger.error('Failed to connect to OpenTelemetry OTLP endpoint during startup', {
-				endpoint: url,
+				endpoint: target.url,
 				error: error instanceof Error ? error.message : String(error),
 			});
+		}
+	}
+
+	private async probeHttpEndpoint(url: string, timeoutMs: number): Promise<void> {
+		// HEAD is used for a cheap connectivity check (no request/response body).
+		// OTLP endpoints are POST-only, so this will often return 4xx, but any
+		// HTTP response means the server is reachable. We only catch network errors.
+		// SSRF is disabled: the OTLP endpoint is admin-configured observability
+		// infrastructure and is commonly an internal/localhost collector.
+		await this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' }).asCustomFetch()(url, {
+			method: 'HEAD',
+			signal: AbortSignal.timeout(timeoutMs),
+		});
+	}
+
+	/**
+	 * Opens and immediately closes a TCP connection to the collector. An HTTP HEAD
+	 * request is useless against a gRPC server (fetch speaks HTTP/1.1, gRPC needs
+	 * HTTP/2), so we only check that the port accepts connections. This does not
+	 * prove OTLP/gRPC is served there — "Send test trace" remains the real check.
+	 */
+	private async probeTcpPort(endpoint: string, timeoutMs: number): Promise<void> {
+		const { hostname, port } = new URL(endpoint);
+		const socket = connect({
+			host: hostname,
+			port: port ? Number(port) : DEFAULT_OTLP_GRPC_PORT,
+		});
+		socket.setTimeout(timeoutMs);
+
+		try {
+			await new Promise<void>((resolve, reject) => {
+				socket.once('connect', () => resolve());
+				socket.once('error', (error: Error) => reject(error));
+				socket.once('timeout', () =>
+					reject(new OperationalError(`Connection timed out after ${timeoutMs}ms`)),
+				);
+			});
+		} finally {
+			socket.destroy();
 		}
 	}
 }
