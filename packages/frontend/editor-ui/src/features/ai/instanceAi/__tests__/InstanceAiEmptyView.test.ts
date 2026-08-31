@@ -456,6 +456,7 @@ describe('InstanceAiEmptyView', () => {
 			sendMessage: vi.fn().mockResolvedValue(true),
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
+		store.deleteThread.mockResolvedValue(true);
 		store.creditsQuota = 100;
 		store.showCreditWarning = false;
 		store.quotaLocked = false;
@@ -913,7 +914,26 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
 		// syncThread already persisted the thread and sendMessage opened its SSE; leaving
 		// them behind would strand a blank sidebar entry and an EventSource per attempt.
-		expect(store.deleteThread).toHaveBeenCalledWith('thread-placeholder');
+		// Silent: the refusal was already reported, so a second toast would only confuse.
+		expect(store.deleteThread).toHaveBeenCalledWith('thread-placeholder', { silent: true });
+		expect(store.disposeRuntime).not.toHaveBeenCalled();
+	});
+
+	// A refused delete returns before the store's own teardown, so the SSE would otherwise
+	// stay open -- the exact leak this cleanup exists to prevent.
+	it('still disposes the runtime when the cleanup delete is refused', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		vi.mocked(thread.sendMessage).mockResolvedValue(false);
+		store.deleteThread.mockResolvedValue(false);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+		await nextTick();
+
+		expect(store.disposeRuntime).toHaveBeenCalledWith('thread-placeholder');
+		// The draft still comes back: cleanup must never cost the user their message.
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
 	});
 
 	it('keeps the provisional thread when the send is accepted', async () => {

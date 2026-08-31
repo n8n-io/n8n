@@ -521,9 +521,17 @@ async function handleSubmit(
 		// an EventSource open behind it (deleting disposes the runtime, which closes it).
 		// Discarding it also keeps the server's view matching what the user was just told: if
 		// a run did start but its response never arrived, this tears it down rather than
-		// leaving it burning credits on a conversation they believe never began. Fired after
+		// leaving it burning credits on a conversation they believe never began. Runs after
 		// the restore is queued so cleanup can never delay giving the draft back.
-		void store.deleteThread(threadId);
+		//
+		// Silent because the refusal was already reported; a second "delete failed" for
+		// cleanup the user never asked for would only confuse. A refused delete returns
+		// early, before the store's own teardown, so dispose the runtime here -- the thread
+		// itself does still exist and rightly stays listed, but its EventSource was opened
+		// for a turn that never started and nothing else would ever close it.
+		if (!(await store.deleteThread(threadId, { silent: true }))) {
+			store.disposeRuntime(threadId);
+		}
 		return;
 	}
 
