@@ -260,7 +260,7 @@ runs:
     # build job stays green; Linux/Blacksmith jobs keep remote caching.
     - name: Configure Turborepo Cache
       if: steps.turbo-server.outputs.running != 'true' && runner.os != 'Windows'
-      uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+      uses: rharkor/caching-for-turbo@2238fae6eb9a9936f92356f54cb3660200d105e7 # v2.5.1
       with:
         server-port: 0
 
