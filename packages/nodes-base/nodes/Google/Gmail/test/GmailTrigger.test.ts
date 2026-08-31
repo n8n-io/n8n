@@ -1401,6 +1401,11 @@ describe('GmailTrigger', () => {
 			expect(response?.[0]).toHaveLength(2);
 			expect(response?.[0]?.[0]?.json?.id).toBe('A');
 			expect(response?.[0]?.[1]?.json?.id).toBe('B');
+			// This path returns before the end of poll(), so it needs its own
+			// simplify step — raw labelIds here would mean unsimplified output.
+			expect(response?.[0]?.[0]?.json.labels).toEqual([
+				{ id: 'testLabelId', name: 'Test Label Name' },
+			]);
 			// One pending ID remains
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['C']);
 			// possibleDuplicates includes the pre-existing entries plus drained IDs so
@@ -1796,39 +1801,6 @@ describe('GmailTrigger', () => {
 			);
 		});
 
-		it('should keep unfetched pending ids when a drain fetch fails', async () => {
-			// A transient error mid-drain is swallowed by poll()'s catch. An id
-			// removed from the stored queue before its fetch would be lost for good:
-			// pending ids sit behind an already-advanced cursor, so no re-list ever
-			// finds them again.
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': {
-					lastTimeChecked: 6_000_000_000,
-					pendingMessageIds: ['1', '2', '3'],
-				},
-			};
-
-			mockLabels();
-			mockGet('1', 1_000_000_000_000);
-			mockGetError('2');
-			// No mock for '3': the throw on '2' must stop the drain before it.
-
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
-				workflowStaticData,
-			});
-
-			// Only the message fetched before the error is delivered...
-			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
-			// ...and exactly the unfetched ids stay queued for the next poll.
-			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['2', '3']);
-			// The delivered id must leave the queue and join the boundary set,
-			// or the next poll would deliver it twice.
-			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
-				expect.arrayContaining(['1']),
-			);
-		});
-
 		it('should simplify output when a fetch fails mid-poll', async () => {
 			// A swallowed fetch error must not change the shape of what is
 			// delivered: with Simplify on, the messages fetched before the error
@@ -1895,7 +1867,7 @@ describe('GmailTrigger', () => {
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': {
 					lastTimeChecked: initialTimestamp,
-					pendingMessageIds: ['P1', 'P2'],
+					pendingMessageIds: ['P1', 'P2', 'P3'],
 					possibleDuplicates: ['X'],
 				},
 			};
@@ -1903,8 +1875,8 @@ describe('GmailTrigger', () => {
 			mockLabels();
 			mockGet('P1', 5_000_000_000_000);
 			mockGetError('P2');
-			// No list mocks: the throw precedes listing, so an unexpected list
-			// request must fail loudly.
+			// No mock for 'P3' and no list mocks: the throw on 'P2' must stop the
+			// drain before it, and listing must not be reached at all.
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
@@ -1913,10 +1885,12 @@ describe('GmailTrigger', () => {
 
 			// The message drained before the error is still delivered...
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['P1']);
-			// ...but the cursor must keep holding: P1's date (5000s) must not
-			// become the new boundary while the window was never listed.
+			// ...but the cursor must keep holding: P1's date (5e9 s, far past the
+			// 1e6 boundary) must not become the new cursor while the window was
+			// never listed.
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
-			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['P2']);
+			// Exactly the unfetched ids stay queued, the delivered one does not.
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['P2', 'P3']);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
 				expect.arrayContaining(['X', 'P1']),
 			);
@@ -2129,6 +2103,34 @@ describe('GmailTrigger', () => {
 			});
 
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
+			// The queue belongs to v1.4+; older versions must not persist one their
+			// own drain path would ignore.
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toBeUndefined();
+		});
+
+		it('should keep the beyond-budget remainder when a drain exactly consumed the budget', async () => {
+			// The drain empties the queue, so there is no early return, but it also
+			// leaves no budget: the fetch loop never runs, and only the pre-fetch
+			// queue write can save what the listing found.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					pendingMessageIds: ['P1', 'P2'],
+				},
+			};
+
+			mockLabels();
+			mockGet('P1', 2_000_000_000_000);
+			mockGet('P2', 2_000_000_000_000);
+			mockList(listPage(['1', '2']));
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['P1', 'P2']);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['1', '2']);
 		});
 
 		it('should give up holding and advance when the tracked-id bound is exceeded', async () => {
