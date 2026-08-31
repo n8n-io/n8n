@@ -1037,6 +1037,7 @@ describe('Kafka Utils', () => {
 			const validateUrl = vi.fn().mockResolvedValue(result);
 			const filter: NodeEgressFilter = {
 				validateUrl,
+				validateRedirectSync: vi.fn(),
 				createSecureLookup: () => lookup,
 			};
 			return { filter, lookup, validateUrl };

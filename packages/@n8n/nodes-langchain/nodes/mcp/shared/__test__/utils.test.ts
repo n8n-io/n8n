@@ -787,6 +787,7 @@ describe('utils', () => {
 				const secureLookup = vi.fn();
 				const egressFilter: NodeEgressFilter = {
 					validateUrl: vi.fn().mockResolvedValue(createResultError(new Error('Egress blocked'))),
+					validateRedirectSync: vi.fn(),
 					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
 				};
 
@@ -820,6 +821,7 @@ describe('utils', () => {
 				const secureLookup = vi.fn();
 				const egressFilter: NodeEgressFilter = {
 					validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+					validateRedirectSync: vi.fn(),
 					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
 				};
 
