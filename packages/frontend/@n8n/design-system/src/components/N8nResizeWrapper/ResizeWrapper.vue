@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 import { directionsCursorMaps, type Direction, type ResizeData } from '../../types';
 
@@ -42,14 +42,7 @@ interface ResizeProps {
 	scale?: number;
 	gridSize?: number;
 	supportedDirections?: Direction[];
-	outset?: boolean;
 	window?: Window;
-	/**
-	 * Visible affordance drawn on the edge handles (sides only, not corners), shown
-	 * on hover and while dragging. `line` spans the full edge, `grip` is a short
-	 * centered pill. Both widen the handle hit area, centered on the edge.
-	 */
-	handleIndicator?: 'line' | 'grip';
 }
 
 const props = withDefaults(defineProps<ResizeProps>(), {
@@ -62,13 +55,9 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	maxWidth: Number.POSITIVE_INFINITY,
 	scale: 1,
 	gridSize: 20,
-	outset: false,
 	window: undefined,
 	supportedDirections: () => [],
-	handleIndicator: undefined,
 });
-
-const $style = useCssModule();
 
 const emit = defineEmits<{
 	resizestart: [];
@@ -94,13 +83,6 @@ const state = {
 	x: ref(0),
 	y: ref(0),
 };
-
-const classes = computed(() => ({
-	[$style.resize]: true,
-	[$style.outset]: props.outset,
-	[$style.lineIndicator]: props.handleIndicator === 'line',
-	[$style.gripIndicator]: props.handleIndicator === 'grip',
-}));
 
 // Keeps the active handle's indicator visible while dragging, even when the
 // pointer drifts off the handle. state.dir is lowercased on mousedown.
@@ -209,7 +191,7 @@ const resizerMove = (event: MouseEvent) => {
 </script>
 
 <template>
-	<div :class="classes">
+	<div :class="$style.resize">
 		<div
 			v-for="direction in enabledDirections"
 			:key="direction"
@@ -229,8 +211,11 @@ const resizerMove = (event: MouseEvent) => {
 <style lang="scss" module>
 .resize {
 	--resizer--size: 4px;
-	--resizer--spacing--side: -2px;
+	--resizer--side--size: var(--spacing--2xs);
+	--resizer--spacing--side: calc(var(--resizer--side--size) / -2);
 	--resizer--spacing--corner: -3px;
+	--resizer--indicator--thickness: var(--spacing--4xs);
+	--resizer--indicator--color: light-dark(var(--color--neutral-250), var(--color--neutral-700));
 
 	position: relative;
 	width: 100%;
@@ -248,7 +233,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: 100%;
 	top: var(--resizer--spacing--side);
 	right: var(--resizer--spacing--side);
-	cursor: ew-resize;
+	cursor: col-resize;
 	border-color: var(--border-color);
 	border-color: var(--color--neutral-400);
 }
@@ -274,7 +259,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: 100%;
 	top: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ew-resize;
+	cursor: col-resize;
 }
 
 .topLeft {
@@ -309,100 +294,54 @@ const resizerMove = (event: MouseEvent) => {
 	cursor: se-resize;
 }
 
-.outset {
-	--resizer--spacing--side: calc(-1 * var(--resizer--size) + 2px);
-	--resizer--spacing--corner: calc(-1 * var(--resizer--size) + 3px);
+.right,
+.left {
+	top: 0;
+	width: var(--resizer--side--size);
 }
 
-/* Indicator variants: widen the side handles and center them on the edge,
-   and draw a visible affordance on hover / while dragging. Side handles
-   only — corners keep the invisible default. Kept after .outset so the
-   centered hit area wins when both are set. */
-.lineIndicator,
-.gripIndicator {
-	--resizer--side--size: var(--spacing--2xs);
-	--resizer--spacing--side: calc(var(--resizer--side--size) / -2);
-	--resizer--indicator--thickness: var(--spacing--5xs);
-	--resizer--indicator--length: var(--spacing--xl);
-	--resizer--indicator--color: light-dark(var(--color--neutral-250), var(--color--neutral-700));
+.top,
+.bottom {
+	left: 0;
+	height: var(--resizer--side--size);
+}
 
-	.right,
-	.left {
-		top: 0;
-		width: var(--resizer--side--size);
+.right,
+.left,
+.top,
+.bottom {
+	&::after {
+		content: '';
+		position: absolute;
+		border-radius: var(--radius--4xs);
+		background-color: var(--resizer--indicator--color);
+		opacity: 0;
+		transition: opacity var(--duration--snappy) var(--easing--ease-out);
+		pointer-events: none;
 	}
 
-	.top,
-	.bottom {
-		left: 0;
-		height: var(--resizer--side--size);
-	}
-
-	.right,
-	.left,
-	.top,
-	.bottom {
-		&::after {
-			content: '';
-			position: absolute;
-			border-radius: var(--radius--4xs);
-			background-color: var(--resizer--indicator--color);
-			opacity: 0;
-			transition: opacity var(--duration--snappy) var(--easing--ease-out);
-			pointer-events: none;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-
-		&.active::after {
-			opacity: 1;
-		}
+	&:hover::after,
+	&.active::after {
+		opacity: 1;
 	}
 }
 
-.lineIndicator {
-	.right::after,
-	.left::after {
-		top: 0;
-		bottom: 0;
-		left: 50%;
-		transform: translateX(-50%);
-		width: var(--resizer--indicator--thickness);
-	}
-
-	.top::after,
-	.bottom::after {
-		left: 0;
-		right: 0;
-		top: 50%;
-		transform: translateY(-50%);
-		height: var(--resizer--indicator--thickness);
-	}
+.right::after,
+.left::after {
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: var(--resizer--indicator--thickness);
 }
 
-.gripIndicator {
-	.right::after,
-	.left::after,
-	.top::after,
-	.bottom::after {
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-	}
-
-	.right::after,
-	.left::after {
-		width: var(--resizer--indicator--thickness);
-		height: var(--resizer--indicator--length);
-	}
-
-	.top::after,
-	.bottom::after {
-		width: var(--resizer--indicator--length);
-		height: var(--resizer--indicator--thickness);
-	}
+.top::after,
+.bottom::after {
+	left: 0;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	height: var(--resizer--indicator--thickness);
 }
 </style>
 

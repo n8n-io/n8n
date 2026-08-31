@@ -1325,8 +1325,6 @@ async function dismissComposerContextChip() {
 					:supported-directions="['left']"
 					:is-resizing-enabled="!isPreviewExpanded"
 					:grid-size="8"
-					:outset="true"
-					handle-indicator="grip"
 					@resize="handlePreviewResize"
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"

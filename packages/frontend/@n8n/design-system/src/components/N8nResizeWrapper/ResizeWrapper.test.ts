@@ -15,20 +15,8 @@ describe('N8nResizeWrapper', () => {
 		expect(getAllByTestId('resize-handle')).toHaveLength(2);
 	});
 
-	it('renders no indicator variant class by default', () => {
-		const { container } = renderComponent();
-
-		expect(container.firstElementChild?.className).not.toContain('Indicator');
-	});
-
-	it.each(['line', 'grip'] as const)('applies the %s indicator class', (variant) => {
-		const { container } = renderComponent({ handleIndicator: variant });
-
-		expect(container.firstElementChild?.className).toContain(`${variant}Indicator`);
-	});
-
 	it('marks the dragged handle active for the duration of the drag', async () => {
-		const { getByTestId, emitted } = renderComponent({ handleIndicator: 'line' });
+		const { getByTestId, emitted } = renderComponent();
 		const handle = getByTestId('resize-handle');
 
 		await fireEvent.mouseDown(handle, { pageX: 100, pageY: 100 });

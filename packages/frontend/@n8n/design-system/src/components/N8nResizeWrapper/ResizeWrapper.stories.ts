@@ -145,13 +145,5 @@ const IndicatorTemplate: StoryFn = (args) => ({
 export const LineIndicator = IndicatorTemplate.bind({});
 LineIndicator.args = {
 	...Resize.args,
-	handleIndicator: 'line',
-	supportedDirections: ['right', 'top', 'bottom', 'left'],
-};
-
-export const GripIndicator = IndicatorTemplate.bind({});
-GripIndicator.args = {
-	...Resize.args,
-	handleIndicator: 'grip',
 	supportedDirections: ['right', 'top', 'bottom', 'left'],
 };

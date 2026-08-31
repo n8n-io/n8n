@@ -819,7 +819,6 @@ onBeforeUnmount(() => {
 							[$style.webhookWaiting]: isExecutionWaitingForWebhook,
 						}"
 						:style="{ width: `${panelWidthPercentage.main}%` }"
-						outset
 						@resize="onResize"
 						@resizestart="onDragStart"
 						@resizeend="onDragEnd"
