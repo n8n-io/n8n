@@ -156,6 +156,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           build-command: pnpm build:n8n
           enable-docker-cache: 'true'
+          docker-cache-key: n8n-io/n8n
         env:
           RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -193,105 +194,36 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push n8n Docker image
-        id: build-n8n
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/n8n/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
-
-      - name: Build and push n8n -pc Docker image
-        id: build-n8n-pc
-        if: needs.determine-build-context.outputs.push_enabled == 'true' && steps.determine-tags.outputs.n8n_pc_tags != ''
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/n8n/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-            BUILDER_IMAGE=n8nio/node-pc:26.7.0-dev@sha256:c64642dcb9464e50bd08aef8504affafeb795d01aed2f7ab158976c334a36ef6
-            RUNTIME_IMAGE=n8nio/node-pc:26.7.0@sha256:6577d0742ad043baaa39db7dda2ce8aeb73f32c84eb241c49bf716f170c53297
-            IMAGE_DESCRIPTION=Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_pc_tags }}
-
-      - name: Kafka native binding smoke check
-        # `load: true` isn't an option here: with sbom:true, buildx produces a manifest
-        # list even for a single platform, and the docker exporter (what --load uses)
-        # can't materialize manifest lists locally. Pull the pushed image back instead.
-        if: needs.determine-build-context.outputs.push_enabled == 'true'
+      - name: Build and push Docker images
         env:
+          N8N_VERSION: ${{ needs.determine-build-context.outputs.n8n_version }}
+          N8N_RELEASE_TYPE: ${{ needs.determine-build-context.outputs.release_type }}
+          PLATFORMS: ${{ matrix.docker_platform }}
           N8N_TAGS: ${{ steps.determine-tags.outputs.n8n_tags }}
-        run: |
-          IMAGE_TAG=$(echo "$N8N_TAGS" | cut -d',' -f1)
-          docker pull "$IMAGE_TAG"
-          docker run --rm \
-            --entrypoint node \
-            -v "${{ github.workspace }}/.github/scripts/docker/kafka-native-smoke-check.mjs:/tmp/kafka-native-smoke-check.mjs:ro" \
-            "$IMAGE_TAG" \
-            /tmp/kafka-native-smoke-check.mjs
-
-      - name: Build and push task runners Docker image (Alpine)
-        id: build-runners
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/runners/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_tags }}
-
-      - name: Build and push task runners Docker image (distroless)
-        id: build-runners-distroless
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/runners/Dockerfile.distroless
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
-
-      - name: Runners interpreters smoke check
-        # The runtime stages assemble node/python by copying binaries across images,
-        # so a missing shared library only surfaces at exec time. Runs the exact
-        # interpreter paths the launcher config (n8n-task-runners.json) uses.
-        if: needs.determine-build-context.outputs.push_enabled == 'true'
-        env:
+          N8N_PC_TAGS: ${{ steps.determine-tags.outputs.n8n_pc_tags }}
           RUNNERS_TAGS: ${{ steps.determine-tags.outputs.runners_tags }}
           RUNNERS_DISTROLESS_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+          PUSH_ENABLED: ${{ needs.determine-build-context.outputs.push_enabled }}
         run: |
-          for TAGS in "$RUNNERS_TAGS" "$RUNNERS_DISTROLESS_TAGS"; do
-            IMAGE_TAG=$(echo "$TAGS" | cut -d',' -f1)
-            docker pull "$IMAGE_TAG"
-            docker run --rm --entrypoint /usr/local/bin/node "$IMAGE_TAG" --version
-            docker run --rm --entrypoint /opt/runners/task-runner-python/.venv/bin/python "$IMAGE_TAG" --version
-          done
+          TARGETS=(n8n runners runners-distroless)
+          if [ -n "$N8N_PC_TAGS" ] && [ "$PUSH_ENABLED" = 'true' ]; then
+            TARGETS+=(n8n-pc)
+          fi
+
+          # oci-mediatypes keeps the merged manifest an OCI image index. Older
+          # containerd cannot pull a Docker manifest list that has attestation
+          # manifests (#31997). create_multi_arch_manifest asserts the merged
+          # format before the release proceeds.
+          OUTPUT=()
+          if [ "$PUSH_ENABLED" = 'true' ]; then
+            OUTPUT=(--set '*.output=type=image,oci-mediatypes=true,push=true')
+          fi
+
+          docker buildx bake -f docker/docker-bake.hcl "${TARGETS[@]}" \
+            --provenance=false \
+            --sbom=false \
+            --metadata-file /tmp/bake-metadata.json \
+            "${OUTPUT[@]}"
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
@@ -378,6 +310,28 @@ jobs:
           create_manifest "runners (date)" "$RUNNERS_DATE_MANIFEST_TAG"
           create_manifest "runners-distroless (date)" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG"
 
+      # Gates the release on the format itself. 2.26.0 shipped as a Docker
+      # manifest list and every pull failed on older containerd (#31997). The
+      # exporter flags that keep this an OCI index live in the build job, but
+      # the merge happens here, so this is the only place the published shape
+      # can be asserted.
+      - name: Assert merged manifests are OCI image indexes
+        env:
+          RELEASE_TYPE: ${{ needs.determine-build-context.outputs.release_type }}
+          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
+          N8N_PC_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
+          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+          RUNNERS_DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+        run: |
+          set -euo pipefail
+          # Branch builds are amd64-only; everything else is amd64 + arm64.
+          if [[ "$RELEASE_TYPE" == "branch" ]]; then EXPECT=1; else EXPECT=2; fi
+
+          for TAG in "$N8N_TAG" "$N8N_PC_TAG" "$RUNNERS_TAG" "$RUNNERS_DISTROLESS_TAG"; do
+            [[ -n "$TAG" ]] || continue
+            node .github/scripts/docker/assert-manifest-format.mjs "$TAG" --expect-platforms "$EXPECT"
+          done
+
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
         env:
@@ -452,6 +406,43 @@ jobs:
           RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
           DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
+
+  # Execs the artifact that actually shipped. docker-build-smoke.yml runs the
+  # same checks, but against its own no-cache build of the branch tip - a
+  # different image, and its PR trigger deliberately skips pnpm-workspace.yaml,
+  # which is where the native deps are pinned. So a catalog bump of
+  # @confluentinc/kafka-javascript or isolated-vm reaches a published tag
+  # unexercised unless something pulls the pushed image back and runs it.
+  verify-pushed-images:
+    name: Verify Pushed Images
+    needs: [determine-build-context, create_multi_arch_manifest]
+    runs-on: ubuntu-latest
+    if: needs.create_multi_arch_manifest.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Installs only, no build: the script needs zx and yaml, not a compiled
+      # workspace. The image under test is pulled from the registry.
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: '26.7.0'
+          build-command: ''
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+
+      - name: Exec native bindings and runner interpreters
+        env:
+          SMOKE_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+          SMOKE_RUNNERS_IMAGES: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }},${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+          # The cloud-chart invocations need a token this job does not carry;
+          # the binding and interpreter execs are what guard the release.
+          SMOKE_SKIP_CLOUD: 'true'
+        run: node scripts/smoke-n8n-image.mjs
 
   call-success-url:
     name: Call Success URL
