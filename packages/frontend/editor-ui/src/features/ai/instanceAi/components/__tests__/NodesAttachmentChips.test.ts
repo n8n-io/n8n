@@ -6,6 +6,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { renderComponent } from '@/__tests__/render';
 import NodesAttachmentChips from '../NodesAttachmentChips.vue';
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
+import { sleep } from '@n8n/utils/sleep';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	useWorkflowDocumentStore,
@@ -23,7 +24,7 @@ const att = (sets: InstanceAiNodesAttachment['sets']): InstanceAiNodesAttachment
 });
 const nodeRefs = (...names: string[]) => names.map((name, i) => ({ id: `n${i}`, name }));
 // Flushes the macrotask handlePanelFocusOut defers its close check to.
-const flushFocusOutCheck = () => new Promise((resolve) => setTimeout(resolve, 0));
+const flushFocusOutCheck = () => sleep(0);
 
 describe('NodesAttachmentChips', () => {
 	beforeEach(() => setActivePinia(createPinia()));
