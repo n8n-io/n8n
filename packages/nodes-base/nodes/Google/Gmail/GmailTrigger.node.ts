@@ -30,11 +30,12 @@ import type {
 	MessageListResponse,
 } from './types';
 
-// Bounds one poll's list requests. Hitting the cap does not lose mail: the
-// leftover page token makes the poll hold the cursor (see poll below).
-const MAX_LIST_PAGES = 20;
+// Bounds how many pages one poll scans for new messages. Hitting the cap does
+// not lose mail: the leftover page token makes the poll hold the cursor (see
+// poll below).
+const MAX_SCAN_PAGES = 20;
 // Tracked-id count (pending + boundary ids) at which the poll stops holding
-// the cursor and accepts skipping any unlisted remainder.
+// the cursor and accepts skipping whatever it did not scan.
 const MAX_TRACKED_BACKLOG_IDS = 5_000;
 // Attempts a single message gets before the poll gives up on it. Failures here
 // cannot be told apart from rate limits, which this node does not retry on its
@@ -428,9 +429,9 @@ export class GmailTrigger implements INodeType {
 		};
 
 		// Pessimistic default: poll() swallows non-manual errors and still runs the
-		// cursor advance below, so a throw before or during listing must leave the
+		// cursor advance below, so a throw before or during the scan must leave the
 		// cursor held. Only an exhausted page token may set this true.
-		let windowFullyListed = false;
+		let windowFullyScanned = false;
 
 		try {
 			let budget = maxResults;
@@ -470,9 +471,9 @@ export class GmailTrigger implements INodeType {
 				nodeStaticData.failedFetches = [...retryLater, ...stillFailing];
 			}
 
-			// Process pending messages from a previous poll next. These are IDs
-			// listed but not fetched last time: beyond the maxResults budget, or left
-			// over when a fetch failed mid-poll.
+			// Process pending messages from a previous poll next. These are IDs a scan
+			// found but no poll fetched: beyond the maxResults budget, or left over when
+			// a fetch failed mid-poll.
 			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
 			if (shouldLimitMessages && pendingIds.length > 0 && budget > 0) {
 				const fetchQs = buildFetchQs();
@@ -489,7 +490,7 @@ export class GmailTrigger implements INodeType {
 						budget -= 1;
 					} catch (error) {
 						// Set the message aside instead of ending the tick: the rest of the
-						// queue, and the listing below, must still run. The error is logged
+						// queue, and the scan below, must still run. The error is logged
 						// here because it no longer reaches the catch at the end of poll().
 						this.logger.warn(`Gmail Trigger could not fetch message ${id}; will retry it`, {
 							node: node.name,
@@ -510,15 +511,13 @@ export class GmailTrigger implements INodeType {
 				}
 			}
 
-			// While queued IDs remain, don't list new messages yet.
+			// While queued IDs remain, don't scan for new messages yet.
 			if (shouldLimitMessages && (nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
 				await simplifyResponseData();
 
 				// This path returns before the state update at the end of poll(), so it
 				// records the boundary itself: Gmail's boundary-inclusive `after:` query
-				// would otherwise re-list what this poll just delivered. It runs after
-				// simplifying, because a poll that fails there delivers nothing and its
-				// ids must stay listable.
+				// would otherwise return again what this poll just delivered.
 				if (allFetchedMessages.length > 0) {
 					const merged = new Set([
 						...(nodeStaticData.possibleDuplicates ?? []),
@@ -530,7 +529,7 @@ export class GmailTrigger implements INodeType {
 				return responseData.length > 0 ? [responseData] : null;
 			}
 
-			// List new messages from Gmail.
+			// Scan Gmail for new messages.
 			const qs: IDataObject = {};
 			const allFilters: GmailTriggerFilters = { ...filters, receivedAfter: startDate };
 
@@ -551,7 +550,7 @@ export class GmailTrigger implements INodeType {
 
 			let messages: ListMessage[] = [];
 			let pageToken: string | undefined;
-			let pagesListed = 0;
+			let pagesScanned = 0;
 			do {
 				const messagesResponse: MessageListResponse = await googleApiRequest.call(
 					this,
@@ -562,12 +561,12 @@ export class GmailTrigger implements INodeType {
 				);
 				messages.push(...(messagesResponse.messages ?? []));
 				pageToken = messagesResponse.nextPageToken;
-				pagesListed++;
-			} while (shouldLimitMessages && pageToken && pagesListed < MAX_LIST_PAGES);
-			// A leftover token means the cap cut the listing short. Gmail lists newest
-			// first, so the remainder is older mail; a cursor moved past it would
-			// never list it again.
-			windowFullyListed = !pageToken;
+				pagesScanned++;
+			} while (shouldLimitMessages && pageToken && pagesScanned < MAX_SCAN_PAGES);
+			// A leftover token means the cap stopped the scan short. Gmail returns
+			// newest first, so the remainder is older mail; a cursor moved past it
+			// would never reach it again.
+			windowFullyScanned = !pageToken;
 
 			// Pagination can repeat an id across pages when the mailbox shifts
 			// between page fetches; one id must map to one delivery.
@@ -579,7 +578,7 @@ export class GmailTrigger implements INodeType {
 
 			// For v1.4+, filter out already-handled messages before fetching to save API
 			// calls. Gmail's `after:` query is inclusive at the second boundary, and a
-			// held cursor re-lists its whole window, so handled messages can reappear.
+			// held cursor re-scans its whole window, so handled messages can reappear.
 			if (shouldLimitMessages) {
 				// Set-aside ids are dropped along with the handled ones: that list
 				// already owns them and retries them every poll, so queueing them here
@@ -597,13 +596,13 @@ export class GmailTrigger implements INodeType {
 				}
 
 				if (!messages.length && !allFetchedMessages.length) {
-					// No-progress valve: the page cap cut the listing short, yet every
-					// reachable id is already tracked. Holding again would repeat this
+					// No-progress valve: the page cap stopped the scan short, yet every id
+					// it reached is already tracked. Holding again would repeat this
 					// tick forever — no backlog progress and no new mail. Give up loudly:
 					// jump the cursor to now and skip what the cap keeps unreachable.
-					if (!windowFullyListed) {
+					if (!windowFullyScanned) {
 						this.logger.warn(
-							'Gmail Trigger backlog cannot progress past the page cap; advancing past unlisted older messages',
+							'Gmail Trigger backlog cannot progress past the page cap; advancing past older messages it could not scan',
 							{ node: node.name },
 						);
 						nodeStaticData.lastTimeChecked = +now;
@@ -692,21 +691,22 @@ export class GmailTrigger implements INodeType {
 		}
 
 		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
-		if (shouldLimitMessages && !windowFullyListed) {
+		if (shouldLimitMessages && !windowFullyScanned) {
 			const trackedIds =
 				(nodeStaticData.pendingMessageIds?.length ?? 0) +
 				(nodeStaticData.possibleDuplicates?.length ?? 0) +
 				(nodeStaticData.failedFetches?.length ?? 0);
 			if (trackedIds < MAX_TRACKED_BACKLOG_IDS) {
-				// Unlisted older mail exists beyond the page cap. Hold the cursor so later
-				// polls can still list it. The possibleDuplicates update below keeps every
-				// handled id filterable, so the held-cursor re-list cannot re-emit them.
+				// Older mail sits beyond the page cap, unscanned. Hold the cursor so later
+				// polls can still reach it. The possibleDuplicates update below keeps every
+				// handled id filterable, so a re-scan under a held cursor cannot re-emit
+				// them.
 				effectiveLastTimeChecked = +startDate;
 			} else {
 				// Give-up valve: holding again would grow the tracked-id state without
-				// bound. Advance and accept skipping the unlisted older mail instead.
+				// bound. Advance and accept skipping the unscanned older mail instead.
 				this.logger.warn(
-					`Gmail Trigger backlog exceeds ${MAX_TRACKED_BACKLOG_IDS} tracked ids; advancing past unlisted older messages`,
+					`Gmail Trigger backlog exceeds ${MAX_TRACKED_BACKLOG_IDS} tracked ids; advancing past older messages it could not scan`,
 					{ node: node.name },
 				);
 			}
