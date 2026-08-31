@@ -3,6 +3,7 @@ import { UpdateOtelSettingsDto } from '../update-otel-settings.dto';
 
 const validSettings = {
 	enabled: true,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n',
@@ -48,6 +49,28 @@ describe('UpdateOtelSettingsDto', () => {
 		);
 	});
 
+	it.each(['http/protobuf', 'grpc'])('accepts the %s exporter protocol', (exporterProtocol) => {
+		const result = UpdateOtelSettingsDto.safeParse({ ...validSettings, exporterProtocol });
+
+		assert(result.success, `Expected ${exporterProtocol} to be a valid exporter protocol`);
+		expect(result.data.exporterProtocol).toBe(exporterProtocol);
+	});
+
+	it.each(['http/json', 'HTTP/PROTOBUF', 'http', 'gRPC', ''])(
+		'rejects %p as an exporter protocol',
+		(exporterProtocol) => {
+			const result = UpdateOtelSettingsDto.safeParse({ ...validSettings, exporterProtocol });
+
+			assert(!result.success, `Expected ${exporterProtocol} to be an invalid exporter protocol`);
+			expect(result.error.issues).toContainEqual(
+				expect.objectContaining({
+					code: 'invalid_enum_value',
+					path: ['exporterProtocol'],
+				}),
+			);
+		},
+	);
+
 	it('rejects a sample rate outside the 0..1 range', () => {
 		const result = UpdateOtelSettingsDto.safeParse({ ...validSettings, tracesSampleRate: 2 });
 
@@ -64,6 +87,7 @@ describe('UpdateOtelSettingsDto', () => {
 
 describe('TestOtelTraceDto', () => {
 	const validConnection = {
+		exporterProtocol: 'http/protobuf',
 		exporterEndpoint: 'http://localhost:4318',
 		exporterTracingPath: '/v1/traces',
 		exporterServiceName: 'n8n',
@@ -83,6 +107,32 @@ describe('TestOtelTraceDto', () => {
 	it('accepts a full connection body', () => {
 		const result = TestOtelTraceDto.safeParse(validConnection);
 		expect(result.success).toBe(true);
+	});
+
+	it('accepts a gRPC connection body', () => {
+		const result = TestOtelTraceDto.safeParse({
+			...validConnection,
+			exporterProtocol: 'grpc',
+			exporterEndpoint: 'http://localhost:4317',
+		});
+
+		assert(result.success, 'Expected a gRPC connection body to be valid');
+		expect(result.data.exporterProtocol).toBe('grpc');
+	});
+
+	it('rejects an unsupported exporter protocol', () => {
+		const result = TestOtelTraceDto.safeParse({
+			...validConnection,
+			exporterProtocol: 'http/json',
+		});
+
+		assert(!result.success, 'Expected validation to fail for an unsupported exporter protocol');
+		expect(result.error.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'invalid_enum_value',
+				path: ['exporterProtocol'],
+			}),
+		);
 	});
 
 	it('rejects an invalid exporter endpoint', () => {

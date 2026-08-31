@@ -12,6 +12,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 const validSettings = {
 	enabled: false,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://collector.example.com:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n-prod',
@@ -24,6 +25,7 @@ const validSettings = {
 };
 
 const testConnection = {
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://collector.example.com:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n-prod',
@@ -64,6 +66,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body).toMatchObject({
 				enabled: false,
+				exporterProtocol: 'http/protobuf',
 				exporterServiceName: 'n8n',
 				exporterTracingPath: '/v1/traces',
 			});
@@ -77,6 +80,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(Object.keys(response.body).sort()).toEqual(
 				[
 					'enabled',
+					'exporterProtocol',
 					'exporterEndpoint',
 					'exporterTracingPath',
 					'exporterServiceName',
@@ -167,6 +171,37 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(putResponse.status).toBe(200);
 			expect(putResponse.body.exporterServiceName).toBe('n8n-updated');
 			expect(putResponse.body.exporterHeaders).toBe(validSettings.exporterHeaders);
+		});
+
+		it('switches the exporter protocol to gRPC and back', async () => {
+			const grpc = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({
+					...validSettings,
+					exporterProtocol: 'grpc',
+					exporterEndpoint: 'http://collector.example.com:4317',
+				});
+			expect(grpc.status).toBe(200);
+			expect(grpc.body.exporterProtocol).toBe('grpc');
+			// The trace path is meaningless over gRPC but must survive the round-trip.
+			expect(grpc.body.exporterTracingPath).toBe(validSettings.exporterTracingPath);
+
+			const http = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(validSettings);
+			expect(http.status).toBe(200);
+			expect(http.body.exporterProtocol).toBe('http/protobuf');
+		});
+
+		it('rejects an unsupported exporter protocol with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, exporterProtocol: 'http/json' });
+
+			expect(response.status).toBe(400);
 		});
 
 		it('rejects a partial body with 400', async () => {

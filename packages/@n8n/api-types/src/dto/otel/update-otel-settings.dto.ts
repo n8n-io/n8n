@@ -4,7 +4,12 @@ import { Z } from '../../zod-class';
 
 export class UpdateOtelSettingsDto extends Z.class({
 	enabled: z.boolean(),
+	// Mirrors the upstream `OTEL_EXPORTER_OTLP_PROTOCOL` value strings. Redeclared
+	// here because api-types cannot import from the backend's otel module.
+	exporterProtocol: z.enum(['http/protobuf', 'grpc']),
 	exporterEndpoint: z.string().url(),
+	// Ignored when the protocol is gRPC (gRPC endpoints take no URL path), but
+	// still required so toggling protocols round-trips without losing the value.
 	exporterTracingPath: z.string(),
 	exporterServiceName: z.string().min(1),
 	exporterHeaders: z.string(),

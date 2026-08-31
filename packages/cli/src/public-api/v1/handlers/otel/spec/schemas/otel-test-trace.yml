@@ -4,12 +4,23 @@ description: >
   The connection details to test against an OTLP collector. Fields managed declaratively via
   environment variables are overridden with their effective value before the test is sent.
 required:
+  - exporterProtocol
   - exporterEndpoint
   - exporterTracingPath
   - exporterServiceName
   - exporterHeaders
   - startupConnectivityTimeoutMs
 properties:
+  exporterProtocol:
+    type: string
+    enum:
+      - http/protobuf
+      - grpc
+    description: >
+      The wire protocol used to send the test span. Collectors conventionally serve OTLP/HTTP on
+      port 4318 and OTLP/gRPC on port 4317. The endpoint scheme (`http://` or `https://`)
+      controls TLS for both protocols.
+    example: http/protobuf
   exporterEndpoint:
     type: string
     format: uri
@@ -17,7 +28,9 @@ properties:
     example: http://localhost:4318
   exporterTracingPath:
     type: string
-    description: The path appended to the endpoint for the OTLP traces signal.
+    description: >
+      The path appended to the endpoint for the OTLP traces signal. Ignored when
+      `exporterProtocol` is `grpc`, which takes no URL path.
     example: /v1/traces
   exporterServiceName:
     type: string

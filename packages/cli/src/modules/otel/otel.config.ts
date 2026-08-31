@@ -1,11 +1,22 @@
 import { Config, Env } from '@n8n/config';
+import { z } from 'zod';
 
-import { OTEL_ENV_VARS } from './otel.constants';
+import type { OtlpProtocol } from './otel.constants';
+import { OTEL_ENV_VARS, OTLP_PROTOCOLS } from './otel.constants';
+
+const otlpProtocolSchema = z.enum(OTLP_PROTOCOLS);
 
 @Config
 export class OtelConfig {
 	@Env(OTEL_ENV_VARS.enabled)
 	enabled: boolean = false;
+
+	/**
+	 * Wire protocol used to export spans. The endpoint scheme (`http://` vs
+	 * `https://`) controls TLS for both protocols; gRPC endpoints take no path.
+	 */
+	@Env(OTEL_ENV_VARS.exporterProtocol, otlpProtocolSchema)
+	exporterProtocol: OtlpProtocol = 'http/protobuf';
 
 	@Env(OTEL_ENV_VARS.exporterEndpoint)
 	exporterEndpoint: string = 'http://localhost:4318';

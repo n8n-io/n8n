@@ -84,6 +84,7 @@ vi.mock('@opentelemetry/api', async () => ({
 
 const enabledSettings: OtelConfig = {
 	enabled: true,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterHeaders: '',
@@ -312,6 +313,7 @@ describe('OtelService', () => {
 
 	describe('sendTestTrace', () => {
 		const connection: OtelConnectionParams = {
+			exporterProtocol: 'http/protobuf',
 			exporterEndpoint: 'https://collector.example.com',
 			exporterTracingPath: '/v1/traces',
 			exporterServiceName: 'n8n-prod',
