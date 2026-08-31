@@ -12,7 +12,6 @@
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | parentThreadId | varchar(128) |  | false |  |  |  |
-| projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | result | text |  | true |  |  | Final answer of a settled sub-agent job |
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
@@ -28,7 +27,6 @@
 | ---- | ---- | ---------- |
 | CHK_agent_background_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['subagent'::character varying, 'workflow'::character varying])::text[]))) |
 | CHK_agent_background_job_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))) |
-| FK_4c5abc8e465208c985f089e055e | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_d46c6f00730c2ef8bcb6ee24b67 | FOREIGN KEY | FOREIGN KEY ("parentAgentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_6e0db58281aa2b4c956dc0d58e9 | PRIMARY KEY | PRIMARY KEY (id) |
 | agent_background_job_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -36,7 +34,6 @@
 | agent_background_job_kind_not_null | n | NOT NULL kind |
 | agent_background_job_parentAgentId_not_null | n | NOT NULL "parentAgentId" |
 | agent_background_job_parentThreadId_not_null | n | NOT NULL "parentThreadId" |
-| agent_background_job_projectId_not_null | n | NOT NULL "projectId" |
 | agent_background_job_status_not_null | n | NOT NULL status |
 | agent_background_job_title_not_null | n | NOT NULL title |
 | agent_background_job_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -45,9 +42,11 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_adfb96f4e2e8f163da2615cd57 | CREATE INDEX "IDX_adfb96f4e2e8f163da2615cd57" ON public.agent_background_job USING btree ("parentThreadId") |
+| IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON public.agent_background_job USING btree ("parentThreadId", status) |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON public.agent_background_job USING btree ("childExecutionId") WHERE ("childExecutionId" IS NOT NULL) |
 | IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON public.agent_background_job USING btree ("timeoutAt") WHERE ((status)::text = 'running'::text) |
+| IDX_d46c6f00730c2ef8bcb6ee24b6 | CREATE INDEX "IDX_d46c6f00730c2ef8bcb6ee24b6" ON public.agent_background_job USING btree ("parentAgentId") |
+| IDX_e43e630272995a93dfeb94ab3e | CREATE INDEX "IDX_e43e630272995a93dfeb94ab3e" ON public.agent_background_job USING btree ("settledAt") |
 | PK_6e0db58281aa2b4c956dc0d58e9 | CREATE UNIQUE INDEX "PK_6e0db58281aa2b4c956dc0d58e9" ON public.agent_background_job USING btree (id) |
 
 ## Relations
@@ -56,7 +55,6 @@
 erDiagram
 
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
-"public.agent_background_job" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.agent_background_job" {
   varchar_36_ childExecutionId
@@ -67,7 +65,6 @@ erDiagram
   varchar_16_ kind
   varchar_36_ parentAgentId FK
   varchar_128_ parentThreadId
-  varchar_36_ projectId FK
   text result
   timestamp_3__with_time_zone settledAt
   varchar_16_ status
@@ -92,17 +89,6 @@ erDiagram
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
-}
-"public.project" {
-  timestamp_3__with_time_zone createdAt
-  uuid creatorId FK
-  json customTelemetryTags
-  varchar_512_ description
-  json icon
-  varchar_36_ id
-  varchar_255_ name
-  varchar_36_ type
-  timestamp_3__with_time_zone updatedAt
 }
 ```
 
