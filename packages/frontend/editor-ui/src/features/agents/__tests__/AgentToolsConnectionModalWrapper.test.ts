@@ -270,7 +270,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	it('configures the suggestion footer copy', () => {
 		render();
 
-		expect(modalAttrs['suggestion-prompt']).toBe('Need another capability');
+		expect(modalAttrs['suggestion-prompt']).toBe('Need another capability?');
 		expect(modalAttrs['suggestion-action']).toBe('Suggest a tool');
 		expect(modalAttrs['suggestion-link-source']).toEqual({
 			type: 'posthog',
