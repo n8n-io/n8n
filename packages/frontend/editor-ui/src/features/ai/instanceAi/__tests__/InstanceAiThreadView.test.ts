@@ -497,6 +497,7 @@ describe('InstanceAiThreadView', () => {
 			isStreaming: false,
 			isSendingMessage: false,
 			isAwaitingConfirmation: false,
+			hydrationStatus: 'ready',
 			isHydratingThread: false,
 			amendContext: null,
 			activePlanEdit: null,
@@ -866,6 +867,18 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(callOrder).toEqual(['loadThreadStatus', 'connectSSE']);
 		});
+	});
+
+	it('settles idle hydration without reconnecting an already-connected thread', async () => {
+		thread.hydrationStatus = 'idle';
+
+		renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
+		});
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		expect(thread.connectSSE).not.toHaveBeenCalled();
 	});
 
 	it('does not reconnect SSE when the runtime was replaced during status load', async () => {

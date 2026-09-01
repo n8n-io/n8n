@@ -785,6 +785,10 @@ async function syncRouteToStore() {
 	}
 	if (thread.sseState === 'disconnected') {
 		reconnectThreadAfterHydration();
+	} else if (thread.hydrationStatus === 'idle') {
+		// A newly created thread starts streaming before this view mounts. Settle
+		// hydration without replacing its live SSE connection.
+		void thread.loadHistoricalMessages();
 	}
 }
 
