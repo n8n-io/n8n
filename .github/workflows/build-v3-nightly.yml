@@ -196,4 +196,3 @@ jobs:
           promote "$N8N_IMAGE" "$N8N_DIGEST" "${DOCKER_BASE}/n8n" ""
           promote "$RUNNERS_IMAGE" "$RUNNERS_DIGEST" "${DOCKER_BASE}/runners" ""
           promote "$DISTROLESS_IMAGE" "$DISTROLESS_DIGEST" "${DOCKER_BASE}/runners" "-distroless"
-
