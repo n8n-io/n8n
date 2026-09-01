@@ -23,6 +23,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	createRunExecutionData,
 	ExecutionCancelledError,
@@ -50,6 +51,8 @@ import { ExternalHooks } from '@/external-hooks';
 import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import type { PoolConfigService } from '@/scaling/pool-config.service';
+import { DEFAULT_QUEUE_NAME } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
@@ -77,6 +80,8 @@ function flushResponse(res: { flush?: () => void }) {
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
+
+	private poolConfigService: PoolConfigService;
 
 	constructor(
 		private readonly logger: Logger,
@@ -528,6 +533,30 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		restartExecutionId?: string,
 	): Promise<void> {
+		if (!this.scalingService) {
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
+			this.scalingService = Container.get(ScalingService);
+			await this.scalingService.setupQueue();
+		}
+
+		if (!this.poolConfigService) {
+			const { PoolConfigService } = await import('@/scaling/pool-config.service.js');
+			this.poolConfigService = Container.get(PoolConfigService);
+		}
+
+		// A pool-resolution failure must not abort the execution: fall back to the default queue.
+		let queueName: string;
+		let poolName: string | undefined;
+		try {
+			({ queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data));
+		} catch (error) {
+			this.logger.warn(
+				`Failed to resolve worker pool for execution ${executionId}, falling back to default queue: ${ensureError(error).message}`,
+			);
+			queueName = DEFAULT_QUEUE_NAME;
+			poolName = undefined;
+		}
+
 		const jobData: JobData = {
 			workflowId,
 			executionId,
@@ -539,6 +568,7 @@ export class WorkflowRunner {
 			projectName: data.projectName,
 			// Carry the manual-execution identity for private credential resolution on the worker.
 			encryptedRunnerIdentity: data.encryptedRunnerIdentity,
+			poolName,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
@@ -548,18 +578,12 @@ export class WorkflowRunner {
 			mcpToolInput: data.mcpToolInput,
 		};
 
-		if (!this.scalingService) {
-			const { ScalingService } = await import('@/scaling/scaling.service.js');
-			this.scalingService = Container.get(ScalingService);
-			await this.scalingService.setupQueue();
-		}
-
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
+			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100, queueName });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 

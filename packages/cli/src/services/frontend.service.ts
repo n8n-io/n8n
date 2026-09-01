@@ -423,6 +423,9 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
+			workerPools: {
+				enabled: this.globalConfig.queue.workerPool.enabled,
+			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
