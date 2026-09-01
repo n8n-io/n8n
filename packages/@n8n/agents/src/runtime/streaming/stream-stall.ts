@@ -8,6 +8,11 @@
  * responses emit deltas continuously, so extended silence *between chunks* is
  * the reliable liveness signal the network layer cannot see. These helpers
  * fail the turn fast with a typed, user-explainable error instead.
+ *
+ * Liveness includes raw provider events (see `StreamSink.streamModelTurn`), so
+ * keepalives reset the deadline. Deliberate consequence: a middlebox that
+ * forwards parseable keepalive frames while its upstream is wedged keeps the
+ * turn alive until the network timeout — a false stall is judged worse.
  */
 
 /**
@@ -33,6 +38,13 @@ export const DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS = 3 * 60_000;
  */
 export const MAX_MODEL_STREAM_STALL_RETRIES = 1;
 
+/**
+ * Upper bound for the stall deadlines. Node's setTimeout clamps delays above
+ * 2^31-1 ms to 1 ms, so an unclamped "huge value to effectively disable"
+ * override would instead stall every turn immediately.
+ */
+export const MAX_MODEL_STREAM_TIMEOUT_MS = 2 ** 31 - 1;
+
 export class ModelStreamStallError extends Error {
 	constructor(idleMs: number) {
 		super(
@@ -57,11 +69,16 @@ function getChunkIterator<T>(
  * the underlying request (releasing the socket and settling the abandoned
  * read). The abandoned read's eventual rejection is swallowed — the stall
  * error is the one the caller reports.
+ *
+ * `getLastActivityAt` reports liveness the iterator cannot see (keepalive raw
+ * chunks consumed upstream of it): the deadline re-arms while that activity
+ * stays fresh instead of stalling.
  */
 export async function* withChunkIdleTimeout<T>(
 	source: AsyncIterable<T> | Iterable<T>,
 	getIdleMs: () => number,
 	onStall: () => void,
+	getLastActivityAt?: () => number,
 ): AsyncGenerator<T> {
 	const iterator = getChunkIterator(source);
 	try {
@@ -70,7 +87,7 @@ export async function* withChunkIdleTimeout<T>(
 			// If the deadline wins, the losing read settles later — without a
 			// handler its rejection would surface as an unhandled rejection.
 			next.catch(() => undefined);
-			const result = await raceWithStallDeadline(next, getIdleMs(), onStall);
+			const result = await raceWithStallDeadline(next, getIdleMs(), onStall, getLastActivityAt);
 			if (result.done) return;
 			yield result.value;
 		}
@@ -89,22 +106,37 @@ export async function* withChunkIdleTimeout<T>(
  * Await `promise` with the same stall deadline. Used for the SDK's post-stream
  * result promises (`finishReason`, `usage`, `response`, …), which settle
  * instantly on a healthy stream but would otherwise be an unguarded await.
+ *
+ * When `getLastActivityAt` is given, a deadline that fires while out-of-band
+ * activity is fresher than `idleMs` re-arms for the remainder instead of
+ * stalling.
  */
 export async function raceWithStallDeadline<T>(
 	promise: PromiseLike<T>,
 	idleMs: number,
 	onStall?: () => void,
+	getLastActivityAt?: () => number,
 ): Promise<T> {
 	let timer: NodeJS.Timeout | undefined;
 	try {
 		return await Promise.race([
 			promise,
 			new Promise<never>((_, reject) => {
-				timer = setTimeout(() => {
-					onStall?.();
-					reject(new ModelStreamStallError(idleMs));
-				}, idleMs);
-				timer.unref?.();
+				const arm = (delayMs: number) => {
+					timer = setTimeout(() => {
+						if (getLastActivityAt) {
+							const sinceActivity = Date.now() - getLastActivityAt();
+							if (sinceActivity < idleMs) {
+								arm(idleMs - sinceActivity);
+								return;
+							}
+						}
+						onStall?.();
+						reject(new ModelStreamStallError(idleMs));
+					}, delayMs);
+					timer.unref?.();
+				};
+				arm(idleMs);
 			}),
 		]);
 	} finally {

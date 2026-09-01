@@ -33,6 +33,24 @@ describe('decorators', () => {
 		);
 	});
 
+	it('should treat a set-but-blank number env value as unset', () => {
+		process.env.NUMBER_VALUE = '';
+		process.env.OPTIONAL_NUMBER_VALUE = '   ';
+
+		@Config
+		class TestConfig {
+			@Env('NUMBER_VALUE')
+			value: number = 42;
+
+			@Env('OPTIONAL_NUMBER_VALUE')
+			optionalValue?: number;
+		}
+
+		const config = Container.get(TestConfig);
+		expect(config.value).toBe(42);
+		expect(config.optionalValue).toBeUndefined();
+	});
+
 	it('should read value from _FILE env variable', () => {
 		const filePath = '/path/to/secret';
 		process.env.TEST_VALUE_FILE = filePath;

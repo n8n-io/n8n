@@ -1,6 +1,7 @@
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AiConfig } from '@n8n/config';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
@@ -24,6 +25,8 @@ import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gatew
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
+
+const aiConfigMock = mock<AiConfig>();
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -138,6 +141,7 @@ function makeService() {
 		agentRunTracingService,
 		executionLevelTracer,
 		nodeToolAiGatewayService,
+		aiConfigMock,
 	);
 
 	return {

@@ -31,6 +31,27 @@ export class AiConfig {
 	@Env('N8N_AI_AGENT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES')
 	maxAgentPassthroughBinarySizeBytes: number = 50 * 1024 * 1024;
 
+	/**
+	 * Max milliseconds of silence on an AI agent model stream once the turn has
+	 * started producing output, before the turn fails with a stall error. Raise
+	 * this when a proxy or gateway in front of the model buffers responses. Set
+	 * to 0 to disable stall detection entirely. Unset uses the agent runtime's
+	 * default (90 seconds).
+	 */
+	@Env('N8N_AI_MODEL_STREAM_IDLE_TIMEOUT_MS')
+	modelStreamIdleTimeoutMs?: number;
+
+	/**
+	 * Max milliseconds of silence before an AI agent model stream's first output
+	 * chunk. Longer than the idle timeout by design: large uncached prompts spend
+	 * minutes in prompt processing before the provider sends anything. The agent
+	 * runtime clamps it to at least the idle timeout, so 0 cannot disable it —
+	 * non-positive values are ignored. Unset uses the agent runtime's default
+	 * (3 minutes).
+	 */
+	@Env('N8N_AI_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS')
+	modelStreamFirstOutputTimeoutMs?: number;
+
 	get openAiDefaultHeaders(): Record<string, string> {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		return { 'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' };

@@ -326,6 +326,11 @@ export interface AgentPersistedMessageDto {
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
 	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	/**
+	 * The recorded run error for a turn that ended in `error` or `interrupted`,
+	 * so history renders the same error bubble the live stream showed.
+	 */
+	executionError?: string;
 }
 
 export interface AgentBuilderOpenSuspension {

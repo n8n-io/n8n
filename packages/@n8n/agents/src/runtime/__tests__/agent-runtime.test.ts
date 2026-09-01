@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
@@ -1660,19 +1661,72 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 
-	it('requests raw chunks only when recoverUsageOnAbort is set', async () => {
+	it('requests raw chunks while the stall watchdog is active, even without recoverUsageOnAbort', async () => {
+		// The watchdog needs the provider's raw keepalive events (e.g. Anthropic
+		// `ping`) as its liveness signal, so they are requested by default.
 		streamText.mockReturnValue(makeStreamSuccess('ok'));
 
-		const off = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
-		await collectChunks((await off.runtime.stream('hello')).stream);
-		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('include.rawChunks');
-
-		streamText.mockClear();
-		streamText.mockReturnValue(makeStreamSuccess('ok'));
-
-		const on = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
-		await collectChunks((await on.runtime.stream('hello', { recoverUsageOnAbort: true })).stream);
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const { stream } = await runtime.stream('hello');
+		await collectChunks(stream);
 		expect(streamText.mock.calls.at(-1)?.[0]).toHaveProperty('include.rawChunks', true);
+	});
+
+	it('does not request raw chunks when stall detection is disabled and no reader needs them', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const { stream } = await runtime.stream('hello', { modelStreamIdleTimeoutMs: 0 });
+		await collectChunks(stream);
+		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('include.rawChunks');
+	});
+
+	it('still requests raw chunks for the usage reader when stall detection is disabled', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const { stream } = await runtime.stream('hello', {
+			modelStreamIdleTimeoutMs: 0,
+			recoverUsageOnAbort: true,
+		});
+		await collectChunks(stream);
+		expect(streamText.mock.calls.at(-1)?.[0]).toHaveProperty('include.rawChunks', true);
+	});
+
+	it('installs a raw-chunk tap ahead of smoothing that consumes raw chunks', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const { stream } = await runtime.stream('hello');
+		await collectChunks(stream);
+
+		// Watchdog on (default) + smoothStream on (default) → [tap, smoothStream].
+		const transforms = streamText.mock.calls.at(-1)?.[0].experimental_transform as Array<
+			() => TransformStream<Record<string, unknown>, Record<string, unknown>>
+		>;
+		expect(Array.isArray(transforms)).toBe(true);
+		expect(transforms).toHaveLength(2);
+
+		// Raw chunks must be consumed by the tap so they never reach smoothStream,
+		// whose word buffer flushes on every non-text chunk (defeating smoothing).
+		const input = [
+			{ type: 'raw', rawValue: { type: 'ping' } },
+			{ type: 'text-delta', id: 't', text: 'hi' },
+			{ type: 'raw', rawValue: { type: 'message_stop' } },
+			{ type: 'finish' },
+		];
+		const readable = new ReadableStream<Record<string, unknown>>({
+			start(controller) {
+				for (const chunk of input) controller.enqueue(chunk);
+				controller.close();
+			},
+		});
+		const out: unknown[] = [];
+		const reader = readable.pipeThrough(transforms[0]()).getReader();
+		for (let next = await reader.read(); !next.done; next = await reader.read()) {
+			out.push(next.value);
+		}
+		expect(out).toEqual([{ type: 'text-delta', id: 't', text: 'hi' }, { type: 'finish' }]);
 	});
 });
 
@@ -6931,7 +6985,8 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await collectChunks(stream);
 
 		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
-		expect(callArgs.experimental_transform).toEqual(expect.any(Function));
+		// Raw-chunk tap (stall watchdog is on by default) + smoothStream.
+		expect(callArgs.experimental_transform).toEqual([expect.any(Function), expect.any(Function)]);
 		expect(smoothStreamSpy).toHaveBeenCalledWith({});
 
 		smoothStreamSpy.mockRestore();
@@ -6939,6 +6994,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 	it('omits smoothStream when explicitly disabled', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
+		const smoothStreamSpy = vi.spyOn(aiModule, 'smoothStream');
 
 		const runtime = new AgentRuntime({
 			name: 'smooth-stream-disabled-test',
@@ -6948,6 +7004,30 @@ describe('AgentRuntime — telemetry propagation', () => {
 		});
 
 		const { stream } = await runtime.stream('hello', { smoothStream: false });
+		await collectChunks(stream);
+
+		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
+		// Only the raw-chunk tap remains (the stall watchdog is still on).
+		expect(callArgs.experimental_transform).toEqual([expect.any(Function)]);
+		expect(smoothStreamSpy).not.toHaveBeenCalled();
+
+		smoothStreamSpy.mockRestore();
+	});
+
+	it('omits transforms entirely when smoothing and stall detection are both off', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'smooth-stream-none-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+		});
+
+		const { stream } = await runtime.stream('hello', {
+			smoothStream: false,
+			modelStreamIdleTimeoutMs: 0,
+		});
 		await collectChunks(stream);
 
 		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
@@ -8641,6 +8721,66 @@ describe('AgentRuntime — model stream stall handling', () => {
 			| undefined;
 		expect(String(errorChunk?.error)).toContain('stalled');
 		expect(runtime.getState().status).toBe('failed');
+	});
+
+	it('raw keepalive chunks reset the idle timer during a mid-turn quiet spell', async () => {
+		// Gap between content chunks (600ms) exceeds the idle limit (500ms), but
+		// provider keepalives (raw `ping` events) arrive every 100ms — the turn is
+		// alive and must complete instead of tripping the watchdog. Margins are
+		// wide (400ms) so CI scheduler jitter cannot trip the real timers.
+		streamText.mockReturnValue({
+			...makeStreamSuccess('slow but alive'),
+			stream: (async function* () {
+				yield { type: 'start' };
+				yield { type: 'text-delta', id: 'text-1', text: 'slow ' };
+				for (let i = 0; i < 6; i++) {
+					await sleep(100);
+					yield { type: 'raw', rawValue: { type: 'ping' } };
+				}
+				yield { type: 'text-delta', id: 'text-1', text: 'but alive' };
+			})(),
+		});
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 500,
+			modelStreamFirstOutputTimeoutMs: 500,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks.find((c) => c.type === 'error')).toBeUndefined();
+		const text = chunks
+			.filter(
+				(c): c is StreamChunk & { type: 'text-delta'; delta: string } => c.type === 'text-delta',
+			)
+			.map((c) => c.delta)
+			.join('');
+		expect(text).toBe('slow but alive');
+		expect(runtime.getState().status).toBe('success');
+	});
+
+	it('still silently retries when the stalled turn emitted only raw keepalives', async () => {
+		// Keepalives are transport bookkeeping, not content: a turn that died
+		// having produced nothing but pings is invisible to the user and safe to
+		// re-issue.
+		streamText
+			.mockReturnValueOnce(makeStalledStream([{ type: 'raw', rawValue: { type: 'ping' } }]))
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+		expect(finish?.finishReason).toBe('stop');
+		expect(runtime.getState().status).toBe('success');
 	});
 
 	it('surfaces the stall error when the retry stalls too', async () => {

@@ -67,6 +67,9 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 					}
 					config[key] = result.data;
 				} else if (type === Number) {
+					// A set-but-blank var (common in .env templates) must mean "unset",
+					// not Number('') === 0 — 0 is a meaningful value for many fields.
+					if (value.trim() === '') continue;
 					const parsed = Number(value);
 					if (isNaN(parsed)) {
 						console.warn(`Invalid number value for ${envName}: ${value}`);

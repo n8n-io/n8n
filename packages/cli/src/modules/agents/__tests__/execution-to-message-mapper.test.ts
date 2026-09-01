@@ -14,6 +14,44 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('carries the recorded run error on the assistant message of an errored turn', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'The model stream stalled: no data received for 90 seconds.',
+				timeline: [{ type: 'text', content: 'partial output', timestamp: 100, endTime: 110 }],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({
+			role: 'assistant',
+			executionStatus: 'error',
+			executionError: 'The model stream stalled: no data received for 90 seconds.',
+		});
+	});
+
+	it('keeps an assistant message for an errored turn that produced no output at all', () => {
+		const result = executionsToMessagesDto([
+			execution({ status: 'error', error: 'fetch failed', timeline: [] }),
+		]);
+
+		const assistant = result.find((m) => m.role === 'assistant');
+		expect(assistant).toMatchObject({ executionStatus: 'error', executionError: 'fetch failed' });
+		expect(assistant?.content).toEqual([]);
+	});
+
+	it('does not attach the recorded error to successful turns', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				error: null,
+				timeline: [{ type: 'text', content: 'ok', timestamp: 100, endTime: 110 }],
+			}),
+		);
+
+		expect(result[1]?.executionError).toBeUndefined();
+	});
+
 	it('maps reasoning timeline events with timing into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({
