@@ -9,6 +9,7 @@ import {
 	isTerminalExecutionStatus,
 	UnexpectedError,
 	UserError,
+	type ExecutionStatus,
 	type IRun,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
@@ -29,6 +30,15 @@ import {
 const MAX_PARENT_RESUME_ATTEMPTS = 3;
 
 /**
+<<<<<<< HEAD
+=======
+ * Parent statuses that mean resuming is no longer useful: the parent already
+ * finished (success/error/crashed/canceled) and there is nothing to wake up.
+ */
+const TERMINAL_PARENT_STATUSES: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
+
+/**
+>>>>>>> fd98d51b3252d62257ce9f29902d519c67e0a01a
  * How long `resumeParentExecution` keeps retrying while the parent is still
  * `running` before giving up. A sub-workflow with a human-in-the-loop step can
  * complete while the parent (an in-process Agent v1/v2) is still looping on
