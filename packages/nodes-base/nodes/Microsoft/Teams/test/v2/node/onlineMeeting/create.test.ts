@@ -45,8 +45,24 @@ describe('Test MicrosoftTeamsV2, onlineMeeting => create', () => {
 			},
 		});
 
+	// Minimal create: options collection omitted entirely — exact body proves no
+	// option keys leak into the request.
+	nock('https://graph.microsoft.com')
+		.post('/v1.0/me/onlineMeetings', {
+			subject: 'Standup',
+			startDateTime: '2026-09-11T09:00:00Z',
+			endDateTime: '2026-09-11T09:15:00Z',
+		})
+		.reply(201, {
+			id: 'MSpTdGFuZHVwLW1pbmltYWw',
+			startDateTime: '2026-09-11T09:00:00Z',
+			endDateTime: '2026-09-11T09:15:00Z',
+			joinWebUrl: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_c3RhbmR1cA%40thread.v2/0',
+			subject: 'Standup',
+		});
+
 	new NodeTestHarness().setupTests({
 		credentials,
-		workflowFiles: ['create.workflow.json'],
+		workflowFiles: ['create.workflow.json', 'create.minimal.workflow.json'],
 	});
 });
