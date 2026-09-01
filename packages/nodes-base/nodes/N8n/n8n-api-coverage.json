@@ -244,6 +244,9 @@
 		"POST /git-connections/{id}/push": {
 			"status": "gap"
 		},
+		"POST /git-connections/{id}/pull": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},
