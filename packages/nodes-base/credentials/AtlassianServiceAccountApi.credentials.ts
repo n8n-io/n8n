@@ -1,3 +1,4 @@
+import { httpStatusFromError } from '@n8n/backend-network';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -26,14 +27,6 @@ function hasAccessToken(response: unknown): response is TokenResponse & { access
 		typeof (response as { access_token?: unknown }).access_token === 'string' &&
 		(response as { access_token: string }).access_token.length > 0
 	);
-}
-
-function getResponseStatus(error: unknown): number | undefined {
-	if (typeof error !== 'object' || error === null) return undefined;
-	const response = (error as { response?: unknown }).response;
-	if (typeof response !== 'object' || response === null) return undefined;
-	const status = (response as { status?: unknown }).status;
-	return typeof status === 'number' ? status : undefined;
 }
 
 /**
@@ -80,7 +73,7 @@ export async function getAccessToken(credentials: ICredentialDataDecryptedObject
 		});
 	} catch (error) {
 		// Static message only — never interpolate or log the response body or credentials.
-		const status = getResponseStatus(error);
+		const status = httpStatusFromError(error);
 		if (status === 401 || status === 403) {
 			throw new OperationalError(
 				'Atlassian rejected the service account credentials — check the Client ID and Client Secret',
@@ -149,8 +142,9 @@ export class AtlassianServiceAccountApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			placeholder: 'https://example.atlassian.net',
-			description: 'The Atlassian site the service account should work on',
+			placeholder: 'https://your-site.atlassian.net',
+			description:
+				'The URL of your Atlassian site, e.g. https://your-site.atlassian.net. The scheme and any path (like /wiki) are ignored.',
 		},
 	];
 

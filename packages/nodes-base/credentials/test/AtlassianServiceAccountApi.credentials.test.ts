@@ -98,6 +98,10 @@ describe('AtlassianServiceAccountApi Credential', () => {
 			expect(body.get('client_secret')).toBe('client-secret');
 			// Atlassian rejects any scope value with `invalid_scope`; the request must not send one.
 			expect(body.has('scope')).toBe(false);
+
+			// The token URL is a fixed Atlassian host, so the deliberate choice is the
+			// SSRF-exempt fixed-vendor client; a policy flip must fail this test.
+			expect(requestsMock).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
 
 		it('trims whitespace from the client ID and secret', async () => {
