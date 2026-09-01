@@ -115,7 +115,7 @@ onUnmounted(() => {
 <template>
 	<div :class="$style.container">
 		<div :class="$style.search">
-			<N8nInput v-model="query" size="small" placeholder="search" clearable>
+			<N8nInput v-model="query" size="small" placeholder="Search" clearable>
 				<template #prefix>
 					<N8nIcon icon="search" :size="14" />
 				</template>
