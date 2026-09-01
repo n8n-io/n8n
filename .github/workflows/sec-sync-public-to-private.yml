@@ -135,6 +135,7 @@ jobs:
             --text "<${RUN_URL}|Public → private sync failed>"
 
       - name: Notify Slack on skipped sync
+        continue-on-error: true
         if: ${{ !cancelled() && (steps.sync-master.outputs.ahead_count || steps.sync-1x.outputs.ahead_count) }}
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
