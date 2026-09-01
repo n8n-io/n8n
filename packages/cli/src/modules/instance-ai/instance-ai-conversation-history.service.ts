@@ -20,17 +20,20 @@ import type { InstanceAiMessage } from './entities/instance-ai-message.entity';
 import { cleanStoredUserMessage } from './internal-messages';
 import { extractTextFromContent } from './message-parser';
 import { TOOL_CALL_PART_TYPES } from './repositories/conversation-history-search';
-import { InstanceAiMessageRepository } from './repositories/instance-ai-message.repository';
 import {
-	InstanceAiThreadRepository,
+	InstanceAiConversationHistoryRepository,
 	type ConversationThreadSearchRow,
-} from './repositories/instance-ai-thread.repository';
+} from './repositories/instance-ai-conversation-history.repository';
 
 /** Characters of context returned around a match, and for the opening message. */
 const EXCERPT_LENGTH = 200;
 const MAX_EXCERPTS_PER_THREAD = 3;
-/** Candidates fetched per thread — a few more than kept, to absorb false positives. */
-const EXCERPT_CANDIDATES_PER_THREAD = 5;
+/**
+ * Candidates are the newest raw-JSON matches, and internal enrichment blocks
+ * (`<project-context>` etc.) can make boilerplate-only rows outnumber a genuine
+ * older match — so fetch a few more than the excerpts we keep.
+ */
+const EXCERPT_CANDIDATES_PER_THREAD = 8;
 
 /**
  * The tool schema's caps from `@n8n/instance-ai`. Local literals, tied to the
@@ -39,8 +42,14 @@ const EXCERPT_CANDIDATES_PER_THREAD = 5;
  * runtime imports from the package, which several cli test suites stub with
  * wiring-only mocks.
  */
-const MAX_SEARCH_LIMIT: typeof CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 20;
+const MAX_SEARCH_LIMIT: typeof CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 10;
 const MAX_WINDOW_SIDE: typeof CONVERSATION_HISTORY_MAX_WINDOW_SIDE = 5;
+
+/**
+ * Verification drops SQL false positives, so fetch double the page to keep a
+ * dropped thread from costing a hit.
+ */
+const THREAD_PAGE_OVERFETCH_FACTOR = 2;
 
 const DEFAULT_SEARCH_LIMIT = 10;
 /** A recency listing is for orientation, so it defaults smaller than a search. */
@@ -219,8 +228,7 @@ export class InstanceAiConversationHistoryService {
 
 	constructor(
 		logger: Logger,
-		private readonly threadRepository: InstanceAiThreadRepository,
-		private readonly messageRepository: InstanceAiMessageRepository,
+		private readonly repository: InstanceAiConversationHistoryRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -257,9 +265,9 @@ export class InstanceAiConversationHistoryService {
 		try {
 			// The turn's own user message is persisted only after the agent receives
 			// it, so an empty log here means this is the thread's opening turn.
-			if (await this.messageRepository.threadHasMessages(currentThreadId)) return undefined;
+			if (await this.repository.threadHasMessages(currentThreadId)) return undefined;
 
-			const { rows, total } = await this.threadRepository.listRecentProjectThreadsForUser({
+			const { rows, total } = await this.repository.listRecentProjectThreadsForUser({
 				userId,
 				projectId,
 				excludeThreadId: currentThreadId,
@@ -303,31 +311,21 @@ export class InstanceAiConversationHistoryService {
 			return await this.listRecent(userId, projectId, currentThreadId, limit ?? DEFAULT_LIST_LIMIT);
 		}
 
-		const { rows, total } = await this.threadRepository.searchProjectThreadsForUser({
+		const pageLimit = clampSearchLimit(limit ?? DEFAULT_SEARCH_LIMIT);
+		const { rows, total } = await this.repository.searchProjectThreadsForUser({
 			userId,
 			projectId,
 			excludeThreadId: currentThreadId,
 			query: trimmedQuery,
-			limit: clampSearchLimit(limit ?? DEFAULT_SEARCH_LIMIT),
+			limit: pageLimit * THREAD_PAGE_OVERFETCH_FACTOR,
 		});
 		if (rows.length === 0) return { hits: [], totalThreadsMatched: total };
 
 		const threadIds = rows.map((row) => row.id);
-		const [matchCounts, candidateRows] = await Promise.all([
-			this.messageRepository.countSearchMatchesByThread(threadIds, trimmedQuery),
-			this.messageRepository.findSearchMatchRows(
-				threadIds,
-				trimmedQuery,
-				EXCERPT_CANDIDATES_PER_THREAD,
-			),
+		const [matchCounts, candidatesByThread] = await Promise.all([
+			this.repository.countSearchMatchesByThread(threadIds, trimmedQuery),
+			this.repository.findSearchMatchRows(threadIds, trimmedQuery, EXCERPT_CANDIDATES_PER_THREAD),
 		]);
-
-		const candidatesByThread = new Map<string, InstanceAiMessage[]>();
-		for (const row of candidateRows) {
-			const bucket = candidatesByThread.get(row.threadId);
-			if (bucket) bucket.push(row);
-			else candidatesByThread.set(row.threadId, [row]);
-		}
 
 		const needle = trimmedQuery.toLowerCase();
 		const matched = rows.flatMap((row) => {
@@ -346,10 +344,11 @@ export class InstanceAiConversationHistoryService {
 			});
 		}
 
-		const firstUserMessages = await this.messageRepository.findFirstUserMessages(
-			matched.map((hit) => hit.row.id),
+		const page = matched.slice(0, pageLimit);
+		const firstUserMessages = await this.repository.findFirstUserMessages(
+			page.map((hit) => hit.row.id),
 		);
-		const hits = matched.map((hit) => buildHit(hit, matchCounts, firstUserMessages));
+		const hits = page.map((hit) => buildHit(hit, matchCounts, firstUserMessages));
 
 		return { hits, totalThreadsMatched: total };
 	}
@@ -365,14 +364,14 @@ export class InstanceAiConversationHistoryService {
 		currentThreadId: string,
 		limit: number,
 	): Promise<ConversationHistorySearchResult> {
-		const { rows, total } = await this.threadRepository.listRecentProjectThreadsForUser({
+		const { rows, total } = await this.repository.listRecentProjectThreadsForUser({
 			userId,
 			projectId,
 			excludeThreadId: currentThreadId,
 			limit: clampSearchLimit(limit),
 		});
 
-		const firstUserMessages = await this.messageRepository.findFirstUserMessages(
+		const firstUserMessages = await this.repository.findFirstUserMessages(
 			rows.map((row) => row.id),
 		);
 		const hits = rows.map((row) => baseHit(row, firstUserMessages));
@@ -432,12 +431,12 @@ export class InstanceAiConversationHistoryService {
 		// only search excludes it. The anchor lookup is independent (already
 		// thread-scoped), so it runs alongside the ownership check.
 		const [thread, anchorRow] = await Promise.all([
-			this.threadRepository.findOneBy({ id: params.threadId }),
+			this.repository.findOwnedThread(params.threadId, userId, projectId),
 			params.aroundMessageId
-				? this.messageRepository.findMessageInThread(params.threadId, params.aroundMessageId)
+				? this.repository.findMessageInThread(params.threadId, params.aroundMessageId)
 				: null,
 		]);
-		if (!thread || thread.resourceId !== userId || thread.projectId !== projectId) {
+		if (!thread) {
 			throw new UserError(THREAD_NOT_FOUND);
 		}
 		if (params.aroundMessageId && !anchorRow) {
@@ -445,11 +444,12 @@ export class InstanceAiConversationHistoryService {
 		}
 
 		const { before, after } = this.resolveWindow(anchorRow !== null, params.before, params.after);
-		const window = await this.messageRepository.getConversationWindow({
+		const window = await this.repository.getConversationWindow({
 			threadId: params.threadId,
 			anchor: anchorRow ? { createdAt: anchorRow.createdAt, id: anchorRow.id } : undefined,
 			before,
 			after,
+			isVisibleRow: (row) => toHistoryMessage(row) !== undefined,
 		});
 
 		return {
@@ -531,8 +531,8 @@ function buildHit(
  * them is working narration, not the reply that ended the turn). Ask-user
  * rows are mid-turn tool activity too, but they hold the user's own
  * answers — they stay.
- * Rows dropped here already counted toward the SQL window, so the returned
- * window shrinks rather than shifts.
+ * This same check is the window's `isVisibleRow` predicate, so window slots are
+ * spent on rows that survive it.
  */
 function toHistoryMessage(row: InstanceAiMessage): ConversationHistoryMessage | undefined {
 	if (row.role !== 'user' && row.role !== 'assistant') return undefined;

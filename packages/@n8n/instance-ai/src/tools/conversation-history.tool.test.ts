@@ -126,9 +126,9 @@ describe('conversation-history tool', () => {
 			const service = makeService();
 			const tool = createConversationHistoryTool(makeContext(service));
 
-			await executeTool(tool, { action: 'search', limit: 12 });
+			await executeTool(tool, { action: 'search', limit: 7 });
 
-			expect(service.search).toHaveBeenCalledWith({ query: undefined, limit: 12 });
+			expect(service.search).toHaveBeenCalledWith({ query: undefined, limit: 7 });
 		});
 
 		it('rejects a query shorter than 2 characters', async () => {
@@ -137,11 +137,11 @@ describe('conversation-history tool', () => {
 			await expect(executeTool(tool, { action: 'search', query: 'a' })).rejects.toThrow();
 		});
 
-		it('rejects a limit above 20', async () => {
+		it('rejects a limit above 10', async () => {
 			const tool = createConversationHistoryTool(makeContext(makeService()));
 
 			await expect(
-				executeTool(tool, { action: 'search', query: 'timezone', limit: 21 }),
+				executeTool(tool, { action: 'search', query: 'timezone', limit: 11 }),
 			).rejects.toThrow();
 		});
 

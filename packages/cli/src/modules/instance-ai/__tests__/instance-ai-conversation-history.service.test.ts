@@ -6,11 +6,10 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
 import { InstanceAiConversationHistoryService } from '../instance-ai-conversation-history.service';
-import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
 import type {
 	ConversationThreadSearchRow,
-	InstanceAiThreadRepository,
-} from '../repositories/instance-ai-thread.repository';
+	InstanceAiConversationHistoryRepository,
+} from '../repositories/instance-ai-conversation-history.repository';
 import {
 	askUserContent,
 	assistantTextContent,
@@ -29,35 +28,29 @@ const UPDATED_AT = new Date('2026-01-02T10:00:00.000Z');
 function setup() {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
-	const threadRepository = mock<InstanceAiThreadRepository>();
-	const messageRepository = mock<InstanceAiMessageRepository>();
+	const repository = mock<InstanceAiConversationHistoryRepository>();
 
 	// Nothing matches and no thread exists unless a test says otherwise.
-	threadRepository.searchProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
-	threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
-	threadRepository.findOneBy.mockResolvedValue(null);
-	messageRepository.countSearchMatchesByThread.mockResolvedValue(new Map());
-	messageRepository.findSearchMatchRows.mockResolvedValue([]);
-	messageRepository.findFirstUserMessages.mockResolvedValue(new Map());
-	messageRepository.findMessageInThread.mockResolvedValue(null);
-	messageRepository.threadHasMessages.mockResolvedValue(false);
-	messageRepository.getConversationWindow.mockResolvedValue({
+	repository.searchProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
+	repository.listRecentProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
+	repository.findOwnedThread.mockResolvedValue(null);
+	repository.countSearchMatchesByThread.mockResolvedValue(new Map());
+	repository.findSearchMatchRows.mockResolvedValue(new Map());
+	repository.findFirstUserMessages.mockResolvedValue(new Map());
+	repository.findMessageInThread.mockResolvedValue(null);
+	repository.threadHasMessages.mockResolvedValue(false);
+	repository.getConversationWindow.mockResolvedValue({
 		rows: [],
 		hasMoreBefore: false,
 		hasMoreAfter: false,
 	});
 
-	const service = new InstanceAiConversationHistoryService(
-		logger,
-		threadRepository,
-		messageRepository,
-	);
+	const service = new InstanceAiConversationHistoryService(logger, repository);
 
 	return {
 		service,
 		history: service.forContext(USER_ID, PROJECT_ID, CURRENT_THREAD_ID),
-		threadRepository,
-		messageRepository,
+		repository,
 		logger,
 	};
 }
@@ -89,12 +82,9 @@ function messageRow(overrides: {
 	});
 }
 
-/** A thread row plus its candidate message rows, as the repositories return them. */
+/** A thread row plus its candidate message rows, as the repository returns them. */
 function givenSearchHit(
-	repos: {
-		threadRepository: MockProxy<InstanceAiThreadRepository>;
-		messageRepository: MockProxy<InstanceAiMessageRepository>;
-	},
+	repos: { repository: MockProxy<InstanceAiConversationHistoryRepository> },
 	options: {
 		row?: ConversationThreadSearchRow;
 		candidates?: InstanceAiMessage[];
@@ -104,15 +94,17 @@ function givenSearchHit(
 	} = {},
 ) {
 	const row = options.row ?? threadHit();
-	repos.threadRepository.searchProjectThreadsForUser.mockResolvedValue({
+	repos.repository.searchProjectThreadsForUser.mockResolvedValue({
 		rows: [row],
 		total: options.total ?? 1,
 	});
-	repos.messageRepository.findSearchMatchRows.mockResolvedValue(options.candidates ?? []);
-	repos.messageRepository.countSearchMatchesByThread.mockResolvedValue(
+	repos.repository.findSearchMatchRows.mockResolvedValue(
+		new Map([[row.id, options.candidates ?? []]]),
+	);
+	repos.repository.countSearchMatchesByThread.mockResolvedValue(
 		new Map([[row.id, options.matchCount ?? 1]]),
 	);
-	repos.messageRepository.findFirstUserMessages.mockResolvedValue(
+	repos.repository.findFirstUserMessages.mockResolvedValue(
 		options.firstUserMessage ? new Map([[row.id, options.firstUserMessage]]) : new Map(),
 	);
 }
@@ -120,67 +112,68 @@ function givenSearchHit(
 describe('InstanceAiConversationHistoryService', () => {
 	describe('search', () => {
 		it('scopes the query to the user, the project and away from the current thread', async () => {
-			const { history, threadRepository } = setup();
+			const { history, repository } = setup();
 
 			await history.search({ query: 'Slack digest', limit: 10 });
 
-			expect(threadRepository.searchProjectThreadsForUser).toHaveBeenCalledWith({
+			// The thread page is over-fetched, so the repository sees twice the limit.
+			expect(repository.searchProjectThreadsForUser).toHaveBeenCalledWith({
 				userId: USER_ID,
 				projectId: PROJECT_ID,
 				excludeThreadId: CURRENT_THREAD_ID,
 				query: 'Slack digest',
-				limit: 10,
+				limit: 20,
 			});
 		});
 
 		it('defaults the limit to 10 when searching and 5 when listing', async () => {
-			const { history, threadRepository } = setup();
+			const { history, repository } = setup();
 
 			await history.search({ query: 'Slack digest' });
 			await history.search({});
 
-			expect(threadRepository.searchProjectThreadsForUser).toHaveBeenCalledWith(
-				expect.objectContaining({ limit: 10 }),
+			expect(repository.searchProjectThreadsForUser).toHaveBeenCalledWith(
+				expect.objectContaining({ limit: 20 }),
 			);
-			expect(threadRepository.listRecentProjectThreadsForUser).toHaveBeenCalledWith(
+			expect(repository.listRecentProjectThreadsForUser).toHaveBeenCalledWith(
 				expect.objectContaining({ limit: 5 }),
 			);
 		});
 
 		// LIKE escaping is the repository's job — covered by the integration test.
 		it('passes wildcard characters through as part of the raw query', async () => {
-			const { history, threadRepository } = setup();
+			const { history, repository } = setup();
 
 			await history.search({ query: '50% off_now', limit: 5 });
 
-			expect(threadRepository.searchProjectThreadsForUser).toHaveBeenCalledWith(
+			expect(repository.searchProjectThreadsForUser).toHaveBeenCalledWith(
 				expect.objectContaining({ query: '50% off_now' }),
 			);
 		});
 
 		it('lists the most recent conversations when the query is absent or blank', async () => {
-			const { history, threadRepository } = setup();
+			const { history, repository } = setup();
 
 			await history.search({ limit: 5 });
 			await history.search({ query: '   ', limit: 5 });
 
-			expect(threadRepository.listRecentProjectThreadsForUser).toHaveBeenCalledTimes(2);
-			expect(threadRepository.listRecentProjectThreadsForUser).toHaveBeenCalledWith({
+			expect(repository.listRecentProjectThreadsForUser).toHaveBeenCalledTimes(2);
+			expect(repository.listRecentProjectThreadsForUser).toHaveBeenCalledWith({
 				userId: USER_ID,
 				projectId: PROJECT_ID,
 				excludeThreadId: CURRENT_THREAD_ID,
 				limit: 5,
 			});
-			expect(threadRepository.searchProjectThreadsForUser).not.toHaveBeenCalled();
+			expect(repository.searchProjectThreadsForUser).not.toHaveBeenCalled();
 		});
 
 		it('builds listing hits without any match work', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({
+			const { history, repository } = setup();
+			repository.listRecentProjectThreadsForUser.mockResolvedValue({
 				rows: [threadHit()],
 				total: 7,
 			});
-			messageRepository.findFirstUserMessages.mockResolvedValue(
+			repository.findFirstUserMessages.mockResolvedValue(
 				new Map([
 					[
 						PAST_THREAD_ID,
@@ -205,8 +198,8 @@ describe('InstanceAiConversationHistoryService', () => {
 				],
 				totalThreadsMatched: 7,
 			});
-			expect(messageRepository.findSearchMatchRows).not.toHaveBeenCalled();
-			expect(messageRepository.countSearchMatchesByThread).not.toHaveBeenCalled();
+			expect(repository.findSearchMatchRows).not.toHaveBeenCalled();
+			expect(repository.countSearchMatchesByThread).not.toHaveBeenCalled();
 		});
 
 		it('centers each excerpt on the match and elides both open ends', async () => {
@@ -440,15 +433,15 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('reports the thread total and the recency order the repository returned', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			threadRepository.searchProjectThreadsForUser.mockResolvedValue({
+			const { history, repository } = setup();
+			repository.searchProjectThreadsForUser.mockResolvedValue({
 				rows: [
 					threadHit({ id: 'thread-new', title: 'Slack new' }),
 					threadHit({ id: 'thread-old', title: 'Slack old' }),
 				],
 				total: 7,
 			});
-			messageRepository.countSearchMatchesByThread.mockResolvedValue(new Map());
+			repository.countSearchMatchesByThread.mockResolvedValue(new Map());
 
 			const result = await history.search({ query: 'slack', limit: 2 });
 
@@ -456,14 +449,60 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(result.hits[0].updatedAt).toBe(UPDATED_AT.toISOString());
 			expect(result.totalThreadsMatched).toBe(7);
 		});
+
+		it('does not let a false-positive thread cost a hit', async () => {
+			const { history, repository } = setup();
+			repository.searchProjectThreadsForUser.mockResolvedValue({
+				rows: [
+					threadHit({ id: 'thread-false', title: 'Recent work' }),
+					threadHit({ id: 'thread-real', title: 'Older work' }),
+				],
+				total: 2,
+			});
+			repository.findSearchMatchRows.mockResolvedValue(
+				new Map([
+					// Matches only in a sibling JSON field, not in the text the user wrote.
+					[
+						'thread-false',
+						[messageRow({ role: 'user', content: userContent('hi', { note: 'slack' }) })],
+					],
+					['thread-real', [messageRow({ role: 'user', content: userContent('post to slack') })]],
+				]),
+			);
+
+			const result = await history.search({ query: 'slack', limit: 1 });
+
+			// The verified thread is only reachable because the page was over-fetched.
+			expect(repository.searchProjectThreadsForUser).toHaveBeenCalledWith(
+				expect.objectContaining({ limit: 2 }),
+			);
+			expect(result.hits.map((hit) => hit.threadId)).toEqual(['thread-real']);
+		});
+
+		it('trims verified hits to the requested limit', async () => {
+			const { history, repository } = setup();
+			repository.searchProjectThreadsForUser.mockResolvedValue({
+				rows: [
+					threadHit({ id: 'thread-1', title: 'Slack one' }),
+					threadHit({ id: 'thread-2', title: 'Slack two' }),
+					threadHit({ id: 'thread-3', title: 'Slack three' }),
+				],
+				total: 3,
+			});
+
+			const result = await history.search({ query: 'slack', limit: 2 });
+
+			expect(result.hits.map((hit) => hit.threadId)).toEqual(['thread-1', 'thread-2']);
+			expect(repository.findFirstUserMessages).toHaveBeenCalledWith(['thread-1', 'thread-2']);
+		});
 	});
 
 	describe('getMessages', () => {
 		function givenThread(
-			threadRepository: MockProxy<InstanceAiThreadRepository>,
+			repository: MockProxy<InstanceAiConversationHistoryRepository>,
 			overrides: Partial<Pick<InstanceAiThread, 'id' | 'resourceId' | 'projectId' | 'title'>> = {},
 		) {
-			threadRepository.findOneBy.mockResolvedValue(
+			repository.findOwnedThread.mockResolvedValue(
 				mock<InstanceAiThread>({
 					id: PAST_THREAD_ID,
 					resourceId: USER_ID,
@@ -480,30 +519,19 @@ describe('InstanceAiConversationHistoryService', () => {
 			await expect(read).rejects.toThrow('Conversation not found');
 		}
 
-		it('rejects a thread that does not exist', async () => {
-			const { history, threadRepository } = setup();
-			threadRepository.findOneBy.mockResolvedValue(null);
+		// Ownership and project binding are enforced in the query, so a thread the
+		// caller may not read is indistinguishable from a missing one.
+		it('rejects a thread the scoped lookup does not return', async () => {
+			const { history, repository } = setup();
+			repository.findOwnedThread.mockResolvedValue(null);
 
 			await expectNotFound(history);
-		});
-
-		it('rejects a thread owned by another user with the same message', async () => {
-			const { history, threadRepository } = setup();
-			givenThread(threadRepository, { resourceId: 'user-2' });
-
-			await expectNotFound(history);
-		});
-
-		it('rejects a thread bound to another project with the same message', async () => {
-			const { history, threadRepository } = setup();
-			givenThread(threadRepository, { projectId: 'project-2' });
-
-			await expectNotFound(history);
+			expect(repository.findOwnedThread).toHaveBeenCalledWith(PAST_THREAD_ID, USER_ID, PROJECT_ID);
 		});
 
 		it('reads the current thread as well — only search excludes it', async () => {
-			const { history, threadRepository } = setup();
-			givenThread(threadRepository, { id: CURRENT_THREAD_ID });
+			const { history, repository } = setup();
+			givenThread(repository, { id: CURRENT_THREAD_ID });
 
 			await expect(history.getMessages({ threadId: CURRENT_THREAD_ID })).resolves.toMatchObject({
 				threadId: CURRENT_THREAD_ID,
@@ -511,52 +539,54 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('reads the last five messages for a bare request', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
+			const { history, repository } = setup();
+			givenThread(repository);
 
 			await history.getMessages({ threadId: PAST_THREAD_ID });
 
-			expect(messageRepository.getConversationWindow).toHaveBeenCalledWith({
+			expect(repository.getConversationWindow).toHaveBeenCalledWith({
 				threadId: PAST_THREAD_ID,
 				anchor: undefined,
 				before: 5,
 				after: 0,
+				isVisibleRow: expect.any(Function),
 			});
 		});
 
 		it('reads five messages either side of an anchor', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
+			const { history, repository } = setup();
+			givenThread(repository);
 			// Compare against the mock row's own createdAt: the deep-mock proxies the
 			// Date override, so a fresh Date would not be strictly equal to it.
 			const anchorRow = messageRow({ id: 'anchor-1', role: 'user', content: userContent('here') });
-			messageRepository.findMessageInThread.mockResolvedValue(anchorRow);
+			repository.findMessageInThread.mockResolvedValue(anchorRow);
 
 			await history.getMessages({ threadId: PAST_THREAD_ID, aroundMessageId: 'anchor-1' });
 
-			expect(messageRepository.getConversationWindow).toHaveBeenCalledWith({
+			expect(repository.getConversationWindow).toHaveBeenCalledWith({
 				threadId: PAST_THREAD_ID,
 				anchor: { id: 'anchor-1', createdAt: anchorRow.createdAt },
 				before: 5,
 				after: 5,
+				isVisibleRow: expect.any(Function),
 			});
 		});
 
 		it('keeps a one-sided request one-sided', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
+			const { history, repository } = setup();
+			givenThread(repository);
 
 			await history.getMessages({ threadId: PAST_THREAD_ID, after: 2 });
 
-			expect(messageRepository.getConversationWindow).toHaveBeenCalledWith(
+			expect(repository.getConversationWindow).toHaveBeenCalledWith(
 				expect.objectContaining({ before: 0, after: 2 }),
 			);
 		});
 
 		it('clamps oversized window requests', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
-			messageRepository.findMessageInThread.mockResolvedValue(
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.findMessageInThread.mockResolvedValue(
 				messageRow({ id: 'anchor-1', role: 'user', content: userContent('here') }),
 			);
 
@@ -567,26 +597,43 @@ describe('InstanceAiConversationHistoryService', () => {
 				after: 99,
 			});
 
-			expect(messageRepository.getConversationWindow).toHaveBeenCalledWith(
+			expect(repository.getConversationWindow).toHaveBeenCalledWith(
 				expect.objectContaining({ before: 5, after: 5 }),
 			);
 		});
 
+		// The window spends its slots on rows this predicate accepts, so it has to
+		// be the same check that decides what the reader gets back.
+		it('hands the window the visibility check the returned messages use', async () => {
+			const { history, repository } = setup();
+			givenThread(repository);
+
+			await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			const [params] = repository.getConversationWindow.mock.calls[0];
+			expect(params.isVisibleRow(messageRow({ role: 'user', content: userContent('hello') }))).toBe(
+				true,
+			);
+			expect(
+				params.isVisibleRow(messageRow({ role: 'user', content: userContent('(continue)') })),
+			).toBe(false);
+		});
+
 		it('rejects an anchor that is not in the thread', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
-			messageRepository.findMessageInThread.mockResolvedValue(null);
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.findMessageInThread.mockResolvedValue(null);
 
 			const read = history.getMessages({ threadId: PAST_THREAD_ID, aroundMessageId: 'ghost' });
 			await expect(read).rejects.toThrow(UserError);
 			await expect(read).rejects.toThrow('Message not found in this conversation');
-			expect(messageRepository.getConversationWindow).not.toHaveBeenCalled();
+			expect(repository.getConversationWindow).not.toHaveBeenCalled();
 		});
 
 		it('returns the window with the thread title and the more-flags', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
-			messageRepository.getConversationWindow.mockResolvedValue({
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.getConversationWindow.mockResolvedValue({
 				rows: [
 					messageRow({ id: 'm-1', role: 'user', content: userContent('do the thing') }),
 					messageRow({
@@ -625,9 +672,9 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('returns user text as the user saw it and hides internal auto-follow-ups', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
-			messageRepository.getConversationWindow.mockResolvedValue({
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.getConversationWindow.mockResolvedValue({
 				rows: [
 					messageRow({
 						id: 'm-enriched',
@@ -655,9 +702,9 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('renders ask-user answers, including custom text and skips', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
-			messageRepository.getConversationWindow.mockResolvedValue({
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.getConversationWindow.mockResolvedValue({
 				rows: [
 					messageRow({
 						id: 'm-answers',
@@ -685,9 +732,9 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('drops mid-turn narration and pure tool-call rows — only the final reply remains', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
-			messageRepository.getConversationWindow.mockResolvedValue({
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.getConversationWindow.mockResolvedValue({
 				rows: [
 					messageRow({
 						id: 'm-tools-only',
@@ -711,9 +758,9 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('truncates user text harder for assistant rows', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
-			messageRepository.getConversationWindow.mockResolvedValue({
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.getConversationWindow.mockResolvedValue({
 				rows: [
 					messageRow({ id: 'm-user', role: 'user', content: userContent('u'.repeat(2000)) }),
 					messageRow({
@@ -735,9 +782,9 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('drops rows whose content is not readable JSON', async () => {
-			const { history, threadRepository, messageRepository } = setup();
-			givenThread(threadRepository);
-			messageRepository.getConversationWindow.mockResolvedValue({
+			const { history, repository } = setup();
+			givenThread(repository);
+			repository.getConversationWindow.mockResolvedValue({
 				rows: [
 					messageRow({ id: 'broken', role: 'user', content: 'not json at all' }),
 					messageRow({ id: 'intact', role: 'user', content: userContent('still here') }),
@@ -770,11 +817,11 @@ describe('InstanceAiConversationHistoryService', () => {
 		}
 
 		it('asks for the three most recent conversations, scoped away from the current thread', async () => {
-			const { service, threadRepository } = setup();
+			const { service, repository } = setup();
 
 			await service.getPastConversationsSection(USER_ID, PROJECT_ID, CURRENT_THREAD_ID);
 
-			expect(threadRepository.listRecentProjectThreadsForUser).toHaveBeenCalledWith({
+			expect(repository.listRecentProjectThreadsForUser).toHaveBeenCalledWith({
 				userId: USER_ID,
 				projectId: PROJECT_ID,
 				excludeThreadId: CURRENT_THREAD_ID,
@@ -783,8 +830,8 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('names up to three conversations with their coarse ages, and the full count', async () => {
-			const { service, threadRepository } = setup();
-			threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({
+			const { service, repository } = setup();
+			repository.listRecentProjectThreadsForUser.mockResolvedValue({
 				rows: [
 					threadHit({ id: 't-1', title: 'Weekly digest', updatedAt: daysAgo(0.2) }),
 					threadHit({ id: 't-2', title: 'Slack alerts', updatedAt: daysAgo(3.1) }),
@@ -805,8 +852,8 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('uses the singular for a project with exactly one past conversation', async () => {
-			const { service, threadRepository } = setup();
-			threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({
+			const { service, repository } = setup();
+			repository.listRecentProjectThreadsForUser.mockResolvedValue({
 				rows: [threadHit({ title: 'Weekly digest', updatedAt: daysAgo(1.4) })],
 				total: 1,
 			});
@@ -822,8 +869,8 @@ describe('InstanceAiConversationHistoryService', () => {
 		});
 
 		it('labels a conversation the titler never got to', async () => {
-			const { service, threadRepository } = setup();
-			threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({
+			const { service, repository } = setup();
+			repository.listRecentProjectThreadsForUser.mockResolvedValue({
 				rows: [
 					threadHit({ id: 't-1', title: '', updatedAt: daysAgo(0) }),
 					threadHit({ id: 't-2', title: '   ', updatedAt: daysAgo(0) }),
@@ -843,8 +890,8 @@ describe('InstanceAiConversationHistoryService', () => {
 		// The hint is for the opening turn only; from turn two the agent has the tool
 		// description and the conversation itself.
 		it('returns undefined once the thread has messages of its own', async () => {
-			const { service, threadRepository, messageRepository } = setup();
-			messageRepository.threadHasMessages.mockResolvedValue(true);
+			const { service, repository } = setup();
+			repository.threadHasMessages.mockResolvedValue(true);
 
 			const section = await service.getPastConversationsSection(
 				USER_ID,
@@ -853,7 +900,7 @@ describe('InstanceAiConversationHistoryService', () => {
 			);
 
 			expect(section).toBeUndefined();
-			expect(threadRepository.listRecentProjectThreadsForUser).not.toHaveBeenCalled();
+			expect(repository.listRecentProjectThreadsForUser).not.toHaveBeenCalled();
 		});
 
 		it('returns undefined when the project has no other conversations', async () => {
@@ -866,8 +913,8 @@ describe('InstanceAiConversationHistoryService', () => {
 
 		// Best-effort by design: a hint that cannot be built must not fail the turn.
 		it('returns undefined and warns when a repository read fails', async () => {
-			const { service, threadRepository, logger } = setup();
-			threadRepository.listRecentProjectThreadsForUser.mockRejectedValue(new Error('db is down'));
+			const { service, repository, logger } = setup();
+			repository.listRecentProjectThreadsForUser.mockRejectedValue(new Error('db is down'));
 
 			const section = await service.getPastConversationsSection(
 				USER_ID,

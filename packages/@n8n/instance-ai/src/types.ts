@@ -1097,7 +1097,7 @@ export type LocalGatewayStatus =
 
 // ── Conversation history ─────────────────────────────────────────────────────
 
-export const CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 20;
+export const CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 10;
 export const CONVERSATION_HISTORY_MAX_WINDOW_SIDE = 5;
 
 export type ConversationHistoryMatchSource = z.infer<typeof conversationHistoryMatchSourceSchema>;

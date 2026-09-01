@@ -104,36 +104,4 @@ describe('InstanceAiMessageRepository', () => {
 			await expect(messageRepository.hasAtLeastUserMessages(0)).resolves.toBe(true);
 		});
 	});
-
-	// This is how the first turn of a thread is recognised, so it has to be exact.
-	describe('threadHasMessages', () => {
-		it('is false for a thread whose log is still empty', async () => {
-			await expect(messageRepository.threadHasMessages(threadId)).resolves.toBe(false);
-		});
-
-		it.each(['user', 'assistant', 'tool', 'system'])(
-			'is true once the thread holds a %s message',
-			async (role) => {
-				await saveMessage(role);
-
-				await expect(messageRepository.threadHasMessages(threadId)).resolves.toBe(true);
-			},
-		);
-
-		it('is scoped to the thread it is asked about', async () => {
-			const otherThreadId = randomUUID();
-			await threadRepository.save(
-				threadRepository.create({
-					id: otherThreadId,
-					resourceId: 'user-1',
-					projectId: project.id,
-					title: '',
-					metadata: null,
-				}),
-			);
-			await saveMessage('user');
-
-			await expect(messageRepository.threadHasMessages(otherThreadId)).resolves.toBe(false);
-		});
-	});
 });

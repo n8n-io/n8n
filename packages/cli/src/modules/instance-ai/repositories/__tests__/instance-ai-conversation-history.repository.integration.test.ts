@@ -11,13 +11,17 @@ import {
 	toolRowContent,
 	userContent,
 } from '../../__tests__/conversation-history-content.fixtures';
+import { InstanceAiConversationHistoryRepository } from '../instance-ai-conversation-history.repository';
 import { InstanceAiMessageRepository } from '../instance-ai-message.repository';
 import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';
 
 const USER_ID = 'user-1';
 const OTHER_USER_ID = 'user-2';
 
-describe('conversation-history repositories', () => {
+describe('InstanceAiConversationHistoryRepository', () => {
+	let repository: InstanceAiConversationHistoryRepository;
+	// Entity repositories are fixture setup only — the reads under test all
+	// belong to the conversation-history repository.
 	let messageRepository: InstanceAiMessageRepository;
 	let threadRepository: InstanceAiThreadRepository;
 	let project: Project;
@@ -30,6 +34,7 @@ describe('conversation-history repositories', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
+		repository = Container.get(InstanceAiConversationHistoryRepository);
 		messageRepository = Container.get(InstanceAiMessageRepository);
 		threadRepository = Container.get(InstanceAiThreadRepository);
 		project = await createTeamProject();
@@ -91,7 +96,7 @@ describe('conversation-history repositories', () => {
 	}
 
 	async function search(query: string, limit = 10) {
-		return await threadRepository.searchProjectThreadsForUser({
+		return await repository.searchProjectThreadsForUser({
 			userId: USER_ID,
 			projectId: project.id,
 			excludeThreadId: currentThreadId,
@@ -226,7 +231,7 @@ describe('conversation-history repositories', () => {
 
 	describe('listRecentProjectThreadsForUser', () => {
 		async function listRecent(limit = 5) {
-			return await threadRepository.listRecentProjectThreadsForUser({
+			return await repository.listRecentProjectThreadsForUser({
 				userId: USER_ID,
 				projectId: project.id,
 				excludeThreadId: currentThreadId,
@@ -261,6 +266,58 @@ describe('conversation-history repositories', () => {
 		});
 	});
 
+	// The ownership check behind every `get-messages` read.
+	describe('findOwnedThread', () => {
+		it('returns the thread for its owner in its project', async () => {
+			const threadId = await createThread({ title: 'Mine' });
+
+			await expect(repository.findOwnedThread(threadId, USER_ID, project.id)).resolves.toEqual(
+				expect.objectContaining({ id: threadId }),
+			);
+		});
+
+		it('is null for another user, another project, and an unknown id', async () => {
+			const threadId = await createThread({ title: 'Mine' });
+
+			await expect(
+				repository.findOwnedThread(threadId, OTHER_USER_ID, project.id),
+			).resolves.toBeNull();
+			await expect(
+				repository.findOwnedThread(threadId, USER_ID, otherProject.id),
+			).resolves.toBeNull();
+			await expect(
+				repository.findOwnedThread(randomUUID(), USER_ID, project.id),
+			).resolves.toBeNull();
+		});
+	});
+
+	// This is how the first turn of a thread is recognised, so it has to be exact.
+	describe('threadHasMessages', () => {
+		it('is false for a thread whose log is still empty', async () => {
+			const threadId = await createThread({ title: 'Empty' });
+
+			await expect(repository.threadHasMessages(threadId)).resolves.toBe(false);
+		});
+
+		it.each(['user', 'assistant', 'tool', 'system'])(
+			'is true once the thread holds a %s message',
+			async (role) => {
+				const threadId = await createThread({ title: 'Started' });
+				await createMessage({ threadId, role, content: userContent('hello') });
+
+				await expect(repository.threadHasMessages(threadId)).resolves.toBe(true);
+			},
+		);
+
+		it('is scoped to the thread it is asked about', async () => {
+			const threadId = await createThread({ title: 'Started' });
+			const otherThreadId = await createThread({ title: 'Untouched' });
+			await createMessage({ threadId, role: 'user', content: userContent('hello') });
+
+			await expect(repository.threadHasMessages(otherThreadId)).resolves.toBe(false);
+		});
+	});
+
 	describe('countSearchMatchesByThread', () => {
 		it('counts matching rows per thread', async () => {
 			const first = await createThread({ title: 'Deploys' });
@@ -283,14 +340,14 @@ describe('conversation-history repositories', () => {
 				content: askUserContent([{ question: 'Which env?', selectedOptions: ['deploy-staging'] }]),
 			});
 
-			const counts = await messageRepository.countSearchMatchesByThread([first, second], 'deploy');
+			const counts = await repository.countSearchMatchesByThread([first, second], 'deploy');
 
 			expect(counts.get(first)).toBe(2);
 			expect(counts.get(second)).toBe(1);
 		});
 
 		it('is empty when no thread ids are given', async () => {
-			const counts = await messageRepository.countSearchMatchesByThread([], 'deploy');
+			const counts = await repository.countSearchMatchesByThread([], 'deploy');
 
 			expect(counts.size).toBe(0);
 		});
@@ -324,10 +381,42 @@ describe('conversation-history repositories', () => {
 				createdAt: at(3000),
 			});
 
-			const rows = await messageRepository.findSearchMatchRows([threadId], 'deploy', 2);
+			const byThread = await repository.findSearchMatchRows([threadId], 'deploy', 2);
 
+			const rows = byThread.get(threadId) ?? [];
 			expect(rows).toHaveLength(2);
 			expect(rows[0].id).toBe(newest);
+		});
+
+		it('caps candidates per thread without starving other threads', async () => {
+			// Ids are fixed so the match-heavy thread deterministically sorts first:
+			// a single shared budget would spend it all here and leave the quiet
+			// thread with no candidate row at all.
+			const busy = await createThread({ id: 'thread-a-busy', title: 'Busy' });
+			const busyIds: string[] = [];
+			for (let n = 0; n < 9; n++) {
+				busyIds.push(
+					await createMessage({
+						threadId: busy,
+						role: 'user',
+						content: userContent(`deploy ${n}`),
+						createdAt: at(n * 1000),
+					}),
+				);
+			}
+
+			const quiet = await createThread({ id: 'thread-b-quiet', title: 'Quiet' });
+			const onlyMatch = await createMessage({
+				threadId: quiet,
+				role: 'user',
+				content: userContent('deploy once'),
+				createdAt: at(0),
+			});
+
+			const byThread = await repository.findSearchMatchRows([busy, quiet], 'deploy', 2);
+
+			expect(byThread.get(busy)?.map((row) => row.id)).toEqual([busyIds[8], busyIds[7]]);
+			expect(byThread.get(quiet)?.map((row) => row.id)).toEqual([onlyMatch]);
 		});
 	});
 
@@ -354,7 +443,7 @@ describe('conversation-history repositories', () => {
 			});
 			const emptyThreadId = await createThread({ title: 'No messages yet' });
 
-			const byThread = await messageRepository.findFirstUserMessages([threadId, emptyThreadId]);
+			const byThread = await repository.findFirstUserMessages([threadId, emptyThreadId]);
 
 			expect(byThread.get(threadId)?.id).toBe(first);
 			expect(byThread.has(emptyThreadId)).toBe(false);
@@ -371,12 +460,10 @@ describe('conversation-history repositories', () => {
 				content: userContent('anchor me'),
 			});
 
-			await expect(messageRepository.findMessageInThread(threadId, messageId)).resolves.toEqual(
+			await expect(repository.findMessageInThread(threadId, messageId)).resolves.toEqual(
 				expect.objectContaining({ id: messageId }),
 			);
-			await expect(
-				messageRepository.findMessageInThread(otherThreadId, messageId),
-			).resolves.toBeNull();
+			await expect(repository.findMessageInThread(otherThreadId, messageId)).resolves.toBeNull();
 		});
 
 		it('ignores rows that can never appear in a window', async () => {
@@ -392,12 +479,8 @@ describe('conversation-history repositories', () => {
 				content: assistantWorkingContent('Building the workflow now.'),
 			});
 
-			await expect(
-				messageRepository.findMessageInThread(threadId, toolMessageId),
-			).resolves.toBeNull();
-			await expect(
-				messageRepository.findMessageInThread(threadId, narrationId),
-			).resolves.toBeNull();
+			await expect(repository.findMessageInThread(threadId, toolMessageId)).resolves.toBeNull();
+			await expect(repository.findMessageInThread(threadId, narrationId)).resolves.toBeNull();
 		});
 	});
 
@@ -448,10 +531,11 @@ describe('conversation-history repositories', () => {
 		});
 
 		it('reads the tail when no anchor is given', async () => {
-			const window = await messageRepository.getConversationWindow({
+			const window = await repository.getConversationWindow({
 				threadId,
 				before: 2,
 				after: 0,
+				isVisibleRow: () => true,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.d, messageIds.e]);
@@ -460,10 +544,11 @@ describe('conversation-history repositories', () => {
 		});
 
 		it('reads the head when only `after` is given', async () => {
-			const window = await messageRepository.getConversationWindow({
+			const window = await repository.getConversationWindow({
 				threadId,
 				before: 0,
 				after: 2,
+				isVisibleRow: () => true,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.a, messageIds.b]);
@@ -472,10 +557,11 @@ describe('conversation-history repositories', () => {
 		});
 
 		it('returns the whole conversation without more-flags when it fits', async () => {
-			const window = await messageRepository.getConversationWindow({
+			const window = await repository.getConversationWindow({
 				threadId,
 				before: 5,
 				after: 0,
+				isVisibleRow: () => true,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([
@@ -490,11 +576,12 @@ describe('conversation-history repositories', () => {
 		});
 
 		it('reads around an anchor, including the anchor row', async () => {
-			const window = await messageRepository.getConversationWindow({
+			const window = await repository.getConversationWindow({
 				threadId,
 				anchor: { createdAt: at(2000), id: messageIds.c },
 				before: 1,
 				after: 1,
+				isVisibleRow: () => true,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.b, messageIds.c, messageIds.d]);
@@ -503,21 +590,23 @@ describe('conversation-history repositories', () => {
 		});
 
 		it('reports no more rows past the ends of the conversation', async () => {
-			const fromStart = await messageRepository.getConversationWindow({
+			const fromStart = await repository.getConversationWindow({
 				threadId,
 				anchor: { createdAt: at(0), id: messageIds.a },
 				before: 2,
 				after: 1,
+				isVisibleRow: () => true,
 			});
 			expect(fromStart.rows.map((row) => row.id)).toEqual([messageIds.a, messageIds.b]);
 			expect(fromStart.hasMoreBefore).toBe(false);
 			expect(fromStart.hasMoreAfter).toBe(true);
 
-			const fromEnd = await messageRepository.getConversationWindow({
+			const fromEnd = await repository.getConversationWindow({
 				threadId,
 				anchor: { createdAt: at(4000), id: messageIds.e },
 				before: 1,
 				after: 2,
+				isVisibleRow: () => true,
 			});
 			expect(fromEnd.rows.map((row) => row.id)).toEqual([messageIds.d, messageIds.e]);
 			expect(fromEnd.hasMoreBefore).toBe(true);
@@ -540,10 +629,11 @@ describe('conversation-history repositories', () => {
 				createdAt: at(4500),
 			});
 
-			const window = await messageRepository.getConversationWindow({
+			const window = await repository.getConversationWindow({
 				threadId,
 				before: 2,
 				after: 0,
+				isVisibleRow: () => true,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.d, messageIds.e]);
@@ -558,10 +648,11 @@ describe('conversation-history repositories', () => {
 				createdAt: at(5000),
 			});
 
-			const window = await messageRepository.getConversationWindow({
+			const window = await repository.getConversationWindow({
 				threadId,
 				before: 2,
 				after: 0,
+				isVisibleRow: () => true,
 			});
 
 			expect(window.rows.map((row) => row.id)).toEqual([messageIds.e, askUserId]);
@@ -585,23 +676,95 @@ describe('conversation-history repositories', () => {
 				createdAt: sameMoment,
 			});
 
-			const tail = await messageRepository.getConversationWindow({
+			const tail = await repository.getConversationWindow({
 				threadId: sameTimestampThread,
 				before: 1,
 				after: 0,
+				isVisibleRow: () => true,
 			});
 			expect(tail.rows.map((row) => row.id)).toEqual(['msg-bbb']);
 			expect(tail.hasMoreBefore).toBe(true);
 
-			const around = await messageRepository.getConversationWindow({
+			const around = await repository.getConversationWindow({
 				threadId: sameTimestampThread,
 				anchor: { createdAt: sameMoment, id: 'msg-bbb' },
 				before: 1,
 				after: 1,
+				isVisibleRow: () => true,
 			});
 			expect(around.rows.map((row) => row.id)).toEqual(['msg-aaa', 'msg-bbb']);
 			expect(around.hasMoreBefore).toBe(false);
 			expect(around.hasMoreAfter).toBe(false);
+		});
+
+		it("spends window slots only on rows the caller's predicate accepts", async () => {
+			// The SQL filter cannot tell an internal auto-follow-up from a real user
+			// message, so the caller's predicate decides what a slot is spent on.
+			const mixedThread = await createThread({ title: 'Auto follow-ups' });
+			const isVisibleRow = (row: { content: string }) => !row.content.includes('(continue)');
+
+			await createMessage({
+				threadId: mixedThread,
+				role: 'user',
+				content: userContent('(continue)'),
+				createdAt: at(0),
+			});
+			await createMessage({
+				threadId: mixedThread,
+				role: 'user',
+				content: userContent('(continue)'),
+				createdAt: at(1000),
+			});
+			const realOne = await createMessage({
+				threadId: mixedThread,
+				role: 'user',
+				content: userContent('set up the digest'),
+				createdAt: at(2000),
+			});
+			await createMessage({
+				threadId: mixedThread,
+				role: 'user',
+				content: userContent('(continue)'),
+				createdAt: at(3000),
+			});
+			const realTwo = await createMessage({
+				threadId: mixedThread,
+				role: 'assistant',
+				content: assistantTextContent('done'),
+				createdAt: at(4000),
+			});
+			await createMessage({
+				threadId: mixedThread,
+				role: 'user',
+				content: userContent('(continue)'),
+				createdAt: at(5000),
+			});
+			const realThree = await createMessage({
+				threadId: mixedThread,
+				role: 'user',
+				content: userContent('now add Slack'),
+				createdAt: at(6000),
+			});
+
+			const partial = await repository.getConversationWindow({
+				threadId: mixedThread,
+				before: 2,
+				after: 0,
+				isVisibleRow,
+			});
+			expect(partial.rows.map((row) => row.id)).toEqual([realTwo, realThree]);
+			expect(partial.hasMoreBefore).toBe(true);
+
+			// Only internal rows are left older than these, and the fetch reached the
+			// thread's start: the flags count visible rows, not storage rows.
+			const whole = await repository.getConversationWindow({
+				threadId: mixedThread,
+				before: 3,
+				after: 0,
+				isVisibleRow,
+			});
+			expect(whole.rows.map((row) => row.id)).toEqual([realOne, realTwo, realThree]);
+			expect(whole.hasMoreBefore).toBe(false);
 		});
 	});
 });
