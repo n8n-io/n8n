@@ -555,6 +555,18 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 						tc.isLoading = false;
 					}
 				}
+				break;
+			}
+			// A *completed* run gets a narrower sweep: only calls holding a confirmation.
+			// Once the owning run is over its pending-confirmation row is gone, so the card
+			// can no longer be answered — leaving it live strands the user on a control that
+			// only errors, and it keeps stacking as new cards arrive (INS-1130). Deliberately
+			// not the blanket sweep above: detached background-agent events may still follow a
+			// completed orchestrator run, and their tool calls are legitimately in flight.
+			for (const tc of Object.values(state.toolCallsById)) {
+				if (tc.isLoading && tc.confirmation) {
+					tc.isLoading = false;
+				}
 			}
 			break;
 		}

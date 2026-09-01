@@ -25,6 +25,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	isMessageSettleableConfirmation,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -1173,6 +1174,49 @@ export class InstanceAiService {
 		return this.runState.hasLiveRun(threadId);
 	}
 
+	/** A run is executing right now, as opposed to sitting suspended on a card. */
+	hasExecutingRun(threadId: string): boolean {
+		return this.runState.hasActiveRun(threadId);
+	}
+
+	/**
+	 * Clear the way for a new user message on a thread whose run is suspended on a card
+	 * (INS-1130). Resumes the suspended tool with `repliedWithMessage` so the open
+	 * `tool_use` is answered and the turn yields, then waits for that leg to finish so the
+	 * follow-up run starts against a settled thread rather than racing it.
+	 *
+	 * - `'none'` — nothing suspended; the caller proceeds as normal.
+	 * - `'settled'` — the card was settled; the caller may start the new run.
+	 * - `'blocking'` — the open card has no settle branch (a generic approval, a questions
+	 *   wizard, a plan review). The caller must keep refusing the message, matching the
+	 *   frontend, which keeps the composer disabled for exactly these.
+	 * - `'failed'` — the resume was refused (lost race, revoked user, orphaned checkpoint).
+	 */
+	async settleSuspendedRunForNewMessage(
+		userId: string,
+		threadId: string,
+	): Promise<'none' | 'settled' | 'blocking' | 'failed'> {
+		const suspended = this.runState.getSuspendedRun(threadId);
+		if (!suspended) return 'none';
+		if (suspended.user.id !== userId) return 'none';
+		if (!isMessageSettleableConfirmation(suspended.suspendPayload ?? {})) return 'blocking';
+
+		let completion: Promise<void> | undefined;
+		const resumed = await this.resumeSuspendedRun(
+			userId,
+			suspended.requestId,
+			{ approved: false, repliedWithMessage: true },
+			(legCompletion) => {
+				completion = legCompletion;
+			},
+		);
+		if (!resumed) return 'failed';
+
+		// `processResumedStream` handles its own failures, so this only sequences.
+		await completion?.catch(() => undefined);
+		return 'settled';
+	}
+
 	/**
 	 * Whether this specific run is live (active or suspended) in this process.
 	 * The interrupted-run sweeper uses this so a newer run on the same thread
@@ -2012,10 +2056,19 @@ export class InstanceAiService {
 	}
 
 	/** Same shutdown-drain contract as `startExecuteRun`, for the resume path. */
-	private startProcessResumedStream(
+	/** Returns the leg's promise so a caller that must run strictly *after* the resume —
+	 *  the settle-then-new-message path — can sequence on it. Callers that only spawn
+	 *  ignore the return value; the shutdown-drain registration happens either way. */
+	private async startProcessResumedStream(
 		...args: Parameters<InstanceAiService['processResumedStream']>
-	): void {
-		this.trackInFlightExecution(this.processResumedStream(...args));
+	): Promise<void> {
+		// Spawned before the first await, so callers that ignore the return value still get
+		// today's fire-and-forget behaviour. Rejections are swallowed because
+		// `processResumedStream` reports its own failures and a spawn-only caller must not be
+		// forced to attach a handler.
+		const promise = this.processResumedStream(...args);
+		this.trackInFlightExecution(promise);
+		await promise.catch(() => undefined);
 	}
 
 	/**
@@ -5187,6 +5240,10 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		data: ConfirmationData,
+		/** Handed the resumed leg's promise once it is spawned, for callers that must run
+		 *  after it finishes (the settle-then-new-message path). Not called when the resume
+		 *  is refused before reaching the stream. */
+		onLegStarted?: (completion: Promise<void>) => void,
 	): Promise<InstanceAiConfirmResponse | null> {
 		const suspended = this.runState.findSuspendedByRequestId(requestId);
 		if (!suspended) {
@@ -5338,7 +5395,7 @@ export class InstanceAiService {
 			resumeOrchestrationContext = rebuilt.orchestrationContext;
 		}
 
-		this.startProcessResumedStream(resumeAgent, resumeData, {
+		const legCompletion = this.startProcessResumedStream(resumeAgent, resumeData, {
 			runId,
 			agentRunId,
 			threadId,
@@ -5360,6 +5417,7 @@ export class InstanceAiService {
 			resumeTracing,
 			unregisteredResumeTracing,
 		});
+		onLegStarted?.(legCompletion);
 		return { ok: true, runId };
 	}
 
@@ -5480,6 +5538,7 @@ export class InstanceAiService {
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							stopSignal,
+							stopAfterToolCallId: opts.toolCallId,
 							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
@@ -5493,6 +5552,10 @@ export class InstanceAiService {
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
+						// A tool requests its handoff from inside its own execution, so the stop flag
+						// is up before the first chunk is read. Without this the leg can return
+						// having published nothing, stranding the card the user just answered.
+						stopAfterToolCallId: opts.toolCallId,
 						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
 			if (!resumeClaimed) {
@@ -5500,6 +5563,22 @@ export class InstanceAiService {
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
 				await this.settleUnclaimedResume(opts, claimError, 'stream');
 				return;
+			}
+			// The settle leg for a chat message sent over an open card. The SDK's run loop is
+			// detached from this consumer (`stream-session` fires it as a background promise),
+			// so returning on the stop signal does *not* stop it — it would go on to a model
+			// call whose output we no longer forward, and which would race the follow-up run's
+			// memory writes. Abort to tear it down: the loop's `assertNotAborted` sits
+			// immediately before `callModel` on the post-resume iteration, so this lands before
+			// the model call in the common case and cancels it in flight otherwise.
+			//
+			// Then await the stream's completion as a barrier. The abort path persists the turn
+			// delta — the settled tool result included — and only closes the stream afterwards,
+			// so this is what guarantees the follow-up run loads history with the tool call
+			// already resolved rather than pending.
+			if (result.stopReason === 'user-message-received') {
+				opts.abortController.abort();
+				await result.text?.catch(() => undefined);
 			}
 			if (result.status === 'suspended') {
 				// As in the initial-run path, record suspended-segment usage here.

@@ -210,4 +210,32 @@ describe('confirmation payload → tool resume schema contract', () => {
 
 		expect([...Object.keys(coveredKinds)].sort()).toEqual([...exercised].sort());
 	});
+
+	/**
+	 * The settle payload for a chat message sent over an open card (INS-1130). It has no
+	 * wire kind — the service constructs it — so it needs its own drift guard: the flag is
+	 * what distinguishes "the user replied" from "the user skipped", and a schema that
+	 * fails to declare it silently degrades the resume into the skip branch, writing a
+	 * setup-skip grant the user never asked for.
+	 */
+	describe('repliedWithMessage settle payload', () => {
+		const settleTargets: Array<[string, ZodType]> = [
+			['workflows (setup wizard)', workflowsResumeSchema],
+			['credentials', credentialsResumeSchema],
+		];
+
+		test.each(settleTargets)('survives the %s resume schema', (_tool, schema) => {
+			const resumeData = buildResumeData({ approved: false, repliedWithMessage: true });
+
+			expect(resumeData).toEqual({ approved: false, repliedWithMessage: true });
+
+			const parsed = schema.safeParse(resumeData);
+			expect(parsed.success).toBe(true);
+			if (parsed.success) expect(parsed.data).toEqual(resumeData);
+		});
+
+		it('is absent unless the service asked for it, so a plain skip stays a skip', () => {
+			expect(buildResumeData({ approved: false })).toEqual({ approved: false });
+		});
+	});
 });

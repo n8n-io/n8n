@@ -43,7 +43,7 @@ import {
 	getAgentPreviewViewFromThreadMetadata,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { isPendingItemFloating } from './confirmationKinds';
+import { isPendingItemBlockingInput, isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
@@ -185,6 +185,17 @@ const dismissedExecutionId = ref<string | null>(null);
 
 const isChatInProgress = computed(
 	() => thread.isStreaming || thread.isSendingMessage || thread.isAwaitingConfirmation,
+);
+
+// A run parked on a setup or credential card keeps `activeRunId` set — and so
+// `isStreaming` true — but nothing is generating: the agent is waiting on the user. The
+// composer must read that as idle so it offers Send rather than Stop, since a message is
+// now a valid answer to the card (INS-1130).
+const isComposerBusy = computed(
+	() => thread.isStreaming && !isParkedOnAnswerableConfirmation.value,
+);
+const isParkedOnAnswerableConfirmation = computed(
+	() => thread.pendingConfirmations.length > 0 && !thread.isInputBlockedByConfirmation,
 );
 
 const activeFixWithAiOffer = computed(() => {
@@ -858,6 +869,30 @@ function handleSubmit(
 		return;
 	}
 
+	// INS-1130: answering a setup or credential card with a message is a third outcome
+	// alongside completing and skipping it, and the card's own components never see it — so
+	// without this the card reads as shown-but-never-resolved, indistinguishable from
+	// abandonment. Mirrors the plan-review shape above rather than minting new properties.
+	const answeredCard = thread.pendingConfirmations.find(
+		(item) => !isPendingItemBlockingInput(item),
+	);
+	if (answeredCard) {
+		telemetry.track('User finished providing input', {
+			thread_id: thread.id,
+			input_thread_id: answeredCard.toolCall.confirmation.inputThreadId ?? '',
+			instance_id: rootStore.instanceId,
+			type: answeredCard.toolCall.confirmation.setupRequests?.length ? 'setup' : 'credential',
+			provided_inputs: [
+				{
+					label: 'card',
+					options: ['complete', 'skip', 'send-message'],
+					option_chosen: 'send-message',
+				},
+			],
+			skipped_inputs: [],
+		});
+	}
+
 	const handoffContext = pendingComposerContext.value ?? undefined;
 	const submittedGeneratedDraft = generatedComposerDraft.value;
 	const queuedAgentAttachment = pendingAgentAttachment.value;
@@ -1250,9 +1285,9 @@ async function dismissComposerContextChip() {
 													v-else
 													ref="chatInputRef"
 													key="chat-input"
-													:is-streaming="thread.isStreaming"
+													:is-streaming="isComposerBusy"
 													:is-submitting="thread.isSendingMessage"
-													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+													:is-awaiting-confirmation="thread.isInputBlockedByConfirmation"
 													:is-plan-edit-mode="thread.activePlanEdit !== null"
 													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 													:current-thread-id="thread.id"

@@ -791,6 +791,38 @@ export function isDisplayableConfirmationRequest(
 	}
 }
 
+/**
+ * Whether a new chat message is a valid way to answer this card (INS-1130).
+ *
+ * True only for the cards whose tool has a `repliedWithMessage` resume branch — the
+ * per-node setup wizard, the credential picker (both stages), and the agent chat-channel
+ * card. Everything else is false, and deliberately so: a resume payload is stripped to
+ * the receiving tool's `resumeSchema`, so sending this to a tool without that branch
+ * would silently degrade to a bare `{ approved: false }` — read by `plan` as a hard plan
+ * denial, and by a generic approval as a deny. Adding a card here therefore requires
+ * adding its settle branch first.
+ *
+ * Shared deliberately between the frontend (which decides whether to let the user type)
+ * and the backend (which decides whether to accept the message over an open card). The
+ * two must not fork: disagreement means either a dead input or a 409 on send.
+ *
+ * Accepts the confirmation payload the frontend holds and the raw tool suspend payload
+ * the backend holds — the suspend schemas name these fields identically.
+ */
+export function isMessageSettleableConfirmation(payload: {
+	setupRequests?: unknown;
+	credentialRequests?: unknown;
+	credentialFlow?: unknown;
+	channelConfig?: unknown;
+}): boolean {
+	if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) return true;
+	if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0)
+		return true;
+	if (payload.credentialFlow !== undefined && payload.credentialFlow !== null) return true;
+	if (payload.channelConfig !== undefined && payload.channelConfig !== null) return true;
+	return false;
+}
+
 export const statusPayloadSchema = z.object({
 	message: z.string().describe('Transient status message. Empty string clears the indicator.'),
 });

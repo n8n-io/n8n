@@ -1202,6 +1202,13 @@ export interface InstanceAiContext {
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
+	 * End the orchestrator turn cleanly once the current tool result is in, without a
+	 * further model step and without a terminal outcome — a follow-up run takes over.
+	 * Mirrors the field on `OrchestrationContext`; domain tools need their own copy
+	 * because they are built from this context, not the orchestration one.
+	 */
+	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
+	/**
 	 * File attachments from the current user message. Runtime-only — not
 	 * persisted. Used to register `parse-file` and supply data to the parser.
 	 * Workflow (resource) attachments are handled separately by the adapter.

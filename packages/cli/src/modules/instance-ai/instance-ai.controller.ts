@@ -244,8 +244,20 @@ export class InstanceAiController {
 			}
 		}
 
-		// One active run per thread
-		if (this.instanceAiService.hasActiveRun(threadId)) {
+		// One *executing* run per thread. A run merely suspended on a card is not a
+		// conflict: sending a message is a valid way to answer setup and credential cards
+		// (INS-1130), so settle the card first and let this message start the next run.
+		if (this.instanceAiService.hasExecutingRun(threadId)) {
+			throw new ConflictError('A run is already active for this thread');
+		}
+		const settled = await this.instanceAiService.settleSuspendedRunForNewMessage(
+			req.user.id,
+			threadId,
+		);
+		if (settled === 'blocking') {
+			throw new ConflictError('This thread is waiting for you to answer a prompt');
+		}
+		if (settled === 'failed') {
 			throw new ConflictError('A run is already active for this thread');
 		}
 

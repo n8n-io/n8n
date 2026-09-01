@@ -61,6 +61,7 @@ import {
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
+import { isPendingItemBlockingInput } from './confirmationKinds';
 
 export interface PlanEditContext {
 	requestId: string;
@@ -573,6 +574,16 @@ export function createThreadRuntime(
 
 	/** True while the run is paused awaiting the user to resolve a confirmation. */
 	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
+
+	/**
+	 * True only for pending confirmations the user cannot answer by typing. Narrower than
+	 * `isAwaitingConfirmation`, which stays as the "a card is open at all" signal for the
+	 * status bar and the timeline: a setup or credential card leaves the composer live so
+	 * the user can redirect, ask a question, or park a credential they don't have yet.
+	 */
+	const isInputBlockedByConfirmation = computed(() =>
+		pendingConfirmations.value.some(isPendingItemBlockingInput),
+	);
 
 	function resolveConfirmation(
 		requestId: string,
@@ -1385,6 +1396,7 @@ export function createThreadRuntime(
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
+		isInputBlockedByConfirmation,
 
 		// actions
 		setPendingHandoff,

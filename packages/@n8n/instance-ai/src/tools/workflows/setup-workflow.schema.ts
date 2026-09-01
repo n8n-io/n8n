@@ -31,4 +31,7 @@ export const setupResumeSchema = z.object({
 	 *  card apart from one that is merely still unconfigured. */
 	skippedNodes: z.array(z.string()).optional(),
 	testTriggerNode: z.string().optional(),
+	/** The user sent a chat message instead of answering the card. Settles the tool call
+	 *  and yields the turn without recording a skip, so the card can be re-raised. */
+	repliedWithMessage: z.boolean().optional(),
 });

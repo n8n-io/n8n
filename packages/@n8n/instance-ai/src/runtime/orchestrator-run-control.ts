@@ -1,6 +1,11 @@
 import type { OrchestrationContext } from '../types';
 
-export type OrchestratorRunHandoffReason = 'planned-tasks-scheduled';
+export type OrchestratorRunHandoffReason =
+	| 'planned-tasks-scheduled'
+	/** The user sent a new message instead of answering an open confirmation card.
+	 *  The suspended tool settles and yields the turn; the message runs as its own
+	 *  run, so it stays a real user turn in history. */
+	| 'user-message-received';
 
 export interface OrchestratorRunHandoffState {
 	handoffReason?: OrchestratorRunHandoffReason;
@@ -35,7 +40,16 @@ export function createOrchestratorRunControl(
 	};
 
 	if (context) {
-		context.requestRunHandoff = (reason) => control.requestHandoff(reason);
+		const requestRunHandoff = (reason: OrchestratorRunHandoffReason) =>
+			control.requestHandoff(reason);
+		context.requestRunHandoff = requestRunHandoff;
+		// Domain tools (`workflows`, `credentials`) are built from `domainContext`, which
+		// `createInstanceAgent` spreads into a copy — so wiring only the orchestration
+		// context would leave them unable to yield the turn. Both foreground call sites
+		// construct the control before the agent, so the copy picks this up.
+		if (context.domainContext) {
+			context.domainContext.requestRunHandoff = requestRunHandoff;
+		}
 	}
 
 	return control;

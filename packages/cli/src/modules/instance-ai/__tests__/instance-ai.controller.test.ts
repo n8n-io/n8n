@@ -171,6 +171,10 @@ describe('InstanceAiController', () => {
 		eventLog.getOpenSegments.mockReturnValue([]);
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 		settingsService.isModelConfigured.mockResolvedValue(true);
+		// Default: an idle thread with nothing suspended, so chat tests only stub the
+		// run-state they actually exercise.
+		instanceAiService.hasExecutingRun.mockReturnValue(false);
+		instanceAiService.settleSuspendedRunForNewMessage.mockResolvedValue('none');
 	});
 
 	describe('chat', () => {
@@ -271,9 +275,66 @@ describe('InstanceAiController', () => {
 
 		it('should throw ConflictError when a run is already active', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(true);
+			instanceAiService.hasExecutingRun.mockReturnValue(true);
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ConflictError);
+			// A thread that is genuinely executing is never settled — the message is refused
+			// outright rather than racing the live run.
+			expect(instanceAiService.settleSuspendedRunForNewMessage).not.toHaveBeenCalled();
+		});
+
+		// INS-1130: a run suspended on a setup or credential card is not a conflict. The card
+		// is settled first, then this message starts the next run.
+		describe('when the thread is suspended on a card', () => {
+			beforeEach(() => {
+				memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			});
+
+			it('settles the card, then starts the run for the new message', async () => {
+				instanceAiService.settleSuspendedRunForNewMessage.mockResolvedValue('settled');
+				instanceAiService.startRun.mockReturnValue('run-after-settle');
+
+				const result = await controller.chat(req, res, THREAD_ID, payload);
+
+				expect(instanceAiService.settleSuspendedRunForNewMessage).toHaveBeenCalledWith(
+					USER_ID,
+					THREAD_ID,
+				);
+				expect(result).toEqual({ runId: 'run-after-settle' });
+			});
+
+			it('settles before starting, so the new run never races the settling one', async () => {
+				const order: string[] = [];
+				instanceAiService.settleSuspendedRunForNewMessage.mockImplementation(async () => {
+					order.push('settle');
+					return 'settled';
+				});
+				instanceAiService.startRun.mockImplementation(() => {
+					order.push('start');
+					return 'run-after-settle';
+				});
+
+				await controller.chat(req, res, THREAD_ID, payload);
+
+				expect(order).toEqual(['settle', 'start']);
+			});
+
+			// A card with no settle branch (generic approval, questions wizard, plan review)
+			// still refuses the message, matching the frontend, which keeps the composer
+			// disabled for exactly these.
+			it('refuses the message for a card that cannot be answered by typing', async () => {
+				instanceAiService.settleSuspendedRunForNewMessage.mockResolvedValue('blocking');
+
+				await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ConflictError);
+				expect(instanceAiService.startRun).not.toHaveBeenCalled();
+			});
+
+			it('refuses the message when the settle itself could not be claimed', async () => {
+				instanceAiService.settleSuspendedRunForNewMessage.mockResolvedValue('failed');
+
+				await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ConflictError);
+				expect(instanceAiService.startRun).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should throw ForbiddenError when thread belongs to another user', async () => {

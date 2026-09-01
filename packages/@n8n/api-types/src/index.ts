@@ -351,6 +351,7 @@ export {
 	mcpToolCallResultSchema,
 	getRenderHint,
 	isDisplayableConfirmationRequest,
+	isMessageSettleableConfirmation,
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,

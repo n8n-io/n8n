@@ -31,6 +31,8 @@ export interface StreamRunOptions {
 	logger: Logger;
 	onActivity?: () => void;
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
+	/** Tool call being resumed; a stop signal waits for its result. See the executor field. */
+	stopAfterToolCallId?: string;
 	/**
 	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
 	 * default policy, which on the durable-log path would persist redacted text
@@ -92,6 +94,9 @@ async function consumeStream(
 			logger: options.logger,
 			onActivity: options.onActivity,
 			stopSignal: options.stopSignal,
+			...(options.stopAfterToolCallId !== undefined
+				? { stopAfterToolCallId: options.stopAfterToolCallId }
+				: {}),
 			outputRedaction: options.outputRedaction,
 		},
 		control: { mode: 'manual' },

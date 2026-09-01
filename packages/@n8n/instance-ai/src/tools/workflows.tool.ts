@@ -1226,6 +1226,38 @@ async function handleSetup(
 		});
 	}
 
+	// State 2a: User sent a chat message instead of answering the card. Settle this tool
+	// call and yield the turn — the message runs as its own turn, so it stays a real user
+	// message in history. Deliberately no `rememberSkippedSetup`: a reply is not a skip
+	// (the user may be asking where to find a key, not declining), so the card must stay
+	// re-openable without the user having to ask for it by name.
+	if (resumeData.repliedWithMessage) {
+		if (state.preTestSnapshot) {
+			await context.workflowService.updateFromWorkflowJSON(input.workflowId, state.preTestSnapshot);
+			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+			state.preTestSnapshot = null;
+		}
+		const outstanding = (await analyzeWorkflow(context, input.workflowId)).filter(
+			(request) => request.needsAction,
+		);
+		context.requestRunHandoff?.('user-message-received');
+		return {
+			success: true,
+			deferred: true,
+			reason:
+				'The user sent a new message instead of completing setup. That message is the next ' +
+				'turn’s input — answer it first.',
+			...(outstanding.length > 0
+				? {
+						stillNeedsSetup: describeSkippedSetup(outstanding),
+						stillNeedsSetupGuidance:
+							'Setup is still outstanding, not skipped. Once you have addressed what the user ' +
+							'said, call setup again for these when it makes sense — no `reopenSkipped` needed.',
+					}
+				: {}),
+		};
+	}
+
 	// State 2: User declined — revert any trigger-test changes
 	if (!resumeData.approved) {
 		if (state.preTestSnapshot) {

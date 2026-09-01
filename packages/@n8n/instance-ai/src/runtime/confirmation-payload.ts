@@ -90,5 +90,6 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		...(data.denied ? { denied: true } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
+		...(data.repliedWithMessage ? { repliedWithMessage: true } : {}),
 	};
 }

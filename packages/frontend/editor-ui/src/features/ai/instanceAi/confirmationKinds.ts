@@ -1,3 +1,5 @@
+import { isMessageSettleableConfirmation } from '@n8n/api-types';
+
 import type { PendingConfirmationItem } from './instanceAi.store';
 
 /**
@@ -32,4 +34,21 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 		case undefined:
 			return true;
 	}
+}
+
+/**
+ * Whether this pending confirmation blocks the chat input.
+ *
+ * A setup or credential card does not: sending a message is a valid way to answer it, and
+ * the backend settles the card and runs the message as the next turn (INS-1130). Every
+ * other card still blocks — for a floating one the panel has taken the input slot anyway,
+ * and for a plan review the "Ask for edits" flow owns the composer.
+ *
+ * Deliberately delegates to the shared `@n8n/api-types` predicate the backend uses to
+ * decide whether to accept the message. Forking the two would produce either an input the
+ * user can type into that 409s on send, or a card the backend would happily settle but the
+ * user cannot reply to.
+ */
+export function isPendingItemBlockingInput(item: PendingConfirmationItem): boolean {
+	return !isMessageSettleableConfirmation(item.toolCall.confirmation);
 }

@@ -2671,6 +2671,64 @@ describe('workflows tool', () => {
 				expect(result).toMatchObject({ success: true, deferred: true });
 			});
 
+			// INS-1130. This is the distinction the whole feature rests on: a message over an
+			// open card is not a decision about the card. Recording a skip here would leave the
+			// agent forbidden from re-opening setup for something the user never declined —
+			// they may have been asking where to find the key.
+			it('writes no skip grant when the user replies with a message instead', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
+				const context = createGrantAwareContext();
+
+				const tool = createWorkflowsTool(context, 'full');
+				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: { approved: false, repliedWithMessage: true },
+				} as never);
+
+				expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
+				expect(result).toMatchObject({ success: true, deferred: true });
+				// The outstanding cards are reported so the next turn knows what is left, but
+				// without the "do not re-open" guidance a skip carries.
+				expect(result).toHaveProperty('stillNeedsSetup');
+				expect(result).not.toHaveProperty('skippedByUser');
+			});
+
+			it('yields the turn so the reply runs as its own turn', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest]);
+				const requestRunHandoff = vi.fn();
+				const context = createMockContext({ requestRunHandoff });
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: { approved: false, repliedWithMessage: true },
+				} as never);
+
+				expect(requestRunHandoff).toHaveBeenCalledWith('user-message-received');
+			});
+
+			it('still records a skip when the user actually skips, not replies', async () => {
+				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest]);
+				const requestRunHandoff = vi.fn();
+				const sessionApprovedToolKeys = new Set<string>();
+				const context = createMockContext({
+					sessionApprovedToolKeys,
+					requestRunHandoff,
+					grantSessionToolApproval: vi.fn(async (key: string) => {
+						await Promise.resolve();
+						sessionApprovedToolKeys.add(key);
+					}),
+				});
+
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+					resumeData: { approved: false },
+				} as never);
+
+				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
+					'workflows:setup-skip:cred:slackApi',
+				);
+				expect(requestRunHandoff).not.toHaveBeenCalled();
+			});
+
 			it('separates a card the user skipped from one that is merely unconfigured', async () => {
 				// The Slack card was dismissed; the Sheets one was left half-filled. Reporting both
 				// as "still need configuration" is what made the agent re-open setup.

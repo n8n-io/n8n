@@ -50,6 +50,7 @@ function resumeCtx(resumeData: {
 	approved: boolean;
 	credentials?: Record<string, string>;
 	autoSetup?: { credentialType: string; attemptId?: string };
+	repliedWithMessage?: boolean;
 }) {
 	const suspend = vi.fn();
 	return { resumeData, suspend } as never;
@@ -1592,6 +1593,29 @@ describe('credentials tool', () => {
 				deferred: true,
 				reason: expect.stringContaining('User skipped credential setup'),
 			});
+		});
+
+		// INS-1130: a message over the card settles it without claiming the user declined —
+		// "I don't have that key yet, keep going" must not read as "don't ask me again".
+		it('settles and yields the turn when the user replies with a message instead', async () => {
+			const requestRunHandoff = vi.fn();
+			const context = createMockContext({ requestRunHandoff });
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				resumeCtx({ approved: false, repliedWithMessage: true }),
+			);
+
+			expect(requestRunHandoff).toHaveBeenCalledWith('user-message-received');
+			expect(result).toMatchObject({ success: true, deferred: true });
+			expect(result).toHaveProperty('reason', expect.stringContaining('sent a new message'));
+			// The distinction the agent acts on: unconfigured, not declined.
+			expect(result).toHaveProperty('reason', expect.stringContaining('not declined'));
 		});
 
 		it('should return needsBrowserSetup when autoSetup is present', async () => {

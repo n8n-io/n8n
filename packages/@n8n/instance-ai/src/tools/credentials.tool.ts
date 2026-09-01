@@ -516,6 +516,9 @@ export const credentialsResumeSchema = z.object({
 	approved: z.boolean(),
 	credentials: z.record(z.string()).optional(),
 	autoSetup: z.object({ credentialType: z.string(), attemptId: z.string().optional() }).optional(),
+	/** The user sent a chat message instead of answering the card. Settles the tool call
+	 *  and yields the turn; distinct from the "Later" skip below. */
+	repliedWithMessage: z.boolean().optional(),
 });
 
 interface CredentialToolContext {
@@ -799,6 +802,21 @@ async function handleSetup(
 			...(input.requireUserSelection === true ? { requireUserSelection: true } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
+	}
+
+	// State 2a: User sent a chat message instead of answering the card. Settle and yield
+	// the turn so the message runs as its own turn. Unlike "Later" below, this makes no
+	// claim that the user declined — they may just be asking about the credential.
+	if (resumeData.repliedWithMessage) {
+		context.requestRunHandoff?.('user-message-received');
+		return {
+			success: true,
+			deferred: true,
+			reason:
+				'The user sent a new message instead of completing credential setup. That message is ' +
+				'the next turn’s input — answer it first. The credentials are still unconfigured, not ' +
+				'declined; offer setup again once you have addressed what the user said.',
+		};
 	}
 
 	// State 2: Not approved — user clicked "Later" / skipped.

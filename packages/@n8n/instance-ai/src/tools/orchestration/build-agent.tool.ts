@@ -682,6 +682,27 @@ async function handleResume(
 	delegate: InstanceAiBuilderDelegate,
 	ctx: BuildAgentToolContext,
 ): Promise<BuildAgentOutput> {
+	// The user sent a chat message instead of answering the cascaded card. Settle this
+	// tool call and yield the turn rather than routing a non-answer into the builder.
+	// Checked before the ref parse so the settle leg is always a single fast step with no
+	// stray assistant text. The builder-side checkpoint is intentionally left to the
+	// agents module's TTL pruning — the same policy as any abandoned cascaded question.
+	if (isRecord(ctx.resumeData) && ctx.resumeData.repliedWithMessage === true) {
+		const abandonedRef = z
+			.object({ builderCheckpoint: builderCheckpointRefSchema })
+			.safeParse(ctx.suspendPayload);
+		context.requestRunHandoff?.('user-message-received');
+		return {
+			ok: false,
+			error:
+				'The user sent a new message instead of answering. That message is the next turn’s ' +
+				'input — answer it first, then start a fresh build-agent call if the build should continue.',
+			...(abandonedRef.success
+				? { configUpdated: abandonedRef.data.builderCheckpoint.configUpdated }
+				: {}),
+		};
+	}
+
 	const refParse = z
 		.object({ builderCheckpoint: builderCheckpointRefSchema })
 		.safeParse(ctx.suspendPayload);

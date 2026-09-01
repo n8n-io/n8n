@@ -85,6 +85,11 @@ export interface ConfirmationData {
 	scope?: 'once' | 'session';
 	autoSetup?: { credentialType: string; attemptId?: string };
 	connectedSlugs?: string[];
+	/** The user replied with a chat message instead of answering the card. Constructed by
+	 *  the service (no wire kind), never sent by the frontend. Distinct from `approved:
+	 *  false`: a reply is not a skip, so the resuming tool must settle without recording
+	 *  a skip grant, leaving the agent free to re-raise the card. */
+	repliedWithMessage?: boolean;
 }
 
 export interface PendingConfirmation {

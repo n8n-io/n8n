@@ -523,6 +523,135 @@ describe('executeResumableStream', () => {
 		).toBe(false);
 	});
 
+	// INS-1130 regression. The test above toggles its stop flag *inside* the tool-result
+	// publish, which constructs the one ordering that never happens in production: a tool
+	// requests its handoff from inside its own execution, so the flag is already up before
+	// the consumer reads a single chunk. The stop then fired on the leading `start-step`
+	// (which maps to no event) and the leg returned having published nothing — leaving the
+	// frontend holding a confirmation card that could never settle.
+	it('waits for the resumed tool result before honouring an already-raised stop', async () => {
+		const eventBus = createEventBus();
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					{ type: 'start-step' },
+					{
+						type: 'tool-result',
+						toolCallId: 'workflows:7',
+						output: { success: true, deferred: true },
+					},
+					textChunk('This continuation should not be published.'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+				// Already true on the very first chunk, as in production.
+				stopSignal: () => ({ reason: 'user-message-received' }),
+				stopAfterToolCallId: 'workflows:7',
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+
+		expect(result.stopReason).toBe('user-message-received');
+		// The load-bearing assertion: without this the card never settles.
+		expect(
+			publishedEvents.some(
+				(event) => event.type === 'tool-result' && event.payload?.toolCallId === 'workflows:7',
+			),
+		).toBe(true);
+		// Still stops promptly once it has what it was waiting for.
+		expect(
+			publishedEvents.some(
+				(event) => event.payload?.text === 'This continuation should not be published.',
+			),
+		).toBe(false);
+	});
+
+	it('stops on a tool-error for the awaited call rather than consuming the whole stream', async () => {
+		const eventBus = createEventBus();
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					{ type: 'start-step' },
+					{
+						type: 'tool-result',
+						toolCallId: 'workflows:7',
+						output: 'boom',
+						isError: true,
+					},
+					textChunk('Not published.'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+				stopSignal: () => ({ reason: 'user-message-received' }),
+				stopAfterToolCallId: 'workflows:7',
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+
+		expect(result.stopReason).toBe('user-message-received');
+		expect(publishedEvents.some((event) => event.type === 'tool-error')).toBe(true);
+		expect(publishedEvents.some((event) => event.payload?.text === 'Not published.')).toBe(false);
+	});
+
+	it('ignores a result for a different tool call while waiting', async () => {
+		const eventBus = createEventBus();
+
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					{ type: 'tool-result', toolCallId: 'other:1', output: {} },
+					{ type: 'tool-result', toolCallId: 'workflows:7', output: {} },
+					textChunk('Not published.'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+				stopSignal: () => ({ reason: 'user-message-received' }),
+				stopAfterToolCallId: 'workflows:7',
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+
+		// Both results reach the UI; only the awaited one releases the stop.
+		expect(
+			publishedEvents
+				.filter((event) => event.type === 'tool-result')
+				.map((e) => e.payload?.toolCallId),
+		).toEqual(['other:1', 'workflows:7']);
+		expect(publishedEvents.some((event) => event.payload?.text === 'Not published.')).toBe(false);
+	});
+
 	it('auto-resumes suspended streams and passes drained corrections to resume data', async () => {
 		const eventBus = createEventBus();
 		const resume = vi.fn().mockResolvedValue({

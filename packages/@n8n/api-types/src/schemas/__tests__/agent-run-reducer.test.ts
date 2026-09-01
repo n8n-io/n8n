@@ -244,6 +244,41 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].status).toBe('completed');
 		});
 
+		// INS-1130. A card whose run has ended can no longer be answered — the pending
+		// confirmation row is dropped, so /confirm 404s. Left in-flight it renders forever in
+		// the inline panel and stacks with every new card, and clicking it only errors. This
+		// is the backstop that keeps a single lost `tool-result` from becoming permanent.
+		it('run-finish(completed) settles a tool call still holding a confirmation', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'workflows:7', 'workflows'));
+			reduceEvent(state, makeConfirmationRequest('run-1', 'root', 'workflows:7'));
+			expect(state.toolCallsById['workflows:7'].isLoading).toBe(true);
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			expect(state.toolCallsById['workflows:7'].isLoading).toBe(false);
+		});
+
+		// Scoped deliberately: detached background-agent events may follow a completed
+		// orchestrator run, and their tool calls are legitimately still running.
+		it('run-finish(completed) leaves a confirmation-less tool call in flight', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'background:1', 'delegate'));
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			expect(state.toolCallsById['background:1'].isLoading).toBe(true);
+		});
+
+		it('run-finish(cancelled) still settles every in-flight tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'background:1', 'delegate'));
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+
+			expect(state.toolCallsById['background:1'].isLoading).toBe(false);
+		});
+
 		it('run-finish(cancelled) sets status to cancelled', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));

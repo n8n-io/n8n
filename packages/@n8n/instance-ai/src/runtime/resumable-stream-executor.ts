@@ -42,6 +42,18 @@ export interface ResumableStreamContext {
 	/** Stop consuming after the current chunk has been mapped and published. */
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 	/**
+	 * Tool call this leg is resuming. When set, a stop signal is not honoured until that
+	 * call's `tool-result` / `tool-error` has been published.
+	 *
+	 * A tool requests a handoff from *inside its own execution*, so the flag is already up
+	 * before the consumer reads a single chunk. Without this gate the stop fires on
+	 * whichever chunk happens to arrive first — typically a `start-step`, which maps to no
+	 * event — and the leg returns having published nothing. The frontend then holds a tool
+	 * call that never settles: its confirmation card stays live forever, since `run-finish`
+	 * only clears in-flight calls on a cancelled or errored run (INS-1130).
+	 */
+	stopAfterToolCallId?: string;
+	/**
 	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
 	 * default policy, which on the durable-log path would persist redacted text
 	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
@@ -361,6 +373,8 @@ async function consumeStreamPass(args: {
 	let confirmationEvent: ConfirmationRequestEvent | undefined;
 	let confirmationEventPublished = false;
 	let finishReason: FinishReason | undefined;
+	/** Whether `stopAfterToolCallId`'s result has reached the event bus — see that field. */
+	let stopTargetSettled = false;
 	const drainedCorrectionsForResume: string[] = [];
 
 	for await (const chunk of activeStream) {
@@ -470,8 +484,12 @@ async function consumeStreamPass(args: {
 			drainedCorrectionsForResume.push(...corrections);
 		}
 
+		if (settlesStopTarget(events, options.context.stopAfterToolCallId)) {
+			stopTargetSettled = true;
+		}
+
 		const stopSignal = options.context.stopSignal?.();
-		if (stopSignal) {
+		if (stopSignal && (options.context.stopAfterToolCallId === undefined || stopTargetSettled)) {
 			return {
 				cancelled: false,
 				stopReason: stopSignal.reason,
@@ -639,6 +657,23 @@ function buildCorrectionResumeData(corrections: string[]): Record<string, unknow
 			'The confirmation has been skipped. Apply the correction and continue.',
 		corrections,
 	};
+}
+
+/**
+ * Whether this batch of published events settles the tool call a pending stop is waiting
+ * on. `tool-interrupted` counts: the call is terminal, so continuing to consume would only
+ * wait for an event that is never coming.
+ */
+function settlesStopTarget(events: InstanceAiEvent[], stopAfterToolCallId?: string): boolean {
+	if (stopAfterToolCallId === undefined) return false;
+
+	return events.some(
+		(event) =>
+			(event.type === 'tool-result' ||
+				event.type === 'tool-error' ||
+				event.type === 'tool-interrupted') &&
+			event.payload.toolCallId === stopAfterToolCallId,
+	);
 }
 
 function isErrorChunk(chunk: unknown): chunk is { type: 'error'; error?: unknown } {
