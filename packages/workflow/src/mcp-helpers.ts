@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { ICredentialDataDecryptedObject } from './interfaces';
 
 /** Covers MCP-specific and existing native OAuth2 credential type names. */
@@ -51,10 +53,6 @@ export interface McpRegistryRuntime {
 		selector?: string,
 	): ResolvedMcpRegistryConnection | undefined;
 	prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
