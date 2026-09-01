@@ -10,9 +10,6 @@ import { mock } from 'vitest-mock-extended';
 import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service';
 import { OtelConfig } from '../otel.config';
 
-// Temp dir backing the _FILE test; removed in afterEach
-let tempHeadersDir: string | undefined;
-
 describe('OtelSettingsService', () => {
 	const settingsRepository = mock<SettingsRepository>();
 	const logger = mock<Logger>();
@@ -34,13 +31,6 @@ describe('OtelSettingsService', () => {
 
 	afterAll(() => {
 		process.env = originalEnv;
-	});
-
-	afterEach(() => {
-		if (tempHeadersDir) {
-			rmSync(tempHeadersDir, { recursive: true, force: true });
-			tempHeadersDir = undefined;
-		}
 	});
 
 	describe('loadSettings', () => {
@@ -186,6 +176,16 @@ describe('OtelSettingsService', () => {
 		});
 
 		describe('values supplied via the _FILE env variant', () => {
+			// Temp dir backing the _FILE test; removed in afterEach
+			let tempHeadersDir: string | undefined;
+
+			afterEach(() => {
+				if (tempHeadersDir) {
+					rmSync(tempHeadersDir, { recursive: true, force: true });
+					tempHeadersDir = undefined;
+				}
+			});
+
 			it('treats headers from N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE as env-managed and masks them', async () => {
 				const dir = mkdtempSync(join(tmpdir(), 'otel-headers-'));
 				tempHeadersDir = dir;
