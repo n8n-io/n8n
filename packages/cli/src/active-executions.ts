@@ -31,6 +31,7 @@ import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import { EventService } from './events/event.service';
+import { ProjectExecutionQuotaService } from './execution-quota/project-execution-quota.service';
 
 @Service()
 export class ActiveExecutions {
@@ -51,6 +52,7 @@ export class ActiveExecutions {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly projectExecutionQuotaService: ProjectExecutionQuotaService,
 	) {}
 
 	has(executionId: string) {
@@ -84,6 +86,11 @@ export class ActiveExecutions {
 
 		try {
 			if (existingExecution === undefined) {
+				await this.projectExecutionQuotaService.assertWithinQuotaAndIncrement(
+					executionData.workflowData.id,
+					mode,
+				);
+
 				const fullExecutionData: CreateExecutionPayload = {
 					data: executionData.executionData!,
 					mode,

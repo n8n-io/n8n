@@ -26,6 +26,8 @@ import { ActiveExecutions } from '@/active-executions';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { EventService } from '@/events/event.service';
+import { ProjectExecutionQuotaExceededError } from '@/execution-quota/project-execution-quota.error';
+import type { ProjectExecutionQuotaService } from '@/execution-quota/project-execution-quota.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
@@ -39,6 +41,7 @@ const FAKE_SECOND_EXECUTION_ID = '20';
 
 const executionRepository = mock<ExecutionRepository>();
 const executionPersistence = mock<ExecutionPersistence>();
+const projectExecutionQuotaService = mock<ProjectExecutionQuotaService>();
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -87,11 +90,13 @@ describe('ActiveExecutions', () => {
 			concurrencyControl,
 			mock(),
 			executionsConfig,
+			projectExecutionQuotaService,
 		);
 
 		executionPersistence.create.mockResolvedValue(FAKE_EXECUTION_ID);
 		executionPersistence.updateExistingExecution.mockResolvedValue(true);
 		executionRepository.setRunning.mockResolvedValue(new Date());
+		projectExecutionQuotaService.assertWithinQuotaAndIncrement.mockResolvedValue(undefined);
 
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
 		workflowExecution.cancel = vi.fn();
@@ -180,6 +185,32 @@ describe('ActiveExecutions', () => {
 				deduplicationKey: 'wf-1:node-1:1700000000000',
 			}),
 		);
+	});
+
+	describe('project execution quota', () => {
+		test('rejects a new execution when the project execution quota is exceeded', async () => {
+			projectExecutionQuotaService.assertWithinQuotaAndIncrement.mockRejectedValueOnce(
+				new ProjectExecutionQuotaExceededError(10, 'day'),
+			);
+
+			await expect(
+				activeExecutions.add({
+					executionMode: 'webhook',
+					workflowData: { id: 'workflow-1' },
+				} as never),
+			).rejects.toThrow(ProjectExecutionQuotaExceededError);
+
+			expect(executionPersistence.create).not.toHaveBeenCalled();
+		});
+
+		test('does not call the quota gate when resuming an existing execution', async () => {
+			await activeExecutions.add(
+				{ executionMode: 'webhook', workflowData: { id: 'workflow-1' } } as never,
+				{ executionId: 'exec-1', expectedStatus: 'new' } as never,
+			);
+
+			expect(projectExecutionQuotaService.assertWithinQuotaAndIncrement).not.toHaveBeenCalled();
+		});
 	});
 
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
@@ -286,6 +317,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				projectExecutionQuotaService,
 			);
 
 			let resolvedId: string | undefined;
@@ -314,6 +346,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				projectExecutionQuotaService,
 			);
 
 			await evalActiveExecutions.add(evalExecutionData);
@@ -457,6 +490,7 @@ describe('ActiveExecutions', () => {
 				concurrencyControl,
 				mock(),
 				executionsConfig,
+				projectExecutionQuotaService,
 			);
 
 			executionData.httpResponse = mock<Response>();
