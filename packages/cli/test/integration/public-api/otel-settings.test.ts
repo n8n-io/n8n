@@ -116,7 +116,10 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(validSettings);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject(validSettings);
+			expect(response.body).toMatchObject({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('takes effect the same way as the UI (write via public API, read via internal API)', async () => {
@@ -126,7 +129,10 @@ describe('OpenTelemetry settings in Public API', () => {
 			const internal = await testServer.authAgentFor(owner).get('/otel/settings');
 
 			expect(internal.status).toBe(200);
-			expect(internal.body.data).toMatchObject(validSettings);
+			expect(internal.body.data).toMatchObject({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('reads back a configuration written through the internal API (public API is a faithful stand-in)', async () => {
@@ -135,7 +141,10 @@ describe('OpenTelemetry settings in Public API', () => {
 			const publicRead = await testServer.publicApiAgentFor(owner).get('/settings/otel');
 
 			expect(publicRead.status).toBe(200);
-			expect(publicRead.body).toMatchObject(validSettings);
+			expect(publicRead.body).toMatchObject({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('toggles enabled both ways', async () => {
@@ -167,7 +176,7 @@ describe('OpenTelemetry settings in Public API', () => {
 
 			expect(putResponse.status).toBe(200);
 			expect(putResponse.body.exporterServiceName).toBe('n8n-updated');
-			expect(putResponse.body.exporterHeaders).toBe(validSettings.exporterHeaders);
+			expect(putResponse.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
 		});
 
 		it('rejects a partial body with 400', async () => {
@@ -306,7 +315,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			const response = await testServer.authAgentFor(owner).get('/otel/settings');
 
 			expect(response.status).toBe(200);
-			expect(response.body.data.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(response.body.data.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
 			expect(response.body.data.envManagedFields).toContain('exporterHeaders');
 		});
 
@@ -314,7 +323,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
 
 			expect(response.status).toBe(200);
-			expect(response.body.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(response.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
 		});
 
 		it('accepts a GET response body echoed straight back (clean round-trip)', async () => {
@@ -327,7 +336,7 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(getResponse.body);
 
 			expect(putResponse.status).toBe(200);
-			expect(putResponse.body.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(putResponse.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
 		});
 	});
 
@@ -353,7 +362,7 @@ describe('OpenTelemetry settings in Public API', () => {
 			const response = await testServer.authAgentFor(owner).get('/otel/settings');
 
 			expect(response.status).toBe(200);
-			expect(response.body.data.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(response.body.data.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
 			expect(response.body.data.envManagedFields).toContain('exporterHeaders');
 		});
 	});

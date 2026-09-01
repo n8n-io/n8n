@@ -22,7 +22,11 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, ref, watch, onMounted } from 'vue';
 import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
 
-import { OTEL_FIELD_ENV_VARS, OTEL_TEST_SPAN_NAME } from './otel.constants';
+import {
+	CREDENTIALS_BLANKING_VALUE,
+	OTEL_FIELD_ENV_VARS,
+	OTEL_TEST_SPAN_NAME,
+} from './otel.constants';
 import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
 import { createSampleRateFormat } from './otel.utils';
 import OtelSettingsRow from './OtelSettingsRow.vue';
@@ -75,12 +79,21 @@ function isEnvManaged(field: keyof typeof OTEL_FIELD_ENV_VARS): boolean {
 	return otelStore.envManagedFields.includes(field);
 }
 
-// Env-managed headers come back redacted from the API, so there is nothing to
-// render — the disabled inputs and env tooltip already explain why.
+// Keys come back from the API as-is; values come back blanked, so the value
+// inputs below render them empty until the user types a replacement. The pair
+// keeps the blanked value in state, so an untouched save preserves the stored one.
 function headerPairsFromStore(): Array<{ key: string; value: string }> {
-	return isEnvManaged('exporterHeaders')
-		? []
-		: headersStringToPairs(otelStore.settings.exporterHeaders ?? '');
+	return headersStringToPairs(otelStore.settings.exporterHeaders ?? '');
+}
+
+function headerValueDisplay(pair: { key: string; value: string }): string {
+	return pair.value === CREDENTIALS_BLANKING_VALUE ? '' : pair.value;
+}
+
+function headerValuePlaceholder(pair: { key: string; value: string }): string {
+	return pair.value === CREDENTIALS_BLANKING_VALUE
+		? i18n.baseText('settings.opentelemetry.exporterHeaders.hiddenValuePlaceholder')
+		: i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder');
 }
 
 // State-first copy: the row tells the admin whether tracing is live right now,
@@ -455,10 +468,8 @@ watch(
 										size="small"
 									>
 										<N8nInput
-											:model-value="pair.value"
-											:placeholder="
-												i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder')
-											"
+											:model-value="headerValueDisplay(pair)"
+											:placeholder="headerValuePlaceholder(pair)"
 											:disabled="isEnvManaged('exporterHeaders')"
 											data-test-id="otel-header-value"
 											@update:model-value="(v: string) => onHeaderChange(index, 'value', v)"

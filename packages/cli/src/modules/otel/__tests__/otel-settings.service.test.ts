@@ -144,26 +144,21 @@ describe('OtelSettingsService', () => {
 			await serviceWithEnv.loadSettings();
 			const result = serviceWithEnv.getSettings();
 
-			expect(result.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(result.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
 			expect(result.exporterHeaders).not.toContain('secret-token');
 			expect(result.envManagedFields).toContain('exporterHeaders');
 		});
 
-		it('returns an empty string for env-managed exporterHeaders when none are set', async () => {
+		it('returns an empty string when no headers are set', async () => {
 			settingsRepository.findByKey.mockResolvedValue(null);
-			process.env.N8N_OTEL_EXPORTER_OTLP_HEADERS = '';
 
-			const configWithEnv = new OtelConfig();
-			configWithEnv.exporterHeaders = '';
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
-
-			await serviceWithEnv.loadSettings();
-			const result = serviceWithEnv.getSettings();
+			await service.loadSettings();
+			const result = service.getSettings();
 
 			expect(result.exporterHeaders).toBe('');
 		});
 
-		it('returns non-env-managed exporterHeaders as-is', async () => {
+		it('masks stored exporterHeaders even when not env-managed', async () => {
 			settingsRepository.findByKey.mockResolvedValue({
 				value: JSON.stringify({ exporterHeaders: 'x-api-key=stored' }),
 			} as Settings);
@@ -171,7 +166,8 @@ describe('OtelSettingsService', () => {
 			await service.loadSettings();
 			const result = service.getSettings();
 
-			expect(result.exporterHeaders).toBe('x-api-key=stored');
+			expect(result.exporterHeaders).toBe(`x-api-key=${CREDENTIAL_BLANKING_VALUE}`);
+			expect(result.exporterHeaders).not.toContain('stored');
 			expect(result.envManagedFields).not.toContain('exporterHeaders');
 		});
 
@@ -203,7 +199,7 @@ describe('OtelSettingsService', () => {
 				await serviceFromFile.loadSettings();
 				const result = serviceFromFile.getSettings();
 
-				expect(result.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+				expect(result.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
 				expect(result.envManagedFields).toContain('exporterHeaders');
 			});
 
@@ -290,17 +286,35 @@ describe('OtelSettingsService', () => {
 			expect(saved.enabled).toBe(settings.enabled);
 		});
 
-		it('keeps the stored exporterHeaders when the redaction placeholder is echoed back', async () => {
+		it('keeps the stored value per key when blanked values are echoed back', async () => {
 			settingsRepository.findByKey.mockResolvedValue({
-				value: JSON.stringify({ ...settings, exporterHeaders: 'x-api-key=stored-secret' }),
+				value: JSON.stringify({ ...settings, exporterHeaders: 'a=1,b=2' }),
 			} as Settings);
 
-			await service.saveSettings({ ...settings, exporterHeaders: CREDENTIAL_BLANKING_VALUE });
+			await service.saveSettings({
+				...settings,
+				exporterHeaders: `a=${CREDENTIAL_BLANKING_VALUE},c=3`,
+			});
 
 			const saved = JSON.parse(
 				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
 			) as OtelConfig;
-			expect(saved.exporterHeaders).toBe('x-api-key=stored-secret');
+			// 'a' keeps its stored value, 'b' is dropped (absent), 'c' is new
+			expect(saved.exporterHeaders).toBe('a=1,c=3');
+		});
+
+		it('drops a blanked pair whose key has no stored value', async () => {
+			settingsRepository.findByKey.mockResolvedValue(null);
+
+			await service.saveSettings({
+				...settings,
+				exporterHeaders: `z=${CREDENTIAL_BLANKING_VALUE}`,
+			});
+
+			const saved = JSON.parse(
+				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
+			) as OtelConfig;
+			expect(saved.exporterHeaders).toBe('');
 		});
 	});
 
@@ -315,6 +329,21 @@ describe('OtelSettingsService', () => {
 
 		it('returns the incoming connection params when no env vars are set', () => {
 			expect(service.resolveTestConnection(incoming)).toEqual(incoming);
+		});
+
+		it('resolves blanked values against the stored ones for test connections', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterHeaders: 'x-api-key=stored,x-other=2' }),
+			} as Settings);
+
+			await service.loadSettings();
+
+			const result = service.resolveTestConnection({
+				...incoming,
+				exporterHeaders: `x-api-key=${CREDENTIAL_BLANKING_VALUE}`,
+			});
+
+			expect(result.exporterHeaders).toBe('x-api-key=stored');
 		});
 
 		it('overrides env-managed fields with the canonical env-var value', () => {

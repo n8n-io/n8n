@@ -37,13 +37,9 @@ export class OtelSettingsService {
 		if (!this.currentSettings) throw new Error('OTel settings not yet initialized');
 		return {
 			...this.currentSettings,
-			// Env-managed header values are never returned to clients. The blanking
-			// placeholder marks a value as set; an empty string means unset.
-			exporterHeaders: this.isEnvManaged('exporterHeaders')
-				? this.currentSettings.exporterHeaders
-					? CREDENTIAL_BLANKING_VALUE
-					: ''
-				: this.currentSettings.exporterHeaders,
+			// Header keys stay visible; values never leave the server. A blanked
+			// value marks a stored value; an empty value means unset.
+			exporterHeaders: this.redactHeaders(this.currentSettings.exporterHeaders),
 			envManagedFields: this.envManagedFields,
 		};
 	}
@@ -91,12 +87,12 @@ export class OtelSettingsService {
 		const sanitized = this.buildConfig((key) =>
 			this.isEnvManaged(key) ? this.config[key] : incoming[key],
 		);
-		// A redacted placeholder echoed back by a client means "keep the stored value"
-		if (
-			!this.isEnvManaged('exporterHeaders') &&
-			incoming.exporterHeaders === CREDENTIAL_BLANKING_VALUE
-		) {
-			sanitized.exporterHeaders = persisted?.exporterHeaders ?? '';
+		// Blanked values echoed back by a client mean "keep the stored value"
+		if (!this.isEnvManaged('exporterHeaders')) {
+			sanitized.exporterHeaders = this.resolveHeaders(
+				incoming.exporterHeaders,
+				persisted?.exporterHeaders ?? '',
+			);
 		}
 		const value = JSON.stringify(sanitized);
 		if (existing) {
@@ -117,9 +113,62 @@ export class OtelSettingsService {
 			exporterEndpoint: pick('exporterEndpoint'),
 			exporterTracingPath: pick('exporterTracingPath'),
 			exporterServiceName: pick('exporterServiceName'),
-			exporterHeaders: pick('exporterHeaders'),
+			// A client that echoes a redacted response cannot supply stored values,
+			// so blanked values resolve against the effective settings
+			exporterHeaders: this.isEnvManaged('exporterHeaders')
+				? this.config.exporterHeaders
+				: this.resolveHeaders(
+						incoming.exporterHeaders,
+						this.currentSettings?.exporterHeaders ?? '',
+					),
 			startupConnectivityTimeoutMs: pick('startupConnectivityTimeoutMs'),
 		};
+	}
+
+	/** Keys stay visible in API responses; header values never leave the server. */
+	private redactHeaders(headers: string): string {
+		return this.serializeHeaderPairs(
+			this.parseHeaderPairs(headers).map(({ key, value }) => ({
+				key,
+				value: value ? CREDENTIAL_BLANKING_VALUE : '',
+			})),
+		);
+	}
+
+	/**
+	 * Resolves client-submitted headers against stored ones: a blanked value
+	 * means "keep the stored value for this key"; a blanked value with no
+	 * stored counterpart has nothing to keep, so the pair is dropped.
+	 */
+	private resolveHeaders(incoming: string, stored: string): string {
+		const storedByKey = new Map(this.parseHeaderPairs(stored).map((p) => [p.key, p.value]));
+		return this.serializeHeaderPairs(
+			this.parseHeaderPairs(incoming).flatMap(({ key, value }) => {
+				if (value !== CREDENTIAL_BLANKING_VALUE) return [{ key, value }];
+				const storedValue = storedByKey.get(key);
+				return storedValue === undefined ? [] : [{ key, value: storedValue }];
+			}),
+		);
+	}
+
+	private parseHeaderPairs(headers: string): Array<{ key: string; value: string }> {
+		if (!headers.trim()) return [];
+		return headers
+			.split(',')
+			.map((pair) => {
+				const idx = pair.indexOf('=');
+				return idx === -1
+					? { key: pair.trim(), value: '' }
+					: { key: pair.slice(0, idx).trim(), value: pair.slice(idx + 1).trim() };
+			})
+			.filter((p) => p.key);
+	}
+
+	private serializeHeaderPairs(pairs: Array<{ key: string; value: string }>): string {
+		return pairs
+			.filter((p) => p.key.trim())
+			.map((p) => `${p.key}=${p.value}`)
+			.join(',');
 	}
 
 	private isEnvManaged(key: keyof OtelConfig): boolean {
