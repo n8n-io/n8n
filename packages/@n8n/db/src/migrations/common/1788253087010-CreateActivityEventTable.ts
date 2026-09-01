@@ -28,7 +28,7 @@ export class CreateActivityEventTable1788253087010 implements ReversibleMigratio
 					.varchar(64)
 					.notNull.comment(
 						'What happened, as a verb: created, saved, published, unpublished, deleted, ' +
-							'archived, unarchived, version-updated, succeeded, failed, cancelled',
+							'archived, unarchived, version-updated',
 					),
 				column('typeVersion')
 					.int.notNull.default(1)
@@ -61,8 +61,8 @@ export class CreateActivityEventTable1788253087010 implements ReversibleMigratio
 						'survives the resource being deleted. Truncated on write',
 				),
 				column('data').json.comment(
-					'Minimal detail that makes an entry meaningful unexpanded (a run status and ' +
-						'failing node, a save node delta). Size-capped on write; no user ids',
+					'Minimal detail that makes an entry meaningful unexpanded (a save node delta, and ' +
+						'whether the assistant or the user changed it). Size-capped on write; no user ids',
 				),
 			)
 			.withCreatedAt.withForeignKey('userId', {

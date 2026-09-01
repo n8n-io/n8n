@@ -24,6 +24,7 @@ describe('ActivityEventRepository', () => {
 			expect(entityManager.insert).toHaveBeenCalledWith(ActivityEvent, {
 				category: 'workflow',
 				action: 'deleted',
+				typeVersion: 1,
 				userId: null,
 				projectId: null,
 				resourceType: null,
@@ -190,7 +191,8 @@ describe('ActivityEventRepository', () => {
 				take: 1,
 				select: { id: true },
 			});
-			// Scoped to everything below the boundary, then deleted a batch at a time.
+			// Scoped to everything below the boundary, then deleted a batch at a time. The batch
+			// bound is added to the caller's bound, not substituted for it.
 			expect(entityManager.find).toHaveBeenNthCalledWith(2, ActivityEvent, {
 				where: { id: LessThan(120) },
 				order: { id: 'ASC' },
@@ -198,19 +200,19 @@ describe('ActivityEventRepository', () => {
 				select: { id: true },
 			});
 			expect(entityManager.delete).toHaveBeenCalledWith(ActivityEvent, {
-				id: LessThanOrEqual(113),
+				id: And(LessThan(120), LessThanOrEqual(113)),
 			});
 			expect(deleted).toBe(7);
 		});
 
-		it('deletes everything when the cap is zero, rather than asking for a negative offset', async () => {
-			entityManager.delete.mockResolvedValueOnce({ affected: 3, raw: [] });
-
-			const deleted = await repository.deleteBeyondNewest(0);
+		// `0` means unlimited for `EXECUTIONS_DATA_PRUNE_MAX_COUNT`, so it must not be read here as
+		// "keep nothing" — that would empty the table on a config typo.
+		it.each([0, -1, 2.5])('treats a cap of %s as no cap, deleting nothing', async (keep) => {
+			const deleted = await repository.deleteBeyondNewest(keep);
 
 			expect(entityManager.find).not.toHaveBeenCalled();
-			expect(entityManager.delete).toHaveBeenCalledWith(ActivityEvent, {});
-			expect(deleted).toBe(3);
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(deleted).toBe(0);
 		});
 
 		it('does nothing when the table holds fewer entries than the cap', async () => {

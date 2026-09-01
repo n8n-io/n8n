@@ -63,7 +63,7 @@ export class ActivityEvent extends WithCreatedAt {
 	@Column({ type: 'varchar', length: 32 })
 	category: ActivityEventCategory;
 
-	/** The verb: `created`, `saved`, `published`, `failed`, `succeeded`, … Free vocabulary, per above. */
+	/** The verb: `created`, `saved`, `published`, `deleted`, `archived`, … Free vocabulary, per above. */
 	@Column({ type: 'varchar', length: 64 })
 	action: string;
 
@@ -71,7 +71,7 @@ export class ActivityEvent extends WithCreatedAt {
 	@Column({ type: 'int', default: 1 })
 	typeVersion: number;
 
-	/** Who did it. Null once that user is deleted, and for entries no user caused (a scheduled run). */
+	/** Who did it. Null once that user is deleted, and for entries no user caused. */
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
@@ -104,9 +104,9 @@ export class ActivityEvent extends WithCreatedAt {
 	resourceName: string | null;
 
 	/**
-	 * The little that makes an entry meaningful unexpanded: a run's status and failing node, a
-	 * save's node delta. Size-capped on write. No user ids — one stored here would outlive the user
-	 * deletion that nulls `userId`.
+	 * The little that makes an entry meaningful unexpanded: a save's node delta, and whether the
+	 * assistant or the user made the change. Size-capped on write. No user ids — one stored here
+	 * would outlive the user deletion that nulls `userId`.
 	 */
 	@JsonColumn({ nullable: true })
 	data: IDataObject | null;

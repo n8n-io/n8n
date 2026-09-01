@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { And, DataSource, In, LessThan, LessThanOrEqual, MoreThan, Repository } from '@n8n/typeorm';
-import type { FindOptionsWhere } from '@n8n/typeorm';
+import type { FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { ActivityEvent } from '../entities';
@@ -26,7 +26,9 @@ function isEmptyPage(limit: number): boolean {
 }
 
 export type ActivityEventInput = Pick<ActivityEvent, 'category' | 'action'> &
-	Partial<Pick<ActivityEvent, 'userId' | 'projectId' | 'resourceType' | 'resourceId'>> & {
+	Partial<
+		Pick<ActivityEvent, 'typeVersion' | 'userId' | 'projectId' | 'resourceType' | 'resourceId'>
+	> & {
 		resourceName?: string | null;
 		data?: IDataObject | null;
 	};
@@ -66,6 +68,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		await this.insert({
 			category: input.category,
 			action: input.action,
+			typeVersion: input.typeVersion ?? 1,
 			userId: input.userId ?? null,
 			projectId: input.projectId ?? null,
 			resourceType: input.resourceType ?? null,
@@ -106,13 +109,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */
 	async deleteOlderThan(cutoff: Date): Promise<number> {
-		return await this.deleteInBatches(
-			(upperBound) => ({
-				id: LessThanOrEqual(upperBound),
-				createdAt: LessThan(cutoff),
-			}),
-			{ createdAt: LessThan(cutoff) },
-		);
+		return await this.deleteInBatches({ createdAt: LessThan(cutoff) });
 	}
 
 	/**
@@ -121,8 +118,10 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 * deletes below it, rather than counting rows twice.
 	 */
 	async deleteBeyondNewest(keep: number): Promise<number> {
-		// `skip` is an offset, so a zero cap would ask for -1. Keeping nothing means deleting all.
-		if (keep <= 0) return (await this.delete({})).affected ?? 0;
+		// A cap of 0 means unlimited, as it does for `EXECUTIONS_DATA_PRUNE_MAX_COUNT`. Reading it
+		// as "keep nothing" would empty the table on a config typo. Also guards `skip: keep - 1`,
+		// which would otherwise ask the driver for a negative offset.
+		if (!Number.isInteger(keep) || keep <= 0) return 0;
 
 		const [oldestKept] = await this.find({
 			order: { id: 'DESC' },
@@ -132,35 +131,42 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		});
 		if (!oldestKept) return 0;
 
-		return await this.deleteInBatches((upperBound) => ({ id: LessThanOrEqual(upperBound) }), {
-			id: LessThan(oldestKept.id),
-		});
+		return await this.deleteInBatches({}, LessThan(oldestKept.id));
 	}
 
 	/**
-	 * Deletes everything matching `scope`, oldest first, a batch at a time.
+	 * Deletes everything matching `scope` (and `idBound`, if the caller restricts ids), oldest
+	 * first, a batch at a time.
 	 *
 	 * Each pass reads the id that ends the next batch and deletes up to it, rather than deleting
 	 * by an id list: SQLite caps a statement at 999 bound variables, so a list would put a ceiling
 	 * on the batch size, and `DELETE ... LIMIT` needs a SQLite compiled with an option we cannot
 	 * assume.
+	 *
+	 * `idBound` is taken apart from `scope` so the per-batch bound can be *added* to it rather
+	 * than replacing it. A caller cannot hand over a batch predicate that drops its own scope.
 	 */
 	private async deleteInBatches(
-		batchWhere: (upperBound: number) => FindOptionsWhere<ActivityEvent>,
-		scope: FindOptionsWhere<ActivityEvent>,
+		scope: Omit<FindOptionsWhere<ActivityEvent>, 'id'>,
+		idBound?: FindOperator<number>,
 	): Promise<number> {
+		const scoped: FindOptionsWhere<ActivityEvent> = idBound ? { ...scope, id: idBound } : scope;
 		let total = 0;
 
 		for (;;) {
 			const batch = await this.find({
-				where: scope,
+				where: scoped,
 				order: { id: 'ASC' },
 				take: retentionBatchSize,
 				select: { id: true },
 			});
 			if (batch.length === 0) return total;
 
-			const { affected } = await this.delete(batchWhere(batch[batch.length - 1].id));
+			const upTo = LessThanOrEqual(batch[batch.length - 1].id);
+			const { affected } = await this.delete({
+				...scope,
+				id: idBound ? And(idBound, upTo) : upTo,
+			});
 			total += affected ?? 0;
 
 			if (batch.length < retentionBatchSize) return total;

@@ -115,6 +115,23 @@ describe('ActivityEventRepository', () => {
 			expect(await repository.count()).toBe(0);
 		});
 
+		// The guard that matters most: `0` means unlimited, so this must leave the table intact.
+		it('deletes nothing when the count cap is zero', async () => {
+			await repository.insert(
+				Array.from({ length: 3 }, (_, i) => ({
+					category: 'workflow' as const,
+					action: `saved-${i}`,
+					projectId: project.id,
+					typeVersion: 1,
+				})),
+			);
+
+			const deleted = await repository.deleteBeyondNewest(0);
+
+			expect(deleted).toBe(0);
+			expect(await repository.count()).toBe(3);
+		});
+
 		it('keeps only the newest entries when the count backstop trips', async () => {
 			for (const action of ['first', 'second', 'third']) {
 				await repository.record({ category: 'workflow', action, projectId: project.id });
