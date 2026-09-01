@@ -78,6 +78,12 @@ describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 			'manage:jira-webhook',
 			'offline_access',
 		]);
+
+		// Defined here, not on the Atlassian base: the Confluence sibling has no
+		// site field, while existing Jira credentials keep storing it as `domain`
+		const domain = jiraOAuth2Api.properties.find((p) => p.name === 'domain');
+		expect(domain?.displayName).toBe('Site URL');
+		expect(domain?.required).toBe(true);
 	});
 
 	it('should resolve the extends chain', () => {
