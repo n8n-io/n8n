@@ -1555,8 +1555,9 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
-	 * to gate a submission, before an execution is enqueued.
+	 * established). Used by the MCP trigger to gate a tool call, by the Form trigger to
+	 * gate a submission, and by the Chat trigger to gate a message send, before an
+	 * execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(

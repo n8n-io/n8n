@@ -5,6 +5,7 @@ import {
 	type GitConnectionPublicDto,
 	type GitConnectionPullResultDto,
 	type GitConnectionPushResultDto,
+	type PushGitConnectionDto,
 	type UpdateGitConnectionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -40,7 +41,9 @@ import {
 	type ImportResult,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectService } from '@/services/project.service.ee';
 
+import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME } from './constants';
 import { GitConnectionProject } from './database/entities/git-connection-project.entity';
 import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
@@ -60,6 +63,10 @@ type ManageProjectLinkOptions = {
 	projectId: string;
 };
 
+type ProjectReconciliationResult = {
+	deletedProjectIds: string[];
+};
+
 // Pull treats the working copy as source of truth; callers cannot override this policy.
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
@@ -73,7 +80,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: DataTableMissingMode.Create,
-	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
+	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.Fail,
 	variableMissingMode: VariableMissingMode.CreateWithValue,
 	variableConflictPolicy: VariableConflictPolicy.Overwrite,
 	tagMissingMode: TagMissingMode.Create,
@@ -86,6 +93,7 @@ export class GitConnectionsService {
 		private readonly repository: GitConnectionRepository,
 		private readonly gitConnectionProjectRepository: GitConnectionProjectRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 		private readonly gitService: GitConnectionsGitService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly cipher: Cipher,
@@ -188,13 +196,26 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
-	async push(connectionId: string, actor: User): Promise<GitConnectionPushResultDto> {
-		// Validates the connection exists (throws NotFound otherwise) before any export work.
-		await this.getEntity(connectionId);
+	async push(
+		connectionId: string,
+		actor: User,
+		input: PushGitConnectionDto,
+	): Promise<GitConnectionPushResultDto> {
+		const connection = await this.getEntity(connectionId);
+		const { branchName } = connection;
+		if (!branchName) throw new BadRequestError('A branch name is required to push');
+
+		const rootFolder = this.rootFolder(connectionId);
+		if (!(await this.gitService.hasWorkingCopy(rootFolder))) {
+			throw new BadRequestError(
+				'This Git connection repository is not cloned. Clone it before pushing.',
+			);
+		}
+
 		// The instance connection covers every team project; personal projects are
 		// out of scope for the first iteration.
 		const projectIds = await this.projectRepository.findTeamProjectIds();
-		const repositoryFolder = path.join(this.rootFolder(connectionId), 'repository');
+		const repositoryFolder = path.join(rootFolder, 'repository');
 		const exportFolder = path.join(repositoryFolder, EXPORT_SUBFOLDER);
 
 		this.logger.info('Exporting projects to Git connection repository', {
@@ -225,12 +246,22 @@ export class GitConnectionsService {
 			await rm(exportFolder, { recursive: true, force: true });
 			await rename(stagingFolder, exportFolder);
 
-			// TODO: commit the working copy and push to the remote, then surface the
-			// git operation result here.
-			return {
-				connectionId,
-				counts: exportResult.counts,
-			};
+			const credentials = await this.decryptCredentials(connection);
+			const { commitSha, head } = await this.gitService.commitAndPush({
+				connection,
+				credentials,
+				rootFolder,
+				branchName,
+				author: this.commitAuthor(actor),
+				commitMessage: input.commitMessage,
+				force: input.force ?? false,
+				stagePathspec: EXPORT_SUBFOLDER,
+			});
+
+			connection.baseCommit = head;
+			await this.repository.save(connection);
+
+			return { connectionId, counts: exportResult.counts, commitSha };
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
@@ -309,12 +340,29 @@ export class GitConnectionsService {
 	}
 
 	async pull(connectionId: string, actor: User): Promise<GitConnectionPullResultDto> {
-		await this.getEntity(connectionId);
-		const importFolder = path.join(this.rootFolder(connectionId), 'repository', EXPORT_SUBFOLDER);
+		const connection = await this.getEntity(connectionId);
+		const { branchName } = connection;
+		if (!branchName) throw new BadRequestError('A branch name is required to pull');
 
+		const rootFolder = this.rootFolder(connectionId);
+		if (!(await this.gitService.hasWorkingCopy(rootFolder))) {
+			throw new BadRequestError(
+				'This Git connection repository is not cloned. Clone it before pulling.',
+			);
+		}
+
+		const credentials = await this.decryptCredentials(connection);
+		const { head } = await this.gitService.refreshWorkingCopy({
+			connection,
+			credentials,
+			rootFolder,
+			branchName,
+		});
+
+		const importFolder = path.join(rootFolder, 'repository', EXPORT_SUBFOLDER);
 		if (!(await this.exportedWorkingCopyExists(importFolder))) {
 			throw new BadRequestError(
-				'This Git connection has no exported working copy to import. Connect it and push projects first.',
+				'The remote branch has no exported working copy to import. Push projects to it first.',
 			);
 		}
 
@@ -324,14 +372,40 @@ export class GitConnectionsService {
 			{ user: actor, ...IMPORT_POLICY },
 			{ sourceDir: importFolder },
 		);
+		const importedProjectIds = result.projects.map((project) => project.localId);
+		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
 
-		// Keep links aligned so later pushes preserve the pulled project set.
-		await this.gitConnectionProjectRepository.syncConnectionProjects(
+		connection.baseCommit = head;
+		await this.repository.save(connection);
+
+		return {
 			connectionId,
-			result.projects.map((project) => project.localId),
-		);
+			counts: this.toPullCounts({ importResult: result, projectReconciliation }),
+			commitSha: head,
+		};
+	}
 
-		return { connectionId, counts: this.toImportCounts(result) };
+	private async reconcileTeamProjects(
+		actor: User,
+		importedProjectIds: string[],
+	): Promise<ProjectReconciliationResult> {
+		const imported = new Set(importedProjectIds);
+		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
+		const removedProjectIds = teamProjectIds.filter((projectId) => !imported.has(projectId));
+
+		for (const projectId of removedProjectIds) {
+			await this.projectService.deleteProject(actor, projectId);
+		}
+
+		return { deletedProjectIds: removedProjectIds };
+	}
+
+	private commitAuthor(user: User): { name: string; email: string } {
+		const name =
+			user.firstName && user.lastName
+				? `${user.firstName} ${user.lastName}`
+				: GIT_DEFAULT_COMMIT_NAME;
+		return { name, email: user.email ?? GIT_DEFAULT_COMMIT_EMAIL };
 	}
 
 	private async exportedWorkingCopyExists(folder: string): Promise<boolean> {
@@ -342,7 +416,13 @@ export class GitConnectionsService {
 		}
 	}
 
-	private toImportCounts(result: ImportResult): GitConnectionPullResultDto['counts'] {
+	private toPullCounts({
+		importResult,
+		projectReconciliation,
+	}: {
+		importResult: ImportResult;
+		projectReconciliation: ProjectReconciliationResult;
+	}): GitConnectionPullResultDto['counts'] {
 		const tally = <S extends string>(rows: Array<{ status: S }>, statuses: readonly S[]) => {
 			const counts = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<S, number>;
 			for (const { status } of rows) counts[status] += 1;
@@ -350,42 +430,47 @@ export class GitConnectionsService {
 		};
 
 		return {
-			projects: tally(result.projects, ['created', 'updated', 'skipped'] as const),
+			projects: {
+				...tally(importResult.projects, ['created', 'updated', 'skipped'] as const),
+				deleted: projectReconciliation.deletedProjectIds.length,
+			},
 			folders: {
-				...tally(result.folders, ['created', 'skipped'] as const),
-				removed: result.removedFolders.length,
+				...tally(importResult.folders, ['created', 'skipped'] as const),
+				removed: importResult.removedFolders.length,
 			},
 			workflows: {
-				...tally(result.workflows, ['created', 'updated', 'skipped'] as const),
-				archived: result.removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
-				deleted: result.removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
+				...tally(importResult.workflows, ['created', 'updated', 'skipped'] as const),
+				archived: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'archived')
+					.length,
+				deleted: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'deleted')
+					.length,
 				// Publishing happens after writes, so failures are reported without failing the pull.
 				publishing: tally(
-					result.workflows.map(({ publishing }) => ({ status: publishing.state })),
+					importResult.workflows.map(({ publishing }) => ({ status: publishing.state })),
 					['published', 'unpublished', 'unchanged', 'blocked', 'failed'] as const,
 				),
 			},
 			credentials: {
-				matched: result.credentials.matched.length,
-				stubbed: result.credentials.stubbed.length,
+				matched: importResult.credentials.matched.length,
+				stubbed: importResult.credentials.stubbed.length,
 			},
 			dataTables: {
-				matched: result.dataTables.matched,
-				created: result.dataTables.created,
+				matched: importResult.dataTables.matched,
+				created: importResult.dataTables.created,
 			},
 			variables: {
-				matched: result.variables.matched.length,
-				created: result.variables.created.length,
-				updated: result.variables.updated.length,
-				stubbed: result.variables.stubbed.length,
-				missing: result.variables.missing.length,
+				matched: importResult.variables.matched.length,
+				created: importResult.variables.created.length,
+				updated: importResult.variables.updated.length,
+				stubbed: importResult.variables.stubbed.length,
+				missing: importResult.variables.missing.length,
 			},
 			tags: {
-				matched: result.tags.matched.length,
-				created: result.tags.created.length,
-				renamed: result.tags.renamed.length,
-				reconciled: result.tags.reconciled.length,
-				skipped: result.tags.skipped.length,
+				matched: importResult.tags.matched.length,
+				created: importResult.tags.created.length,
+				renamed: importResult.tags.renamed.length,
+				reconciled: importResult.tags.reconciled.length,
+				skipped: importResult.tags.skipped.length,
 			},
 		};
 	}

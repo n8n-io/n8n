@@ -115,6 +115,7 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              OWNERS
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
