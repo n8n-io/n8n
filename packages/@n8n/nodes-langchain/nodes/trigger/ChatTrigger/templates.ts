@@ -1,6 +1,6 @@
 import sanitizeHtml from 'sanitize-html';
 
-import { CHAT_FRAME_SANDBOX } from './shell';
+import { escapeForScriptContext } from './escape';
 import type {
 	AuthenticationChatOption,
 	ChatFrameIdentity,
@@ -32,35 +32,6 @@ export function getSanitizedInitialMessages(initialMessages: string): string[] {
 		.filter((line) => line !== '');
 }
 
-const SCRIPT_CONTEXT_ESCAPES: Record<string, string> = {
-	'<': '\\u003c',
-	'>': '\\u003e',
-	'&': '\\u0026',
-	'\u2028': '\\u2028',
-	'\u2029': '\\u2029',
-};
-
-// Returns a JSON literal safe to embed inside an inline <script> block. Escapes
-// `<`/`>` to prevent </script> breakout and U+2028/U+2029 for legacy JS engines.
-// For string inputs the returned literal includes surrounding double quotes \u2014
-// do not add quotes at the call site.
-export function escapeForScriptContext(value: string | object): string {
-	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => SCRIPT_CONTEXT_ESCAPES[c]);
-}
-
-const HTML_ATTRIBUTE_ESCAPES: Record<string, string> = {
-	'&': '&amp;',
-	'"': '&quot;',
-	"'": '&#39;',
-	'<': '&lt;',
-	'>': '&gt;',
-};
-
-// For use inside a double-quoted HTML attribute.
-export function escapeForHtmlAttribute(value: string): string {
-	return value.replace(/[&"'<>]/g, (c) => HTML_ATTRIBUTE_ESCAPES[c]);
-}
-
 export function getSanitizedI18nConfig(config: Record<string, string>): Record<string, string> {
 	const sanitized: Record<string, string> = {};
 
@@ -81,6 +52,7 @@ export function getSanitizedCustomCss(customCss: string): string {
  * `localStorageSessionIdKey` in `@n8n/chat/src/constants/localStorage.ts`. Seeding the
  * shim under it keeps continuity working against a widget build predating the
  * `sessionId` option — the bundle comes from an unpinned CDN URL, not the instance.
+ * The shell that passes the id in the fragment is `chat-shell.handlebars`.
  */
 const WIDGET_SESSION_ID_KEY = 'n8n-chat/sessionId';
 
@@ -116,52 +88,6 @@ const innerBootstrapScript = `
 					}
 				})();
 			</script>`;
-
-/**
- * The trusted shell: an n8n-controlled document on the real origin holding nothing but
- * the frame. Everything the author can shape lives in that frame, which has no origin
- * and so can't reach this document's cookies or the OAuth `BroadcastChannel`.
- */
-export function createShellPage({ iframeSrc }: { iframeSrc: string }) {
-	return `<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Chat</title>
-		<style>
-			html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
-			#n8n-chat-frame { display: block; width: 100%; height: 100%; border: 0; }
-		</style>
-	</head>
-	<body>
-		<iframe
-			id="n8n-chat-frame"
-			title="Chat"
-			sandbox="${CHAT_FRAME_SANDBOX}"
-			data-src="${escapeForHtmlAttribute(iframeSrc)}"
-		></iframe>
-		<script>
-			(function () {
-				// Held here, not in the frame, whose storage dies with its opaque origin on
-				// every reload. Keyed by path so two chats don't share a conversation.
-				var key = 'n8n-chat-shell/sessionId' + window.location.pathname;
-				var sessionId = '';
-				try { sessionId = window.localStorage.getItem(key) || ''; } catch (error) {}
-				if (!sessionId) {
-					sessionId =
-						window.crypto && window.crypto.randomUUID
-							? window.crypto.randomUUID()
-							: String(Date.now()) + Math.random().toString(16).slice(2);
-					try { window.localStorage.setItem(key, sessionId); } catch (error) {}
-				}
-				var frame = document.getElementById('n8n-chat-frame');
-				frame.src = frame.getAttribute('data-src') + '#sessionId=' + encodeURIComponent(sessionId);
-			})();
-		</script>
-	</body>
-</html>`;
-}
 
 export function createPage({
 	instanceId,

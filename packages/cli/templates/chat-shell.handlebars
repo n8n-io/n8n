@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang='en'>
+	<head>
+		<meta charset='utf-8' />
+		<meta name='viewport' content='width=device-width, initial-scale=1' />
+		<title>Chat</title>
+		<style>
+			:root {
+				--n8n-connect-bg-card: #ffffff;
+				--n8n-connect-bar-bg: #f7f7f8;
+				--n8n-connect-border: #dbdfe7;
+				--n8n-connect-header: #525356;
+				--n8n-connect-label: #555555;
+				--n8n-connect-muted: #7e8186;
+				--n8n-connect-primary: #ff6d5a;
+				--n8n-connect-primary-text: #ffffff;
+				--n8n-connect-ok: #2e9e5b;
+				--n8n-connect-error: #c0392b;
+				--n8n-connect-error-bg: #fdeceb;
+				--n8n-connect-icon-bg: #f2f0ff;
+				--n8n-connect-icon-text: #6a5bdd;
+				--n8n-connect-radius-card: 8px;
+				--n8n-connect-radius-input: 6px;
+				--n8n-connect-shadow-dialog: 0px 12px 48px rgba(0, 0, 0, 0.18);
+				--n8n-connect-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			}
+
+			html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
+			/* Column so the bar sits below the frame: the visitor reads it directly under
+			   the chat input it gates, and it stays outside the frame, where the author's
+			   content cannot reach it. */
+			body { display: flex; flex-direction: column; }
+			#n8n-chat-frame { display: block; flex: 1; width: 100%; border: 0; min-height: 0; }
+
+			/* --- Status bar --- */
+			.connect-bar {
+				display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+				padding: 14px 18px;
+				background: var(--n8n-connect-bar-bg);
+				border-top: 1px solid var(--n8n-connect-border);
+				font-family: var(--n8n-connect-font-family);
+				font-size: 13px;
+				color: var(--n8n-connect-header);
+			}
+			.bar-text { flex: 1; min-width: 0; }
+			.bar-info { position: relative; display: flex; flex-shrink: 0; }
+			.bar-icon { display: flex; padding: 0; background: none; border: 0; cursor: pointer; color: var(--n8n-connect-muted); }
+			.bar-icon svg { display: block; }
+			.bar-icon .icon-ok, .connect-bar.all-connected .bar-icon .icon-pending { display: none; }
+			.connect-bar.all-connected .bar-icon { color: var(--n8n-connect-ok); }
+			.connect-bar.all-connected .bar-icon .icon-ok { display: block; }
+			/* Opens upward: the bar is the last thing on the page, so downward is
+			   off-screen. `.open` is the tap toggle, since iOS Safari does not focus a
+			   tapped button and :focus-within alone never fires there. */
+			.bar-tooltip { display: none; position: absolute; bottom: 100%; left: -12px; padding-bottom: 8px; width: min(300px, calc(100vw - 32px)); z-index: 20; }
+			.bar-info:hover .bar-tooltip, .bar-info:focus-within .bar-tooltip, .bar-info.open .bar-tooltip { display: block; }
+			.bar-tooltip-body { display: block; background: var(--n8n-connect-bg-card); border: 1px solid var(--n8n-connect-border); border-radius: var(--n8n-connect-radius-card); box-shadow: var(--n8n-connect-shadow-dialog); padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--n8n-connect-label); }
+			.bar-tooltip-body a { color: var(--n8n-connect-primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
+			.bar-tooltip-body a:hover { text-decoration: underline; }
+			.bar-action { display: inline-flex; align-items: center; gap: 6px; }
+			.bar-action .dot { display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--n8n-connect-ok); }
+			/* Connected: the control drops to quiet, since nothing needs doing. */
+			.connect-bar.all-connected .bar-action { background: var(--n8n-connect-bg-card); color: var(--n8n-connect-label); border-color: var(--n8n-connect-border); }
+			.connect-bar.all-connected .bar-action:hover { opacity: 1; border-color: var(--n8n-connect-muted); }
+			.connect-bar.all-connected .bar-action .dot { display: block; }
+
+			/* --- "Connect your accounts" dialog --- */
+			.overlay, .overlay * { box-sizing: border-box; }
+			.overlay {
+				display: none; position: fixed; inset: 0; background: rgba(20, 20, 30, 0.28);
+				align-items: center; justify-content: center; z-index: 30; padding: 16px;
+				font-family: var(--n8n-connect-font-family);
+			}
+			.overlay.open { display: flex; }
+			.dialog { width: 448px; max-width: 100%; max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--n8n-connect-bg-card); border-radius: 12px; box-shadow: var(--n8n-connect-shadow-dialog); overflow: hidden; }
+			.dialog-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 8px; }
+			.dialog-title { font-size: 16px; font-weight: 600; color: var(--n8n-connect-header); }
+			.dialog-close { background: none; border: 0; font-size: 20px; line-height: 1; color: var(--n8n-connect-muted); cursor: pointer; }
+			.dialog-sub { padding: 0 20px 16px; font-size: 13px; color: var(--n8n-connect-muted); }
+			.dialog-list { padding: 0 20px; overflow-y: auto; }
+			.dialog-foot { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-top: 1px solid #f0f1f4; }
+			.dialog-count { font-size: 13px; color: var(--n8n-connect-muted); }
+
+			/* --- Credential row --- */
+			.cred-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+			.cred-icon {
+				width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+				background: var(--n8n-connect-icon-bg); color: var(--n8n-connect-icon-text);
+				font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+			}
+			img.cred-icon { background: none; object-fit: contain; }
+			.cred-meta { flex: 1; min-width: 0; }
+			.cred-name { display: block; font-size: 14px; font-weight: 600; color: var(--n8n-connect-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.cred-sub { display: block; font-size: 12px; color: var(--n8n-connect-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.cred-sub.error { color: var(--n8n-connect-error); }
+
+			/* --- Buttons --- */
+			.btn {
+				font-family: var(--n8n-connect-font-family); font-size: 13px; font-weight: 600;
+				padding: 8px 16px; border-radius: var(--n8n-connect-radius-input); border: 1px solid transparent; cursor: pointer;
+				flex-shrink: 0;
+			}
+			.btn-primary { background: var(--n8n-connect-primary); color: var(--n8n-connect-primary-text); }
+			.btn-primary:hover { opacity: 0.88; }
+			.btn-secondary { background: var(--n8n-connect-bg-card); color: var(--n8n-connect-label); border-color: var(--n8n-connect-border); }
+			.btn-secondary:hover { border-color: var(--n8n-connect-muted); }
+
+			.cred-connected { position: relative; }
+			.btn-connected {
+				display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+				background: var(--n8n-connect-bg-card); border: 1px solid var(--n8n-connect-border); border-radius: var(--n8n-connect-radius-input);
+				color: var(--n8n-connect-label); font-size: 13px; font-weight: 600; padding: 8px 12px;
+			}
+			.btn-connected:hover { border-color: var(--n8n-connect-muted); }
+			.btn-connected .caret { color: var(--n8n-connect-muted); }
+			.btn-connected .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--n8n-connect-ok); }
+			.cred-menu { display: none; position: fixed; min-width: 150px; background: var(--n8n-connect-bg-card); border: 1px solid var(--n8n-connect-border); border-radius: 6px; box-shadow: var(--n8n-connect-shadow-dialog); z-index: 40; }
+			.cred-menu.open { display: block; }
+			.btn-disconnect { display: block; width: 100%; text-align: left; white-space: nowrap; background: none; border: 0; padding: 8px 14px; font-size: 13px; color: var(--n8n-connect-error); cursor: pointer; }
+			.btn-disconnect:hover { background: var(--n8n-connect-error-bg); }
+			.cred-blocked { font-size: 13px; color: var(--n8n-connect-muted); }
+		</style>
+	</head>
+	<body>
+		{{!-- Every dynamic value below goes through {{ }}, so Handlebars escapes it.
+		      The script that follows is static and reads its state from these
+		      attributes - no view model is interpolated into script context. --}}
+		{{#*inline "credRow"}}
+			<div
+				class='cred-row'
+				data-cred-id='{{id}}'
+				data-resolver-id='{{resolverId}}'
+				data-not-connected-text='{{notConnectedText}}'
+				{{#if connected}} data-connected='true'{{/if}}
+				{{#if revokeUrl}} data-revoke-url='{{revokeUrl}}'{{/if}}
+			>
+				{{#if iconUrl}}
+					<img class='cred-icon cred-icon-img' src='{{iconUrl}}' alt='' data-initial='{{initial}}' />
+				{{else}}
+					<span class='cred-icon'>{{initial}}</span>
+				{{/if}}
+				<span class='cred-meta'>
+					<span class='cred-name'>{{name}}</span>
+					<span class='cred-sub'>{{#if connected}}{{#if account}}Connected as {{account}}{{else}}Connected{{/if}}{{else}}{{notConnectedText}}{{/if}}</span>
+				</span>
+				{{#if connected}}
+					<span class='cred-connected'><button type='button' class='btn-connected'><span class='dot'></span> Connected <span class='caret'>&#9662;</span></button><div class='cred-menu'><button type='button' class='btn-disconnect'>Disconnect</button></div></span>
+				{{else if authorizationUrl}}
+					<button class='btn btn-secondary connect' data-url='{{authorizationUrl}}'>Connect</button>
+				{{else}}
+					<span class='cred-blocked'>Ask the workflow owner</span>
+				{{/if}}
+			</div>
+		{{/inline}}
+
+		<iframe
+			id='n8n-chat-frame'
+			title='Chat'
+			sandbox='{{sandbox}}'
+			data-src='{{iframeSrc}}'
+		></iframe>
+
+		{{#if hasCredentials}}
+			<div
+				class='connect-bar{{#if ready}} all-connected{{/if}}'
+				id='n8n-connect-bar'
+				data-test-mode='{{#if testMode}}true{{else}}false{{/if}}'
+				data-use-dialog='{{#if useDialog}}true{{else}}false{{/if}}'
+				data-visitor-email='{{visitorEmail}}'
+			>
+				<span class='bar-info' id='n8n-connect-bar-info'>
+					<button type='button' class='bar-icon' aria-describedby='n8n-connect-bar-tooltip' aria-label='About the accounts this chat uses'>
+						<svg class='icon-pending' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='M8 7.3v3.5' stroke-linecap='round' /><circle cx='8' cy='5.1' r='.8' fill='currentColor' stroke='none' /></svg>
+						<svg class='icon-ok' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='m5.2 8.2 1.9 1.9 3.7-4' stroke-linecap='round' stroke-linejoin='round' /></svg>
+					</button>
+					<span class='bar-tooltip' role='tooltip' id='n8n-connect-bar-tooltip'>
+						<span class='bar-tooltip-body'>Chatting runs actions on your behalf, using accounts you connect. You can disconnect them at any time. <a href='https://docs.n8n.io/administer/manage-credentials/end-user-credentials' target='_blank' rel='noopener noreferrer'>Learn more</a></span>
+					</span>
+				</span>
+				<span class='bar-text' id='n8n-connect-bar-text'>{{barText}}</span>
+				{{#unless testMode}}
+					<button class='btn btn-primary bar-action' id='n8n-connect-bar-action'><span class='dot'></span><span class='label'>{{#if ready}}Manage{{else}}Connect{{/if}}</span></button>
+				{{/unless}}
+			</div>
+
+			{{!-- Holds the real per-credential authorize/revoke links, which is why it
+			      lives on this page and not in the author-scriptable frame. Rendered for
+			      a single account too: once that one is connected, this is the only place
+			      carrying a Disconnect control, so omitting it would leave the bar's
+			      Manage with nothing to open.
+
+			      Skipped in test mode, which has no control that can open it - rendering
+			      it there would embed live authorize links in unreachable markup. --}}
+			{{#unless testMode}}
+			<div class='overlay' id='n8n-connect-overlay'>
+				<div class='dialog' role='dialog' aria-modal='true' aria-labelledby='n8n-connect-dialog-title'>
+					<div class='dialog-head'>
+						<span class='dialog-title' id='n8n-connect-dialog-title'>Connect your accounts</span>
+						<button class='dialog-close' id='n8n-connect-close' aria-label='Close'>&times;</button>
+					</div>
+					<div class='dialog-sub'>Chatting uses these accounts on your behalf.</div>
+					<div class='dialog-list'>
+						{{#each credentials}}
+							{{> credRow notConnectedText='Not connected'}}
+						{{/each}}
+					</div>
+					<div class='dialog-foot'>
+						<span class='dialog-count' id='n8n-connect-count'>{{footerText}}</span>
+						<button class='btn btn-primary' id='n8n-connect-done'>Done</button>
+					</div>
+				</div>
+			</div>
+			{{/unless}}
+		{{/if}}
+
+		<script>
+			(function () {
+				// Held here, not in the frame, whose storage dies with its opaque origin on
+				// every reload. Keyed by path so two chats don't share a conversation.
+				var key = 'n8n-chat-shell/sessionId' + window.location.pathname;
+				var sessionId = '';
+				try { sessionId = window.localStorage.getItem(key) || ''; } catch (error) {}
+				if (!sessionId) {
+					sessionId =
+						window.crypto && window.crypto.randomUUID
+							? window.crypto.randomUUID()
+							: String(Date.now()) + Math.random().toString(16).slice(2);
+					try { window.localStorage.setItem(key, sessionId); } catch (error) {}
+				}
+				var frame = document.getElementById('n8n-chat-frame');
+				frame.src = frame.getAttribute('data-src') + '#sessionId=' + encodeURIComponent(sessionId);
+			})();
+		</script>
+
+		{{#if hasCredentials}}
+			<script>
+				(function () {
+					var frame = document.getElementById('n8n-chat-frame');
+					var overlay = document.getElementById('n8n-connect-overlay');
+					var barEl = document.getElementById('n8n-connect-bar');
+					var barTextEl = document.getElementById('n8n-connect-bar-text');
+					var barLabelEl = document.querySelector('#n8n-connect-bar-action .label');
+					var countEl = document.getElementById('n8n-connect-count');
+
+					// State comes from the rendered rows, never from an interpolated view
+					// model - that keeps script context free of server-supplied values.
+					var TEST_MODE = barEl.getAttribute('data-test-mode') === 'true';
+					var VISITOR_EMAIL = barEl.getAttribute('data-visitor-email') || '';
+
+					var ids = {};
+					var connected = {};
+					var failed = {};
+					document.querySelectorAll('.cred-row').forEach(function (row) {
+						var id = row.getAttribute('data-cred-id');
+						ids[id] = true;
+						if (row.getAttribute('data-connected') === 'true') connected[id] = true;
+					});
+					var total = Object.keys(ids).length;
+					// Design: one account connects straight from the bar; two or more collapse
+					// behind the dialog. Decided server-side so the rule lives in one place.
+					var useDialog = barEl.getAttribute('data-use-dialog') === 'true';
+
+					function accountsLabel(count) { return count === 1 ? 'account' : 'accounts'; }
+					function connectedCount() {
+						var n = 0;
+						for (var id in connected) if (connected[id]) n++;
+						return n;
+					}
+					function hasFailed() {
+						for (var id in failed) if (failed[id]) return true;
+						return false;
+					}
+					function onlyRow() {
+						return useDialog ? null : document.querySelector('.cred-row');
+					}
+
+					// Mirrors `connectBarText`, which renders the same line server-side, plus
+					// the failure state - which only arises after a click, so it has no
+					// server-rendered counterpart.
+					function barText(count) {
+						if (TEST_MODE) return "You're testing with your own connected accounts. Visitors will need to connect their own.";
+						var remaining = Math.max(total - count, 0);
+						if (remaining === 0) return 'All ' + total + ' ' + accountsLabel(total) + ' connected · ready to chat';
+						if (hasFailed()) return 'Connection failed · try again';
+						if (count === 0) return total + ' ' + accountsLabel(total) + ' needed to start this chat';
+						return remaining + ' more ' + accountsLabel(remaining) + ' needed to start this chat';
+					}
+
+					// The frame only ever learns ready/count, never a name, icon or authorize
+					// URL - it uses this solely to disable its own input while accounts are
+					// outstanding. Must match `@n8n/chat/src/utils/credentialStatus.ts`.
+					function notifyFrame() {
+						if (!frame || !frame.contentWindow) return;
+						var count = connectedCount();
+						frame.contentWindow.postMessage(
+							{
+								type: 'n8n-chat:credential-status',
+								ready: TEST_MODE || total <= count,
+								missingCount: Math.max(total - count, 0),
+								testMode: TEST_MODE,
+							},
+							'*',
+						);
+					}
+
+					function refresh() {
+						var count = connectedCount();
+						if (countEl) countEl.textContent = count + ' of ' + total + ' ' + accountsLabel(total) + ' connected';
+						if (barTextEl) barTextEl.textContent = barText(count);
+						if (barLabelEl) barLabelEl.textContent = count >= total ? 'Manage' : 'Connect';
+						if (barEl) {
+							if (TEST_MODE || count >= total) barEl.classList.add('all-connected');
+							else barEl.classList.remove('all-connected');
+						}
+						notifyFrame();
+					}
+
+					// The widget mounts asynchronously, so its message listener may not be
+					// attached when the frame's load event fires. A short burst of retries
+					// covers that race; every later change notifies immediately.
+					frame.addEventListener('load', function () {
+						notifyFrame();
+						[250, 750, 1500, 3000].forEach(function (delay) { setTimeout(notifyFrame, delay); });
+					});
+
+					// A provider icon that 404s (renamed package, stale path) falls back to the
+					// letter tile the row also carries.
+					function fallBackToLetterTile(img) {
+						if (!img || !img.classList || !img.classList.contains('cred-icon-img')) return;
+						var tile = document.createElement('span');
+						tile.className = 'cred-icon';
+						tile.textContent = img.getAttribute('data-initial') || '?';
+						img.replaceWith(tile);
+					}
+					document.addEventListener('error', function (e) { fallBackToLetterTile(e.target); }, true);
+					document.querySelectorAll('.cred-icon-img').forEach(function (img) {
+						if (img.complete && img.naturalWidth === 0) fallBackToLetterTile(img);
+					});
+
+					function clearError(id) {
+						delete failed[id];
+						document.querySelectorAll('.cred-row[data-cred-id="' + id + '"] .cred-sub').forEach(function (sub) {
+							sub.classList.remove('error');
+						});
+					}
+
+					var CONNECTED_MENU_HTML =
+						'<button type="button" class="btn-connected"><span class="dot"></span> Connected <span class="caret">&#9662;</span></button>' +
+						'<div class="cred-menu"><button type="button" class="btn-disconnect">Disconnect</button></div>';
+
+					function markConnected(id) {
+						if (!id || connected[id]) return;
+						connected[id] = true;
+						clearError(id);
+						document.querySelectorAll('.cred-row[data-cred-id="' + id + '"]').forEach(function (row) {
+							row.setAttribute('data-connected', 'true');
+							var sub = row.querySelector('.cred-sub');
+							if (sub) sub.textContent = VISITOR_EMAIL ? 'Connected as ' + VISITOR_EMAIL : 'Connected';
+							var btn = row.querySelector('.connect');
+							if (btn) {
+								// Derive the revoke URL from the authorize link (same server-built
+								// base), so a just-connected row can disconnect without a reload.
+								var authUrl = btn.getAttribute('data-url');
+								var resolverId = row.getAttribute('data-resolver-id');
+								if (authUrl && resolverId && !row.getAttribute('data-revoke-url')) {
+									try {
+										var u = new URL(authUrl);
+										u.pathname = u.pathname.replace(/\/authorize$/, '/revoke');
+										u.search = '?resolverId=' + encodeURIComponent(resolverId);
+										row.setAttribute('data-revoke-url', u.toString());
+									} catch (e) {}
+								}
+								var wrap = document.createElement('span');
+								wrap.className = 'cred-connected';
+								wrap.innerHTML = CONNECTED_MENU_HTML;
+								btn.replaceWith(wrap);
+							}
+						});
+						refresh();
+					}
+
+					function markDisconnected(id) {
+						if (!id) return;
+						delete connected[id];
+						clearError(id);
+						document.querySelectorAll('.cred-row[data-cred-id="' + id + '"]').forEach(function (row) {
+							row.removeAttribute('data-connected');
+							var sub = row.querySelector('.cred-sub');
+							if (sub) sub.textContent = row.getAttribute('data-not-connected-text') || 'Not connected';
+							var wrap = row.querySelector('.cred-connected');
+							if (wrap) {
+								var btn = document.createElement('button');
+								btn.className = 'btn btn-secondary connect';
+								// The one-time authorize link was consumed by the previous connect,
+								// so this Connect mints a fresh one instead of reloading.
+								var revokeUrl = row.getAttribute('data-revoke-url');
+								if (revokeUrl) btn.setAttribute('data-authorize-url', revokeUrl.replace('/revoke?', '/authorize?'));
+								btn.textContent = 'Connect';
+								wrap.replaceWith(btn);
+							}
+						});
+						refresh();
+					}
+
+					// A visible error, never a silent revert to "Connect": the row and the bar
+					// both say plainly that the last attempt didn't work.
+					function markFailed(id) {
+						if (!id || connected[id]) return;
+						failed[id] = true;
+						document.querySelectorAll('.cred-row[data-cred-id="' + id + '"] .cred-sub').forEach(function (sub) {
+							sub.textContent = 'Connection failed · try again';
+							sub.classList.add('error');
+						});
+						refresh();
+					}
+
+					var pendingId = null;
+					var pendingPopup = null;
+					var pendingSettled = true;
+					var pendingPollHandle = null;
+
+					function settlePending() {
+						pendingSettled = true;
+						if (pendingPollHandle) { clearInterval(pendingPollHandle); pendingPollHandle = null; }
+					}
+					function onSuccessSignal() {
+						if (!pendingId || pendingSettled) return;
+						var id = pendingId;
+						settlePending();
+						markConnected(id);
+					}
+					function onErrorSignal() {
+						if (!pendingId || pendingSettled) return;
+						var id = pendingId;
+						settlePending();
+						markFailed(id);
+					}
+
+					// The popup can close without either broadcast firing - the visitor closes
+					// the tab, or a blocker eats the redirect. Treated as cancelled, so the row
+					// never sits in limbo looking connectable.
+					function watchPopup(popup) {
+						pendingPopup = popup;
+						pendingSettled = false;
+						if (pendingPollHandle) clearInterval(pendingPollHandle);
+						pendingPollHandle = setInterval(function () {
+							if (!pendingPopup || pendingPopup.closed) onErrorSignal();
+						}, 500);
+					}
+
+					try {
+						var channel = new BroadcastChannel('oauth-callback');
+						channel.addEventListener('message', function (event) {
+							if (event.data === 'success') onSuccessSignal();
+							else if (event.data === 'error') onErrorSignal();
+						});
+					} catch (e) {}
+					// The AS callback page and this shell can live on different origins
+					// (BroadcastChannel is same-origin only), so also accept the fallback
+					// message it posts to its opener. Only the popup this page opened is
+					// trusted: excluding the frame is not enough, since a sandboxed frame can
+					// nest another frame whose `source` is neither the frame nor the popup.
+					window.addEventListener('message', function (event) {
+						if (!pendingPopup || event.source !== pendingPopup) return;
+						if (event.data === 'success') onSuccessSignal();
+						else if (event.data === 'error') onErrorSignal();
+					});
+
+					// Centred on the window the visitor is looking at, not wherever the browser
+					// would drop it - the provider's consent screen has to read as this page's
+					// own step. Clamped so it still fits a smaller window.
+					function popupFeatures() {
+						var width = Math.min(520, window.outerWidth || 520);
+						var height = Math.min(780, window.outerHeight || 780);
+						var left = Math.round((window.screenX || 0) + Math.max(((window.outerWidth || width) - width) / 2, 0));
+						var top = Math.round((window.screenY || 0) + Math.max(((window.outerHeight || height) - height) / 2, 0));
+						return 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no';
+					}
+
+					function openConnect(id, url) {
+						// Both links are built server-side from the instance base URL, so this is
+						// belt and braces - but nothing else stands between a data attribute and
+						// window.open.
+						if (!url || !/^https?:\/\//i.test(url)) return;
+						pendingId = id;
+						clearError(id);
+						refresh();
+						watchPopup(window.open(url, 'n8n-credential-connect', popupFeatures()));
+					}
+
+					// Session-cookie auth plus the browser-id the session was issued with
+					// (stored on this same origin by the editor/consent pages).
+					function authHeaders() {
+						try {
+							var browserId = localStorage.getItem('n8n-browserId');
+							if (browserId) return { 'browser-id': browserId };
+						} catch (e) {}
+						return {};
+					}
+
+					function disconnectById(id) {
+						var row = document.querySelector('.cred-row[data-cred-id="' + id + '"]');
+						var revokeUrl = row ? row.getAttribute('data-revoke-url') : null;
+						if (!id || !revokeUrl) return;
+						fetch(revokeUrl + '&authSource=cookie', {
+							method: 'DELETE',
+							credentials: 'include',
+							headers: authHeaders(),
+						})
+							.then(function (r) { if (r.ok) markDisconnected(id); })
+							.catch(function () {});
+					}
+
+					// Reconnect after a disconnect: mint a fresh authorize link and send the
+					// popup there. The popup opens synchronously so it isn't a pop-under.
+					function reconnect(id, mintUrl) {
+						if (!id || !mintUrl) return;
+						var popup = window.open('', 'n8n-credential-connect', popupFeatures());
+						pendingId = id;
+						clearError(id);
+						refresh();
+						watchPopup(popup);
+						fetch(mintUrl + '&authSource=cookie', {
+							method: 'POST',
+							credentials: 'include',
+							headers: authHeaders(),
+						})
+							.then(function (r) { return r.ok ? r.json() : null; })
+							.then(function (body) {
+								var url = body && (body.data || body);
+								if (typeof url === 'string' && popup) {
+									popup.location = url;
+								} else {
+									if (popup) popup.close();
+									onErrorSignal();
+								}
+							})
+							.catch(function () { if (popup) popup.close(); onErrorSignal(); });
+					}
+
+					// Delegated, so controls created by markConnected()/markDisconnected() work
+					// too. Reachable only from the dialog's own rows.
+					document.addEventListener('click', function (e) {
+						var connectBtn = e.target.closest('.connect');
+						if (connectBtn) {
+							var row = connectBtn.closest('.cred-row');
+							var id = row ? row.getAttribute('data-cred-id') : null;
+							var mintUrl = connectBtn.getAttribute('data-authorize-url');
+							if (mintUrl) reconnect(id, mintUrl);
+							else openConnect(id, connectBtn.getAttribute('data-url'));
+							return;
+						}
+						var menuBtn = e.target.closest('.btn-connected');
+						if (menuBtn) {
+							e.stopPropagation();
+							var menu = menuBtn.parentElement.querySelector('.cred-menu');
+							var wasOpen = menu && menu.classList.contains('open');
+							document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
+							if (menu && !wasOpen) {
+								menu.classList.add('open');
+								// Anchor to the button; flip above when out of room below.
+								var r = menuBtn.getBoundingClientRect();
+								var flipUp = window.innerHeight - r.bottom < menu.offsetHeight + 12;
+								menu.style.top = (flipUp ? r.top - menu.offsetHeight - 4 : r.bottom + 4) + 'px';
+								menu.style.left = (r.right - menu.offsetWidth) + 'px';
+							}
+							return;
+						}
+						var disconnectBtn = e.target.closest('.btn-disconnect');
+						if (disconnectBtn) {
+							e.stopPropagation();
+							var disconnectRow = disconnectBtn.closest('.cred-row');
+							if (disconnectRow) disconnectById(disconnectRow.getAttribute('data-cred-id'));
+							return;
+						}
+						document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
+					});
+
+					// No dialog is rendered in test mode, so every use of it tolerates null.
+					var closeBtn = document.getElementById('n8n-connect-close');
+					var doneBtn = document.getElementById('n8n-connect-done');
+					if (closeBtn) closeBtn.addEventListener('click', function () { overlay.classList.remove('open'); });
+					if (doneBtn) doneBtn.addEventListener('click', function () { overlay.classList.remove('open'); });
+					if (overlay) {
+						overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.classList.remove('open'); });
+					}
+
+					// The bar's own control, so the popup is opened by a real click on this
+					// document: one opened from a message posted up by the sandboxed frame is
+					// downgraded to a tab by some browsers.
+					var barAction = document.getElementById('n8n-connect-bar-action');
+					if (barAction) {
+						barAction.addEventListener('click', function () {
+							// The shortcut needs a live authorize link, which an account that
+							// arrived already connected never got. A previously failed attempt is
+							// fine to repeat: the intent behind the link is read without being
+							// consumed, so it stays valid for a retry within its TTL.
+							var row = onlyRow();
+							var id = row ? row.getAttribute('data-cred-id') : null;
+							var btn = row ? row.querySelector('.connect') : null;
+							var url = btn ? btn.getAttribute('data-url') : null;
+							if (id && !connected[id] && url) {
+								openConnect(id, url);
+								return;
+							}
+							// Everything else, including a fully connected single account, lands
+							// in the dialog - that is what holds Disconnect.
+							if (overlay) overlay.classList.add('open');
+						});
+					}
+
+					// Tap toggle for the tooltip, for browsers that don't focus a tapped button.
+					var barInfo = document.getElementById('n8n-connect-bar-info');
+					var barIcon = barInfo && barInfo.querySelector('.bar-icon');
+					if (barIcon) {
+						barIcon.addEventListener('click', function (e) {
+							e.stopPropagation();
+							barInfo.classList.toggle('open');
+						});
+						// Without this a tapped tooltip stays over the chat until the icon is
+						// tapped again - the platforms `.open` exists for are exactly the ones
+						// with no hover to end.
+						document.addEventListener('click', function (e) {
+							if (!barInfo.contains(e.target)) barInfo.classList.remove('open');
+						});
+					}
+
+					notifyFrame();
+				})();
+			</script>
+		{{/if}}
+	</body>
+</html>

@@ -1,8 +1,6 @@
+import { escapeForScriptContext } from '../escape';
 import {
 	createPage,
-	createShellPage,
-	escapeForHtmlAttribute,
-	escapeForScriptContext,
 	getSanitizedCustomCss,
 	getSanitizedInitialMessages,
 	getSanitizedI18nConfig,
@@ -612,53 +610,6 @@ describe('ChatTrigger Templates Security', () => {
 	});
 });
 
-describe('escapeForHtmlAttribute', () => {
-	it('escapes what would break out of a double-quoted attribute', () => {
-		expect(escapeForHtmlAttribute('/chat?a="><script>&\'')).toBe(
-			'/chat?a=&quot;&gt;&lt;script&gt;&amp;&#39;',
-		);
-	});
-});
-
-describe('createShellPage', () => {
-	const shell = createShellPage({ iframeSrc: '/webhook/abc/chat?n8nShellInner=1' });
-
-	it('renders nothing but the frame the chat lives in', () => {
-		expect(shell).toContain('<iframe');
-		expect(shell).toContain('data-src="/webhook/abc/chat?n8nShellInner=1"');
-		// The widget, its stylesheet and the author's CSS all belong to the frame.
-		expect(shell).not.toContain('cdn.jsdelivr.net');
-		expect(shell).not.toContain('createChat');
-	});
-
-	it('gives the frame no origin of its own', () => {
-		expect(shell).toContain('sandbox="allow-scripts allow-forms allow-modals allow-popups"');
-		expect(shell).not.toContain('allow-same-origin');
-	});
-
-	// Links in bot replies are `target="_blank"`, so the frame needs `allow-popups`
-	// to open them at all — but not `allow-popups-to-escape-sandbox`, which would let
-	// author script put a real-origin document in front of the visitor.
-	it('lets the frame open popups without letting them escape the sandbox', () => {
-		expect(shell).toContain('allow-popups');
-		expect(shell).not.toContain('allow-popups-to-escape-sandbox');
-	});
-
-	// The src comes from the request URL, so it must not be able to close the
-	// attribute and add markup of its own.
-	it('escapes the frame src', () => {
-		const escaped = createShellPage({ iframeSrc: '/chat?x="><img src=x onerror=alert(1)>' });
-
-		expect(escaped).not.toContain('<img');
-		expect(escaped).toContain('&quot;&gt;&lt;img');
-	});
-
-	it('owns the session id so a frame reload continues the conversation', () => {
-		expect(shell).toContain("'n8n-chat-shell/sessionId' + window.location.pathname");
-		expect(shell).toContain("'#sessionId=' + encodeURIComponent(sessionId)");
-	});
-});
-
 describe('createPage inside the shell frame', () => {
 	const params = {
 		instanceId: 'test-instance',
@@ -684,6 +635,13 @@ describe('createPage inside the shell frame', () => {
 	const inner = createPage({
 		...params,
 		frameIdentity: { visitor, authToken: 'signed.jwt.token' },
+	});
+
+	// The connect experience lives on the shell, so the frame needs no unreleased
+	// widget code and the page can keep loading the published bundle.
+	it('loads the widget from the published CDN bundle', () => {
+		expect(inner).toContain('cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js');
+		expect(inner).not.toContain('/chat-widget/');
 	});
 
 	it('stands in for localStorage before the widget loads', () => {

@@ -319,7 +319,7 @@ describe('establishChatSessionIdentity', () => {
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
 		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
 			Location: 'https://as.example.com/authorize',
@@ -336,7 +336,7 @@ describe('establishChatSessionIdentity', () => {
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(mockContext.completeN8nOAuth2Flow).toHaveBeenCalledWith('auth-code', 'flow-state');
 		expect(mockContext.getResponseObject().cookie).toHaveBeenCalledWith(
 			'n8n-chat-oauth',
@@ -361,7 +361,7 @@ describe('establishChatSessionIdentity', () => {
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
 	});
 
@@ -375,8 +375,13 @@ describe('establishChatSessionIdentity', () => {
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBe(true);
+		expect(result).toEqual({ visitor: user, authToken: 'as-token' });
 		expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
+		expect(mockContext.establishTriggerIdentity).toHaveBeenCalledWith(
+			'as-token',
+			resourceUrl,
+			user.id,
+		);
 		expect(mockContext.getResponseObject().clearCookie).not.toHaveBeenCalled();
 	});
 
@@ -391,7 +396,7 @@ describe('establishChatSessionIdentity', () => {
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
 	});
 
@@ -404,7 +409,7 @@ describe('establishChatSessionIdentity', () => {
 
 		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(mockContext.getResponseObject().status).toHaveBeenCalledWith(403);
 		expect(mockContext.beginN8nOAuth2Flow).not.toHaveBeenCalled();
 	});

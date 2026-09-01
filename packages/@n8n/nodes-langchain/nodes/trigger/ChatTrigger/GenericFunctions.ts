@@ -102,16 +102,18 @@ export async function validateAuth(context: IWebhookFunctions) {
  * receive the AS's session-cookie check, and any consent/sign-in page the AS
  * falls back to would then render editor-ui inside the opaque frame.
  *
- * On success, stashes the AS token in the one-hop `n8n-chat-oauth` cookie and
- * returns `true` — the caller renders the shell, whose frame's own GET picks
- * the cookie up via `resolveInnerFrameIdentity`. Returns `false` after
+ * On success, stashes the AS token in the one-hop `n8n-chat-oauth` cookie,
+ * establishes the run's identity from it (so the outer GET can check
+ * end-user-credential readiness for the connect panel), and returns the
+ * resolved identity — the caller renders the shell, whose frame's own GET
+ * picks the cookie up via `resolveInnerFrameIdentity`. Returns `null` after
  * already sending a redirect/error response — the caller must abort with
  * `noWebhookResponse`.
  */
 export async function establishChatSessionIdentity(
 	context: IWebhookFunctions,
 	resourceUrl: string,
-): Promise<boolean> {
+): Promise<ChatFrameIdentity | null> {
 	const req = context.getRequestObject();
 	const res = context.getResponseObject();
 	const { code, state } = req.query;
@@ -124,7 +126,7 @@ export async function establishChatSessionIdentity(
 		});
 		res.status(403).send('Access denied');
 		res.end();
-		return false;
+		return null;
 	}
 
 	if (typeof code === 'string' && typeof state === 'string') {
@@ -138,7 +140,7 @@ export async function establishChatSessionIdentity(
 				const redirectPath = req.originalUrl.split('?')[0];
 				res.writeHead(302, { Location: redirectPath });
 				res.end();
-				return false;
+				return null;
 			}
 			// Fall through to restart the OAuth2 flow if the callback is invalid.
 			context.logger.warn('Chat OAuth2 flow failed, restarting', { reason: result.reason });
@@ -154,7 +156,8 @@ export async function establishChatSessionIdentity(
 		if (cookieToken) {
 			const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
 			if (validation.valid) {
-				return true;
+				await context.establishTriggerIdentity(cookieToken, resourceUrl, validation.user.id);
+				return { visitor: validation.user, authToken: cookieToken };
 			}
 			// Stale/invalid cookie — fall through to restart the OAuth2 flow.
 		}
@@ -169,7 +172,7 @@ export async function establishChatSessionIdentity(
 		context.logger.warn('Chat OAuth2 flow failed', { error });
 		throw new UnexpectedError('Chat OAuth2 flow failed');
 	}
-	return false;
+	return null;
 }
 
 /**
