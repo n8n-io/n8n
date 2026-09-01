@@ -132,13 +132,8 @@ export function useCanvasLayout(
 
 		if (!memberIds.every((memberId) => sourceNodeIds.has(memberId))) return undefined;
 
-		const memberNodes = memberIds
-			.map((memberId) => findNode<CanvasNodeData>(memberId))
-			.filter(isPresent);
-		if (memberNodes.length !== memberIds.length) return undefined;
-
 		// Expanded groups need their frame size, not only their member bounds.
-		const expandedFrame = computeGroupFrameRects(boundingBoxFromCanvasNodes(memberNodes)).expanded;
+		const expandedFrame = computeGroupFrameRects(groupData.nodesRect).expanded;
 
 		return {
 			node: groupNode,

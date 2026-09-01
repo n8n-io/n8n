@@ -653,6 +653,64 @@ describe('useCanvasLayout', () => {
 			).toEqual([]);
 		});
 
+		test('uses the store nodes rect when spacing expanded group frames', () => {
+			const source = createCanvasGraphNode({ id: 'source', position: { x: 0, y: 64 } });
+			const top = createCanvasGraphNode({ id: 'top', position: { x: 384, y: 0 } });
+			const bottom = createCanvasGraphNode({ id: 'bottom', position: { x: 384, y: 128 } });
+			const merge = createCanvasGraphNode({ id: 'merge', position: { x: 800, y: 64 } });
+			const topNodesRect = { x: 384, y: 0, width: 96, height: 1024 };
+			const bottomNodesRect = { x: 384, y: 128, width: 96, height: 1024 };
+			const topFrame = computeGroupFrameRects(topNodesRect).expanded;
+			const bottomFrame = computeGroupFrameRects(bottomNodesRect).expanded;
+			const topGroup = createCanvasGraphGroupNode({
+				id: 'top-group',
+				nodeIds: ['top'],
+				isCollapsed: false,
+				nodesRect: topNodesRect,
+				position: { x: topFrame.x, y: topFrame.y },
+			});
+			const bottomGroup = createCanvasGraphGroupNode({
+				id: 'bottom-group',
+				nodeIds: ['bottom'],
+				isCollapsed: false,
+				nodesRect: bottomNodesRect,
+				position: { x: bottomFrame.x, y: bottomFrame.y },
+			});
+			const nodes = [source, top, bottom, merge, topGroup, bottomGroup];
+			const connections: Array<[string, string]> = [
+				['source', 'top'],
+				['top', 'merge'],
+				['source', 'bottom'],
+				['bottom', 'merge'],
+			];
+
+			const { layout } = createTestSetup(nodes, connections);
+			const result = layout('all');
+			const positions = new Map(result.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+			const shiftedFrame = (
+				group: GraphNode<CanvasGroupNodeData>,
+				member: GraphNode<CanvasNodeData>,
+			) => {
+				const memberPosition = positions.get(member.id);
+				assert(memberPosition);
+				const groupData = group.data;
+				assert(groupData);
+				const delta = {
+					x: memberPosition.x - member.position.x,
+					y: memberPosition.y - member.position.y,
+				};
+				return computeGroupFrameRects({
+					...groupData.nodesRect,
+					x: groupData.nodesRect.x + delta.x,
+					y: groupData.nodesRect.y + delta.y,
+				}).expanded;
+			};
+
+			expect(checkOverlap(shiftedFrame(topGroup, top), shiftedFrame(bottomGroup, bottom))).toBe(
+				false,
+			);
+		});
+
 		test('keeps expanded group members as plain nodes for a partial selection', () => {
 			const m1 = createCanvasGraphNode({ id: 'm1' });
 			const m2 = createCanvasGraphNode({ id: 'm2' });
