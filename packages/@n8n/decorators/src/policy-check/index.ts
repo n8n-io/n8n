@@ -13,3 +13,4 @@ export {
 	UnknownEnforcementPointError,
 } from './policy-check-metadata';
 export * from './policy-check';
+export * from './policy-cleared';

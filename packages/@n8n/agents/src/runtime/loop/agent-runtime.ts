@@ -447,6 +447,10 @@ export class AgentRuntime {
 			await this.ensureModelCost();
 
 			await this.memory.setListObservationLogMemory(list, state.persistence);
+			// The mask boundary is runtime-only state: re-derive it from the
+			// persisted cursor so a run that compacted mid-run before suspending
+			// does not resume with the full pre-compaction window.
+			await this.memory.applyObservationMask(list, state.persistence);
 
 			if (method === 'generate') {
 				const sink = new GenerateSink(this.createRunServices());
@@ -573,6 +577,7 @@ export class AgentRuntime {
 
 			await this.ensureModelCost();
 			await this.memory.setListObservationLogMemory(list, state.persistence);
+			await this.memory.applyObservationMask(list, state.persistence);
 
 			return {
 				runId: this.runId,
@@ -844,6 +849,9 @@ export class AgentRuntime {
 			});
 			const finalized = await finishToolBatch(batch, pendingLoopContext.toolMap, iterationCount);
 			if (finalized.suspended) return finalized.result;
+			// The resumed batch is a clean boundary too: its tool results are new
+			// content no earlier boundary saw, so check before the next model call.
+			await this.memory.maybeObserveMidRun(list, options);
 		}
 
 		for (; iterationCount < maxIterations; iterationCount++) {
@@ -946,6 +954,10 @@ export class AgentRuntime {
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
+
+			// Clean loop boundary: all tool calls settled. Mid-run observation
+			// may compact the LLM window here before the next call.
+			await this.memory.maybeObserveMidRun(list, options);
 
 			// Step boundary reached with nothing pending: durably checkpoint so a
 			// crash before the next model call loses only the in-flight step.
@@ -1067,6 +1079,21 @@ export class AgentRuntime {
 		const executionOptions: PersistedExecutionOptions | undefined =
 			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
 
+		// Record what confirmation each suspended call showed the user, so an
+		// abandoned suspension can be settled with that context on a later
+		// history load instead of vanishing from the transcript.
+		for (const pending of Object.values(pendingToolCalls)) {
+			if (!pending.suspended) continue;
+			const payload =
+				typeof pending.suspendPayload === 'object' && pending.suspendPayload !== null
+					? (pending.suspendPayload as { message?: unknown; requestId?: unknown })
+					: undefined;
+			list.markToolCallSuspended(pending.toolCallId, {
+				...(typeof payload?.message === 'string' ? { message: payload.message } : {}),
+				...(typeof payload?.requestId === 'string' ? { requestId: payload.requestId } : {}),
+			});
+		}
+
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
 			status: 'suspended',
@@ -1122,7 +1149,11 @@ export class AgentRuntime {
 			return;
 		}
 
-		if (this.config.workspaceFilesystem) {
+		// Gated on this runtime instance having offloaded something: with lazy sandbox
+		// acquisition an unconditional cleanup would boot the sandbox just to find nothing.
+		// Runs resumed in a fresh process skip this (flag is per-instance); their orphaned
+		// run dirs are swept by reconcileToolResultRuns on a later acquisition.
+		if (this.config.workspaceFilesystem && this.toolExecutor.hasOffloadedToolResults) {
 			try {
 				await removeToolResultRun(this.config.workspaceFilesystem, this.runId);
 			} catch (error) {

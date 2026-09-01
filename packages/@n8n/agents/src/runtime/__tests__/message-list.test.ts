@@ -7,7 +7,11 @@ import type {
 	ContentToolCall,
 	Message,
 } from '../../types/sdk/message';
-import { AgentMessageList, buildSystemMessages } from '../model/message-list';
+import {
+	AgentMessageList,
+	buildSystemMessages,
+	OBSERVATION_CONTINUATION_REMINDER,
+} from '../model/message-list';
 
 function flattenSystemContent(system: SystemModelMessage | SystemModelMessage[]): string {
 	if (Array.isArray(system)) {
@@ -513,5 +517,169 @@ describe('AgentMessageList — setToolCallError', () => {
 		expect((block as ContentToolCall & { state: 'rejected' }).error).toBe('Error: boom');
 		// output should be gone
 		expect((block as unknown as { output?: unknown }).output).toBeUndefined();
+	});
+});
+
+describe('AgentMessageList — markToolCallSuspended', () => {
+	it('stamps suspension info on a pending tool-call block', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+
+		list.markToolCallSuspended('id-1', { message: 'Edit My Workflow (ID: abc)?', requestId: 'r1' });
+
+		const host = list
+			.turnDelta()
+			.find((m) => 'content' in m && m.content.some((c) => c.type === 'tool-call')) as Message;
+		const block = host.content.find((c) => c.type === 'tool-call') as ContentToolCall & {
+			state: 'pending';
+		};
+		expect(block.state).toBe('pending');
+		expect(block.suspension).toEqual({ message: 'Edit My Workflow (ID: abc)?', requestId: 'r1' });
+	});
+
+	it('is a no-op for settled blocks and unknown ids', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+		list.setToolCallResult('id-1', { ok: true });
+
+		list.markToolCallSuspended('id-1', { message: 'stale' });
+		list.markToolCallSuspended('missing', { message: 'stale' });
+
+		const host = list
+			.turnDelta()
+			.find((m) => 'content' in m && m.content.some((c) => c.type === 'tool-call')) as Message;
+		const block = host.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(block.state).toBe('resolved');
+		expect('suspension' in block).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Observation masking (mid-run compaction)
+// ---------------------------------------------------------------------------
+
+describe('AgentMessageList — observation masking', () => {
+	const at = (second: number) => new Date(Date.UTC(2026, 0, 1, 12, 0, second));
+
+	function dbMsgWithId(id: string, text: string, createdAt: Date): AgentDbMessage {
+		return { id, createdAt, role: 'user', content: [{ type: 'text', text }] };
+	}
+
+	it('hides messages at or before the cursor from forLlm while deltas and serialize keep everything', () => {
+		const list = new AgentMessageList();
+		list.addHistory([dbMsgWithId('m1', 'observed history', at(1))]);
+		list.addInput([
+			{
+				id: 'm2',
+				createdAt: at(2),
+				role: 'user',
+				content: [{ type: 'text', text: 'visible input' }],
+			},
+		]);
+		list.addResponse([
+			{
+				id: 'm3',
+				createdAt: at(3),
+				role: 'assistant',
+				content: [{ type: 'text', text: 'fresh reply' }],
+			},
+		]);
+
+		list.maskObservedMessages({ lastObservedAt: at(1), lastObservedMessageId: 'm1' });
+
+		const serialized = JSON.stringify(list.forLlm('base').messages);
+		expect(serialized).not.toContain('observed history');
+		expect(serialized).toContain('visible input');
+		expect(serialized).toContain('fresh reply');
+
+		// Persistence and result consumers are mask-agnostic.
+		expect(list.turnDelta().map((m) => m.id)).toEqual(['m2', 'm3']);
+		expect(list.responseDelta().map((m) => m.id)).toEqual(['m3']);
+		expect(list.serialize().messages.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+	});
+
+	it('splits messages sharing the cursor createdAt by id, matching store keyset semantics', () => {
+		const list = new AgentMessageList();
+		const ts = at(5);
+		list.addHistory([
+			dbMsgWithId('a', 'text a', ts),
+			dbMsgWithId('b', 'text b', ts),
+			dbMsgWithId('c', 'text c', ts),
+		]);
+
+		list.maskObservedMessages({ lastObservedAt: ts, lastObservedMessageId: 'b' });
+
+		const serialized = JSON.stringify(list.forLlm('base').messages);
+		expect(serialized).not.toContain('text a');
+		expect(serialized).not.toContain('text b');
+		expect(serialized).toContain('text c');
+	});
+
+	it('masks from a string-dated cursor and ignores an unparseable one', () => {
+		// Store adapters are an open interface — a JSON-backed one hands back
+		// lastObservedAt as an ISO string instead of a Date.
+		const list = new AgentMessageList();
+		list.addHistory([
+			dbMsgWithId('m1', 'observed history', at(1)),
+			dbMsgWithId('m2', 'still visible', at(2)),
+		]);
+
+		list.maskObservedMessages({
+			lastObservedAt: at(1).toISOString() as unknown as Date,
+			lastObservedMessageId: 'm1',
+		});
+		expect(list.llmVisibleMessages().map((m) => m.id)).toEqual(['m2']);
+
+		// An unusable date would compare as NaN and mask every message — the
+		// boundary must stay where it was instead.
+		list.maskObservedMessages({
+			lastObservedAt: 'not-a-date' as unknown as Date,
+			lastObservedMessageId: 'm2',
+		});
+		expect(list.llmVisibleMessages().map((m) => m.id)).toEqual(['m2']);
+	});
+
+	it('sends exactly one continuation reminder when the whole window is masked', () => {
+		const list = new AgentMessageList();
+		list.addHistory([
+			dbMsgWithId('m1', 'observed one', at(1)),
+			dbMsgWithId('m2', 'observed two', at(2)),
+		]);
+
+		list.maskObservedMessages({ lastObservedAt: at(2), lastObservedMessageId: 'm2' });
+
+		expect(list.forLlm('base').messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+	});
+
+	it('prepends the reminder before a visible assistant tool-call host and keeps its result pair intact', () => {
+		const list = new AgentMessageList();
+		list.addHistory([
+			dbMsgWithId('m1', 'earlier work', at(1)),
+			{
+				id: 'm2',
+				createdAt: at(2),
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc1',
+						toolName: 'my_tool',
+						input: { x: 1 },
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		]);
+
+		list.maskObservedMessages({ lastObservedAt: at(1), lastObservedMessageId: 'm1' });
+
+		const { messages } = list.forLlm('base');
+		expect(messages[0]).toEqual({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
+		// The host explodes into assistant tool-call + tool result — masking must
+		// never orphan one half of the pair.
+		expect(messages.map((m) => m.role)).toEqual(['user', 'assistant', 'tool']);
 	});
 });

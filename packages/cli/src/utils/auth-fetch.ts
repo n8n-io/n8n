@@ -1,4 +1,4 @@
-import { fetchFollowingRedirects } from '@n8n/ai-utilities';
+import { createRefreshingAuthFetch } from '@n8n/ai-utilities';
 import type { CustomFetch } from '@n8n/backend-network';
 import { assertUrlAllowed, UserError } from 'n8n-workflow';
 import type { DomainRestrictionMode, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -21,13 +21,6 @@ interface CreateAuthFetchOptions {
 	 * unauthorized host. Mode `none` blocks all requests.
 	 */
 	allowedDomains?: AuthFetchDomainPolicy;
-}
-
-function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
-	if (!headers) return {};
-	if (headers instanceof Headers) return Object.fromEntries(headers.entries());
-	if (Array.isArray(headers)) return Object.fromEntries(headers);
-	return headers;
 }
 
 export function resolveAllowedDomains(
@@ -78,32 +71,14 @@ export function createAuthFetch({
 	onUnauthorized,
 	allowedDomains,
 }: CreateAuthFetchOptions): typeof fetch {
-	let headers = initialHeaders;
-
-	const authedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const response = await baseFetch(input, {
-			...init,
-			headers: { ...headersToRecord(init?.headers), ...headers },
-		});
-
-		if (response.status !== 401 || !onUnauthorized) return response;
-
-		const refreshed = await onUnauthorized();
-		if (!refreshed) return response;
-
-		headers = refreshed;
-		return await baseFetch(input, {
-			...init,
-			headers: { ...headersToRecord(init?.headers), ...headers },
-		});
-	};
-
-	if (!allowedDomains) return authedFetch;
-
-	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const startUrl = input instanceof Request ? input.url : input;
-		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
-			onBeforeHop: (hopUrl) => assertDomainPolicyAllowsUrl(hopUrl, allowedDomains),
-		});
-	};
+	return createRefreshingAuthFetch({
+		baseFetch,
+		initialHeaders,
+		...(onUnauthorized ? { refreshHeaders: async () => await onUnauthorized() } : {}),
+		...(allowedDomains
+			? {
+					assertAllowedUrl: (url: string) => assertDomainPolicyAllowsUrl(url, allowedDomains),
+				}
+			: {}),
+	});
 }

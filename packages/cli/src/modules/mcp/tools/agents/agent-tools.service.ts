@@ -17,8 +17,7 @@ import {
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -315,6 +314,7 @@ const verifyMcpServerInput = {
 		.min(1)
 		.optional()
 		.describe('Accessible credential ID; required when authentication is not none'),
+	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z.number().int().min(1).max(120_000).optional(),
 } satisfies z.ZodRawShape;
 
@@ -403,8 +403,6 @@ export class McpAgentToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly urlService: UrlService,
 		private readonly projectScopeService: ProjectScopeService,
 	) {}
@@ -470,7 +468,7 @@ export class McpAgentToolsService {
 			name: 'search_agents',
 			config: {
 				description:
-					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
+					'Search Agents the current user can access. Use excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
 				inputSchema: searchAgentsInput,
 				annotations: {
 					title: 'Search Agents',
@@ -941,7 +939,7 @@ export class McpAgentToolsService {
 			name: 'discover_agent_assets',
 			config: {
 				description:
-					'Discover model catalogs, chat integrations, attachable workflows, published sub-agents, or MCP registry servers.',
+					'Discover model catalogs, chat integrations, attachable workflows, saved sub-agents, or MCP registry servers.',
 				inputSchema: discoverAssetsInput,
 				annotations: {
 					title: 'Discover Agent Assets',
@@ -1592,7 +1590,6 @@ export class McpAgentToolsService {
 			case 'subagents': {
 				const summaries = await this.agentsService.findSummariesInProjects([input.projectId], {
 					query: input.query?.trim() || undefined,
-					publishedOnly: true,
 					excludeAgentId: input.excludeAgentId,
 				});
 				return summaries.map((agent) => ({ agentId: agent.id, name: agent.name }));
@@ -1621,6 +1618,7 @@ export class McpAgentToolsService {
 				transport: input.transport,
 				authentication: input.authentication,
 				credential: input.credential,
+				metadata: input.metadata,
 				...(input.connectionTimeoutMs !== undefined
 					? { connectionTimeoutMs: input.connectionTimeoutMs }
 					: {}),
@@ -1629,11 +1627,9 @@ export class McpAgentToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId: input.projectId,
-				proxyFetch: createAiMcpFetch(
-					this.outboundHttp,
-					this.ssrfConfig,
-					this.ssrfProtectionService,
-				),
+				proxyFetch: createAiMcpFetch(this.outboundHttp),
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 			},
 		);
 		return { ok: true, tools };

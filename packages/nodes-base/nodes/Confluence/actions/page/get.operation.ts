@@ -5,7 +5,7 @@ import type { ConfluenceBodyFormat } from '../common';
 import {
 	PAGE_LIMIT,
 	bodyFormatOption,
-	extractNextCursor,
+	nextUnseenCursor,
 	optionalSpaceRLC,
 	pageRLC,
 	parsePositiveInt,
@@ -21,8 +21,6 @@ const MAX_DEPTH = 10;
 export const description: INodeProperties[] = [
 	{
 		...optionalSpaceRLC,
-		description:
-			'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
 		displayOptions: {
 			show: {
 				resource: ['page'],
@@ -99,6 +97,7 @@ async function collectDescendantPageIds(
 		const nextFrontier: string[] = [];
 		for (const nodeId of frontier) {
 			let cursor: string | undefined;
+			const seenCursors = new Set<string>();
 			do {
 				const qs: IDataObject = { depth: MAX_DEPTH, limit: PAGE_LIMIT };
 				if (cursor !== undefined) qs.cursor = cursor;
@@ -122,7 +121,7 @@ async function collectDescendantPageIds(
 					}
 					if (pageIds.length >= maxCount) return pageIds;
 				}
-				cursor = extractNextCursor(response);
+				cursor = nextUnseenCursor(response, seenCursors);
 			} while (cursor !== undefined);
 		}
 		frontier = nextFrontier;

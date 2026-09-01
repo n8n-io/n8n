@@ -21,8 +21,9 @@ snippet here — a copy would drift. The moving parts:
 - `decodeCursor` / `encodeNextCursor` live in
   `v1/shared/services/pagination.service.ts`. Decode the incoming cursor to
   `{ offset, limit }`, guard the decoded shape, and pass `offset`/`limit` to the
-  service — `offset` is an internal implementation detail of the cursor here,
-  never a client-facing query param.
+  service — never `{ skip, take }`. `offset` is an internal implementation
+  detail of the cursor here, never a client-facing query param. TypeORM's
+  `skip`/`take` stay inside the repository, at the `find` call.
 - Treat the cursor as opaque; never hand-encode a token.
 - Return an envelope `{ data, nextCursor }` — never a bare array.
 - `encodeNextCursor(...)` returns `null` when there is no further page; surface
