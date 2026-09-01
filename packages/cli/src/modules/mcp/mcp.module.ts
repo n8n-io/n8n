@@ -14,8 +14,6 @@ export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller.js');
 		await import('./mcp.settings.controller.js');
-		const { McpPostSaveMetricsService } = await import('./mcp-post-save-metrics.service.js');
-		Container.get(McpPostSaveMetricsService);
 
 		// Register the instance MCP server as a protected resource of the shared
 		// OAuth server, so its tokens are minted and verified with the right
