@@ -29,7 +29,7 @@ import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -152,7 +152,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
-		Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+		Container.set(SubAgentRunner, mock<SubAgentRunner>());
 	});
 
 	afterEach(() => {
@@ -321,7 +321,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 	beforeEach(() => {
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
-		Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+		Container.set(SubAgentRunner, mock<SubAgentRunner>());
 	});
 
 	afterEach(() => {

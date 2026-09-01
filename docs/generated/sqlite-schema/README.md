@@ -8,6 +8,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
+| [agent_background_job](agent_background_job.md) | 16 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
 | [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
@@ -147,6 +148,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 ```mermaid
 erDiagram
 
+"agent_background_job" }o--|| "agents" : "FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_channel_status" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -342,6 +344,24 @@ erDiagram
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
+"agent_background_job" {
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  datetime_3_ createdAt
+  TEXT error
+  varchar_36_ id PK
+  varchar_16_ kind
+  varchar_36_ parentAgentId FK
+  varchar_128_ parentThreadId
+  TEXT result
+  datetime_3_ settledAt
+  varchar_16_ status
+  varchar_36_ subAgentId
+  datetime_3_ timeoutAt
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
+}
 "agent_channel_status" {
   varchar_36_ agentId PK
   INTEGER attempts
