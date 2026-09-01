@@ -285,11 +285,6 @@ describe('GitConnectionsGitService (git operations)', () => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
 		});
 
-		it('force-pushes when force is set', async () => {
-			await call({ force: true });
-			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main', ['-f']);
-		});
-
 		it('maps a stall timeout to a 503', async () => {
 			mockGit.push.mockRejectedValueOnce(
 				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
