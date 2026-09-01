@@ -75,8 +75,11 @@ jobs:
       - name: Test Unit (backend, except cli and nodes-base)
         run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
+      # EXPERIMENT ARM: default 2 workers, environment reused across files.
       - name: Test Unit (cli, scoped)
         if: ${{ !cancelled() }}
+        env:
+          VITEST_ISOLATE: 'false'
         run: pnpm turbo test:unit:changed --filter=n8n --summarize
 
       - name: Send Test Stats

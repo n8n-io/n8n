@@ -5,7 +5,8 @@
 		"COVERAGE_ENABLED",
 		"SENTRY_AUTH_TOKEN",
 		// Worker count changes timing, never output, so it must not enter the hash.
-		"VITEST_MAX_WORKERS"
+		"VITEST_MAX_WORKERS",
+		"VITEST_ISOLATE"
 	],
 	"boundaries": {
 		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system

@@ -47,7 +47,13 @@ export const cjsPinAliases = (deps: string[], from: string = process.cwd()): Ali
 export const forkPoolOptions = (): InlineConfig => {
 	if (process.env.CI !== 'true') return {};
 	// Vitest accepts a percentage for `maxWorkers` (half of availableParallelism).
-	return { pool: 'forks', maxWorkers: process.env.VITEST_MAX_WORKERS ?? '50%' };
+	return {
+		pool: 'forks',
+		maxWorkers: process.env.VITEST_MAX_WORKERS ?? '50%',
+		// A suite whose files do not rely on cross-file side effects can reuse the
+		// environment instead of rebuilding it per file.
+		...(process.env.VITEST_ISOLATE === 'false' ? { isolate: false } : {}),
+	};
 };
 
 /**
