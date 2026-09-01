@@ -21,9 +21,11 @@ export type ActivityEventCategory = (typeof activityEventCategories)[number];
 
 /**
  * What `resourceId` points at — the pointer's type, not the entry's kind; see `category`.
- * Absent when an entry is about the instance rather than a resource.
- * An execution entry points at its *workflow*, not the run: that is the thing a reader groups
- * repeated runs under, and the thing a user thinks in terms of. The run id lives in `data`.
+ * Null when an entry is about the instance rather than a resource.
+ *
+ * Every entry written today has `resourceType === category`, so the column is currently derivable.
+ * It stays because the two come apart as soon as an entry is about one kind of thing but points at
+ * another: a source-control pull is the next such case. Adding it back later costs a migration.
  */
 export const activityResourceTypes = ['workflow', 'credential'] as const;
 
@@ -71,7 +73,11 @@ export class ActivityEvent extends WithCreatedAt {
 	@Column({ type: 'int', default: 1 })
 	typeVersion: number;
 
-	/** Who did it. Null once that user is deleted, and for entries no user caused. */
+	/**
+	 * Who did it. Every event written carries an acting user, so this is never null on insert —
+	 * it goes null only when that user is deleted, which is what the foreign key is for. That is
+	 * also why the column cannot be `NOT NULL`.
+	 */
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
@@ -83,6 +89,9 @@ export class ActivityEvent extends WithCreatedAt {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	projectId: string | null;
 
+	@Column({ type: 'varchar', length: 32, nullable: true })
+	resourceType: ActivityResourceType | null;
+
 	/**
 	 * Deliberately not a foreign key, unlike every other reference in the schema. An entry has to
 	 * outlive what it describes — "you deleted the Lead enrichment workflow" is the entry most worth
@@ -90,9 +99,6 @@ export class ActivityEvent extends WithCreatedAt {
 	 * mistake was made and undone on `workflow_review_activity.workflowId`. Reads therefore treat
 	 * every pointer as possibly dangling, and expanding a deleted resource is an expected outcome.
 	 */
-	@Column({ type: 'varchar', length: 32, nullable: true })
-	resourceType: ActivityResourceType | null;
-
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	resourceId: string | null;
 

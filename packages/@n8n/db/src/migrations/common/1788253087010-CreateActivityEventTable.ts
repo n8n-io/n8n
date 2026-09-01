@@ -34,7 +34,8 @@ export class CreateActivityEventTable1788253087010 implements ReversibleMigratio
 					.int.notNull.default(1)
 					.comment('Schema version of `data` for this category/action pair'),
 				column('userId').uuid.comment(
-					'Who acted. NULL once that user is deleted, and for entries no user caused',
+					'Who acted. Never NULL on insert — every event carries a user. Goes NULL when ' +
+						'that user is deleted',
 				),
 				column('projectId')
 					.varchar(36)

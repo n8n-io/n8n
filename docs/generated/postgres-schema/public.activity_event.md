@@ -14,7 +14,7 @@
 | resourceName | text |  | true |  |  | Name at the time of the entry, denormalised so a row reads without a join and survives the resource being deleted. Truncated on write |
 | resourceType | varchar(32) |  | true |  |  | What `resourceId` points at; see ActivityResourceType in @n8n/db. NULL when an entry is about the instance rather than a resource |
 | typeVersion | integer | 1 | false |  |  | Schema version of `data` for this category/action pair |
-| userId | uuid |  | true |  | [public.user](public.user.md) | Who acted. NULL once that user is deleted, and for entries no user caused |
+| userId | uuid |  | true |  | [public.user](public.user.md) | Who acted. Never NULL on insert — every event carries a user. Goes NULL when that user is deleted |
 
 ## Constraints
 
