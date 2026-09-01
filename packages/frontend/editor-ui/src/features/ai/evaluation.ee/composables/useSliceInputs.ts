@@ -1,6 +1,7 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	EVALUATION_TRIGGER_METADATA_FIELDS,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	getParentNodes,
@@ -72,7 +73,7 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 
 		const isTrigger = triggers.some((n) => n.name === probeNode);
 		const firstItem = isTrigger
-			? readFirstOutputItem(runData, probeNode)
+			? readFirstOutputItem(runData, probeNode, evaluationTriggerNames)
 			: readFirstInputItemViaGraph(runData, connections, probeNode, evaluationTriggerNames);
 		if (!firstItem) return fallback({ fieldNames: [], values: {}, hasExecution: true });
 
@@ -143,9 +144,21 @@ function pickUserExecution(
 	return undefined;
 }
 
-export function readFirstOutputItem(runData: RunData, nodeName: string) {
+export function readFirstOutputItem(
+	runData: RunData,
+	nodeName: string,
+	evaluationTriggerNames: Set<string> = new Set(),
+) {
 	const task = runData[nodeName]?.[0];
-	return task?.data?.main?.[0]?.[0]?.json;
+	const json = task?.data?.main?.[0]?.[0]?.json;
+	if (!json || !evaluationTriggerNames.has(nodeName)) return json;
+	// The Evaluation Trigger's own output carries metadata fields (e.g. `_rowsLeft`)
+	// alongside the dataset columns; strip them when it's read as an input source.
+	return Object.fromEntries(
+		Object.entries(json).filter(
+			([key]) => !(EVALUATION_TRIGGER_METADATA_FIELDS as readonly string[]).includes(key),
+		),
+	);
 }
 
 export function readFirstInputItemViaGraph(
@@ -161,5 +174,5 @@ export function readFirstInputItemViaGraph(
 	// so picking it over the real trigger would read no input at all.
 	const parent = resolveSingleUpstream(parents, evaluationTriggerNames) ?? parents[0];
 	if (!parent) return undefined;
-	return readFirstOutputItem(runData, parent);
+	return readFirstOutputItem(runData, parent, evaluationTriggerNames);
 }

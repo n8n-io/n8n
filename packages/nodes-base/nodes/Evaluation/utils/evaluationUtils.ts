@@ -2,6 +2,7 @@ import {
 	UserError,
 	NodeOperationError,
 	EVALUATION_TRIGGER_NODE_TYPE,
+	EVALUATION_TRIGGER_METADATA_FIELDS,
 	jsonStringify,
 } from 'n8n-workflow';
 import type {
@@ -122,7 +123,7 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 		evaluationTrigger.row_number === 'row_number' ? 1 : evaluationTrigger.row_number;
 
 	const columnNames = Object.keys(evaluationTrigger).filter(
-		(key) => key !== 'row_number' && key !== '_rowsLeft',
+		(key) => !(EVALUATION_TRIGGER_METADATA_FIELDS as readonly string[]).includes(key),
 	);
 
 	outputFields.forEach(({ outputName }) => {

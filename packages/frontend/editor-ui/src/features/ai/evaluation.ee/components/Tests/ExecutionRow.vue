@@ -70,7 +70,7 @@ const items = computed<{ input?: Record<string, unknown>; output?: Record<string
 			allNodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
 		);
 		const input = isTrigger
-			? readFirstOutputItem(runData, probe)
+			? readFirstOutputItem(runData, probe, evaluationTriggerNames)
 			: readFirstInputItemViaGraph(runData, connections, probe, evaluationTriggerNames);
 		const output = readFirstOutputItem(runData, probe);
 		return { input, output };

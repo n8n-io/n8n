@@ -53,4 +53,74 @@ describe('readFirstInputItemViaGraph', () => {
 		const result = readFirstInputItemViaGraph(runData, {}, 'Agent', new Set());
 		expect(result).toBeUndefined();
 	});
+
+	it("strips Evaluation Trigger metadata fields when it is the AI node's sole parent", () => {
+		// No Set node between the trigger and the AI node: the trigger's own
+		// output (including its `_rowsLeft`/`row_number` metadata) is read directly.
+		const evalOnlyConnections: IConnections = {
+			'Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+		};
+		const evalOnlyRunData: IRunData = {
+			'Eval Trigger': [
+				{
+					startTime: 0,
+					executionIndex: 0,
+					executionTime: 0,
+					source: [],
+					data: {
+						main: [[{ json: { ticket_text: 'help me', row_number: 1, _rowsLeft: 4 } }]],
+					},
+				},
+			],
+		};
+		const result = readFirstInputItemViaGraph(
+			evalOnlyRunData,
+			evalOnlyConnections,
+			'Agent',
+			new Set(['Eval Trigger']),
+		);
+		expect(result).toEqual({ ticket_text: 'help me' });
+	});
+
+	it('strips Data table row bookkeeping columns (id/row_id/createdAt/updatedAt) from a Data table-sourced trigger', () => {
+		// The Data table source spreads the fetched row (including its own
+		// id/createdAt/updatedAt system columns) into the trigger's output.
+		const evalOnlyConnections: IConnections = {
+			'Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+		};
+		const evalOnlyRunData: IRunData = {
+			'Eval Trigger': [
+				{
+					startTime: 0,
+					executionIndex: 0,
+					executionTime: 0,
+					source: [],
+					data: {
+						main: [
+							[
+								{
+									json: {
+										ticket_text: 'help me',
+										id: 12,
+										createdAt: '2026-01-01T00:00:00.000Z',
+										updatedAt: '2026-01-01T00:00:00.000Z',
+										row_number: 1,
+										row_id: 12,
+										_rowsLeft: 4,
+									},
+								},
+							],
+						],
+					},
+				},
+			],
+		};
+		const result = readFirstInputItemViaGraph(
+			evalOnlyRunData,
+			evalOnlyConnections,
+			'Agent',
+			new Set(['Eval Trigger']),
+		);
+		expect(result).toEqual({ ticket_text: 'help me' });
+	});
 });
