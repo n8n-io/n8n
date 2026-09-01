@@ -735,7 +735,7 @@ describe('GmailTrigger', () => {
 
 		it('should pick up pending messages on subsequent poll', async () => {
 			// Simulates poll 2: pending IDs from previous poll are fetched directly,
-			// then new messages are listed.
+			// then the poll scans for new messages.
 			const newMessageListResponse: MessageListResponse = {
 				messages: [],
 				resultSizeEstimate: 0,
@@ -1616,11 +1616,12 @@ describe('GmailTrigger', () => {
 
 	describe('v1.4 - backlog scan, drain and retry', () => {
 		// Contract under test: the scan follows nextPageToken up to MAX_SCAN_PAGES
-		// pages, or until the poll's time budget runs out. lastTimeChecked
-		// advances when the scan exhausted the token, or when a give-up valve fires:
-		// no progress past the reach of one poll, or MAX_TRACKED_BACKLOG_IDS ids
-		// already stored. Otherwise the cursor holds, so mail the poll never scanned
-		// stays reachable.
+		// pages, or until the poll's time budget runs out. lastTimeChecked advances
+		// when the scan exhausted the token, or when a give-up valve fires: a run of
+		// polls that each reach nothing new, or MAX_TRACKED_BACKLOG_IDS ids already
+		// stored. Otherwise the cursor holds, so mail the poll never scanned stays
+		// reachable. Tests that pass `pollBudgetMs: 0` start the poll with its time
+		// budget already spent, so every deadline check fires at its first chance.
 		const listPage = (ids: string[], nextPageToken?: string): MessageListResponse => ({
 			messages: ids.map((id) => createListMessage({ id })),
 			resultSizeEstimate: ids.length,
@@ -2360,7 +2361,7 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['C']);
 		});
 
-		it('should give up holding when a capped window makes no progress', async () => {
+		it('should give up holding when a capped window makes no progress on repeated polls', async () => {
 			// Every id the cap can reach is already tracked, so re-scanning the same
 			// pages can never progress past them. Holding on would repeat this poll
 			// forever: no backlog progress, no new mail, no warning. Two polls already
@@ -2380,7 +2381,7 @@ describe('GmailTrigger', () => {
 			pages.forEach((ids, page) =>
 				mockList(listPage(ids, `token-${page + 1}`), page === 0 ? undefined : `token-${page}`),
 			);
-			// No message GET mocks: everything listed is filtered as already handled.
+			// No message GET mocks: everything the scan reached is filtered as already handled.
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
@@ -2449,14 +2450,14 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['1', '2']);
 		});
 
-		it('should stop listing when the poll budget is exhausted and hold the cursor', async () => {
+		it('should stop scanning when the poll budget is exhausted and hold the cursor', async () => {
 			const initialTimestamp = 1000000;
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
 			};
 
 			mockLabels();
-			// Only page 1 is mocked: a poll that keeps listing past the exhausted
+			// Only page 1 is mocked: a poll that keeps scanning past the exhausted
 			// budget hits an unmatched request, the error is swallowed, and the
 			// assertions below catch the resulting empty response.
 			mockList(listPage(['1'], 'token-1'));
@@ -2469,7 +2470,7 @@ describe('GmailTrigger', () => {
 			});
 
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
-			// A budget stop cuts the listing short like the page cap does: the
+			// A budget stop cuts the scan short like the page cap does: the
 			// cursor must hold so the unlisted remainder stays reachable.
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['1']);
@@ -2566,7 +2567,7 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 		});
 
-		it('should not start listing when the pending drain consumed the poll budget', async () => {
+		it('should not start scanning when the pending drain consumed the poll budget', async () => {
 			const initialTimestamp = 1000000;
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': {
@@ -2578,7 +2579,7 @@ describe('GmailTrigger', () => {
 			mockLabels();
 			mockGet('a', 2_000_000_000_000);
 			// A new message is listable, but the drain used up the budget: a poll
-			// that lists anyway would deliver it and fail the assertions below.
+			// that scans anyway would deliver it and fail the assertions below.
 			mockList(listPage(['z']));
 			mockGet('z', 3_000_000_000_000);
 
@@ -2590,11 +2591,11 @@ describe('GmailTrigger', () => {
 
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['a']);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['a']);
-			// No listing happened, so there is nothing new to advance past.
+			// No scan happened, so there is nothing new to advance past.
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 		});
 
-		it('should park listed messages as pending when the poll budget is exhausted mid-fetch', async () => {
+		it('should park scanned messages as pending when the poll budget is exhausted mid-fetch', async () => {
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': { lastTimeChecked: 1000000 },
 			};
@@ -2615,16 +2616,16 @@ describe('GmailTrigger', () => {
 			// maxResults budget but not the time budget, so they park as pending.
 			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['3']);
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['2', '1']);
-			// The window was fully listed and the unfetched ids are tracked, so
+			// The window was fully scanned and the unfetched ids are tracked, so
 			// advancing the cursor loses nothing.
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(3_000_000_000);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['3']);
 		});
 
 		it('should hold instead of giving up when a single tick makes no progress', async () => {
-			// A budget-truncated listing is transient: the next tick gets a fresh
+			// A budget-truncated scan is transient: the next tick gets a fresh
 			// budget and may reach further. Giving up on this one sample would skip
-			// mail that a normal tick would have listed.
+			// mail that a normal tick would have scanned.
 			const initialTimestamp = 1000000;
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': {
@@ -2835,7 +2836,7 @@ describe('GmailTrigger', () => {
 			});
 
 			expect(response?.[0]).toHaveLength(2);
-			// Cap was hit (20 pages listed, token remaining) but the valve fires:
+			// Cap was hit (20 pages scanned, token remaining) but the valve fires:
 			// advance instead of holding.
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(6_000_000_000);
 			// The valve skips only unscanned mail; scanned-but-unfetched ids stay tracked.

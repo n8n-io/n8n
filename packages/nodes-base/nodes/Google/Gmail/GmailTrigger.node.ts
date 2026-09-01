@@ -349,7 +349,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		const simple = this.getNodeParameter('simple') as boolean;
 
 		const shouldLimitMessages = node.typeVersion >= 1.4 && this.getMode() !== 'manual';
-		// How far this tick may reach before it must return — bounds listing and
+		// How far this tick may reach before it must return — bounds scanning and
 		// fetching time, not delivery volume (maxResults stays the per-tick bound).
 		// Only consulted on shouldLimitMessages paths; pre-1.4 and manual polls are
 		// unchanged.
@@ -415,7 +415,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			});
 
 			// A fetched message is progress, whether it came from the pending queue or
-			// a fresh listing, so the no-progress run starts over.
+			// a fresh scan, so the no-progress run starts over.
 			nodeStaticData.noProgressTicks = 0;
 
 			if (!includeDrafts && fullMessage.labelIds?.includes('DRAFT')) {
@@ -576,9 +576,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 			// While queued ids remain — or fetching them used up this poll's budget —
 			// do not scan: the queue write after a scan replaces the whole queue, so
-			// scanning now would drop the ids this poll could not reach. A poll that
-			// fetched nothing still scans, so an already-spent budget cannot stop every
-			// poll from making progress.
+			// scanning now would drop the ids this poll could not reach. The budget
+			// clause needs a fetch of its own, so a spent budget alone never keeps a
+			// poll from scanning — only a queue that still holds ids does.
 			if (
 				shouldLimitMessages &&
 				((nodeStaticData.pendingMessageIds?.length ?? 0) > 0 ||
@@ -818,10 +818,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				(nodeStaticData.possibleDuplicates?.length ?? 0) +
 				(nodeStaticData.failedFetches?.length ?? 0);
 			if (trackedIds < MAX_TRACKED_BACKLOG_IDS) {
-				// Older mail sits beyond the page cap, unscanned. Hold the cursor so later
-				// polls can still reach it. The possibleDuplicates update below keeps every
-				// handled id filterable, so a re-scan under a held cursor cannot re-emit
-				// them.
+				// Older mail sits past where the scan stopped, at the page cap or at the
+				// time budget. Hold the cursor so later polls can still reach it. The
+				// possibleDuplicates update below keeps every handled id filterable, so a
+				// re-scan under a held cursor cannot re-emit them.
 				effectiveLastTimeChecked = +startDate;
 			} else {
 				// Give-up valve: holding again would grow the tracked-id state without
