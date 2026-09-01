@@ -38,8 +38,12 @@ env:
 
 jobs:
   unit-test-backend:
-    name: Backend Unit Tests
+    name: Backend Unit Tests (${{ matrix.shard }})
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -73,11 +77,14 @@ jobs:
       # @n8n/vitest-config/node), peak forks ≈ 2 × 50% ≈ the core count, instead
       # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
       - name: Test Unit (backend, except cli and nodes-base)
+        if: matrix.shard == 1
         run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
+      # EXPERIMENT: split cli across 2 shards. `test-scoped` forwards unknown
+      # flags to vitest, so --shard needs no janitor change.
       - name: Test Unit (cli, scoped)
         if: ${{ !cancelled() }}
-        run: pnpm turbo test:unit:changed --filter=n8n --summarize
+        run: pnpm turbo test:unit:changed --filter=n8n --summarize -- --shard=${{ matrix.shard }}/2
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -93,7 +100,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: backend-unit-tests
+          name: backend-unit-tests-${{ matrix.shard }}
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -101,7 +108,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend-unit
-          name: backend-unit
+          name: backend-unit-${{ matrix.shard }}
           files: ./packages/**/coverage/lcov.info
 
   integration-test-backend:
