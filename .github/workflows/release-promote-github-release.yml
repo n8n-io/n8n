@@ -14,11 +14,12 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   promote-github-releases:
+    permissions:
+      contents: write
     name: Promote GitHub release to latest
     runs-on: ubuntu-slim
     environment: release

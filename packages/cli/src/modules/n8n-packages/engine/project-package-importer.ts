@@ -22,6 +22,7 @@ import type {
 	ResolvedImportRequest,
 	ImportTagSummary,
 	PackageImportBindings,
+	PackageImportSource,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
@@ -62,6 +63,7 @@ export class ProjectPackageImporter {
 		request: ResolvedImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
+		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
 		this.assertAdequatePermissions(request, manifest);
 
@@ -106,6 +108,7 @@ export class ProjectPackageImporter {
 				project,
 				pendingCreateIds.has(project.id),
 				bundledVariables,
+				importSource,
 			);
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
@@ -231,6 +234,7 @@ export class ProjectPackageImporter {
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
 		bundledVariables: Map<string, SerializedVariable> | undefined,
+		importSource: PackageImportSource,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
@@ -290,6 +294,7 @@ export class ProjectPackageImporter {
 			tagRequest,
 			options: request,
 			projectPendingCreation,
+			importSource,
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
