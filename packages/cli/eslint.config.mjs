@@ -31,6 +31,13 @@ const instanceAiLazyRuntimeImports = [
 	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
 }));
 
+const engineV2ModuleOnlyImport = {
+	name: '@n8n/engine',
+	allowTypeImports: true,
+	message:
+		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
+};
+
 export default defineConfig(
 	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
 	nodeConfig,
@@ -134,10 +141,7 @@ export default defineConfig(
 		files: [
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
-			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 			'./src/public-api/v1/handlers/projects/projects.handler.ts',
-			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
-			'./src/public-api/v1/handlers/users/users.service.ee.ts',
 		],
 		rules: {
 			'n8n-local-rules/no-repository-in-public-api-handler': 'off',
@@ -178,12 +182,32 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['./src/**/*.ts'],
+		ignores: ['./src/modules/engine-v2/**/*.ts'],
+		rules: {
+			// Repeats the policy restriction: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+			],
+		},
+	},
+	{
 		files: ['./src/modules/instance-ai/**/*.ts'],
 		ignores: ['./src/modules/instance-ai/**/__tests__/**/*.ts'],
 		rules: {
+			// Repeats the engine restriction: a later block replaces the rule's options
+			// wholesale rather than merging them.
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION, ...instanceAiLazyRuntimeImports] },
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						...instanceAiLazyRuntimeImports,
+						engineV2ModuleOnlyImport,
+					],
+				},
 			],
 		},
 	},
@@ -274,7 +298,6 @@ export default defineConfig(
 			'./src/evaluation.ee/evaluation-collection.service.ts',
 			'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
 			'./src/public-api/v1/handlers/tags/tags.handler.ts',
-			'./src/public-api/v1/handlers/users/users.service.ee.ts',
 			// modules/** non-persistence services surfaced by narrowing the exemption
 			'./src/modules/agents/agent-knowledge.service.ts',
 			'./src/modules/agents/agent-publish.service.ts',

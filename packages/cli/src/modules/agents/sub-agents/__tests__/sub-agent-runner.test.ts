@@ -25,7 +25,7 @@ import {
 } from '../../agent-sandbox-principal';
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
-import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
+import { SubAgentRunner } from '../sub-agent-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
@@ -85,7 +85,6 @@ const spawnRequest: SubAgentSpawnRequest = {
 	source: {
 		agentId: 'agent-1',
 	},
-	executionMode: 'foreground',
 	parentThreadId,
 	taskPath: '/root/research_api_0',
 };
@@ -110,10 +109,10 @@ const defaultStreamChunks: StreamChunk[] = [
 	},
 ];
 
-describe('SubAgentForegroundRunner', () => {
+describe('SubAgentRunner', () => {
 	let sourceResolver: Mocked<SubAgentSourceResolver>;
 	let reconstructionService: Mocked<AgentRuntimeReconstructionService>;
-	let runner: SubAgentForegroundRunner;
+	let runner: SubAgentRunner;
 	let childAgent: Mocked<BuiltAgent>;
 	let agentExecutionService: Mocked<AgentExecutionService>;
 	let logger: Mocked<Logger>;
@@ -132,12 +131,7 @@ describe('SubAgentForegroundRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
-		runner = new SubAgentForegroundRunner(
-			sourceResolver,
-			agentExecutionService,
-			checkpointStorage,
-			logger,
-		);
+		runner = new SubAgentRunner(sourceResolver, agentExecutionService, checkpointStorage, logger);
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
@@ -151,7 +145,7 @@ describe('SubAgentForegroundRunner', () => {
 	});
 
 	it('resolves reconstruction from the container at run time', async () => {
-		await runner.runForeground(spawnRequest, {
+		await runner.run(spawnRequest, {
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -163,7 +157,7 @@ describe('SubAgentForegroundRunner', () => {
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
 		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
-		const result = await runner.runForeground(spawnRequest, {
+		const result = await runner.run(spawnRequest, {
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -237,8 +231,29 @@ describe('SubAgentForegroundRunner', () => {
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 	});
 
+	it('runs the child on a caller-supplied childThreadId instead of minting one', async () => {
+		// The seam a background dispatcher relies on: its durable job row points
+		// at this id, so orphan reconciliation only works if the run honors it.
+		const result = await runner.run(
+			{ ...spawnRequest, childThreadId: 'pre-minted-thread' },
+			{
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			},
+		);
+
+		expect(result.threadId).toBe('pre-minted-thread');
+		expect(childAgent.stream).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				persistence: expect.objectContaining({ threadId: 'pre-minted-thread' }),
+			}),
+		);
+	});
+
 	it('records the child turn with the parent run type, not its own published state', async () => {
-		const result = await runner.runForeground(spawnRequest, {
+		const result = await runner.run(spawnRequest, {
 			projectId,
 			credentialProvider,
 			runType: 'test',
@@ -260,7 +275,7 @@ describe('SubAgentForegroundRunner', () => {
 	])(
 		'resolves the child draft for test runs and the published version for production ($runType)',
 		async ({ runType, usePublishedVersion }) => {
-			await runner.runForeground(spawnRequest, { projectId, credentialProvider, runType });
+			await runner.run(spawnRequest, { projectId, credentialProvider, runType });
 
 			expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(spawnRequest.source, {
 				projectId,
@@ -272,7 +287,7 @@ describe('SubAgentForegroundRunner', () => {
 	it.each(['integrated', 'manual'] as const)(
 		'reconstructs child workflow tools with the parent %s execution mode',
 		async (workflowToolExecutionMode) => {
-			await runner.runForeground(spawnRequest, {
+			await runner.run(spawnRequest, {
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -288,7 +303,7 @@ describe('SubAgentForegroundRunner', () => {
 	it('filters sub-agent tools by the delegating user access when the parent run has a user', async () => {
 		const user = mock<User>({ id: 'user-1' });
 
-		await runner.runForeground(spawnRequest, {
+		await runner.run(spawnRequest, {
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -301,7 +316,7 @@ describe('SubAgentForegroundRunner', () => {
 	});
 
 	it('inherits the parent resource id as the child memory scope when provided', async () => {
-		const result = await runner.runForeground(
+		const result = await runner.run(
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
 			{
 				projectId,
@@ -325,7 +340,7 @@ describe('SubAgentForegroundRunner', () => {
 
 	it('inherits the parent workspace principal on the initial run and resume', async () => {
 		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
-		const result = await runner.runForeground(
+		const result = await runner.run(
 			{ ...spawnRequest, parentSandboxPrincipalHash: principalHash },
 			{
 				projectId,
@@ -382,7 +397,7 @@ describe('SubAgentForegroundRunner', () => {
 
 	it('threads the parent workspace handle into child reconstruction with the delegation thread id', async () => {
 		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
-		const result = await runner.runForeground(spawnRequest, {
+		const result = await runner.run(spawnRequest, {
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -434,7 +449,7 @@ describe('SubAgentForegroundRunner', () => {
 			},
 		});
 
-		const result = await runner.runForeground(
+		const result = await runner.run(
 			{
 				...spawnRequest,
 				source: { agentId: 'agent-2', versionId: 'version-1' },
@@ -501,7 +516,7 @@ describe('SubAgentForegroundRunner', () => {
 		);
 
 		await expect(
-			runner.runForeground(spawnRequest, {
+			runner.run(spawnRequest, {
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -562,7 +577,7 @@ describe('SubAgentForegroundRunner', () => {
 			source: { sourceId: parentAgentId, config: parentConfig },
 		});
 
-		await runner.runForeground(
+		await runner.run(
 			{ ...spawnRequest, source: { agentId: parentAgentId } },
 			{
 				projectId,
@@ -751,7 +766,7 @@ describe('SubAgentForegroundRunner', () => {
 		);
 
 		await expect(
-			runner.runForeground(spawnRequest, {
+			runner.run(spawnRequest, {
 				projectId,
 				credentialProvider,
 				runType: 'production',
@@ -779,7 +794,7 @@ describe('SubAgentForegroundRunner', () => {
 				}),
 		);
 
-		const run = runner.runForeground(spawnRequest, {
+		const run = runner.run(spawnRequest, {
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -805,7 +820,7 @@ describe('SubAgentForegroundRunner', () => {
 			metadata: { agent_id: 'agent-1', thread_id: 'parent-thread-1' },
 		};
 
-		await runner.runForeground(spawnRequest, {
+		await runner.run(spawnRequest, {
 			projectId,
 			credentialProvider,
 			runType: 'production',
@@ -826,7 +841,7 @@ describe('SubAgentForegroundRunner', () => {
 	});
 
 	it('omits telemetry from the child stream call when the parent context has none', async () => {
-		await runner.runForeground(spawnRequest, {
+		await runner.run(spawnRequest, {
 			projectId,
 			credentialProvider,
 			runType: 'production',
