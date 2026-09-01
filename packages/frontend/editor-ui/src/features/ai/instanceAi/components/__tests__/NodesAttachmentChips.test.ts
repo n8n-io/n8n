@@ -66,14 +66,14 @@ describe('NodesAttachmentChips', () => {
 		expect(queryByTestId('nodes-chip-expand')).toBeNull();
 	});
 
-	it('caret opens the node-name panel and it stays open until re-click', async () => {
+	it('clicking the bundle chip opens the node-name panel and it stays open until re-click', async () => {
 		const { getByTestId, queryByTestId } = renderComponent(NodesAttachmentChips, {
 			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
 		});
 		expect(queryByTestId('nodes-chip-panel')).toBeNull();
-		await fireEvent.click(getByTestId('nodes-chip-expand'));
+		await fireEvent.click(getByTestId('nodes-chip-bundle'));
 		expect(getByTestId('nodes-chip-panel')).toBeTruthy();
-		await fireEvent.click(getByTestId('nodes-chip-expand'));
+		await fireEvent.click(getByTestId('nodes-chip-bundle'));
 		expect(queryByTestId('nodes-chip-panel')).toBeNull();
 	});
 
@@ -100,7 +100,7 @@ describe('NodesAttachmentChips', () => {
 		const { getByTestId, getAllByTestId } = renderComponent(NodesAttachmentChips, {
 			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
 		});
-		await fireEvent.click(getByTestId('nodes-chip-expand'));
+		await fireEvent.click(getByTestId('nodes-chip-bundle'));
 
 		const rows = getAllByTestId('nodes-chip-panel-row');
 		expect(rows).toHaveLength(4);
@@ -142,7 +142,7 @@ describe('NodesAttachmentChips', () => {
 		const { getByTestId, getAllByTestId, emitted } = renderComponent(NodesAttachmentChips, {
 			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
 		});
-		await fireEvent.click(getByTestId('nodes-chip-expand'));
+		await fireEvent.click(getByTestId('nodes-chip-bundle'));
 		const rows = getAllByTestId('nodes-chip-panel-remove');
 		expect(rows).toHaveLength(4);
 		await fireEvent.click(rows[1]); // remove 'B'
@@ -282,7 +282,7 @@ describe('NodesAttachmentChips', () => {
 			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
 		});
 		const chip = getByTestId('nodes-chip-bundle');
-		await fireEvent.click(getByTestId('nodes-chip-expand'));
+		await fireEvent.click(getByTestId('nodes-chip-bundle'));
 		expect(getByTestId('nodes-chip-panel')).toBeTruthy();
 
 		await fireEvent.keyDown(chip, { key: 'Escape' });

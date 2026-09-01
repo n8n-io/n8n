@@ -333,15 +333,7 @@ const totalNodeCount = computed(() =>
 							:aria-label="node.name"
 							@keydown="handlePanelRowKeydown(chip.setIndex, nodeIndex, $event)"
 						>
-							<NodeIcon
-								v-if="node.nodeType"
-								:node-type="node.nodeType"
-								:node="node.workflowNode ?? undefined"
-								:size="16"
-								:class="$style.panelRowIcon"
-							/>
-							<N8nIcon v-else icon="crosshair" size="xsmall" />
-							<span :class="$style.panelRowName">{{ node.name }}</span>
+							<!-- Leading icon doubles as the remove control: node icon at rest, X on hover. -->
 							<button
 								v-if="isRemovable"
 								type="button"
@@ -351,8 +343,28 @@ const totalNodeCount = computed(() =>
 								:aria-label="i18n.baseText('generic.delete')"
 								@click.stop="removeNode(chip.setIndex, nodeIndex)"
 							>
-								<N8nIcon icon="x" size="xsmall" />
+								<span :class="$style.panelRemoveX"><N8nIcon icon="x" size="large" /></span>
+								<span :class="$style.panelRowLeadingIcon">
+									<NodeIcon
+										v-if="node.nodeType"
+										:node-type="node.nodeType"
+										:node="node.workflowNode ?? undefined"
+										:size="16"
+									/>
+									<N8nIcon v-else icon="crosshair" size="large" />
+								</span>
 							</button>
+							<template v-else>
+								<NodeIcon
+									v-if="node.nodeType"
+									:node-type="node.nodeType"
+									:node="node.workflowNode ?? undefined"
+									:size="16"
+									:class="$style.panelRowIcon"
+								/>
+								<N8nIcon v-else icon="crosshair" size="xsmall" />
+							</template>
+							<span :class="$style.panelRowName">{{ node.name }}</span>
 						</div>
 					</div>
 				</Teleport>
@@ -428,14 +440,43 @@ const totalNodeCount = computed(() =>
 }
 
 .panelRemove {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	flex-shrink: 0;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	border: none;
 	background: none;
 	padding: 0;
 	cursor: pointer;
 	color: var(--color--text--shade-1);
+}
+
+.panelRemoveX,
+.panelRowLeadingIcon {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.panelRemoveX {
+	opacity: 0;
+}
+
+// Hover/focus the row reveals the X and hides the resting node icon.
+.panelRow:hover,
+.panelRow:focus-visible {
+	.panelRemoveX {
+		opacity: 1;
+	}
+
+	.panelRowLeadingIcon {
+		opacity: 0;
+	}
 }
 
 .collapseToggle {

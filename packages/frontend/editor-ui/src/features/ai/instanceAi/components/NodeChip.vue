@@ -61,43 +61,37 @@ function handleKeydown(event: KeyboardEvent) {
 <template>
 	<span
 		ref="root"
-		:class="$style.chip"
+		:class="[$style.chip, { [$style.expandable]: expanded != null }]"
 		:data-test-id="testid"
 		tabindex="0"
 		role="group"
 		:aria-label="label"
 		@keydown="handleKeydown"
+		@click="expanded != null && emit('toggle-expand')"
 	>
-		<N8nIcon v-if="icon" :icon="icon" size="xsmall" />
-		<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
-		<N8nIcon v-else icon="crosshair" size="xsmall" />
-		<span :class="$style.name" :title="label">{{ label }}</span>
-		<button
-			v-if="expanded != null"
-			type="button"
-			:class="$style.iconBtn"
-			data-test-id="nodes-chip-expand"
-			tabindex="-1"
-			:aria-label="
-				i18n.baseText(
-					expanded ? 'instanceAi.nodeContext.collapse' : 'instanceAi.nodeContext.expand',
-				)
-			"
-			@click.stop="emit('toggle-expand')"
-		>
-			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="xsmall" />
-		</button>
+		<!-- Leading icon doubles as the remove control: node icon at rest, X on hover. -->
 		<button
 			v-if="removable"
 			type="button"
-			:class="$style.iconBtn"
+			:class="[$style.iconBtn, $style.leadingBtn]"
 			data-test-id="nodes-chip-remove"
 			tabindex="-1"
 			:aria-label="i18n.baseText('generic.delete')"
 			@click.stop="emit('remove')"
 		>
-			<N8nIcon icon="x" size="xsmall" />
+			<span :class="$style.leadingRemove"><N8nIcon icon="x" size="large" /></span>
+			<span :class="$style.leadingIcon">
+				<N8nIcon v-if="icon" :icon="icon" size="small" />
+				<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
+				<N8nIcon v-else icon="crosshair" size="small" />
+			</span>
 		</button>
+		<template v-else>
+			<N8nIcon v-if="icon" :icon="icon" size="xsmall" />
+			<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
+			<N8nIcon v-else icon="crosshair" size="xsmall" />
+		</template>
+		<span :class="$style.name" :title="label">{{ label }}</span>
 	</span>
 </template>
 
@@ -118,6 +112,10 @@ function handleKeydown(event: KeyboardEvent) {
 		outline: var(--spacing--5xs) solid var(--color--primary);
 		outline-offset: var(--spacing--5xs);
 	}
+}
+
+.expandable {
+	cursor: pointer;
 }
 
 .name {
@@ -147,6 +145,47 @@ function handleKeydown(event: KeyboardEvent) {
 	&:focus-visible {
 		color: var(--color--text);
 		background: var(--color--foreground);
+	}
+}
+
+// Leading slot layers the X over the node icon; sized to the node icon so the
+// icon-to-label gap stays tight. The larger X overflows and centers over it.
+.leadingBtn {
+	position: relative;
+	width: var(--spacing--xs);
+	height: var(--spacing--xs);
+	color: inherit;
+
+	&:hover,
+	&:focus-visible {
+		color: inherit;
+		background: none;
+	}
+}
+
+// Centered on the box; sized to content so the larger X isn't squeezed by the
+// icon-sized box and overflows symmetrically instead.
+.leadingRemove,
+.leadingIcon {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	display: flex;
+}
+
+.leadingRemove {
+	opacity: 0;
+}
+
+.chip:hover,
+.chip:focus-visible {
+	.leadingRemove {
+		opacity: 1;
+	}
+
+	.leadingIcon {
+		opacity: 0;
 	}
 }
 </style>
