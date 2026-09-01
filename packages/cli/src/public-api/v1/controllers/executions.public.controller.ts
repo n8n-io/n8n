@@ -148,12 +148,15 @@ export class ExecutionsPublicController {
 	@ApiDescription('Get annotation tags for an execution.')
 	@ApiTags(['Execution'])
 	@ApiResponse(200, ExecutionTagsPublicDto)
+	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async getExecutionTags(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('executionId') executionId: string,
 	): Promise<ExecutionTagsPublicDto> {
+		assertNumericExecutionId(executionId);
+
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:read'],
@@ -181,6 +184,8 @@ export class ExecutionsPublicController {
 		@Param('executionId') executionId: string,
 		@Body body: TagIdsPublicDto,
 	): Promise<ExecutionTagsPublicDto> {
+		assertNumericExecutionId(executionId);
+
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:update'],
