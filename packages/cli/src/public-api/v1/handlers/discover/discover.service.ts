@@ -1,6 +1,5 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import type { ApiKeyScopeRequirement } from '@n8n/decorators';
-import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
@@ -45,7 +44,7 @@ interface FilterInfo {
 }
 
 export interface DiscoverResponse {
-	scopes: ApiKeyScope[];
+	scopes: readonly string[];
 	resources: Record<string, ResourceInfo>;
 	filters: Record<string, FilterInfo>;
 	specUrl: string;
@@ -157,7 +156,7 @@ function buildDecoratorEndpoints(): EndpointInfo[] {
 }
 
 export async function buildDiscoverResponse(
-	callerScopes: ApiKeyScope[],
+	callerScopes: readonly string[],
 	options?: DiscoverOptions,
 ): Promise<DiscoverResponse> {
 	const allEndpoints = await parseEndpointsFromSpec();

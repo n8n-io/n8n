@@ -165,4 +165,9 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage Git Connection Projects',
 		description: 'Allows adding projects to and removing projects from a Git connection.',
 	},
+	'gitConnection:pull': {
+		displayName: 'Pull Git Connection',
+		description:
+			'Allows importing all projects from a Git connection working copy into the instance.',
+	},
 };
