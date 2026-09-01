@@ -160,6 +160,7 @@ export class E2EController {
 		// (the resolver treats 0 as absent). Tests that need an explicit
 		// license-issued cap should set this in their own setup.
 		[LICENSE_QUOTAS.EVALUATION_CONCURRENCY_LIMIT]: 0,
+		[LICENSE_QUOTAS.PROJECT_EXECUTION_LIMIT]: -1,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {
@@ -186,6 +187,8 @@ export class E2EController {
 			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT],
 		[LICENSE_QUOTAS.EVALUATION_CONCURRENCY_LIMIT]:
 			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.EVALUATION_CONCURRENCY_LIMIT],
+		[LICENSE_QUOTAS.PROJECT_EXECUTION_LIMIT]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.PROJECT_EXECUTION_LIMIT],
 	};
 
 	constructor(
