@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { createTestingPinia } from '@pinia/testing';
 import { TabsRoot } from 'reka-ui';
 import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -76,7 +77,8 @@ const Wrapper = defineComponent({
 	},
 });
 
-const renderComponent = createComponentRenderer(Wrapper);
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const renderComponent = createComponentRenderer(Wrapper, { pinia: createTestingPinia() });
 
 async function openAgentTabContextMenu(container: Element, tabId = 'agent-1') {
 	const agentTabTrigger = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);

@@ -335,13 +335,13 @@ const searchTypesAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `n8nConnectOnly` is set.',
+			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `gatewayCreditsOnly` is set.',
 		),
-	n8nConnectOnly: z
+	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
 		.describe(
-			'When true, ignore `query` and return every credential type supported by n8n credits. Use to answer "which credential types support n8n credits?".',
+			'When true, ignore `query` and return every credential type supported by Gateway credits. Use to answer "which credential types support Gateway credits?".',
 		),
 });
 
@@ -660,9 +660,9 @@ async function handleSearchTypes(
 	input: Extract<Input, { action: 'search-types' }>,
 ) {
 	// Enumerate n8n Connect–supported types regardless of query.
-	if (input.n8nConnectOnly) {
+	if (input.gatewayCreditsOnly) {
 		const types = (await context.credentialService.listAiGatewayCredentialTypes?.()) ?? [];
-		return { results: types.map((type) => ({ type, n8nConnect: true })) };
+		return { results: types.map((type) => ({ type, gatewayCredits: true })) };
 	}
 
 	if (!context.credentialService.searchCredentialTypes) {
@@ -672,7 +672,7 @@ async function handleSearchTypes(
 	if (!input.query) {
 		return {
 			results: [],
-			error: 'A `query` is required for search-types unless `n8nConnectOnly` is set.',
+			error: 'A `query` is required for search-types unless `gatewayCreditsOnly` is set.',
 		};
 	}
 

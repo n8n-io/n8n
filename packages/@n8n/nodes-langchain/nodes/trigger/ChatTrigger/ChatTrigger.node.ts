@@ -11,6 +11,7 @@ import {
 	getHighlightedInputKey,
 	HIGHLIGHTED_SESSION_KEY,
 	CHAT_TRIGGER_PATH_SUFFIX,
+	buildCredentialConnectionsRequiredResponse,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -21,6 +22,7 @@ import type {
 	INodeExecutionData,
 	IBinaryData,
 	INodeProperties,
+	CredentialCheckResult,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
@@ -845,8 +847,8 @@ export class ChatTrigger extends Node {
 
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
-		// Allow execution in manual mode (test) even when not public
-		if (!isPublic && mode !== 'test') {
+		// Only the editor's session-scoped canvas test route may execute a non-public chat
+		if (!isPublic && (mode !== 'test' || !ctx.isChatSessionTest())) {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
@@ -1017,6 +1019,20 @@ export class ChatTrigger extends Node {
 				return {
 					webhookResponse: { data: [] },
 				};
+			}
+		} else {
+			let readiness: CredentialCheckResult | undefined;
+			try {
+				readiness = await ctx.checkTriggerCredentialStatus();
+			} catch (error) {
+				ctx.logger.error('Chat trigger credential readiness check failed', { error });
+				res.status(503).json({ status: 'credential_readiness_check_failed' });
+				return { noWebhookResponse: true };
+			}
+
+			if (readiness && !readiness.readyToExecute) {
+				res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+				return { noWebhookResponse: true };
 			}
 		}
 

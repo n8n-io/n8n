@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 @Service()
@@ -12,6 +14,8 @@ export class AgentInterruptedExecutionSweeper {
 		private readonly logger: Logger,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
+		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly agentsConfig: AgentsConfig,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -45,6 +49,17 @@ export class AgentInterruptedExecutionSweeper {
 					threadId: execution.threadId,
 					error,
 				});
+			}
+		}
+
+		// Background job rows ride along on the same cadence: after abandoned
+		// child executions were marked interrupted above, reconciliation can
+		// settle the job rows that pointed at them (plus timed-out ones).
+		if (this.agentsConfig.backgroundTasksEnabled) {
+			try {
+				await this.backgroundJobService.reconcile();
+			} catch (error) {
+				this.logger.error('Failed to reconcile background job rows', { error });
 			}
 		}
 	}
