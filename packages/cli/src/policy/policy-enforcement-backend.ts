@@ -38,4 +38,7 @@ export interface PolicyEnforcementBackend {
 		point: Point,
 		context: PolicyContext<Point>,
 	): Promise<PolicyDecision>;
+
+	/** Whether any check would run at this point. Must agree with `enforce` and `evaluate`. */
+	hasChecksFor(point: EnforcementPoint): boolean;
 }

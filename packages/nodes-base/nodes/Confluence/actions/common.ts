@@ -206,6 +206,26 @@ export const spaceOptionsCollection: INodeProperties = {
 	],
 };
 
+/** Companion to an endpoint-specific Sort By option; composed into `sort` by `sortQs`. */
+export const sortDirectionOption: INodeProperties = {
+	displayName: 'Sort Direction',
+	name: 'sortDirection',
+	type: 'options',
+	default: 'asc',
+	description: 'The direction to order in. Only applies when Sort By is set.',
+	options: [
+		{ name: 'ASC', value: 'asc' },
+		{ name: 'DESC', value: 'desc' },
+	],
+};
+
+/** Builds the v2 `sort` query fragment from an operation's Sort By / Sort Direction
+ * options. The API takes one enum encoding both field and direction, e.g. `name` / `-name`. */
+export function sortQs(options: IDataObject): IDataObject {
+	if (typeof options.sortBy !== 'string' || options.sortBy === '') return {};
+	return { sort: options.sortDirection === 'desc' ? `-${options.sortBy}` : options.sortBy };
+}
+
 /** Builds the `description-format` query fragment from an operation's Options collection. */
 export function spaceDescriptionFormatQs(options: IDataObject): IDataObject {
 	return typeof options.descriptionFormat === 'string' && options.descriptionFormat !== ''
@@ -289,9 +309,16 @@ const ADF_BLOCK_TYPES = new Set([
 	'taskList',
 ]);
 
+// Inline leaves whose rendered text lives in `attrs.text` instead of a text node
+const ADF_ATTRS_TEXT_TYPES = new Set(['mention', 'emoji', 'status']);
+
 function adfToPlainText(node: IDataObject): string {
 	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
 	if (node.type === 'hardBreak') return '\n';
+	if (ADF_ATTRS_TEXT_TYPES.has(node.type as string)) {
+		const text = (node.attrs as IDataObject | undefined)?.text;
+		return typeof text === 'string' ? text : '';
+	}
 	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
 	let inner = '';
 	for (const child of content) {
@@ -347,6 +374,15 @@ export function extractNextCursor(response: IDataObject): string | undefined {
 	return next?.key === 'cursor' ? next.value : undefined;
 }
 
+/** `extractNextCursor` with a repeat guard: a cursor seen before ends the
+ * pagination instead of looping forever on a server that echoes it back. */
+export function nextUnseenCursor(response: IDataObject, seen: Set<string>): string | undefined {
+	const cursor = extractNextCursor(response);
+	if (cursor === undefined || seen.has(cursor)) return undefined;
+	seen.add(cursor);
+	return cursor;
+}
+
 /** Validates a count parameter that an expression may hand back as a numeric string. */
 export function parsePositiveInt(
 	this: IExecuteFunctions,
@@ -385,11 +421,8 @@ export async function fetchPaginatedResults(
 		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 		records.push.apply(records, results);
 
-		const next = extractNextCursor(response);
-		if (next === undefined || seenCursors.has(next)) break;
-		seenCursors.add(next);
-		cursor = next;
-	} while (records.length < max);
+		cursor = nextUnseenCursor(response, seenCursors);
+	} while (cursor !== undefined && records.length < max);
 
 	return records.length > max ? records.slice(0, max) : records;
 }

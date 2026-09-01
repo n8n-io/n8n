@@ -5,6 +5,7 @@ import {
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
@@ -59,9 +60,12 @@ export class GitConnectionsPublicController {
 	@ApiKeyScope('gitConnection:create')
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a Git connection')
-	@ApiDescription('Creates a Git connection and its authentication material.')
+	@ApiDescription(
+		'Creates a Git connection and its authentication material. Only one Git connection can exist.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(201, GitConnectionPublicDto)
+	@ApiErrorResponse(409)
 	async createGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -201,9 +205,9 @@ export class GitConnectionsPublicController {
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
-	@ApiSummary('Push all projects linked to a Git connection')
+	@ApiSummary('Push all team projects to a Git connection')
 	@ApiDescription(
-		'Work in progress. Exports all linked projects to the local repository working copy. It does not commit or push changes to the selected branch yet.',
+		'Work in progress. Exports all team projects to the local repository working copy; personal projects are ignored. It does not commit or push changes to the selected branch yet.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPushResultDto)
@@ -282,5 +286,26 @@ export class GitConnectionsPublicController {
 			connectionId: id,
 			projectId,
 		});
+	}
+
+	@Post('/:id/pull')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary('Import all projects from a Git connection working copy')
+	@ApiDescription(
+		'Work in progress. Imports all projects from the local repository working copy into the instance, overwriting to match it. It does not pull from the remote yet, so it imports whatever the last clone produced.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, GitConnectionPullResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async pullGitConnectionProjects(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<GitConnectionPullResultDto> {
+		return await (await this.gitConnectionsService()).pull(id, req.user);
 	}
 }
