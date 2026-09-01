@@ -663,7 +663,6 @@ describe('createShellPage', () => {
 	it('carries no refresh machinery when no refresh is passed', () => {
 		expect(shell).not.toContain('n8nChatRefresh');
 		expect(shell).not.toContain('n8n-chat-auth-token');
-		expect(shell).not.toContain('visibilitychange');
 		expect(shell).not.toContain('fetch(');
 	});
 });
@@ -680,6 +679,16 @@ describe('createShellPage with token refresh', () => {
 		// The lead is the margin BEFORE expiry, not the refresh time: a fifth of the
 		// lifetime clamped to [60s, 600s], so a one-hour token refreshes at t+50min.
 		expect(shell).toContain('Math.min(600, Math.max(60, lifetimeSeconds * 0.2))');
+	});
+
+	// The timer and its one retry are the only things that start a refresh, so two can
+	// never be in flight and the script needs no concurrency guard. A second trigger —
+	// a visibility or focus listener — would race the timer over the single refresh
+	// cookie on this path, so it cannot be added without a latch.
+	it('starts a refresh from the timer alone', () => {
+		expect(shell).toContain('timer = setTimeout(function () { refresh(false); }, delay);');
+		expect(shell).not.toContain('visibilitychange');
+		expect(shell).not.toContain('inFlight');
 	});
 
 	// An absolute expiry the server computed, compared against the page's own
@@ -724,13 +733,6 @@ describe('createShellPage with token refresh', () => {
 		expect(shell).toContain("{ type: 'n8n-chat-auth-token', token: data.token }");
 		// The frame is sandboxed without allow-same-origin, so it has no origin to name.
 		expect(shell).toContain("'*'");
-	});
-
-	// Chrome throttles timers in hidden tabs and freezes them in backgrounded ones,
-	// so the timer alone would miss the deadline on a tab left in the background.
-	it('also refreshes when a hidden tab comes back past the deadline', () => {
-		expect(shell).toContain("addEventListener('visibilitychange'");
-		expect(shell).toContain('Date.now() >= refreshAt');
 	});
 
 	it('retries once and then reloads exactly once', () => {

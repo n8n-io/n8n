@@ -204,7 +204,6 @@ function refreshScript({ url, expiresIn }: { url: string; expiresIn: number }): 
 		<script>
 			(function () {
 				var endpoint = ${escapeForScriptContext(url)};
-				var refreshAt = 0;
 				var timer = null;
 				var reloaded = false;
 
@@ -216,14 +215,14 @@ function refreshScript({ url, expiresIn }: { url: string; expiresIn: number }): 
 					return Math.min(600, Math.max(60, lifetimeSeconds * 0.2));
 				}
 
-				// Always a duration, never an absolute expiry the server computed: both readings
-				// below come from this browser's clock, so a clock that disagrees with the
-				// server's cannot skew the schedule.
+				// Takes a duration, never an absolute expiry the server computed: a clock that
+				// disagrees with the server's would otherwise skew every schedule. This timer is
+				// the only thing that starts a refresh, so two can never be in flight at once.
 				function planFor(lifetimeSeconds) {
 					var remaining = Math.max(0, lifetimeSeconds);
-					refreshAt = Date.now() + (remaining - leadSeconds(remaining)) * 1000;
+					var delay = Math.max(0, (remaining - leadSeconds(remaining)) * 1000);
 					if (timer) clearTimeout(timer);
-					timer = setTimeout(function () { refresh(false); }, Math.max(0, refreshAt - Date.now()));
+					timer = setTimeout(function () { refresh(false); }, delay);
 				}
 
 				function giveUp() {
@@ -276,13 +275,6 @@ function refreshScript({ url, expiresIn }: { url: string; expiresIn: number }): 
 							else setTimeout(function () { refresh(true); }, 5000);
 						});
 				}
-
-				// Hidden tabs get throttled timers and fully backgrounded ones get frozen ones,
-				// so a tab that comes back past the point we meant to refresh — or a laptop that
-				// slept — refreshes at once rather than waiting out a timer that never fired.
-				document.addEventListener('visibilitychange', function () {
-					if (document.visibilityState === 'visible' && Date.now() >= refreshAt) refresh(false);
-				});
 
 				planFor(${String(Math.max(0, Math.round(expiresIn)))});
 			})();
