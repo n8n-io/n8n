@@ -1,7 +1,7 @@
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
+import { replaceCircularReferences } from 'n8n-workflow';
 
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
