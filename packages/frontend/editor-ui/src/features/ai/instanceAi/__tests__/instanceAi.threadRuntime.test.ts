@@ -3,6 +3,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
@@ -1193,6 +1194,240 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 
 		await sendPromise;
+	});
+});
+
+describe('createThreadRuntime - response timing telemetry', () => {
+	let registry: RuntimeRegistry;
+	let visibilitySpy: ReturnType<typeof vi.spyOn>;
+
+	const responseMetricCalls = () =>
+		mockTelemetryTrack.mock.calls.filter(
+			([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+		);
+
+	function finishRun(runId: string, status: 'completed' | 'cancelled' | 'error' | 'interrupted') {
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-finish',
+				runId,
+				agentId: 'agent-root',
+				payload: { status },
+			}),
+		);
+	}
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-response-timing';
+		visibilitySpy = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+		mockTelemetryTrack.mockClear();
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		visibilitySpy.mockRestore();
+		vi.clearAllMocks();
+	});
+
+	test('tracks completed responses once and classifies first and subsequent messages', async () => {
+		mockPostMessage
+			.mockResolvedValueOnce({ runId: 'run-first' })
+			.mockResolvedValueOnce({ runId: 'run-subsequent' });
+
+		await activeRuntime(registry).sendMessage('first');
+		finishRun('run-first', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+
+		await activeRuntime(registry).sendMessage('second');
+		finishRun('run-subsequent', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(2));
+
+		expect(responseMetricCalls()).toEqual([
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				{
+					instance_id: 'instance-1',
+					thread_id: activeThreadId,
+					run_id: 'run-first',
+					latency_ms: expect.any(Number),
+					is_first_user_message: true,
+					response_kind: 'completed',
+					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+					tab_visible: false,
+				},
+			],
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				{
+					instance_id: 'instance-1',
+					thread_id: activeThreadId,
+					run_id: 'run-subsequent',
+					latency_ms: expect.any(Number),
+					is_first_user_message: false,
+					response_kind: 'completed',
+					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+					tab_visible: false,
+				},
+			],
+		]);
+	});
+
+	test('waits for the visible response render frame before tracking', async () => {
+		visibilitySpy.mockReturnValue('visible');
+		let renderFrame: FrameRequestCallback | undefined;
+		const requestAnimationFrameSpy = vi
+			.spyOn(globalThis, 'requestAnimationFrame')
+			.mockImplementation((callback) => {
+				renderFrame = callback;
+				return 1;
+			});
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-visible' });
+
+		await activeRuntime(registry).sendMessage('visible response');
+		finishRun('run-visible', 'completed');
+		await nextTick();
+
+		expect(responseMetricCalls()).toHaveLength(0);
+		expect(renderFrame).toBeDefined();
+		renderFrame?.(performance.now());
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+		expect(responseMetricCalls()[0]?.[1]).toEqual(expect.objectContaining({ tab_visible: true }));
+
+		requestAnimationFrameSpy.mockRestore();
+	});
+
+	test('does not track when posting the message fails', async () => {
+		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
+
+		await activeRuntime(registry).sendMessage('failed request');
+		await nextTick();
+
+		expect(responseMetricCalls()).toHaveLength(0);
+	});
+
+	test.each(['cancelled', 'error', 'interrupted'] as const)(
+		'does not track a %s run',
+		async (status) => {
+			mockPostMessage.mockResolvedValueOnce({ runId: `run-${status}` });
+
+			await activeRuntime(registry).sendMessage('unsuccessful response');
+			finishRun(`run-${status}`, status);
+			await nextTick();
+
+			expect(responseMetricCalls()).toHaveLength(0);
+		},
+	);
+
+	test('tracks a confirmation rendered for user input', async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-confirmation' });
+		await activeRuntime(registry).sendMessage('needs confirmation');
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-confirmation',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-confirmation', toolName: 'workflows', args: { action: 'run' } },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'confirmation-request',
+				runId: 'run-confirmation',
+				agentId: 'agent-root',
+				payload: {
+					requestId: 'req-confirmation',
+					toolCallId: 'tc-confirmation',
+					toolName: 'workflows',
+					args: { action: 'run' },
+					severity: 'info',
+					message: 'Run this workflow?',
+				},
+			}),
+		);
+
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+		expect(responseMetricCalls()[0]?.[1]).toEqual(
+			expect.objectContaining({
+				run_id: 'run-confirmation',
+				response_kind: 'awaiting_input',
+			}),
+		);
+	});
+
+	test('waits for completion when a confirmation is auto-approved', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-auto-approved' });
+		mockPostConfirmation.mockResolvedValueOnce({ ok: true });
+		await runtime.sendMessage('auto-approved action');
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'tool-call',
+				runId: 'run-auto-approved',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-auto', toolName: 'workflows', args: { action: 'run' } },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'confirmation-request',
+				runId: 'run-auto-approved',
+				agentId: 'agent-root',
+				payload: {
+					requestId: 'req-auto',
+					toolCallId: 'tc-auto',
+					toolName: 'workflows',
+					args: { action: 'run' },
+					severity: 'info',
+					message: 'Run this workflow?',
+				},
+			}),
+		);
+		await nextTick();
+		expect(responseMetricCalls()).toHaveLength(0);
+
+		finishRun('run-auto-approved', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+		expect(responseMetricCalls()[0]?.[1]).toEqual(
+			expect.objectContaining({ response_kind: 'completed' }),
+		);
+	});
+
+	test('does not emit another metric for an automated follow-up run', async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-initial' });
+		await activeRuntime(registry).sendMessage('start grouped response');
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-start',
+				runId: 'run-initial',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'group-1' },
+			}),
+		);
+		finishRun('run-initial', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-start',
+				runId: 'run-follow-up',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'group-1' },
+			}),
+		);
+		finishRun('run-follow-up', 'completed');
+		await nextTick();
+
+		expect(responseMetricCalls()).toHaveLength(1);
 	});
 });
 
