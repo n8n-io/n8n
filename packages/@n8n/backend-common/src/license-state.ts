@@ -279,4 +279,14 @@ export class LicenseState {
 	getEvaluationConcurrencyQuota(): number | undefined {
 		return this.getValue('quota:evaluations:concurrencyLimit');
 	}
+
+	/**
+	 * Effective default per-project execution limit issued by the license
+	 * server. `undefined` when the license has no opinion, so callers can
+	 * fall through to a tier default — same convention as
+	 * `getEvaluationConcurrencyQuota()`.
+	 */
+	getProjectExecutionLimitQuota(): number | undefined {
+		return this.getValue('quota:project:executionLimit');
+	}
 }
