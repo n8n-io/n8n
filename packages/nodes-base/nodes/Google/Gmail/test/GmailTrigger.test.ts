@@ -1588,29 +1588,42 @@ describe('GmailTrigger', () => {
 			expect(pending).not.toContain('1');
 		});
 
-		it('should not apply limit in manual mode', async () => {
+		it('should apply neither the limit nor the poll budget in manual mode', async () => {
+			// Both are scoped to non-manual polls. Two messages are listed with a
+			// limit of one and a spent time budget, so a poll that honours either one
+			// delivers a single message and fails the assertions below.
 			const messageListResponse: MessageListResponse = {
-				messages: [createListMessage({ id: '1' })],
-				resultSizeEstimate: 1,
+				messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+				resultSizeEstimate: 2,
+			};
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {},
 			};
 
 			nock(baseUrl)
 				.get('/gmail/v1/users/me/labels')
 				.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+			nock(baseUrl).get('/gmail/v1/users/me/messages').query(true).reply(200, messageListResponse);
 			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages?.*'))
-				.reply(200, messageListResponse);
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+				.get('/gmail/v1/users/me/messages/1')
+				.query(true)
 				.reply(200, createMessage({ id: '1' }));
+			nock(baseUrl)
+				.get('/gmail/v1/users/me/messages/2')
+				.query(true)
+				.reply(200, createMessage({ id: '2' }));
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				mode: 'manual',
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
+				workflowStaticData,
+				pollBudgetMs: 0,
 			});
 
-			expect(response).toHaveLength(1);
-			expect(response?.[0]?.[0]?.json?.id).toBe('1');
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1', '2']);
+			// The queue belongs to non-manual polls; a manual one must not persist a
+			// queue that its own drain path skips.
+			expect(workflowStaticData['Gmail Trigger']).not.toHaveProperty('pendingMessageIds');
 		});
 	});
 
