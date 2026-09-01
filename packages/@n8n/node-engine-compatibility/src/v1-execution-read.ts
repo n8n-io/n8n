@@ -5,7 +5,15 @@
  * iteration.
  */
 
-import type { StepDetail, StepError, StepStatus, WorkflowGraph } from '@n8n/engine';
+import { deriveLoops } from '@n8n/engine';
+import type {
+	GraphEdge,
+	StepDetail,
+	StepError,
+	StepStatus,
+	WorkflowGraph,
+	WorkflowLoop,
+} from '@n8n/engine';
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -17,17 +25,17 @@ import { createRunExecutionData, WorkflowOperationError } from 'n8n-workflow';
 
 import { MAIN_CONNECTION_TYPE } from './constants';
 import { fromStepInputs } from './io';
-import { toV1Sources } from './v1-adapters';
 
 /**
- * `queued` and `skipped` get no entry: v1 reports a node that did not run by
- * having no `runData` for it. An entry would make the canvas claim it ran.
+ * Only a step that ran gets an entry. v1 reports a node that did not run by
+ * having no `runData` for it, and an entry would make the canvas claim it ran.
+ * `queued` never started, `skipped` was decided against, and `cancelled` is
+ * reachable only through `cancelQueuedSteps`, which cancels queued rows.
  */
 const TASK_STATUS_V1 = new Map<StepStatus, ExecutionStatus>([
 	['completed', 'success'],
 	['failed', 'error'],
 	['running', 'running'],
-	['cancelled', 'canceled'],
 ]);
 
 interface StepRun {
@@ -36,50 +44,135 @@ interface StepRun {
 	taskData: ITaskData;
 }
 
+/** What a step's input lineage needs, prepared once for the whole execution. */
+interface Lineage {
+	namesById: Map<string, string>;
+	/** Forward edges only, by target node. */
+	edgesByTarget: Map<string, GraphEdge[]>;
+	loops: WorkflowLoop[];
+	lastIterationByNodeId: Map<string, number>;
+}
+
 export function toV1RunExecutionData(graph: WorkflowGraph, steps: StepDetail[]) {
 	const runs = toStepRuns(graph, steps);
-	const failed = runs.find((run) => run.step.status === 'failed');
+
+	// By settle time, not by creation order: parallel branches settle
+	// independently, so the row created last is not the step that ran last.
+	const bySettleTime = [...runs].sort((a, b) => settledAt(a) - settledAt(b));
+	// The failure that ended the execution is the first one to settle.
+	const failed = bySettleTime.find((run) => run.step.status === 'failed');
 
 	return createRunExecutionData({
 		resultData: {
 			runData: toRunData(runs),
 			error: failed?.taskData.error,
-			lastNodeExecuted: (failed ?? runs.at(-1))?.nodeName,
+			lastNodeExecuted: (failed ?? bySettleTime.at(-1))?.nodeName,
 		},
 		// A v2 execution has no resume token. The factory otherwise mints one.
 		resumeToken: '',
 	});
 }
 
+/** When the step reached its current status. `createdAt` is when it was planned. */
+function settledAt(run: StepRun): number {
+	return Date.parse(run.step.updatedAt);
+}
+
 /** @param steps Oldest first, as the data plane orders them. Position is the run order. */
 function toStepRuns(graph: WorkflowGraph, steps: StepDetail[]): StepRun[] {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
-	const sourcesByNodeId = toV1Sources(graph);
+	const lineage = toLineage(graph, steps);
 
 	const runs: StepRun[] = [];
 	for (const step of steps) {
 		const executionStatus = TASK_STATUS_V1.get(step.status);
 		if (executionStatus === undefined) continue;
 
-		const nodeName = namesById.get(step.nodeId);
+		const nodeName = lineage.namesById.get(step.nodeId);
 		// v1 keys run data by node name only.
 		if (nodeName === undefined) continue;
 
 		runs.push({
 			step,
 			nodeName,
-			taskData: toTaskData(step, executionStatus, runs.length, sourcesByNodeId.get(step.nodeId)),
+			taskData: toTaskData(step, executionStatus, runs.length, toSources(lineage, step)),
 		});
 	}
 
 	return runs;
 }
 
+function toLineage(graph: WorkflowGraph, steps: StepDetail[]): Lineage {
+	const edgesByTarget = new Map<string, GraphEdge[]>();
+	for (const edge of graph.edges) {
+		// A back edge's source is the previous pass, so v1 reads the forward edge
+		// into the loop entry instead.
+		if (edge.isBackEdge === true) continue;
+		const edges = edgesByTarget.get(edge.to);
+		if (edges) edges.push(edge);
+		else edgesByTarget.set(edge.to, [edge]);
+	}
+
+	const lastIterationByNodeId = new Map<string, number>();
+	for (const step of steps) {
+		const seen = lastIterationByNodeId.get(step.nodeId);
+		if (seen === undefined || step.iteration > seen) {
+			lastIterationByNodeId.set(step.nodeId, step.iteration);
+		}
+	}
+
+	return {
+		namesById: new Map(graph.nodes.map((node) => [node.id, node.name])),
+		edgesByTarget,
+		loops: deriveLoops(graph),
+		lastIterationByNodeId,
+	};
+}
+
+/** One entry for each input slot, indexed by slot. Empty for a node with no input. */
+function toSources(lineage: Lineage, step: StepDetail): Array<ISourceData | null> {
+	const sources: Array<ISourceData | null> = [];
+
+	for (const edge of lineage.edgesByTarget.get(step.nodeId) ?? []) {
+		const previousNode = lineage.namesById.get(edge.from);
+		if (previousNode === undefined) continue;
+
+		const inputIndex = edge.inputIndex ?? 0;
+		while (sources.length <= inputIndex) sources.push(null);
+		// First edge into a slot wins, matching `toV1Sources`.
+		if (sources[inputIndex] !== null) continue;
+
+		const previousNodeRun = toPreviousNodeRun(lineage, edge, step.iteration);
+		sources[inputIndex] = {
+			previousNode,
+			previousNodeOutput: edge.outputIndex,
+			// v1 reads a missing value as 0, so only a real loop pass is reported.
+			...(previousNodeRun === 0 ? {} : { previousNodeRun }),
+		};
+	}
+
+	return sources;
+}
+
+/**
+ * Which run of the predecessor fed this pass. The cases follow `classifyEdge`
+ * in the engine's `iteration-mapping`: an edge inside one loop keeps the pass,
+ * an edge leaving a loop reads its last pass, and anything else reads run 0.
+ */
+function toPreviousNodeRun(lineage: Lineage, edge: GraphEdge, iteration: number): number {
+	const sourceLoop = lineage.loops.find((loop) => loop.memberIds.has(edge.from));
+	// `plain` or `entry`: the predecessor ran once.
+	if (!sourceLoop) return 0;
+	// `intra`: both ends share a pass.
+	if (sourceLoop.memberIds.has(edge.to)) return iteration;
+	// `exit`: the predecessor's terminal pass.
+	return lineage.lastIterationByNodeId.get(edge.from) ?? 0;
+}
+
 function toTaskData(
 	step: StepDetail,
 	executionStatus: ExecutionStatus,
 	executionIndex: number,
-	source: Array<ISourceData | null> | undefined,
+	source: Array<ISourceData | null>,
 ): ITaskData {
 	// TODO(CAT-4234): report real run timing. Row timestamps include queue time.
 	const startTime = Date.parse(step.createdAt);
@@ -88,8 +181,7 @@ function toTaskData(
 		startTime,
 		executionTime: Math.max(0, Date.parse(step.updatedAt) - startTime),
 		executionIndex,
-		// Never `undefined`: the editor's log tree reads `source` unguarded.
-		source: source ?? [],
+		source,
 		executionStatus,
 		// Every output slot is `main`: no other connection type exists here.
 		...(step.outputs === null

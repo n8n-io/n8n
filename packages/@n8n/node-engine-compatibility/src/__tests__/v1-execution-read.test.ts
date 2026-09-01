@@ -57,14 +57,15 @@ describe('toV1RunExecutionData', () => {
 		['completed', 'success'],
 		['failed', 'error'],
 		['running', 'running'],
-		['cancelled', 'canceled'],
 	])('maps step status %j to %j', (status, expected) => {
 		const data = toV1RunExecutionData(graph, [step({ status })]);
 
 		expect(data.resultData.runData.Trigger[0].executionStatus).toBe(expected);
 	});
 
-	it.each<StepStatus>(['queued', 'skipped'])(
+	// `cancelQueuedSteps` is the only writer of `cancelled`, and it updates queued
+	// rows only, so a cancelled step never ran.
+	it.each<StepStatus>(['queued', 'skipped', 'cancelled'])(
 		'reports no run for a %j step, the way v1 reports a node that did not run',
 		(status) => {
 			const data = toV1RunExecutionData(graph, [step({ status })]);
@@ -107,6 +108,24 @@ describe('toV1RunExecutionData', () => {
 
 		expect(data.resultData.runData.Trigger[0].source).toEqual([]);
 		expect(data.resultData.runData.Set[0].source).toEqual([
+			{ previousNode: 'Trigger', previousNodeOutput: 0 },
+		]);
+	});
+
+	it('pads an unfilled input slot with null', () => {
+		const merge: WorkflowGraph = {
+			nodes: [
+				{ id: 't', name: 'Trigger', type: 'trigger' },
+				{ id: 'm', name: 'Merge', type: 'v1-node' },
+			],
+			// Only the second input is connected.
+			edges: [{ from: 't', to: 'm', outputIndex: 0, inputIndex: 1 }],
+		};
+
+		const data = toV1RunExecutionData(merge, [step({ nodeId: 'm' })]);
+
+		expect(data.resultData.runData.Merge[0].source).toEqual([
+			null,
 			{ previousNode: 'Trigger', previousNodeOutput: 0 },
 		]);
 	});
@@ -163,5 +182,111 @@ describe('toV1RunExecutionData', () => {
 
 	it('carries no resume token, since a v2 execution has none', () => {
 		expect(toV1RunExecutionData(graph, [step()]).resumeToken).toBe('');
+	});
+
+	describe('parallel branches', () => {
+		// Two branches off the trigger. Row creation order says nothing about
+		// which branch settled first.
+		const forked: WorkflowGraph = {
+			nodes: [
+				{ id: 't', name: 'Trigger', type: 'trigger' },
+				{ id: 'a', name: 'Slow', type: 'v1-node' },
+				{ id: 'b', name: 'Fast', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 't', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 't', to: 'b', outputIndex: 1, inputIndex: 0 },
+			],
+		};
+
+		it('reports the step that settled last as the last node executed', () => {
+			const data = toV1RunExecutionData(forked, [
+				// Created first, settled last.
+				step({ nodeId: 'a', updatedAt: '2026-08-25T10:00:09.000Z' }),
+				step({ id: 'step-2', nodeId: 'b', updatedAt: '2026-08-25T10:00:01.000Z' }),
+			]);
+
+			expect(data.resultData.lastNodeExecuted).toBe('Slow');
+		});
+
+		it('reports the failure that settled first as the execution error', () => {
+			const data = toV1RunExecutionData(forked, [
+				step({
+					nodeId: 'a',
+					status: 'failed',
+					outputs: null,
+					error: { name: 'NodeOperationError', message: 'Second' },
+					updatedAt: '2026-08-25T10:00:09.000Z',
+				}),
+				step({
+					id: 'step-2',
+					nodeId: 'b',
+					status: 'failed',
+					outputs: null,
+					error: { name: 'NodeOperationError', message: 'First' },
+					updatedAt: '2026-08-25T10:00:01.000Z',
+				}),
+			]);
+
+			// The first failure is the one that stopped the run.
+			expect(data.resultData.error).toMatchObject({ message: 'First' });
+			expect(data.resultData.lastNodeExecuted).toBe('Fast');
+		});
+	});
+
+	describe('loop lineage', () => {
+		// Trigger ──► Loop ──o1──► Body ──(back)──► Loop
+		//                     └──o0──► Done
+		const looped: WorkflowGraph = {
+			nodes: [
+				{ id: 't', name: 'Trigger', type: 'trigger' },
+				{ id: 'loop', name: 'Loop', type: 'batch' },
+				{ id: 'body', name: 'Body', type: 'v1-node' },
+				{ id: 'done', name: 'Done', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 't', to: 'loop', outputIndex: 0, inputIndex: 0 },
+				{ from: 'loop', to: 'body', outputIndex: 1, inputIndex: 0 },
+				{ from: 'body', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+				{ from: 'loop', to: 'done', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+
+		const twoPasses = [
+			step({ nodeId: 'loop', iteration: 0 }),
+			step({ id: 's2', nodeId: 'body', iteration: 0 }),
+			step({ id: 's3', nodeId: 'loop', iteration: 1 }),
+			step({ id: 's4', nodeId: 'body', iteration: 1 }),
+			step({ id: 's5', nodeId: 'done', iteration: 0 }),
+		];
+
+		it('points a loop member at the same pass of its predecessor', () => {
+			const data = toV1RunExecutionData(looped, twoPasses);
+
+			expect(data.resultData.runData.Body[0].source).toEqual([
+				{ previousNode: 'Loop', previousNodeOutput: 1 },
+			]);
+			expect(data.resultData.runData.Body[1].source).toEqual([
+				{ previousNode: 'Loop', previousNodeOutput: 1, previousNodeRun: 1 },
+			]);
+		});
+
+		it("points the node after a loop at the loop's last pass", () => {
+			const data = toV1RunExecutionData(looped, twoPasses);
+
+			expect(data.resultData.runData.Done[0].source).toEqual([
+				{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 1 },
+			]);
+		});
+
+		it('points the loop entry at run 0, since the predecessor ran once', () => {
+			const data = toV1RunExecutionData(looped, twoPasses);
+
+			// Both passes read the entry edge: a back edge names a source v1 cannot
+			// express, so it is skipped.
+			for (const run of data.resultData.runData.Loop) {
+				expect(run.source).toEqual([{ previousNode: 'Trigger', previousNodeOutput: 0 }]);
+			}
+		});
 	});
 });
