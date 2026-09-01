@@ -76,7 +76,7 @@ export class ExecutionEntity {
 
 	@Index()
 	@DateTimeColumn({ nullable: true })
-	stoppedAt: Date;
+	stoppedAt: Date | null;
 
 	@DeleteDateColumn({ type: datetimeColumnType as SimpleColumnType, nullable: true })
 	deletedAt: Date | null;
