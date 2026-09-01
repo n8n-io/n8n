@@ -205,6 +205,26 @@ describe('useWorkflowSetupSections', () => {
 		expect(sections.value[0].currentCredentialId).toBe('node-cred');
 	});
 
+	it('does not seed the existing credential when the request prefers a new one', () => {
+		// preferNewCredential reopens the card to replace the current credential;
+		// seeding it would make the step read as complete and resubmit the old one.
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: 'httpBasicAuth',
+				preferNewCredential: true,
+				node: {
+					credentials: {
+						httpBasicAuth: { id: 'node-cred', name: 'Node credential' },
+					},
+				},
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].currentCredentialId).toBeNull();
+	});
+
 	it('seeds the AI Gateway-managed tag for gateway-managed node credentials', () => {
 		const setupRequests = ref([
 			makeSetupRequest({

@@ -466,7 +466,9 @@ async function resolveCredentialState(
 		);
 	}
 
-	const existingOnNode = node.credentials?.[credentialType];
+	// A slot the user asked to refill fresh ignores its current binding — it renders
+	// unbound, so the bound credential is neither tested nor reported as effective.
+	const existingOnNode = prefersNewCredential ? undefined : node.credentials?.[credentialType];
 	const existingCredentialId =
 		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
 	const hasExistingOnNode =
@@ -651,6 +653,7 @@ async function buildRequestForCredentialType(
 	workflowId: string | undefined,
 	nodeCtx: NodeSetupContext,
 	preferNewCredentialTypes?: ReadonlySet<string>,
+	appliedCredentialIds?: ReadonlySet<string>,
 ): Promise<SetupRequest | null> {
 	const prefersNewCredential =
 		credentialType !== undefined && (preferNewCredentialTypes?.has(credentialType) ?? false);
@@ -663,6 +666,11 @@ async function buildRequestForCredentialType(
 					),
 			)
 		: undefined;
+	// A slot routed to fresh creation renders unbound: the credential being replaced
+	// must not show as selected — it only stays available in the picker's list.
+	if (prefersNewCredential && credentialType && nodeCredentials) {
+		delete nodeCredentials[credentialType];
+	}
 
 	const {
 		existingCredentials,
@@ -687,6 +695,7 @@ async function buildRequestForCredentialType(
 	const locatorCredential =
 		effectiveCredential ??
 		(credentialType &&
+		!prefersNewCredential &&
 		(autoAppliedGateway || isAiGatewayManagedCredential(node.credentials?.[credentialType]))
 			? { id: AI_GATEWAY_MANAGED_TAG, name: N8N_CONNECT_DISPLAY_NAME }
 			: undefined);
@@ -726,10 +735,17 @@ async function buildRequestForCredentialType(
 			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
 				? existingOnNode.id
 				: undefined;
+		// A preferNewCredentials request un-settles a node that already has a working
+		// credential, so setup shows the card to change it instead of reporting
+		// "No nodes require setup". Otherwise, an id the resume just applied resolves
+		// even when the list view lags it (scoped discovery, e.g. eval allowlist
+		// pins) — the apply already resolved it before binding.
 		const isSettled =
-			isAiGatewayManagedCredential(existingOnNode) ||
-			(boundId !== undefined &&
-				existingCredentials.some((credential) => credential.id === boundId));
+			!prefersNewCredential &&
+			(isAiGatewayManagedCredential(existingOnNode) ||
+				(boundId !== undefined &&
+					(existingCredentials.some((credential) => credential.id === boundId) ||
+						(appliedCredentialIds?.has(boundId) ?? false))));
 		credentialNeedsAction = !isSettled;
 	}
 	// Tracked apart from `needsAction` because the two answer different questions: a node with a
@@ -776,6 +792,7 @@ export async function buildSetupRequests(
 	cache?: CredentialCache,
 	workflowId?: string,
 	preferNewCredentialTypes?: ReadonlySet<string>,
+	appliedCredentialIds?: ReadonlySet<string>,
 ): Promise<SetupRequest[]> {
 	if (!node.name) return [];
 	if (node.disabled) return [];
@@ -831,6 +848,7 @@ export async function buildSetupRequests(
 			workflowId,
 			nodeCtx,
 			preferNewCredentialTypes,
+			appliedCredentialIds,
 		);
 		if (request) requests.push(request);
 	}
@@ -1163,6 +1181,10 @@ async function trackCredentialAssignment(
 		credential_type: opts.credType,
 		node_type: opts.nodeType,
 		workflow_id: opts.workflowId,
+		// The join key back to `User created credentials`; n8n Connect slots have no
+		// stored credential of the user's own.
+		credential_id: isGateway ? null : opts.credential.id,
+		thread_id: context.threadId ?? null,
 		credential_kind: isGateway ? 'n8n_connect' : 'own',
 		source,
 	});
@@ -1437,12 +1459,19 @@ export async function analyzeWorkflow(
 		 *  for them and their requests carry `preferNewCredential` so the card opens
 		 *  unselected. */
 		preferNewCredentialTypes?: readonly string[];
+		/** Credential ids a setup resume just applied. A bound slot carrying one of
+		 *  these is settled even when the credential list view lags it (scoped
+		 *  discovery, e.g. eval allowlist pins) — the apply already resolved the id. */
+		appliedCredentialIds?: readonly string[];
 	},
 ): Promise<SetupRequest[]> {
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
 
 	const preferNewCredentialTypes = options?.preferNewCredentialTypes?.length
 		? new Set(options.preferNewCredentialTypes)
+		: undefined;
+	const appliedCredentialIds = options?.appliedCredentialIds?.length
+		? new Set(options.appliedCredentialIds)
 		: undefined;
 
 	const cache = createCredentialCache();
@@ -1455,6 +1484,7 @@ export async function analyzeWorkflow(
 				cache,
 				workflowId,
 				preferNewCredentialTypes,
+				appliedCredentialIds,
 			);
 		}),
 	);
