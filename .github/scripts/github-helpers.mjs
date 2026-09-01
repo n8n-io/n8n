@@ -248,9 +248,10 @@ export function trySh(cmd, args, opts = {}) {
  * Append outputs to GITHUB_OUTPUT if available.
  *
  * @param {Record<string, string | boolean>} obj
+ * @param {NodeJS.ProcessEnv} [env] Environment to read GITHUB_OUTPUT from. Defaults to `process.env`.
  */
-export function writeGithubOutput(obj) {
-	const path = process.env.GITHUB_OUTPUT;
+export function writeGithubOutput(obj, env = process.env) {
+	const path = env.GITHUB_OUTPUT;
 	if (!path) return;
 
 	const lines = Object.entries(obj)

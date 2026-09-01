@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /**
  * Run these tests by running
@@ -15,7 +18,7 @@ mock.module('@actions/github', {
 	},
 });
 
-const { postOrUpdateComment } = await import('./github-helpers.mjs');
+const { postOrUpdateComment, writeGithubOutput } = await import('./github-helpers.mjs');
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -86,5 +89,35 @@ describe('postOrUpdateComment', () => {
 			comment_id: 42,
 			body: 'updated body',
 		});
+	});
+});
+
+describe('writeGithubOutput', () => {
+	afterEach(() => {
+		process.env = { ...ORIGINAL_ENV };
+	});
+
+	it('appends key=value lines to the GITHUB_OUTPUT file of the given env', () => {
+		const file = join(mkdtempSync(join(tmpdir(), 'github-output-')), 'output.txt');
+
+		writeGithubOutput({ a: '1', b: true }, { GITHUB_OUTPUT: file });
+		writeGithubOutput({ c: undefined }, { GITHUB_OUTPUT: file });
+
+		assert.equal(readFileSync(file, 'utf8'), 'a=1\nb=true\nc=\n');
+	});
+
+	it('falls back to process.env when no env is given', () => {
+		const file = join(mkdtempSync(join(tmpdir(), 'github-output-')), 'output.txt');
+		process.env.GITHUB_OUTPUT = file;
+
+		writeGithubOutput({ a: '1' });
+
+		assert.equal(readFileSync(file, 'utf8'), 'a=1\n');
+	});
+
+	it('does nothing when GITHUB_OUTPUT is not set', () => {
+		delete process.env.GITHUB_OUTPUT;
+
+		assert.doesNotThrow(() => writeGithubOutput({ a: '1' }, {}));
 	});
 });
