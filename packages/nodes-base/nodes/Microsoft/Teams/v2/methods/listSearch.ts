@@ -315,3 +315,52 @@ export async function getMembers(
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
 }
+
+/**
+ * Org-wide user picker on Graph `/v1.0/users`, shared by every Teams field that targets a
+ * person. Deliberately generic: no resource/operation reads, no team scoping. Filtering is
+ * `$search` (word-prefix, so `unc` will not find `Tuncsik`) and ordering is `$orderby`, both
+ * server-side, hence no `filterSortSearchListItems` call unlike its siblings above: filtering
+ * again client-side would delete legitimate results and break pagination.
+ */
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const qs: IDataObject = {
+		$select: 'id,displayName,userPrincipalName',
+		$top: 100,
+		$orderby: 'displayName',
+	};
+
+	// A stray `"` makes Graph reject the whole $search expression with a 400.
+	const term = (filter ?? '').replace(/"/g, '').trim();
+	if (term) {
+		qs.$search = `"displayName:${term}" OR "mail:${term}" OR "userPrincipalName:${term}"`;
+	}
+
+	const response = (await microsoftApiRequest.call(
+		this,
+		'GET',
+		'/v1.0/users',
+		{},
+		// `@odata.nextLink` already carries the query, so a paginated call sends none.
+		paginationToken ? {} : qs,
+		paginationToken,
+		// `$search` on /users is an advanced query and 400s without this header; harmless on
+		// the unfiltered first page, so send it always.
+		{ ConsistencyLevel: 'eventual' },
+	)) as IDataObject;
+
+	const users = Array.isArray(response.value) ? (response.value as IDataObject[]) : [];
+
+	// Display names are not unique, so the UPN is the disambiguator shown in the picker.
+	const results: INodeListSearchItems[] = users.map((user) => ({
+		name: (user.displayName as string) || (user.userPrincipalName as string),
+		value: user.id as string,
+		description: user.userPrincipalName as string,
+	}));
+
+	return { results, paginationToken: response['@odata.nextLink'] as string | undefined };
+}
