@@ -116,10 +116,13 @@ describe('Microsoft Teams v2, getUsers', () => {
 	});
 
 	it('returns no results when Graph replies without a value array', async () => {
-		apiRequest.mockResolvedValue({});
+		apiRequest.mockResolvedValue({
+			'@odata.nextLink': 'https://graph.microsoft.com/v1.0/users?$skiptoken=p2',
+		});
 
 		const result = await getUsers.call(ctx);
 
+		// An unexpected shape is not an empty directory, so no "load more" into nothing.
 		expect(result).toEqual({ results: [], paginationToken: undefined });
 	});
 
@@ -133,6 +136,17 @@ describe('Microsoft Teams v2, getUsers', () => {
 		expect(results).toEqual([
 			{ name: 'svc@example.com', value: 'guid-2', description: 'svc@example.com' },
 		]);
+	});
+
+	it('falls back to the user ID when a user has no name at all', async () => {
+		apiRequest.mockResolvedValue({
+			value: [{ id: 'guid-3', displayName: '', userPrincipalName: '' }],
+		});
+
+		const { results } = await getUsers.call(ctx);
+
+		// Without the last rung the row renders blank but stays clickable.
+		expect(results.map((user) => user.name)).toEqual(['guid-3']);
 	});
 
 	it('keeps the result set and ordering Graph returned', async () => {
