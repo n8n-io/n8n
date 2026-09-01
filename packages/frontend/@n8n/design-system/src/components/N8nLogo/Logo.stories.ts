@@ -49,8 +49,10 @@ Default.args = {
 export const Sizes: StoryFn = () => ({
 	components: { N8nLogo },
 	template: `
-		<div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
-			<N8nLogo size="large" release-channel="stable" />
+		<div style="display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing--xl); padding: var(--spacing--2xl);">
+			<div style="min-width: var(--spacing--5xl); display: flex; align-items: center;">
+				<N8nLogo size="large" release-channel="stable" />
+			</div>
 			<N8nLogo size="small" :collapsed="false" release-channel="stable" />
 			<N8nLogo size="small" :collapsed="true" release-channel="stable" />
 		</div>
@@ -60,7 +62,7 @@ export const Sizes: StoryFn = () => ({
 export const Variants: StoryFn = () => ({
 	components: { N8nLogo },
 	template: `
-		<div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+		<div style="display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing--2xl); padding: var(--spacing--2xl);">
 			<N8nLogo size="large" release-channel="stable" />
 			<N8nLogo size="large" release-channel="dev" />
 			<N8nLogo size="large" release-channel="beta" />
