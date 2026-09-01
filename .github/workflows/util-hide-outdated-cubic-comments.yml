@@ -8,7 +8,7 @@ name: Hide outdated cubic review comments
 # still expand them.
 
 on:
-  pull_request:
+  pull_request_target:
     types: [synchronize]
 
 permissions:
