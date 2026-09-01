@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "oauth_refresh_tokens" ("token" varchar(255) PRIMARY KEY NOT NULL, "clientId" varchar NOT NULL, "userId" varchar NOT NULL, "expiresAt" bigint NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "scope" text NOT NULL DEFAULT ('["tool:listWorkflows","tool:getWorkflowDetails"]'), CONSTRAINT "FK_a699f3ed9fd0c1b19bc2608ac53" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_b388696ce4d8be7ffbe8d3e4b69" FOREIGN KEY ("clientId") REFERENCES "oauth_clients" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "oauth_refresh_tokens" ("token" varchar(255) PRIMARY KEY NOT NULL, "clientId" varchar NOT NULL, "userId" varchar NOT NULL, "expiresAt" bigint NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "scope" text NOT NULL DEFAULT ('["tool:listWorkflows","tool:getWorkflowDetails"]'), "resource" varchar NOT NULL, CONSTRAINT "FK_b388696ce4d8be7ffbe8d3e4b69" FOREIGN KEY ("clientId") REFERENCES "oauth_clients" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_a699f3ed9fd0c1b19bc2608ac53" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -18,6 +18,7 @@ CREATE TABLE "oauth_refresh_tokens" ("token" varchar(255) PRIMARY KEY NOT NULL, 
 | clientId | varchar |  | false |  | [oauth_clients](oauth_clients.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | expiresAt | bigint |  | false |  |  |  |
+| resource | varchar |  | false |  |  |  |
 | scope | TEXT | '["tool:listWorkflows","tool:getWorkflowDetails"]' | false |  |  |  |
 | token | varchar(255) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -27,8 +28,8 @@ CREATE TABLE "oauth_refresh_tokens" ("token" varchar(255) PRIMARY KEY NOT NULL, 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_oauth_refresh_tokens_1 | PRIMARY KEY | PRIMARY KEY (token) |
 | token | PRIMARY KEY | PRIMARY KEY (token) |
 
@@ -50,6 +51,7 @@ erDiagram
   varchar clientId FK
   datetime_3_ createdAt
   bigint expiresAt
+  varchar resource
   TEXT scope
   varchar_255_ token PK
   datetime_3_ updatedAt

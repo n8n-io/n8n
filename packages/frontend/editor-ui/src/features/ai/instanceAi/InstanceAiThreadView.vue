@@ -32,6 +32,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
@@ -86,6 +88,8 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
@@ -169,8 +173,8 @@ watch(
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
-// slot (generic approvals + domain/web-search access). Drives the swap
-// between the input and the floating confirmation panel.
+// slot (questions, generic approvals, or domain/web-search access). Drives
+// the swap between the input and the floating confirmation panel.
 const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
@@ -744,6 +748,8 @@ function reconnectThreadAfterHydration(): void {
 				rootStore.pushRef,
 				pending.context,
 			);
+			// Experiment cleanup: remove with openWorkflowInAssistant.
+			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
 		}
 	});
 }
@@ -1165,8 +1171,8 @@ async function dismissComposerContextChip() {
 										:agent-node="builder"
 									/>
 								</div>
-								<!-- Inline confirmations (questions, plan review, text, setup,
-									 credential, gateway resource-decision, continue) render in
+								<!-- Inline confirmations (plan review, text, setup, credential,
+									 gateway resource-decision, continue) render in
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
@@ -1197,7 +1203,7 @@ async function dismissComposerContextChip() {
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. The credit banner stays
+								 floating interaction is pending. The credit banner stays
 								 anchored above the slot in both states. The leaving child is
 								 positioned absolutely during the cross-fade so the in-flow child
 								 can size the slot to its natural height. -->
@@ -1227,7 +1233,6 @@ async function dismissComposerContextChip() {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
-											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											:amounts-hidden="quotaLocked"
@@ -1383,6 +1388,8 @@ async function dismissComposerContextChip() {
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
 </template>
 

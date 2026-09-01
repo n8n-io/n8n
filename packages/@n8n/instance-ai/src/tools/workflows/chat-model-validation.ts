@@ -1,19 +1,21 @@
 import type { ModelInfo, ProviderCatalog, ProviderInfo } from '@n8n/agents/catalog';
 import { getCachedCatalog } from '@n8n/agents/catalog';
+import {
+	classifyChatModelFailure,
+	type ChatModelFailureKind,
+} from '@n8n/ai-utilities/model-discovery';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { NodeJSON } from '@n8n/workflow-sdk';
 import { getChildNodes, NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 
-import { isAiGatewayManagedCredential } from './credential-utils';
+import { N8N_CONNECT_DISPLAY_NAME, isAiGatewayManagedCredential } from './credential-utils';
 import type { InstanceAiContext } from '../../types';
 import { isChatModelNode, resolveChatModelCatalogEntry } from '../nodes/preferred-chat-model';
 
 export { isChatModelNode };
 
-export type ChatModelFailureKind =
-	| 'invalid_model'
-	| 'unsupported_parameter'
-	| 'capability_mismatch';
+/** Re-exported so workflow-side callers keep a single import site. */
+export { classifyChatModelFailure, type ChatModelFailureKind };
 
 const CATALOG_FETCH_TIMEOUT_MS = 5000;
 const MAX_REPLACEMENT_SUGGESTIONS = 3;
@@ -23,27 +25,6 @@ const GOOGLE_MODEL_ID_PREFIX = 'models/';
 
 /** Dated snapshot suffixes: Anthropic `-20251001`, OpenAI `-2024-08-06`. */
 const SNAPSHOT_SUFFIX = /-(?:\d{8}|\d{4}-\d{2}-\d{2})$/;
-
-const CHAT_MODEL_ERROR_PATTERNS: Array<{
-	kind: ChatModelFailureKind;
-	pattern: RegExp;
-}> = [
-	{
-		kind: 'unsupported_parameter',
-		pattern:
-			/\b(?:unsupported_parameter|invalid_parameter)\b|(?:unsupported (?:parameter|value|option)|parameter [^\s]+ is not supported|does not support (?:temperature|top_p|max_tokens|max_completion_tokens|thinking)|(?:temperature|top_p|max_tokens|max_completion_tokens|thinking) (?:is not supported|cannot be set|is not allowed))/i,
-	},
-	{
-		kind: 'invalid_model',
-		pattern:
-			/\b(?:model_not_found|not_found_error|invalid_model_id|invalid_model|unknown_model)\b|(?:(?:model|models\/|deployment|engine)[\s\S]*?(?:not found|does not exist|is not found|was not found|invalid|unknown|not available)|(?:resource ['"]?models\/[^\s'"]+['"]? was not found))/i,
-	},
-	{
-		kind: 'capability_mismatch',
-		pattern:
-			/\b(?:not a chat model|not supported for (?:generateContent|this operation)|does not support (?:tools|tool use|function calling|functions|vision|multimodal)|only supported (?:via|for) responses api)\b/i,
-	},
-];
 
 /** Versionless alias of a dated snapshot id (`claude-haiku-4-5-20251001` → `claude-haiku-4-5`). */
 export function stripSnapshotSuffix(id: string): string {
@@ -78,16 +59,6 @@ export function extractChatModelParameter(
 	for (const key of CHAT_MODEL_ID_PARAMETER_KEYS) {
 		const modelId = extractResourceLocatorValue(parameters[key]);
 		if (modelId) return { key, modelId };
-	}
-	return undefined;
-}
-
-export function classifyChatModelFailure(
-	errorMessage: string | undefined,
-): ChatModelFailureKind | undefined {
-	if (!errorMessage) return undefined;
-	for (const { kind, pattern } of CHAT_MODEL_ERROR_PATTERNS) {
-		if (pattern.test(errorMessage)) return kind;
 	}
 	return undefined;
 }
@@ -155,7 +126,7 @@ export function buildChatModelFailureGuidance(
 				' The chosen model cannot perform this node operation (for example image generation, computer use, or Responses API-only models). ' +
 				replacements +
 				(aiCreditsAvailable
-					? ' Or switch to n8n credits (no API key required) when the task fits a covered model.'
+					? ' Or switch to Gateway credits (no API key required) when the task fits a covered model.'
 					: '') +
 				' Original error: ' +
 				errorMessage
@@ -166,7 +137,7 @@ export function buildChatModelFailureGuidance(
 				' ' +
 				replacements +
 				(aiCreditsAvailable
-					? " If the user's own key cannot reach any working model, switch the node to n8n credits (no API key required) instead of another guessed ID."
+					? " If the user's own key cannot reach any working model, switch the node to Gateway credits (no API key required) instead of another guessed ID."
 					: " If the user's own key cannot reach any working model, ask the user for a provider or key that works instead of another guessed ID.") +
 				' Original error: ' +
 				errorMessage
@@ -316,7 +287,7 @@ function resolveStoredCredential(
 	if (!selected || typeof selected !== 'object') return undefined;
 
 	if (isAiGatewayManagedCredential(selected)) {
-		return { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n credits' };
+		return { id: AI_GATEWAY_MANAGED_TAG, name: N8N_CONNECT_DISPLAY_NAME };
 	}
 
 	const id: unknown = Reflect.get(selected, 'id');

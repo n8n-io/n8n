@@ -994,7 +994,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('flags duplicate, missing, and incompatible sub-agent and workflow-tool references in one pass', async () => {
+	it('flags missing and self sub-agent references plus invalid workflow-tool references', async () => {
 		const { service, agentRepository, workflowRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -1014,7 +1014,7 @@ describe('AgentValidationService — structured issues', () => {
 					{ type: 'workflow', workflow: 'Workflow B' },
 					{ type: 'workflow', workflow: 'Workflow C' },
 					{ type: 'workflow', workflowId: 'wf-missing', workflow: 'Workflow A' },
-					{ type: 'workflow', workflowId: 'wf-wait', workflow: 'Workflow With Wait' },
+					{ type: 'workflow', workflowId: 'wf-form', workflow: 'Workflow With Form' },
 				],
 			}),
 		);
@@ -1039,8 +1039,8 @@ describe('AgentValidationService — structured issues', () => {
 			},
 			{ id: 'wf-c', name: 'Workflow C', nodes: [] },
 			{
-				id: 'wf-wait',
-				name: 'Workflow With Wait',
+				id: 'wf-form',
+				name: 'Workflow With Form',
 				nodes: [
 					{
 						id: 'trigger-2',
@@ -1051,16 +1051,16 @@ describe('AgentValidationService — structured issues', () => {
 						parameters: {},
 					},
 					{
-						id: 'wait-1',
-						name: 'Wait',
-						type: 'n8n-nodes-base.wait',
+						id: 'form-1',
+						name: 'Form',
+						type: 'n8n-nodes-base.form',
 						typeVersion: 1,
 						position: [200, 0],
 						parameters: {},
 					},
 				],
-				// Wait is reachable from the trigger, so it actually runs and is flagged.
-				connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
+				// Form is reachable from the trigger, so it actually runs and is flagged.
+				connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
 			},
 		] as never);
 
@@ -1082,11 +1082,6 @@ describe('AgentValidationService — structured issues', () => {
 				capability: { kind: 'subAgent', id: agentId, index: 3 },
 			},
 			{
-				code: 'incompatible_reference',
-				path: 'subAgents.agents.4.agentId',
-				capability: { kind: 'subAgent', id: 'sub-3', index: 4 },
-			},
-			{
 				code: 'missing_reference',
 				path: 'tools.2.workflow',
 				capability: { kind: 'tool', id: 'Workflow B', index: 2, toolType: 'workflow' },
@@ -1105,7 +1100,7 @@ describe('AgentValidationService — structured issues', () => {
 			{
 				code: 'incompatible_reference',
 				path: 'tools.5.workflowId',
-				capability: { kind: 'tool', id: 'Workflow With Wait', index: 5, toolType: 'workflow' },
+				capability: { kind: 'tool', id: 'Workflow With Form', index: 5, toolType: 'workflow' },
 				reason: 'incompatible_nodes',
 			},
 		]);

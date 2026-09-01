@@ -1,15 +1,16 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
 import type { ConfluenceBodyFormat } from '../common';
 import {
 	PAGE_LIMIT,
 	bodyFormatOption,
-	extractNextCursor,
+	nextUnseenCursor,
 	optionalSpaceRLC,
 	pageRLC,
+	parsePositiveInt,
 	resolvePageId,
+	shapeBody,
 } from '../common';
 import type { ConfluenceOperation } from '../router';
 
@@ -20,8 +21,6 @@ const MAX_DEPTH = 10;
 export const description: INodeProperties[] = [
 	{
 		...optionalSpaceRLC,
-		description:
-			'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
 		displayOptions: {
 			show: {
 				resource: ['page'],
@@ -80,53 +79,6 @@ export const description: INodeProperties[] = [
 	},
 ];
 
-// Text extraction, not rendering: concatenate ADF text nodes, newline at block boundaries
-const ADF_BLOCK_TYPES = new Set([
-	'blockquote',
-	'bulletList',
-	'codeBlock',
-	'heading',
-	'listItem',
-	'orderedList',
-	'panel',
-	'paragraph',
-	'rule',
-	'table',
-	'tableRow',
-	'taskItem',
-	'taskList',
-]);
-
-function adfToPlainText(node: IDataObject): string {
-	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
-	if (node.type === 'hardBreak') return '\n';
-	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
-	let inner = '';
-	for (const child of content) {
-		inner += adfToPlainText(child);
-		if (node.type === 'tableRow') inner += ' ';
-	}
-	return ADF_BLOCK_TYPES.has(node.type as string) ? `${inner}\n` : inner;
-}
-
-function shapeBody(page: IDataObject, bodyFormat: ConfluenceBodyFormat): IDataObject {
-	if (bodyFormat !== 'plainText') return page;
-	const adf = (page.body as IDataObject | undefined)?.atlas_doc_format as IDataObject | undefined;
-	let value = '';
-	if (typeof adf?.value === 'string' && adf.value !== '') {
-		try {
-			const doc = JSON.parse(adf.value) as IDataObject;
-			value = adfToPlainText(doc)
-				.replace(/[ \t]+\n/g, '\n')
-				.replace(/\n{3,}/g, '\n\n')
-				.trim();
-		} catch {
-			value = '';
-		}
-	}
-	return { ...page, body: { plainText: { representation: 'plain_text', value } } };
-}
-
 /**
  * Discovery phase: flattened tree records from `/pages/{id}/descendants` (no bodies).
  * Records at the endpoint's max depth may have unreached children, so the walk
@@ -145,6 +97,7 @@ async function collectDescendantPageIds(
 		const nextFrontier: string[] = [];
 		for (const nodeId of frontier) {
 			let cursor: string | undefined;
+			const seenCursors = new Set<string>();
 			do {
 				const qs: IDataObject = { depth: MAX_DEPTH, limit: PAGE_LIMIT };
 				if (cursor !== undefined) qs.cursor = cursor;
@@ -168,7 +121,7 @@ async function collectDescendantPageIds(
 					}
 					if (pageIds.length >= maxCount) return pageIds;
 				}
-				cursor = extractNextCursor(response);
+				cursor = nextUnseenCursor(response, seenCursors);
 			} while (cursor !== undefined);
 		}
 		frontier = nextFrontier;
@@ -233,13 +186,12 @@ export const execute: ConfluenceOperation = async function (
 		return shapeBody(page, bodyFormat);
 	}
 
-	const rawMaxPages = this.getNodeParameter('maxPages', itemIndex, 100) as number;
-	if (!Number.isFinite(rawMaxPages) || rawMaxPages < 1) {
-		throw new NodeOperationError(this.getNode(), 'Max Pages must be a number of at least 1', {
-			itemIndex,
-		});
-	}
-	const maxPages = Math.floor(rawMaxPages);
+	const maxPages = parsePositiveInt.call(
+		this,
+		this.getNodeParameter('maxPages', itemIndex, 100),
+		'Max Pages',
+		itemIndex,
+	);
 	const descendantIds = await collectDescendantPageIds.call(
 		this,
 		pageId,

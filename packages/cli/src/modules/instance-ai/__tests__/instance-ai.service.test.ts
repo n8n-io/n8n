@@ -7,6 +7,12 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
+		// Wiring-only stub: the real mapping has its own unit tests
+		// (instance-ai/src/tracing/__tests__/thread-provenance.test.ts). What the
+		// service tests pin is that its OUTPUT reaches the trace — spreading an
+		// undefined mock here is a no-op, so a missing entry would look like a
+		// passing test with silently empty metadata.
+		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		isQuotaExhaustedError: (error: unknown) =>
 			typeof error === 'object' &&
@@ -214,6 +220,7 @@ import {
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
+	threadProvenanceMetadata,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -668,12 +675,7 @@ type TerminalGuardOrderServiceInternals = {
 	suspendedThreads: { dropPendingConfirmationsForThread: Mock; persistPendingConfirmation: Mock };
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-	instanceAiConfig: {
-		outputRedactionEnabled: boolean;
-		outputRedactionSecrets: boolean;
-		outputRedactionPii: string;
-		outputRedactionPlaceholder: string;
-	};
+	instanceAiConfig: {};
 	tracing: {
 		finalizeRunTracing: Mock;
 		finalizeDetachedTraceRun: Mock;
@@ -775,7 +777,6 @@ type SnapshotServiceInternals = {
 		getEventsForRuns: Mock;
 	};
 	eventLog: { flush: Mock; getEventsForRuns: Mock };
-	instanceAiConfig: { durableLog: boolean };
 	tracing: { getTraceContext: Mock };
 	logger: { warn: Mock };
 };
@@ -810,12 +811,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	};
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-	service.instanceAiConfig = {
-		outputRedactionEnabled: true,
-		outputRedactionSecrets: true,
-		outputRedactionPii: 'credit-card',
-		outputRedactionPlaceholder: '[REDACTED]',
-	};
+	service.instanceAiConfig = {};
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
@@ -840,7 +836,6 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.preserveHitlOnShutdown = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
-		durableLog: false,
 		eventBus: service.eventBus,
 		dbSnapshotStorage: {},
 		agentMemory: {},
@@ -880,7 +875,6 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRuns: vi.fn(() => []),
 	};
 	service.eventLog = { flush: vi.fn(async () => {}), getEventsForRuns: vi.fn(async () => []) };
-	service.instanceAiConfig = { durableLog: false };
 	service.tracing = { getTraceContext: vi.fn(() => undefined) };
 	service.logger = { warn: vi.fn() };
 	return service;
@@ -931,6 +925,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				abortSignal: AbortSignal,
 			) => Promise<{
 				orchestrationContext: {
+					outputRedaction?: unknown;
 					workspace?: unknown;
 					runtimeSkills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
@@ -1073,6 +1068,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			new AbortController().signal,
 		);
 
+		// OutputRedactor treats an OMITTED policy as ENABLED (`options !== false`),
+		// so this must stay an explicit false or every stream is scanned and the
+		// durable log stores redacted text instead of raw (INS-837).
+		expect(environment.orchestrationContext.outputRedaction).toBe(false);
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
 		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
 			2,
@@ -1937,9 +1936,10 @@ type SuspendedRunResumeServiceInternals = {
 		getActiveRun: Mock;
 	};
 	emitTerminalRun: Mock;
-	logger: { warn: Mock };
+	logger: { warn: Mock; debug: Mock };
 	dbSnapshotStorage: unknown;
 	tracing: { createOrchestratorResumeTraceContext: Mock; finalizeDetachedTraceRun: Mock };
+	memoryService: { getThreadMetadata: Mock };
 	processResumedStream: Mock;
 	suspendedThreads: { dropPendingConfirmation: Mock };
 	trackInFlightExecution: Mock;
@@ -1979,7 +1979,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 		getActiveRun: vi.fn(() => undefined),
 	};
 	service.emitTerminalRun = vi.fn(async () => {});
-	service.logger = { warn: vi.fn() };
+	service.logger = { warn: vi.fn(), debug: vi.fn() };
+	service.memoryService = { getThreadMetadata: vi.fn(async () => undefined) };
 	service.dbSnapshotStorage = {};
 	service.tracing = {
 		createOrchestratorResumeTraceContext: vi.fn(async () => undefined),
@@ -2488,6 +2489,39 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
+	it('stamps the thread provenance on the approval-resume trace', async () => {
+		// The build finishes on a RESUME beat, so this is where an eval build's
+		// spans actually live — stamping only the message turn would leave them
+		// unattributable, which is the whole point of carrying provenance.
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(fakeUser);
+		const threadMetadata = {
+			source: 'evals',
+			sourceContext: { evalCase: 'gmail-inbox-triage', evalIteration: 1 },
+		};
+		service.memoryService.getThreadMetadata.mockResolvedValue(threadMetadata);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(threadProvenanceMetadata).toHaveBeenCalledWith(threadMetadata);
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: expect.objectContaining({ thread_source: 'evals' }),
+			}),
+		);
+	});
+
+	it('resumes even when the thread provenance read fails', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(fakeUser);
+		service.memoryService.getThreadMetadata.mockRejectedValue(new Error('db down'));
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalled();
+	});
+
 	it('passes the revalidated user into the resumed stream', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
@@ -2956,7 +2990,7 @@ describe('InstanceAiService — agent tree snapshots', () => {
 			save: vi.fn(async () => {}),
 			updateLast: vi.fn(async () => {}),
 		};
-		service.eventBus.getEventsForRuns.mockReturnValue([terminalEvent]);
+		service.eventLog.getEventsForRuns.mockResolvedValue([terminalEvent]);
 
 		await service.saveAgentTreeSnapshot(
 			'thread-a',
@@ -2971,7 +3005,7 @@ describe('InstanceAiService — agent tree snapshots', () => {
 			messageGroupId: 'group-old',
 			runId: 'run-background',
 		});
-		expect(service.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', [
+		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', [
 			'run-original',
 			'run-background',
 		]);
@@ -3020,9 +3054,8 @@ describe('InstanceAiService — agent tree snapshots', () => {
 		);
 	});
 
-	it('reads snapshot input from the durable log instead of the bus when the flag is on', async () => {
+	it('reads snapshot input from the durable log', async () => {
 		const service = createSnapshotService();
-		service.instanceAiConfig.durableLog = true;
 		const logEvent: InstanceAiEvent = {
 			type: 'text-delta',
 			runId: 'run-1',
@@ -3039,7 +3072,6 @@ describe('InstanceAiService — agent tree snapshots', () => {
 		await service.saveAgentTreeSnapshot('thread-a', 'run-1', snapshotStorage);
 
 		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
-		expect(service.eventBus.getEventsForRun).not.toHaveBeenCalled();
 		// Read-own-writes barrier: the drain settles before the snapshot input is
 		// read, so a just-published terminal fact can't be missing from the tree.
 		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');
@@ -4572,7 +4604,8 @@ describe('InstanceAiService — executeRun', () => {
 		terminalOutcome: { evaluateTerminalResponse: Mock };
 		telemetry: { track: Mock };
 		firstReplyTrackers: Map<string, { threadId: string; unsubscribe: () => void }>;
-		logger: { warn: Mock; error: Mock };
+		logger: { warn: Mock; error: Mock; debug: Mock };
+		memoryService: { getThreadMetadata: Mock };
 		createProxyRunConfig: Mock;
 		isRunDebugEnabled: Mock;
 		runState: {
@@ -4615,7 +4648,8 @@ describe('InstanceAiService — executeRun', () => {
 		service.terminalOutcome = { evaluateTerminalResponse: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.firstReplyTrackers = new Map();
-		service.logger = { warn: vi.fn(), error: vi.fn() };
+		service.logger = { warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+		service.memoryService = { getThreadMetadata: vi.fn(async () => undefined) };
 		service.createProxyRunConfig = vi.fn(async () => ({ tracingProxyConfig: undefined }));
 		service.isRunDebugEnabled = vi.fn(() => false);
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling

@@ -8,10 +8,10 @@ import {
 	blocksLockfileRegen,
 	resolveMechanicalPath,
 	resolveQueueSidePath,
+	deleteModifyConflicts,
 	rebaseResolvingMechanical,
 	reconcileWithMergeTreeAtTip,
 	reconcileLockfileAtTip,
-	recentAbandonedConflictPrs,
 	assertTreeMatches,
 	assertNoMarkers,
 	buildConflictBranch,
@@ -429,33 +429,6 @@ test('reconcileLockfileAtTip folds an inconsistent lockfile into the tip commit,
 	);
 });
 
-test('recentAbandonedConflictPrs keeps only recently closed-unmerged conflict PRs', () => {
-	const now = Date.parse('2026-08-10T00:00:00Z');
-	const gh = makeStub([
-		[
-			() => true,
-			JSON.stringify([
-				{
-					number: 1,
-					url: 'u1',
-					mergedAt: '2026-08-01T00:00:00Z',
-					closedAt: '2026-08-01T00:00:00Z',
-				},
-				{ number: 2, url: 'u2', mergedAt: null, closedAt: '2026-07-01T00:00:00Z' }, // too old
-				{ number: 3, url: 'u3', mergedAt: null, closedAt: '2026-08-08T00:00:00Z' },
-			]),
-		],
-	]);
-
-	const abandoned = recentAbandonedConflictPrs(gh, { now });
-
-	assert.deepEqual(
-		abandoned.map((pr) => pr.number),
-		[3],
-	);
-	assert.equal(gh.calls[0][gh.calls[0].indexOf('--state') + 1], 'closed');
-});
-
 test('sync replays and force-pushes with a lease, creating no commit', async () => {
 	const git = makeStub([...baseGitRoutes, [isRebase, '']]);
 	const gh = makeStub(noOpenPr);
@@ -749,6 +722,11 @@ test('buildConflictBranch commits the conflicted state, markers and all', () => 
 	assert.deepEqual(preResolved, []);
 	assert.equal(lockfileDeferred, false);
 	assert.deepEqual(git.calls[0], ['merge', '--no-edit', MASTER]);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'rm'),
+		false,
+		'a content conflict keeps its markers',
+	);
 	assert.ok(git.calls.some((a) => a[0] === 'add' && a[1] === '-A'));
 	assert.ok(git.calls.some((a) => a[0] === 'commit' && a.includes('--no-edit')));
 	// The markers ARE the review surface here, so nothing may auto-resolve them.
@@ -760,6 +738,53 @@ test('buildConflictBranch commits the conflicted state, markers and all', () => 
 		git.calls.some((a) => a[0] === 'merge' && a[1] === '--abort'),
 		false,
 	);
+});
+
+test('deleteModifyConflicts tells the deleting side apart, and ignores add/add', () => {
+	const stages = {
+		'gone-on-3x.json': '100644 oid 1\tgone-on-3x.json\n100644 oid 3\tgone-on-3x.json',
+		'gone-on-master.ts': '100644 oid 1\tgone-on-master.ts\n100644 oid 2\tgone-on-master.ts',
+		'both-added.ts': '100644 oid 2\tboth-added.ts\n100644 oid 3\tboth-added.ts',
+		'content.ts': '100644 oid 1\tcontent.ts\n100644 oid 2\tcontent.ts\n100644 oid 3\tcontent.ts',
+	};
+	const git = (args) => stages[args.at(-1)] ?? '';
+
+	assert.deepEqual(deleteModifyConflicts(git, Object.keys(stages)), [
+		{ path: 'gone-on-3x.json', deletedBy: 'target' },
+		{ path: 'gone-on-master.ts', deletedBy: 'master' },
+	]);
+});
+
+test('buildConflictBranch resolves marker-less delete/modify conflicts toward 3.x', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'merge', fail('CONFLICT (modify/delete): fixtures/a.json')],
+		[isConflictedFiles, 'fixtures/a.json\nsrc/b.ts'],
+		[
+			(a) => a[0] === 'ls-files',
+			(a) =>
+				a.at(-1) === 'fixtures/a.json'
+					? '100644 oid 1\tfixtures/a.json\n100644 oid 3\tfixtures/a.json'
+					: '100644 oid 1\tsrc/b.ts\n100644 oid 2\tsrc/b.ts',
+		],
+	]);
+
+	const { files, deleteConflicts } = buildConflictBranch({
+		git,
+		pnpm: makeStub(),
+		masterSha: MASTER,
+		log: () => {},
+	});
+
+	// Both are marker-less, so neither belongs in the "conflicted files" list.
+	assert.deepEqual(files, []);
+	assert.deepEqual(deleteConflicts, [
+		{ path: 'fixtures/a.json', deletedBy: 'target' },
+		{ path: 'src/b.ts', deletedBy: 'master' },
+	]);
+	// 3.x deleted the fixture: keep the deletion rather than master's re-added blob.
+	assert.ok(git.calls.some((a) => a[0] === 'rm' && a.at(-1) === 'fixtures/a.json'));
+	// master deleted the source file: keep 3.x's.
+	assert.ok(git.calls.some((a) => a[0] === 'checkout' && a.includes('--ours')));
 });
 
 test('buildConflictBranch pre-resolves mechanical files so only code conflicts remain', () => {
@@ -864,11 +889,14 @@ test('sync opens a draft conflict PR and leaves 3.x untouched on a real conflict
 	const body = create[create.indexOf('--body') + 1];
 	assert.match(body, /Merge this PR with the normal merge button/);
 	assert.match(body, /nothing is squashed/);
-	assert.match(body, /conflict markers committed/);
+	assert.match(body, /conflict markers included/);
+	assert.match(body, /- @alice/);
 
-	// Owner requested as reviewer.
-	const edit = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'edit');
-	assert.equal(edit[edit.indexOf('--add-reviewer') + 1], 'alice');
+	// Reviewers are never requested — the body and the Slack post are the ping.
+	assert.equal(
+		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'edit'),
+		false,
+	);
 
 	// Only the sync branch is pushed — 3.x must not move.
 	const pushes = git.calls.filter((a) => a[0] === 'push');
@@ -937,42 +965,41 @@ test('openConflictPr degrades gracefully when owner resolution fails', async () 
 
 	assert.equal(prUrl, 'https://github.com/n8n-io/n8n/pull/1');
 	assert.equal(ownersSlack, 'Could not auto-attribute owners.');
-	// No reviewer request when there are no owners.
-	assert.equal(
-		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'edit'),
-		false,
-	);
 });
 
-test('openConflictPr calls out a recently abandoned conflict PR', async () => {
-	const git = makeStub([[(a) => a[0] === 'log', 'sha1']]);
-	const closedAt = new Date(Date.now() - 2 * 86_400_000).toISOString();
+test('sync reports a marker-less delete/modify conflict as its own decision, with the master commit', async () => {
+	const git = makeStub([
+		...baseGitRoutes.filter((r) => !r[0](['merge-tree']) && !r[0](['merge-base'])),
+		[(a) => a[0] === 'merge-base' && a[1] === '--is-ancestor', fail()],
+		[(a) => a[0] === 'merge-base', 'DIVERGED'],
+		[(a) => a[0] === 'merge-tree', conflictedMergeTree('fixtures/a.json')],
+		[(a) => a[0] === 'merge', fail('CONFLICT (modify/delete): fixtures/a.json')],
+		[isConflictedFiles, 'fixtures/a.json'],
+		[(a) => a[0] === 'ls-files', '100644 oid 1\tfixtures/a.json\n100644 oid 3\tfixtures/a.json'],
+		[(a) => a[0] === 'log' && a.includes('--format=%H'), 'breaking-sha'],
+		[(a) => a[0] === 'log' && a.includes('--format=%H %h %s'), 'master-sha msha build: bump (#2)'],
+	]);
 	const gh = makeStub([
-		[
-			(a) => a[0] === 'pr' && a[1] === 'list' && a.includes('closed'),
-			JSON.stringify([
-				{ number: 42, url: 'https://github.com/n8n-io/n8n/pull/42', mergedAt: null, closedAt },
-			]),
-		],
-		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/43'],
+		...noOpenPr,
+		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/99'],
 	]);
 
-	const { ownersSlack } = await openConflictPr({
+	await sync({
 		git,
 		gh,
-		repo: 'n8n-io/n8n',
-		token: 't',
-		masterSha: MASTER,
-		preHead: PRE_HEAD,
-		pushUrl: 'https://push',
-		files: ['x.ts'],
-		fetchFn: okFetch(['alice']),
+		pnpm: makeStub(),
+		env,
+		fetchFn: okFetch(['alice', 'bob']),
 		log: () => {},
 	});
 
 	const create = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'create');
 	const body = create[create.indexOf('--body') + 1];
-	assert.match(body, /#42\) was closed without being merged/);
-	assert.match(body, /Merge, don't close/);
-	assert.match(ownersSlack, /<https:\/\/github\.com\/n8n-io\/n8n\/pull\/42\|#42>/);
+	assert.match(body, /### Deleted on one side, changed on the other/);
+	assert.match(body, /- `fixtures\/a\.json` — deleted on `3\.x`, changed on master/);
+	assert.match(body, / {2}- master: `msha` build: bump \(#2\) — @bob/);
+	// 3.x is still untouched — the decision is the resolver's, only the PR moves.
+	const pushes = git.calls.filter((a) => a[0] === 'push');
+	assert.equal(pushes.length, 1);
+	assert.equal(pushes[0].at(-1), `HEAD:refs/heads/${SYNC_BRANCH}`);
 });

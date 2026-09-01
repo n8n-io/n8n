@@ -185,8 +185,8 @@ export const instanceAiEventTypeSchema = z.enum([
 export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
 
 /**
- * Live-only event types under the durable log (`N8N_INSTANCE_AI_DURABLE_LOG`):
- * never persisted, their SSE frames carry no `id:` line, and the browser's
+ * Live-only event types: never persisted, their SSE frames carry no `id:` line,
+ * and the browser's
  * replay cursor never points at them. Deltas are transport, not state: a
  * completed segment replays as a coalesced block fact instead. One list,
  * shared by the writer (what to persist) and the frontend (which frames to
@@ -389,6 +389,12 @@ export const GENERIC_AUTH_CREDENTIAL_TYPES: ReadonlySet<string> = new Set([
 	'oAuth2Api',
 ]);
 
+export const shouldAutoResolveCredential = (
+	credentialType: string,
+	existingCount: number,
+): boolean => {
+	return !GENERIC_AUTH_CREDENTIAL_TYPES.has(credentialType) && existingCount === 1;
+};
 /** One user-provided input of a Templated Custom Auth credential. */
 export const credentialPlaceholderDefSchema = z.object({
 	/** Marker name referenced by the template as `{{name}}`. */
@@ -1291,6 +1297,9 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
+ * Experiment cleanup: remove with openWorkflowInAssistant.
+ * - `workflow_list_auto` — treatment redirect: a workflow list card opened in the assistant by default
+ * - `workflow_list_button` — deliberate "Edit with AI Assistant" button on a workflow list card
  */
 export const INSTANCE_AI_THREAD_SOURCES = [
 	'website-template',
@@ -1303,6 +1312,9 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	'workflow_list_auto',
+	'workflow_list_button',
 	'evals',
 	'playwright',
 ] as const;
@@ -1664,6 +1676,7 @@ const instanceAiPermissionsSchema = z.object({
 	runWorkflow: instanceAiPermissionModeSchema,
 	publishWorkflow: instanceAiPermissionModeSchema,
 	deleteWorkflow: instanceAiPermissionModeSchema,
+	createCredential: instanceAiPermissionModeSchema,
 	deleteCredential: instanceAiPermissionModeSchema,
 	createFolder: instanceAiPermissionModeSchema,
 	deleteFolder: instanceAiPermissionModeSchema,
@@ -1689,6 +1702,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	runWorkflow: 'require_approval',
 	publishWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
+	createCredential: 'require_approval',
 	deleteCredential: 'require_approval',
 	createFolder: 'require_approval',
 	deleteFolder: 'require_approval',
@@ -1724,6 +1738,7 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'fetchUrl',
 	'webSearch',
 	'publishWorkflow',
+	'createCredential',
 	'deleteCredential',
 	'restoreWorkflowVersion',
 ]);
@@ -1960,7 +1975,12 @@ export type InstanceAiVerificationResponse =
 			startupMs?: number;
 			resultCount?: number;
 	  }
-	| { ok: false; failure: InstanceAiVerificationFailure };
+	| {
+			ok: false;
+			failure: InstanceAiVerificationFailure;
+			/** Sanitized underlying error message, safe to show to the user. */
+			error?: string;
+	  };
 
 // ---------------------------------------------------------------------------
 // User preferences — per-user, self-service
@@ -2379,9 +2399,7 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	/** Workflows the history references; recreated (node credentials stripped). */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
 	/** Agents the history references; created at their pinned id, with the thread
-	 *  bound to them so the next turn continues one instead of resolving it again.
-	 *  Sub-agent delegation is refused: every seeded agent restores as an
-	 *  unpublished draft, which a referenced sub-agent may not be. */
+	 *  bound to them so the next turn continues one instead of resolving it again. */
 	agents: z
 		.array(instanceAiEvalSeedAgentSchema)
 		.max(5)
@@ -2403,16 +2421,21 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 				seenIds.add(agent.id);
 			}
 			for (const [index, agent] of agents.entries()) {
-				// Refused outright, not membership-checked: this restore creates every seeded
-				// agent as an UNPUBLISHED draft, and `AgentConfigService` requires a referenced
-				// sub-agent to be published — so a parent that delegates restores invalid to
-				// execute, whoever it points at.
-				if ((agent.config.subAgents?.agents ?? []).length > 0) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						path: [index, 'config', 'subAgents', 'agents'],
-						message: `Seed agent "${agent.id}" declares sub-agents, which a seed cannot restore usably — every seeded agent is created as an unpublished draft, and a referenced sub-agent must be published`,
-					});
+				for (const [refIndex, ref] of (agent.config.subAgents?.agents ?? []).entries()) {
+					const path = [index, 'config', 'subAgents', 'agents', refIndex, 'agentId'];
+					if (ref.agentId === agent.id) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							path,
+							message: `Seed agent "${agent.id}" cannot use itself as a sub-agent`,
+						});
+					} else if (!seenIds.has(ref.agentId)) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							path,
+							message: `Seed agent "${agent.id}" references sub-agent "${ref.agentId}", which is not included in the seed`,
+						});
+					}
 				}
 			}
 		}),

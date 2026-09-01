@@ -180,6 +180,37 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
 	});
 
+	it('labels and populates the n8n-connect tab and finds its items in search', async () => {
+		const gatewayItem: ToolConnectionItem = {
+			id: 'n8n-connect:slack',
+			kind: 'node',
+			title: 'Slack',
+			description: 'Send messages',
+			status: 'none',
+			category: 'n8n-connect',
+			freeCredits: true,
+			nodeTypeName: 'n8n-nodes-base.slackTool',
+		};
+		const { getByTestId, getByPlaceholderText, queryByText } = renderWith({
+			items: [gatewayItem, ...realisticItems],
+			categories: ['n8n-connect', 'all', ...ALL_CATEGORIES],
+		});
+
+		const tab = getByTestId('tab-n8n-connect');
+		expect(tab.textContent).toContain('Gateway credits');
+		expect(tab.textContent).toContain('(1)');
+		// First tab is active, so the gateway item is visible immediately.
+		expect(queryByText('Slack')).toBeTruthy();
+
+		const inputEl = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+		// A non-matching query empties the tab, proving the debounced filter runs.
+		await fireEvent.update(inputEl, 'zzzznomatch');
+		await waitFor(() => expect(getByTestId('tab-n8n-connect').textContent).toContain('(0)'));
+		// Searching the item's description text brings it back.
+		await fireEvent.update(inputEl, 'send messages');
+		await waitFor(() => expect(getByTestId('tab-n8n-connect').textContent).toContain('(1)'));
+	});
+
 	it('keeps connected items in their own category when the connected tab is omitted', () => {
 		const { queryByText, queryAllByText } = renderWith({
 			categories: ['mcp'],
