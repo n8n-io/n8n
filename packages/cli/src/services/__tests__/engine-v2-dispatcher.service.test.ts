@@ -1,3 +1,4 @@
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import type {
 	INode,
 	IPinData,
@@ -112,11 +113,12 @@ describe('EngineV2Dispatcher', () => {
 	});
 
 	describe('start', () => {
-		it('returns the data plane execution id', async () => {
-			await expect(dispatcher.start(runData())).resolves.toBe('dp-uuid');
+		it('mints the execution id and sends it to the data plane', async () => {
+			const executionId = await dispatcher.start(runData());
 
+			expect(executionId).toMatch(UUID_V7_PATTERN);
 			expect(proxy.startExecution).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowId: 'wf-1', mode: 'manual' }),
+				expect.objectContaining({ executionId, workflowId: 'wf-1', mode: 'manual' }),
 			);
 		});
 
@@ -348,14 +350,28 @@ describe('EngineV2Dispatcher', () => {
 		});
 
 		describe('the push session', () => {
-			it('records the run against the data plane execution id', async () => {
-				await dispatcher.start(runData({ pushRef: 'push-1' }));
+			it('records the run against the minted execution id', async () => {
+				const executionId = await dispatcher.start(runData({ pushRef: 'push-1' }));
 
-				expect(pushRegistry.register).toHaveBeenCalledExactlyOnceWith('dp-uuid', {
+				expect(pushRegistry.register).toHaveBeenCalledExactlyOnceWith(executionId, {
 					pushRef: 'push-1',
 					workflowId: 'wf-1',
 					trigger: { nodeName: MANUAL_TRIGGER.name, outputs: [[{ json: {} }]] },
 				});
+			});
+
+			it('records the run before it dispatches, so no event can arrive first', async () => {
+				let registeredBeforeDispatch = false;
+				proxy.startExecution.mockImplementationOnce(async ({ executionId }) => {
+					registeredBeforeDispatch = pushRegistry.register.mock.calls.some(
+						([id]) => id === executionId,
+					);
+					return { executionId };
+				});
+
+				await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+				expect(registeredBeforeDispatch).toBe(true);
 			});
 
 			it('records the trigger payload the engine was given', async () => {
@@ -381,12 +397,13 @@ describe('EngineV2Dispatcher', () => {
 				expect(pushRegistry.register).not.toHaveBeenCalled();
 			});
 
-			it('records nothing when the data plane refused the run', async () => {
+			it('releases the session when the data plane refused the run', async () => {
 				proxy.startExecution.mockRejectedValueOnce(new Error('down'));
 
 				await expect(dispatcher.start(runData({ pushRef: 'push-1' }))).rejects.toThrow('down');
 
-				expect(pushRegistry.register).not.toHaveBeenCalled();
+				const [executionId] = pushRegistry.register.mock.calls[0];
+				expect(pushRegistry.release).toHaveBeenCalledExactlyOnceWith(executionId);
 			});
 		});
 	});

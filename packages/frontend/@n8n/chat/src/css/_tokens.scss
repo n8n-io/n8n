@@ -137,6 +137,13 @@
 	--chat--footer--background: var(--chat--color-light);
 	--chat--footer--color: var(--chat--color-dark);
 	--chat--footer--border-top: 1px solid var(--chat--color-light-shade-100);
+
+	/* Credential Status Strip */
+	--chat--credential-status--padding: 0.75em 1em;
+	--chat--credential-status--background: var(--chat--color-light-shade-50);
+	--chat--credential-status--color: var(--chat--color-dark);
+	--chat--credential-status--font-size: 0.85em;
+	--chat--credential-status--border-top: 1px solid var(--chat--color-light-shade-100);
 }
 
 .n8n-chat {

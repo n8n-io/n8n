@@ -17,6 +17,12 @@ export type InputNumberEmits = NumberFieldRootEmits & {
 	blur: [event: FocusEvent];
 };
 
+export interface InputNumberExposed {
+	focus: () => void;
+	blur: () => void;
+	select: () => void;
+}
+
 export type InputNumberControlSlotProps = {
 	ui: { class: string };
 };
