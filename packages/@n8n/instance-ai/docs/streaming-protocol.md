@@ -308,6 +308,35 @@ progress indicator from this data.
 }
 ```
 
+### `setup-items`
+
+The setup panel checklist for a workflow (service-keyed items, kinds
+`credential | parameters`). Each event carries the FULL current list for its
+`workflowId` and replaces the previous snapshot — removal is implicit, an
+empty `items` list clears the workflow's checklist. Items carry no status:
+done-ness is always derived client-side. Durable; the reducer folds the
+latest snapshot per `workflowId` onto the ROOT agent node regardless of the
+emitting agent, so it survives refresh via `GET /messages`.
+
+```json
+{
+  "type": "setup-items",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "workflowId": "wf-1",
+    "items": [
+      {
+        "id": "wf-1:credential:slackApi",
+        "kind": "credential",
+        "credentialType": "slackApi",
+        "nodeBindings": [{"nodeName": "Send message"}]
+      }
+    ]
+  }
+}
+```
+
 ### `status`
 
 A transient status message. Empty string clears the indicator.
@@ -602,6 +631,7 @@ creating duplicate messages.
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
 | `tasks-update` | `tasks` | Task checklist created/updated |
+| `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
 | `thread-title-updated` | `title` | Thread title changed |

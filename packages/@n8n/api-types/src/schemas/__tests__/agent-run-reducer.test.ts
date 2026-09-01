@@ -179,7 +179,6 @@ function makeSetupItems(
 			items: [
 				{
 					id: `${workflowId}:credential:${credentialType}`,
-					workflowId,
 					kind: 'credential',
 					credentialType,
 				},

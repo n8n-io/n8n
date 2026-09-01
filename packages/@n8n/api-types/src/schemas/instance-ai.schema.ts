@@ -955,9 +955,9 @@ export const tasksUpdatePayloadSchema = z.object({
  */
 const setupItemBase = {
 	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
-	 *  for credential items, nodeName for parameter items. */
+	 *  for credential items, nodeName for parameter items. Items carry no
+	 *  workflowId field of their own: they are scoped by the payload's. */
 	id: z.string(),
-	workflowId: z.string(),
 };
 
 /** No 'question' kind in v1 (agent questions stay in chat); arms are additive. */
@@ -982,27 +982,15 @@ export const setupItemSchema = z.discriminatedUnion('kind', [
 ]);
 export type InstanceAiSetupItem = z.infer<typeof setupItemSchema>;
 
-export const setupItemsPayloadSchema = z
-	.object({
-		workflowId: z.string(),
-		/** FULL current list for this workflow. Each event replaces the previous
-		 *  snapshot — removal is implicit (an item absent from the next snapshot is
-		 *  gone). No delta/retraction protocol. */
-		items: z.array(setupItemSchema),
-	})
-	// The reducer files the whole list under the payload's workflowId, so an
-	// item claiming another workflow would be stored under the wrong key.
-	.superRefine((payload, ctx) => {
-		payload.items.forEach((item, index) => {
-			if (item.workflowId !== payload.workflowId) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['items', index, 'workflowId'],
-					message: 'must match the payload workflowId',
-				});
-			}
-		});
-	});
+export const setupItemsPayloadSchema = z.object({
+	workflowId: z.string(),
+	/** FULL current list for this workflow. Each event replaces the previous
+	 *  snapshot — removal is implicit (an item absent from the next snapshot is
+	 *  gone), and an empty list is a tombstone: it must survive so it keeps
+	 *  overriding older non-empty snapshots on restore. No delta/retraction
+	 *  protocol. */
+	items: z.array(setupItemSchema),
+});
 
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),

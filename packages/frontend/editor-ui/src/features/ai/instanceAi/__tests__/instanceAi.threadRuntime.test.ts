@@ -325,7 +325,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					items: [
 						{
 							id: 'wf-1:credential:slackApi',
-							workflowId: 'wf-1',
 							kind: 'credential',
 							credentialType: 'slackApi',
 						},
@@ -343,7 +342,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					items: [
 						{
 							id: 'wf-1:credential:notionApi',
-							workflowId: 'wf-1',
 							kind: 'credential',
 							credentialType: 'notionApi',
 						},
@@ -382,7 +380,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 							'wf-1': [
 								{
 									id: 'wf-1:credential:slackApi',
-									workflowId: 'wf-1',
 									kind: 'credential',
 									credentialType: 'slackApi',
 								},

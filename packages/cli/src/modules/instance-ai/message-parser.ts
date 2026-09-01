@@ -295,6 +295,9 @@ function isRenderableTree(tree: InstanceAiAgentNode): boolean {
 		tree.reasoning.length > 0 ||
 		(tree.planItems?.length ?? 0) > 0 ||
 		!!tree.tasks ||
+		// Presence check on purpose: an all-resolved `{wf: []}` snapshot is a
+		// tombstone that must reach the FE (only the snapshot tree carries it),
+		// or restore falls back to an older message's stale non-empty snapshot.
 		!!tree.setupItemsByWorkflowId ||
 		!!tree.statusMessage ||
 		!!tree.result ||
