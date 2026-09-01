@@ -457,7 +457,7 @@ export class ChatHubService {
 		let previousMessage: ChatHubMessage | undefined;
 
 		try {
-			const result = await this.messageRepository.manager.transaction(async (trx) => {
+			const result = await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				const isNewSession = !session;
 				session ??= await this.createChatSession(
@@ -516,7 +516,7 @@ export class ChatHubService {
 					tools,
 					processedAttachments,
 					tz,
-					trx,
+					ctx,
 					executionMetadata,
 				);
 
@@ -612,7 +612,7 @@ export class ChatHubService {
 		let workflow: PreparedChatWorkflow;
 		let previousMessage: ChatHubMessage | undefined;
 		try {
-			const result = await this.messageRepository.manager.transaction(async (trx) => {
+			const result = await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				session ??= await this.createChatSession(
 					user,
@@ -672,7 +672,7 @@ export class ChatHubService {
 					tools,
 					processedAttachments,
 					tz,
-					trx,
+					ctx,
 					executionMetadata,
 					true, // manual
 				);
@@ -757,7 +757,7 @@ export class ChatHubService {
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
-			result = await this.messageRepository.manager.transaction(async (trx) => {
+			result = await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -814,7 +814,7 @@ export class ChatHubService {
 						tools,
 						attachments,
 						tz,
-						trx,
+						ctx,
 						executionMetadata,
 					);
 
@@ -895,7 +895,7 @@ export class ChatHubService {
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
-			result = await this.messageRepository.manager.transaction(async (trx) => {
+			result = await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -968,7 +968,7 @@ export class ChatHubService {
 						tools,
 						attachments,
 						tz,
-						trx,
+						ctx,
 						executionMetadata,
 						true, // manual
 					);
@@ -1039,7 +1039,7 @@ export class ChatHubService {
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		const { retryOfMessageId, previousMessageId, workflow } =
-			await this.messageRepository.manager.transaction(async (trx) => {
+			await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -1080,7 +1080,7 @@ export class ChatHubService {
 					tools,
 					attachments,
 					tz,
-					trx,
+					ctx,
 					executionMetadata,
 				);
 
@@ -1124,7 +1124,7 @@ export class ChatHubService {
 		}
 
 		const { retryOfMessageId, previousMessageId, workflow } =
-			await this.messageRepository.manager.transaction(async (trx) => {
+			await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -1166,7 +1166,7 @@ export class ChatHubService {
 					tools,
 					attachments,
 					tz,
-					trx,
+					ctx,
 					executionMetadata,
 					true, // manual
 				);
