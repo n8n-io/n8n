@@ -68,6 +68,7 @@ export { default as N8nInfoTip } from './N8nInfoTip';
 export { default as N8nInput } from './N8nInput';
 export { default as N8nInputLabel } from './N8nInputLabel';
 export { default as N8nInputNumber } from './N8nInputNumber';
+export type * from './N8nInputNumber/InputNumber.types';
 export { default as N8nLink } from './N8nLink';
 export { default as N8nLogo } from './N8nLogo';
 export { default as N8nLoading } from './N8nLoading';
