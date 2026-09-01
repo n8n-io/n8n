@@ -249,6 +249,22 @@ describe('OtelService', () => {
 			expect(start).toHaveBeenCalledTimes(1);
 		});
 
+		it('lowercases only the endpoint scheme before it reaches the exporter', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...grpcSettings,
+				exporterEndpoint: 'HTTP://Collector.Example.com:4317',
+			});
+
+			await service.init();
+
+			// The gRPC exporter selects TLS with a raw-string `startsWith('http://')`,
+			// so an uppercase scheme would silently pick TLS against a plaintext
+			// collector. Everything after the scheme is passed through untouched.
+			expect(OTLPGrpcTraceExporter).toHaveBeenCalledWith(
+				expect.objectContaining({ url: 'http://Collector.Example.com:4317' }),
+			);
+		});
+
 		it('converts exporter headers into lowercased gRPC metadata', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue({
 				...grpcSettings,

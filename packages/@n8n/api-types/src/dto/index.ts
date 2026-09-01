@@ -390,6 +390,7 @@ export {
 export {
 	UpdateOtelSettingsDto,
 	OTLP_PROTOCOLS,
+	exporterEndpointSchema,
 	type OtlpProtocol,
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';

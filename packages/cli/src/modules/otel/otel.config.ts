@@ -1,3 +1,4 @@
+import { exporterEndpointSchema } from '@n8n/api-types';
 import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
@@ -18,7 +19,8 @@ export class OtelConfig {
 	@Env(OTEL_ENV_VARS.exporterProtocol, otlpProtocolSchema)
 	exporterProtocol: OtlpProtocol = 'http/protobuf';
 
-	@Env(OTEL_ENV_VARS.exporterEndpoint)
+	/** Reuses the API DTO schema, so env- and UI-supplied endpoints accept the same values. */
+	@Env(OTEL_ENV_VARS.exporterEndpoint, exporterEndpointSchema)
 	exporterEndpoint: string = 'http://localhost:4318';
 
 	@Env(OTEL_ENV_VARS.exporterTracingPath)

@@ -161,6 +161,10 @@ Notes:
   proxies and firewalls more reliably and is easier to debug.
 - The endpoint scheme controls TLS for **both** protocols: `https://` uses TLS,
   `http://` does not. There is no `grpc://` scheme.
+- Because the scheme is load-bearing, `N8N_OTEL_EXPORTER_OTLP_ENDPOINT` must be an
+  `http://` or `https://` URL. n8n logs a warning and uses the default endpoint if
+  the value has another scheme or no scheme, e.g. `localhost:4318`. The scheme is
+  matched case-insensitively, and n8n lowercases it before it reaches the exporter.
 - gRPC endpoints take **no URL path**, so `N8N_OTEL_EXPORTER_OTLP_TRACING_PATH` is
   ignored when the protocol is `grpc`.
 - `N8N_OTEL_EXPORTER_OTLP_HEADERS` entries are sent as gRPC metadata. Keys are

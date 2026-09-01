@@ -223,9 +223,16 @@ export class OtelService {
 			'exporterProtocol' | 'exporterEndpoint' | 'exporterTracingPath'
 		>,
 	): string {
+		// The gRPC exporter selects TLS with a raw-string `startsWith('http://')`,
+		// so an uppercase scheme silently picks TLS against a plaintext collector.
+		// Only the scheme is lowercased — the rest of the URL stays byte-for-byte.
+		const endpoint = connection.exporterEndpoint.replace(/^https?:\/\//i, (scheme) =>
+			scheme.toLowerCase(),
+		);
+
 		return connection.exporterProtocol === 'grpc'
-			? connection.exporterEndpoint
-			: this.buildOtlpTracesUrl(connection.exporterEndpoint, connection.exporterTracingPath);
+			? endpoint
+			: this.buildOtlpTracesUrl(endpoint, connection.exporterTracingPath);
 	}
 
 	/**
