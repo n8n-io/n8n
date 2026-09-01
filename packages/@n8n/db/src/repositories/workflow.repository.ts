@@ -34,6 +34,7 @@ import type {
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
+import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
@@ -1010,7 +1011,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const conditions: string[] = [];
 		const params: Record<string, string> = {
 			cpParentWorkflowId: parentWorkflowId,
-			cpCallerIdMembership: `%,${this.escapeLike(parentWorkflowId)},%`,
+			cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
 		};
 
 		// Branch 1: callerPolicy = 'any'
@@ -1018,7 +1019,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		// Branch 2: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
 		conditions.push(
-			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ESCAPE '\\')`,
+			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
 		);
 
 		// Branch 3: callerPolicy = 'workflowsFromSameOwner' (or NULL when default is 'workflowsFromSameOwner').
@@ -1042,11 +1043,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return this.globalConfig.database.type === 'postgresdb'
 			? `${field} ->> '${key}'`
 			: `JSON_EXTRACT(${field}, '$.${key}')`;
-	}
-
-	/** Escape LIKE metacharacters (`\`, `%`, `_`) so the value matches literally. */
-	private escapeLike(value: string): string {
-		return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 	}
 
 	/**

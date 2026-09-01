@@ -102,8 +102,8 @@ export class InstanceAiMessageRepository extends Repository<InstanceAiMessage> {
 	/**
 	 * Candidate rows for excerpt extraction, newest-first within each thread.
 	 *
-	 * One capped fetch across all threads keeps this portable (no window
-	 * functions) and bounded; the per-thread cap is applied afterwards. A thread
+	 * One capped fetch across all threads keeps this plain query-builder SQL
+	 * (no window functions) and bounded; the per-thread cap is applied afterwards. A thread
 	 * with far more matches than its neighbours can therefore crowd the tail of
 	 * the batch out, which only costs excerpts, never a hit.
 	 */
@@ -137,8 +137,8 @@ export class InstanceAiMessageRepository extends Repository<InstanceAiMessage> {
 
 	/**
 	 * The opening user message of each thread — the original ask. One query for
-	 * all threads: a correlated `MIN(createdAt)` subquery is portable to every
-	 * supported driver (first-per-group via window functions is not). Rows tied
+	 * all threads: a correlated `MIN(createdAt)` subquery stays within what the
+	 * query builder can express (window functions are not). Rows tied
 	 * on `createdAt` are broken by lowest id afterwards, mirroring the
 	 * `(createdAt, id)` ordering the per-thread reads use.
 	 */

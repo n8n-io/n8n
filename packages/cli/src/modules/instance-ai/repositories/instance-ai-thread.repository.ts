@@ -1,3 +1,4 @@
+import { LIKE_ESCAPE_CLAUSE } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
@@ -5,7 +6,6 @@ import {
 	ASK_USER_CONTENT_MARKER,
 	buildMessageMatchCondition,
 	buildSearchLikePattern,
-	LIKE_ESCAPE_CHAR,
 } from './conversation-history-search';
 import { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import { InstanceAiThread } from '../entities/instance-ai-thread.entity';
@@ -110,10 +110,7 @@ export class InstanceAiThreadRepository extends Repository<InstanceAiThread> {
 			.getQuery();
 
 		return qb
-			.andWhere(
-				`(LOWER(t.title) LIKE :pattern ESCAPE '${LIKE_ESCAPE_CHAR}'` +
-					` OR EXISTS ${messageMatch})`,
-			)
+			.andWhere(`(LOWER(t.title) LIKE :pattern ${LIKE_ESCAPE_CLAUSE} OR EXISTS ${messageMatch})`)
 			.setParameters({
 				pattern: buildSearchLikePattern(params.query),
 				askUserMarker: ASK_USER_CONTENT_MARKER,
