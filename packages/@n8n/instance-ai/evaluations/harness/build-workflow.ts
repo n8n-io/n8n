@@ -835,6 +835,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					priorRuns: config.seed.priorRuns,
 					workflowIdsByName: priorRunWorkflowIds,
 					logger,
+					timeoutMs,
 					laneTag: config.laneTag,
 				});
 			}

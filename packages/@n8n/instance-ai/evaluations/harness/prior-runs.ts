@@ -2,9 +2,10 @@ import { sleep } from '@n8n/utils/sleep';
 
 import type { EvalLogger } from './logger';
 import {
+	extractErrorMessage,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
-	extractErrorMessage,
+	shouldRetryScenarioExecution,
 } from './transient-error';
 import type { N8nClient } from '../clients/n8n-client';
 import type { SeedPriorRun } from '../types';
@@ -84,32 +85,38 @@ async function runOnce(
 	timeoutMs?: number,
 ): Promise<PriorRunOutcome> {
 	const base = { workflow: priorRun.workflow, workflowId };
+	let lastErrors: string[] = [];
 
 	for (let attempt = 1; attempt <= MAX_EXEC_ATTEMPTS; attempt++) {
+		let retryReason: string;
 		try {
 			const result = await client.executeWithLlmMock(workflowId, priorRun.hints, timeoutMs);
 			// A DB write race aborts the run before any node executes and reports in-band.
 			// That is not the failure the case is staging, so retry it rather than record it.
-			if (!result.success && isTransientExecutionAbort(result.errors)) {
-				if (attempt < MAX_EXEC_ATTEMPTS) {
-					logger.warn(
-						`    Prior run "${priorRun.workflow}" hit a transient DB abort (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}); retrying`,
-					);
-					await delay(500 * attempt);
-					continue;
-				}
+			if (result.success || !isTransientExecutionAbort(result.errors)) {
+				return { ...base, success: result.success, errors: result.errors };
 			}
-			return { ...base, success: result.success, errors: result.errors };
+			lastErrors = result.errors;
+			retryReason = `transient DB abort (${result.errors.join('; ') || 'no error detail'})`;
 		} catch (error: unknown) {
-			// Infrastructure, not the staged failure. Recorded rather than thrown: the
-			// graded turn is what this eval measures, and killing the build here would
-			// report an instance problem as a builder problem.
 			const message = extractErrorMessage(error);
-			logger.warn(`    Prior run "${priorRun.workflow}" could not complete: ${message}`);
-			return { ...base, success: false, errors: [message] };
+			// Infrastructure, not the staged failure. Retried on the same terms a scenario
+			// execution gets, because a blip here silently voids the case's premise: the
+			// graded turn would then run against history that never landed.
+			if (!shouldRetryScenarioExecution(message, attempt)) {
+				logger.warn(`    Prior run "${priorRun.workflow}" could not complete: ${message}`);
+				return { ...base, success: false, errors: [message] };
+			}
+			lastErrors = [message];
+			retryReason = message;
 		}
+		logger.warn(
+			`    Prior run "${priorRun.workflow}" ${retryReason} (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}); retrying`,
+		);
+		await delay(500 * attempt);
 	}
 
-	// Unreachable: the loop either returns or exhausts into the final attempt's return.
-	return { ...base, success: false, errors: ['prior run exhausted its retries'] };
+	// Every attempt hit a retryable fault. Reports the last real errors rather than a
+	// synthetic message, so the log still names what actually went wrong.
+	return { ...base, success: false, errors: lastErrors };
 }

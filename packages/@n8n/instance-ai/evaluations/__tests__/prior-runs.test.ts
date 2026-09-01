@@ -5,6 +5,7 @@ import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 import { executePriorRuns } from '../harness/prior-runs';
 import { EvalTestCaseSchema } from '../harness/schema';
+import { MAX_EXEC_ATTEMPTS } from '../harness/transient-error';
 
 function execResult(
 	overrides: Partial<InstanceAiEvalExecutionResult> = {},
@@ -138,10 +139,29 @@ describe('executePriorRuns', () => {
 		expect(outcomes[0].success).toBe(true);
 	});
 
-	it('records an infrastructure error instead of killing the build', async () => {
+	it('retries a transient network throw, so a blip does not void the premise', async () => {
+		// The graded turn would otherwise run against history that never landed.
+		const client = mock<N8nClient>();
+		client.executeWithLlmMock
+			.mockRejectedValueOnce(new Error('fetch failed'))
+			.mockResolvedValueOnce(execResult());
+
+		const outcomes = await executePriorRuns({
+			client,
+			priorRuns: [{ workflow: 'Daily Sync' }],
+			workflowIdsByName: ids,
+			logger: logger(),
+			sleep: noSleep,
+		});
+
+		expect(client.executeWithLlmMock).toHaveBeenCalledTimes(2);
+		expect(outcomes[0].success).toBe(true);
+	});
+
+	it('records a NON-retryable error immediately instead of killing the build', async () => {
 		// Throwing here would report an instance problem as a builder problem.
 		const client = mock<N8nClient>();
-		client.executeWithLlmMock.mockRejectedValue(new Error('fetch failed'));
+		client.executeWithLlmMock.mockRejectedValue(new Error('workflow is not runnable'));
 		const log = logger();
 
 		const outcomes = await executePriorRuns({
@@ -152,9 +172,28 @@ describe('executePriorRuns', () => {
 			sleep: noSleep,
 		});
 
+		expect(client.executeWithLlmMock).toHaveBeenCalledTimes(1);
 		expect(outcomes[0].success).toBe(false);
-		expect(outcomes[0].errors).toEqual(['fetch failed']);
+		expect(outcomes[0].errors).toEqual(['workflow is not runnable']);
 		expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('could not complete'));
+	});
+
+	it('gives up after the retry budget and reports the real error', async () => {
+		// Not a synthetic "exhausted" string: the log has to name what went wrong.
+		const client = mock<N8nClient>();
+		client.executeWithLlmMock.mockRejectedValue(new Error('ECONNRESET'));
+
+		const outcomes = await executePriorRuns({
+			client,
+			priorRuns: [{ workflow: 'Daily Sync' }],
+			workflowIdsByName: ids,
+			logger: logger(),
+			sleep: noSleep,
+		});
+
+		expect(client.executeWithLlmMock).toHaveBeenCalledTimes(MAX_EXEC_ATTEMPTS);
+		expect(outcomes[0].success).toBe(false);
+		expect(outcomes[0].errors).toEqual(['ECONNRESET']);
 	});
 
 	it('throws when the seed never created the named workflow', async () => {
