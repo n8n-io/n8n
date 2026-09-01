@@ -1373,7 +1373,7 @@ export class WorkflowService {
 		//
 		// Both writes commit together. A deprovision of its own would leave a workflow
 		// whose delete then failed alive with its schedules stripped.
-		await this.workflowRepository.manager.transaction(async (trx) => {
+		await this.workflowRepository.runInTransaction({}, async (trx) => {
 			await this.durableJobProvisioner.deprovisionOwnerInTransaction(
 				trx,
 				this.workflowScheduledJobOwner.ref(workflowId),
