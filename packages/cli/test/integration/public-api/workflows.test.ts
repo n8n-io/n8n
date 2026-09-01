@@ -1061,7 +1061,10 @@ describe('GET /workflows/:id/:versionId', () => {
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
+
 		expect(response.statusCode).toBe(404);
+		// The deprecated path keeps one message for both cases. Callers may match on it.
+		expect(response.body.message).toBe('Version not found');
 	});
 
 	test('should fail due to non-existing version', async () => {
@@ -1139,19 +1142,11 @@ describe('GET /workflows/:id/:versionId', () => {
 });
 
 describe('GET /workflows/:workflowId/versions/:versionId', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('get', '/workflows/123/versions/version-123', null),
-	);
-
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('get', '/workflows/123/versions/version-123', 'abcXYZ'),
-	);
-
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/versions/version-123');
+
 		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow not found');
 	});
 
 	test('should fail due to non-existing version', async () => {

@@ -636,10 +636,10 @@ export class WorkflowsPublicController {
 				includePublishHistory: false,
 			});
 		} catch (error) {
-			if (
-				error instanceof SharedWorkflowNotFoundError ||
-				error instanceof WorkflowHistoryVersionNotFoundError
-			) {
+			if (error instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Workflow not found');
+			}
+			if (error instanceof WorkflowHistoryVersionNotFoundError) {
 				throw new NotFoundError('Version not found');
 			}
 			throw error;
