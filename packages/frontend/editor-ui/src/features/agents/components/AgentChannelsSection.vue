@@ -226,7 +226,6 @@ const remainingChannelOptionLabels = computed(() => {
 			</button>
 			<button
 				:class="$style.channelCard"
-				,
 				:disabled="props.disabled"
 				data-testid="agent-channels-preview-tile"
 			>
