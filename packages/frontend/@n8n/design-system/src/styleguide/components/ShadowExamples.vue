@@ -10,16 +10,16 @@ const shadows = [
 </script>
 
 <template>
-	<div class="shadow-examples">
-		<div v-for="shadow in shadows" :key="shadow.name" class="item">
-			<div class="label">{{ shadow.name }}</div>
-			<div class="card" :style="{ boxShadow: shadow.token }" />
+	<div :class="$style.container">
+		<div v-for="shadow in shadows" :key="shadow.name" :class="$style.item">
+			<div :class="$style.label">{{ shadow.name }}</div>
+			<div :class="$style.card" :style="{ boxShadow: shadow.token }" />
 		</div>
 	</div>
 </template>
 
-<style lang="scss" scoped>
-.shadow-examples {
+<style lang="scss" module>
+.container {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacing--lg);
@@ -30,24 +30,24 @@ const shadows = [
 	border-radius: var(--radius--lg);
 	background: light-dark(var(--color--neutral-100), var(--color--neutral-900));
 	color: var(--text-color);
+}
 
-	.item {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--spacing--sm);
-	}
+.item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
 
-	.label {
-		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--semibold);
-	}
+.label {
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--semibold);
+}
 
-	.card {
-		width: var(--height--5xl);
-		height: var(--height--5xl);
-		border-radius: var(--radius--lg);
-		background: var(--background--surface);
-	}
+.card {
+	width: var(--height--5xl);
+	height: var(--height--5xl);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
 }
 </style>
