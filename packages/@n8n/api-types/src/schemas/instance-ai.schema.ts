@@ -982,7 +982,7 @@ export const setupItemSchema = z.discriminatedUnion('kind', [
 export type InstanceAiSetupItem = z.infer<typeof setupItemSchema>;
 
 export const setupItemsPayloadSchema = z.object({
-	workflowId: z.string(),
+	workflowId: z.string().min(1).max(64),
 	/** FULL current list for this workflow. Each event replaces the previous
 	 *  snapshot — removal is implicit (an item absent from the next snapshot is
 	 *  gone). No delta/retraction protocol. */
