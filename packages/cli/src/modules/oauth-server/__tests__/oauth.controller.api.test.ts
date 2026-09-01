@@ -868,7 +868,7 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should keep the OAuth endpoints live but refuse a grant for the unavailable default resource', async () => {
+	test('should keep the OAuth endpoints live but refuse authorization for the unavailable default resource', async () => {
 		const { createHash, randomBytes } = await import('node:crypto');
 		const codeVerifier = randomBytes(32).toString('base64url');
 		const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
@@ -881,6 +881,9 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		});
 		expect(registerResponse.statusCode).toBe(201);
 
+		// A request without an RFC 8707 resource indicator targets the default
+		// resource — the instance MCP server, which is not being served here.
+		// The flow fails at the authorization URL, before login or consent.
 		const authorizeResponse = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
 			client_id: registerResponse.body.client_id,
 			redirect_uri: 'https://example.com/callback',
@@ -889,25 +892,11 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			code_challenge_method: 'S256',
 			state: 'decoupled-state',
 		});
-		expect(authorizeResponse.statusCode).toBe(302);
-		expect(authorizeResponse.headers.location).toBe('/oauth/consent');
-
-		const rawSetCookie: string | string[] = authorizeResponse.headers['set-cookie'] ?? [];
-		const setCookies = Array.isArray(rawSetCookie) ? rawSetCookie : [rawSetCookie];
-		const sessionCookie = setCookies
-			.map((cookie) => cookie.split(';')[0])
-			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
-		expect(sessionCookie).toBeDefined();
-
-		// A request without an RFC 8707 resource indicator targets the default
-		// resource — the instance MCP server, which is not being served here.
-		const authAgent = testServer.authAgentFor(owner);
-		authAgent.jar.setCookie(sessionCookie ?? '');
-		const consentResponse = await authAgent
-			.post('/consent/approve')
-			.send({ approved: true, scopes: supportedScopes });
-
-		expect(consentResponse.statusCode).toBe(403);
+		expect(authorizeResponse.statusCode).toBe(400);
+		expect(authorizeResponse.body).toEqual({
+			error: 'invalid_target',
+			error_description: 'Resource is not available for authorization',
+		});
 	});
 });
 
