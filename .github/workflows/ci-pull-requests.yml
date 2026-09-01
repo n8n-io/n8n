@@ -150,7 +150,7 @@ jobs:
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
               packages/cli/src/**/*.integration.test.ts
-              packages/cli/vitest.config.*
+              packages/cli/vitest.*
               packages/testing/containers/services/postgres.ts
               packages/testing/containers/postgres-versions.json
               packages/testing/containers/test-containers.ts
