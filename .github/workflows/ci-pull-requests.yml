@@ -27,6 +27,7 @@ jobs:
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
+      db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
@@ -158,6 +159,23 @@ jobs:
               docs/generated/**
               .tbls.sqlite.yml
               .tbls.postgres.yml
+            # Sub-filter of db. Lists the paths that can change a migration
+            # test result. Gates the migration step inside each DB matrix leg.
+            db-migrations:
+              packages/@n8n/db/**
+              packages/@n8n/backend-test-utils/**
+              packages/cli/test/migration/**
+              packages/cli/test/shared/db/**
+              packages/cli/test/setup-testcontainers.js
+              packages/cli/test/teardown-testcontainers.js
+              packages/cli/vitest.config.base.ts
+              packages/cli/vitest.config.migration.ts
+              packages/cli/vitest.config.migration.testcontainers.ts
+              packages/testing/containers/services/postgres.ts
+              packages/testing/containers/postgres-versions.json
+              packages/testing/containers/test-containers.ts
+              .github/workflows/test-db-reusable.yml
+              .github/scripts/db-test-matrix.mjs
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
@@ -322,6 +340,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
+      run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
 
   performance:
     name: Performance

@@ -11,6 +11,11 @@ on:
         description: 'Job matrix JSON, from .github/scripts/db-test-matrix.mjs.'
         required: true
         type: string
+      run-migrations:
+        description: 'Run the migration test step in each leg. The caller turns this off when no migration-relevant path changed.'
+        required: false
+        type: boolean
+        default: true
 
 env:
   NODE_OPTIONS: '--max-old-space-size=6144'
@@ -43,7 +48,7 @@ jobs:
         run: ${{ matrix.test-cmd }}
 
       - name: Run Migration Tests
-        if: matrix.migration-cmd != ''
+        if: matrix.migration-cmd != '' && inputs.run-migrations
         working-directory: packages/cli
         run: ${{ matrix.migration-cmd }}
 
