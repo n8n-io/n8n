@@ -21,6 +21,7 @@ import {
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
@@ -75,6 +76,45 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses setup-items events (the FE drops any type failing this parse)', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Send message' }],
+					},
+				],
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('rejects a credential setup item without a credentialType', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [{ id: 'wf-1:credential:slackApi', kind: 'credential' }],
+			},
+		};
+
+		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
 	});
 });
 
@@ -600,7 +640,7 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('Duplicate seed agent id');
 	});
 
-	it('rejects sub-agent delegation outright — seeded agents restore unpublished', () => {
+	it('accepts a sub-agent relationship backed by another seeded agent', () => {
 		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
 			threadId: '11111111-1111-4111-8111-111111111111',
 			messages: [],
@@ -609,8 +649,34 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
 			],
 		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{
+			name: 'self reference',
+			referencedAgentId: 'AgEnT12345678901',
+			expectedError: 'cannot use itself as a sub-agent',
+		},
+		{
+			name: 'unbacked reference',
+			referencedAgentId: 'AgEnT99999999999',
+			expectedError: 'is not included in the seed',
+		},
+	])('rejects a $name', ({ referencedAgentId, expectedError }) => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: referencedAgentId }] } },
+				}),
+			],
+		});
+
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('unpublished draft');
+		expect(errorOf(result)).toContain(expectedError);
 	});
 
 	it('rejects an inherited property name as a backed skill body', () => {

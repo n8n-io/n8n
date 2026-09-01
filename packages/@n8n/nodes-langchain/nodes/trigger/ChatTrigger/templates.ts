@@ -1,8 +1,11 @@
-import type { IUser } from 'n8n-workflow';
 import sanitizeHtml from 'sanitize-html';
 
 import { CHAT_FRAME_SANDBOX } from './shell';
-import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
+import type {
+	AuthenticationChatOption,
+	ChatFrameIdentity,
+	LoadPreviousSessionChatOption,
+} from './types';
 
 function sanitizeUserInput(input: unknown): string {
 	// Only strings and numbers are meaningful display values; sanitize-html
@@ -172,9 +175,7 @@ export function createPage({
 	allowedFilesMimeTypes,
 	customCss,
 	enableStreaming,
-	shellInner,
-	authToken,
-	visitor,
+	frameIdentity,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -190,12 +191,12 @@ export function createPage({
 	allowedFilesMimeTypes?: string;
 	customCss?: string;
 	enableStreaming?: boolean;
-	/** True when this page renders inside the shell's sandboxed frame. */
-	shellInner?: boolean;
-	/** Sent as `x-auth-token` on every message, since the frame can't send cookies. */
-	authToken?: string;
-	/** Injected server-side: the frame can't fetch `/rest/login` for itself. */
-	visitor?: IUser;
+	/**
+	 * Set only for the render inside the shell's sandboxed frame, carrying the identity the
+	 * server resolved for it. Absent means the single-document render, which resolves its
+	 * own identity in the browser (or has none, under `none`/`basicAuth`).
+	 */
+	frameIdentity?: ChatFrameIdentity;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -225,43 +226,18 @@ export function createPage({
 	const sanitizedInitialMessages = getSanitizedInitialMessages(initialMessages);
 	const sanitizedI18nConfig = getSanitizedI18nConfig(en || {});
 
-	// Inner render only, where the frame's opaque origin makes the `/rest/login` bootstrap
-	// below impossible. Field-by-field so nothing else on the user object reaches the page.
-	const injectedVisitor =
-		shellInner && visitor
-			? escapeForScriptContext({
-					id: visitor.id,
-					firstName: visitor.firstName,
-					lastName: visitor.lastName,
-					email: visitor.email,
-				})
-			: 'null';
+	const shellInner = frameIdentity !== undefined;
 
-	return `<!doctype html>
-	<html lang="en">
-		<head>
-			<meta charset="utf-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1">
-			<title>Chat</title>
-			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
-			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
-			<style>
-				html,
-				body,
-				#n8n-chat {
-					width: 100%;
-					height: 100%;
-				}
-			</style>
-			<style>${sanitizedCustomCss}</style>
-		</head>
-		<body>${shellInner ? innerBootstrapScript : ''}
-			<script type="module">
-				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
-
-				(async function () {
-					const authentication = '${sanitizedAuthentication}';
-					const injectedVisitor = ${injectedVisitor};
+	// How the page learns who the visitor is. The `/rest/login` bootstrap can only work on
+	// the real origin: from the frame's opaque origin the request carries no cookie, and the
+	// `/signin` it falls back to would render editor-ui inside the sandbox. So the inner
+	// render omits that branch outright — nothing at runtime decides it — and takes the
+	// identity resolved server-side, field by field so nothing else on the user object
+	// reaches the page. The unsplit render is reproduced verbatim, vestigial
+	// `injectedVisitor` indirection and all, so its page stays byte-for-byte what it was.
+	const identityBootstrap = !frameIdentity
+		? `const authentication = '${sanitizedAuthentication}';
+					const injectedVisitor = null;
 					let metadata;
 					if (injectedVisitor) {
 						metadata = { user: injectedVisitor };
@@ -289,7 +265,38 @@ export function createPage({
 							window.location.href = '/signin?redirect=' + window.location.href;
 							return;
 						}
-					}
+					}`
+		: `const metadata = { user: ${escapeForScriptContext({
+				id: frameIdentity.visitor.id,
+				firstName: frameIdentity.visitor.firstName,
+				lastName: frameIdentity.visitor.lastName,
+				email: frameIdentity.visitor.email,
+			})} };`;
+
+	return `<!doctype html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+			<title>Chat</title>
+			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
+			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+			<style>
+				html,
+				body,
+				#n8n-chat {
+					width: 100%;
+					height: 100%;
+				}
+			</style>
+			<style>${sanitizedCustomCss}</style>
+		</head>
+		<body>${shellInner ? innerBootstrapScript : ''}
+			<script type="module">
+				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+				(async function () {
+					${identityBootstrap}
 
 					createChat({
 						mode: 'fullscreen',
@@ -301,7 +308,7 @@ export function createPage({
 						webhookConfig: {
 							headers: {
 								'X-Instance-Id': '${instanceId}',
-								${shellInner && authToken ? `'x-auth-token': ${escapeForScriptContext(authToken)},` : ''}
+								${frameIdentity ? `'x-auth-token': ${escapeForScriptContext(frameIdentity.authToken)},` : ''}
 							}
 						},
 						allowFileUploads: ${sanitizedAllowFileUploads},

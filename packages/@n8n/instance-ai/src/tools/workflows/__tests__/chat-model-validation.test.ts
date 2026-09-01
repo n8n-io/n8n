@@ -110,14 +110,17 @@ describe('chat-model-validation', () => {
 	it('only mentions n8n credits in failure guidance when the gateway covers the provider', () => {
 		const error = 'The model "gpt-6" was not found';
 		expect(buildChatModelFailureGuidance('invalid_model', error, [], true)).toContain(
-			'n8n credits',
+			'Gateway credits',
 		);
 		expect(buildChatModelFailureGuidance('invalid_model', error, [], false)).not.toContain(
-			'n8n credits',
+			'Gateway credits',
 		);
 		expect(
 			buildChatModelFailureGuidance('capability_mismatch', 'not a chat model', [], true),
-		).toContain('n8n credits');
+		).toContain('Gateway credits');
+		expect(
+			buildChatModelFailureGuidance('capability_mismatch', 'not a chat model', [], false),
+		).not.toContain('Gateway credits');
 		expect(
 			buildChatModelFailureGuidance('capability_mismatch', 'not a chat model', [], false),
 		).not.toContain('n8n credits');
@@ -260,11 +263,11 @@ describe('chat-model-validation', () => {
 			{ model: { __rl: true, mode: 'id', value: 'gpt-6-mini' } },
 			1.3,
 			'openAiApi',
-			{ id: '__AI_GATEWAY_MANAGED__', name: 'n8n credits' },
+			{ id: '__AI_GATEWAY_MANAGED__', name: 'Gateway credits' },
 		);
 
 		expect(issues.model?.[0]).toContain('explore-resources');
-		expect(issues.model?.[0]).toContain('n8n credits');
+		expect(issues.model?.[0]).toContain('Gateway credits');
 	});
 
 	it('flattens and truncates user-controlled values embedded in locator guidance', async () => {

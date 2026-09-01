@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { assertClearedFor, workflowContentSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
@@ -11,6 +12,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -33,6 +35,7 @@ import type {
 } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
+import { chunkIds } from '../utils/chunk-ids';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
@@ -166,6 +169,30 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return count > 0;
 	}
 
+	async updateContent(
+		id: string,
+		content: QueryDeepPartialEntity<WorkflowEntity>,
+		ctx: OperationContext,
+	) {
+		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
+		await this.managerFor(ctx).update(WorkflowEntity, id, content);
+	}
+
+	/**
+	 * Persists a new workflow, gated on a clearance for its content.
+	 *
+	 * A create binds to the node hash, not the id — an id here is either generated on insert or
+	 * client-supplied, and neither is proof of what was checked. So nothing may mutate `nodes`
+	 * between the `enforceWorkflowSave` call and this write.
+	 *
+	 * `save`, not `insert`: only `save` writes the `workflows_tags` junction rows for a
+	 * populated `tags` relation, and returns the entity with its generated id.
+	 */
+	async createContent(workflow: WorkflowEntity, ctx: OperationContext): Promise<WorkflowEntity> {
+		assertClearedFor(ctx.policyCleared, 'workflowSave', workflowContentSubject(workflow));
+		return await this.managerFor(ctx).save(workflow);
+	}
+
 	async findByCredentialResolverId(
 		resolverId: string,
 	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name'>>> {
@@ -239,13 +266,20 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			return [];
 		}
 
-		const options: FindManyOptions<WorkflowEntity> = {
-			where: { id: In(workflowIds) },
-		};
+		const workflows = new Map<string, WorkflowEntity>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const options: FindManyOptions<WorkflowEntity> = {
+				where: { id: In(chunk) },
+			};
 
-		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
+			if (fields?.length) {
+				options.select = [...new Set(['id', ...fields])] as FindOptionsSelect<WorkflowEntity>;
+			}
 
-		return await this.find(options);
+			for (const workflow of await this.find(options)) workflows.set(workflow.id, workflow);
+		}
+
+		return [...workflows.values()];
 	}
 
 	async findManyByAgentToolReferences(
@@ -275,6 +309,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	async findOneByAgentToolReference(
 		projectId: string,
 		reference: { workflowId?: string; workflowName: string },
+		options: { withActiveVersion?: boolean } = {},
 	) {
 		const workflowWhere: FindOptionsWhere<WorkflowEntity> =
 			reference.workflowId !== undefined
@@ -283,7 +318,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		return await this.findOne({
 			where: { ...workflowWhere, shared: { projectId } },
-			relations: ['shared'],
+			relations: options.withActiveVersion ? ['shared', 'activeVersion'] : ['shared'],
 		});
 	}
 
@@ -292,12 +327,21 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			return [];
 		}
 
-		return await this.createQueryBuilder('workflow')
-			.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
-			.leftJoin('workflow.shared', 'shared', 'shared.role = :role', { role: 'workflow:owner' })
-			.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
-			.where('workflow.id IN (:...workflowIds)', { workflowIds })
-			.getMany();
+		const found = new Map<string, WorkflowEntity>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const workflows = await this.createQueryBuilder('workflow')
+				.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
+				.leftJoin('workflow.shared', 'shared', 'shared.role = :role', {
+					role: 'workflow:owner',
+				})
+				.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
+				.where('workflow.id IN (:...workflowIds)', { workflowIds: chunk })
+				.getMany();
+			for (const workflow of workflows) found.set(workflow.id, workflow);
+		}
+
+		return [...found.values()];
 	}
 
 	async getActiveTriggerCount() {

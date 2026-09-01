@@ -176,6 +176,27 @@ All tests should start with `n8n.start.*` methods. See `composables/TestEntryCom
 | `withUser(user)` | Isolated browser context per user |
 | `withProjectFeatures()` | Enable sharing/folders/permissions |
 
+## Accessibility Checks
+
+The `a11y` fixture runs axe-core against the current page, scoped to a named
+bucket. It **never throws** - a scan that can't run (bucket not on screen, axe
+failure) logs a warning and returns an empty array, so bolting a check onto an
+existing journey can't turn that journey red. Callers decide what to assert.
+
+```typescript
+test('canvas is accessible', async ({ n8n, a11y }) => {
+  await n8n.start.fromBlankCanvas();
+
+  const violations = await a11y.check('canvas');
+
+  expect(violations).toEqual([]);
+});
+```
+
+Buckets: `page` (whole document), `canvas`, `ndv`, `node-creator`, `sidebar`,
+`modal`. Defined in `fixtures/a11y.ts` (`A11Y_BUCKETS`). Scans run with WCAG 2.1
+A + AA rules; override per call with `a11y.check('modal', { tags, disableRules })`.
+
 ## Test Isolation
 
 Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
@@ -290,6 +311,7 @@ See [Quality Corner: Test Migration Guide](https://www.notion.so/n8n/Best-Practi
 | Composable example | `composables/WorkflowComposer.ts` |
 | API helpers | `services/api-helper.ts` |
 | Capabilities | `fixtures/capabilities.ts` |
+| Accessibility fixture | `fixtures/a11y.ts` |
 
 ```typescript
 const member = await api.publicApi.createUser({...});

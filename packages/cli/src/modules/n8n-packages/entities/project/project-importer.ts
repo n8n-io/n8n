@@ -114,7 +114,7 @@ export class ProjectImporter {
 				}
 
 				case 'update':
-					await this.projectService.updateProject(item.sourceProjectId, {
+					await this.projectService.updateProject(user, item.sourceProjectId, {
 						name: item.name,
 						icon: item.icon,
 						description: item.description,

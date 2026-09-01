@@ -7,7 +7,10 @@ import { z } from 'zod';
 import type { OauthService } from '@/oauth/oauth.service';
 
 import { BUILDER_TOOLS } from './builder-tool-names';
-import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
+import {
+	type BuildMcpClientDeps,
+	buildMcpClientForServer,
+} from '../json-config/mcp-client-factory';
 
 export interface VerifyMcpServerDeps {
 	agentId?: string;
@@ -15,6 +18,7 @@ export interface VerifyMcpServerDeps {
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	resolveRegistryConnection?: BuildMcpClientDeps['resolveRegistryConnection'];
 	/** When verification succeeds with a credential, writes it into the matching
 	 *  mcpServers entry so the builder can skip read_config → patch_config. */
 	applyCredentialToMcpServer?: (
@@ -95,6 +99,7 @@ const verifyMcpServerInputSchema = z.object({
 		.describe(
 			'Credential id returned by ask_credential. Required when authentication is not "none"',
 		),
+	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z
 		.number()
 		.int()
@@ -133,6 +138,7 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 						transport: input.transport,
 						authentication: input.authentication,
 						credential: input.credential,
+						metadata: input.metadata,
 						connectionTimeoutMs: timeoutMs,
 					},
 					deps,

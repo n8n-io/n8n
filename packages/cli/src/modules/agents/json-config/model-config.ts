@@ -24,7 +24,9 @@ export async function resolveCredentialAwareModelConfig(
 
 	if (credential === AI_GATEWAY_MANAGED_TAG) {
 		if (!credentialProvider.resolveAiGatewayModelCredential) {
-			throw new UserError('This credential provider cannot resolve n8n credits model credentials.');
+			throw new UserError(
+				'This credential provider cannot resolve Gateway credits model credentials.',
+			);
 		}
 		const raw = await credentialProvider.resolveAiGatewayModelCredential(provider);
 		return {

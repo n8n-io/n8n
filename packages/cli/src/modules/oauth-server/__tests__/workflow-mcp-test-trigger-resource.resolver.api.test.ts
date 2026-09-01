@@ -253,6 +253,7 @@ describe('test vs production resources', () => {
 			clientId,
 			owner.id,
 			[],
+			testToken.audience,
 		);
 		const productionToken = tokenService.generateTokenPair(
 			owner.id,
@@ -266,6 +267,7 @@ describe('test vs production resources', () => {
 			clientId,
 			owner.id,
 			[],
+			productionToken.audience,
 		);
 
 		await expect(

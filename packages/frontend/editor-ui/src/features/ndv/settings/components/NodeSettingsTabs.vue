@@ -104,7 +104,7 @@ const options = computed(() => {
 			align: 'right',
 			tooltip: i18n.baseText('generic.communityNode.tooltip', {
 				interpolate: {
-					docUrl: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+					docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 					packageName: packageName.value,
 				},
 			}),

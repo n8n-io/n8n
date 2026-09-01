@@ -41,7 +41,6 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import {
 	configuredCapabilityKinds,
 	countAgentCapabilities,
@@ -98,7 +97,6 @@ export class AgentPublishService {
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly customToolsService: AgentCustomToolsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly telemetry: Telemetry,
@@ -351,8 +349,6 @@ export class AgentPublishService {
 		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.trackUnpublished(agentId, projectId, user, by);
-
-		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {

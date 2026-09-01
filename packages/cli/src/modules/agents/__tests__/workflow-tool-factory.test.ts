@@ -181,9 +181,24 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 
 		await resolveWorkflowTool({ type: 'workflow', workflow: 'Scoped Workflow' }, context);
 
-		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith('project-1', {
-			workflowName: 'Scoped Workflow',
-		});
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowName: 'Scoped Workflow' },
+			{ usePublishedVersion: false },
+		);
+	});
+
+	it('requests the published workflow version for production runtimes', async () => {
+		const workflow = makeWorkflow({ id: 'wf-published', name: 'Published Workflow' });
+		const context = { ...makeContext(workflow), usePublishedWorkflowVersion: true };
+
+		await resolveWorkflowTool({ type: 'workflow', workflow: 'Published Workflow' }, context);
+
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowName: 'Published Workflow' },
+			{ usePublishedVersion: true },
+		);
 	});
 
 	it('does not fall back to the cached name when an id is present', async () => {
@@ -196,10 +211,11 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			),
 		).rejects.toThrow('Workflow "Existing Workflow" not found');
 
-		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith('project-1', {
-			workflowId: 'missing-id',
-			workflowName: 'Existing Workflow',
-		});
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowId: 'missing-id', workflowName: 'Existing Workflow' },
+			{ usePublishedVersion: false },
+		);
 	});
 
 	it('throws when the workflow is not shared with the project', async () => {
@@ -252,18 +268,26 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await tool.handler?.({}, {});
 		await tool.handler?.({}, {});
 
-		expect(loadWorkflow).toHaveBeenNthCalledWith(1, 'project-1', {
-			workflowId: 'wf-current',
-			workflowName: 'Current Workflow',
-		});
-		expect(loadWorkflow).toHaveBeenNthCalledWith(2, 'project-1', {
-			workflowId: 'wf-current',
-			workflowName: 'Current Workflow',
-		});
-		expect(loadWorkflow).toHaveBeenNthCalledWith(3, 'project-1', {
-			workflowId: 'wf-current',
-			workflowName: 'Current Workflow',
-		});
+		const expectedReference = { workflowId: 'wf-current', workflowName: 'Current Workflow' };
+		const expectedOptions = { usePublishedVersion: false };
+		expect(loadWorkflow).toHaveBeenNthCalledWith(
+			1,
+			'project-1',
+			expectedReference,
+			expectedOptions,
+		);
+		expect(loadWorkflow).toHaveBeenNthCalledWith(
+			2,
+			'project-1',
+			expectedReference,
+			expectedOptions,
+		);
+		expect(loadWorkflow).toHaveBeenNthCalledWith(
+			3,
+			'project-1',
+			expectedReference,
+			expectedOptions,
+		);
 		expect(context.workflowRunner.run).toHaveBeenNthCalledWith(
 			1,
 			expect.objectContaining({

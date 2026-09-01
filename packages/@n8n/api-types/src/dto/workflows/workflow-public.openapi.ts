@@ -127,6 +127,24 @@ export const workflowCreateFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
+export const workflowUpdateFieldDocs = {
+	description: {
+		description: 'Description of the workflow',
+		example: 'My workflow description',
+	},
+	parentFolderId: {
+		writeOnly: true,
+		description:
+			'ID of the folder to move the workflow into. Pass null to move it to the project root; omit to leave its current folder unchanged.',
+		example: 'X8ovzm8lTQjcXRZQ',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const publishIfActiveOpenApi: ZodOpenAPIMetadata = {
+	description:
+		"Whether to publish the update if the workflow is currently published. Set to `false` to save the change as a draft on the existing published version instead of releasing it. Has no effect on a workflow that isn't currently published.",
+};
+
 export const nodesOpenApi: ZodOpenAPIMetadata = {
 	type: 'array',
 	...workflowCreateFieldDocs.nodes,

@@ -38,6 +38,29 @@ function hasContextEstablishmentHook(parameters: INodeParameters | undefined): b
 }
 
 /**
+ * Whether a Chat Trigger's `n8nUserAuth` establishes the visitor's n8n identity: only in
+ * hosted-chat mode (embedded/webhook mode has no page to run the OAuth2 handshake on), only
+ * when public (a non-public trigger never reaches the auth code at all), and only when the
+ * chat-trigger OAuth2 pipeline is enabled — with it off, `n8nUserAuth` falls back to a plain
+ * cookie check that authenticates the request but never binds the visitor's identity for
+ * credential resolution (`GenericFunctions.ts`'s `validateAuth`). Absent `mode` counts as
+ * `hostedChat`, its default.
+ */
+function isHostedChatUserAuthTrigger(
+	nodeType: string,
+	parameters: INodeParameters | undefined,
+	isChatOAuth2Enabled: boolean,
+) {
+	return (
+		isChatOAuth2Enabled &&
+		nodeType === CHAT_TRIGGER_NODE_TYPE &&
+		parameters?.public === true &&
+		parameters?.authentication === 'n8nUserAuth' &&
+		(parameters?.mode ?? 'hostedChat') === 'hostedChat'
+	);
+}
+
+/**
  * Classifies a single trigger node by the identity it can establish at runtime.
  *
  * Shared by the backend publish-time validation (`WorkflowValidationService`) and
@@ -45,10 +68,17 @@ function hasContextEstablishmentHook(parameters: INodeParameters | undefined): b
  * sync with how the engine establishes identity (`execution-context.ts`,
  * manual/parent inheritance) and the resolvers' identifiers (e.g. `N8NIdentifier`):
  * when a new trigger or identity source is added there, reflect it here too.
+ *
+ * `isChatOAuth2Enabled` mirrors the `N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2` opt-in flag: it
+ * gates the Chat Trigger's hosted-chat `n8nUserAuth` branch, since that configuration
+ * only establishes identity through the flagged pipeline. Defaults to `false` so a
+ * caller that forgets to pass it gets the safe (no-identity) answer rather than a false
+ * positive.
  */
 export function classifyTriggerIdentity(
 	nodeType: string,
 	parameters: INodeParameters | undefined,
+	{ isChatOAuth2Enabled = false }: { isChatOAuth2Enabled?: boolean } = {},
 ): TriggerIdentityCapabilities {
 	// Sub-workflows inherit identity from the parent; Chat Hub and MCP-over-n8nOAuth2
 	// inject it. All provide both identity families.
@@ -68,6 +98,7 @@ export function classifyTriggerIdentity(
 	if (
 		isSubWorkflowTrigger ||
 		isChatHubTrigger ||
+		isHostedChatUserAuthTrigger(nodeType, parameters, isChatOAuth2Enabled) ||
 		isMcpTrigger ||
 		isFormTrigger ||
 		isOAuth2Webhook
