@@ -7,10 +7,13 @@ import {
 	type ExecutionView,
 	type StepView,
 } from '../../execution';
-import type { ExecutionSnapshot, ExecutionStepsResponse, StepDetail } from '../api.types';
+import type { ExecutionSnapshot, StepDetail } from '../api.types';
 import { fail } from '../error-response';
 
 const ExecutionIdParams = z.object({ id: z.string().uuid() });
+
+/** Strict: an ignored typo would read as an execution that ran no steps. */
+const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).optional() });
 
 /** The validated `:id`, or `null` once the 400 has been sent. */
 function parseExecutionId(req: Request, res: Response): string | null {
@@ -51,9 +54,15 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 		const id = parseExecutionId(req, res);
 		if (id === null) return;
 
+		const query = GetExecutionQuery.safeParse(req.query);
+		if (!query.success) {
+			fail(res, 400, { error: 'invalid_request', details: query.error.flatten() });
+			return;
+		}
+
+		let execution: ExecutionView;
 		try {
-			const execution = await executionQuery.getExecution(id);
-			res.status(200).json(toExecutionSnapshot(execution));
+			execution = await executionQuery.getExecution(id);
 		} catch (error) {
 			if (error instanceof ExecutionNotFoundError) {
 				fail(res, 404, { error: 'not_found' });
@@ -61,18 +70,15 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 			}
 			throw error;
 		}
-	};
-}
 
-export function createGetExecutionStepsHandler(
-	executionQuery: ExecutionQueryService,
-): RequestHandler {
-	return async (req, res) => {
-		const id = parseExecutionId(req, res);
-		if (id === null) return;
+		const snapshot = toExecutionSnapshot(execution);
 
-		const steps = await executionQuery.getSteps(id);
-		const body: ExecutionStepsResponse = { steps: steps.map(toStepDetail) };
-		res.status(200).json(body);
+		// The steps ride along, to save the caller a second round trip.
+		if (query.data.includeSteps === 'true') {
+			const steps = await executionQuery.getSteps(id);
+			snapshot.steps = steps.map(toStepDetail);
+		}
+
+		res.status(200).json(snapshot);
 	};
 }

@@ -15,12 +15,7 @@ export {
 } from './auth';
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
-export type {
-	EngineErrorResponse,
-	ExecutionSnapshot,
-	ExecutionStepsResponse,
-	StepDetail,
-} from './server';
+export type { EngineErrorResponse, ExecutionSnapshot, StepDetail } from './server';
 
 // The publisher stays internal: no host constructs or swaps one.
 export {

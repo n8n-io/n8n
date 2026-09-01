@@ -35,7 +35,7 @@ import {
 	type BundleWorkflowSnapshot,
 	type ExecutionDataPayload,
 	type ExecutionRef,
-	type WorkflowSnapshot,
+	toWorkflowSnapshot,
 } from './execution-data/types';
 import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
@@ -98,15 +98,8 @@ export class ExecutionPersistence {
 	 */
 	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}): Promise<string> {
 		const { data: rawData, workflowData, ...rest } = payload;
-		const { connections, nodes, name, settings, id, nodeGroups } = workflowData;
-		const workflowSnapshot: WorkflowSnapshot = {
-			connections,
-			nodes,
-			name,
-			settings,
-			id,
-			nodeGroups,
-		};
+		const { id } = workflowData;
+		const workflowSnapshot = toWorkflowSnapshot(workflowData);
 		const storedAt = this.storageConfig.modeTag;
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
@@ -811,7 +804,7 @@ export class ExecutionPersistence {
 				const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
-						workflowData: this.toWorkflowSnapshot(workflowData),
+						workflowData: toWorkflowSnapshot(workflowData),
 						workflowVersionId,
 					};
 
@@ -851,7 +844,7 @@ export class ExecutionPersistence {
 
 				const bundle: ExecutionDataPayload = {
 					data: serializedData,
-					workflowData: workflowData ? this.toWorkflowSnapshot(workflowData) : stored.workflowData,
+					workflowData: workflowData ? toWorkflowSnapshot(workflowData) : stored.workflowData,
 					workflowVersionId: stored.workflowVersionId,
 				};
 
@@ -992,13 +985,6 @@ export class ExecutionPersistence {
 		if (mode !== 'db') return await this.jsonStore.read(ref, mode);
 
 		return tx ? await this.dbStore.read(ref, tx) : await this.dbStore.read(ref);
-	}
-
-	private toWorkflowSnapshot(
-		workflowData: NonNullable<IExecutionResponse['workflowData']>,
-	): WorkflowSnapshot {
-		const { id, name, nodes, connections, settings, nodeGroups } = workflowData;
-		return { id, name, nodes, connections, settings, nodeGroups };
 	}
 
 	private async assembleExecution(

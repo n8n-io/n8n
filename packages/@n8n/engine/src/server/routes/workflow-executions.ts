@@ -1,10 +1,7 @@
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
-import {
-	createGetExecutionHandler,
-	createGetExecutionStepsHandler,
-} from './workflow-executions.handlers';
+import { createGetExecutionHandler } from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
@@ -77,8 +74,6 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 	});
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
-
-	router.get('/:id/steps', createGetExecutionStepsHandler(deps.executionQuery));
 
 	return router;
 }
