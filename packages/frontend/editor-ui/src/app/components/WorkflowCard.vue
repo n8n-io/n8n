@@ -909,15 +909,15 @@ const tags = computed(
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;
-	background-color: var(--color--mint-600);
+	background-color: var(--icon-color--success);
 }
 
 .publishIndicatorDotPartial {
-	background-color: var(--color--warning);
+	background-color: var(--icon-color--warning);
 }
 
 .publishIndicatorDotFailed {
-	background-color: var(--color--red-600);
+	background-color: var(--icon-color--danger);
 }
 
 @include mixins.breakpoint('sm-and-down') {
