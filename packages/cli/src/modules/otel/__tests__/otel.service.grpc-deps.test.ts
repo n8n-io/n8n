@@ -7,8 +7,9 @@ import { mock } from 'vitest-mock-extended';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import { OtelService } from '../otel.service';
 
-// Only the gRPC exporter is mocked, so that grpc-js stays real: its metadata rules
-// are stricter than any stand-in, and warn-and-skip must hold against the real class.
+// Only the gRPC exporter is mocked, so grpc-js and the OTLP/HTTP exporter stay real:
+// their option and metadata rules are stricter than any stand-in, and warn-and-skip
+// and creation-time failures must hold against the real classes.
 const { exporterOptions } = vi.hoisted(() => ({
 	exporterOptions: [] as Array<{ url: string; metadata: Metadata }>,
 }));
@@ -79,6 +80,21 @@ describe('OtelService with real gRPC dependencies', () => {
 			expect(metadata.getMap()).toEqual({ 'x-tenant': 'acme' });
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('x-token-bin'));
 			expect(result).toEqual({ success: true });
+		});
+	});
+
+	// The API and the UI both accept a zero timeout, but the exporter rejects it in
+	// its constructor.
+	it('reports a zero timeout as a failed test trace', async () => {
+		const result = await service.sendTestTrace({
+			...grpcConnection,
+			exporterProtocol: 'http/protobuf',
+			startupConnectivityTimeoutMs: 0,
+		});
+
+		expect(result).toEqual({
+			success: false,
+			error: expect.stringContaining('timeoutMillis is invalid'),
 		});
 	});
 
