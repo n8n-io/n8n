@@ -23,7 +23,6 @@ interface SystemPromptOptions {
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
-	/** Whether past-conversation recall (the `conversation-history` tool) is wired for this run. */
 	conversationHistoryEnabled?: boolean;
 }
 
@@ -104,11 +103,7 @@ This conversation is scoped to a single n8n project, named by the \`<project-con
 If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
-function getConversationRecallSection(enabled?: boolean): string {
-	// `enabled` mirrors the tool's own gate (the host wires the service only for
-	// flagged-in users on project-bound runs) — never point at a tool that is
-	// not there.
-	if (!enabled) return '';
+function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
 
@@ -176,7 +171,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
-${getConversationRecallSection(conversationHistoryEnabled)}
+${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}

@@ -75,9 +75,6 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
-	// Same reasoning: recall only works proactively — the agent won't search for
-	// a history tool when nothing tells it relevant history exists. Deferred, it
-	// was only reached when the user explicitly asked.
 	DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 	'web-search',
 	'fetch-url',

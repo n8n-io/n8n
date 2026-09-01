@@ -1,7 +1,3 @@
-/**
- * Consolidated conversation-history tool — search past conversations, then
- * read a message window from one of them. Read-only, no HITL.
- */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
@@ -12,19 +8,6 @@ import {
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
 } from '../types';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
-
-/**
- * The tool is only registered when the service is wired (see `tools/index.ts`),
- * so this can only throw if that gate and the handler ever disagree. The
- * per-action catch turns it into the soft `{ error }` shape.
- */
-function requireConversationHistoryService(context: InstanceAiContext) {
-	const { conversationHistoryService } = context;
-	if (!conversationHistoryService) {
-		throw new Error('Conversation history is not available on this instance.');
-	}
-	return conversationHistoryService;
-}
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -78,18 +61,6 @@ const getMessagesAction = z.object({
 		),
 });
 
-/**
- * `z.discriminatedUnion` members must be plain ZodObjects, so the
- * before/after + aroundMessageId cross-field rule can't live on
- * `getMessagesAction` itself (`.superRefine()` would turn it into a
- * ZodEffects and break the union's type). Apply it to the assembled union
- * instead — same two-schema split neighboring tools use (see
- * `mcpServersRuntimeInputSchema` / `mcpServersToolInputSchema` in
- * `mcp-servers.tool.ts`): this "runtime" schema keeps the refinement and is
- * `.parse()`d by hand in the handler, while `sanitizeInputSchema` flattens a
- * *copy* into the loose, top-level-object schema Anthropic requires for
- * `.input()`.
- */
 const conversationHistoryRuntimeInputSchema = z
 	.discriminatedUnion('action', [searchAction, getMessagesAction])
 	.superRefine((value, ctx) => {
@@ -157,13 +128,19 @@ const conversationHistoryOutputSchema = z.union([searchOutputSchema, getMessages
 
 // ── Handlers ──────────────────────────────────────────────────────────────
 
+function requireConversationHistoryService(context: InstanceAiContext) {
+	const { conversationHistoryService } = context;
+	if (!conversationHistoryService) {
+		throw new Error('Conversation history is not available on this instance.');
+	}
+	return conversationHistoryService;
+}
+
 async function handleSearch(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'search' }>,
 ): Promise<z.infer<typeof searchOutputSchema>> {
 	try {
-		// Defaults (10 searching, 5 listing) are applied by the service — the
-		// tool passes the raw input through unchanged, same as get-messages.
 		return await requireConversationHistoryService(context).search({
 			query: input.query,
 			limit: input.limit,
@@ -182,8 +159,6 @@ async function handleGetMessages(
 	input: Extract<Input, { action: 'get-messages' }>,
 ): Promise<z.infer<typeof getMessagesOutputSchema>> {
 	try {
-		// Defaults (tail/head/around window sizing) are applied by the service —
-		// the tool passes the raw input through unchanged.
 		return await requireConversationHistoryService(context).getMessages({
 			threadId: input.threadId,
 			aroundMessageId: input.aroundMessageId,
