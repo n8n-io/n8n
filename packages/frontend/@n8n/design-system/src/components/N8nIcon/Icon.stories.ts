@@ -10,6 +10,53 @@ const iconNames = (Object.keys(updatedIconSet) as IconName[]).toSorted((a, b) =>
 	a.localeCompare(b),
 );
 
+const galleryLayout = {
+	root: {
+		display: 'flex',
+		flexDirection: 'column',
+		gap: 'var(--spacing--md)',
+		width: '100%',
+		color: 'var(--text-color)',
+	},
+	toolbar: {
+		display: 'flex',
+	},
+	search: {
+		inlineSize: 'var(--spacing--5xl)',
+		maxInlineSize: '100%',
+	},
+	grid: {
+		display: 'grid',
+		gridTemplateColumns: 'repeat(auto-fill, minmax(var(--spacing--4xl), 1fr))',
+		borderBlockStart: 'var(--border)',
+		borderInlineStart: 'var(--border)',
+	},
+	tile: {
+		display: 'flex',
+		flexDirection: 'column',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 'var(--spacing--2xs)',
+		minBlockSize: 'var(--spacing--4xl)',
+		padding: 'var(--spacing--xs)',
+		border: 'none',
+		borderBlockEnd: 'var(--border)',
+		borderInlineEnd: 'var(--border)',
+		borderRadius: '0',
+		background: 'transparent',
+		color: 'inherit',
+		cursor: 'pointer',
+		userSelect: 'none',
+	},
+	label: {
+		maxWidth: '100%',
+		overflow: 'hidden',
+		textAlign: 'center',
+		textOverflow: 'ellipsis',
+		whiteSpace: 'nowrap',
+	},
+} as const;
+
 const meta = {
 	title: 'Core/Icon',
 	component: N8nIcon,
@@ -73,53 +120,6 @@ export const Default: Story = {
 		spin: false,
 	},
 };
-
-const galleryLayout = {
-	root: {
-		display: 'flex',
-		flexDirection: 'column',
-		gap: 'var(--spacing--md)',
-		width: '100%',
-		color: 'var(--text-color)',
-	},
-	toolbar: {
-		display: 'flex',
-	},
-	search: {
-		inlineSize: 'var(--spacing--5xl)',
-		maxInlineSize: '100%',
-	},
-	grid: {
-		display: 'grid',
-		gridTemplateColumns: 'repeat(auto-fill, minmax(var(--spacing--4xl), 1fr))',
-		borderBlockStart: 'var(--border)',
-		borderInlineStart: 'var(--border)',
-	},
-	tile: {
-		display: 'flex',
-		flexDirection: 'column',
-		alignItems: 'center',
-		justifyContent: 'center',
-		gap: 'var(--spacing--2xs)',
-		minBlockSize: 'var(--spacing--4xl)',
-		padding: 'var(--spacing--xs)',
-		border: 'none',
-		borderBlockEnd: 'var(--border)',
-		borderInlineEnd: 'var(--border)',
-		borderRadius: '0',
-		background: 'transparent',
-		color: 'inherit',
-		cursor: 'pointer',
-		userSelect: 'none',
-	},
-	label: {
-		maxWidth: '100%',
-		overflow: 'hidden',
-		textAlign: 'center',
-		textOverflow: 'ellipsis',
-		whiteSpace: 'nowrap',
-	},
-} as const;
 
 export const AllIcons: Story = {
 	render: (args) => ({
