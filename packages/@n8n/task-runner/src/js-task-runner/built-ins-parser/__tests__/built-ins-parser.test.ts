@@ -289,6 +289,9 @@ describe('BuiltInsParser', () => {
 				'$secrets',
 				'$executionId',
 				'$resumeWebhookUrl',
+				// Bound to a thrower, not to the removed helper. See
+				// packages/workflow/src/expressions/removed-globals.ts
+				'$getPairedItem',
 				'$jmespath',
 				'$position',
 				'$thisItem',
