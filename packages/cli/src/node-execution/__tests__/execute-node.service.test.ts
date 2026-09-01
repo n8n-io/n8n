@@ -1,13 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import {
-	ProjectRepository,
-	SharedWorkflowRepository,
-	WorkflowEntity,
-	WorkflowRepository,
-} from '@n8n/db';
+import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
 import type { INodeType, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -55,7 +49,6 @@ describe('ExecuteNodeService', () => {
 	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	const logger = mockInstance(Logger);
 	const workflowRepository = mockInstance(WorkflowRepository);
-	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const projectRepository = mockInstance(ProjectRepository);
 	const workflowRunner = mockInstance(WorkflowRunner);
 	const activeExecutions = mockInstance(ActiveExecutions);
@@ -66,7 +59,6 @@ describe('ExecuteNodeService', () => {
 		credentialsFinderService,
 		logger,
 		workflowRepository,
-		sharedWorkflowRepository,
 		projectRepository,
 		workflowRunner,
 		activeExecutions,
@@ -74,7 +66,6 @@ describe('ExecuteNodeService', () => {
 	);
 
 	const user = mock<User>({ id: 'user-1' });
-	const entityManager = mock<EntityManager>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -83,17 +74,10 @@ describe('ExecuteNodeService', () => {
 		projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
 			mock({ id: 'personal-project-1' }),
 		);
-		// withTransaction calls manager.transaction when no trx is passed
-		Object.defineProperty(workflowRepository, 'manager', { value: entityManager });
-		entityManager.transaction.mockImplementation(async (...args: unknown[]) => {
-			const fn = args[args.length - 1] as (em: EntityManager) => Promise<unknown>;
-			return await fn(entityManager);
+		workflowRepository.createWorkflowWithOwner.mockImplementation(async (workflow) => {
+			workflow.id = 'temp-wf-1';
+			return await Promise.resolve(workflow);
 		});
-		entityManager.save.mockImplementation(async (entity: unknown) => {
-			if (entity instanceof WorkflowEntity) entity.id = 'temp-wf-1';
-			return await Promise.resolve(entity);
-		});
-		sharedWorkflowRepository.create.mockImplementation((entityLike) => entityLike as never);
 		workflowRunner.run.mockResolvedValue('exec-1');
 		activeExecutions.has.mockReturnValue(true);
 		activeExecutions.getPostExecutePromise.mockResolvedValue(undefined);
@@ -109,14 +93,14 @@ describe('ExecuteNodeService', () => {
 			});
 
 			await expect(service.run(user, baseRequest())).rejects.toThrow(BadRequestError);
-			expect(entityManager.transaction).not.toHaveBeenCalled();
+			expect(workflowRepository.createWorkflowWithOwner).not.toHaveBeenCalled();
 		});
 
 		it('rejects a trigger/webhook-only node before creating any workflow row', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(mockNodeType({ execute: undefined }));
 
 			await expect(service.run(user, baseRequest())).rejects.toThrow(BadRequestError);
-			expect(entityManager.transaction).not.toHaveBeenCalled();
+			expect(workflowRepository.createWorkflowWithOwner).not.toHaveBeenCalled();
 		});
 
 		it('accepts a declarative node without execute (requestDefaults present)', async () => {
@@ -141,7 +125,7 @@ describe('ExecuteNodeService', () => {
 					}),
 				),
 			).rejects.toThrow(BadRequestError);
-			expect(entityManager.transaction).not.toHaveBeenCalled();
+			expect(workflowRepository.createWorkflowWithOwner).not.toHaveBeenCalled();
 		});
 
 		it('rejects a credential the user cannot read', async () => {
@@ -155,7 +139,7 @@ describe('ExecuteNodeService', () => {
 					}),
 				),
 			).rejects.toThrow(ForbiddenError);
-			expect(entityManager.transaction).not.toHaveBeenCalled();
+			expect(workflowRepository.createWorkflowWithOwner).not.toHaveBeenCalled();
 		});
 
 		it('forces id null on managed credentials and skips the access check for them', async () => {
@@ -183,7 +167,7 @@ describe('ExecuteNodeService', () => {
 		it('creates an archived single-node workflow shared into the personal project', async () => {
 			await service.run(user, baseRequest({ timeoutMs: 10_000 }));
 
-			const savedWorkflow = entityManager.save.mock.calls[0][0] as unknown as WorkflowEntity;
+			const savedWorkflow = workflowRepository.createWorkflowWithOwner.mock.calls[0][0];
 			expect(savedWorkflow.isArchived).toBe(true);
 			expect(savedWorkflow.active).toBe(false);
 			expect(savedWorkflow.nodes).toHaveLength(1);
@@ -196,15 +180,16 @@ describe('ExecuteNodeService', () => {
 					executionTimeout: 10,
 				}),
 			);
-			expect(sharedWorkflowRepository.create).toHaveBeenCalledWith(
-				expect.objectContaining({ role: 'workflow:owner', projectId: 'personal-project-1' }),
+			expect(workflowRepository.createWorkflowWithOwner).toHaveBeenCalledWith(
+				savedWorkflow,
+				'personal-project-1',
 			);
 		});
 
 		it('clamps the timeout to the maximum', async () => {
 			await service.run(user, baseRequest({ timeoutMs: 120_000 }));
 
-			const savedWorkflow = entityManager.save.mock.calls[0][0] as unknown as WorkflowEntity;
+			const savedWorkflow = workflowRepository.createWorkflowWithOwner.mock.calls[0][0];
 			expect(savedWorkflow.settings?.executionTimeout).toBe(60);
 		});
 

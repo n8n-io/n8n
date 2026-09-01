@@ -1,12 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import {
-	ProjectRepository,
-	SharedWorkflow,
-	SharedWorkflowRepository,
-	withTransaction,
-	WorkflowEntity,
-	WorkflowRepository,
-} from '@n8n/db';
+import { ProjectRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
@@ -84,7 +77,6 @@ export class ExecuteNodeService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
@@ -193,34 +185,24 @@ export class ExecuteNodeService {
 	): Promise<WorkflowEntity> {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 
-		return await withTransaction(this.workflowRepository.manager, undefined, async (em) => {
-			const newWorkflow = new WorkflowEntity();
-			newWorkflow.isArchived = true;
-			newWorkflow.versionId = uuid();
-			newWorkflow.name = `Execute node ${node.type}`;
-			newWorkflow.active = false;
-			newWorkflow.activeVersionId = null;
-			newWorkflow.nodes = [node];
-			newWorkflow.connections = {};
-			newWorkflow.settings = {
-				executionOrder: 'v1',
-				// Force-save: the execution row is the only result channel that works in queue mode.
-				saveManualExecutions: true,
-				saveDataSuccessExecution: 'all',
-				saveDataErrorExecution: 'all',
-				executionTimeout: Math.ceil(timeoutMs / 1000),
-			};
+		const newWorkflow = new WorkflowEntity();
+		newWorkflow.isArchived = true;
+		newWorkflow.versionId = uuid();
+		newWorkflow.name = `Execute node ${node.type}`;
+		newWorkflow.active = false;
+		newWorkflow.activeVersionId = null;
+		newWorkflow.nodes = [node];
+		newWorkflow.connections = {};
+		newWorkflow.settings = {
+			executionOrder: 'v1',
+			// Force-save: the execution row is the only result channel that works in queue mode.
+			saveManualExecutions: true,
+			saveDataSuccessExecution: 'all',
+			saveDataErrorExecution: 'all',
+			executionTimeout: Math.ceil(timeoutMs / 1000),
+		};
 
-			const workflow = await em.save<WorkflowEntity>(newWorkflow);
-			await em.save<SharedWorkflow>(
-				this.sharedWorkflowRepository.create({
-					role: 'workflow:owner',
-					projectId: personalProject.id,
-					workflow,
-				}),
-			);
-			return workflow;
-		});
+		return await this.workflowRepository.createWorkflowWithOwner(newWorkflow, personalProject.id);
 	}
 
 	/** Cascade also removes the execution row, so read the result first. */

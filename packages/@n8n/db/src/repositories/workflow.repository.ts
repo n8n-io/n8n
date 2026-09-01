@@ -178,6 +178,21 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		await this.managerFor(ctx).update(WorkflowEntity, id, content);
 	}
 
+	/** Creates the workflow together with its `workflow:owner` share in one transaction. */
+	async createWorkflowWithOwner(
+		workflow: WorkflowEntity,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowEntity> {
+		return await this.runInTransaction(ctx, async (em) => {
+			const saved = await em.save(workflow);
+			await em.save(
+				em.create(SharedWorkflow, { role: 'workflow:owner', projectId, workflowId: saved.id }),
+			);
+			return saved;
+		});
+	}
+
 	async findByCredentialResolverId(
 		resolverId: string,
 	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name'>>> {
