@@ -1,11 +1,8 @@
-import { exporterEndpointSchema } from '@n8n/api-types';
+import { exporterEndpointSchema, otlpProtocolSchema } from '@n8n/api-types';
 import { Config, Env } from '@n8n/config';
-import { z } from 'zod';
 
 import type { OtlpProtocol } from './otel.constants';
-import { OTEL_ENV_VARS, OTLP_PROTOCOLS } from './otel.constants';
-
-const otlpProtocolSchema = z.enum(OTLP_PROTOCOLS);
+import { OTEL_ENV_VARS } from './otel.constants';
 
 @Config
 export class OtelConfig {

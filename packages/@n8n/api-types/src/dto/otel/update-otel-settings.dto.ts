@@ -10,6 +10,8 @@ export const OTLP_PROTOCOLS = ['http/protobuf', 'grpc'] as const;
 
 export type OtlpProtocol = (typeof OTLP_PROTOCOLS)[number];
 
+export const otlpProtocolSchema = z.enum(OTLP_PROTOCOLS);
+
 /**
  * `z.string().url()` alone accepts opaque URLs such as `localhost:4318` and any
  * scheme. The scheme selects TLS for both protocols, so it must be http(s).
@@ -21,9 +23,9 @@ export const exporterEndpointSchema = z
 
 export class UpdateOtelSettingsDto extends Z.class({
 	enabled: z.boolean(),
-	// Defaulted rather than required: this endpoint shipped without the field, so
-	// a body written against the older API must stay valid on upgrade.
-	exporterProtocol: z.enum(OTLP_PROTOCOLS).default('http/protobuf'),
+	// Defaulted so a body from before the field still parses. An omitted protocol takes
+	// the default, so an instance whose env var pins another protocol rejects the write.
+	exporterProtocol: otlpProtocolSchema.default('http/protobuf'),
 	exporterEndpoint: exporterEndpointSchema,
 	// Ignored when the protocol is gRPC (gRPC endpoints take no URL path), but
 	// still required so toggling protocols round-trips without losing the value.
