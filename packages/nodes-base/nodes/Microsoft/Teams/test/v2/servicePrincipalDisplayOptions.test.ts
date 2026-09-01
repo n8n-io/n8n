@@ -66,6 +66,43 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		});
 	});
 
+	describe('onlineMeeting — hidden under SP via the slash-prefixed field-level key', () => {
+		it('operation selector carries hide["/authentication"] = [SP]', () => {
+			const op = actionProps.find(
+				(p) =>
+					p.name === 'operation' && p.displayOptions?.show?.resource?.includes('onlineMeeting'),
+			);
+			expect(isSpHidden(op)).toBe(true);
+			// distinct from the un-prefixed credential gate
+			expect(op?.displayOptions?.hide?.authentication).toBeUndefined();
+		});
+
+		it('every onlineMeeting field copy is hidden under SP', () => {
+			const meetingFields = actionProps.filter((p) =>
+				p.displayOptions?.show?.resource?.includes('onlineMeeting'),
+			);
+			// subject, start/end times, options, getBy, meetingId, joinWebUrl…
+			const gatedFields = meetingFields.filter(
+				(p) => p.type !== 'notice' && p.name !== 'operation',
+			);
+			expect(gatedFields.length).toBeGreaterThan(0);
+			for (const field of gatedFields) {
+				expect(isSpHidden(field)).toBe(true);
+			}
+		});
+
+		it('shows an SP notice for the onlineMeeting resource', () => {
+			const notice = actionProps.find(
+				(p) =>
+					p.type === 'notice' &&
+					p.displayOptions?.show?.resource?.includes('onlineMeeting') &&
+					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
+			);
+			expect(notice).toBeDefined();
+			expect(notice?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+		});
+	});
+
 	describe('channelMessage — only create hidden under SP', () => {
 		it('create fields are hidden, getAll fields are shown', () => {
 			const createFields = actionProps.filter(
