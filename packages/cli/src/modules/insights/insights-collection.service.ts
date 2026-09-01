@@ -30,7 +30,7 @@ const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	waiting: true,
 };
 
-const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
+export const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	cli: false,
 	error: false,
 	retry: false,
