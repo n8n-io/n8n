@@ -25,6 +25,7 @@ import {
 	InstanceAiBuilderDelegateAdapterService,
 } from '../instance-ai-builder-delegate.adapter';
 import type { AgentConfigService } from '../agent-config.service';
+import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from '../agent-capabilities';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import type { AgentSkillsService } from '../agent-skills.service';
@@ -531,7 +532,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 	});
 
 	describe('listAgentCapabilities', () => {
-		it('projects the agent-integration persistence service list verbatim', async () => {
+		it('returns channels from the registry plus the module agent capabilities and limitations', async () => {
 			const { delegate, agentIntegrationPersistenceService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			const channels = [
@@ -547,7 +548,11 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			];
 			agentIntegrationPersistenceService.listChatIntegrations.mockReturnValue(channels);
 
-			await expect(delegate.listAgentCapabilities()).resolves.toEqual(channels);
+			await expect(delegate.listAgentCapabilities()).resolves.toEqual({
+				channels,
+				agentCapabilities: [...AGENT_CAPABILITIES],
+				limitations: [...AGENT_LIMITATIONS],
+			});
 			expect(agentIntegrationPersistenceService.listChatIntegrations).toHaveBeenCalledWith();
 		});
 

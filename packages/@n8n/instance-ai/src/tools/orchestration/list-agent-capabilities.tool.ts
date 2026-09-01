@@ -58,23 +58,10 @@ export function createListAgentCapabilitiesTool(context: OrchestrationContext) {
 			if (!delegate) {
 				throw new Error('Agent capabilities are not available on this instance.');
 			}
-			const channels = await delegate.listAgentCapabilities();
-			return {
-				channels,
-				agentCapabilities: [
-					'Call tools — n8n nodes, attached workflows, or custom code tools — to take actions and query services.',
-					'Connect to MCP servers to expose external tool catalogs.',
-					'Use skills — reusable instruction bundles — to extend its behavior.',
-					'Run scheduled tasks (e.g. a daily summary) without a chat trigger.',
-					'Delegate to published sub-agents for specialized work.',
-					'Use memory and vector stores to recall context and search documents.',
-					'Be triggered from a supported chat channel (see `channels`) or Preview.',
-				],
-				limitations: [
-					'Agents cannot create n8n workflows or data tables; attach existing workflows only.',
-					'Chat channels must come from this list — any other channel is unsupported.',
-				],
-			};
+			// Channels, agent-level capabilities, and limitations all come from the
+			// agents module via the delegate, so the orchestrator never hardcodes
+			// capability info and stays aligned as the module evolves.
+			return await delegate.listAgentCapabilities();
 		})
 		.build();
 }

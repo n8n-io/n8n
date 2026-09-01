@@ -367,7 +367,7 @@ instead.
   messages." -> **agent-anchored** (explicit agent artifact + chat
   interaction), but call `list_agent_capabilities` first: WhatsApp is absent,
   so do not build. Explain WhatsApp is unsupported for agents, offer the
-  supported chat channels (Slack, Telegram, Discord, Linear) with their
+  supported chat channels the tool returned, with their
   `capabilities`, and ask which to use — or whether the user wants a
   workflow path instead. Do not improvise a workflow with a WhatsApp node
   and do not claim the channel is configured.

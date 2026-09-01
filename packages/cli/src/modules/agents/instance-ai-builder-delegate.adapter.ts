@@ -17,6 +17,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
+import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsService } from './agents.service';
@@ -211,9 +212,17 @@ export class InstanceAiBuilderDelegateAdapterService {
 
 			listAgentCapabilities: async () => {
 				await assertProjectScope('agent:read');
-				// Same source the builder's `list_integration_types` projects, so the
-				// registry stays the single source of truth as channels are added.
-				return this.agentIntegrationPersistenceService.listChatIntegrations();
+				// Channels come from the registry (same source the builder's
+				// `list_integration_types` projects); agent-level capabilities and
+				// limitations come from this module's constants, so the registry
+				// and the agent config schema stay the single sources of truth as
+				// channels, tools, or limits are added or removed.
+				const channels = this.agentIntegrationPersistenceService.listChatIntegrations();
+				return {
+					channels,
+					agentCapabilities: [...AGENT_CAPABILITIES],
+					limitations: [...AGENT_LIMITATIONS],
+				};
 			},
 
 			resolveAgentName: async (agentId) => {
