@@ -805,14 +805,20 @@ Embargoed security work happens in `n8n-io/n8n-private`. `sec-sync-public-to-pri
 runs hourly there (and on `workflow_dispatch` with `force` for conflict recovery),
 mirroring public `master` and `1.x` into private with `reset --hard` +
 `--force-with-lease` — skipping a branch when private is ahead, ignoring `chore: Bundle`
-commits when judging "ahead". Fixes are never committed to private `master`/`1.x`
-directly: `ci-restrict-private-merges.yml` requires PRs into them to come from the
-long-lived integration branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
+commits when judging "ahead". A skipped branch, or a hard failure, is reported to
+`#alerts-build`: a non-`chore: Bundle` commit on private `master`/`1.x` leaves the mirror
+stuck every hour until it is removed or a `force` dispatch overwrites it. Fixes are never
+committed to private `master`/`1.x` directly: `ci-restrict-private-merges.yml` requires
+PRs into them to come from the long-lived integration
+branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
 backported to `bundle/1.x` by `util-backport-bundle.yml`). Once a bundle branch is merged
 into private `master`/`1.x` as a `chore: Bundle/*` PR, `sec-publish-fix.yml` /
 `sec-publish-fix-1x.yml` cherry-pick that commit onto a fresh branch in the public repo and
 open the PR there. That PR **must stay a single-parent squash** — the publish step is a bare
-`git cherry-pick` of `HEAD`, which aborts on a merge commit.
+`git cherry-pick` of `HEAD`, which aborts on a merge commit. A `chore: Bundle/*` PR whose
+*Required Checks* go red holds back every fix batched into it, so `ci-pull-requests.yml`
+posts to `#alerts-build` when that gate fails on a PR opened *from* `bundle/2.x` or
+`bundle/1.x` (link only, no PR title, since the branch is embargoed).
 
 `sec-sync-bundle-branches.yml` keeps those branches current, daily plus whenever a PR is
 merged into one (and on `workflow_dispatch`). It **merges the base into** the bundle branch
@@ -886,7 +892,7 @@ If notify is a step inside an existing checked-out job, skip the `checkout` and 
 | `QBOT_SLACK_TOKEN`           | QBot           | Default — engineering / build / security                    |
 | `RELEASE_HELPER_SLACK_TOKEN` | Release Helper | `#releases` (C036AELNMV0)                                   |
 
-Adding a new channel requires inviting the bot first; the first run otherwise fails loudly with `not_in_channel`. Private-repo workflows (`sec-publish-fix*.yml`) need `QBOT_SLACK_TOKEN` set in `n8n-io/n8n-private`; the scripts themselves are mirrored by `sec-sync-public-to-private.yml`.
+Adding a new channel requires inviting the bot first; the first run otherwise fails loudly with `not_in_channel`. Private-repo workflows (`sec-publish-fix*.yml`, `sec-sync-public-to-private.yml`, and the bundle-PR alert in `ci-pull-requests.yml`) need `QBOT_SLACK_TOKEN` set in `n8n-io/n8n-private`; the scripts themselves are mirrored by `sec-sync-public-to-private.yml`.
 
 ---
 
