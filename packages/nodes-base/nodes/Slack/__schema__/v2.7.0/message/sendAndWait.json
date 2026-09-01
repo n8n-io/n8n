@@ -9,12 +9,9 @@
                 },
                 "respondedAt": {
                     "type": "string"
-                },
-                "text": {
-                    "type": "string"
                 }
             }
         }
     },
-    "version": 3
+    "version": 1
 }

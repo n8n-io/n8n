@@ -1,10 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
+        "error": {
             "type": "string"
         }
     },

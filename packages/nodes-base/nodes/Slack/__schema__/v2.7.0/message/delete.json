@@ -1,11 +1,14 @@
 {
     "type": "object",
     "properties": {
-        "created_at": {
+        "channel": {
             "type": "string"
         },
-        "updated_at": {
+        "message_timestamp": {
             "type": "string"
+        },
+        "ok": {
+            "type": "boolean"
         }
     },
     "version": 1

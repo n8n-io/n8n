@@ -91,10 +91,31 @@
         "metadata": {
             "type": "object",
             "properties": {
+                "CreationDate": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
+                "IsAcroFormPresent": {
+                    "type": "boolean"
+                },
+                "IsCollectionPresent": {
+                    "type": "boolean"
+                },
+                "IsLinearized": {
+                    "type": "boolean"
+                },
+                "IsSignaturesPresent": {
+                    "type": "boolean"
+                },
+                "IsXFAPresent": {
+                    "type": "boolean"
+                },
                 "lang": {
+                    "type": "string"
+                },
+                "ModDate": {
                     "type": "string"
                 },
                 "og:description": {
@@ -116,6 +137,12 @@
                     "type": "string"
                 },
                 "og:url": {
+                    "type": "string"
+                },
+                "PDFFormatVersion": {
+                    "type": "string"
+                },
+                "Producer": {
                     "type": "string"
                 },
                 "robots": {
@@ -153,5 +180,5 @@
             }
         }
     },
-    "version": 7
+    "version": 8
 }

@@ -1,11 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "created_at": {
+        "id": {
             "type": "string"
         },
-        "updated_at": {
-            "type": "string"
+        "success": {
+            "type": "boolean"
         }
     },
     "version": 1
