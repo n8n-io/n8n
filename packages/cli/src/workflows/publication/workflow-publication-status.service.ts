@@ -61,8 +61,7 @@ export class WorkflowPublicationStatusService {
 		const statuses = new Map<string, WorkflowListPublicationStatus>();
 		// getStatusCountsByWorkflowIds only returns workflows with ≥1 settled row, so total is always ≥1.
 		for (const [workflowId, { total, failed }] of counts) {
-			if (failed === 0) statuses.set(workflowId, 'published');
-			else statuses.set(workflowId, failed < total ? 'partial' : 'failed');
+			statuses.set(workflowId, this.deriveSettledStatus(total, failed));
 		}
 		return statuses;
 	}
@@ -74,7 +73,15 @@ export class WorkflowPublicationStatusService {
 		if (isPublishing) return 'in_progress';
 		if (currentTriggerStatuses.length === 0) return 'not_published';
 		const failed = currentTriggerStatuses.filter((r) => r.status === 'failed').length;
+		return this.deriveSettledStatus(currentTriggerStatuses.length, failed);
+	}
+
+	/**
+	 * The one settled-state ladder, shared by the detail and list derivations so
+	 * the two endpoints can never disagree about the same trigger rows.
+	 */
+	private deriveSettledStatus(total: number, failed: number): WorkflowListPublicationStatus {
 		if (failed === 0) return 'published';
-		return failed < currentTriggerStatuses.length ? 'partial' : 'failed';
+		return failed < total ? 'partial' : 'failed';
 	}
 }

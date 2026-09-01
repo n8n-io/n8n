@@ -106,6 +106,7 @@ export class McpSettingsController {
 			false, // includeScopes
 			false, // includeFolders
 			false, // onlySharedWithMe
+			false, // includePublicationStatus
 			['workflow:update'], // requiredScopes - only return workflows the user can edit
 		);
 

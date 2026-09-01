@@ -118,6 +118,7 @@ export class WorkflowService {
 		includeScopes?: boolean,
 		includeFolders?: boolean,
 		onlySharedWithMe?: boolean,
+		includePublicationStatus?: boolean,
 		requiredScopes: Scope[] = ['workflow:read'],
 	) {
 		let count;
@@ -206,21 +207,30 @@ export class WorkflowService {
 
 		this.cleanupSharedField(workflows);
 
+		// Kicked off before the folder merge — `workflows` holds only workflow rows
+		// here — and awaited last, so it overlaps the resolvable-credentials lookup.
+		const publicationStatuses =
+			includePublicationStatus && this.globalConfig.workflows.useWorkflowPublicationService
+				? this.getListPublicationStatuses(workflows.map((w) => w.id))
+				: null;
+
 		if (includeFolders) {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
 
-		// Attach terminal publication status for the list cards (flag-gated no-op otherwise).
-		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			workflows = await this.addPublicationStatus(workflows);
-		}
-
 		// Add hasResolvableCredentials if dynamic credentials feature is licensed
 		if (this.licenseState.isDynamicCredentialsLicensed()) {
-			return {
-				workflows: await this.addResolvableCredentialsFlag(workflows),
-				count,
-			};
+			workflows = await this.addResolvableCredentialsFlag(workflows);
+		}
+
+		if (publicationStatuses) {
+			const statuses = await publicationStatuses;
+			// Only attach when set: workflows with no trigger rows (and folder rows,
+			// whose ids never match) keep the legacy card indicator.
+			workflows = workflows.map((workflow) => {
+				const publicationStatus = statuses.get(workflow.id);
+				return publicationStatus ? { ...workflow, publicationStatus } : workflow;
+			});
 		}
 
 		return {
@@ -250,22 +260,21 @@ export class WorkflowService {
 		return parentWorkflow ? parentWorkflowId : undefined;
 	}
 
-	private async addPublicationStatus<T extends { id: string }>(
-		workflows: T[],
-	): Promise<Array<T & { publicationStatus?: WorkflowListPublicationStatus }>> {
-		// On the folder list path `workflows` also contains folder rows; exclude them from the
-		// aggregate query (their ids can never match a trigger workflowId anyway).
-		const ids = workflows
-			.filter((w) => !('resource' in w) || w.resource !== 'folder')
-			.map((w) => w.id);
-		const statuses = await this.workflowPublicationStatusService.getListStatusesByWorkflowIds(ids);
-
-		return workflows.map((workflow) => {
-			const publicationStatus = statuses.get(workflow.id);
-			// Only attach when set, so workflows with no trigger rows (and all folders) keep the
-			// legacy card indicator.
-			return publicationStatus ? { ...workflow, publicationStatus } : workflow;
-		});
+	/**
+	 * The badge is decorative, so a failure of the aggregate must degrade to an
+	 * unbadged list instead of failing the whole request.
+	 */
+	private async getListPublicationStatuses(
+		workflowIds: string[],
+	): Promise<Map<string, WorkflowListPublicationStatus>> {
+		try {
+			return await this.workflowPublicationStatusService.getListStatusesByWorkflowIds(workflowIds);
+		} catch (error) {
+			this.logger.warn('Failed to resolve publication statuses for the workflow list', {
+				error: ensureError(error),
+			});
+			return new Map();
+		}
 	}
 
 	private async addResolvableCredentialsFlag<

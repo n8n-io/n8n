@@ -158,6 +158,7 @@ describe('WorkflowService', () => {
 				undefined, // includeScopes
 				undefined, // includeFolders
 				undefined, // onlySharedWithMe
+				undefined, // includePublicationStatus
 				customScopes,
 			);
 
@@ -185,6 +186,7 @@ describe('WorkflowService', () => {
 				undefined, // includeScopes
 				undefined, // includeFolders
 				undefined, // onlySharedWithMe
+				undefined, // includePublicationStatus
 				customScopes,
 			);
 
@@ -212,6 +214,7 @@ describe('WorkflowService', () => {
 				undefined, // includeScopes
 				undefined, // includeFolders
 				undefined, // onlySharedWithMe
+				undefined, // includePublicationStatus
 				executeScope,
 			);
 
@@ -342,13 +345,13 @@ describe('WorkflowService', () => {
 				});
 			});
 
-			it('attaches publicationStatus when the publication service flag is on', async () => {
+			it('attaches publicationStatus when the caller opts in and the publication service flag is on', async () => {
 				globalConfigMock.workflows.useWorkflowPublicationService = true;
 				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockResolvedValue(
 					new Map([['wf-1', 'partial']]),
 				);
 
-				const { workflows } = await workflowService.getMany(user, {}, false, false, false);
+				const { workflows } = await workflowService.getMany(user, {}, false, false, false, true);
 
 				expect(workflows.find((w) => w.id === 'wf-1')).toMatchObject({
 					publicationStatus: 'partial',
@@ -359,11 +362,42 @@ describe('WorkflowService', () => {
 			it('is a no-op when the flag is off', async () => {
 				globalConfigMock.workflows.useWorkflowPublicationService = false;
 
+				const { workflows } = await workflowService.getMany(user, {}, false, false, false, true);
+
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).not.toHaveBeenCalled();
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('is a no-op when the caller does not opt in, even with the flag on', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+
 				const { workflows } = await workflowService.getMany(user, {}, false, false, false);
 
 				expect(
 					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
 				).not.toHaveBeenCalled();
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+
+			it('returns the list unenriched when the status lookup fails', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockRejectedValue(
+					new Error('table is locked'),
+				);
+
+				const { workflows, count } = await workflowService.getMany(
+					user,
+					{},
+					false,
+					false,
+					false,
+					true,
+				);
+
+				expect(count).toBe(2);
+				expect(workflows).toHaveLength(2);
 				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
 			});
 
@@ -383,7 +417,7 @@ describe('WorkflowService', () => {
 					new Map([['wf-1', 'published']]),
 				);
 
-				const { workflows } = await workflowService.getMany(user, {}, false, true, false);
+				const { workflows } = await workflowService.getMany(user, {}, false, true, false, true);
 
 				// Folder ids are never fed to the aggregate query.
 				expect(

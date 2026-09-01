@@ -6,6 +6,7 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
 } from '../entities/workflow-publication-outbox';
+import { chunkIds } from '../utils/chunk-ids';
 
 export type TriggerStatusRow = {
 	nodeId: string;
@@ -86,20 +87,27 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 	async getStatusCountsByWorkflowIds(
 		workflowIds: string[],
 	): Promise<Map<string, { total: number; failed: number }>> {
-		if (workflowIds.length === 0) return new Map();
-
-		const rows = await this.createQueryBuilder('t')
-			.select('t.workflowId', 'workflowId')
-			.addSelect('COUNT(*)', 'total')
-			.addSelect("SUM(CASE WHEN t.status = 'failed' THEN 1 ELSE 0 END)", 'failed')
-			.where('t.workflowId IN (:...workflowIds)', { workflowIds })
-			.groupBy('t.workflowId')
-			.getRawMany<{ workflowId: string; total: string | number; failed: string | number }>();
-
 		const counts = new Map<string, { total: number; failed: number }>();
-		for (const row of rows) {
-			// Raw aggregates come back as strings on some drivers; normalise to number.
-			counts.set(row.workflowId, { total: Number(row.total), failed: Number(row.failed) });
+		// Type-bound so a change to the status union surfaces here instead of
+		// silently miscounting inside the raw SQL literal.
+		const failedStatus: WorkflowPublicationTriggerStatus['status'] = 'failed';
+
+		// Chunked: the list endpoint is unpaginated without `take`, so the id list
+		// can exceed driver bind-parameter limits on large instances.
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.createQueryBuilder('t')
+				.select('t.workflowId', 'workflowId')
+				.addSelect('COUNT(*)', 'total')
+				.addSelect('SUM(CASE WHEN t.status = :failedStatus THEN 1 ELSE 0 END)', 'failed')
+				.setParameter('failedStatus', failedStatus)
+				.where('t.workflowId IN (:...workflowIds)', { workflowIds: chunk })
+				.groupBy('t.workflowId')
+				.getRawMany<{ workflowId: string; total: string | number; failed: string | number }>();
+
+			for (const row of rows) {
+				// Raw aggregates come back as strings on some drivers; normalise to number.
+				counts.set(row.workflowId, { total: Number(row.total), failed: Number(row.failed) });
+			}
 		}
 		return counts;
 	}

@@ -141,6 +141,7 @@ export class WorkflowsController {
 				!!req.query.includeScopes,
 				userCanListProjectFolders && !!req.query.includeFolders,
 				!!req.query.onlySharedWithMe,
+				true, // includePublicationStatus - the list UI renders the publication badge
 			);
 
 			res.json({ count, data });
