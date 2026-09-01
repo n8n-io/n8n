@@ -50,9 +50,9 @@ describe('ActivityEventRepository', () => {
 
 		it('replaces oversized detail with a marker rather than storing half of it', async () => {
 			await repository.record({
-				category: 'execution',
-				action: 'failed',
-				data: { error: 'y'.repeat(activityDataMaxLength) },
+				category: 'workflow',
+				action: 'saved',
+				data: { note: 'y'.repeat(activityDataMaxLength) },
 			});
 
 			expect(entityManager.insert).toHaveBeenCalledWith(
@@ -63,14 +63,14 @@ describe('ActivityEventRepository', () => {
 
 		it('keeps detail that fits', async () => {
 			await repository.record({
-				category: 'execution',
-				action: 'failed',
-				data: { failedNode: 'HTTP Request' },
+				category: 'workflow',
+				action: 'saved',
+				data: { addedNodes: ['HTTP Request'] },
 			});
 
 			expect(entityManager.insert).toHaveBeenCalledWith(
 				ActivityEvent,
-				expect.objectContaining({ data: { failedNode: 'HTTP Request' } }),
+				expect.objectContaining({ data: { addedNodes: ['HTTP Request'] } }),
 			);
 		});
 	});

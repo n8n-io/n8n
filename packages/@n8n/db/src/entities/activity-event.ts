@@ -5,16 +5,17 @@ import { JsonColumn, WithCreatedAt } from './abstract-entity';
 
 /**
  * What kind of thing happened — distinct from `resourceType`, which is what the entry *points at*.
- * The two coincide for `workflow` and `credential` and diverge for the rest: an execution and an
- * eval run both point at a workflow, and only this column tells them apart from a save. `action`
- * cannot stand in for it, since a real run and an eval run share `succeeded` / `failed`.
- *
  * The unit a reader caps and collapses per kind by, and half the key (with `action`) that
  * `typeVersion` versions the shape of `data` against.
  *
+ * Executions are deliberately absent. `execution_entity` already holds every run and indexes
+ * `(workflowId, status, id)` for exactly the read a feed wants, so a row per run would duplicate
+ * an existing row at the same cardinality — and pay for it with an insert on the execution hot
+ * path, on every worker. A reader queries that table instead.
+ *
  * Only what is written today — widening is free, since nothing constrains these in the database.
  */
-export const activityEventCategories = ['workflow', 'execution', 'eval', 'credential'] as const;
+export const activityEventCategories = ['workflow', 'credential'] as const;
 
 export type ActivityEventCategory = (typeof activityEventCategories)[number];
 

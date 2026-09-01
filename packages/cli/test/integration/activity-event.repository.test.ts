@@ -64,10 +64,10 @@ describe('ActivityEventRepository', () => {
 
 	it('replaces oversized detail with a marker on the way into the column', async () => {
 		await repository.record({
-			category: 'execution',
-			action: 'failed',
+			category: 'workflow',
+			action: 'saved',
 			projectId: project.id,
-			data: { error: 'y'.repeat(activityDataMaxLength) },
+			data: { note: 'y'.repeat(activityDataMaxLength) },
 		});
 
 		const [entry] = await repository.findFeed({ projectIds: [project.id], limit: 10 });
@@ -102,8 +102,8 @@ describe('ActivityEventRepository', () => {
 		// that stopped after one pass would not.
 		it('drains a backlog larger than one batch', async () => {
 			const entries = Array.from({ length: 601 }, (_, i) => ({
-				category: 'execution' as const,
-				action: `run-${i}`,
+				category: 'workflow' as const,
+				action: `saved-${i}`,
 				projectId: project.id,
 				typeVersion: 1,
 			}));
