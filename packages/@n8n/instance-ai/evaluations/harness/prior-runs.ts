@@ -110,10 +110,15 @@ async function runOnce(
 			lastErrors = [message];
 			retryReason = message;
 		}
-		logger.warn(
-			`    Prior run "${priorRun.workflow}" ${retryReason} (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}); retrying`,
-		);
-		await delay(500 * attempt);
+		// Only the throw branch caps itself, via `shouldRetryScenarioExecution`. The
+		// in-band abort branch falls through to here, so the last attempt would otherwise
+		// announce a retry it will not make and sleep before giving up.
+		if (attempt < MAX_EXEC_ATTEMPTS) {
+			logger.warn(
+				`    Prior run "${priorRun.workflow}" ${retryReason} (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}); retrying`,
+			);
+			await delay(500 * attempt);
+		}
 	}
 
 	// Every attempt hit a retryable fault. Reports the last real errors rather than a

@@ -792,7 +792,7 @@ requires the agent to read it.
 ```jsonc
 "seed": {
   "mode": "inline",
-  "workflows": [{ "id": "seed-1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
   "priorRuns": [
     { "workflow": "Daily Sync", "hints": "the HTTP Request node returns 500" }
   ]

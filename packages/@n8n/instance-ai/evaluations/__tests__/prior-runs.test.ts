@@ -2,6 +2,7 @@ import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { N8nClient } from '../clients/n8n-client';
+import { remapSeedArtifactIds, type ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
 import { executePriorRuns } from '../harness/prior-runs';
 import { EvalTestCaseSchema } from '../harness/schema';
@@ -158,6 +159,33 @@ describe('executePriorRuns', () => {
 		expect(outcomes[0].success).toBe(true);
 	});
 
+	it('does not announce a retry it will not make on the last attempt', async () => {
+		// The in-band abort branch has no cap of its own, so without a guard the final
+		// attempt would log "retrying" and sleep before giving up.
+		const client = mock<N8nClient>();
+		client.executeWithLlmMock.mockResolvedValue(
+			execResult({ success: false, errors: ['SQLITE_CONSTRAINT: FOREIGN KEY constraint failed'] }),
+		);
+		const log = logger();
+		const delays: number[] = [];
+
+		await executePriorRuns({
+			client,
+			priorRuns: [{ workflow: 'Daily Sync' }],
+			workflowIdsByName: ids,
+			logger: log,
+			sleep: async (ms) => {
+				delays.push(ms);
+				await Promise.resolve();
+			},
+		});
+
+		expect(client.executeWithLlmMock).toHaveBeenCalledTimes(MAX_EXEC_ATTEMPTS);
+		expect(delays).toHaveLength(MAX_EXEC_ATTEMPTS - 1);
+		const retryLogs = log.warn.mock.calls.filter(([line]) => String(line).includes('retrying'));
+		expect(retryLogs).toHaveLength(MAX_EXEC_ATTEMPTS - 1);
+	});
+
 	it('records a NON-retryable error immediately instead of killing the build', async () => {
 		// Throwing here would report an instance problem as a builder problem.
 		const client = mock<N8nClient>();
@@ -238,7 +266,7 @@ describe('priorRuns schema validation', () => {
 			seed: {
 				mode: 'inline',
 				messages: [],
-				workflows: [{ id: 'seed-1', name: 'Daily Sync', nodes: [], connections: {} }],
+				workflows: [{ id: 'dS8xQ2mV6bTn4Kp1', name: 'Daily Sync', nodes: [], connections: {} }],
 				priorRuns,
 			},
 		};
@@ -247,6 +275,17 @@ describe('priorRuns schema validation', () => {
 	it('accepts a prior run naming a workflow the seed declares', () => {
 		const parsed = EvalTestCaseSchema.safeParse(caseWith([{ workflow: 'Daily Sync' }]));
 		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts the seed the README documents, through the REAL remap', () => {
+		// Every seed goes through `remapSeedArtifactIds` at build time, and it refuses ids
+		// shorter than 8 characters. A documented example that throws there is worse than
+		// no example, and schema parsing alone would not catch it.
+		const parsed = EvalTestCaseSchema.safeParse(caseWith([{ workflow: 'Daily Sync' }]));
+		expect(parsed.success).toBe(true);
+		if (parsed.success && parsed.data.seed?.mode === 'inline') {
+			expect(() => remapSeedArtifactIds(parsed.data.seed as ConversationSeed)).not.toThrow();
+		}
 	});
 
 	it('rejects a prior run naming a workflow the seed does not declare', () => {
