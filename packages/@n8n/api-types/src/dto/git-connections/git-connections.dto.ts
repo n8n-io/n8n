@@ -84,6 +84,50 @@ export const gitConnectionPushResultSchema = z.object({
 
 export class GitConnectionPushResultDto extends Z.class(gitConnectionPushResultSchema.shape) {}
 
+const count = () => z.number().int().nonnegative();
+
+export const gitConnectionImportCountsSchema = z.object({
+	projects: z.object({ created: count(), updated: count(), skipped: count() }),
+	folders: z.object({ created: count(), skipped: count(), removed: count() }),
+	workflows: z.object({
+		created: count(),
+		updated: count(),
+		skipped: count(),
+		archived: count(),
+		deleted: count(),
+		publishing: z.object({
+			published: count(),
+			unpublished: count(),
+			unchanged: count(),
+			blocked: count(),
+			failed: count(),
+		}),
+	}),
+	credentials: z.object({ matched: count(), stubbed: count() }),
+	dataTables: z.object({ matched: count(), created: count() }),
+	variables: z.object({
+		matched: count(),
+		created: count(),
+		updated: count(),
+		stubbed: count(),
+		missing: count(),
+	}),
+	tags: z.object({
+		matched: count(),
+		created: count(),
+		renamed: count(),
+		reconciled: count(),
+		skipped: count(),
+	}),
+});
+
+export const gitConnectionPullResultSchema = z.object({
+	connectionId: z.string(),
+	counts: gitConnectionImportCountsSchema,
+});
+
+export class GitConnectionPullResultDto extends Z.class(gitConnectionPullResultSchema.shape) {}
+
 export const gitConnectionSummarySchema = gitConnectionPublicSchema.omit({ publicKey: true });
 
 export class GitConnectionListPublicDto extends Z.class({

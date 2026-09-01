@@ -39,6 +39,7 @@ import {
 	isAgentSandboxPrincipalHash,
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
+import type { AgentSandboxRuntime } from '../agent-sandbox-runtime.service';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
@@ -80,6 +81,11 @@ export interface SubAgentForegroundRunContext {
 	 * (model fetch, MCP fetch, tool execution contexts).
 	 */
 	instrumentation?: AgentRuntimeInstrumentation;
+	/**
+	 * Parent run's live workspace sandbox handle. Delegated runs scope into a
+	 * per-delegation subdirectory of it instead of acquiring their own sandbox.
+	 */
+	parentWorkspaceHandle?: AgentSandboxRuntime;
 	/** Optional callback to forward child stream chunks to the parent chat. */
 	onChunk?: (chunk: StreamChunk) => void;
 	/** Difficulty-selected model override for parent self-delegation only. */
@@ -215,6 +221,14 @@ export class SubAgentForegroundRunner {
 			user: context.user,
 			instrumentation: context.instrumentation,
 			...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
+			...(context.parentWorkspaceHandle !== undefined
+				? {
+						parentWorkspace: {
+							handle: context.parentWorkspaceHandle,
+							delegationThreadId: threadId,
+						},
+					}
+				: {}),
 		});
 
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
