@@ -1981,15 +1981,9 @@ describe('WorkflowService', () => {
 			});
 
 			trxMock = mock<EntityManager>();
-			const managerMock = mock<EntityManager>();
-			(managerMock.transaction as unknown as Mock).mockImplementation(
-				async (runInTransaction: (entityManager: EntityManager) => Promise<unknown>) =>
-					await runInTransaction(trxMock),
+			workflowRepositoryMock.runInTransaction.mockImplementation(
+				async (_ctx, runInTransaction) => await runInTransaction(trxMock),
 			);
-			Object.defineProperty(workflowRepositoryMock, 'manager', {
-				value: managerMock,
-				configurable: true,
-			});
 
 			workflowService = new WorkflowService(
 				mock(), // logger
