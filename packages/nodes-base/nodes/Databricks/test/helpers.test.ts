@@ -104,12 +104,11 @@ describe('databricksApiRequest', () => {
 		});
 
 		expect(capturedOptions().headers).toEqual({
-			'User-Agent': databricksUserAgent(DATABRICKS_NODE_VERSION),
+			'User-Agent': databricksUserAgent(),
 		});
 	});
 
 	it('should derive the User-Agent from the integration version constant', () => {
-		expect(databricksUserAgent(DATABRICKS_NODE_VERSION)).toBe('n8n_DatabricksNode/1.0');
-		expect(databricksUserAgent(2)).toBe('n8n_DatabricksNode/2.0');
+		expect(databricksUserAgent()).toBe(`n8n_DatabricksNode/${DATABRICKS_NODE_VERSION}.0`);
 	});
 });

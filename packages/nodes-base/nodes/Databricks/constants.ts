@@ -11,8 +11,7 @@ export const DATABRICKS_NODE_VERSION = 1;
 
 /**
  * Partner User-Agent so Databricks can attribute traffic to n8n in audit logs.
- * `version` is the integer major version; the `.0` keeps the wire format Databricks
- * expects. Bumping to a fractional node version needs this format revisited first.
+ * The `.0` keeps the wire format Databricks expects; bumping to a fractional node
+ * version needs this format revisited first.
  */
-export const databricksUserAgent = (version: number = DATABRICKS_NODE_VERSION) =>
-	`n8n_DatabricksNode/${version}.0`;
+export const databricksUserAgent = () => `n8n_DatabricksNode/${DATABRICKS_NODE_VERSION}.0`;
