@@ -144,6 +144,11 @@ const plugins: UserConfig['plugins'] = [
 					release: {
 						name: `n8n@${release}`,
 					},
+					sourcemaps: {
+						// Sentry keeps these maps, so the image does not need them (156MB).
+						// The plugin deletes them only after the upload succeeds.
+						filesToDeleteAfterUpload: ['./dist/**/*.map'],
+					},
 				}),
 			]
 		: []),
@@ -194,7 +199,9 @@ export default defineConfig({
 		minify: !!release,
 		// Coverage builds emit INLINE maps so browser V8 coverage carries the
 		// map in the script source and monocart resolves offsets back to src.
-		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
+		// 'hidden' writes the maps but omits the sourceMappingURL comment.
+		// Deleted maps then cause no 404 in devtools.
+		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : release ? 'hidden' : false,
 		target,
 	},
 	optimizeDeps: {
