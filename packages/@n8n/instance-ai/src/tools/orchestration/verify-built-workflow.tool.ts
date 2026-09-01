@@ -44,6 +44,18 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 				"If you wrap a form payload in {formFields: {...}} the adapter will reject the call; the builder's " +
 				'downstream expressions reference $json.<field>, matching the flat production shape.',
 		),
+	triggerNodeName: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Name of the trigger node to start verification from. REQUIRED when the workflow has ' +
+				'more than one trigger: without it a single trigger is auto-detected and the other ' +
+				"triggers' branches are never verified. To cover every branch, call verify once per " +
+				"trigger. Trigger names come from build-workflow's `triggerNodes` or " +
+				'workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
+				'and never build a throwaway copy — to reach a branch; use this instead.',
+		),
 	timeout: z
 		.number()
 		.int()
@@ -181,6 +193,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						executionService: target.domainContext.executionService,
 						workflowId,
 						inputData: resolvedInput.inputData,
+						triggerNodeName: resolvedInput.triggerNodeName,
 						timeout: resolvedInput.timeout,
 						abortSignal: context.abortSignal,
 						buildOutcome,
@@ -195,6 +208,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 							resolvedInput.inputData,
 							{
 								timeout: resolvedInput.timeout,
+								triggerNodeName: resolvedInput.triggerNodeName,
 								verificationPinData: prepared.verificationPinData,
 								isVerificationRun: true,
 								abortSignal: context.abortSignal,
@@ -207,6 +221,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								buildOutcome,
 								simulatedNodes: prepared.simulatedNodes,
 								haltedGateNames: prepared.haltedGateNames,
+								triggerNodeName: resolvedInput.triggerNodeName,
 								stateBefore: target.stateBefore,
 								runId: context.runId,
 								chatModelRelatedNodeNames,

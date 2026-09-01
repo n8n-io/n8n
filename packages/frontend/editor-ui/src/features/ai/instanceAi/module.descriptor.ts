@@ -12,7 +12,12 @@ import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
 } from './composables/useInstanceAiHandoff';
-import { useInstanceAiAvailable } from './composables/useInstanceAiAvailability';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
+import {
+	useInstanceAiAvailable,
+	useInstanceAiReady,
+} from './composables/useInstanceAiAvailability';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
@@ -40,6 +45,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					path: 'new',
 					component: InstanceAiEmptyView,
 					beforeEnter: async (to) => {
+						// Experiment cleanup: remove with openWorkflowInAssistant.
+						const workflowRedirect = await launchWorkflowThread(to.query);
+						if (workflowRedirect) return workflowRedirect;
+
 						// Numeric ids only, so a crafted URL can't inject prompt text.
 						const raw = to.query.templateId;
 						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
@@ -49,8 +58,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 
 						// Same canonical gate as the button and website beacon, so the guard
 						// never refuses an entry point they advertise. Whoever can't use
-						// the assistant still gets the template.
-						if (!useInstanceAiAvailable().value) {
+						// the assistant — including an admin who hasn't finished setup, since
+						// the launched thread sends its kickoff on arrival — still gets the
+						// template.
+						if (!useInstanceAiReady().value) {
 							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };
 						}
 
