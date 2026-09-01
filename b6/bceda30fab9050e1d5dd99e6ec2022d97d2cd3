@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/common/1788191436461-CreateAgentBackgroundJobTable.ts
+  s_f2be74e4f2dda6::t_77bcae38247c3d 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6bceda30fab9050e1d5dd99e6ec2022d97d2cd3",
+  "prompts": {},
+  "sessions": {
+    "s_f2be74e4f2dda6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45d015dc-b15d-4645-9885-38ba98f92a11",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
