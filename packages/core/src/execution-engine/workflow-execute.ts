@@ -26,6 +26,7 @@ import type {
 	IRunData,
 	ITaskData,
 	ITaskDataConnections,
+	ITaskDataConnectionsSource,
 	ITaskMetadata,
 	NodeOperationError,
 	Workflow,
@@ -956,7 +957,9 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		nodeType: INodeType,
 		customOperation: ReturnType<WorkflowExecute['getCustomOperation']>,
+		node: INode,
 		inputData: ITaskDataConnections,
+		source: ITaskDataConnectionsSource | null,
 	): INodeExecutionData[] | null {
 		if (
 			nodeType.execute ||
@@ -976,6 +979,24 @@ export class WorkflowExecute {
 				// for that reason do we use the data of the first one that contains any
 				for (const mainData of inputData.main) {
 					if (mainData?.length) {
+						connectionInputData = mainData;
+						break;
+					}
+				}
+			} else if (!connectionInputData?.length && source?.main?.[0] === null) {
+				// The first input is empty and can no longer receive data. If another
+				// input got its data from a node further down the workflow (a loop
+				// back to this node), use that data so the loop keeps running. Data
+				// from anywhere else keeps the old behavior: skip this node run.
+				const descendants = workflow.getChildNodes(node.name);
+				for (let inputIndex = 0; inputIndex < inputData.main.length; inputIndex++) {
+					const mainData = inputData.main[inputIndex];
+					const previousNode = source.main[inputIndex]?.previousNode;
+					if (
+						mainData?.length &&
+						previousNode !== undefined &&
+						descendants.includes(previousNode)
+					) {
 						connectionInputData = mainData;
 						break;
 					}
@@ -1358,7 +1379,9 @@ export class WorkflowExecute {
 			workflow,
 			nodeType,
 			customOperation,
+			node,
 			inputData,
+			executionData.source,
 		);
 
 		if (connectionInputData === null) {
