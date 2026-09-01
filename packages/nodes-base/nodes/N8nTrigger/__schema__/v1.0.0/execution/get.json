@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+        "binaryDataSizeBytes": {
+            "type": "integer"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "deletedAt": {
+            "type": "null"
+        },
+        "finished": {
+            "type": "boolean"
+        },
+        "jsonSizeBytes": {
+            "type": "integer"
+        },
+        "mode": {
+            "type": "string"
+        },
+        "startedAt": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "storedAt": {
+            "type": "string"
+        },
+        "usedPrivateCredentials": {
+            "type": "boolean"
+        },
+        "waitTill": {
+            "type": "null"
+        },
+        "workflowVersionId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

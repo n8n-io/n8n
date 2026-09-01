@@ -35,6 +35,9 @@ frontend, and extensible node-based workflow engine.
 - **Developing v3 features:** land normal feature work on `master` behind an
   opt-in flag; introduce breaking changes only on the `3.x` branch. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
+- The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
+  error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
+  comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
 
 ## Agent Skills and Claude Code Plugin
 
@@ -237,7 +240,7 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use `design-system-rules` skill in reviews
+- Always use the `design-system` skill in reviews
 
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
