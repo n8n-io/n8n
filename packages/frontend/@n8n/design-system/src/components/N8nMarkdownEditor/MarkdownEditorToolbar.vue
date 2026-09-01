@@ -294,7 +294,11 @@ const setTextStyle = (value: string | number) => {
 </script>
 <template>
 	<div
-		:class="[$style.toolbar, mode === 'always' ? $style.alwaysVisible : '']"
+		:class="[
+			$style.toolbar,
+			mode === 'always' && $style.alwaysVisible,
+			mode === 'floating' && $style.floating,
+		]"
 		data-test-id="markdown-editor-toolbar"
 	>
 		<div
@@ -501,13 +505,32 @@ const setTextStyle = (value: string | number) => {
 
 <style lang="scss" module>
 .toolbar {
+	--n8n-markdown-editor-toolbar--pos-x: 0;
+	--n8n-markdown-editor-toolbar--pos-y: 0;
+
 	position: absolute;
-	inset-inline: 0;
-	top: 0;
+	inset-inline: var(--n8n-markdown-editor-toolbar--pos-x);
+	top: var(--n8n-markdown-editor-toolbar--pos-y);
 	z-index: 1;
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
+}
+.floating {
+	position: static;
+	inset: auto;
+	width: max-content;
+	max-width: calc(100vw - var(--spacing--lg));
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+
+	.toolbarInner {
+		border: var(--border);
+		border-radius: var(--radius--lg);
+		background-color: var(--background--surface);
+		box-shadow: var(--shadow--md);
+	}
 }
 
 .toolbarInner {

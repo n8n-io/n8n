@@ -66,6 +66,40 @@ export type PushGitConnectionResult = {
 	counts: ExportPackageCounts;
 };
 
+export interface ImportPackageCounts {
+	projects: { created: number; updated: number; skipped: number };
+	folders: { created: number; skipped: number; removed: number };
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+		archived: number;
+		deleted: number;
+		publishing: {
+			published: number;
+			unpublished: number;
+			unchanged: number;
+			blocked: number;
+			failed: number;
+		};
+	};
+	credentials: { matched: number; stubbed: number };
+	dataTables: { matched: number; created: number };
+	variables: {
+		matched: number;
+		created: number;
+		updated: number;
+		stubbed: number;
+		missing: number;
+	};
+	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
+}
+
+export type PullGitConnectionResult = {
+	connectionId: string;
+	counts: ImportPackageCounts;
+};
+
 export class ApiError extends Error {
 	constructor(
 		readonly statusCode: number,
@@ -268,6 +302,10 @@ export class N8nClient {
 
 	async removeProjectFromGitConnection(id: string, projectId: string) {
 		return await this.del<undefined>(`/git-connections/${id}/projects/${projectId}`);
+	}
+
+	async pullGitConnectionProjects(id: string) {
+		return await this.post<PullGitConnectionResult>(`/git-connections/${id}/pull`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

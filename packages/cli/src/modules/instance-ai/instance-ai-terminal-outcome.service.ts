@@ -90,8 +90,8 @@ function appendTerminalOutcomeToAgentTree(
 // The slice of each collaborator the terminal-outcome coordinator actually
 // uses. Anchored to the concrete types via `Pick` so the signatures stay in
 // sync with the source.
-// Reads may be sync (in-memory bus, flag off) or async (durable log, flag on);
-// the host injects a flag-resolved adapter.
+// Reads are async: the host injects an adapter that flushes the thread's drain
+// and then queries the durable log.
 export type InstanceAiTerminalOutcomeEventBus = Pick<InProcessEventBus, 'publish'> & {
 	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[] | Promise<InstanceAiEvent[]>;
 	getEventsForRuns(
@@ -126,13 +126,6 @@ export type InstanceAiTerminalOutcomeTracing = Pick<
 
 export interface InstanceAiTerminalOutcomeServiceOptions {
 	eventBus: InstanceAiTerminalOutcomeEventBus;
-	/**
-	 * Durable-log flag: outcome lines publish as `text-block` (a structural
-	 * fact, persisted before it is emitted live) instead of a trailing
-	 * `text-delta`, so a page reload right after a background outcome folds
-	 * the line from the log instead of racing the coalescer's idle flush.
-	 */
-	durableLog: boolean;
 	dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 	agentMemory: PatchableThreadMemory;
 	telemetry: InstanceAiTerminalOutcomeTelemetry;
@@ -186,8 +179,6 @@ export class InstanceAiTerminalOutcomeService {
 
 	private readonly eventBus: InstanceAiTerminalOutcomeEventBus;
 
-	private readonly durableLog: boolean;
-
 	private readonly dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 
 	private readonly agentMemory: PatchableThreadMemory;
@@ -210,7 +201,6 @@ export class InstanceAiTerminalOutcomeService {
 
 	constructor(options: InstanceAiTerminalOutcomeServiceOptions) {
 		this.eventBus = options.eventBus;
-		this.durableLog = options.durableLog;
 		this.dbSnapshotStorage = options.dbSnapshotStorage;
 		this.agentMemory = options.agentMemory;
 		this.telemetry = options.telemetry;
@@ -530,7 +520,7 @@ export class InstanceAiTerminalOutcomeService {
 		if (alreadyPublished) return false;
 
 		this.eventBus.publish(outcome.threadId, {
-			type: this.durableLog ? 'text-block' : 'text-delta',
+			type: 'text-block',
 			runId: outcome.runId,
 			agentId: orchestratorAgentId(outcome.runId),
 			responseId,

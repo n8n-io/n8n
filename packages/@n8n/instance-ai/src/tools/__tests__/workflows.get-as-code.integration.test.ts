@@ -29,7 +29,7 @@ function makeManagedWorkflow(): WorkflowJSON {
 				position: [0, 0],
 				parameters: { channel: '#alerts' },
 				credentials: {
-					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+					slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				},
 			},
 		],
@@ -76,8 +76,8 @@ describe('workflows get-as-code integration', () => {
 
 		expect(result.error).toBeUndefined();
 		expect(result.code).not.toBe('');
-		expect(result.code).toContain("newCredential('n8n credits')");
-		expect(result.code).not.toContain("newCredential('n8n credits',");
+		expect(result.code).toContain("newCredential('Gateway credits')");
+		expect(result.code).not.toContain("newCredential('Gateway credits',");
 		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
 			workflowVersionId: 'v-current',
 			workflowChecksum: 'checksum-current',

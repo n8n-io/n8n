@@ -278,27 +278,6 @@ jobs:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
-  # Internal-only 1-spec fail-fast sanity check on sqlite.
-  sqlite-sanity:
-    name: 'SQLite: Sanity Check'
-    needs: [install-and-build, prepare-docker]
-    if: >-
-      needs.prepare-docker.result == 'success' &&
-      (needs.install-and-build.outputs.runtime == 'true'
-        || needs.install-and-build.outputs.e2e == 'true'
-        || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
-      github.repository == 'n8n-io/n8n' &&
-      github.event_name != 'merge_group' &&
-      github.event.pull_request.head.repo.fork != true
-    uses: ./.github/workflows/test-e2e-reusable.yml
-    with:
-      branch: ${{ needs.install-and-build.outputs.commit_sha }}
-      test-mode: docker-artifact
-      test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
-      workers: '1'
-      artifact-prefix: sanity
-    secrets: inherit
-
   # Full e2e run. Internal PRs run multi-main (postgres + redis + caddy + 2 mains + 1 worker).
   # Fork PRs run sqlite-only and skip @licensed tests (no enterprise license secrets on forks).
   e2e:
@@ -413,7 +392,6 @@ jobs:
         typecheck,
         lint,
         check-packaging,
-        sqlite-sanity,
         e2e,
         dev-server-smoke,
         db-tests,
@@ -433,6 +411,33 @@ jobs:
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+
+  # A red `chore: Bundle/*` PR blocks publishing every fix batched into it, so the
+  # failure is announced instead of waiting to be noticed. Only fires in n8n-private,
+  # where bundle branches exist.
+  notify-bundle-pr-failure:
+    name: Notify Slack on bundle PR failure
+    needs: required-checks
+    if: >-
+      always() &&
+      needs.required-checks.result == 'failure' &&
+      (github.head_ref == 'bundle/2.x' || github.head_ref == 'bundle/1.x')
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text "<${PR_URL}|Required Checks failed on the ${HEAD_REF} PR> - the batched fixes stay unpublished until it is green."
 
   # Posts a QA metrics comparison comment on the PR.
   # Runs after all checks so any job can emit metrics before this reports.
