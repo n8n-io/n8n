@@ -14,7 +14,7 @@ import {
 import { McpClientsManager } from './McpClientsManager';
 import { buildMcpToolkit, executeMcpTool, loadMcpToolOptions } from './runtime';
 import type { ResolvedMcpConfig, McpConnectionConfig } from './runtime';
-import type { McpTool } from './types';
+import type { McpAuthenticationOption, McpTool } from './types';
 import * as utils from './utils';
 import { buildMcpToolName } from '../McpClientTool/utils';
 
@@ -117,6 +117,27 @@ describe('runtime', () => {
 				expect.objectContaining({ signal: undefined }),
 			);
 		});
+
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as McpAuthenticationOption[])(
+			'forwards %s authentication to connectMcpClientForCredential',
+			async (authentication) => {
+				const connectMcpClientForCredential = vi
+					.spyOn(utils, 'connectMcpClientForCredential')
+					.mockResolvedValue({ ok: true, result: mock<Client>() });
+				vi.spyOn(utils, 'getAllTools').mockResolvedValue([sampleTool] as McpTool[]);
+
+				const ctx = createSupplyDataCtx({
+					getExecutionCancelSignal: vi.fn(() => undefined),
+				});
+
+				await buildMcpToolkit(ctx, 0, { ...baseConfig, authentication });
+
+				expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ authentication }),
+				);
+			},
+		);
 
 		it('surfaces a cancelled connection result without listing tools', async () => {
 			const abortError = new Error('aborted');
