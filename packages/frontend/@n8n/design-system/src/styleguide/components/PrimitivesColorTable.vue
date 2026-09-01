@@ -3,16 +3,76 @@ import { onMounted, onUnmounted, ref } from 'vue';
 
 import N8nTooltip from '../../components/N8nTooltip/Tooltip.vue';
 import primitivesSource from '../../css/_primitives.scss?raw';
-import {
-	getPrimitiveColorFamilies,
-	PRIMITIVE_SCALE_STEPS,
-	type PrimitiveColorFamily,
-	type PrimitiveScaleStep,
-} from '../cssTokenSource';
+import { getColorTokenNames } from '../cssTokenSource';
 
-const columns = PRIMITIVE_SCALE_STEPS;
+const SCALE_STEPS = [
+	'50',
+	'100',
+	'150',
+	'200',
+	'250',
+	'300',
+	'400',
+	'500',
+	'600',
+	'700',
+	'800',
+	'900',
+	'950',
+] as const;
+
+type ScaleStep = (typeof SCALE_STEPS)[number];
+
+type ColorFamily = {
+	id: string;
+	label: string;
+	scale: Partial<Record<ScaleStep, string>>;
+	extras: Array<{ step: string; token: string }>;
+};
+
+const isScaleStep = (step: string): step is ScaleStep =>
+	SCALE_STEPS.some((scaleStep) => scaleStep === step);
+
+const humanize = (value: string) =>
+	value
+		.split('-')
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(' ');
+
+const groupColorFamilies = (tokens: string[]): ColorFamily[] => {
+	const families = new Map<string, ColorFamily>();
+
+	for (const token of tokens) {
+		if (!token.startsWith('--color--')) {
+			continue;
+		}
+
+		const rest = token.slice('--color--'.length);
+		const lastDash = rest.lastIndexOf('-');
+		if (lastDash <= 0) {
+			continue;
+		}
+
+		const id = rest.slice(0, lastDash);
+		const step = rest.slice(lastDash + 1);
+		const family = families.get(id) ?? { id, label: humanize(id), scale: {}, extras: [] };
+
+		if (isScaleStep(step)) {
+			family.scale[step] = token;
+		} else {
+			family.extras.push({ step, token });
+		}
+
+		families.set(id, family);
+	}
+
+	return [...families.values()];
+};
+
+const columns = SCALE_STEPS;
 const columnCount = columns.length;
-const families = getPrimitiveColorFamilies(primitivesSource);
+const families = groupColorFamilies(getColorTokenNames(primitivesSource));
 
 const COPIED_FEEDBACK_MS = 2000;
 const SWATCH_TOOLTIP_OFFSET = 4;
@@ -37,16 +97,15 @@ const updateValues = () => {
 	}, {});
 };
 
-const scaleToken = (family: PrimitiveColorFamily, column: PrimitiveScaleStep): string =>
-	family.scale[column] ?? '';
+const scaleToken = (family: ColorFamily, column: ScaleStep): string => family.scale[column] ?? '';
 
-const scaleCells = (family: PrimitiveColorFamily) =>
+const scaleCells = (family: ColorFamily) =>
 	columns.map((column) => ({
 		column,
 		token: scaleToken(family, column),
 	}));
 
-const hasScale = (family: PrimitiveColorFamily) => Object.keys(family.scale).length > 0;
+const hasScale = (family: ColorFamily) => Object.keys(family.scale).length > 0;
 
 const hasTokenValue = (token: string) => Boolean(token && tokenValues.value[token]);
 

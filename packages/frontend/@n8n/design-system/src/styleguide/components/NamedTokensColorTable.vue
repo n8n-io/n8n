@@ -4,9 +4,9 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import N8nIcon from '../../components/N8nIcon/Icon.vue';
 import N8nInput from '../../components/N8nInput/Input.vue';
 import tokensSource from '../../css/_tokens.scss?raw';
-import { getSemanticColorTokenNames } from '../cssTokenSource';
+import { getColorTokenNames } from '../cssTokenSource';
 
-const SEMANTIC_COLOR_TOKENS = getSemanticColorTokenNames(tokensSource);
+const SEMANTIC_COLOR_TOKENS = getColorTokenNames(tokensSource);
 
 type TokenGroup = {
 	label: string;
