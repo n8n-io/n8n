@@ -87,6 +87,7 @@ watch(searchQuery, (value) => {
 });
 
 const activeCategory = ref<ToolCategoryKey>(props.categories[0] ?? 'connected');
+const isMcpCategory = computed(() => activeCategory.value === 'mcp');
 
 const searchInputRef = useTemplateRef('searchInputRef');
 const scrollerRef = useTemplateRef('scrollerRef');
@@ -191,7 +192,9 @@ const toolRows = computed<FlattenedRow[]>(() =>
 		.map((item) => ({ key: `item:${item.id}`, item })),
 );
 
-const flattenedRows = computed<ListRow[]>(() => [...toolRows.value, { key: 'suggestion' }]);
+const flattenedRows = computed<ListRow[]>(() =>
+	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
+);
 
 /** Categories only worth a tab once they hold something. */
 const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
@@ -389,7 +392,7 @@ function handleOpenChange(value: boolean) {
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
 							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
 						</div>
-						<div :class="$style.suggestionRow">
+						<div v-if="isMcpCategory" :class="$style.suggestionRow">
 							<SuggestToolFooter />
 						</div>
 					</template>

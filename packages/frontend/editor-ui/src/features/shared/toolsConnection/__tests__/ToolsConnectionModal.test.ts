@@ -223,7 +223,7 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('shows the empty state when items is empty', () => {
-		const { getByTestId } = renderWith({ items: [] });
+		const { getByTestId } = renderWith({ items: [], categories: ['mcp'] });
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
 		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
 	});
@@ -239,6 +239,16 @@ describe('ToolsConnectionModal', () => {
 
 		expect(scroller).toContainElement(footer);
 		expect(rows.at(-1)?.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+	});
+
+	it('does not render the suggestion footer outside the MCP category', async () => {
+		const { getByTestId, queryByTestId } = renderWith({
+			categories: ['mcp', 'ai'],
+		});
+
+		expect(queryByTestId('suggest-tool-footer')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-ai'));
+		expect(queryByTestId('suggest-tool-footer')).toBeNull();
 	});
 
 	it('offers workflow creation when the workflows category is empty', async () => {
