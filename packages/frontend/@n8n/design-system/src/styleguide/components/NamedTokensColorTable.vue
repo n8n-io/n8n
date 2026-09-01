@@ -232,6 +232,7 @@ onUnmounted(() => {
 .value {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
