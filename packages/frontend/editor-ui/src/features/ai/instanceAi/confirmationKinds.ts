@@ -33,21 +33,3 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 			return true;
 	}
 }
-
-/**
- * With the setup panel enabled, setup/credential cards and structured
- * questions no longer pause the composer: setup completes asynchronously in
- * the panel and questions can be answered as plain chat. Kinds that still
- * require an explicit decision before the run can continue (approvals,
- * channel setup, plan/text input, resource decisions) keep gating.
- */
-export function isComposerGatingConfirmation(item: PendingConfirmationItem): boolean {
-	const conf = item.toolCall.confirmation;
-
-	if (conf.channelConfig) return true;
-	if (conf.setupRequests?.length) return false;
-	if (conf.credentialRequests?.length) return false;
-	if (conf.credentialFlow) return false;
-
-	return conf.inputType !== 'questions';
-}

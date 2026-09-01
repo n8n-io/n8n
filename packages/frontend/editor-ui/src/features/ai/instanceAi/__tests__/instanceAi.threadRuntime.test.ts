@@ -7,7 +7,6 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
-import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiTargetApproval } from '@n8n/api-types';
 import {
 	createThreadRuntime,
@@ -1802,7 +1801,7 @@ describe('createThreadRuntime - inline MCP connect confirmation', () => {
 	});
 });
 
-describe('createThreadRuntime - setup panel composer ungating', () => {
+describe('createThreadRuntime - setup confirmation gating', () => {
 	let registry: RuntimeRegistry;
 
 	beforeEach(() => {
@@ -1845,7 +1844,9 @@ describe('createThreadRuntime - setup panel composer ungating', () => {
 		return runtime;
 	}
 
-	it('keeps setup confirmations gating while the setup panel is disabled', () => {
+	// The BE suspends the run while a setup confirmation is pending (a send
+	// would 409), so setup kinds must gate the composer like any other kind.
+	it('keeps setup confirmations gating the composer', () => {
 		const runtime = seedConfirmation({
 			requestId: 'req-setup',
 			severity: 'info',
@@ -1854,33 +1855,6 @@ describe('createThreadRuntime - setup panel composer ungating', () => {
 		});
 
 		expect(runtime.pendingConfirmations).toHaveLength(1);
-		expect(runtime.isAwaitingConfirmation).toBe(true);
-	});
-
-	it('stops setup confirmations from gating when the setup panel is enabled', () => {
-		mockedStore(useInstanceAiSettingsStore).isSetupPanelEnabled = true;
-
-		const runtime = seedConfirmation({
-			requestId: 'req-setup',
-			severity: 'info',
-			message: 'Connect Slack',
-			setupRequests: [{ workflowId: 'wf-1' }],
-		});
-
-		// Still pending — the setup cards keep rendering; only the gate lifts.
-		expect(runtime.pendingConfirmations).toHaveLength(1);
-		expect(runtime.isAwaitingConfirmation).toBe(false);
-	});
-
-	it('keeps approvals gating with the setup panel enabled', () => {
-		mockedStore(useInstanceAiSettingsStore).isSetupPanelEnabled = true;
-
-		const runtime = seedConfirmation({
-			requestId: 'req-approval',
-			severity: 'info',
-			message: 'Delete this workflow?',
-		});
-
 		expect(runtime.isAwaitingConfirmation).toBe(true);
 	});
 });
@@ -1908,6 +1882,7 @@ describe('createThreadRuntime - session always-allow', () => {
 			args?: Record<string, unknown>;
 			severity?: 'info' | 'warning' | 'destructive';
 			channelConfig?: { integrationType: string; agentId: string };
+			credentialFlow?: { stage: 'generic' | 'finalize' };
 			targetApproval?: InstanceAiTargetApproval;
 			workflowId?: string;
 		},
@@ -1939,6 +1914,7 @@ describe('createThreadRuntime - session always-allow', () => {
 							severity: opts.severity ?? 'info',
 							message: 'Approve?',
 							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
+							...(opts.credentialFlow ? { credentialFlow: opts.credentialFlow } : {}),
 							...(opts.targetApproval ? { targetApproval: opts.targetApproval } : {}),
 							...(opts.workflowId ? { workflowId: opts.workflowId } : {}),
 						},
@@ -1966,6 +1942,23 @@ describe('createThreadRuntime - session always-allow', () => {
 			kind: 'approval',
 			approved: true,
 		});
+	});
+
+	it('does not auto-approve credential-flow confirmations even when the key matches', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('connect_credential', {});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-cred-flow',
+			requestId: 'req-cred-flow',
+			toolName: 'connect_credential',
+			args: {},
+			credentialFlow: { stage: 'generic' },
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-cred-flow')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
 	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {

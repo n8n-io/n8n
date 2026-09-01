@@ -44,8 +44,6 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
-import { isComposerGatingConfirmation } from './confirmationKinds';
-import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
@@ -238,6 +236,11 @@ function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | 
  * per key). Bounded by the hydrated message page: snapshots older than the
  * page are deliberately not resurrected — at rest the panel derives its state
  * from the saved workflow itself, the event feed only covers live builds.
+ *
+ * Message position is the recency proxy. The reducer folds setup-items onto
+ * the emitting run's root, and today only the newest group's orchestrator
+ * emits them — if parallel emitters across groups ever land, stamp folds with
+ * a sequence instead of trusting position.
  */
 function findLatestSetupItemsFromMessages(
 	messages: InstanceAiMessage[],
@@ -376,7 +379,6 @@ export function createThreadRuntime(
 ) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
-	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -387,7 +389,6 @@ export function createThreadRuntime(
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
-	const latestSetupItems = ref<Record<string, InstanceAiSetupItem[]> | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const resolvedConfirmationIds = reactive(
 		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
@@ -486,13 +487,16 @@ export function createThreadRuntime(
 	);
 
 	/**
-	 * Latest setup-items snapshot per workflowId — restored messages as the
-	 * base, live setup-items events (strictly newer) overriding per key.
+	 * Latest setup-items snapshot per workflowId. Scanning the message trees is
+	 * enough for every path: the reducer folds live setup-items events onto the
+	 * run's root node, which `msg.agentTree` adopts by reference, and hydration
+	 * and run-sync replace the trees the same scan reads. (Unlike
+	 * `latestTasks`, which needs its own ref because tasks-update folds onto
+	 * the emitting agent, not the root.)
 	 */
-	const setupItemsByWorkflowId = computed<Record<string, InstanceAiSetupItem[]>>(() => ({
-		...findLatestSetupItemsFromMessages(messages.value),
-		...latestSetupItems.value,
-	}));
+	const setupItemsByWorkflowId = computed<Record<string, InstanceAiSetupItem[]>>(() =>
+		findLatestSetupItemsFromMessages(messages.value),
+	);
 
 	// --- Telemetry: 'User viewed new builder workflow' ---
 	// FE counterpart of the backend 'Builder created workflow' event, which carries
@@ -606,17 +610,8 @@ export function createThreadRuntime(
 		return items;
 	});
 
-	/**
-	 * True while the run is paused awaiting the user to resolve a confirmation.
-	 * With the setup panel enabled, setup/credential/question kinds don't
-	 * count — setup completes asynchronously in the panel, so the composer
-	 * (and everything else keyed on this) stays available.
-	 */
-	const isAwaitingConfirmation = computed(() =>
-		instanceAiSettingsStore.isSetupPanelEnabled
-			? pendingConfirmations.value.some(isComposerGatingConfirmation)
-			: pendingConfirmations.value.length > 0,
-	);
+	/** True while the run is paused awaiting the user to resolve a confirmation. */
+	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
 
 	function resolveConfirmation(
 		requestId: string,
@@ -728,6 +723,7 @@ export function createThreadRuntime(
 		if (conf.inputType) return false;
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
+		if (conf.credentialFlow) return false;
 		if (conf.questions?.length) return false;
 		if (conf.channelConfig) return false;
 		return true;
@@ -858,12 +854,6 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
 			}
-			if (parsed.data.type === 'setup-items' && isSafeObjectKey(parsed.data.payload.workflowId)) {
-				latestSetupItems.value = {
-					...latestSetupItems.value,
-					[parsed.data.payload.workflowId]: parsed.data.payload.items,
-				};
-			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
@@ -950,10 +940,6 @@ export function createThreadRuntime(
 			msg.content = data.agentTree.textContent;
 			msg.reasoning = data.agentTree.reasoning;
 			latestTasks.value = findLatestTasksFromMessages(messages.value);
-			// Wholesale recompute, not a per-key merge with the live ref: the synced
-			// fold carries reconnect catch-up the ref never saw, and live events this
-			// connection already delivered are also in the message trees scanned here.
-			latestSetupItems.value = findLatestSetupItemsFromMessages(messages.value);
 			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
 			// For background-only groups, the orchestrator already finished.
 			// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
@@ -1048,7 +1034,6 @@ export function createThreadRuntime(
 		messages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
-		latestSetupItems.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -1087,7 +1072,6 @@ export function createThreadRuntime(
 				if (result.messages.length > 0) {
 					messages.value = result.messages;
 					latestTasks.value = findLatestTasksFromMessages(result.messages);
-					latestSetupItems.value = findLatestSetupItemsFromMessages(result.messages);
 
 					// Rebuild reducer routing state from historical messages so SSE
 					// replay events (which arrive before run-sync) can reduce into

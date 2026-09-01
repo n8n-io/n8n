@@ -30,7 +30,6 @@ export function useSetupPanelState(options: {
 	workflowId: MaybeRefOrGetter<string | undefined>;
 }) {
 	const { thread } = options;
-	const derivation = useWorkflowSetupItems(options.workflowId);
 
 	/** Mirrors the artifact preview's edit lock (see `InstanceAiWorkflowPreview`). */
 	const isAgentEditing = computed(() => {
@@ -41,25 +40,51 @@ export function useSetupPanelState(options: {
 		);
 	});
 
+	const derivation = useWorkflowSetupItems(options.workflowId, {
+		paused: () => isAgentEditing.value,
+	});
+
 	const eventItems = computed<InstanceAiSetupItem[]>(() => {
 		const id = toValue(options.workflowId);
-		return id ? (thread.setupItemsByWorkflowId[id] ?? []) : [];
+		// hasOwn: an id like 'constructor' must read as absent, not resolve to a
+		// prototype member. (The map itself is rebuilt per recompute, so its
+		// reactivity dep is the containing computed, not the key.)
+		if (!id || !Object.hasOwn(thread.setupItemsByWorkflowId, id)) return [];
+		return thread.setupItemsByWorkflowId[id];
 	});
 
 	/**
 	 * Reconciliation: while the agent edits the workflow, its events are the
 	 * row source (the workflow document lags behind the agent's changes); at
-	 * rest the derivation from the document is ground truth. Events also
-	 * cover the document not being hydrated yet, e.g. a refreshed thread
-	 * before the artifact canvas loads.
+	 * rest the derivation is ground truth — from the live canvas store when a
+	 * host has one hydrated, else from the saved workflow the derivation
+	 * fetches itself. Events still cover that fetch being in flight, e.g.
+	 * right after a thread refresh.
 	 */
 	const rowSource = computed<'events' | 'derived'>(() =>
 		!isAgentEditing.value && derivation.isWorkflowAvailable.value ? 'derived' : 'events',
 	);
 
 	const rows = computed<SetupPanelRow[]>(() => {
-		const items = rowSource.value === 'derived' ? derivation.derivedItems.value : eventItems.value;
-		return items.map((item) => ({ item, isDone: derivation.isItemDone(item) }));
+		if (rowSource.value === 'events') {
+			return eventItems.value.map((item) => ({ item, isDone: derivation.isItemDone(item) }));
+		}
+		const derived = derivation.derivedItems.value;
+		const derivedIds = new Set(derived.map((item) => item.id));
+		// Parameter rows the agent announced that settled before this session's
+		// derivation ever saw them raise issues (e.g. resolved mid-build, then a
+		// refresh) stay visible as done — parity with credential rows, which
+		// persist because they derive from workflow structure rather than issue
+		// state. A row whose node no longer exists stays dropped: `isItemDone`
+		// is false for it.
+		const settledEventItems = eventItems.value.filter(
+			(item) =>
+				item.kind === 'parameters' && !derivedIds.has(item.id) && derivation.isItemDone(item),
+		);
+		return [...derived, ...settledEventItems].map((item) => ({
+			item,
+			isDone: derivation.isItemDone(item),
+		}));
 	});
 
 	return { rows, rowSource, isAgentEditing };

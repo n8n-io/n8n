@@ -295,7 +295,6 @@ function isRenderableTree(tree: InstanceAiAgentNode): boolean {
 		tree.reasoning.length > 0 ||
 		(tree.planItems?.length ?? 0) > 0 ||
 		!!tree.tasks ||
-		!!tree.setupItemsByWorkflowId ||
 		!!tree.statusMessage ||
 		!!tree.result ||
 		!!tree.error
@@ -512,6 +511,12 @@ export function parseStoredMessages(
 			// still attributable (user/timeout/shutdown) after the snapshot was lost.
 			if (messageFlatTree && snapshot?.tree.cancellationReason) {
 				messageFlatTree.cancellationReason = snapshot.tree.cancellationReason;
+			}
+			// Same for setup items: they must survive the fallback rather than make a
+			// degenerate snapshot (setup items but no timeline) win over it, so they
+			// deliberately don't count as renderable in `isRenderableTree`.
+			if (messageFlatTree && snapshot?.tree.setupItemsByWorkflowId) {
+				messageFlatTree.setupItemsByWorkflowId = snapshot.tree.setupItemsByWorkflowId;
 			}
 			// Prefer the snapshot tree, but when it carries no renderable content (e.g. an
 			// empty `cancelled` tree from a run whose events were lost before the snapshot

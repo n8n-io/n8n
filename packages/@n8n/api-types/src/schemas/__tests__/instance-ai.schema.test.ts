@@ -104,18 +104,40 @@ describe('instanceAiEventSchema', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
 	});
 
-	it('rejects a credential setup item without a credentialType', () => {
+	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
 		const event = {
 			type: 'setup-items',
 			runId: 'run-1',
 			agentId: 'agent-1',
 			payload: {
 				workflowId: 'wf-1',
-				items: [{ id: 'wf-1:credential:slackApi', workflowId: 'wf-1', kind: 'credential' }],
+				items: [
+					// Missing credentialType.
+					{ id: 'wf-1:credential:slackApi', workflowId: 'wf-1', kind: 'credential' },
+					// A kind this client predates.
+					{ id: 'wf-1:question:q-1', workflowId: 'wf-1', kind: 'question', prompt: 'Region?' },
+					{
+						id: 'wf-1:credential:notionApi',
+						workflowId: 'wf-1',
+						kind: 'credential',
+						credentialType: 'notionApi',
+					},
+				],
 			},
 		};
 
-		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
+		const result = instanceAiEventSchema.safeParse(event);
+		expect(result.success).toBe(true);
+		if (result.success && result.data.type === 'setup-items') {
+			expect(result.data.payload.items).toEqual([
+				{
+					id: 'wf-1:credential:notionApi',
+					workflowId: 'wf-1',
+					kind: 'credential',
+					credentialType: 'notionApi',
+				},
+			]);
+		}
 	});
 
 	it('rejects a setup item claiming a different workflow than the payload', () => {

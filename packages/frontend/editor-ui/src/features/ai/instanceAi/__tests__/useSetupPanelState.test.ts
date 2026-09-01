@@ -1,4 +1,4 @@
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, toValue } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
@@ -117,5 +117,54 @@ describe('useSetupPanelState', () => {
 		expect(state.isAgentEditing.value).toBe(false);
 		expect(state.rows.value).toEqual([]);
 		expect(vi.mocked(isAgentEditingWorkflow)).not.toHaveBeenCalled();
+	});
+
+	it('passes isAgentEditing to the derivation as its paused signal', () => {
+		const { editing } = createHarness({ agentEditing: true });
+
+		const options = vi.mocked(useWorkflowSetupItems).mock.calls[0][1];
+		expect(toValue(options?.paused)).toBe(true);
+
+		editing.value = false;
+		expect(toValue(options?.paused)).toBe(false);
+	});
+
+	it('reads no event items for a workflowId matching a prototype property', () => {
+		const { state } = createHarness({ workflowId: 'constructor' });
+
+		expect(state.rowSource.value).toBe('events');
+		expect(state.rows.value).toEqual([]);
+	});
+
+	it('keeps settled event parameter rows visible in derived mode', () => {
+		const settledParameters: InstanceAiSetupItem = {
+			id: `${WORKFLOW_ID}:parameters:Old Sheets`,
+			workflowId: WORKFLOW_ID,
+			kind: 'parameters',
+			nodeName: 'Old Sheets',
+			parameterNames: ['documentId'],
+		};
+		const unresolvedParameters: InstanceAiSetupItem = {
+			id: `${WORKFLOW_ID}:parameters:Ghost`,
+			workflowId: WORKFLOW_ID,
+			kind: 'parameters',
+			nodeName: 'Ghost',
+			parameterNames: ['url'],
+		};
+		const { state, doneIds } = createHarness({
+			workflowAvailable: true,
+			// The credential event row must not be re-added: credential rows
+			// derive from workflow structure, so absence from the derivation
+			// means the workflow no longer needs them.
+			eventItems: [eventItem, settledParameters, unresolvedParameters],
+			derivedItems: [derivedItem],
+		});
+		doneIds.value = new Set([settledParameters.id]);
+
+		expect(state.rowSource.value).toBe('derived');
+		expect(state.rows.value).toEqual([
+			{ item: derivedItem, isDone: false },
+			{ item: settledParameters, isDone: true },
+		]);
 	});
 });

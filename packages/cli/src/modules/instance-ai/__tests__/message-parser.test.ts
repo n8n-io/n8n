@@ -617,6 +617,67 @@ describe('parseStoredMessages', () => {
 			expect(assistant?.agentTree?.tasks?.tasks).toHaveLength(1);
 		});
 
+		it('should carry setup items onto the message-derived tree when the snapshot is otherwise empty', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'Working on it' },
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'gmail',
+							input: { q: 'invoices' },
+							state: 'resolved',
+							output: { count: 3 },
+						},
+					],
+					createdAt: makeDate(1),
+				},
+			];
+			// A degenerate snapshot: setup items survived but the run's timeline events
+			// were lost. Setup items alone don't make it renderable — the message-derived
+			// tree must win and inherit them, like `cancellationReason`.
+			const setupOnlyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				setupItemsByWorkflowId: {
+					['wf-1']: [
+						{
+							id: 'wf-1:credential:slackApi',
+							workflowId: 'wf-1',
+							kind: 'credential',
+							credentialType: 'slackApi',
+						},
+					],
+				},
+			};
+			const snapshots = [
+				{
+					tree: setupOnlyTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(5),
+					updatedAt: makeDate(5),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree?.toolCalls).toHaveLength(1);
+			expect(assistant?.agentTree?.textContent).toBe('Working on it');
+			expect(assistant?.agentTree?.setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+		});
+
 		it('should normalize a non-terminal (running) snapshot status to completed', () => {
 			const messages: StoredAgentMessage[] = [
 				{ id: 'msg-u', role: 'user', content: 'do it', createdAt: makeDate() },

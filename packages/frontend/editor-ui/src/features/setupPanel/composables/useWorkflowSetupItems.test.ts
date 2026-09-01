@@ -1,5 +1,6 @@
+import { ref } from 'vue';
 import { setActivePinia } from 'pinia';
-import { createTestingPinia } from '@pinia/testing';
+import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ICredentialType } from 'n8n-workflow';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
@@ -7,8 +8,11 @@ import { mockedStore } from '@/__tests__/utils';
 import type { InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
+	getWorkflowDocumentStoreId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import {
@@ -47,13 +51,22 @@ function credentialItem(
 }
 
 describe('useWorkflowSetupItems', () => {
+	let pinia: TestingPinia;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia({ stubActions: false }));
+		pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
 		credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.getUsableCredentialByType = vi.fn().mockReturnValue([]);
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(false);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue([]);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.fetchWorkflow = vi
+			.fn()
+			.mockResolvedValue(createTestWorkflow({ id: WORKFLOW_ID }));
 		mockGetNodeCredentialTypes.mockReset().mockReturnValue([]);
 		mockGetNodeParametersIssues.mockReset().mockReturnValue({});
 	});
@@ -109,14 +122,96 @@ describe('useWorkflowSetupItems', () => {
 		]);
 	});
 
-	it('derives nothing until the workflow document is hydrated', () => {
+	it('derives from the saved workflow when no canvas host has a document store', () => {
+		mockGetNodeCredentialTypes.mockReturnValue(['slackApi']);
+		workflowsListStore.workflowsById = {
+			[WORKFLOW_ID]: createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack' })],
+			}),
+		};
+
+		const { isWorkflowAvailable, derivedItems } = useWorkflowSetupItems(() => WORKFLOW_ID);
+
+		expect(isWorkflowAvailable.value).toBe(true);
+		expect(derivedItems.value).toEqual([credentialItem()]);
+		// It attaches to a host's store but never creates one itself.
+		expect(
+			getWorkflowDocumentStoreId(createWorkflowDocumentId(WORKFLOW_ID)) in pinia.state.value,
+		).toBe(false);
+		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(WORKFLOW_ID);
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: WORKFLOW_ID,
+		});
+	});
+
+	it('derives nothing while neither a document store nor the saved workflow is available', () => {
 		const { isWorkflowAvailable, derivedItems } = useWorkflowSetupItems(() => WORKFLOW_ID);
 
 		expect(isWorkflowAvailable.value).toBe(false);
 		expect(derivedItems.value).toEqual([]);
 	});
 
+	it('pauses fetching while the agent edits, then refreshes once it settles', async () => {
+		const paused = ref(true);
+
+		useWorkflowSetupItems(() => WORKFLOW_ID, { paused });
+
+		expect(credentialsStore.fetchUsableCredentials).not.toHaveBeenCalled();
+		expect(workflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
+
+		paused.value = false;
+		await vi.waitFor(() => {
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+				workflowId: WORKFLOW_ID,
+			});
+			expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(WORKFLOW_ID);
+		});
+	});
+
+	it('follows the canvas host through dispose and recreate cycles', () => {
+		mockGetNodeCredentialTypes.mockImplementation((_provider, node) =>
+			node.name === 'Slack' ? ['slackApi'] : ['notionApi'],
+		);
+		const firstStore = hydrateWorkflow([createTestNode({ name: 'Slack' })]);
+
+		const { isWorkflowAvailable, derivedItems } = useWorkflowSetupItems(() => WORKFLOW_ID);
+		expect(derivedItems.value).toEqual([credentialItem()]);
+
+		disposeWorkflowDocumentStore(firstStore);
+		expect(isWorkflowAvailable.value).toBe(false);
+
+		hydrateWorkflow([createTestNode({ name: 'Notion' })]);
+		expect(isWorkflowAvailable.value).toBe(true);
+		expect(derivedItems.value.map((item) => item.id)).toEqual(['wf-1:credential:notionApi']);
+	});
+
+	it('splits generic auth credential items per node', () => {
+		mockGetNodeCredentialTypes.mockReturnValue(['httpHeaderAuth']);
+		hydrateWorkflow([
+			createTestNode({ name: 'Fetch docs' }),
+			createTestNode({
+				name: 'Fetch stats',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Stats header' } },
+			}),
+		]);
+
+		const { derivedItems, isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
+
+		expect(derivedItems.value.map((item) => item.id)).toEqual([
+			'wf-1:credential:httpHeaderAuth:Fetch docs',
+			'wf-1:credential:httpHeaderAuth:Fetch stats',
+		]);
+		// A usable credential of a generic type says nothing about this service:
+		// only the node's own binding completes the item.
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		credentialsStore.getUsableCredentialByType = vi.fn().mockReturnValue([{ id: 'cred-9' }]);
+		expect(isItemDone(derivedItems.value[0])).toBe(false);
+		expect(isItemDone(derivedItems.value[1])).toBe(true);
+	});
+
 	it('completes a credential item once a usable credential of its type exists, even without the workflow document', () => {
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
 		const getUsable = vi.fn().mockReturnValue([]);
 		credentialsStore.getUsableCredentialByType = getUsable;
 
@@ -127,6 +222,15 @@ describe('useWorkflowSetupItems', () => {
 
 		getUsable.mockReturnValue([{ id: 'cred-1' }]);
 		expect(isItemDone(item)).toBe(true);
+	});
+
+	it('ignores usable credentials fetched for another workflow or project', () => {
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(false);
+		credentialsStore.getUsableCredentialByType = vi.fn().mockReturnValue([{ id: 'cred-1' }]);
+
+		const { isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
+
+		expect(isItemDone(credentialItem())).toBe(false);
 	});
 
 	it('completes a credential item when every bound node already carries one', () => {
@@ -165,5 +269,45 @@ describe('useWorkflowSetupItems', () => {
 		expect(isItemDone(item)).toBe(true);
 
 		expect(isItemDone({ ...item, nodeName: 'Ghost' })).toBe(false);
+	});
+
+	it('keeps a parameters item listed as done once its issues resolve', () => {
+		mockGetNodeParametersIssues.mockImplementation((_provider, node) =>
+			node.name === 'Sheets' && !node.parameters?.documentId
+				? { documentId: ['Parameter "documentId" is required.'] }
+				: {},
+		);
+		hydrateWorkflow([createTestNode({ name: 'Sheets', parameters: {} })]);
+
+		const { derivedItems, isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
+		expect(derivedItems.value.map((item) => item.id)).toEqual(['wf-1:parameters:Sheets']);
+		expect(isItemDone(derivedItems.value[0])).toBe(false);
+
+		hydrateWorkflow([createTestNode({ name: 'Sheets', parameters: { documentId: 'doc-1' } })]);
+		expect(derivedItems.value.map((item) => item.id)).toEqual(['wf-1:parameters:Sheets']);
+		expect(isItemDone(derivedItems.value[0])).toBe(true);
+
+		// A row whose node is gone no longer applies.
+		hydrateWorkflow([createTestNode({ name: 'Code' })]);
+		expect(derivedItems.value).toEqual([]);
+	});
+
+	it('treats prototype property names as regular parameter names', () => {
+		hydrateWorkflow([createTestNode({ name: 'Sheets' })]);
+
+		const { isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
+		const item: InstanceAiSetupItem = {
+			id: `${WORKFLOW_ID}:parameters:Sheets`,
+			workflowId: WORKFLOW_ID,
+			kind: 'parameters',
+			nodeName: 'Sheets',
+			parameterNames: ['constructor'],
+		};
+
+		mockGetNodeParametersIssues.mockReturnValue({});
+		expect(isItemDone(item)).toBe(true);
+
+		mockGetNodeParametersIssues.mockReturnValue({ constructor: ['required'] });
+		expect(isItemDone(item)).toBe(false);
 	});
 });
