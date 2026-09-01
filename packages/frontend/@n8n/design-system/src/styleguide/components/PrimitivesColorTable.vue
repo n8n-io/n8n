@@ -236,7 +236,7 @@ onUnmounted(() => {
 <style lang="scss" module>
 .container {
 	--n8n--color-swatch-gap: var(--spacing--2xs);
-	--n8n--color-swatch-row-gap: var(--spacing--md);
+	--n8n--color-swatch-row-gap: var(--spacing--2xs);
 
 	position: relative;
 	display: flex;
