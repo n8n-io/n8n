@@ -7,6 +7,12 @@ export type WrappableError = Record<string, unknown>;
  * This class wraps them in an Error instance and makes all their
  * properties available.
  */
+/**
+ * Properties that control error identity and reporting. The payload comes
+ * from JSON, so these must not overwrite the values this class sets.
+ */
+const PROTECTED_PROPERTIES = new Set(['name', 'message', 'level', 'shouldReport', 'stack']);
+
 export class WrappedExecutionError extends UserError {
 	[key: string]: unknown;
 
@@ -15,12 +21,14 @@ export class WrappedExecutionError extends UserError {
 		super(message, {
 			cause: error,
 		});
+		this.name = 'WrappedExecutionError';
 
 		this.copyErrorProperties(error);
 	}
 
 	private copyErrorProperties(error: WrappableError) {
 		for (const key of Object.getOwnPropertyNames(error)) {
+			if (PROTECTED_PROPERTIES.has(key)) continue;
 			this[key] = error[key];
 		}
 	}
