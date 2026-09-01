@@ -215,6 +215,25 @@ async function connectOrThrow(
 }
 
 /**
+ * Prepare MCP `callTool` arguments for the execute path.
+ *
+ * Only strips keys not declared in `schema.properties` when the MCP server
+ * explicitly sets `additionalProperties: false`. When the field is omitted or
+ * `true`, all agent-provided arguments are forwarded so top-level parameters
+ * declared only in nested/composed schemas (or extra server-specific fields) are
+ * not silently dropped.
+ */
+export function sanitizeMcpToolCallArguments(
+	toolArguments: IDataObject,
+	schema: JSONSchema7,
+): IDataObject {
+	if (schema.additionalProperties !== false) {
+		return toolArguments;
+	}
+	return pick(toolArguments, Object.keys(schema.properties ?? {}));
+}
+
+/**
  * Run the tool named in `item.json.tool` against the connected client and push
  * the result onto `returnData`. Shared by the cached and non-cached execute paths.
  */
@@ -243,10 +262,7 @@ async function runToolCall(opts: {
 
 		const { tool: _, ...toolArguments } = item.json;
 		const schema: JSONSchema7 = tool.inputSchema;
-		const sanitizedToolArguments: IDataObject =
-			schema.additionalProperties !== true
-				? pick(toolArguments, Object.keys(schema.properties ?? {}))
-				: toolArguments;
+		const sanitizedToolArguments = sanitizeMcpToolCallArguments(toolArguments, schema);
 
 		const result = await client.callTool(
 			{ name: tool.name, arguments: sanitizedToolArguments },

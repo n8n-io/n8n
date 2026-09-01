@@ -912,76 +912,133 @@ describe('McpClientTool', () => {
 			);
 		});
 
-		it.each([false, undefined])(
-			'should filter out tool arguments when additionalProperties is %s',
-			async (additionalProperties) => {
-				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
-				vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
-					content: [{ type: 'text', text: 'Weather is sunny' }],
-				});
-				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
-					tools: [
-						{
-							name: 'get_weather',
-							description: 'Gets the weather',
-							inputSchema: {
-								type: 'object',
-								properties: { location: { type: 'string' } },
-								additionalProperties,
-							},
-						},
-					],
-				});
-
-				const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
-				const mockExecuteFunctions = mock<any>({
-					getNode: vi.fn(() => mockNode),
-					getInputData: vi.fn(() => [
-						{
-							json: {
-								tool: buildMcpToolName('MCP Client', 'get_weather'),
-								location: 'Berlin',
-								foo: 'bar',
-								sessionId: '123',
-							},
-						},
-					]),
-					getNodeParameter: vi.fn((key) => {
-						const params: Record<string, any> = {
-							include: 'all',
-							includeTools: [],
-							excludeTools: [],
-							authentication: 'none',
-							sseEndpoint: 'https://test.com/sse',
-							'options.timeout': 60000,
-						};
-						return params[key];
-					}),
-				});
-
-				const result = await new McpClientTool().execute.call(mockExecuteFunctions);
-
-				expect(result).toEqual([
-					[
-						{
-							json: {
-								response: [{ type: 'text', text: 'Weather is sunny' }],
-							},
-							pairedItem: { item: 0 },
-						},
-					],
-				]);
-
-				expect(Client.prototype.callTool).toHaveBeenCalledWith(
+		it('should filter out tool arguments when additionalProperties is false', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
 					{
 						name: 'get_weather',
-						arguments: { location: 'Berlin' },
+						description: 'Gets the weather',
+						inputSchema: {
+							type: 'object',
+							properties: { location: { type: 'string' } },
+							additionalProperties: false,
+						},
 					},
-					expect.anything(),
-					expect.anything(),
-				);
-			},
-		);
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+							foo: 'bar',
+							sessionId: '123',
+						},
+					},
+				]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			const result = await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							response: [{ type: 'text', text: 'Weather is sunny' }],
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{
+					name: 'get_weather',
+					arguments: { location: 'Berlin' },
+				},
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('should pass through undeclared tool arguments when additionalProperties is omitted', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: {
+							type: 'object',
+							properties: { location: { type: 'string' } },
+						},
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: vi.fn(() => mockNode),
+				getInputData: vi.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+							description: 'DEBUG-test-123',
+							foo: 'bar',
+						},
+					},
+				]),
+				getNodeParameter: vi.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{
+					name: 'get_weather',
+					arguments: {
+						location: 'Berlin',
+						description: 'DEBUG-test-123',
+						foo: 'bar',
+					},
+				},
+				expect.anything(),
+				expect.anything(),
+			);
+		});
 
 		it('should pass all arguments when schema has additionalProperties: true', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();

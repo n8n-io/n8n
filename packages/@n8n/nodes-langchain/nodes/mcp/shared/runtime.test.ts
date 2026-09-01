@@ -12,7 +12,12 @@ import {
 } from 'n8n-workflow';
 
 import { McpClientsManager } from './McpClientsManager';
-import { buildMcpToolkit, executeMcpTool, loadMcpToolOptions } from './runtime';
+import {
+	buildMcpToolkit,
+	executeMcpTool,
+	loadMcpToolOptions,
+	sanitizeMcpToolCallArguments,
+} from './runtime';
 import type { ResolvedMcpConfig, McpConnectionConfig } from './runtime';
 import type { McpTool } from './types';
 import * as utils from './utils';
@@ -78,6 +83,63 @@ function createExecuteCtx(
 describe('runtime', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+	});
+
+	describe('sanitizeMcpToolCallArguments', () => {
+		it('forwards all arguments when additionalProperties is omitted', () => {
+			const args = {
+				query: 'hello',
+				description: 'why I am calling this',
+				sessionId: 'abc',
+			};
+			expect(
+				sanitizeMcpToolCallArguments(args, {
+					type: 'object',
+					properties: { query: { type: 'string' } },
+				}),
+			).toEqual(args);
+		});
+
+		it('forwards all arguments when additionalProperties is true', () => {
+			const args = { query: 'hello', extra: 'kept' };
+			expect(
+				sanitizeMcpToolCallArguments(args, {
+					type: 'object',
+					properties: { query: { type: 'string' } },
+					additionalProperties: true,
+				}),
+			).toEqual(args);
+		});
+
+		it('preserves a top-level description parameter declared in properties', () => {
+			const args = {
+				query: 'hello',
+				description: 'DEBUG-test-123',
+			};
+			expect(
+				sanitizeMcpToolCallArguments(args, {
+					type: 'object',
+					properties: {
+						query: { type: 'string' },
+						description: { type: 'string', description: 'Why the tool is being called' },
+					},
+					additionalProperties: false,
+				}),
+			).toEqual(args);
+		});
+
+		it('strips undeclared keys only when additionalProperties is false', () => {
+			expect(
+				sanitizeMcpToolCallArguments(
+					{ query: 'hello', extra: 'drop-me' },
+					{
+						type: 'object',
+						properties: { query: { type: 'string' } },
+						additionalProperties: false,
+					},
+				),
+			).toEqual({ query: 'hello' });
+		});
 	});
 
 	describe('buildMcpToolkit', () => {
@@ -264,6 +326,52 @@ describe('runtime', () => {
 
 			expect(callTool).toHaveBeenCalledWith(
 				{ name: 'search', arguments: { query: 'hello' } },
+				expect.anything(),
+				expect.objectContaining({ timeout: baseConfig.timeout }),
+			);
+		});
+
+		it('passes top-level parameters through when additionalProperties is omitted', async () => {
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'search',
+						description: '',
+						inputSchema: {
+							type: 'object' as const,
+							properties: { query: { type: 'string' } },
+						},
+					},
+				],
+			});
+			const callTool = vi
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			const ctx = createExecuteCtx([
+				{
+					json: {
+						tool: buildMcpToolName('MCP', 'search'),
+						query: 'hello',
+						description: 'DEBUG-test-123',
+						sessionId: 'abc',
+					},
+				},
+			]);
+
+			await executeMcpTool(ctx, () => baseConfig);
+
+			expect(callTool).toHaveBeenCalledWith(
+				{
+					name: 'search',
+					arguments: {
+						query: 'hello',
+						description: 'DEBUG-test-123',
+						sessionId: 'abc',
+					},
+				},
 				expect.anything(),
 				expect.objectContaining({ timeout: baseConfig.timeout }),
 			);
