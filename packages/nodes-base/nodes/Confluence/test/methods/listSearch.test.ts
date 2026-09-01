@@ -18,7 +18,9 @@ vi.mock('../../transport', () => ({
 	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
 	confluenceApiRequest: vi.fn(),
 	getConfluenceCloudId: vi.fn(),
-	getConfluenceCredentialName: vi.fn(() => 'confluenceCloudOAuth2Api'),
+	// Distinct sentinel so the tests can tell the resolver's value apart from the
+	// legacy constant — a call site regressing to the constant must fail, not pass.
+	getConfluenceCredentialName: vi.fn(() => 'resolvedConfluenceCredential'),
 }));
 
 const apiRequest = vi.mocked(confluenceApiRequest);
@@ -39,7 +41,7 @@ describe('Confluence listSearch.getPages', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
-			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
+			credentials: { resolvedConfluenceCredential: { id: 'cred-1', name: 'account' } },
 		});
 	});
 
@@ -128,7 +130,7 @@ describe('Confluence listSearch.getPages', () => {
 				typeVersion: 1,
 				position: [0, 0],
 				parameters: {},
-				credentials: { confluenceCloudOAuth2Api: { id: credentialId, name: 'account' } },
+				credentials: { resolvedConfluenceCredential: { id: credentialId, name: 'account' } },
 			});
 			return scopedCtx;
 		};
@@ -505,15 +507,16 @@ describe('Confluence listSearch.getSites', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
-			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
+			credentials: { resolvedConfluenceCredential: { id: 'cred-1', name: 'account' } },
 		});
 	});
 
 	it('lists accessible sites sorted by name, cloudId as the value', async () => {
 		const result = await getSites.call(ctx);
 
+		// The resolver's value (not the legacy constant) must reach the request
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'confluenceCloudOAuth2Api',
+			'resolvedConfluenceCredential',
 			expect.objectContaining({
 				url: 'https://api.atlassian.com/oauth/token/accessible-resources',
 			}),

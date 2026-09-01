@@ -572,6 +572,7 @@ describe('credential routing (authentication selector)', () => {
 			new FormData(),
 		);
 
+		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
 		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
 			expect(call[0]).toBe('atlassianServiceAccountApi');
 		}
@@ -585,6 +586,7 @@ describe('credential routing (authentication selector)', () => {
 
 		await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/file.txt');
 
+		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
 		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
 			expect(call[0]).toBe('atlassianServiceAccountApi');
 		}
@@ -597,8 +599,37 @@ describe('credential routing (authentication selector)', () => {
 
 		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
 
+		expect(mockHttpRequestWithAuthentication.mock.calls.length).toBeGreaterThanOrEqual(2);
 		for (const call of mockHttpRequestWithAuthentication.mock.calls) {
 			expect(call[0]).toBe('confluenceCloudOAuth2Api');
+		}
+	});
+
+	it('resolves the Service Account credential through getCurrentNodeParameter in a load-options context', async () => {
+		// The NDV dropdowns (sites, spaces, pages, labels) run in a load-options
+		// context, where only getCurrentNodeParameter sees the unsaved selector value.
+		const loadCtx: Mocked<ILoadOptionsFunctions> = mockDeep<ILoadOptionsFunctions>();
+		const loadMock = vi.fn().mockResolvedValue(accessibleResources);
+		loadCtx.helpers.httpRequestWithAuthentication = loadMock;
+		loadCtx.getNode.mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: {},
+		});
+		loadCtx.getCurrentNodeParameter.mockImplementation(((name: string) => {
+			if (name === 'authentication') return 'serviceAccount';
+			return siteByUrl('https://example.atlassian.net');
+		}) as never);
+
+		await confluenceApiRequest.call(loadCtx, 'GET', '/wiki/api/v2/pages');
+
+		expect(loadMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+		for (const call of loadMock.mock.calls) {
+			expect(call[0]).toBe('atlassianServiceAccountApi');
 		}
 	});
 });

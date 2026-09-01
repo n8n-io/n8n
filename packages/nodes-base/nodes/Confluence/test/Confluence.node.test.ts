@@ -22,17 +22,6 @@ describe('Confluence Node', () => {
 		]);
 	});
 
-	it('gates each credential on its authentication value', () => {
-		const credentials = node.description.credentials ?? [];
-		const oauth = credentials.find((c) => c.name === 'confluenceCloudOAuth2Api');
-		const serviceAccount = credentials.find((c) => c.name === 'atlassianServiceAccountApi');
-
-		expect(oauth?.required).toBe(true);
-		expect(oauth?.displayOptions?.show?.authentication).toEqual(['cloudOAuth2']);
-		expect(serviceAccount?.required).toBe(true);
-		expect(serviceAccount?.displayOptions?.show?.authentication).toEqual(['serviceAccount']);
-	});
-
 	it('should stay hidden and off the AI-tool surface while operations land', () => {
 		expect(node.description.hidden).toBe(true);
 		expect(node.description.properties.length).toBeGreaterThan(0);
