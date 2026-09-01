@@ -197,6 +197,30 @@ Buckets: `page` (whole document), `canvas`, `ndv`, `node-creator`, `sidebar`,
 `modal`. Defined in `fixtures/a11y.ts` (`A11Y_BUCKETS`). Scans run with WCAG 2.1
 A + AA rules; override per call with `a11y.check('modal', { tags, disableRules })`.
 
+When a journey acts as another user, `n8n.start.withUser()` returns a new
+`n8nPage`. Point the checker at it with `a11y.for(otherN8n)` - the derived
+checker reports into the same scan list.
+
+### Report and failure budget
+
+Every scan is attached to its test and aggregated by
+`reporters/a11y-reporter.ts` into one axe HTML report per run, written to
+`a11y-report/index.html` and uploaded as its own CI artifact. Under sharding
+each shard reports the specs it ran.
+
+Violations are **reporting-only by default**. Set
+`PLAYWRIGHT_A11Y_MAX_VIOLATIONS` to the number of violations a single test may
+report before it fails:
+
+```bash
+# Fail any test reporting more than 5 violations
+PLAYWRIGHT_A11Y_MAX_VIOLATIONS=5 pnpm --filter=n8n-playwright test:local
+```
+
+Unset (the default), empty or malformed all mean "no budget", so the violations
+that already exist can't turn CI red. The budget is not applied to a test that
+already failed for another reason.
+
 ## Test Isolation
 
 Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
