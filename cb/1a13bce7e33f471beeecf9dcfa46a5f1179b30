@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_1b995c2a71c1af::t_d84a960a14843d 307-367
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_1b995c2a71c1af::t_782c7c1c5f93d2 205-209,213-215
+  s_1b995c2a71c1af::t_96372563d230a2 210-212
+  s_1b995c2a71c1af::t_19ada9e77a6c63 5
+  s_1b995c2a71c1af::t_c28180bb9daf0c 248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "cb1a13bce7e33f471beeecf9dcfa46a5f1179b30",
+  "prompts": {},
+  "sessions": {
+    "s_1b995c2a71c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db82b089-8508-49c4-99ee-6e3df49f7230",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
