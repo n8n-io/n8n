@@ -1097,21 +1097,9 @@ export type LocalGatewayStatus =
 
 // ── Conversation history ─────────────────────────────────────────────────────
 
-/**
- * Caps shared between the `conversation-history` tool schema and the host
- * service. The host mirrors them as local literals annotated with these
- * consts' literal types, so raising one without the other fails typecheck —
- * without forcing a runtime import on cli test suites that stub this package.
- */
 export const CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 20;
 export const CONVERSATION_HISTORY_MAX_WINDOW_SIDE = 5;
 
-// Result types inferred from the canonical zod schemas in
-// `./tools/conversation-history.schema` (type-only import — no runtime
-// coupling), so the tool's output contract and this service interface
-// cannot drift.
-
-/** Where a conversation-history search hit matched. */
 export type ConversationHistoryMatchSource = z.infer<typeof conversationHistoryMatchSourceSchema>;
 
 export type ConversationHistoryExcerpt = z.infer<typeof conversationHistoryExcerptSchema>;

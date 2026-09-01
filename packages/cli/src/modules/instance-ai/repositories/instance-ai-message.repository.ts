@@ -62,20 +62,11 @@ export class InstanceAiMessageRepository extends Repository<InstanceAiMessage> {
 		return rows.length >= threshold;
 	}
 
-	/**
-	 * Whether a thread has any persisted message at all. An existence probe,
-	 * not a count — it runs on every turn, and the answer only ever
-	 * distinguishes "none" from "some".
-	 */
 	async threadHasMessages(threadId: string): Promise<boolean> {
 		return await this.existsBy({ threadId });
 	}
 
-	/**
-	 * How many rows per thread match the query, in one grouped query.
-	 * Approximate by design: it counts `LIKE`-over-JSON hits, which the service
-	 * narrows further once it has parsed the content.
-	 */
+	// Approximate by design: it counts `LIKE`-over-JSON hits, which the service
 	async countSearchMatchesByThread(
 		threadIds: string[],
 		query: string,
