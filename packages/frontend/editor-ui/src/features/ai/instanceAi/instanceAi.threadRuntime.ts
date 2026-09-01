@@ -44,6 +44,8 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
+import { isComposerGatingConfirmation } from './confirmationKinds';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
@@ -374,6 +376,7 @@ export function createThreadRuntime(
 ) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
+	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -603,8 +606,17 @@ export function createThreadRuntime(
 		return items;
 	});
 
-	/** True while the run is paused awaiting the user to resolve a confirmation. */
-	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
+	/**
+	 * True while the run is paused awaiting the user to resolve a confirmation.
+	 * With the setup panel enabled, setup/credential/question kinds don't
+	 * count — setup completes asynchronously in the panel, so the composer
+	 * (and everything else keyed on this) stays available.
+	 */
+	const isAwaitingConfirmation = computed(() =>
+		instanceAiSettingsStore.isSetupPanelEnabled
+			? pendingConfirmations.value.some(isComposerGatingConfirmation)
+			: pendingConfirmations.value.length > 0,
+	);
 
 	function resolveConfirmation(
 		requestId: string,

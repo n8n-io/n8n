@@ -7,6 +7,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiTargetApproval } from '@n8n/api-types';
 import {
 	createThreadRuntime,
@@ -1798,6 +1799,89 @@ describe('createThreadRuntime - inline MCP connect confirmation', () => {
 		});
 
 		expect(runtime.pendingConfirmations).toHaveLength(1);
+	});
+});
+
+describe('createThreadRuntime - setup panel composer ungating', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-setup-panel';
+	});
+
+	function seedConfirmation(confirmation: Record<string, unknown>) {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'setup-workflow',
+							args: {},
+							isLoading: true,
+							confirmation,
+						},
+					],
+					children: [],
+					timeline: [],
+				},
+			},
+		] as unknown as typeof runtime.messages;
+		return runtime;
+	}
+
+	it('keeps setup confirmations gating while the setup panel is disabled', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-setup',
+			severity: 'info',
+			message: 'Connect Slack',
+			setupRequests: [{ workflowId: 'wf-1' }],
+		});
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.isAwaitingConfirmation).toBe(true);
+	});
+
+	it('stops setup confirmations from gating when the setup panel is enabled', () => {
+		mockedStore(useInstanceAiSettingsStore).isSetupPanelEnabled = true;
+
+		const runtime = seedConfirmation({
+			requestId: 'req-setup',
+			severity: 'info',
+			message: 'Connect Slack',
+			setupRequests: [{ workflowId: 'wf-1' }],
+		});
+
+		// Still pending — the setup cards keep rendering; only the gate lifts.
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+	});
+
+	it('keeps approvals gating with the setup panel enabled', () => {
+		mockedStore(useInstanceAiSettingsStore).isSetupPanelEnabled = true;
+
+		const runtime = seedConfirmation({
+			requestId: 'req-approval',
+			severity: 'info',
+			message: 'Delete this workflow?',
+		});
+
+		expect(runtime.isAwaitingConfirmation).toBe(true);
 	});
 });
 
