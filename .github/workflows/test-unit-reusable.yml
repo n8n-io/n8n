@@ -33,6 +33,15 @@ on:
         required: false
         default: ''
         type: string
+      skipCliIntegration:
+        description: |
+          Skip the scoped cli integration step. The PR workflow sets this when
+          the DB matrix runs: its "SQLite Pooled" leg runs the full cli
+          integration suite with the same command and environment, so the
+          scoped run here adds no coverage.
+        required: false
+        default: false
+        type: boolean
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -136,7 +145,7 @@ jobs:
         run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/**' --filter='!n8n' --summarize
 
       - name: Test Integration (cli, scoped)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !inputs.skipCliIntegration }}
         run: pnpm turbo test:integration:changed --filter=n8n --summarize
 
       - name: Send Test Stats
