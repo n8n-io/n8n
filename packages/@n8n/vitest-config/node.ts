@@ -39,11 +39,15 @@ export const cjsPinAliases = (deps: string[], from: string = process.cwd()): Ali
  * `--concurrency` near the core count, and adapts to the runner size instead of
  * a hardcoded value. Off outside CI, so a single-package `pnpm test` keeps full
  * parallelism and behaviour is unchanged.
+ *
+ * A step that runs exactly one package gets no benefit from turbo concurrency,
+ * so half the cores stay idle for its whole duration. Such a step raises the
+ * cap with VITEST_MAX_WORKERS.
  */
 export const forkPoolOptions = (): InlineConfig => {
 	if (process.env.CI !== 'true') return {};
 	// Vitest accepts a percentage for `maxWorkers` (half of availableParallelism).
-	return { pool: 'forks', maxWorkers: '50%' };
+	return { pool: 'forks', maxWorkers: process.env.VITEST_MAX_WORKERS ?? '50%' };
 };
 
 /**
