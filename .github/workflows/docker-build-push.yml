@@ -80,6 +80,17 @@ on:
         required: false
         type: string
 
+# Runner policy for this workflow:
+# - No job here needs a GitHub-hosted runner for correctness. The signing and
+#   attestation jobs take their identity — the OIDC issuer, the repository and
+#   the workflow ref — from the GitHub OIDC token of this workflow, not from the
+#   runner host. `sbom-attestation` therefore runs on Blacksmith.
+# - The jobs that keep `ubuntu-latest` only determine the build context, push
+#   manifests, call a URL or notify Slack. They are short and not CPU-bound, so
+#   a faster runner gives no benefit.
+# - The `publish-to-npm` job in release-publish.yml is different: it must stay on
+#   a GitHub-hosted runner, because npm provenance also records the runner
+#   environment.
 jobs:
   determine-build-context:
     name: Determine Build Context
@@ -523,6 +534,9 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
        needs.determine-build-context.outputs.release_type == 'nightly')
+    # `ubuntu-latest` is a cost choice, not a requirement. This job only signs a
+    # small static document with cosign, so a bigger runner gives no benefit. The
+    # runner host does not change the attestation identity.
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -609,6 +623,9 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
        needs.determine-build-context.outputs.release_type == 'nightly')
+    # Blacksmith is safe here: syft scans four images, which is CPU-bound, and
+    # the cosign attestation identity comes from the workflow OIDC token, not
+    # from the runner host.
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
     permissions:

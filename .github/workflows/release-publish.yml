@@ -7,6 +7,11 @@ on:
     branches:
       - 'release/*'
 
+# Runner policy for this workflow:
+# - `publish-to-npm` must stay on a GitHub-hosted runner. See the comment on
+#   that job.
+# - The other `ubuntu-latest` jobs only read git metadata or send a Slack
+#   message. They are short, so a faster runner gives no benefit.
 jobs:
   determine-version-info:
     name: Determine publishing track
@@ -41,6 +46,11 @@ jobs:
   publish-to-npm:
     name: Publish to NPM
     needs: [determine-version-info]
+    # Keep this job on a GitHub-hosted runner. npm provenance needs one:
+    # `NPM_CONFIG_PROVENANCE` makes npm sign a statement from the GitHub OIDC
+    # token, and that token carries a `runner_environment` claim. A Blacksmith
+    # or other self-hosted runner reports `self-hosted` and changes the recorded
+    # build environment of the published provenance. Do not move this job.
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     timeout-minutes: 30

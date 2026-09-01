@@ -36,6 +36,11 @@ jobs:
       id-token: write
       attestations: write
     name: Generate and Attach SBOM to Release
+    # This job does not need a GitHub-hosted runner. The attestation identity —
+    # the OIDC issuer, the repository and the workflow ref — comes from the
+    # GitHub OIDC token of this workflow, not from the runner host. Only the npm
+    # publish job in release-publish.yml must stay on `ubuntu-latest`, because
+    # npm provenance also records the runner environment.
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 15
     # No continue-on-error: SBOM is now the source of truth for
