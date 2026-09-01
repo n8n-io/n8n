@@ -120,6 +120,24 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
 	});
 
+	it('channelMessage:reply throws a static error and issues no request under SP', async () => {
+		selectSp({
+			resource: 'channelMessage',
+			operation: 'reply',
+			teamId: 'teamID',
+			channelId: 'channelID',
+			messageId: 'messageID',
+			contentType: 'text',
+			message: 'hi',
+			options: {},
+		});
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(
+			'Sending channel messages is not available with the Service Principal credential',
+		);
+		expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+	});
+
 	it('channelMessage:getAll under SP hits the exact raw /beta path (colon id, not encoded, no /me)', async () => {
 		(transport.microsoftApiRequestAllItems as Mock).mockResolvedValue([{ id: 'm1' }]);
 		ctx.helpers.returnJsonArray = vi.fn((data) =>
