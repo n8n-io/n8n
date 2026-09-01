@@ -127,15 +127,15 @@ describe('reconnecting', () => {
 		connection.onArrival(onArrival);
 
 		first.emit('close');
-		await vi.advanceTimersByTimeAsync(1);
-		second.emit('close');
-		await vi.advanceTimersByTimeAsync(1);
+		// The dial into `second` hangs on its SELECT until the attempt times out; the retry wins.
+		await vi.advanceTimersByTimeAsync(RECONNECT_TIMEOUT + 1001);
 		releaseSelect();
 		await vi.advanceTimersByTimeAsync(1);
 
 		third.emit('exists', { path: 'INBOX', count: 2, prevCount: 1 });
 		await vi.advanceTimersByTimeAsync(1);
 
+		expect(second.close).toHaveBeenCalled();
 		expect(third.close).not.toHaveBeenCalled();
 		expect(onArrival).toHaveBeenCalledWith({ count: 1 });
 	});
@@ -273,6 +273,35 @@ describe('reconnecting', () => {
 
 		expect(attempts).toBe(2);
 		expect(onClose).toHaveBeenCalledExactlyOnceWith('ended', undefined);
+	});
+
+	it('spends the budget even when a fresh transport drops during its SELECT', async () => {
+		const first = new FakeTransport();
+		const onClose = vi.fn();
+		let attempts = 0;
+
+		const connection = await openWatching(() => {
+			attempts++;
+			if (attempts === 1) return first as unknown as ImapTransport;
+			// The server accepts the dial and then hangs up under the SELECT: the close lands on
+			// a transport that is not the one in service, and the driver rejects the command.
+			const dropped = new FakeTransport();
+			dropped.mailboxOpen.mockImplementation(async () => {
+				dropped.emit('close');
+				return await Promise.reject(new Error('Connection not available'));
+			});
+			return dropped as unknown as ImapTransport;
+		});
+		connection.onError(vi.fn()).onClose(onClose);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
+
+		expect(attempts).toBe(1 + 6);
+		expect(onClose).toHaveBeenCalledExactlyOnceWith(
+			'dropped',
+			expect.objectContaining({ message: 'Connection not available' }),
+		);
 	});
 
 	it('gives up on an attempt that outlives the timeout', async () => {
