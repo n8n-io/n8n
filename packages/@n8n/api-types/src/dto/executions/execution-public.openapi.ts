@@ -5,7 +5,11 @@ import { alsoNullable } from '../openapi-nullable';
 
 export const executionFieldDocs = {
 	id: { example: '1000' },
-	finished: { example: true },
+	finished: {
+		example: true,
+		deprecated: true,
+		description: 'Whether the execution ran to completion. Use `status` instead.',
+	},
 	mode: {
 		enum: [...WorkflowExecuteModeList],
 		example: 'manual',

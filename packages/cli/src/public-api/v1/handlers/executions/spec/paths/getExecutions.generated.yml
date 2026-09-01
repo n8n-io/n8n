@@ -101,7 +101,9 @@ responses:
                     example: '1000'
                   finished:
                     type: boolean
+                    description: Whether the execution ran to completion. Use `status` instead.
                     example: true
+                    deprecated: true
                   mode:
                     type: string
                     enum:
