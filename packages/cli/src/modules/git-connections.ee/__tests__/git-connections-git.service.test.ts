@@ -285,6 +285,29 @@ describe('GitConnectionsGitService (git operations)', () => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
 		});
 
+		it('pushes the commit to the target branch and re-pins the local branch', async () => {
+			mockGit.revparse.mockResolvedValueOnce('base\n').mockResolvedValueOnce('commit\n');
+
+			const result = await call({ targetBranchName: 'n8n-promotion/2026-01-01T00-00-00-000Z' });
+
+			expect(mockGit.add).toHaveBeenCalledWith(['--all', '--', 'n8n-export']);
+			expect(mockGit.commit).toHaveBeenCalledWith('sync');
+			expect(mockGit.push).toHaveBeenCalledWith(
+				'origin',
+				'HEAD:refs/heads/n8n-promotion/2026-01-01T00-00-00-000Z',
+			);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+			expect(result).toEqual({ commitSha: 'commit', head: 'base' });
+		});
+
+		it('re-pins the local branch even when the push to the target branch fails', async () => {
+			mockGit.revparse.mockResolvedValueOnce('base\n').mockResolvedValueOnce('commit\n');
+			mockGit.push.mockRejectedValueOnce(new Error('remote: rejected'));
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(BadRequestError);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+		});
+
 		it('maps a stall timeout to a 503', async () => {
 			mockGit.push.mockRejectedValueOnce(
 				new GitPluginError(undefined, 'timeout', 'block timeout reached'),

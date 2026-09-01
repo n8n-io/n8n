@@ -91,6 +91,11 @@ export const gitConnectionPushResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionExportCountsSchema,
 	commitSha: z.string(),
+	/**
+	 * The remote branch the commit landed on: the configured branch, or a newly
+	 * created timestamped branch when the connection has `createBranchOnPromotion` set.
+	 */
+	branchName: z.string(),
 });
 
 export class GitConnectionPushResultDto extends Z.class(gitConnectionPushResultSchema.shape) {}

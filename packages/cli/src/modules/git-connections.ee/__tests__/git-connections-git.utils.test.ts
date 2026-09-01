@@ -1,5 +1,6 @@
 import {
 	buildHttpsGitConfig,
+	buildPromotionBranchName,
 	buildSshCommand,
 	generateSshKeyPair,
 } from '../git-connections-git.utils';
@@ -143,6 +144,14 @@ describe('git-connections-git.utils', () => {
 
 			expect(keyPair.privateKey).toContain('BEGIN OPENSSH PRIVATE KEY');
 			expect(keyPair.publicKey).toContain('ssh-rsa');
+		});
+	});
+
+	describe('buildPromotionBranchName', () => {
+		it('builds a git-safe branch name from the timestamp', () => {
+			const name = buildPromotionBranchName(new Date('2026-09-01T10:15:30.123Z'));
+
+			expect(name).toBe('n8n-promotion/2026-09-01T10-15-30-123Z');
 		});
 	});
 });

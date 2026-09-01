@@ -378,6 +378,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					tags: 0,
 				},
 				commitSha: 'newsha',
+				branchName: 'main',
 			});
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -481,6 +482,42 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await expect(exportService.push('1', actor, { commitMessage: 'm' })).rejects.toThrow(
 				ServiceUnavailableError,
 			);
+		});
+
+		describe('with createBranchOnPromotion enabled', () => {
+			beforeEach(() => {
+				repository.findOneBy.mockResolvedValue({
+					...sshEntity(),
+					createBranchOnPromotion: true,
+				} as GitConnection);
+			});
+
+			it('pushes to a new timestamped promotion branch and reports it', async () => {
+				const result = await exportService.push('1', actor, { commitMessage: 'm' });
+
+				const args = gitService.commitAndPush.mock.calls[0][0];
+				expect(args.targetBranchName).toMatch(
+					/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
+				);
+				expect(args.branchName).toBe('main');
+				expect(gitService.validateBranchName).toHaveBeenCalledWith(args.targetBranchName);
+				expect(result.branchName).toBe(args.targetBranchName);
+				expect(result.commitSha).toBe('newsha');
+			});
+
+			it('does not move baseCommit', async () => {
+				await exportService.push('1', actor, { commitMessage: 'm' });
+
+				expect(repository.save).not.toHaveBeenCalled();
+			});
+
+			it('ignores the force flag', async () => {
+				await exportService.push('1', actor, { commitMessage: 'm', force: true });
+
+				expect(gitService.commitAndPush).toHaveBeenCalledWith(
+					expect.objectContaining({ force: false }),
+				);
+			});
 		});
 	});
 

@@ -2,7 +2,7 @@ operationId: pushGitConnectionProjects
 tags:
   - GitConnections
 summary: Push all team projects to a Git connection
-description: Exports all team projects, commits them, and pushes to the configured branch. Personal projects are ignored. Requires the repository to be cloned first.
+description: Exports all team projects, commits them, and pushes to the configured branch — or to a new timestamped branch when the connection has `createBranchOnPromotion` enabled. The response reports the branch in `branchName`. Personal projects are ignored. Requires the repository to be cloned first.
 x-required-scope: gitConnection:push
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -69,10 +69,13 @@ responses:
                 - tags
             commitSha:
               type: string
+            branchName:
+              type: string
           required:
             - connectionId
             - counts
             - commitSha
+            - branchName
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

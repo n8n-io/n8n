@@ -49,6 +49,7 @@ import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from './git-connections-git.service';
+import { buildPromotionBranchName } from './git-connections-git.utils';
 
 /**
  * Subfolder of the working copy that holds the n8n-managed export. Keeping it
@@ -217,6 +218,11 @@ export class GitConnectionsService {
 			);
 		}
 
+		const targetBranchName = connection.createBranchOnPromotion
+			? buildPromotionBranchName(new Date())
+			: undefined;
+		if (targetBranchName) await this.gitService.validateBranchName(targetBranchName);
+
 		// The instance connection covers every team project; personal projects are
 		// out of scope for the first iteration.
 		const projectIds = await this.projectRepository.findTeamProjectIds();
@@ -257,16 +263,27 @@ export class GitConnectionsService {
 				credentials,
 				rootFolder,
 				branchName,
+				targetBranchName,
 				author: this.commitAuthor(actor),
 				commitMessage: input.commitMessage,
-				force: input.force ?? false,
+				// `force` does not apply to a promotion branch — it must be new.
+				force: targetBranchName ? false : (input.force ?? false),
 				stagePathspec: EXPORT_SUBFOLDER,
 			});
 
-			connection.baseCommit = head;
-			await this.repository.save(connection);
+			// A promotion branch does not move the configured branch, so the last
+			// synced commit on it stays as it was.
+			if (!targetBranchName) {
+				connection.baseCommit = head;
+				await this.repository.save(connection);
+			}
 
-			return { connectionId, counts: exportResult.counts, commitSha };
+			return {
+				connectionId,
+				counts: exportResult.counts,
+				commitSha,
+				branchName: targetBranchName ?? branchName,
+			};
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}

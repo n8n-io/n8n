@@ -192,6 +192,7 @@ export class GitConnectionsGitService {
 		credentials,
 		rootFolder,
 		branchName,
+		targetBranchName,
 		author,
 		commitMessage,
 		force,
@@ -201,6 +202,8 @@ export class GitConnectionsGitService {
 		credentials: PlainCredentials;
 		rootFolder: string;
 		branchName: string;
+		/** When set, push the commit to this new remote branch instead of `branchName`. */
+		targetBranchName?: string;
 		author: { name: string; email: string };
 		commitMessage: string;
 		force: boolean;
@@ -218,9 +221,18 @@ export class GitConnectionsGitService {
 					config: [`user.name=${author.name}`, `user.email=${author.email}`],
 				},
 				async (git) => {
+					if (targetBranchName) {
+						return await this.commitAndPushToTargetBranch(git, {
+							targetBranchName,
+							commitMessage,
+							stagePathspec,
+						});
+					}
+
 					// Scope staging to the export while including removed entities.
 					await git.add(['--all', '--', stagePathspec]);
 					await git.commit(commitMessage);
+					const commitSha = (await git.revparse(['HEAD'])).trim();
 
 					if (force) {
 						await git.push('origin', branchName, ['-f']);
@@ -228,12 +240,44 @@ export class GitConnectionsGitService {
 						await git.push('origin', branchName);
 					}
 
-					const head = (await git.revparse(['HEAD'])).trim();
-					return { commitSha: head, head };
+					return { commitSha, head: commitSha };
 				},
 			);
 		} catch (error) {
-			throw this.mapGitError(error, { connectionId: connection.id, branchName });
+			throw this.mapGitError(error, {
+				connectionId: connection.id,
+				branchName: targetBranchName ?? branchName,
+			});
+		}
+	}
+
+	/**
+	 * Commit on the checked-out branch, push the commit to a new remote branch,
+	 * and pin the local branch back to where it was. Each promote branch is then
+	 * the configured branch plus exactly one commit, and the working copy stays
+	 * on the configured branch. If the process dies before the reset, the stray
+	 * local commit is harmless: the next push commits a full snapshot on top,
+	 * and a pull hard-resets to the remote branch anyway.
+	 */
+	private async commitAndPushToTargetBranch(
+		git: SimpleGit,
+		{
+			targetBranchName,
+			commitMessage,
+			stagePathspec,
+		}: { targetBranchName: string; commitMessage: string; stagePathspec: string },
+	): Promise<{ commitSha: string; head: string }> {
+		const preCommitHead = (await git.revparse(['HEAD'])).trim();
+		try {
+			// Scope staging to the export while including removed entities.
+			await git.add(['--all', '--', stagePathspec]);
+			await git.commit(commitMessage);
+			const commitSha = (await git.revparse(['HEAD'])).trim();
+			// A refspec push; `force` does not apply — the target branch must be new.
+			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
+			return { commitSha, head: preCommitHead };
+		} finally {
+			await git.raw(['reset', '--hard', preCommitHead]);
 		}
 	}
 

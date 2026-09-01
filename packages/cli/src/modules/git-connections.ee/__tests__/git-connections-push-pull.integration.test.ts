@@ -132,7 +132,10 @@ async function createRemote(): Promise<TestRemote> {
 	return { bareDir, workingDir, git };
 }
 
-async function createConnection(repositoryUrl: string): Promise<GitConnection> {
+async function createConnection(
+	repositoryUrl: string,
+	overrides: Partial<GitConnection> = {},
+): Promise<GitConnection> {
 	return await connectionRepository.save(
 		connectionRepository.create({
 			name: 'Production',
@@ -145,6 +148,7 @@ async function createConnection(repositoryUrl: string): Promise<GitConnection> {
 			encryptedPassword: 'git-password',
 			keyGeneratorType: null,
 			baseCommit: null,
+			...overrides,
 		}),
 	);
 }
@@ -197,10 +201,43 @@ describe('Git connection push and pull', () => {
 			readFile(path.join(inspectionDir, 'n8n-export', workflowEntry.target, 'workflow.json')),
 		).resolves.toBeDefined();
 		expect(result.commitSha).toBe(remoteHead);
+		expect(result.branchName).toBe('main');
 		expect(result.counts.workflows).toBe(1);
 		expect((await connectionRepository.findOneByOrFail({ id: connection.id })).baseCommit).toBe(
 			remoteHead,
 		);
+	});
+
+	it('pushes each promote to a new timestamped branch when the connection requires branching', async () => {
+		const remote = await createRemote();
+		const mainTip = (await remote.git.revparse(['HEAD'])).trim();
+		const connection = await createConnection(remote.bareDir, { createBranchOnPromotion: true });
+		await service.clone(connection.id);
+
+		const project = await createTeamProject('Orders', owner);
+		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+
+		const result = await service.push(connection.id, owner, { commitMessage: 'Promote orders' });
+
+		const remoteGit = simpleGit(remote.bareDir);
+		expect(result.branchName).toMatch(
+			/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
+		);
+		// The promotion branch is the configured branch plus exactly one commit.
+		expect((await remoteGit.revparse([`refs/heads/${result.branchName}`])).trim()).toBe(
+			result.commitSha,
+		);
+		expect((await remoteGit.revparse([`${result.branchName}^`])).trim()).toBe(mainTip);
+		// The configured branch and the last synced commit did not move.
+		expect((await remoteGit.revparse(['refs/heads/main'])).trim()).toBe(mainTip);
+		expect(
+			(await connectionRepository.findOneByOrFail({ id: connection.id })).baseCommit,
+		).toBeNull();
+
+		// A second promote lands on its own branch, also one commit ahead of the base.
+		const second = await service.push(connection.id, owner, { commitMessage: 'Promote again' });
+		expect(second.branchName).not.toBe(result.branchName);
+		expect((await remoteGit.revparse([`${second.branchName}^`])).trim()).toBe(mainTip);
 	});
 
 	it('pulls the remote snapshot and makes the managed target scope match it', async () => {
