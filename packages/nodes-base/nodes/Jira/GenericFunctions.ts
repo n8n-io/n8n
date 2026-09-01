@@ -36,9 +36,10 @@ export async function jiraSoftwareCloudApiRequest(
 	} else if (jiraVersion === 'serverPat') {
 		domain = (await this.getCredentials('jiraSoftwareServerPatApi')).domain as string;
 		credentialType = 'jiraSoftwareServerPatApi';
-	} else if (jiraVersion === 'cloudOAuth2') {
-		const rawDomain = (await this.getCredentials('jiraSoftwareCloudOAuth2Api')).domain;
-		credentialType = 'jiraSoftwareCloudOAuth2Api';
+	} else if (jiraVersion === 'cloudOAuth2' || jiraVersion === 'cloudServiceAccount') {
+		credentialType =
+			jiraVersion === 'cloudOAuth2' ? 'jiraSoftwareCloudOAuth2Api' : 'atlassianServiceAccountApi';
+		const rawDomain = (await this.getCredentials(credentialType)).domain;
 		if (typeof rawDomain !== 'string' || rawDomain === '') {
 			throw new NodeOperationError(
 				this.getNode(),

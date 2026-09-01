@@ -85,6 +85,15 @@ export class Jira implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'atlassianServiceAccountApi',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudServiceAccount'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -99,6 +108,10 @@ export class Jira implements INodeType {
 					{
 						name: 'Cloud (OAuth2)',
 						value: 'cloudOAuth2',
+					},
+					{
+						name: 'Cloud (Service Account)',
+						value: 'cloudServiceAccount',
 					},
 					{
 						name: 'Server (Self Hosted)',
