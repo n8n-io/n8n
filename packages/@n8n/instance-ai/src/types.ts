@@ -32,6 +32,7 @@ import type {
 	ITaskData,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import type { z } from 'zod';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -46,6 +47,14 @@ import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type {
+	conversationHistoryExcerptSchema,
+	conversationHistoryMatchSourceSchema,
+	conversationHistoryMessageSchema,
+	conversationHistoryMessagesResultSchema,
+	conversationHistorySearchHitSchema,
+	conversationHistorySearchResultSchema,
+} from './tools/conversation-history.schema';
 import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -1097,59 +1106,26 @@ export type LocalGatewayStatus =
 export const CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 20;
 export const CONVERSATION_HISTORY_MAX_WINDOW_SIDE = 5;
 
+// Result types inferred from the canonical zod schemas in
+// `./tools/conversation-history.schema` (type-only import — no runtime
+// coupling), so the tool's output contract and this service interface
+// cannot drift.
+
 /** Where a conversation-history search hit matched. */
-export type ConversationHistoryMatchSource = 'title' | 'messages' | 'user-answers';
+export type ConversationHistoryMatchSource = z.infer<typeof conversationHistoryMatchSourceSchema>;
 
-export interface ConversationHistoryExcerpt {
-	/** Anchor for a follow-up get-messages read. */
-	messageId: string;
-	text: string;
-	createdAt: string;
-}
+export type ConversationHistoryExcerpt = z.infer<typeof conversationHistoryExcerptSchema>;
 
-export interface ConversationHistorySearchHit {
-	threadId: string;
-	title: string;
-	updatedAt: string;
-	matchedIn: ConversationHistoryMatchSource[];
-	/** Opening user message of the conversation — the original ask. */
-	firstMessageExcerpt?: string;
-	excerpts: ConversationHistoryExcerpt[];
-	/** Matching message rows in the thread (0 for title-only hits). */
-	totalMatches: number;
-}
+export type ConversationHistorySearchHit = z.infer<typeof conversationHistorySearchHitSchema>;
 
-export interface ConversationHistorySearchResult {
-	hits: ConversationHistorySearchHit[];
-	/** Threads matched before the limit was applied. */
-	totalThreadsMatched: number;
-}
+export type ConversationHistorySearchResult = z.infer<typeof conversationHistorySearchResultSchema>;
 
-export interface ConversationHistoryMessage {
-	messageId: string;
-	role: 'user' | 'assistant';
-	createdAt: string;
-	/** Text blocks of the message, truncated. */
-	text: string;
-	/** Resolved ask-user Q&A pairs carried by this (assistant) message, if any. */
-	userAnswers?: Array<{ question: string; answer: string }>;
-}
+export type ConversationHistoryMessage = z.infer<typeof conversationHistoryMessageSchema>;
 
-export interface ConversationHistoryMessagesResult {
-	threadId: string;
-	title: string;
-	/** Oldest-first. */
-	messages: ConversationHistoryMessage[];
-	hasMoreBefore: boolean;
-	hasMoreAfter: boolean;
-}
+export type ConversationHistoryMessagesResult = z.infer<
+	typeof conversationHistoryMessagesResultSchema
+>;
 
-/**
- * Read-only recall over the user's past conversations. Scoped by the host
- * adapter to the current user and project, with the current thread excluded
- * from search. Presence on the context gates the `conversation-history` tool
- * (orchestrator only).
- */
 export interface InstanceAiConversationHistoryService {
 	search(params: { query?: string; limit?: number }): Promise<ConversationHistorySearchResult>;
 	getMessages(params: {

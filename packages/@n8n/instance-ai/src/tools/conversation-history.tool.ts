@@ -7,6 +7,10 @@ import {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
 } from '../types';
+import {
+	conversationHistoryMessagesResultSchema,
+	conversationHistorySearchResultSchema,
+} from './conversation-history.schema';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -84,43 +88,14 @@ const conversationHistoryToolInputSchema = sanitizeInputSchema(
 type Input = z.infer<typeof conversationHistoryRuntimeInputSchema>;
 
 // ── Output schemas ───────────────────────────────────────────────────────────
+// Service result schemas (the types in `../types` are inferred from them),
+// extended with the tool's soft-failure `error` field.
 
-const searchExcerptSchema = z.object({
-	messageId: z.string(),
-	text: z.string(),
-	createdAt: z.string(),
-});
-
-const searchHitSchema = z.object({
-	threadId: z.string(),
-	title: z.string(),
-	updatedAt: z.string(),
-	matchedIn: z.array(z.enum(['title', 'messages', 'user-answers'])),
-	firstMessageExcerpt: z.string().optional(),
-	excerpts: z.array(searchExcerptSchema),
-	totalMatches: z.number(),
-});
-
-const searchOutputSchema = z.object({
-	hits: z.array(searchHitSchema),
-	totalThreadsMatched: z.number(),
+const searchOutputSchema = conversationHistorySearchResultSchema.extend({
 	error: z.string().optional(),
 });
 
-const conversationHistoryMessageSchema = z.object({
-	messageId: z.string(),
-	role: z.enum(['user', 'assistant']),
-	createdAt: z.string(),
-	text: z.string(),
-	userAnswers: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
-});
-
-const getMessagesOutputSchema = z.object({
-	threadId: z.string(),
-	title: z.string(),
-	messages: z.array(conversationHistoryMessageSchema),
-	hasMoreBefore: z.boolean(),
-	hasMoreAfter: z.boolean(),
+const getMessagesOutputSchema = conversationHistoryMessagesResultSchema.extend({
 	error: z.string().optional(),
 });
 
