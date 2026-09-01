@@ -8,6 +8,7 @@ ruleTester.run('no-on-leader-takeover', NoOnLeaderTakeoverRule, {
 		{ code: "import { OnShutdown, OnLeaderStepdown } from '@n8n/decorators';" },
 		{ code: "import { SystemTask } from '@n8n/decorators';" },
 		{ code: "import { OnLeaderTakeover } from './my-local-decorators';" },
+		{ code: "import * as decorators from './my-local-decorators';" },
 	],
 	invalid: [
 		{
@@ -17,6 +18,10 @@ ruleTester.run('no-on-leader-takeover', NoOnLeaderTakeoverRule, {
 		{
 			code: "import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';",
 			errors: [{ messageId: 'useSystemTask' }],
+		},
+		{
+			code: "import * as decorators from '@n8n/decorators';",
+			errors: [{ messageId: 'noNamespaceImport' }],
 		},
 	],
 });
