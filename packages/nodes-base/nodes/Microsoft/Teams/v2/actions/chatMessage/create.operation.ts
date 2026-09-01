@@ -2,8 +2,8 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { chatRLC } from '../../descriptions';
-import { prepareMessage } from '../../helpers/utils';
+import { chatRLC, mentionsField } from '../../descriptions';
+import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChatUnsupported } from './sharedGuard';
 
@@ -38,6 +38,7 @@ const properties: INodeProperties[] = [
 			rows: 2,
 		},
 	},
+	mentionsField,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -83,12 +84,15 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 
 	const includeLinkToWorkflow = options.includeLinkToWorkflow !== false;
 
+	const mentions = await resolveMentions.call(this, i);
+
 	const body: IDataObject = prepareMessage.call(
 		this,
 		message,
 		contentType,
 		includeLinkToWorkflow,
 		instanceId,
+		mentions,
 	);
 
 	return await microsoftApiRequest.call(
