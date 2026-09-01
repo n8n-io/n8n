@@ -123,6 +123,7 @@ declare global {
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
 			getFeatureFlag?(flagName: string): boolean | string;
+			getFeatureFlagPayload?(flagName: string): FeatureFlagPayloads[string] | undefined;
 			identify?(
 				id: string,
 				userProperties?: Record<string, string | number>,

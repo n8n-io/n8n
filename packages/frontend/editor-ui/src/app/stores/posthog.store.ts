@@ -229,7 +229,14 @@ export const usePostHog = defineStore('posthog', () => {
 			// depend on client side evaluation if serverside evaluation fails
 			pendingFeatureFlagsEvaluation.value = true;
 			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
+				const payloads: FeatureFlagPayloads = {};
+				for (const key of Object.keys(map)) {
+					const payload = window.posthog?.getFeatureFlagPayload?.(key);
+					if (payload !== undefined && payload !== null) payloads[key] = payload;
+				}
+
 				featureFlags.value = map;
+				featureFlagPayloads.value = payloads;
 				resolveFeatureFlagsWaiters(featureFlags.value);
 
 				// must be debounced because it is called multiple times by posthog

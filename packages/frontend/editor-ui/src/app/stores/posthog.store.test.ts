@@ -317,7 +317,12 @@ describe('Posthog store', () => {
 			);
 		});
 
-		it('waits for client-side flag evaluation when server flags are unavailable', async () => {
+		it('loads flags and payloads from client-side evaluation when server flags are unavailable', async () => {
+			const remoteConfigKey = 'config-form-url';
+			const remoteUrl = 'https://example.com/form';
+			window.posthog!.getFeatureFlagPayload = vi.fn((key) =>
+				key === remoteConfigKey ? remoteUrl : null,
+			);
 			const posthog = usePostHog();
 			posthog.init();
 
@@ -332,11 +337,17 @@ describe('Posthog store', () => {
 			await Promise.resolve();
 			expect(resolved).toBe(false);
 
-			onFeatureFlagsCallback?.([], { test: 'variant' });
+			onFeatureFlagsCallback?.([], {
+				test: 'variant',
+				[remoteConfigKey]: true,
+				'flag-without-payload': true,
+			});
 			await waitForFlags;
 
 			expect(posthog.hasPendingFeatureFlags()).toBe(false);
 			expect(posthog.getVariant('test')).toEqual('variant');
+			expect(posthog.getFeatureFlagPayload(remoteConfigKey)).toBe(remoteUrl);
+			expect(posthog.getFeatureFlagPayload('flag-without-payload')).toBeUndefined();
 		});
 
 		describe('trackExposure', () => {
