@@ -281,7 +281,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(error.context.itemIndex).toBe(3);
 	});
 
-	it('rethrows a permission failure untouched', async () => {
+	it('passes a permission failure through with the item index', async () => {
 		setRows('jane@example.com');
 		const forbidden = new NodeApiError(node, {
 			code: 'Authorization_RequestDenied',
@@ -290,7 +290,9 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		});
 		apiRequest.mockRejectedValueOnce(forbidden);
 
-		await expect(resolveMentions.call(ctx, 0)).rejects.toBe(forbidden);
+		// Graph's own message, stamped rather than replaced.
+		await expect(resolveMentions.call(ctx, 3)).rejects.toBe(forbidden);
+		expect(forbidden.context.itemIndex).toBe(3);
 	});
 
 	it('keeps each resolved user paired with its own row', async () => {
