@@ -179,9 +179,10 @@ All tests should start with `n8n.start.*` methods. See `composables/TestEntryCom
 ## Accessibility Checks
 
 The `a11y` fixture runs axe-core against the current page, scoped to a named
-bucket. It **never throws** - a scan that can't run (bucket not on screen, axe
-failure) logs a warning and returns an empty array, so bolting a check onto an
-existing journey can't turn that journey red. Callers decide what to assert.
+bucket, and writes an HTML report under the test's output directory. A scan that
+can't run (bucket not on screen, axe failure) logs a warning and returns an empty
+array. Violations are non-blocking unless `A11Y_VIOLATION_THRESHOLD` is set to the
+maximum permitted number of violations.
 
 ```typescript
 test('canvas is accessible', async ({ n8n, a11y }) => {

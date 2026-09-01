@@ -102,8 +102,9 @@ export async function viewExecutionsListAsAdmin(
 export async function adminViewsExecutionsList(deps: {
 	n8n: n8nPage;
 	api: ApiHelpers;
-}): Promise<void> {
+}): Promise<n8nPage> {
 	const ctx = await setupAdminViewsExecutionsList(deps.api);
 	const adminN8n = await deps.n8n.start.withUser(ctx.admin);
 	await viewExecutionsListAsAdmin(adminN8n, ctx);
+	return adminN8n;
 }
