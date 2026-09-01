@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
@@ -23,7 +24,6 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	createRunExecutionData,
 	ExecutionCancelledError,
