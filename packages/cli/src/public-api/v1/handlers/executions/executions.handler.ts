@@ -1,6 +1,5 @@
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
-import type { IExecutionBase } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
@@ -10,7 +9,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -30,12 +29,6 @@ const handleError = (error: unknown) => {
 
 	throw error;
 };
-
-function isRedactableExecution(
-	execution: IExecutionBase,
-): execution is IExecutionBase & RedactableExecution {
-	return 'data' in execution && 'workflowData' in execution;
-}
 
 type ExecutionHandlers = {
 	getExecutions: PublicAPIEndpoint<ExecutionRequest.GetAll>;
