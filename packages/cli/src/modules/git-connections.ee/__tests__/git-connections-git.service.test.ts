@@ -283,10 +283,12 @@ describe('GitConnectionsGitService (git operations)', () => {
 
 		beforeEach(() => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
+			mockGit.raw.mockResolvedValue('');
 		});
 
 		it('pushes the commit to the target branch and re-pins the local branch', async () => {
-			mockGit.revparse.mockResolvedValueOnce('base\n').mockResolvedValueOnce('commit\n');
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
 
 			const result = await call({ targetBranchName: 'n8n-promotion/2026-01-01T00-00-00-000Z' });
 
@@ -297,15 +299,51 @@ describe('GitConnectionsGitService (git operations)', () => {
 				'HEAD:refs/heads/n8n-promotion/2026-01-01T00-00-00-000Z',
 			);
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
-			expect(result).toEqual({ commitSha: 'commit', head: 'base' });
+			expect(result).toEqual({ commitSha: 'commit' });
 		});
 
 		it('re-pins the local branch even when the push to the target branch fails', async () => {
-			mockGit.revparse.mockResolvedValueOnce('base\n').mockResolvedValueOnce('commit\n');
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
 			mockGit.push.mockRejectedValueOnce(new Error('remote: rejected'));
 
 			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(BadRequestError);
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+		});
+
+		it('restores an unborn branch after the first promotion', async () => {
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+
+			const result = await call({ targetBranchName: 'n8n-promotion/x' });
+
+			expect(mockGit.raw).toHaveBeenCalledWith(['read-tree', '--empty']);
+			expect(mockGit.raw).toHaveBeenCalledWith(['update-ref', '-d', 'refs/heads/main']);
+			expect(result).toEqual({ commitSha: 'commit' });
+		});
+
+		it('keeps a successful push result when restoring the local branch fails', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n').mockRejectedValueOnce(new Error('reset failed'));
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).resolves.toEqual({
+				commitSha: 'commit',
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to restore Git working copy after promotion',
+				{ branchName: 'main', targetBranchName: 'n8n-promotion/x' },
+			);
+		});
+
+		it('keeps the push error when restoring the local branch also fails', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n').mockRejectedValueOnce(new Error('reset failed'));
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+			mockGit.push.mockRejectedValueOnce(
+				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
+			);
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(
+				ServiceUnavailableError,
+			);
 		});
 
 		it('maps a stall timeout to a 503', async () => {
@@ -325,6 +363,48 @@ describe('GitConnectionsGitService (git operations)', () => {
 			const logged = JSON.stringify(logger.warn.mock.calls);
 			expect(logged).not.toContain('secret-token');
 			expect(logged).not.toContain('non-fast-forward');
+		});
+	});
+
+	describe('prepareWorkingCopyForPromotion', () => {
+		const call = async () =>
+			await gitService.prepareWorkingCopyForPromotion({
+				connection: httpsConnection(),
+				credentials: httpsCredentials,
+				rootFolder,
+				branchName: 'main',
+			});
+
+		beforeEach(() => {
+			mockGit.revparse.mockResolvedValue('def456\n');
+			mockGit.raw.mockResolvedValue('');
+		});
+
+		it('fetches and resets to the configured remote branch', async () => {
+			mockGit.listRemote.mockResolvedValue('def456\trefs/heads/main\n');
+
+			await call();
+
+			expect(mockGit.fetch).toHaveBeenCalledWith('origin', 'main', ['--progress']);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
+		});
+
+		it('keeps the configured branch unborn when the remote is empty', async () => {
+			mockGit.listRemote.mockResolvedValue('');
+
+			await call();
+
+			expect(mockGit.fetch).not.toHaveBeenCalled();
+			expect(mockGit.raw).not.toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
+		});
+
+		it('rejects a missing configured branch on a non-empty remote', async () => {
+			mockGit.listRemote
+				.mockResolvedValueOnce('')
+				.mockResolvedValueOnce('def456\trefs/heads/develop\n');
+
+			await expect(call()).rejects.toThrow('Remote branch does not exist: main');
+			expect(mockGit.fetch).not.toHaveBeenCalled();
 		});
 	});
 

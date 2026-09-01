@@ -215,7 +215,10 @@ describe('Git connection push and pull', () => {
 		await service.clone(connection.id);
 
 		const project = await createTeamProject('Orders', owner);
-		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+		const workflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {} },
+			project,
+		);
 
 		const result = await service.push(connection.id, owner, { commitMessage: 'Promote orders' });
 
@@ -234,10 +237,42 @@ describe('Git connection push and pull', () => {
 			(await connectionRepository.findOneByOrFail({ id: connection.id })).baseCommit,
 		).toBeNull();
 
-		// A second promote lands on its own branch, also one commit ahead of the base.
+		await remote.git.fetch('origin', result.branchName);
+		await remote.git.merge(['FETCH_HEAD']);
+		await remote.git.push('origin', 'main');
+		const mergedMainTip = (await remote.git.revparse(['HEAD'])).trim();
+		expect(mergedMainTip).toBe(result.commitSha);
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Process order v2' });
+
+		// A second promote uses the current remote configured branch as its base.
 		const second = await service.push(connection.id, owner, { commitMessage: 'Promote again' });
 		expect(second.branchName).not.toBe(result.branchName);
-		expect((await remoteGit.revparse([`${second.branchName}^`])).trim()).toBe(mainTip);
+		expect((await remoteGit.revparse([`${second.branchName}^`])).trim()).toBe(mergedMainTip);
+		expect((await remoteGit.revparse(['refs/heads/main'])).trim()).toBe(mergedMainTip);
+	});
+
+	it('pushes the first promotion when the remote is empty', async () => {
+		const bareDir = path.join(testRoot, 'empty-remote.git');
+		await simpleGit().raw(['init', '--bare', bareDir]);
+		const connection = await createConnection(bareDir, { createBranchOnPromotion: true });
+		await service.clone(connection.id);
+
+		const project = await createTeamProject('Orders', owner);
+		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+
+		const result = await service.push(connection.id, owner, { commitMessage: 'Promote orders' });
+		const remoteGit = simpleGit(bareDir);
+		const commitWithParents = (
+			await remoteGit.raw(['rev-list', '--parents', '-n', '1', result.commitSha])
+		)
+			.trim()
+			.split(' ');
+
+		expect((await remoteGit.revparse([`refs/heads/${result.branchName}`])).trim()).toBe(
+			result.commitSha,
+		);
+		expect(commitWithParents).toEqual([result.commitSha]);
+		await expect(remoteGit.raw(['show-ref', '--verify', 'refs/heads/main'])).rejects.toThrow();
 	});
 
 	it('pulls the remote snapshot and makes the managed target scope match it', async () => {

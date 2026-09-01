@@ -208,7 +208,7 @@ export class GitConnectionsGitService {
 		commitMessage: string;
 		force: boolean;
 		stagePathspec: string;
-	}): Promise<{ commitSha: string; head: string }> {
+	}): Promise<{ commitSha: string }> {
 		const { repositoryFolder, sshDir } = this.connectionPaths(rootFolder);
 		try {
 			return await this.withGit(
@@ -223,6 +223,7 @@ export class GitConnectionsGitService {
 				async (git) => {
 					if (targetBranchName) {
 						return await this.commitAndPushToTargetBranch(git, {
+							branchName,
 							targetBranchName,
 							commitMessage,
 							stagePathspec,
@@ -240,7 +241,7 @@ export class GitConnectionsGitService {
 						await git.push('origin', branchName);
 					}
 
-					return { commitSha, head: commitSha };
+					return { commitSha };
 				},
 			);
 		} catch (error) {
@@ -251,23 +252,67 @@ export class GitConnectionsGitService {
 		}
 	}
 
+	async prepareWorkingCopyForPromotion({
+		connection,
+		credentials,
+		rootFolder,
+		branchName,
+	}: {
+		connection: GitConnection;
+		credentials: PlainCredentials;
+		rootFolder: string;
+		branchName: string;
+	}): Promise<void> {
+		const { repositoryFolder, sshDir } = this.connectionPaths(rootFolder);
+		try {
+			await this.withGit(
+				{ connection, credentials, repoDir: repositoryFolder, sshDir },
+				async (git) => {
+					const branchRefs = await git.listRemote([
+						'--heads',
+						'origin',
+						`refs/heads/${branchName}`,
+					]);
+					if (!branchRefs.trim()) {
+						const anyRefs = await git.listRemote(['--heads', 'origin']);
+						if (anyRefs.trim()) {
+							throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
+						}
+						return;
+					}
+
+					await this.refreshWorkingCopyFromRemote(git, branchName);
+				},
+			);
+		} catch (error) {
+			throw this.mapGitError(error, { connectionId: connection.id, branchName });
+		}
+	}
+
 	/**
 	 * Commit on the checked-out branch, push the commit to a new remote branch,
 	 * and pin the local branch back to where it was. Each promote branch is then
-	 * the configured branch plus exactly one commit, and the working copy stays
-	 * on the configured branch. If the process dies before the reset, the stray
-	 * local commit is harmless: the next push commits a full snapshot on top,
-	 * and a pull hard-resets to the remote branch anyway.
+	 * the configured branch plus exactly one commit. An empty remote keeps its
+	 * configured local branch unborn after the push.
 	 */
 	private async commitAndPushToTargetBranch(
 		git: SimpleGit,
 		{
+			branchName,
 			targetBranchName,
 			commitMessage,
 			stagePathspec,
-		}: { targetBranchName: string; commitMessage: string; stagePathspec: string },
-	): Promise<{ commitSha: string; head: string }> {
-		const preCommitHead = (await git.revparse(['HEAD'])).trim();
+		}: {
+			branchName: string;
+			targetBranchName: string;
+			commitMessage: string;
+			stagePathspec: string;
+		},
+	): Promise<{ commitSha: string }> {
+		const preCommitHead =
+			(
+				await git.raw(['for-each-ref', '--format=%(objectname)', `refs/heads/${branchName}`])
+			).trim() || null;
 		try {
 			// Scope staging to the export while including removed entities.
 			await git.add(['--all', '--', stagePathspec]);
@@ -275,9 +320,33 @@ export class GitConnectionsGitService {
 			const commitSha = (await git.revparse(['HEAD'])).trim();
 			// A refspec push; `force` does not apply — the target branch must be new.
 			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
-			return { commitSha, head: preCommitHead };
+			return { commitSha };
 		} finally {
-			await git.raw(['reset', '--hard', preCommitHead]);
+			await this.restorePromotionBase(git, { branchName, targetBranchName, preCommitHead });
+		}
+	}
+
+	private async restorePromotionBase(
+		git: SimpleGit,
+		{
+			branchName,
+			targetBranchName,
+			preCommitHead,
+		}: { branchName: string; targetBranchName: string; preCommitHead: string | null },
+	): Promise<void> {
+		try {
+			if (preCommitHead) {
+				await git.raw(['reset', '--hard', preCommitHead]);
+				return;
+			}
+
+			await git.raw(['read-tree', '--empty']);
+			await git.raw(['update-ref', '-d', `refs/heads/${branchName}`]);
+		} catch {
+			this.logger.warn('Failed to restore Git working copy after promotion', {
+				branchName,
+				targetBranchName,
+			});
 		}
 	}
 
@@ -296,17 +365,22 @@ export class GitConnectionsGitService {
 		try {
 			return await this.withGit(
 				{ connection, credentials, repoDir: repositoryFolder, sshDir },
-				async (git) => {
-					// --progress keeps the stall-timeout timer fed during a healthy transfer.
-					await git.fetch('origin', branchName, ['--progress']);
-					await git.raw(['reset', '--hard', `origin/${branchName}`]);
-					const head = (await git.revparse(['HEAD'])).trim();
-					return { head };
-				},
+				async (git) => await this.refreshWorkingCopyFromRemote(git, branchName),
 			);
 		} catch (error) {
 			throw this.mapGitError(error, { connectionId: connection.id, branchName });
 		}
+	}
+
+	private async refreshWorkingCopyFromRemote(
+		git: SimpleGit,
+		branchName: string,
+	): Promise<{ head: string }> {
+		// --progress keeps the stall-timeout timer fed during a healthy transfer.
+		await git.fetch('origin', branchName, ['--progress']);
+		await git.raw(['reset', '--hard', `origin/${branchName}`]);
+		const head = (await git.revparse(['HEAD'])).trim();
+		return { head };
 	}
 
 	// Preserve the pinned host key when authentication or target settings change.

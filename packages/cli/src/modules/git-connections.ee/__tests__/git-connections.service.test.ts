@@ -305,7 +305,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			repository.findOneBy.mockResolvedValue(sshEntity());
 			projectRepository.findTeamProjectIds.mockResolvedValue(['project-a', 'project-b']);
 			gitService.hasWorkingCopy.mockResolvedValue(true);
-			gitService.commitAndPush.mockResolvedValue({ commitSha: 'newsha', head: 'newsha' });
+			gitService.commitAndPush.mockResolvedValue({ commitSha: 'newsha' });
 			cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 			n8nPackagesService.exportPackageToDirectory.mockImplementation(
 				async (_request, { targetDir }) => {
@@ -459,6 +459,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		it('forwards the force flag to the git service', async () => {
 			await exportService.push('1', actor, { commitMessage: 'm', force: true });
 
+			expect(gitService.prepareWorkingCopyForPromotion).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
 				expect.objectContaining({ force: true }),
 			);
@@ -496,6 +497,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 				const result = await exportService.push('1', actor, { commitMessage: 'm' });
 
 				const args = gitService.commitAndPush.mock.calls[0][0];
+				expect(gitService.prepareWorkingCopyForPromotion).toHaveBeenCalledWith({
+					connection: expect.objectContaining({ id: '1' }),
+					credentials: { type: 'ssh', privateKey: 'PRIV' },
+					rootFolder: path.join(n8nFolder, 'git-connections', '1'),
+					branchName: 'main',
+				});
 				expect(args.targetBranchName).toMatch(
 					/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
 				);

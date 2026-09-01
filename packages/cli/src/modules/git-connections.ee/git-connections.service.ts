@@ -222,6 +222,15 @@ export class GitConnectionsService {
 			? buildPromotionBranchName(new Date())
 			: undefined;
 		if (targetBranchName) await this.gitService.validateBranchName(targetBranchName);
+		const credentials = await this.decryptCredentials(connection);
+		if (targetBranchName) {
+			await this.gitService.prepareWorkingCopyForPromotion({
+				connection,
+				credentials,
+				rootFolder,
+				branchName,
+			});
+		}
 
 		// The instance connection covers every team project; personal projects are
 		// out of scope for the first iteration.
@@ -257,8 +266,7 @@ export class GitConnectionsService {
 			await rm(exportFolder, { recursive: true, force: true });
 			await rename(stagingFolder, exportFolder);
 
-			const credentials = await this.decryptCredentials(connection);
-			const { commitSha, head } = await this.gitService.commitAndPush({
+			const { commitSha } = await this.gitService.commitAndPush({
 				connection,
 				credentials,
 				rootFolder,
@@ -274,7 +282,7 @@ export class GitConnectionsService {
 			// A promotion branch does not move the configured branch, so the last
 			// synced commit on it stays as it was.
 			if (!targetBranchName) {
-				connection.baseCommit = head;
+				connection.baseCommit = commitSha;
 				await this.repository.save(connection);
 			}
 
