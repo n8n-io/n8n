@@ -10,6 +10,8 @@ import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBo
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import type { SuggestionLinkSource } from '@/app/components/SuggestionFooter.vue';
+import { SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY } from '@/app/constants';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
@@ -33,12 +35,18 @@ import type {
 	McpRegistryServerToolResponse,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+
 import { iconForTool } from '../../toolIcons';
 import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { BROWSER_USE_CONNECTION_TYPE, COMPUTER_USE_CONNECTION_TYPE } from '../../constants';
+
+const suggestionLinkSource: SuggestionLinkSource = {
+	type: 'posthog',
+	key: SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
+};
 
 interface ServiceConnectionDefinition {
 	id: string;
@@ -415,6 +423,9 @@ async function handleConnect(item: ToolConnectionItem) {
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
+		:suggestion-prompt="i18n.baseText('instanceAi.connections.modal.suggestion.prompt')"
+		:suggestion-action="i18n.baseText('instanceAi.connections.modal.suggestion.action')"
+		:suggestion-link-source="suggestionLinkSource"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"

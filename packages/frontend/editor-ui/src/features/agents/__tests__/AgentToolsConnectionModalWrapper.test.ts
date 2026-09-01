@@ -267,6 +267,17 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		});
 	}
 
+	it('configures the suggestion footer copy', () => {
+		render();
+
+		expect(modalAttrs['suggestion-prompt']).toBe('Need another capability');
+		expect(modalAttrs['suggestion-action']).toBe('Suggest a tool');
+		expect(modalAttrs['suggestion-link-source']).toEqual({
+			type: 'posthog',
+			key: 'config_suggest_service_form_url',
+		});
+	});
+
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
 	// declared props. If those fall through onto ToolsConnectionModal the
 	// inherited `open` is always true while mounted and would pin the dialog

@@ -202,7 +202,15 @@ let modalProps: Record<string, unknown> = {};
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	props: ['open', 'detailItem', 'detailMode', 'items'],
+	props: [
+		'open',
+		'detailItem',
+		'detailMode',
+		'items',
+		'suggestionPrompt',
+		'suggestionAction',
+		'suggestionLinkSource',
+	],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
 		modalProps = props;
@@ -278,6 +286,17 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		delete uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		mockConnect.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
+	});
+
+	it('configures the suggestion footer copy', () => {
+		renderComponent();
+
+		expect(modalProps.suggestionPrompt).toBe('instanceAi.connections.modal.suggestion.prompt');
+		expect(modalProps.suggestionAction).toBe('instanceAi.connections.modal.suggestion.action');
+		expect(modalProps.suggestionLinkSource).toEqual({
+			type: 'posthog',
+			key: 'config_suggest_service_form_url',
+		});
 	});
 
 	it('keeps the modal open after saving settings opened from the tools list', async () => {

@@ -14,7 +14,7 @@ import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow'
 import { useRouter } from 'vue-router';
 
 import { getWorkflow } from '@/app/api/workflows';
-import { VIEWS } from '@/app/constants';
+import { SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY, VIEWS } from '@/app/constants';
 import {
 	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
 	SAMPLE_SUBWORKFLOW_WORKFLOW,
@@ -39,6 +39,7 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import type { SuggestionLinkSource } from '@/app/components/SuggestionFooter.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDITS_LABEL_KEY,
@@ -72,6 +73,10 @@ import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
 const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
+const suggestionLinkSource: SuggestionLinkSource = {
+	type: 'posthog',
+	key: SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
+};
 /** Prefix for the synthetic ids of gateway-backed rows in the n8n Connect section. */
 const N8N_CONNECT_ID_PREFIX = 'n8n-connect:';
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
@@ -882,6 +887,9 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:detail-item="null"
 		:allow-workflow-creation="canCreateWorkflow"
 		:workflow-creation-loading="isCreatingWorkflow"
+		:suggestion-prompt="i18n.baseText('agents.tools.suggestion.prompt')"
+		:suggestion-action="i18n.baseText('agents.tools.suggestion.action')"
+		:suggestion-link-source="suggestionLinkSource"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"

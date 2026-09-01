@@ -19,7 +19,10 @@ import {
 	HITL_SUBCATEGORY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	AI_CATEGORY_MCP_NODES,
+	REQUEST_NODE_FORM_URL,
+	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
 } from '@/app/constants';
+import type { SuggestionLinkSource } from '@/app/components/SuggestionFooter.vue';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -39,7 +42,7 @@ import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
-import SuggestToolFooter from '@/features/shared/toolsConnection/SuggestToolFooter.vue';
+import SuggestionFooter from '@/app/components/SuggestionFooter.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
 
@@ -72,6 +75,11 @@ const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
+const suggestionLinkSource = computed<SuggestionLinkSource>(() =>
+	isMcpCategory.value
+		? { type: 'posthog', key: SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY }
+		: { type: 'url', url: REQUEST_NODE_FORM_URL },
+);
 
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -415,9 +423,21 @@ registerKeyHook('MainViewArrowLeft', {
 		>
 		</CategorizedItemsRenderer>
 
-		<SuggestToolFooter
+		<SuggestionFooter
 			v-if="showSuggestionFooter"
-			:variant="isMcpCategory ? 'service' : 'node'"
+			:prompt="
+				i18n.baseText(
+					isMcpCategory
+						? 'nodeCreator.noResults.needAnotherCapability'
+						: 'nodeCreator.noResults.needNativeIntegration',
+				)
+			"
+			:action="
+				i18n.baseText(
+					isMcpCategory ? 'nodeCreator.noResults.suggestTool' : 'nodeCreator.noResults.suggestNode',
+				)
+			"
+			:link-source="suggestionLinkSource"
 			:class="[$style.suggestionFooter, { [$style.insetSuggestionFooter]: !isMcpCategory }]"
 		/>
 	</span>

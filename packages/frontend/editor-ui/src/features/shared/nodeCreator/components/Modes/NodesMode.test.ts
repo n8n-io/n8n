@@ -11,6 +11,7 @@ import {
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
 	REQUEST_NODE_FORM_URL,
+	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
 } from '@/app/constants';
 import type { NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
@@ -32,6 +33,16 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 vi.mock('@/app/composables/useExternalHooks', () => ({
 	useExternalHooks: () => ({ run: vi.fn().mockResolvedValue(undefined) }),
+}));
+
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isFeatureEnabled: () => false,
+		getFeatureFlagPayload: (key: string) =>
+			key === SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY
+				? 'https://example.com/suggest-service'
+				: undefined,
+	}),
 }));
 
 vi.mock('vue-router', () => ({
@@ -159,7 +170,8 @@ describe('NodesMode', () => {
 
 		expect(screen.getByText('MCP Client Tool')).toBeInTheDocument();
 		expect(screen.getByText('No results for "missing server"')).toBeInTheDocument();
-		expect(screen.getByText("Don't see the service you need?")).toBeInTheDocument();
+		expect(screen.getByText('Need another capability?')).toBeInTheDocument();
+		expect(screen.getByText('Suggest a tool')).toBeInTheDocument();
 		expect(screen.queryByText("We didn't make that... yet")).not.toBeInTheDocument();
 	});
 

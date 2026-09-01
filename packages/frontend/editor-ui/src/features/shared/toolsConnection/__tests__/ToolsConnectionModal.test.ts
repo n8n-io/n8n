@@ -99,6 +99,9 @@ function renderWith(
 			open: true,
 			items: props.items ?? realisticItems,
 			categories: props.categories ?? ALL_CATEGORIES,
+			suggestionPrompt: 'Need another capability?',
+			suggestionAction: 'Suggest a tool',
+			suggestionLinkSource: { type: 'url', url: 'https://example.com/suggest' },
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
 			allowWorkflowCreation: props.allowWorkflowCreation,
@@ -116,6 +119,9 @@ function renderWithMcpSettingsSlot(detailItem: ToolConnectionItem) {
 				:open="true"
 				:items="[]"
 				:categories="[]"
+				suggestion-prompt="Need another capability?"
+				suggestion-action="Suggest a tool"
+				:suggestion-link-source="{ type: 'url', url: 'https://example.com/suggest' }"
 				:detail-item="detailItem"
 				detail-mode="settings"
 			>
