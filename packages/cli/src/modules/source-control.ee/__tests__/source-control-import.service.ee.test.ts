@@ -1692,6 +1692,35 @@ describe('SourceControlImportService', () => {
 				expect(workflowRepository.upsertImportedContent).not.toHaveBeenCalled();
 			});
 
+			// The publish preparation unpublishes the local workflow, so a skip after it would
+			// leave the workflow stopped with nothing imported in its place.
+			it('leaves a published workflow running when the policy blocks it', async () => {
+				workflowRepository.findByIds.mockResolvedValue([
+					Object.assign(new WorkflowEntity(), {
+						id: '1',
+						name: 'Workflow 1',
+						versionId: 'v0',
+						active: true,
+						activeVersionId: 'v0',
+						isArchived: false,
+					}),
+				]);
+				userRepository.findOne.mockResolvedValue(
+					Object.assign(new User(), { id: mockUserId, role: GLOBAL_MEMBER_ROLE }),
+				);
+				policyEnforcementService.enforceContentImport.mockRejectedValueOnce(
+					new PolicyViolationError([
+						{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+					]),
+				);
+				const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: '1' })];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+
+				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+				expect(workflowRepository.upsertImportedContent).not.toHaveBeenCalled();
+			});
+
 			// A check that cannot answer is an infrastructure fault, not a property of one
 			// workflow. Skipping per workflow would silently skip the whole pull.
 			it('fails the pull when the policy layer errors', async () => {

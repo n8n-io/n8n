@@ -845,6 +845,33 @@ export class SourceControlImportService {
 			importedWorkflow.settings?.redactionPolicy,
 		);
 
+		// Resolved before the write so the clearance binds to the project the workflow lands in,
+		// and reused by the ownership sync below rather than resolved twice.
+		const targetOwnerProject = await this.resolveTargetOwnerProject(owner, personalProject);
+
+		// Admitted before `preparePublishStateForImport`, which unpublishes the local workflow: a
+		// skip after that point would leave it stopped with nothing imported in its place.
+		let cleared: PolicyCleared<'contentImport'>;
+		try {
+			cleared = await this.policyEnforcementService.enforceContentImport({
+				workflow: { id, name: importedWorkflow.name, nodes },
+				projectId: targetOwnerProject.id,
+			});
+		} catch (error) {
+			// A blocked workflow is skipped, not fatal — the rest of the pull still lands. A check
+			// that broke is not scoped to one workflow, so it fails the pull rather than silently
+			// skipping every workflow in turn.
+			if (!(error instanceof PolicyViolationError)) throw error;
+
+			this.logger.warn(`Skipping workflow ${id}: blocked by the content-import policy`);
+
+			return {
+				id,
+				name: candidate.file,
+				contentImportPolicy: { violations: error.violations, checkErrors: [] },
+			};
+		}
+
 		const { shouldPublishAfterImport, publishingError, publishingErrorDetails } =
 			await this.preparePublishStateForImport(
 				existingWorkflow,
@@ -869,31 +896,6 @@ export class SourceControlImportService {
 		const localOwner = allSharedWorkflows.find(
 			(w) => w.workflowId === id && w.role === 'workflow:owner',
 		);
-
-		// Resolved before the write so the clearance binds to the project the workflow lands in,
-		// and reused by the ownership sync below rather than resolved twice.
-		const targetOwnerProject = await this.resolveTargetOwnerProject(owner, personalProject);
-
-		let cleared: PolicyCleared<'contentImport'>;
-		try {
-			cleared = await this.policyEnforcementService.enforceContentImport({
-				workflow: { id, name: importedWorkflow.name, nodes },
-				projectId: targetOwnerProject.id,
-			});
-		} catch (error) {
-			// A blocked workflow is skipped, not fatal — the rest of the pull still lands. A check
-			// that broke is not scoped to one workflow, so it fails the pull rather than silently
-			// skipping every workflow in turn.
-			if (!(error instanceof PolicyViolationError)) throw error;
-
-			this.logger.warn(`Skipping workflow ${id}: blocked by the content-import policy`);
-
-			return {
-				id,
-				name: candidate.file,
-				contentImportPolicy: { violations: error.violations, checkErrors: [] },
-			};
-		}
 
 		await this.workflowRepository.upsertImportedContent(
 			{
