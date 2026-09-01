@@ -37,7 +37,7 @@ type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
  * and fails against the integer column.
  */
 function assertNumericExecutionId(executionId: string): void {
-	if (!/^\d+$/.test(executionId)) {
+	if (!/^\d+$/.test(executionId) || Number(executionId) < 1) {
 		throw new BadRequestError('The execution ID must be a positive integer');
 	}
 }
