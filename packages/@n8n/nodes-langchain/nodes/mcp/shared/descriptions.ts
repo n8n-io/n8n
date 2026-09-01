@@ -25,7 +25,7 @@ export const transportSelect = ({
 	displayOptions,
 });
 
-export const credentials: INodeCredentialDescription[] = [
+export const credentials = [
 	{
 		name: 'httpBearerAuth',
 		required: true,
@@ -54,6 +54,16 @@ export const credentials: INodeCredentialDescription[] = [
 		},
 	},
 	{
+		name: 'oAuth2Api',
+		required: true,
+		hint: 'The oAuth2Api credential does not include the RFC 8707 Resource URL field that mcpOAuth2Api provides. MCP servers that require a resource parameter must use mcpOAuth2Api instead.',
+		displayOptions: {
+			show: {
+				authentication: ['oAuth2Api'],
+			},
+		},
+	},
+	{
 		name: 'httpMultipleHeadersAuth',
 		required: true,
 		displayOptions: {
@@ -62,4 +72,4 @@ export const credentials: INodeCredentialDescription[] = [
 			},
 		},
 	},
-];
+] satisfies Array<INodeCredentialDescription & { hint?: string }>;

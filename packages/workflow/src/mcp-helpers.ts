@@ -10,3 +10,8 @@ export function isMcpOAuth2Authentication(
 ): authentication is McpOAuth2CredentialType {
 	return authentication === 'mcpOAuth2Api' || authentication.endsWith('McpOAuth2Api');
 }
+
+/** Returns `true` for generic OAuth2 and all MCP OAuth2 credential types. */
+export function isOAuth2Authentication(credentialType: string): boolean {
+	return credentialType === 'oAuth2Api' || isMcpOAuth2Authentication(credentialType);
+}

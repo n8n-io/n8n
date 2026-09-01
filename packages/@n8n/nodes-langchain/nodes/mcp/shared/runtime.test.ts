@@ -12,9 +12,10 @@ import {
 } from 'n8n-workflow';
 
 import { McpClientsManager } from './McpClientsManager';
+import { credentials } from './descriptions';
 import { buildMcpToolkit, executeMcpTool, loadMcpToolOptions } from './runtime';
 import type { ResolvedMcpConfig, McpConnectionConfig } from './runtime';
-import type { McpTool } from './types';
+import type { McpAuthenticationOption, McpTool } from './types';
 import * as utils from './utils';
 import { buildMcpToolName } from '../McpClientTool/utils';
 
@@ -53,6 +54,11 @@ const sampleTool = {
 	},
 };
 
+const oauth2AuthenticationOptions = [
+	'mcpOAuth2Api',
+	'oAuth2Api',
+] as const satisfies readonly McpAuthenticationOption[];
+
 function createSupplyDataCtx(overrides: Record<string, unknown> = {}) {
 	return mock<ISupplyDataFunctions>({
 		getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP', type: 'mcp' })),
@@ -80,7 +86,38 @@ describe('runtime', () => {
 		vi.resetAllMocks();
 	});
 
+	it('defines the generic OAuth2 credential with its Resource URL limitation', () => {
+		expect(credentials).toContainEqual({
+			name: 'oAuth2Api',
+			required: true,
+			hint: 'The oAuth2Api credential does not include the RFC 8707 Resource URL field that mcpOAuth2Api provides. MCP servers that require a resource parameter must use mcpOAuth2Api instead.',
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2Api'],
+				},
+			},
+		});
+	});
+
 	describe('buildMcpToolkit', () => {
+		it.each(oauth2AuthenticationOptions)(
+			'connects with %s authentication',
+			async (authentication) => {
+				const connectMcpClientForCredential = vi
+					.spyOn(utils, 'connectMcpClientForCredential')
+					.mockResolvedValue({ ok: true, result: mock<Client>() });
+				vi.spyOn(utils, 'getAllTools').mockResolvedValue([sampleTool] as McpTool[]);
+				const ctx = createSupplyDataCtx();
+
+				await buildMcpToolkit(ctx, 0, { ...baseConfig, authentication });
+
+				expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ authentication }),
+				);
+			},
+		);
+
 		it('passes the execution cancel signal to connectMcpClient while connecting', async () => {
 			const abort = new AbortController();
 			const connectMcpClientForCredential = vi

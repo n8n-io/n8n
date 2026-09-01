@@ -1,4 +1,18 @@
-import { isMcpOAuth2Authentication } from '../src/mcp-helpers';
+import { isMcpOAuth2Authentication, isOAuth2Authentication } from '../src/mcp-helpers';
+
+describe('isOAuth2Authentication', () => {
+	it('returns true for generic and MCP OAuth2 credential types', () => {
+		expect(isOAuth2Authentication('oAuth2Api')).toBe(true);
+		expect(isOAuth2Authentication('mcpOAuth2Api')).toBe(true);
+		expect(isOAuth2Authentication('notionMcpOAuth2Api')).toBe(true);
+		expect(isOAuth2Authentication('bearerAuth')).toBe(false);
+	});
+
+	it('does not widen the MCP-specific predicate', () => {
+		expect(isOAuth2Authentication('oAuth2Api')).toBe(true);
+		expect(isMcpOAuth2Authentication('oAuth2Api')).toBe(false);
+	});
+});
 
 describe('isMcpOAuth2Authentication', () => {
 	it('returns true for the canonical "mcpOAuth2Api" type', () => {
