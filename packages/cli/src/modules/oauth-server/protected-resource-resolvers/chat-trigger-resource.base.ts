@@ -12,6 +12,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	CHAT_TRIGGER_CONSENT_HINTS,
 	CHAT_TRIGGER_SCOPES,
 	isOAuthProtectedChatTrigger,
 	resourceUrlToWebhookPath,
@@ -99,6 +100,10 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 		// and the single `redirect_uri` — it has to equal the page the visitor loads.
 		const resourceUrl = `${trimTrailingSlash(this.baseUrl)}/${endpoint}/${path}`;
 		const audiences = [resourceUrl];
+		// Opt-in, unlike the MCP/webhook resolvers' `!== false`: defaulting off preserves the
+		// existing any-authenticated-visitor behaviour, so turning the chat OAuth2 flag on does
+		// not change who may chat with an already-published workflow.
+		const requireExecute = node.parameters.requireExecuteAccess === true;
 		return {
 			// Path included, like the webhook resolver's id: one workflow can hold several chat
 			// triggers, each its own resource.
@@ -109,9 +114,11 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 			getAllowedRedirectUris: async () => [resourceUrl],
 			scopes: CHAT_TRIGGER_SCOPES,
 			displayName: workflowName,
-			// No `executeAccessWorkflowId`: today any authenticated visitor may chat, and IAM-1263
-			// owns the opt-in toggle. `uiHints` is IAM-1266's.
-			...triggerResourceGate(this.workflowFinderService, { audiences }),
+			uiHints: CHAT_TRIGGER_CONSENT_HINTS,
+			...triggerResourceGate(this.workflowFinderService, {
+				audiences,
+				executeAccessWorkflowId: requireExecute ? workflowId : undefined,
+			}),
 		};
 	}
 }

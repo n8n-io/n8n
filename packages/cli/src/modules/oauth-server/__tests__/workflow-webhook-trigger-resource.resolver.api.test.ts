@@ -452,13 +452,13 @@ describe('protected resource metadata for webhook triggers', () => {
 			const clientId = await registerOAuthClient();
 
 			const resourceA = resourceUrlFor(`${webhookIdA}/user/:id`);
-			const { accessToken, refreshToken } = tokenService.generateTokenPair(
+			const { accessToken, refreshToken, audience } = tokenService.generateTokenPair(
 				owner.id,
 				clientId,
 				resourceA,
 				[],
 			);
-			await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+			await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, [], audience);
 
 			expect(decodeJwtPayload(accessToken).aud).toBe(resourceA);
 
@@ -549,13 +549,13 @@ describe('token audience', () => {
 		const tokenService = Container.get(OAuthTokenService);
 		const clientId = await registerOAuthClient();
 
-		const { accessToken, refreshToken } = tokenService.generateTokenPair(
+		const { accessToken, refreshToken, audience } = tokenService.generateTokenPair(
 			owner.id,
 			clientId,
 			resourceUrlFor(pathA),
 			[],
 		);
-		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, [], audience);
 
 		expect(decodeJwtPayload(accessToken).aud).toBe(resourceUrlFor(pathA));
 
@@ -583,13 +583,13 @@ describe('token audience', () => {
 		const clientId = await registerOAuthClient();
 
 		const getResource = resourceUrlFor(sharedPath, 'GET');
-		const { accessToken, refreshToken } = tokenService.generateTokenPair(
+		const { accessToken, refreshToken, audience } = tokenService.generateTokenPair(
 			owner.id,
 			clientId,
 			getResource,
 			[],
 		);
-		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, [], audience);
 
 		expect(decodeJwtPayload(accessToken).aud).toBe(getResource);
 
@@ -611,13 +611,13 @@ describe('token audience', () => {
 		const tokenService = Container.get(OAuthTokenService);
 		const clientId = await registerOAuthClient();
 
-		const { accessToken, refreshToken } = tokenService.generateTokenPair(
+		const { accessToken, refreshToken, audience } = tokenService.generateTokenPair(
 			owner.id,
 			clientId,
 			resourceUrlFor(webhookPath, 'GET'),
 			[],
 		);
-		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, [], audience);
 
 		await expect(
 			tokenService.verifyAccessToken(accessToken, resourceUrlFor(webhookPath, 'POST')),
@@ -653,13 +653,13 @@ describe('token audience', () => {
 		const clientId = await registerOAuthClient();
 
 		const getResource = resourceUrlFor(webhookPath, 'GET');
-		const { accessToken, refreshToken } = tokenService.generateTokenPair(
+		const { accessToken, refreshToken, audience } = tokenService.generateTokenPair(
 			owner.id,
 			clientId,
 			getResource,
 			[],
 		);
-		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, [], audience);
 
 		// the user adds POST to the node; the GET-scoped token must survive
 		await insertWebhookRow(workflow.id, webhookPath, 'Webhook', 'POST');

@@ -23,6 +23,29 @@ describe('ProjectScopeService', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('getProjectRoleSlugs', () => {
+		it('returns no project role restriction when the user has the global scope', async () => {
+			const result = await service.getProjectRoleSlugs(makeUser(['agent:update']), [
+				'agent:update',
+			]);
+
+			expect(result).toBeNull();
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+		});
+
+		it('resolves project roles that grant the scope', async () => {
+			roleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
+
+			const result = await service.getProjectRoleSlugs(makeUser(), ['agent:update']);
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledOnce();
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:update']);
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+			expect(result).toEqual(['project:admin', 'project:editor']);
+		});
+	});
+
 	it('returns no project restriction when the user has the global scope', async () => {
 		const result = await service.getProjectIds(makeUser(['agent:update']), ['agent:update']);
 
