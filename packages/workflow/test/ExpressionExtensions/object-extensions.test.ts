@@ -132,6 +132,24 @@ describe('Data Transformation Functions', () => {
 					},
 				);
 			});
+
+			test('should preserve arrays instead of converting to objects', () => {
+				expect(
+					evaluate('={{ ({ items: [1, null, 3] }).compact() }}'),
+				).toEqual({ items: [1, 3] });
+			});
+
+			test('should filter null/undefined from arrays', () => {
+				expect(
+					evaluate('={{ ({ data: [null, "a", undefined, "b", "", "c"] }).compact() }}'),
+				).toEqual({ data: ['a', 'b', 'c'] });
+			});
+
+			test('should handle nested objects inside arrays', () => {
+				expect(
+					evaluate('={{ ({ items: [{ a: 1 }, null, { b: null, c: 2 }] }).compact() }}'),
+				).toEqual({ items: [{ a: 1 }, { c: 2 }] });
+			});
 		});
 
 		test('.urlEncode should work on an object', () => {
