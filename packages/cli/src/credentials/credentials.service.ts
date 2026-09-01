@@ -1741,14 +1741,21 @@ export class CredentialsService {
 	/**
 	 * Creates an empty credential placeholder for package import. Skips field
 	 * validation so every known type can be stubbed; {@link save} still enforces
-	 * `credential:create` on the target project.
+	 * `credential:create` on the target project. A supplied `id` preserves source identity.
 	 */
 	async createStubCredential(
-		opts: { name: string; type: string; projectId: string },
+		opts: { id?: string; name: string; type: string; projectId: string },
 		user: User,
 	): Promise<CredentialsEntity> {
+		// `save` upserts by id, so reject a taken id rather than overwriting that credential.
+		if (opts.id !== undefined && (await this.credentialsRepository.existsBy({ id: opts.id }))) {
+			throw new BadRequestError(
+				`Cannot create credential stub: a credential with id "${opts.id}" already exists`,
+			);
+		}
+
 		const encryptedCredential = await this.createEncryptedData({
-			id: null,
+			id: opts.id ?? null,
 			name: opts.name,
 			type: opts.type,
 			data: {},

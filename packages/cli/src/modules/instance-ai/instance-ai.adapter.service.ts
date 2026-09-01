@@ -2660,7 +2660,7 @@ export class InstanceAiAdapterService {
 			async listAvailable(options) {
 				const [nodes, gatewayConfig] = await Promise.all([
 					getNodes(),
-					options?.n8nConnectOnly ? getGatewayConfig() : Promise.resolve(null),
+					options?.gatewayCreditsOnly ? getGatewayConfig() : Promise.resolve(null),
 				]);
 				let filtered = nodes;
 
@@ -2687,9 +2687,9 @@ export class InstanceAiAdapterService {
 					return summary;
 				});
 
-				// n8nConnectOnly answers "which nodes support n8n Connect?" — keep only
+				// gatewayCreditsOnly answers "which nodes support Gateway credits?" — keep only
 				// nodes the gateway covers (meta present).
-				return options?.n8nConnectOnly ? summaries.filter((s) => s.aiGateway) : summaries;
+				return options?.gatewayCreditsOnly ? summaries.filter((s) => s.aiGateway) : summaries;
 			},
 
 			async listSearchable() {
@@ -4026,7 +4026,7 @@ function normalizeManagedCredentialForSave(value: unknown): unknown {
 	const name = Reflect.get(value, 'name');
 	return {
 		id: null,
-		name: typeof name === 'string' && name !== '' ? name : 'n8n credits',
+		name: typeof name === 'string' && name !== '' ? name : 'Gateway credits',
 		__aiGatewayManaged: true,
 	};
 }

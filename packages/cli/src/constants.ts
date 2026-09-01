@@ -102,6 +102,12 @@ export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 /** Max in-process attempts to activate a single trigger node before recording it as failed. */
 export const TRIGGER_ACTIVATION_MAX_ATTEMPTS = 5;
 
+/** Max in-process attempts to externally deregister a single webhook before abandoning it. */
+export const TRIGGER_TEARDOWN_MAX_ATTEMPTS = 3;
+
+/** Base delay between external webhook deregistration attempts; doubles per attempt. */
+export const TRIGGER_TEARDOWN_RETRY_INITIAL_DELAY_MS = 1000;
+
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export const UM_FIX_INSTRUCTION =

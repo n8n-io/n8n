@@ -28,6 +28,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -1345,6 +1346,32 @@ describe('DELETE /workflows/:id', () => {
 		} finally {
 			await publishedVersionRepository.removePublishedVersion(workflow.id);
 			globalConfig.workflows.useWorkflowPublicationService = false;
+		}
+	});
+
+	test('should not return activeVersion', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('activeVersion');
+		expect(response.body.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('should mark the workflow-deleted event as public API', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+			expect(emit).toHaveBeenCalledWith(
+				'workflow-deleted',
+				expect.objectContaining({ workflowId: workflow.id, publicApi: true }),
+			);
+		} finally {
+			emit.mockRestore();
 		}
 	});
 });
@@ -2697,6 +2724,52 @@ describe('PUT /workflows/:id', () => {
 		});
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject a body carrying an unknown field', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [],
+			connections: {},
+			settings: {},
+			unexpectedField: 'nope',
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject projectId, which only create accepts', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [],
+			connections: {},
+			settings: {},
+			projectId: memberPersonalProject.id,
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should update the description', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			description: 'What this workflow does',
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe('What this workflow does');
+
+		const stored = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(stored?.description).toBe('What this workflow does');
 	});
 
 	test('should reject workflow update with pinData exceeding size limit', async () => {
