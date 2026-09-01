@@ -12,9 +12,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import nock from 'nock';
+import { Readable } from 'stream';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { httpRequestWithAuthentication } from '../authentication';
+import { httpRequestWithAuthentication, requestWithAuthentication } from '../authentication';
+import { proxyRequestToAxios } from '../legacy-request-adapter';
+
+vi.mock('../legacy-request-adapter', () => ({
+	proxyRequestToAxios: vi.fn(),
+}));
 
 describe('httpRequestWithAuthentication', () => {
 	const baseUrl = 'https://api.example.com';
@@ -114,6 +120,84 @@ describe('httpRequestWithAuthentication', () => {
 			{ helpers: mockThis.helpers },
 			expect.objectContaining({ sessionToken: 'fresh' }),
 			'testSessionAuth',
+			mockNode,
+			true,
+		);
+	});
+});
+
+describe('requestWithAuthentication (legacy) — preAuthentication retry', () => {
+	const mockThis = mockDeep<IAllExecuteFunctions>();
+	const mockWorkflow = mock<Workflow>();
+	const mockNode = mockDeep<INode>();
+	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.evalLlmMockHandler = undefined;
+
+	const proxyRequestToAxiosMock = vi.mocked(proxyRequestToAxios);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockNode.name = 'test-node';
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ accessToken: 'stale' });
+		mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue({
+			accessToken: 'fresh',
+		});
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => requestOptions as IHttpRequestOptions,
+		);
+	});
+
+	test('refreshes and resends a replayable request after a failure', async () => {
+		const requestError = Object.assign(new Error('401 - token expired'), {
+			response: { status: 401 },
+		});
+		proxyRequestToAxiosMock.mockRejectedValueOnce(requestError).mockResolvedValueOnce({ ok: true });
+
+		const result = await requestWithAuthentication.call(
+			mockThis,
+			'testPreAuth',
+			{ method: 'POST', uri: 'https://api.example.com/items', body: { name: 'x' } },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+	});
+
+	test('refreshes but does NOT resend a drained stream body; the original error surfaces', async () => {
+		const requestError = Object.assign(new Error('401 - token expired'), {
+			response: { status: 401 },
+		});
+		proxyRequestToAxiosMock.mockRejectedValueOnce(requestError);
+
+		await expect(
+			requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				{
+					method: 'POST',
+					uri: 'https://api.example.com/attachments',
+					formData: { file: { value: Readable.from(['content']), options: { filename: 'a.txt' } } },
+				},
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === requestError,
+		);
+
+		// Exactly one send: the drained body must not be replayed…
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+		// …but the credential is still refreshed so the next run starts valid.
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+			{ helpers: mockThis.helpers },
+			expect.anything(),
+			'testPreAuth',
 			mockNode,
 			true,
 		);

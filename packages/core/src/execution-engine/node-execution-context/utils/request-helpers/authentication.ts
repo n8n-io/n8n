@@ -18,7 +18,7 @@ import { ExecutionBaseError, NodeApiError, NodeOperationError } from 'n8n-workfl
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { proxyRequestToAxios } from './legacy-request-adapter';
-import { requestOAuth1, requestOAuth2 } from './oauth';
+import { hasSingleUseBody, requestOAuth1, requestOAuth2 } from './oauth';
 
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
@@ -249,6 +249,16 @@ export async function requestWithAuthentication(
 					// make the updated property in the credentials
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);
+					// A stream/form-data body is drained by the first attempt; replaying it
+					// would send a request that advertises a body it never delivers and hang
+					// until timeout. Keep the refreshed credential for the next run, but
+					// surface the original error (same rule as requestOAuth2).
+					if (hasSingleUseBody(requestOptions)) {
+						this.logger.warn(
+							`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
+						);
+						throw error;
+					}
 					requestOptions = (await additionalData.credentialsHelper.authenticate(
 						credentialsDecrypted,
 						credentialsType,
