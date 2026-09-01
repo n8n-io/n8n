@@ -1,0 +1,63 @@
+packages/@n8n/api-types/src/dto/source-control/source-control-status-query-public.dto.ts
+  s_f132370d90443c::t_d7bb8a4d064f6c 1-10
+packages/@n8n/api-types/src/dto/index.ts
+  s_f132370d90443c::t_313c2fd5dd9d07 101-102
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_f132370d90443c::t_baafe1903e3ee2 9
+packages/cli/test/integration/public-api/source-control.test.ts
+  s_f132370d90443c::t_5170f7c33f9507 13-27
+  s_f132370d90443c::t_1a605f1a2d44de 28,43-46,48-50,52-53,55-57,59-63,65-67,69-71,73,75-80,82-86,89-90,92,94-98,101-125,127-129,131-135,137-143,146-148,150-152,154-158,160-162,164-166,169-171,174-175,178-179,181-185,187-189,191-199,201-203,205-208,210-212,214,216-223,225-236,239-241,243,245-246,248-250,252-255,257-258,260-263,265-268,270-271,273-297,299-319,321-343,345-377,379-396,398-401,403-405
+  s_f132370d90443c::t_4562c9a56fe89d 167,176-177,180,186,190,200,204,213,224,237-238,242,244,247,251,256,259,264,269,272,298,320,344,378,397,402
+packages/@n8n/permissions/src/constants.ee.ts
+  s_f132370d90443c::t_61de6f79308b36 36
+  s_f132370d90443c::t_b918eb1fc3e9c2 110
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_f132370d90443c::t_ead3ba981ab43f 50-51
+  s_f132370d90443c::t_53fa09b3899a0c 65,73-76
+  s_f132370d90443c::t_ef2826de9f933a 1-49,52-64,66-72,77
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_f132370d90443c::t_82dd037b2b2b37 244-246
+packages/cli/src/public-api/v1/shared/services/pagination.service.ts
+  s_f132370d90443c::t_015f9110737a12 1
+  s_f132370d90443c::t_77d797ca26d194 45-67
+packages/@n8n/permissions/src/__tests__/types.test.ts
+  s_f132370d90443c::t_fabb23bf420467 25
+  s_f132370d90443c::t_1ec26f2e89e715 85
+packages/cli/src/public-api/v1/shared/services/__tests__/pagination.service.test.ts
+  s_f132370d90443c::t_398b3626b22c44 3
+  s_f132370d90443c::t_876c30c397bdf8 54-114
+packages/cli/src/public-api/v1/shared/services/source-controlled-file-pagination.service.ts
+  s_f132370d90443c::t_7ef15c39f4cf7b 1-32
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_f132370d90443c::t_79a1419ebb3494 16
+packages/@n8n/api-types/src/dto/source-control/source-control-status-public.dto.ts
+  s_f132370d90443c::t_2959172612fc52 1-9
+packages/cli/src/public-api/v1/shared/services/__tests__/source-controlled-file-pagination.service.test.ts
+  s_f132370d90443c::t_16ff407e75576d 1-112
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.utils.test.ts
+  s_f132370d90443c::t_3e18bc291d3c0b 36
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_f132370d90443c::t_b6d9dda2a476e4 62
+packages/@n8n/api-types/src/dto/source-control/__tests__/source-control-status-query-public.dto.test.ts
+  s_f132370d90443c::t_d82ec465c0017b 1-77
+packages/@n8n/api-types/src/dto/source-control/__tests__/source-control-status-public.dto.test.ts
+  s_f132370d90443c::t_b2c06d6bdc01e6 1-41
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_f132370d90443c::t_392e26bff526e4 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "75ee0bef6a1f7d8a62964a850757339a66262cd5",
+  "prompts": {},
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

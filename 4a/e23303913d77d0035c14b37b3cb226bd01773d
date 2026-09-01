@@ -1,0 +1,194 @@
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/update.json
+  s_be6d12de03f718::t_0bc88920cc2f03 1-56
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/ban.json
+  s_be6d12de03f718::t_29ad6e1e13ffb0 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/kick.json
+  s_be6d12de03f718::t_0f8afe871b0916 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/roleRemove.json
+  s_be6d12de03f718::t_4127b6a31fd37f 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/timeout.json
+  s_be6d12de03f718::t_d2b2c5d2b4282c 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/member/unban.json
+  s_be6d12de03f718::t_c22746d19d30ad 1-9
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/webhook/sendLegacy.json
+  s_be6d12de03f718::t_b6891ad7407e3a 1-142
+packages/nodes-base/nodes/Google/BigQuery/__schema__/v2.0.0/insert.json
+  s_be6d12de03f718::t_14c7cd6a4acf22 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/addTable.json
+  s_be6d12de03f718::t_06349c02785379 1-51
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/append.json
+  s_be6d12de03f718::t_98667c32607b8e 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/convertToRange.json
+  s_be6d12de03f718::t_2b62dedf3562d4 1-18
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/deleteTable.json
+  s_be6d12de03f718::t_89cd5637d743a8 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/getColumns.json
+  s_be6d12de03f718::t_634c480d8ed41d 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/getRows.json
+  s_be6d12de03f718::t_86b36f86c5dac9 1-18
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/table/lookup.json
+  s_be6d12de03f718::t_3fe74e8368fd41 1-18
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/workbook/addWorksheet.json
+  s_be6d12de03f718::t_df5081e2de896d 1-18
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/workbook/deleteWorkbook.json
+  s_be6d12de03f718::t_d4389ed1c60190 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/workbook/getAll.json
+  s_be6d12de03f718::t_a57d76e7e86a84 1-12
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/worksheet/clear.json
+  s_be6d12de03f718::t_68dc6c9c7e1754 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/worksheet/deleteWorksheet.json
+  s_be6d12de03f718::t_9a5c8460308ef9 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/worksheet/getAll.json
+  s_be6d12de03f718::t_e9eb810cf9041f 1-12
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.0.0/worksheet/readRows.json
+  s_be6d12de03f718::t_73e93253baba89 1-9
+packages/nodes-base/nodes/Microsoft/Excel/__schema__/v2.1.0/worksheet/upsert.json
+  s_be6d12de03f718::t_49f2e398027c55 1-12
+packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.1.0/file/get.json
+  s_be6d12de03f718::t_9b9e2ac8079d81 1-21
+packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.1.0/file/move.json
+  s_be6d12de03f718::t_e0f1ebfcb97c71 1-21
+packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.1.0/file/upload.json
+  s_be6d12de03f718::t_7d6dbe396d60c4 1-12
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/delete.json
+  s_be6d12de03f718::t_e702f40e85e062 1-9
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/calendar/update.json
+  s_be6d12de03f718::t_9b3bac9467c755 1-79
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/update.json
+  s_be6d12de03f718::t_89d28a66bdc668 1-197
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/servicePrincipal/move.json
+  s_be6d12de03f718::t_480025bb17516a 1-9
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/deleteChannel.json
+  s_be6d12de03f718::t_940d17bb032384 1-9
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/update.json
+  s_be6d12de03f718::t_43fce337b0c9f2 1-9
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/task/deleteTask.json
+  s_be6d12de03f718::t_a31078bcca5217 1-9
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/task/get.json
+  s_be6d12de03f718::t_aa93e1ad98c070 1-179
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/task/update.json
+  s_be6d12de03f718::t_a87b5ff143d704 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/create.json
+  s_be6d12de03f718::t_b3d5f8679aa9a4 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/delete.json
+  s_be6d12de03f718::t_8a80827d69547f 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/get.json
+  s_be6d12de03f718::t_1916ad61950ca0 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/getAll.json
+  s_be6d12de03f718::t_91bb06b631b82f 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/update.json
+  s_be6d12de03f718::t_cb54f1226a25dd 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/create.json
+  s_be6d12de03f718::t_de63f8151b23f8 1-164
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/delete.json
+  s_be6d12de03f718::t_962f993d7779a0 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/duplicate.json
+  s_be6d12de03f718::t_88fff32d4dcd57 1-319
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/get.json
+  s_be6d12de03f718::t_1c6798666eb029 1-164
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/getAll.json
+  s_be6d12de03f718::t_e444e28ea2ff46 1-164
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/search.json
+  s_be6d12de03f718::t_8824fff39aeddc 1-117
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/update.json
+  s_be6d12de03f718::t_59972e2873a603 1-164
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/add.json
+  s_be6d12de03f718::t_411b45a640f0e4 1-91
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/getAll.json
+  s_be6d12de03f718::t_dca7f559637a6c 1-91
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/remove.json
+  s_be6d12de03f718::t_71287062c55fe1 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/update.json
+  s_be6d12de03f718::t_4cd9b5c7faad3f 1-91
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/file/delete.json
+  s_be6d12de03f718::t_5abe7d2cd9972f 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/file/get.json
+  s_be6d12de03f718::t_2937af690df207 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/file/update.json
+  s_be6d12de03f718::t_f6843c1f4f7c86 1-127
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/create.json
+  s_be6d12de03f718::t_c51e450d1e3bec 1-100
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/delete.json
+  s_be6d12de03f718::t_89790f6dade23d 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/get.json
+  s_be6d12de03f718::t_4305974b3e0329 1-100
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/getAll.json
+  s_be6d12de03f718::t_91f706033c4f77 1-100
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/update.json
+  s_be6d12de03f718::t_f56d42db29e5e5 1-100
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/create.json
+  s_be6d12de03f718::t_8df2c24249847b 1-136
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/delete.json
+  s_be6d12de03f718::t_07f59b76ef065c 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/get.json
+  s_be6d12de03f718::t_937cd24e889bf5 1-136
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/getAll.json
+  s_be6d12de03f718::t_d2a251221d6afd 1-136
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/update.json
+  s_be6d12de03f718::t_ff1bbee98b923f 1-136
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/create.json
+  s_be6d12de03f718::t_673703ee1ebc29 1-74
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/delete.json
+  s_be6d12de03f718::t_0b67a7662100ac 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/get.json
+  s_be6d12de03f718::t_9f24e719c04b1b 1-74
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/getAll.json
+  s_be6d12de03f718::t_6c40ea725f641f 1-74
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/update.json
+  s_be6d12de03f718::t_35932d364b4156 1-74
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/create.json
+  s_be6d12de03f718::t_ff91e652a91f1b 1-110
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/delete.json
+  s_be6d12de03f718::t_c9a1b9d0fae12b 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/get.json
+  s_be6d12de03f718::t_000d908680d131 1-110
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/getAll.json
+  s_be6d12de03f718::t_66b4e293bdbc5b 1-110
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/update.json
+  s_be6d12de03f718::t_4fc56146c06033 1-110
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/create.json
+  s_be6d12de03f718::t_f955c9b81fcb75 1-105
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/delete.json
+  s_be6d12de03f718::t_461c4678ee083d 1-9
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/get.json
+  s_be6d12de03f718::t_f261da8f8d4920 1-105
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/getAll.json
+  s_be6d12de03f718::t_2cfb2c36a0b619 1-105
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/search.json
+  s_be6d12de03f718::t_0c63f6080dd97b 1-50
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/update.json
+  s_be6d12de03f718::t_3b3796e77ffc41 1-105
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/channel/archive.json
+  s_be6d12de03f718::t_24e4a7f195a288 1-9
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/create.json
+  s_be6d12de03f718::t_dc578f8e40ab1b 1-82
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/disable.json
+  s_be6d12de03f718::t_3b956672fa9872 1-99
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/enable.json
+  s_be6d12de03f718::t_6f998cb83c0303 1-99
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/getAll.json
+  s_be6d12de03f718::t_7caa1ceb7befb3 1-101
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/update.json
+  s_be6d12de03f718::t_342e3ec06ab724 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4ae23303913d77d0035c14b37b3cb226bd01773d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

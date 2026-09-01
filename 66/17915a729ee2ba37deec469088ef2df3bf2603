@@ -1,0 +1,79 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 268-276
+packages/@n8n/nodes-langchain/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 236-244
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 674-679
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatAnthropic.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 491-492,567-572
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/LmChatOllama.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 72-73
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 793-794
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/EmbeddingsNvidia.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 155-160
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 205-213
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/test/LmChatAlibabaCloud.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 175,195
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/__tests__/searchModels.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 80-81,94-99,110-115,176-177
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 311
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 788-796
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 231-243
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/LmChatAlibabaCloud.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 250-258
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/searchModels.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 22-23
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMoonshot/LmChatMoonshot.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 293-301
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 159-160
+packages/@n8n/nodes-langchain/nodes/llms/LmChatNvidia/LmChatNvidia.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 252-260
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 238-246
+packages/@n8n/nodes-langchain/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 399-407
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 268-273
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMoonshot/test/LmChatMoonshot.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 174,194
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 69-70,83-88,98-103,111-116,179-180
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/test/LmChatMinimax.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 198,218
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 321,378
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 27-28
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/LmChatMinimax.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 177-185
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 198-199
+packages/@n8n/nodes-langchain/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 278-286
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 120-128
+packages/@n8n/nodes-langchain/nodes/llms/LMChatLemonade/LmChatLemonade.node.ts
+  s_c3f63bfec03d56::t_8efd4c60c6a110 107-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6617915a729ee2ba37deec469088ef2df3bf2603",
+  "prompts": {},
+  "sessions": {
+    "s_c3f63bfec03d56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ec50217-81ad-4e71-9979-cd76e8a8e85d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
