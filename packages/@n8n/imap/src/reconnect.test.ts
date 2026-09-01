@@ -147,6 +147,23 @@ describe('reconnect', () => {
 	});
 
 	describe('when it cannot be restored', () => {
+		it('spends the budget even when a fresh transport drops during its SELECT', async () => {
+			useTimers();
+			const { factory, events, imap } = await connect(WATCHING, (transport, attempt) => {
+				// The server accepts the dial and then hangs up under the SELECT, so the drop
+				// arrives on a transport that is not the one in service.
+				if (attempt > 0) {
+					transport.openBox.mockImplementation(() => setImmediate(() => transport.drop()));
+				}
+			});
+
+			imap().drop();
+			await runOutTries();
+
+			expect(factory.built).toHaveLength(7);
+			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ConnectionLostError));
+		});
+
 		it('closes as dropped, carrying the attempt that failed', async () => {
 			useTimers();
 			const { factory, events, imap } = await connect(WATCHING, (transport, attempt) => {
