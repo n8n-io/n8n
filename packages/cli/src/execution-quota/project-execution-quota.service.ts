@@ -10,6 +10,7 @@ import { DateTime } from 'luxon';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 
 import { License } from '@/license';
+import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
 import { shouldSkipMode } from '@/modules/insights/insights-collection.service';
 
 import { computePeriodBucket } from './period-bucket';
@@ -18,11 +19,14 @@ import { resolveDefaultProjectExecutionLimit } from './project-execution-quota.h
 
 @Service()
 export class ProjectExecutionQuotaService {
+	private static readonly SPIKE_MULTIPLIER = 5;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly quotaRepository: ProjectExecutionQuotaRepository,
 		private readonly counterRepository: ProjectExecutionCounterRepository,
 		private readonly license: License,
+		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 	) {}
 
 	async resolveLimit(
@@ -97,5 +101,46 @@ export class ProjectExecutionQuotaService {
 			periodUnit,
 			periodStart,
 		);
+	}
+
+	/**
+	 * Flag-only: workflows whose executions today exceed SPIKE_MULTIPLIER
+	 * times their own trailing 7-day daily average. Never gates execution —
+	 * see spec "Spike-Guard (flag only)".
+	 */
+	async getSpikes(projectId: string) {
+		const today = computePeriodBucket('day', DateTime.utc());
+		const todaysCounts = await this.counterRepository.findByProjectId(projectId, 'day', today);
+
+		const spikes = [];
+		for (const { workflowId, count } of todaysCounts) {
+			const since = DateTime.utc().minus({ days: 7 }).startOf('day').toJSDate();
+			const hourlyRows = await this.insightsByPeriodRepository.getTrailingHourlyRows(
+				workflowId,
+				since,
+			);
+
+			const byDay = new Map<string, number>();
+			for (const row of hourlyRows) {
+				const day = DateTime.fromJSDate(row.periodStart).toFormat('yyyy-MM-dd');
+				byDay.set(day, (byDay.get(day) ?? 0) + row.value);
+			}
+			byDay.delete(today);
+
+			const days = [...byDay.values()];
+			if (days.length === 0) continue;
+
+			const baseline = days.reduce((sum, value) => sum + value, 0) / days.length;
+			if (baseline > 0 && count > baseline * ProjectExecutionQuotaService.SPIKE_MULTIPLIER) {
+				spikes.push({
+					workflowId,
+					todayCount: count,
+					baseline,
+					multiplier: ProjectExecutionQuotaService.SPIKE_MULTIPLIER,
+				});
+			}
+		}
+
+		return spikes;
 	}
 }

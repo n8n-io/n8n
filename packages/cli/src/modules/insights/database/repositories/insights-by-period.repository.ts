@@ -557,6 +557,33 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return { affected: result.affected };
 	}
 
+	/**
+	 * Trailing hourly rollups for one workflow, used to build a
+	 * spike-detection baseline. Day-unit rows are not usable for this: hour
+	 * to day compaction only runs for data older than
+	 * `compactionHourlyToDailyThresholdDays` (default 90 days), so day rows
+	 * don't exist yet for recent activity.
+	 */
+	async getTrailingHourlyRows(
+		workflowId: string,
+		since: Date,
+	): Promise<Array<{ periodStart: Date; value: number }>> {
+		// periodUnit/type are stored as ints (see PeriodUnitToNumber/TypeToNumber),
+		// not the string labels — compare against the numeric mapping, matching
+		// the convention used elsewhere in this file (e.g. getAggregationQuery),
+		// rather than string literals which would never match (or error on
+		// Postgres, which has no int = text operator).
+		return await this.createQueryBuilder('insights')
+			.select('insights.periodStart', 'periodStart')
+			.addSelect('insights.value', 'value')
+			.innerJoin('insights.metadata', 'metadata')
+			.where('metadata.workflowId = :workflowId', { workflowId })
+			.andWhere(`insights.periodUnit = ${PeriodUnitToNumber.hour}`)
+			.andWhere(`insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure})`)
+			.andWhere('insights.periodStart >= :since', { since })
+			.getRawMany();
+	}
+
 	async getEarliestDataDate(): Promise<Date | null> {
 		const result = await this.createQueryBuilder('ibp')
 			.select('MIN(ibp.periodStart)', 'minDate')

@@ -29,7 +29,7 @@ export const RESOURCES = {
 	// with a role, changing a member's role, and removing a member. Kept separate
 	// from `update` so a role can edit project details without being able to
 	// hand out project roles.
-	project: [...DEFAULT_OPERATIONS, 'export', 'manageMembers'] as const,
+	project: [...DEFAULT_OPERATIONS, 'export', 'manageMembers', 'manageExecutionQuota'] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,

@@ -46,6 +46,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'project:delete',
 	'project:export',
 	'project:manageMembers',
+	'project:manageExecutionQuota',
 	'folder:create',
 	'folder:read',
 	'folder:update',

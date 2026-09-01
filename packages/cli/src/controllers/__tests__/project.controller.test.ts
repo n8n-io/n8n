@@ -5,16 +5,19 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ProjectController } from '@/controllers/project.controller';
+import type { ProjectExecutionQuotaService } from '@/execution-quota/project-execution-quota.service';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectService } from '@/services/project.service.ee';
 
 describe('ProjectController', () => {
 	const projectsService = mock<ProjectService>();
 	const provisioningService = mock<ProvisioningService>();
+	const projectExecutionQuotaService = mock<ProjectExecutionQuotaService>();
 
 	const controller = new ProjectController(
 		projectsService as unknown as ProjectService,
 		provisioningService as unknown as ProvisioningService,
+		projectExecutionQuotaService as unknown as ProjectExecutionQuotaService,
 	);
 
 	const makeRes = () => {
@@ -285,6 +288,36 @@ describe('ProjectController', () => {
 			const result = await controller.getProject(scopedReq, makeRes(), 'p1');
 
 			expect(result.rolesManaged).toBe(managed);
+		});
+	});
+
+	describe('execution quota endpoints', () => {
+		it('getExecutionQuota delegates to the service', async () => {
+			const consumption = { limit: 100, periodUnit: 'day' as const, consumed: 5, remaining: 95 };
+			projectExecutionQuotaService.getConsumption.mockResolvedValue(consumption);
+
+			const result = await controller.getExecutionQuota(req, makeRes(), 'p1');
+
+			expect(projectExecutionQuotaService.getConsumption).toHaveBeenCalledWith('p1');
+			expect(result).toEqual(consumption);
+		});
+
+		it('updateExecutionQuota delegates to the service with parsed payload', async () => {
+			const payload = { limit: 50, periodUnit: 'week' as const };
+
+			await controller.updateExecutionQuota(req, makeRes(), payload as any, 'p1');
+
+			expect(projectExecutionQuotaService.setLimit).toHaveBeenCalledWith('p1', 50, 'week');
+		});
+
+		it('getExecutionQuotaSpikes delegates to the service', async () => {
+			const spikes = [{ workflowId: 'w1', todayCount: 500, baseline: 10, multiplier: 5 }];
+			projectExecutionQuotaService.getSpikes.mockResolvedValue(spikes);
+
+			const result = await controller.getExecutionQuotaSpikes(req, makeRes(), 'p1');
+
+			expect(projectExecutionQuotaService.getSpikes).toHaveBeenCalledWith('p1');
+			expect(result).toEqual(spikes);
 		});
 	});
 });

@@ -5,6 +5,7 @@ import {
 	AddUsersToProjectDto,
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
+	UpdateProjectExecutionQuotaDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -26,6 +27,7 @@ import { Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ProjectExecutionQuotaService } from '@/execution-quota/project-execution-quota.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
 import {
@@ -39,6 +41,7 @@ export class ProjectController {
 	constructor(
 		private readonly projectsService: ProjectService,
 		private readonly provisioningService: ProvisioningService,
+		private readonly projectExecutionQuotaService: ProjectExecutionQuotaService,
 	) {}
 
 	@Get('/')
@@ -269,5 +272,36 @@ export class ProjectController {
 		await this.projectsService.deleteProject(req.user, projectId, {
 			migrateToProject: query.transferId,
 		});
+	}
+
+	@Get('/:projectId/execution-quota')
+	@ProjectScope('project:read')
+	async getExecutionQuota(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	) {
+		return await this.projectExecutionQuotaService.getConsumption(projectId);
+	}
+
+	@Patch('/:projectId/execution-quota')
+	@ProjectScope('project:manageExecutionQuota')
+	async updateExecutionQuota(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: UpdateProjectExecutionQuotaDto,
+		@Param('projectId') projectId: string,
+	) {
+		await this.projectExecutionQuotaService.setLimit(projectId, payload.limit, payload.periodUnit);
+	}
+
+	@Get('/:projectId/execution-quota/spikes')
+	@ProjectScope('project:read')
+	async getExecutionQuotaSpikes(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	) {
+		return await this.projectExecutionQuotaService.getSpikes(projectId);
 	}
 }

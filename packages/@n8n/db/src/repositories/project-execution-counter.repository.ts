@@ -72,6 +72,17 @@ export class ProjectExecutionCounterRepository extends Repository<ProjectExecuti
 		}
 	}
 
+	async findByProjectId(
+		projectId: string,
+		periodUnit: ExecutionQuotaPeriodUnit,
+		periodStart: string,
+	): Promise<Array<{ workflowId: string; count: number }>> {
+		return await this.find({
+			where: { projectId, periodUnit, periodStart },
+			select: ['workflowId', 'count'],
+		});
+	}
+
 	async getWorkflowDailyCount(workflowId: string, day: string): Promise<number> {
 		const result = await this.createQueryBuilder('counter')
 			.select('COALESCE(SUM(counter.count), 0)', 'total')
