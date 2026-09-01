@@ -99,6 +99,9 @@ paths:
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  /workflows/{workflowId}/versions/{versionId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
   /workflows/{workflowId}/tags:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml

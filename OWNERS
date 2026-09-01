@@ -1,6 +1,20 @@
-# n8n CODEOWNERS
+# n8n OWNERS
+#
+# Format: <pattern> <@org/team> [required]
+#
+# Examples:
+#   packages/foo/        @n8n-io/team-a            advisory reviewer recommendation
+#   packages/foo/bar.ts  @n8n-io/team-b required   team approval blocks merge
 #
 # Last-match-wins: specific rules MUST come AFTER general rules.
+#
+# The `required` option makes team approval mandatory: a member of the team
+# must approve the PR before merge. This is enforced by the
+# "Required Reviews" commit status (ci-owners-required-reviews.yml).
+# All other entries are advisory (reviewer recommendations and opt-in
+# reviewer auto-assignment).
+#
+# Validated by ci-owners-validation.yml (`node .github/scripts/owners/owners.mjs --check`).
 
 # Default catch-all (ensures every file gets at least one reviewer)
 *                                                       @n8n-io/catalysts
@@ -9,7 +23,7 @@
 
 packages/core/                                          @n8n-io/catalysts
 packages/workflow/                                      @n8n-io/catalysts
-packages/workflow/styker.config.mjs                     @n8n-io/qa-dx
+packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
 packages/@n8n/config/                                   @n8n-io/catalysts
 packages/@n8n/backend-common/                           @n8n-io/catalysts
 packages/@n8n/backend-network/                          @n8n-io/catalysts
@@ -30,13 +44,15 @@ packages/@n8n/extension-sdk/                            @n8n-io/catalysts
 packages/@n8n/eslint-config/                            @n8n-io/qa-dx
 packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
-packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review
+packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review required
 
 # Top-level paths
 scripts/                                                @n8n-io/qa-dx
 patches/                                                @n8n-io/qa-dx
 assets/                                                 @n8n-io/adore
 security/                                               @n8n-io/qa-dx
+.code-health-baseline.json                              @n8n-io/qa-dx required
+OWNERS                                                  @n8n-io/qa-dx required
 
 # @n8n/cli
 packages/@n8n/cli/                                      @n8n-io/adore
@@ -126,7 +142,6 @@ packages/cli/src/controllers/cta.controller.ts         							@n8n-io/adore
 packages/cli/src/controllers/folder.controller.ts       						@n8n-io/adore
 packages/cli/src/controllers/tags.controller.ts         						@n8n-io/adore
 packages/cli/src/controllers/binary-data.controller.ts  						@n8n-io/adore
-packages/cli/src/controllers/dynamic-templates.controller.ts 				@n8n-io/adore
 packages/cli/src/controllers/posthog.controller.ts      						@n8n-io/adore
 packages/cli/src/controllers/translation.controller.ts  						@n8n-io/adore
 packages/cli/src/controllers/project.controller.ts      						@n8n-io/ligo
@@ -143,7 +158,6 @@ packages/cli/src/services/role-cache.service.ts         @n8n-io/iam
 packages/cli/src/services/password.utility.ts           @n8n-io/iam
 packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
 packages/cli/src/services/security-settings.service.ts  @n8n-io/iam
-packages/cli/src/services/ssrf/                         @n8n-io/catalysts
 packages/cli/src/services/static-auth-service.ts        @n8n-io/iam
 packages/cli/src/services/access.service.ts             @n8n-io/iam
 packages/cli/src/services/ai.service.ts                 @n8n-io/ai
@@ -153,7 +167,6 @@ packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/ai
 packages/cli/src/services/folder.service.ts             @n8n-io/adore
 packages/cli/src/services/tag.service.ts                @n8n-io/adore
 packages/cli/src/services/cta.service.ts                @n8n-io/adore
-packages/cli/src/services/dynamic-templates.service.ts  @n8n-io/adore
 packages/cli/src/services/frontend.service.ts           @n8n-io/adore
 packages/cli/src/services/banner.service.ts             @n8n-io/adore
 packages/cli/src/services/project.service.ee.ts         @n8n-io/ligo
@@ -169,7 +182,6 @@ packages/frontend/editor-ui/                            @n8n-io/frontend
 packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
-packages/frontend/editor-ui/src/features/project-roles/ @n8n-io/iam
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
 
 packages/frontend/@n8n/design-system/                   @n8n-io/design
@@ -225,7 +237,12 @@ packages/extensions/insights/                           @n8n-io/ligo
 # CI/CD
 
 .github/                                       					@n8n-io/qa-dx
+.github/workflows/                                      @n8n-io/qa-dx required
+.github/scripts/                                        @n8n-io/qa-dx required
+.github/actions/                                        @n8n-io/qa-dx required
+.github/poutine-rules/                                  @n8n-io/qa-dx required
 docker/                                                 @n8n-io/qa-dx
+docker/get-n8n.sh                                       @n8n-io/qa-dx required
 
 # QA
 

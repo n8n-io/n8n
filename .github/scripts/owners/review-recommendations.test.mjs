@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/scripts/owners-review-recommendations.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/scripts/owners/review-recommendations.test.mjs
  * */
 
 /** @type {(pullRequestNumber: number) => Promise<Array<{ filename: string, additions: number, deletions: number, previous_filename?: string }>>} */
@@ -12,7 +12,7 @@ let getPrFilesImpl = async () => [];
 /** @type {(pullRequestNumber: number, body: string, botMarker: string) => Promise<void>} */
 let postOrUpdateCommentImpl = async () => {};
 
-mock.module('./github-helpers.mjs', {
+mock.module('../github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op in tests
 		initGithub: () => {}, // no-op in tests
@@ -24,23 +24,32 @@ mock.module('./github-helpers.mjs', {
 	},
 });
 
-/** @type {() => Array<{ filepath: string, team: string }>} */
+/** @type {() => Array<import('./owners.mjs').OwnersEntry>} */
 let parseOwnersFileImpl = () => [];
-/** @type {(files: Set<string>, owners: Array<{ filepath: string, team: string }>) => Map<string, string[]>} */
+/** @type {(files: Set<string>, entries: any[]) => Map<string, string[]>} */
 let assignOwnershipImpl = () => new Map();
 /** @type {(ownerships: Map<string, string[]>) => Array<{ team: string, fileCount: number }>} */
 let ownershipsToAllocationsImpl = () => [];
+/** @type {(files: Set<string>, entries: any[]) => Map<string, string[]>} */
+let resolveRequiredTeamsImpl = () => new Map();
 
 mock.module('./owners.mjs', {
 	namedExports: {
 		parseOwnersFile: () => parseOwnersFileImpl(),
-		assignOwnership: (files, owners) => assignOwnershipImpl(files, owners),
+		assignOwnership: (files, entries) => assignOwnershipImpl(files, entries),
 		ownershipsToAllocations: (ownerships) => ownershipsToAllocationsImpl(ownerships),
+		resolveRequiredTeams: (files, entries) => resolveRequiredTeamsImpl(files, entries),
 	},
 });
 
-const { buildOverviewTable, buildComment, computeAllocationLineStats, computeLineStats, run } =
-	await import('./owners-review-recommendations.mjs');
+const {
+	buildOverviewTable,
+	buildComment,
+	buildRequiredReviewsSection,
+	computeAllocationLineStats,
+	computeLineStats,
+	run,
+} = await import('./review-recommendations.mjs');
 
 const BOT_MARKER = '<!-- pr-recommendations -->';
 const EMPTY_LINE_STATS = {
@@ -209,6 +218,7 @@ describe('computeLineStats', () => {
 			['fixtures/ directory', 'src/fixtures/data.json'],
 			['__mocks__/ directory', 'src/__mocks__/axios.ts'],
 			['packages/testing/**', 'packages/testing/playwright/spec.ts'],
+			['dot-directory *.test.mjs', '.github/scripts/owners/owners.test.mjs'],
 		]) {
 			it(`classifies ${label} as testFiles`, () => {
 				const stats = computeLineStats([{ filename, additions: 7, deletions: 2 }]);
@@ -307,6 +317,38 @@ describe('computeAllocationLineStats', () => {
 	});
 });
 
+describe('buildRequiredReviewsSection', () => {
+	it('returns null when no approval is required', () => {
+		assert.equal(buildRequiredReviewsSection(new Map()), null);
+	});
+
+	it('lists each required team with its file count', () => {
+		const section = buildRequiredReviewsSection(
+			new Map([
+				['@n8n-io/qa-dx', ['a.yml', 'b.yml']],
+				['@n8n-io/migrations-review', ['m.ts']],
+			]),
+		);
+
+		assert.match(section, /### Required reviews/);
+		assert.match(section, /\| @n8n-io\/qa-dx \| 2 \|/);
+		assert.match(section, /\| @n8n-io\/migrations-review \| 1 \|/);
+	});
+
+	it('prompts to request review from the team, plural when several teams are required', () => {
+		const singular = buildRequiredReviewsSection(new Map([['@n8n-io/qa-dx', ['a.yml']]]));
+		const plural = buildRequiredReviewsSection(
+			new Map([
+				['@n8n-io/qa-dx', ['a.yml']],
+				['@n8n-io/migrations-review', ['m.ts']],
+			]),
+		);
+
+		assert.match(singular, /Request a review from the team —/);
+		assert.match(plural, /Request a review from the teams —/);
+	});
+});
+
 describe('run', () => {
 	let postOrUpdateComment;
 
@@ -317,6 +359,7 @@ describe('run', () => {
 		parseOwnersFileImpl = () => [];
 		assignOwnershipImpl = () => new Map();
 		ownershipsToAllocationsImpl = () => [];
+		resolveRequiredTeamsImpl = () => new Map();
 	});
 
 	it('calls postOrUpdateComment with the PR number, generated body, and bot marker', async () => {
@@ -384,5 +427,27 @@ describe('run', () => {
 		const body = postOrUpdateComment.mock.calls[0].arguments[1];
 		assert.match(body, /## PR review overview/);
 		assert.match(body, /\| @n8n-io\/cli-team \| 1 \| 100% \| \+50 \/ -5 \|/);
+	});
+
+	it('omits the required reviews section when no approval is required', async () => {
+		await run(42);
+
+		const body = postOrUpdateComment.mock.calls[0].arguments[1];
+		assert.doesNotMatch(body, /### Required reviews/);
+	});
+
+	it('includes the required reviews section with the team review prompt', async () => {
+		getPrFilesImpl = async () => [{ filename: '.github/workflows/ci.yml', additions: 1, deletions: 0 }];
+		parseOwnersFileImpl = () => [
+			{ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true, line: 1 },
+		];
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['.github/workflows/ci.yml']]]);
+
+		await run(42);
+
+		const body = postOrUpdateComment.mock.calls[0].arguments[1];
+		assert.match(body, /### Required reviews/);
+		assert.match(body, /\| @n8n-io\/qa-dx \| 1 \|/);
+		assert.match(body, /Request a review from the team —/);
 	});
 });
