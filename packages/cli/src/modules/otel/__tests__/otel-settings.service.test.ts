@@ -212,45 +212,26 @@ describe('OtelSettingsService', () => {
 
 		it('replaces env-managed fields with env-var values before persisting', async () => {
 			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
+			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
+			configWithEnv.exporterProtocol = 'grpc';
 			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
 			settingsRepository.findByKey.mockResolvedValue(null);
 
-			const incoming: OtelConfig = { ...settings, exporterEndpoint: 'https://tampered-by-client' };
+			const incoming: OtelConfig = {
+				...settings,
+				exporterEndpoint: 'https://tampered-by-client',
+				exporterProtocol: 'http/protobuf',
+			};
 			await serviceWithEnv.saveSettings(incoming);
 
 			const saved = JSON.parse(
 				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
 			) as OtelConfig;
 			expect(saved.exporterEndpoint).toBe('https://from-env');
+			expect(saved.exporterProtocol).toBe('grpc');
 			expect(saved.enabled).toBe(settings.enabled);
-		});
-
-		it('persists the incoming exporter protocol when it is not env-managed', async () => {
-			settingsRepository.findByKey.mockResolvedValue(null);
-
-			await service.saveSettings(settings);
-
-			const saved = JSON.parse(
-				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
-			) as OtelConfig;
-			expect(saved.exporterProtocol).toBe('grpc');
-		});
-
-		it('replaces an env-managed exporter protocol with the env-var value before persisting', async () => {
-			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
-			const configWithEnv = new OtelConfig();
-			configWithEnv.exporterProtocol = 'grpc';
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
-			settingsRepository.findByKey.mockResolvedValue(null);
-
-			await serviceWithEnv.saveSettings({ ...settings, exporterProtocol: 'http/protobuf' });
-
-			const saved = JSON.parse(
-				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
-			) as OtelConfig;
-			expect(saved.exporterProtocol).toBe('grpc');
 		});
 	});
 

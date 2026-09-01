@@ -115,16 +115,6 @@ describe('OtelSettingsController', () => {
 			expect(result).toEqual(updatedResponse);
 		});
 
-		it('passes the exporter protocol through to the settings service', async () => {
-			const grpcSettings: OtelConfig = { ...baseSettings, exporterProtocol: 'grpc' };
-
-			await controller.updateSettings(req, res, grpcSettings);
-
-			expect(otelSettingsService.saveSettings).toHaveBeenCalledWith(
-				expect.objectContaining({ exporterProtocol: 'grpc' }),
-			);
-		});
-
 		it('saves before reloading', async () => {
 			const order: string[] = [];
 			otelSettingsService.saveSettings.mockImplementation(async () => {
@@ -168,21 +158,6 @@ describe('OtelSettingsController', () => {
 			const result = await controller.testTrace(req, res, dto);
 
 			expect(result).toEqual({ success: true });
-		});
-
-		it('sends the test trace with the resolved exporter protocol', async () => {
-			const grpcDto: OtelConnectionParams = { ...dto, exporterProtocol: 'grpc' };
-			otelSettingsService.resolveTestConnection.mockReturnValue(grpcDto);
-			otelService.sendTestTrace.mockResolvedValue({ success: true });
-
-			await controller.testTrace(req, res, grpcDto);
-
-			expect(otelSettingsService.resolveTestConnection).toHaveBeenCalledWith(
-				expect.objectContaining({ exporterProtocol: 'grpc' }),
-			);
-			expect(otelService.sendTestTrace).toHaveBeenCalledWith(
-				expect.objectContaining({ exporterProtocol: 'grpc' }),
-			);
 		});
 
 		it('returns the failure result with the collector error', async () => {

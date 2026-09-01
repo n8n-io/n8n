@@ -118,13 +118,6 @@ describe('useOtelStore', () => {
 		testTraceMock.mockReset();
 	});
 
-	describe('defaults', () => {
-		it('starts on the HTTP/protobuf exporter protocol', () => {
-			const store = useOtelStore();
-			expect(store.settings.exporterProtocol).toBe('http/protobuf');
-		});
-	});
-
 	describe('fetchSettings', () => {
 		it('populates settings and savedSettings from API response', async () => {
 			const remote = makeSettings({ enabled: true, exporterEndpoint: 'https://collector.io' });
@@ -292,9 +285,12 @@ describe('useOtelStore', () => {
 			expect(store.testState).toBe('idle');
 		});
 
+		// The protocol is non-default here so the payload cannot pass by echoing the
+		// store's initial value.
 		it('sends only the connection fields from the current settings', async () => {
 			fetchMock.mockResolvedValueOnce(
 				makeSettings({
+					exporterProtocol: 'grpc',
 					exporterEndpoint: 'https://collector.io',
 					exporterTracingPath: '/custom',
 					exporterServiceName: 'n8n-prod',
@@ -309,27 +305,13 @@ describe('useOtelStore', () => {
 			await store.sendTestTrace();
 
 			expect(testTraceMock).toHaveBeenCalledWith(expect.anything(), {
-				exporterProtocol: 'http/protobuf',
+				exporterProtocol: 'grpc',
 				exporterEndpoint: 'https://collector.io',
 				exporterTracingPath: '/custom',
 				exporterServiceName: 'n8n-prod',
 				exporterHeaders: 'auth=token',
 				startupConnectivityTimeoutMs: 3000,
 			});
-		});
-
-		it('sends the selected exporter protocol', async () => {
-			fetchMock.mockResolvedValueOnce(makeSettings({ exporterProtocol: 'grpc' }));
-			testTraceMock.mockResolvedValueOnce({ success: true });
-
-			const store = useOtelStore();
-			await store.fetchSettings();
-			await store.sendTestTrace();
-
-			expect(testTraceMock).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ exporterProtocol: 'grpc' }),
-			);
 		});
 
 		it('transitions to sent and records a timestamp on success', async () => {

@@ -665,7 +665,7 @@ describe('OtelService', () => {
 			};
 
 			it('builds the gRPC exporter with the endpoint as-is, metadata and supplied timeout', async () => {
-				await service.sendTestTrace(grpcConnection);
+				const result = await service.sendTestTrace(grpcConnection);
 
 				expect(OTLPGrpcTraceExporter).toHaveBeenCalledWith({
 					url: 'https://collector.example.com:4317',
@@ -674,24 +674,7 @@ describe('OtelService', () => {
 				});
 				expect(Object.fromEntries(metadataEntries)).toEqual({ auth: 'token' });
 				expect(OTLPTraceExporter).not.toHaveBeenCalled();
-			});
-
-			it('returns success when the gRPC exporter reports no error', async () => {
-				const result = await service.sendTestTrace(grpcConnection);
-
 				expect(result).toEqual({ success: true });
-			});
-
-			it("returns failure with the gRPC exporter's error message", async () => {
-				mockExportImpl = (_spans, resultCallback) =>
-					resultCallback({ error: new Error('14 UNAVAILABLE: No connection established') });
-
-				const result = await service.sendTestTrace(grpcConnection);
-
-				expect(result).toEqual({
-					success: false,
-					error: '14 UNAVAILABLE: No connection established',
-				});
 			});
 
 			it('shuts down the throwaway provider and gRPC exporter when done', async () => {

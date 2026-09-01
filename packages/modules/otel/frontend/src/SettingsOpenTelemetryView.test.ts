@@ -518,6 +518,22 @@ describe('SettingsOpenTelemetryView', () => {
 		});
 	});
 
+	it('keeps the trace path across a switch to gRPC and back', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ exporterTracingPath: '/custom/traces' }));
+
+		const { getByTestId, queryByTestId, store } = render();
+		await waitFor(() => expect(getByTestId('otel-tracing-path')).toBeInTheDocument());
+
+		await selectProtocol('gRPC');
+		await waitFor(() => expect(queryByTestId('otel-tracing-path')).not.toBeInTheDocument());
+
+		await selectProtocol('HTTP (protobuf)');
+
+		await waitFor(() => expect(getByTestId('otel-tracing-path')).toBeInTheDocument());
+		expect(getByTestId('otel-tracing-path')).toHaveValue('/custom/traces');
+		expect(store.settings.exporterTracingPath).toBe('/custom/traces');
+	});
+
 	it('saves the protocol picked in the select', async () => {
 		const { getByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-protocol')).toBeInTheDocument());

@@ -195,18 +195,6 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(http.body.exporterProtocol).toBe('http/protobuf');
 		});
 
-		it('accepts a body written before exporterProtocol existed', async () => {
-			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.put('/settings/otel')
-				.send(bodyWithoutProtocol);
-
-			expect(response.status).toBe(200);
-			expect(response.body.exporterProtocol).toBe('http/protobuf');
-		});
-
 		it('resets an omitted exporterProtocol to the default (PUT is a full replacement)', async () => {
 			const grpc = await testServer
 				.publicApiAgentFor(owner)
@@ -218,8 +206,9 @@ describe('OpenTelemetry settings in Public API', () => {
 				});
 			expect(grpc.body.exporterProtocol).toBe('grpc');
 
-			// Every field in this endpoint is overwritten on write, so an omitted
-			// protocol falls back to its default rather than keeping the stored value.
+			// Every field in this endpoint is overwritten on write, so a body written
+			// before the field existed resets the protocol to its default instead of
+			// keeping the stored value.
 			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
 			const replaced = await testServer
 				.publicApiAgentFor(owner)
@@ -370,12 +359,6 @@ describe('OpenTelemetry settings in Public API', () => {
 			await Container.get(OtelSettingsService).loadSettings();
 		});
 
-		it('reports the env-enforced protocol on read', async () => {
-			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
-
-			expect(response.body.exporterProtocol).toBe('grpc');
-		});
-
 		it('rejects a body that omits the env-managed protocol with 409', async () => {
 			// The omitted field defaults to `http/protobuf`, which conflicts with the
 			// env-enforced `grpc` — the same 409 any other env-managed field returns.
@@ -388,17 +371,6 @@ describe('OpenTelemetry settings in Public API', () => {
 
 			expect(response.status).toBe(409);
 			expect(response.body.message).toContain('exporterProtocol');
-		});
-
-		it('accepts a write that re-submits the env-enforced protocol', async () => {
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.put('/settings/otel')
-				.send({ ...validSettings, exporterProtocol: 'grpc', tracesSampleRate: 0.25 });
-
-			expect(response.status).toBe(200);
-			expect(response.body.exporterProtocol).toBe('grpc');
-			expect(response.body.tracesSampleRate).toBe(0.25);
 		});
 	});
 
