@@ -651,9 +651,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			// between page fetches; one id must map to one delivery.
 			messages = Array.from(new Map(messages.map((m) => [m.id, m])).values());
 
-			if (!messages.length && !allFetchedMessages.length) {
-				return null;
-			}
+			// An empty page set is not an early return: Gmail ends a list only by
+			// dropping the page token, so this must reach the no-progress valve below.
 
 			// For v1.4+, filter out already-handled messages before fetching to save API
 			// calls. Gmail's `after:` query is inclusive at the second boundary, and a

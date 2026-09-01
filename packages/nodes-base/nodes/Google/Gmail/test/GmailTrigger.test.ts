@@ -2678,6 +2678,32 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(2);
 		});
 
+		it('should count an empty page with a leftover token as no progress', async () => {
+			// Gmail's only documented end-of-list signal is a missing page token, so a
+			// page with no messages does not mean the window is finished. A poll that
+			// stopped inside such a page reached nothing, which the valve must count.
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
+			};
+
+			mockLabels();
+			// No `messages` key at all, which is the shape Gmail sends for an empty
+			// page, plus a token that says the list goes on.
+			mockList({ resultSizeEstimate: 0, nextPageToken: 'token-1' });
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 10 } },
+				workflowStaticData,
+				pollBudgetMs: 0,
+			});
+
+			expect(response).toBeNull();
+			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(1);
+			// The scan stopped short, so the cursor must stay where it was.
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
+		});
+
 		it('should clear the no-progress count once a scan reaches the whole window', async () => {
 			// A scan that exhausted the page token proves nothing is out of reach, so
 			// the window is not wedged. Without this, a quiet poll between two slow
