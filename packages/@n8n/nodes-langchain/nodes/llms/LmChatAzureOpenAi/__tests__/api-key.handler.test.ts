@@ -72,6 +72,28 @@ describe('setupApiKeyAuthentication', () => {
 		});
 	});
 
+	it('should throw NodeOperationError when a classic credential is missing resourceName', async () => {
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'test-api-key',
+			apiVersion: '2023-05-15',
+		});
+
+		await expect(setupApiKeyAuthentication.call(ctx, 'testCredential')).rejects.toThrow(
+			'Resource Name and API Version are required for a classic Azure OpenAI credential.',
+		);
+	});
+
+	it('should throw NodeOperationError when a classic credential is missing apiVersion', async () => {
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'test-api-key',
+			resourceName: 'test-resource',
+		});
+
+		await expect(setupApiKeyAuthentication.call(ctx, 'testCredential')).rejects.toThrow(
+			'Resource Name and API Version are required for a classic Azure OpenAI credential.',
+		);
+	});
+
 	it('should throw NodeOperationError when API key is missing', async () => {
 		// Arrange
 		const mockCredentials = {

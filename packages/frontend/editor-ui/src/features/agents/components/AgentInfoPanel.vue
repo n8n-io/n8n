@@ -263,10 +263,16 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	// so the field isn't blank. Following the model on change is the sensible
 	// default — deployments are usually named after the model. Foundry endpoints
 	// take the model id directly and don't need one.
+	// Drop any in-flight typed/cleared value so it can't land after this seed
+	// and wipe the model-derived name.
+	emitDeploymentNameDebounced.cancel();
 	const deploymentNameChange =
 		selection.provider === 'azure-openai' && azureEndpointType.value !== 'foundry'
 			? { modelDeploymentName: deriveDefaultDeploymentName(selection) }
 			: {};
+	if (deploymentNameChange.modelDeploymentName !== undefined) {
+		deploymentName.value = deploymentNameChange.modelDeploymentName;
+	}
 	emit('update:config', {
 		model,
 		credential: credentialId,

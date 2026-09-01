@@ -45,10 +45,17 @@ export async function setupApiKeyAuthentication(
 			};
 		}
 
+		if (!configCredentials.resourceName?.trim() || !configCredentials.apiVersion?.trim()) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Resource Name and API Version are required for a classic Azure OpenAI credential.',
+			);
+		}
+
 		return {
 			azureOpenAIApiKey: configCredentials.apiKey,
-			azureOpenAIApiInstanceName: configCredentials.resourceName ?? '',
-			azureOpenAIApiVersion: configCredentials.apiVersion ?? '',
+			azureOpenAIApiInstanceName: configCredentials.resourceName,
+			azureOpenAIApiVersion: configCredentials.apiVersion,
 			azureOpenAIEndpoint: configCredentials.endpoint,
 		};
 	} catch (error) {
