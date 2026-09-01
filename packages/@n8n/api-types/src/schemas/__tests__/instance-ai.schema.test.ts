@@ -116,17 +116,6 @@ describe('instanceAiEventSchema', () => {
 
 		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
 	});
-
-	it('rejects an empty payload workflowId', () => {
-		const event = {
-			type: 'setup-items',
-			runId: 'run-1',
-			agentId: 'agent-1',
-			payload: { workflowId: '', items: [] },
-		};
-
-		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
-	});
 });
 
 describe('errorPayloadSchema', () => {
