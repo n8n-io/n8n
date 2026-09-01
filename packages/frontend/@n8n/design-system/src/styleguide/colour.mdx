@@ -7,9 +7,9 @@ import PrimitivesColorTable from './components/PrimitivesColorTable.vue';
 
 # Colour
 
-Primitive colour scales live in `_primitives.scss`. Prefer semantic tokens from `_tokens.scss` in product UI (for example `--text-color`, `--background--surface`) so themes stay consistent.
+We have a vast, beautiful color palette out of the box. Prefer using these rather than custom colours (e.g #ff0000). These are similar to Tailwind CSS.
 
-Each hue scale uses steps from lightest (`50`) to darkest (`950`). Hover a swatch for the token and resolved value. Click to copy the token name.
+Each colour has 13 steps ranging from lightest (50) to darkest (950).
 
 <div class="sb-unstyled">
 	<PrimitivesColorTable />
@@ -17,7 +17,7 @@ Each hue scale uses steps from lightest (`50`) to darkest (`950`). Hover a swatc
 
 ## Tokens
 
-Semantic colour tokens from `_tokens.scss`, grouped by prefix. Values resolve live for the current theme. Search by token or value.
+Instead of using the raw primitive colours, it's often better to use a token. These are aliases for common use cases (e.g text color) to make it easier to keep UI consistent and flexible.
 
 <div class="sb-unstyled">
 	<NamedTokensColorTable />
