@@ -4657,6 +4657,16 @@ describe('useCanvasOperations', () => {
 			).toEqual({ openAiApi: gatewayCredential });
 		});
 
+		it('drops id-less credentials that are not n8n credits when sharing is enabled', () => {
+			const orphanCredential = { id: null, name: 'Orphan' };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: orphanCredential },
+				}),
+			).toEqual({});
+		});
+
 		it('keeps stored credentials that are not in usedCredentials when sharing is enabled', () => {
 			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
 			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };

@@ -3358,7 +3358,7 @@ export function useCanvasOperations() {
 	): INodeCredentials {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
-				if (!credential.id) return true;
+				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
 				const used = usedCredentials[credential.id];
 				return !used || used.currentUserHasAccess;
 			}),
