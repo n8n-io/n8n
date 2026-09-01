@@ -202,22 +202,32 @@ watch(
 	},
 );
 
-const emitDeploymentNameDebounced = useDebounceFn((value: string) => {
-	emit('update:config', { modelDeploymentName: value });
-}, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
+// Hand-rolled so a model change can drop a queued emit. `useDebounceFn` has no cancel.
+let deploymentNameEmitTimer: ReturnType<typeof setTimeout> | undefined;
+
+function cancelDeploymentNameEmit() {
+	if (deploymentNameEmitTimer === undefined) return;
+	clearTimeout(deploymentNameEmitTimer);
+	deploymentNameEmitTimer = undefined;
+}
+
+function scheduleDeploymentNameEmit(value: string) {
+	cancelDeploymentNameEmit();
+	deploymentNameEmitTimer = setTimeout(() => {
+		deploymentNameEmitTimer = undefined;
+		emit('update:config', { modelDeploymentName: value });
+	}, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
+}
 
 function onDeploymentNameInput(value: string) {
 	deploymentName.value = value;
 	if (props.immediateUpdates) {
+		cancelDeploymentNameEmit();
 		emit('update:config', { modelDeploymentName: value });
 		return;
 	}
-	void emitDeploymentNameDebounced(value);
+	scheduleDeploymentNameEmit(value);
 }
-
-const instructionsToolbarMode = computed(() =>
-	props.showInstructionsToolbar ? 'always' : 'never',
-);
 
 function deriveDefaultDeploymentName(selection: AgentModelSelection): string {
 	// Azure deployments are conventionally named after the model. Default the
@@ -263,7 +273,7 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	// take the model id directly and don't need one.
 	// Drop any in-flight typed/cleared value so it can't land after this seed
 	// and wipe the model-derived name.
-	emitDeploymentNameDebounced.cancel();
+	cancelDeploymentNameEmit();
 	const deploymentNameChange =
 		selection.provider === 'azure-openai' && azureEndpointType.value !== 'foundry'
 			? { modelDeploymentName: deriveDefaultDeploymentName(selection) }

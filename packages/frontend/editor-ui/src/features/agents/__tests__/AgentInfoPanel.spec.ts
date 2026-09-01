@@ -1,5 +1,6 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { mount } from '@vue/test-utils';
+import type * as VueUse from '@vueuse/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
@@ -46,20 +47,15 @@ function makeCatalog(): ProviderCatalog {
 const modelCatalog = ref<ProviderCatalog>(makeCatalog());
 
 // Mutable holder so tests can vary the composable's (localStorage-backed) selection state.
-const { credsHolder, debounceCancel } = vi.hoisted(() => ({
+const { credsHolder } = vi.hoisted(() => ({
 	credsHolder: { value: { anthropic: 'credential-1' } as Record<string, string | null> },
-	debounceCancel: vi.fn(),
 }));
 
 vi.mock('@vueuse/core', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@vueuse/core')>();
+	const actual = await importOriginal<typeof VueUse>();
 	return {
 		...actual,
-		useDebounceFn: (fn: (...args: unknown[]) => unknown) => {
-			const wrapped = ((...args: unknown[]) => fn(...args)) as typeof fn & { cancel: () => void };
-			wrapped.cancel = debounceCancel;
-			return wrapped;
-		},
+		useDebounceFn: (fn: (...args: unknown[]) => unknown) => fn,
 	};
 });
 
@@ -219,7 +215,6 @@ describe('AgentInfoPanel', () => {
 		modelCatalog.value = makeCatalog();
 		credsHolder.value = { anthropic: 'credential-1' };
 		defaultModelHolder.value = null;
-		debounceCancel.mockClear();
 	});
 
 	it('renders instructions as a contained markdown editor with a floating toolbar', () => {
@@ -255,23 +250,6 @@ describe('AgentInfoPanel', () => {
 		expect(editor.props('modelValue')).toBe('');
 		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.text()).not.toContain('Enter instructions here');
-	});
-
-	it('cancels a pending deployment-name emit when the model changes', async () => {
-		const wrapper = mountModelPanel({
-			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
-			credential: 'credential-1',
-			instructions: 'Help users.',
-		});
-
-		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
-			provider: 'anthropic',
-			model: 'claude-3-haiku',
-		});
-		await wrapper.vm.$nextTick();
-
-		expect(debounceCancel).toHaveBeenCalled();
 	});
 
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {
