@@ -1,10 +1,11 @@
-import { redactDeep, redactText, SUPPORTED_PII_CATEGORIES } from '@n8n/agents';
+import { redactDeep, redactText } from '@n8n/agents';
 import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
 import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Client } from 'langsmith';
 import { nanoid } from 'nanoid';

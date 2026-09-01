@@ -1,4 +1,5 @@
-import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
+import { isZodSchema } from '@n8n/agents';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../__tests__/tool-test-utils';

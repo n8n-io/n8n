@@ -88,7 +88,6 @@ vi.mock('../skills/materialize-runtime-skills', () => ({
 vi.mock('../utils/eval-agents', () => ({
 	createEvalAgent: () => 'eval-agent',
 	extractText: () => 'text',
-	Tool: class Tool {},
 }));
 vi.mock('../utils/agent-tree', () => ({
 	buildAgentTreeFromEvents: () => ({ agentId: 'root', children: [] }),
@@ -101,10 +100,6 @@ vi.mock('../workspace/builder-templates-service', () => ({
 vi.mock('../workspace/create-workspace', () => ({
 	createSandbox: () => ({ type: 'sandbox' }),
 	createWorkspace: () => ({ type: 'workspace' }),
-}));
-vi.mock('@n8n/agents/sandbox', () => ({
-	getWorkspaceRoot: () => '/workspace',
-	getPromptWorkspaceRoot: () => '/home/daytona/workspace',
 }));
 vi.mock('../workspace/lazy-runtime-workspace', () => ({
 	createLazyRuntimeWorkspace: () => ({ type: 'lazy-workspace' }),
@@ -272,13 +267,10 @@ describe('@n8n/instance-ai public entrypoint', () => {
 
 		expect(call(entrypoint.createEvalAgent)).toBe('eval-agent');
 		expect(call(entrypoint.extractText)).toBe('text');
-		expect(construct(entrypoint.Tool)).toBeInstanceOf(entrypoint.Tool);
 		expect(call(entrypoint.buildAgentTreeFromEvents)).toEqual({ agentId: 'root', children: [] });
 		expect(call(entrypoint.findAgentNodeInTree)).toEqual({ agentId: 'root', children: [] });
 
 		expect(call(entrypoint.createLazyRuntimeWorkspace)).toEqual({ type: 'lazy-workspace' });
-		expect(call(entrypoint.getWorkspaceRoot)).toBe('/workspace');
-		expect(entrypoint.getPromptWorkspaceRoot('daytona')).toBe('/home/daytona/workspace');
 		expect(call(entrypoint.setupSandboxWorkspace)).toBeUndefined();
 		expect(construct(entrypoint.BuilderTemplatesService)).toBeInstanceOf(
 			entrypoint.BuilderTemplatesService,

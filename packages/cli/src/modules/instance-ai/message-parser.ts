@@ -6,7 +6,8 @@ import type {
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
 import { orchestratorAgentId } from '@n8n/instance-ai';
-import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
+import type { AgentDbMessage, MessageContent } from '@n8n/agents';
+import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 import { z } from 'zod';
 
 import {

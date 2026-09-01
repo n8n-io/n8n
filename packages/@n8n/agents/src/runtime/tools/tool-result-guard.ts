@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { AgentDbMessage, AgentMessage, MessageContent } from '../../types/sdk/message';
@@ -170,10 +171,6 @@ export async function guardToolMessageForModel(
 	});
 
 	return { ...message, content };
-}
-
-function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isOffloadedToolResult(value: unknown): boolean {

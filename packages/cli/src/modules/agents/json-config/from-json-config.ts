@@ -15,6 +15,7 @@ import type {
 	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import { modelConfigToId } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
 import {
 	getNativeWebSearchProviderTools,
@@ -244,24 +245,6 @@ export async function buildFromJson(
 	return agent;
 }
 
-function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
-	if (typeof modelConfig === 'string') return modelConfig;
-	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
-		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
-	}
-	if (
-		typeof modelConfig === 'object' &&
-		modelConfig !== null &&
-		'provider' in modelConfig &&
-		'modelId' in modelConfig
-	) {
-		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
-		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
-		return provider && modelId ? `${provider}/${modelId}` : undefined;
-	}
-	return undefined;
-}
-
 function getProviderToolPrefix(toolName: string): string | undefined {
 	const dotIndex = toolName.indexOf('.');
 	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
@@ -280,7 +263,7 @@ export function buildProviderToolsForModel(
 	config: AgentJsonConfig,
 	modelConfig: ModelConfig,
 ): BuiltProviderTool[] {
-	const modelId = modelConfigToModelId(modelConfig);
+	const modelId = modelConfigToId(modelConfig);
 	if (!modelId) return [];
 
 	const providerPrefix = getProviderPrefix(modelId);

@@ -68,6 +68,9 @@ const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(() => mockAgent),
 	extractText: mockExtractText,
+}));
+
+vi.mock('@n8n/agents', () => ({
 	Tool: vi.fn().mockImplementation(function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
@@ -104,8 +107,9 @@ vi.mock('@n8n/di', () => ({
 }));
 
 import type { Mock } from 'vitest';
+import { Tool } from '@n8n/agents';
 import { Container } from '@n8n/di';
-import { createEvalAgent, Tool } from '@n8n/instance-ai';
+import { createEvalAgent } from '@n8n/instance-ai';
 import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';

@@ -18,6 +18,7 @@ describe('scrubSecretsInText', () => {
 		);
 		expect(scrubSecretsInText('header is Basic dXNlcjpwYXNzd29yZA==')).toBe('header is [REDACTED]');
 		expect(scrubSecretsInText('header is Token abcdef1234567890')).toBe('header is [REDACTED]');
+		expect(scrubSecretsInText('Authorization: Bearer short')).toBe('Authorization: [REDACTED]');
 	});
 
 	it('redacts OpenAI and Anthropic API keys', () => {
@@ -58,6 +59,7 @@ describe('scrubSecretsInText', () => {
 	it('redacts Stripe, Google, and GitHub fine-grained tokens', () => {
 		expect(scrubSecretsInText(join('sk', '_live_abcdefghijklmnop1234'))).toBe('[REDACTED]');
 		expect(scrubSecretsInText(join('AIza', 'B'.repeat(35)))).toBe('[REDACTED]');
+		expect(scrubSecretsInText(join('ya29.', 'B'.repeat(20)))).toBe('[REDACTED]');
 		expect(scrubSecretsInText(join('github_pat_', 'A'.repeat(30)))).toBe('[REDACTED]');
 	});
 
@@ -73,11 +75,23 @@ describe('scrubSecretsInText', () => {
 		);
 		expect(scrubSecretsInText('REFRESH_TOKEN = xyz')).toBe('[REDACTED]');
 		expect(scrubSecretsInText('Authorization: secret-value')).toBe('[REDACTED]');
+		expect(
+			scrubSecretsInText(
+				'token=value and client_secret=value and private_key=value and session_cookie=value',
+			),
+		).toBe('[REDACTED] and [REDACTED] and [REDACTED] and [REDACTED]');
+		expect(
+			scrubSecretsInText('webhook_secret=whsec_x and account_password=hunter2 and bot_token=abc'),
+		).toBe('[REDACTED] and [REDACTED] and [REDACTED]');
+		expect(scrubSecretsInText('max_tokens=500')).toBe('max_tokens=500');
 	});
 
 	it('redacts JSON-shaped credential fields with quoted keys and values', () => {
-		const input = '{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz"}';
-		expect(scrubSecretsInText(input)).toBe('{[REDACTED], [REDACTED], [REDACTED]}');
+		const input =
+			'{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz", "client_secret": "value", "webhook_secret": "whsec_x"}';
+		expect(scrubSecretsInText(input)).toBe(
+			'{[REDACTED], [REDACTED], [REDACTED], [REDACTED], [REDACTED]}',
+		);
 	});
 
 	it('redacts a "credentials" field holding a serialized scalar value', () => {
@@ -157,6 +171,8 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText('feedback about the workflow plan')).toBe(
 			'feedback about the workflow plan',
 		);
+		expect(scrubSecretsInText('Token exchange failed')).toBe('Token exchange failed');
+		expect(scrubSecretsInText('Basic usage of the node')).toBe('Basic usage of the node');
 		expect(scrubSecretsInText('/var/lib/n8n/data/some-id-1234')).toBe(
 			'/var/lib/n8n/data/some-id-1234',
 		);

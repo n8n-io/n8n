@@ -5,9 +5,11 @@
  * a provider envelope the adapter can't read a tool call from.
  */
 
+import { Tool } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { isRecord } from '@n8n/utils/is-record';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import { z } from 'zod';
 
@@ -73,10 +75,6 @@ const submitStepSchema = z.object({
 		.optional()
 		.describe('Required for kind="final": a short final answer string.'),
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isUnknownArray(value: unknown): value is unknown[] {
 	return Array.isArray(value);

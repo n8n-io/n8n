@@ -8,9 +8,10 @@
  * CLI test suite.
  */
 
+import { Tool } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
 import { z } from 'zod';

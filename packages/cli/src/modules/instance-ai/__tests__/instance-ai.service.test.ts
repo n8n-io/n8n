@@ -4,6 +4,12 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	createScopedWorkspace: vi.fn((workspace: unknown) => workspace),
 }));
 
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents/sandbox')>()),
+	getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
+	getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
+}));
+
 vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
@@ -34,8 +40,6 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
-		getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
-		getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: vi.fn(),
 		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
 			registry: {

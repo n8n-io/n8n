@@ -175,10 +175,6 @@ export function getProviderQuirks(providerId: string): ProviderQuirks {
 	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};
 }
 
-export function providerIdFromModelId(modelId: string): string {
-	return modelId.split('/')[0];
-}
-
 /**
  * Default completion-token cap for reasoning-heavy Kimi K3 models.
  * Context windows are often 131072 shared input+output; requesting the full

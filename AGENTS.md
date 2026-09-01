@@ -41,6 +41,11 @@ frontend, and extensible node-based workflow engine.
 - The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
   error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
+- **Shared utility ownership:** put shared AI- or LLM-specific helpers in
+  `@n8n/ai-utilities`, generic helpers and generic secret or PII redaction in
+  `@n8n/utils`, and workflow graph or traversal utilities in `n8n-workflow`.
+  Before hand-rolling a utility, check these packages for an existing
+  implementation. Keep domain logic in the package that owns that domain.
 
 ## Agent Skills and Claude Code Plugin
 

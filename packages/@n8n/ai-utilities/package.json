@@ -31,6 +31,9 @@
       "json-schema": [
         "dist/esm/json-schema/index.d.ts"
       ],
+      "llm-output": [
+        "dist/esm/llm-output/index.d.ts"
+      ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
       ],
@@ -84,6 +87,11 @@
       "types": "./dist/esm/json-schema/index.d.ts",
       "import": "./dist/esm/json-schema/index.js",
       "require": "./dist/cjs/json-schema/index.js"
+    },
+    "./llm-output": {
+      "types": "./dist/esm/llm-output/index.d.ts",
+      "import": "./dist/esm/llm-output/index.js",
+      "require": "./dist/cjs/llm-output/index.js"
     },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",

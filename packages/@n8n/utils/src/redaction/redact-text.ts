@@ -1,5 +1,6 @@
 import type { PiiDetectionType, PiiPatternTable, RedactionCategory } from './pii-patterns';
 import { resolvePatterns } from './pii-patterns';
+import { isSensitiveKey } from './sensitive-key';
 
 export const DEFAULT_PLACEHOLDER = '[REDACTED]';
 
@@ -149,8 +150,6 @@ export function findMatchRanges(
 }
 
 const MAX_DEEP_DEPTH = 8;
-const SENSITIVE_KEY_PATTERN =
-	/(api[_-]?key|private[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 export interface DeepRedactionResult {
 	value: unknown;
@@ -177,7 +176,7 @@ function redactDeepValue(
 	depth: number,
 	key?: string,
 ): DeepRedactionResult {
-	if (opts.redactSensitiveKeys && key && SENSITIVE_KEY_PATTERN.test(key)) {
+	if (opts.redactSensitiveKeys && key && isSensitiveKey(key)) {
 		return { value: opts.placeholder ?? DEFAULT_PLACEHOLDER, matches: [{ category: 'secret' }] };
 	}
 
