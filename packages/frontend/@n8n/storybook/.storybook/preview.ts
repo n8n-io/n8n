@@ -18,7 +18,6 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { applyN8nTheme, isDarkModeStored } from './applyN8nTheme';
 import { ThemedDocsContainer } from './ThemedDocsContainer';
 import './storybook.scss';
-// import '../src/css/tailwind/index.css';
 
 const channel = addons.getChannel();
 applyN8nTheme(isDarkModeStored());
@@ -59,9 +58,6 @@ export const parameters = {
 		disable: true,
 	},
 	darkMode: {
-		classTarget: 'html',
-		darkClass: 'dark',
-		lightClass: 'light',
 		stylePreview: true,
 	},
 	options: {

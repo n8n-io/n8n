@@ -2,75 +2,10 @@
 @use '../../design-system/src/css/reset.scss';
 @use '../../design-system/src/css/index.scss';
 
-.multi-container > * {
-	margin-bottom: 10px;
-}
-
-#storybook-root > div:not([class]) > *,
-#storybook-root > * {
-	margin: var(--spacing--5xs);
-}
-
-body {
-	padding: 0 !important;
-	/* Keep the Storybook canvas stable while body data-theme flips for teleported floating UI. */
-	background-color: var(--color--neutral-50) !important;
-}
-
-.story {
-	padding: 2rem;
-	display: flex;
-	gap: 1rem;
-}
-
-.theme-side-by-side {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-}
-
-.theme-side-by-side__panel {
-	position: relative;
-	padding: var(--spacing--md);
-	background: var(--background--surface);
-	color: var(--text-color);
-	border-radius: var(--radius--lg);
-	overflow: auto;
-
-	&[data-theme='light'] {
-		border: var(--border);
-	}
-}
-
-/*
- * Docs text/code colors come from ThemedDocsContainer (emotion). Markdown chrome
- * is overridden here. Storybook 10 styles MDX with `:where(h2)` on DocsContent,
- * not `.sbdocs-h2` — target elements under `.sbdocs.sbdocs-content` so we beat
- * emotion's hashed class. Skip `.sb-unstyled` so Vue examples keep their styles.
- */
-.sbdocs.sbdocs-wrapper,
 .sbdocs.sbdocs-content {
-	font-family: var(--font-family, InterVariable, sans-serif);
-}
-
-.sbdocs-preview {
-	background: var(--background--surface);
-	border-color: var(--border-color);
-}
-
-.sbdocs.sbdocs-content {
-	:is(h1, h2, h3, h4, h5, h6, p, li, td, th, blockquote, table, ul, ol) {
-		font-family: var(--font-family, InterVariable, sans-serif);
-	}
-
-	:is(code, pre) {
-		font-family: var(--font-family--monospace, CommitMono, ui-monospace, monospace);
-	}
-
 	:is(h1, h2, h3, h4, h5, h6):not(:where(.sb-unstyled, .sb-unstyled *)) {
 		border-bottom: none;
 		padding-bottom: 0;
-		margin-top: var(--spacing--2xl);
 		font-weight: var(--font-weight--bold);
 		color: var(--text-color);
 
@@ -85,37 +20,7 @@ body {
 	}
 
 	:not(pre) > code {
-		margin: 0;
-		padding: var(--spacing--5xs) var(--spacing--4xs);
-		border: none;
-		border-radius: var(--radius--sm);
-		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--medium);
-		font-variant-ligatures: none;
-		line-height: var(--line-height--lg);
-		white-space: nowrap;
 		color: var(--text-color);
-		background-color: var(--background--subtle);
-	}
-
-	table {
-		width: 100%;
-
-		th {
-			text-align: start;
-		}
-	}
-
-	h1 > a[aria-hidden='true'],
-	h2 > a[aria-hidden='true'],
-	h3 > a[aria-hidden='true'],
-	h4 > a[aria-hidden='true'],
-	h5 > a[aria-hidden='true'],
-	h6 > a[aria-hidden='true'] {
-		float: left;
-		margin-left: -24px;
-		padding-right: 10px;
-		color: inherit;
 	}
 }
 
@@ -124,25 +29,4 @@ body {
 	border-collapse: collapse;
 	font-size: var(--font-size--2xs);
 	margin-block: var(--spacing--2xl);
-}
-
-.sbdocs .sbdocs-content th:not(.sbdocs-preview th, .docs-story th),
-.sbdocs .sbdocs-content td:not(.sbdocs-preview td, .docs-story td) {
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	text-align: left;
-	border-bottom: 1px solid var(--color--neutral-300);
-}
-
-.sbdocs .sbdocs-content th:not(.sbdocs-preview th, .docs-story th) {
-	font-weight: var(--font-weight--bold);
-}
-
-/*
- * The prose-table styling above is meant for Markdown/args tables in docs. Rendered component
- * previews live inside `.sb-story` and bring their own table styling (e.g. N8nDataTableServer),
- * so the docs prose block margin must not leak in — otherwise it pushes the header row down and
- * leaves an empty gap at the top of the table card.
- */
-.sbdocs .sbdocs-content .sb-story table {
-	margin-block: 0;
 }
