@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type { TerminalExecutionStatus } from 'n8n-workflow';
-import { isTerminalExecutionStatus } from 'n8n-workflow';
+import type { IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
+import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -42,6 +42,16 @@ export type BackgroundJobView = Pick<
 /** Cap on the result text persisted on a workflow job row at settle. */
 export const WORKFLOW_JOB_RESULT_MAX_CHARS = 8000;
 
+/**
+ * Error recorded on a job whose execution vanished before its outcome was
+ * read. A successful execution is hard-deleted at completion when the
+ * workflow's save settings say not to keep it, so a missing execution is NOT
+ * evidence of failure — and the wording is the trust boundary that keeps the
+ * model from re-running a workflow that may already have completed.
+ */
+export const EXECUTION_OUTCOME_UNKNOWN_ERROR =
+	'The workflow execution was not retained (check the workflow’s save settings), so its outcome is unknown — it may have completed. Do not run the workflow again without checking for its effects.';
+
 /** Job settlement status a finished workflow execution maps to. */
 export function settlementStatusForExecution(
 	status: TerminalExecutionStatus,
@@ -49,6 +59,38 @@ export function settlementStatusForExecution(
 	if (status === 'success') return 'completed';
 	if (status === 'canceled') return 'cancelled';
 	return 'failed';
+}
+
+/** Extract the JSON items produced by the last run of a node. */
+function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): unknown[] {
+	const lastRun = nodeRuns[nodeRuns.length - 1];
+	if (!lastRun?.data?.main) return [];
+	return lastRun.data.main.flatMap((items) => items ?? []).map((item) => item.json);
+}
+
+/** Build the resultData map from an execution's runData, scoped by `allOutputs`. */
+export function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
+	const resultData: Record<string, unknown> = {};
+
+	if (allOutputs) {
+		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+			const outputItems = outputItemsFromNodeRuns(nodeRuns);
+			if (outputItems.length > 0) {
+				resultData[nodeName] = outputItems;
+			}
+		}
+		return resultData;
+	}
+
+	const nodeNames = Object.keys(runData);
+	const lastNodeName = nodeNames[nodeNames.length - 1];
+	if (lastNodeName) {
+		const outputItems = outputItemsFromNodeRuns(runData[lastNodeName]);
+		if (outputItems.length > 0) {
+			resultData[lastNodeName] = outputItems;
+		}
+	}
+	return resultData;
 }
 
 /**
@@ -245,6 +287,16 @@ export class AgentBackgroundJobService {
 	async reconcile(): Promise<void> {
 		await this.failJobsPastTimeout();
 		await this.failOrphanedSubAgentJobs(await this.jobRepository.findRunningJobs('subagent'));
+		await this.reconcileWorkflowJobs();
+	}
+
+	/**
+	 * The workflow-job slice of reconciliation. Runs regardless of the feature
+	 * flag — workflow jobs settle from execution state alone, and rows created
+	 * while the flag was on must not strand as `running` after it is turned
+	 * off. Both steps are no-ops when the table has no matching rows.
+	 */
+	async reconcileWorkflowJobs(): Promise<void> {
 		await this.settleFinishedWorkflowJobs(await this.jobRepository.findRunningJobs('workflow'));
 
 		await this.jobRepository.deleteSettledBefore(new Date(Date.now() - SETTLED_JOB_RETENTION_MS));
@@ -253,7 +305,9 @@ export class AgentBackgroundJobService {
 	/**
 	 * Cross-process stop of a cancelled workflow job's execution. The job row is
 	 * already claimed, so a stop that finds the execution finished (or gone) is
-	 * not an error worth surfacing to the model.
+	 * not an error worth surfacing to the model — but any other failure means
+	 * the workflow keeps running while the model believes it stopped, so it is
+	 * logged loudly.
 	 */
 	private async stopWorkflowExecution(job: AgentBackgroundJob): Promise<void> {
 		if (job.childExecutionId === null || job.workflowId === null) return;
@@ -261,23 +315,35 @@ export class AgentBackgroundJobService {
 		// Lazy: ExecutionService is a heavy dependency this service otherwise
 		// never needs — workers load this class for the settle path alone.
 		const { ExecutionService } = await import('@/executions/execution.service.js');
+		const { MissingExecutionStopError } = await import('@/errors/missing-execution-stop.error.js');
 		try {
 			await Container.get(ExecutionService).stop(job.childExecutionId, [job.workflowId]);
 		} catch (error) {
-			this.logger.debug('Stopping a cancelled workflow job execution did not succeed', {
+			const details = {
 				jobId: job.id,
 				executionId: job.childExecutionId,
 				error: error instanceof Error ? error.message : String(error),
-			});
+			};
+			// Already finished or gone — nothing left to stop.
+			if (error instanceof MissingExecutionStopError || error instanceof WorkflowOperationError) {
+				this.logger.debug('Cancelled workflow job execution was already beyond stopping', details);
+			} else {
+				this.logger.error(
+					'Failed to stop a cancelled workflow job execution — it may still be running',
+					details,
+				);
+			}
 		}
 	}
 
 	/**
 	 * Settle running workflow jobs whose execution already reached a terminal
 	 * state — the settle hook never ran (crash) or lost the registration race.
-	 * The result is left empty here; the lifecycle hook is the path that
-	 * captures output. An execution that no longer exists (pruned, deleted)
-	 * fails the job. Returns whether any row was settled.
+	 * A completed execution's output is read back from the executions table so
+	 * whichever writer wins the guarded settle carries the result. An execution
+	 * that no longer exists was hard-deleted per the workflow's save settings,
+	 * which seals the outcome as unknowable — the job fails with wording that
+	 * says so. Returns whether any row was settled.
 	 */
 	private async settleFinishedWorkflowJobs(jobs: AgentBackgroundJob[]): Promise<boolean> {
 		const candidates = jobs.filter(
@@ -294,15 +360,17 @@ export class AgentBackgroundJobService {
 					settledAny =
 						(await this.settle(job.id, {
 							status: 'failed',
-							error: 'The workflow execution no longer exists',
+							error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
 						})) || settledAny;
 					continue;
 				}
 				if (!isTerminalExecutionStatus(execution.status)) continue;
 
+				const status = settlementStatusForExecution(execution.status);
 				settledAny =
 					(await this.settle(job.id, {
-						status: settlementStatusForExecution(execution.status),
+						status,
+						result: status === 'completed' ? await this.loadExecutionResult(executionId) : null,
 						error: execution.status === 'success' ? null : `Execution ${execution.status}`,
 					})) || settledAny;
 			} catch (error) {
@@ -314,6 +382,18 @@ export class AgentBackgroundJobService {
 			}
 		}
 		return settledAny;
+	}
+
+	/** Serialized all-node output of a finished execution, for a settle whose run data is not in memory. */
+	private async loadExecutionResult(executionId: string): Promise<string | null> {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+		const runData = execution?.data?.resultData?.runData;
+		if (!runData) return null;
+
+		return serializeWorkflowJobResult(collectResultData(runData, true));
 	}
 
 	private async failJobsPastTimeout(): Promise<void> {

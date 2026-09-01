@@ -1,6 +1,5 @@
-import { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import { AgentsConfig } from '@n8n/config';
+import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { OnLifecycleEvent, OnPubSubEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -14,13 +13,13 @@ import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadc
 import { AgentTestRunService } from './agent-test-run.service';
 import {
 	AgentBackgroundJobService,
+	collectResultData,
 	serializeWorkflowJobResult,
 	settlementStatusForExecution,
 } from './background/agent-background-job.service';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
-import { collectResultData } from './tools/workflow-tool-factory';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 
 /**
  * Wakes the agent tool call a finished sub-execution belongs to, from the
@@ -41,7 +40,6 @@ export class AgentWorkflowToolResumeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly backgroundJobService: AgentBackgroundJobService,
-		private readonly agentsConfig: AgentsConfig,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -55,10 +53,10 @@ export class AgentWorkflowToolResumeService {
 
 		// A backgrounded execution has a job row instead of a suspended checkpoint;
 		// settling it is a plain DB write, so it happens right here — also on
-		// workers, without the pubsub hop the resume below needs.
-		if (this.agentsConfig.backgroundTasksEnabled) {
-			await this.settleBackgroundJob(ctx);
-		}
+		// workers, without the pubsub hop the resume below needs. Deliberately
+		// not gated on the feature flag: it is a no-op without a row, and rows
+		// created while the flag was on must settle even after it is turned off.
+		await this.settleBackgroundJob(ctx);
 
 		// Every sub-execution carries the marker, but only one that actually parked left
 		// a suspended checkpoint. Without this an ordinary tool call drives a resume
@@ -92,9 +90,11 @@ export class AgentWorkflowToolResumeService {
 	/**
 	 * Settle the background job tracking this execution, carrying a bounded
 	 * serialization of the result — the run data is in memory here, so the job
-	 * row gets its answer without a later read of the executions table. A no-op
-	 * when the execution was not backgrounded. Never throws into the
-	 * execution's lifecycle.
+	 * row gets its answer without a later read of the executions table. Job
+	 * results always carry every node's output (the truncation cap bounds
+	 * them): the row does not know the tool's `allOutputs` setting, and the
+	 * full data beats silently dropping nodes. A no-op when the execution was
+	 * not backgrounded. Never throws into the execution's lifecycle.
 	 */
 	private async settleBackgroundJob(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		const { status, data } = ctx.runData;
@@ -107,7 +107,7 @@ export class AgentWorkflowToolResumeService {
 				status: settlementStatus,
 				result:
 					settlementStatus === 'completed' && runData
-						? serializeWorkflowJobResult(collectResultData(runData, false))
+						? serializeWorkflowJobResult(collectResultData(runData, true))
 						: null,
 				error: data.resultData?.error?.message ?? null,
 			});

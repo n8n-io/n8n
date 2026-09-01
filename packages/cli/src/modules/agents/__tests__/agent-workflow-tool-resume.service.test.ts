@@ -1,5 +1,5 @@
-import type { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import type { InstanceSettings } from 'n8n-core';
@@ -7,8 +7,6 @@ import type { IRun, RelatedAgentRun } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { AgentsConfig } from '@n8n/config';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -36,7 +34,7 @@ const previewRun: RelatedAgentRun = {
 	userId: 'user-1',
 };
 
-function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
+function setup() {
 	const logger = mock<Logger>();
 	(logger.scoped as Mock).mockReturnValue(logger);
 	const bridge = mock<AgentChatBridge>();
@@ -55,9 +53,6 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		checkpoint: { status: 'suspended' },
 	} as never);
 	const backgroundJobService = mock<AgentBackgroundJobService>();
-	const agentsConfig = mock<AgentsConfig>({
-		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
-	});
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -69,7 +64,6 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		instanceSettings,
 		publisher,
 		backgroundJobService,
-		agentsConfig,
 	);
 	return {
 		service,
@@ -343,25 +337,26 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 	function afterContextWithOutput(status: IRun['status']): WorkflowExecuteAfterContext {
 		const ctx = afterContext(status, agentRun);
 		ctx.runData.data.resultData.runData = {
+			Fetch: [{ data: { main: [[{ json: { page: 1 } }]] } } as never],
 			Set: [{ data: { main: [[{ json: { ok: true } }]] } } as never],
 		};
 		return ctx;
 	}
 
-	it('settles the job with the serialized last-node output when the feature is on', async () => {
-		const { service, backgroundJobService } = setup({ backgroundTasksEnabled: true });
+	it('settles the job with every node’s output serialized', async () => {
+		const { service, backgroundJobService } = setup();
 
 		await service.handleWorkflowExecuteAfter(afterContextWithOutput('success'));
 
 		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
 			status: 'completed',
-			result: '{"Set":[{"ok":true}]}',
+			result: '{"Fetch":[{"page":1}],"Set":[{"ok":true}]}',
 			error: null,
 		});
 	});
 
 	it('settles a failed execution with its error and no result', async () => {
-		const { service, backgroundJobService } = setup({ backgroundTasksEnabled: true });
+		const { service, backgroundJobService } = setup();
 		const ctx = afterContextWithOutput('error');
 		ctx.runData.data.resultData.error = { message: 'boom' } as never;
 
@@ -375,25 +370,15 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 	});
 
 	it('does not settle while the execution is still waiting', async () => {
-		const { service, backgroundJobService } = setup({ backgroundTasksEnabled: true });
+		const { service, backgroundJobService } = setup();
 
 		await service.handleWorkflowExecuteAfter(afterContext('waiting', agentRun));
 
 		expect(backgroundJobService.settleWorkflowJobByExecutionId).not.toHaveBeenCalled();
 	});
 
-	it('does not settle when the feature is off', async () => {
-		const { service, backgroundJobService } = setup();
-
-		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
-
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).not.toHaveBeenCalled();
-	});
-
 	it('still resumes a suspended run after settling — the two paths coexist', async () => {
-		const { service, bridge, chatIntegrationService, backgroundJobService } = setup({
-			backgroundTasksEnabled: true,
-		});
+		const { service, bridge, chatIntegrationService, backgroundJobService } = setup();
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
@@ -403,9 +388,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 	});
 
 	it('never lets a failing settle disturb the resume path', async () => {
-		const { service, bridge, chatIntegrationService, backgroundJobService } = setup({
-			backgroundTasksEnabled: true,
-		});
+		const { service, bridge, chatIntegrationService, backgroundJobService } = setup();
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 		backgroundJobService.settleWorkflowJobByExecutionId.mockRejectedValue(new Error('db down'));
 

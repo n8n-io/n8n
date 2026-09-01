@@ -413,6 +413,10 @@ describe('settleWorkflowJobByExecutionId', () => {
 });
 
 describe('cancel — workflow jobs', () => {
+	afterEach(() => {
+		Container.reset();
+	});
+
 	it('claims the row and stops the execution', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeWorkflowJob()]);
@@ -437,25 +441,48 @@ describe('cancel — workflow jobs', () => {
 
 		expect(await service.cancel('thread-1', 'wf-job-1')).toBe('cancelled');
 	});
+
+	it('claims a row that lost its execution id without attempting a stop', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([
+			makeWorkflowJob({ childExecutionId: null }),
+		]);
+		const executionService = mock<ExecutionService>();
+		Container.set(ExecutionService, executionService);
+
+		const outcome = await service.cancel('thread-1', 'wf-job-1');
+
+		expect(outcome).toBe('cancelled');
+		expect(executionService.stop).not.toHaveBeenCalled();
+	});
 });
 
 describe('reconcile — workflow jobs', () => {
-	it('settles a job whose execution already reached a terminal state', async () => {
+	it('settles a job whose execution already reached a terminal state, carrying its output', async () => {
 		const { service, jobRepository, executionPersistence } = setup();
 		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
 			kind === 'workflow' ? [makeWorkflowJob()] : [],
 		);
-		executionPersistence.findSingleExecution.mockResolvedValue({ status: 'success' } as never);
+		executionPersistence.findSingleExecution.mockImplementation(async (_id, options) =>
+			options?.includeData
+				? ({
+						status: 'success',
+						data: {
+							resultData: { runData: { Set: [{ data: { main: [[{ json: { ok: true } }]] } }] } },
+						},
+					} as never)
+				: ({ status: 'success' } as never),
+		);
 
 		await service.reconcile();
 
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
 			'wf-job-1',
-			expect.objectContaining({ status: 'completed' }),
+			expect.objectContaining({ status: 'completed', result: '{"Set":[{"ok":true}]}' }),
 		);
 	});
 
-	it('fails a job whose execution no longer exists', async () => {
+	it('fails a job whose execution no longer exists, saying the outcome is unknown', async () => {
 		const { service, jobRepository, executionPersistence } = setup();
 		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
 			kind === 'workflow' ? [makeWorkflowJob()] : [],
@@ -466,7 +493,31 @@ describe('reconcile — workflow jobs', () => {
 
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
 			'wf-job-1',
-			expect.objectContaining({ status: 'failed', error: expect.stringContaining('no longer') }),
+			expect.objectContaining({
+				status: 'failed',
+				error: expect.stringContaining('outcome is unknown'),
+			}),
+		);
+	});
+
+	it('still reconciles the rest of the batch when one execution lookup fails', async () => {
+		const { service, jobRepository, executionPersistence } = setup();
+		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
+			kind === 'workflow'
+				? [makeWorkflowJob(), makeWorkflowJob({ id: 'wf-job-2', childExecutionId: 'exec-2' })]
+				: [],
+		);
+		executionPersistence.findSingleExecution.mockImplementation(async (id) => {
+			if (id === 'exec-1') throw new Error('db down');
+			return { status: 'error' } as never;
+		});
+
+		await service.reconcile();
+
+		expect(jobRepository.settleIfRunning).toHaveBeenCalledTimes(1);
+		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+			'wf-job-2',
+			expect.objectContaining({ status: 'failed' }),
 		);
 	});
 
@@ -520,5 +571,18 @@ describe('serializeWorkflowJobResult', () => {
 		const oversized = serializeWorkflowJobResult({ Set: ['x'.repeat(20_000)] });
 		expect(oversized?.length).toBeLessThan(WORKFLOW_JOB_RESULT_MAX_CHARS + 100);
 		expect(oversized).toContain('truncated');
+	});
+
+	it('truncates exactly at the cap and leaves a result at the cap untouched', () => {
+		const atCap = { S: 'x'.repeat(WORKFLOW_JOB_RESULT_MAX_CHARS - '{"S":""}'.length) };
+		const atCapSerialized = JSON.stringify(atCap);
+		expect(atCapSerialized.length).toBe(WORKFLOW_JOB_RESULT_MAX_CHARS);
+		expect(serializeWorkflowJobResult(atCap)).toBe(atCapSerialized);
+
+		const overCap = { S: 'x'.repeat(WORKFLOW_JOB_RESULT_MAX_CHARS) };
+		const overCapSerialized = JSON.stringify(overCap);
+		expect(serializeWorkflowJobResult(overCap)).toBe(
+			`${overCapSerialized.slice(0, WORKFLOW_JOB_RESULT_MAX_CHARS)}… [truncated, full data on execution]`,
+		);
 	});
 });

@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -13,11 +14,11 @@ import { createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import { AgentBackgroundJobService } from '../../background/agent-background-job.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
+import { AgentBackgroundJobService } from '../../background/agent-background-job.service';
 import {
 	executeWorkflow,
 	resolveWorkflowTool,
@@ -932,5 +933,43 @@ describe('workflow tool → background job handoff', () => {
 
 		expect(jobService.registerWorkflowJob).not.toHaveBeenCalled();
 		expect(suspend).toHaveBeenCalledTimes(1);
+	});
+
+	it('falls back to the legacy wait handling when registration fails, instead of erroring', async () => {
+		setPersistence({ status: 'waiting' });
+		const jobService = setJobService();
+		jobService.registerWorkflowJob.mockRejectedValue(new Error('db down'));
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+
+		// The execution is already running: a registration failure must reach the
+		// suspend path, never the model as a tool error it would answer by retrying.
+		await tool.handler?.({}, ctx);
+
+		expect(suspend).toHaveBeenCalledTimes(1);
+		expect(logger.error).toHaveBeenCalled();
+	});
+
+	it('settles the job as outcome-unknown when the finished execution was not retained', async () => {
+		setPersistence(undefined);
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(jobService.settle).toHaveBeenCalledWith('job-1', {
+			status: 'failed',
+			error: expect.stringContaining('outcome is unknown'),
+		});
+		expect(result).toMatchObject({
+			executionId: 'exec-1',
+			status: 'unknown',
+			jobId: 'job-1',
+			note: expect.stringContaining('Do not run the workflow again'),
+		});
+		expect(suspend).not.toHaveBeenCalled();
 	});
 });

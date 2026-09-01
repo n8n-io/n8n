@@ -207,6 +207,20 @@ describe('check_background_jobs', () => {
 		});
 	});
 
+	it('surfaces a workflow job’s execution id', async () => {
+		const { jobService, options } = setup();
+		jobService.listForThread.mockResolvedValue([
+			jobView({ kind: 'workflow', childExecutionId: 'exec-1' }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		const output = await tool.handler!({}, { persistence });
+
+		expect(output).toMatchObject({
+			jobs: [expect.objectContaining({ executionId: 'exec-1' })],
+		});
+	});
+
 	it('truncates oversized results in the echo', async () => {
 		const { jobService, options } = setup();
 		jobService.listForThread.mockResolvedValue([
