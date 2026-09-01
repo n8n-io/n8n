@@ -237,7 +237,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
 			const { compactingService, eventService } = createService(workflowHistoryRepository);
 
-			await compactingService['optimizeHistories']();
+			await compactingService['optimizeHistories'](new AbortController().signal);
 
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
@@ -248,7 +248,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			workflowHistoryRepository.pruneHistory.mockResolvedValue({ seen: 5, deleted: 2 });
 			const { compactingService, eventService } = createService(workflowHistoryRepository);
 
-			await compactingService['optimizeHistories']();
+			await compactingService['optimizeHistories'](new AbortController().signal);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'history-compacted',
@@ -259,6 +259,97 @@ describe('WorkflowHistoryCompactionService', () => {
 					errorCount: 0,
 				}),
 			);
+		});
+	});
+
+	describe('abort handling', () => {
+		// A batch delay long enough that a pass which ignores the abort would hang
+		// the test instead of finishing.
+		const abortConfig = { ...config, batchSize: 1, batchDelayMs: 60_000 };
+
+		const setupService = (workflowIds: string[]) => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue(workflowIds);
+
+			const eventService = mock<EventService>();
+			const compactingService = new WorkflowHistoryCompactionService(
+				abortConfig,
+				globalConfig,
+				mockLogger(),
+				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+				dbConnection,
+				workflowHistoryRepository,
+				eventService,
+			);
+
+			return { compactingService, workflowHistoryRepository, eventService };
+		};
+
+		it('should stop optimizing at the next workflow once the signal aborts', async () => {
+			const { compactingService, workflowHistoryRepository, eventService } = setupService([
+				'wf1',
+				'wf2',
+				'wf3',
+			]);
+			const abort = new AbortController();
+			workflowHistoryRepository.pruneHistory.mockImplementation(async () => {
+				abort.abort();
+				return { seen: 5, deleted: 1 };
+			});
+
+			await compactingService.optimizeHistories(abort.signal);
+
+			expect(workflowHistoryRepository.pruneHistory).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'history-compacted',
+				expect.objectContaining({ workflowsProcessed: 1, totalVersionsDeleted: 1 }),
+			);
+		});
+
+		it('should stop trimming at the next workflow once the signal aborts', async () => {
+			const { compactingService, workflowHistoryRepository } = setupService(['wf1', 'wf2']);
+			const abort = new AbortController();
+			workflowHistoryRepository.pruneHistory.mockImplementation(async () => {
+				abort.abort();
+				return { seen: 5, deleted: 0 };
+			});
+
+			await compactingService.trimLongRunningHistories(abort.signal);
+
+			expect(workflowHistoryRepository.pruneHistory).toHaveBeenCalledTimes(1);
+		});
+
+		it('should run every workflow when the signal never aborts', async () => {
+			const { compactingService, workflowHistoryRepository, eventService } = setupService([
+				'wf1',
+				'wf2',
+			]);
+			// `seen` below `batchSize` keeps the pass off the batch delay.
+			workflowHistoryRepository.pruneHistory.mockResolvedValue({ seen: 0, deleted: 0 });
+
+			await compactingService.optimizeHistories(new AbortController().signal);
+
+			expect(workflowHistoryRepository.pruneHistory).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'history-compacted',
+				expect.objectContaining({ workflowsProcessed: 2 }),
+			);
+		});
+
+		it('should hand a detached startup pass a signal that stepdown aborts', () => {
+			const { compactingService } = setupService([]);
+			const optimizeHistories = vi
+				.spyOn(compactingService, 'optimizeHistories')
+				.mockResolvedValue(undefined);
+
+			compactingService.runStartupCompaction();
+
+			const signal = optimizeHistories.mock.calls[0][0];
+			expect(signal.aborted).toBe(false);
+
+			compactingService.stopStartupCompaction();
+
+			expect(signal.aborted).toBe(true);
 		});
 	});
 

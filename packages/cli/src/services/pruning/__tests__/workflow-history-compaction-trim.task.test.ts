@@ -30,20 +30,21 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 		expect(task.durable).toBe(false);
 	});
 
-	it('should trim at 3am server time', async () => {
+	it('should trim at 3am server time, handing the pass its abort signal', async () => {
 		vi.setSystemTime(new Date(2026, 10, 10, 3, 0, 0));
 		setService();
+		const { signal } = new AbortController();
 
-		await task.run();
+		await task.run(signal);
 
-		expect(compactionService.trimLongRunningHistories).toHaveBeenCalledTimes(1);
+		expect(compactionService.trimLongRunningHistories).toHaveBeenCalledExactlyOnceWith(signal);
 	});
 
 	it('should not trim outside of 3am server time', async () => {
 		vi.setSystemTime(new Date(2026, 10, 10, 5, 0, 0));
 		setService();
 
-		await task.run();
+		await task.run(new AbortController().signal);
 
 		expect(compactionService.trimLongRunningHistories).not.toHaveBeenCalled();
 	});
@@ -52,7 +53,7 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 		vi.setSystemTime(new Date(2026, 10, 10, 3, 0, 0));
 		setService({ trimmingEnabled: false });
 
-		await task.run();
+		await task.run(new AbortController().signal);
 
 		expect(compactionService.trimLongRunningHistories).not.toHaveBeenCalled();
 	});

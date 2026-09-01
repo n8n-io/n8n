@@ -31,8 +31,8 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 		private readonly compactionService: WorkflowHistoryCompactionService,
 	) {}
 
-	async run(): Promise<void> {
+	async run(signal: AbortSignal): Promise<void> {
 		if (!this.compactionService.isEnabled || !this.dbConnection.connectionState.migrated) return;
-		await this.compactionService.optimizeHistories();
+		await this.compactionService.optimizeHistories(signal);
 	}
 }

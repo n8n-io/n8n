@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
-import { OnLeaderTakeover } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -48,6 +48,9 @@ export class WorkflowHistoryCompactionService {
 	private isOptimizingHistories = false;
 	private isTrimmingHistories = false;
 
+	/** Aborts the detached startup passes, which no system task run owns. */
+	private startupAbort = new AbortController();
+
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
 		private readonly globalConfig: GlobalConfig,
@@ -87,16 +90,30 @@ export class WorkflowHistoryCompactionService {
 		if (!this.isEnabled || !connectionState.migrated) return;
 		if (this.config.skipOnStartUp) return;
 
-		void this.optimizeHistories();
+		this.startupAbort = new AbortController();
+		const { signal } = this.startupAbort;
+
+		void this.optimizeHistories(signal);
 
 		if (!this.isTrimmingEnabled) return;
 		if (this.config.trimOnStartUp || new Date().getHours() === 3) {
-			void this.trimLongRunningHistories();
+			void this.trimLongRunningHistories(signal);
 		}
 	}
 
-	/** One trimming pass over long-running histories. A pass overlapping a running one is skipped. */
-	async trimLongRunningHistories(): Promise<void> {
+	// A startup pass runs detached, so losing leadership has to reach it here.
+	// The task-driven passes get their signal from the system task runner.
+	@OnLeaderStepdown()
+	@OnShutdown()
+	stopStartupCompaction(): void {
+		this.startupAbort.abort();
+	}
+
+	/**
+	 * One trimming pass over long-running histories. A pass overlapping a running
+	 * one is skipped, and an aborted `signal` stops the pass at the next workflow.
+	 */
+	async trimLongRunningHistories(signal: AbortSignal): Promise<void> {
 		if (this.isTrimmingHistories) {
 			this.logger.debug('Skipping trimming as there is already a running iteration');
 			return;
@@ -124,6 +141,7 @@ export class WorkflowHistoryCompactionService {
 					),
 				],
 				[],
+				signal,
 				{ workflowSizeScore: true },
 			);
 		} finally {
@@ -131,8 +149,11 @@ export class WorkflowHistoryCompactionService {
 		}
 	}
 
-	/** One optimization pass over recent histories. A pass overlapping a running one is skipped. */
-	async optimizeHistories(): Promise<void> {
+	/**
+	 * One optimization pass over recent histories. A pass overlapping a running
+	 * one is skipped, and an aborted `signal` stops the pass at the next workflow.
+	 */
+	async optimizeHistories(signal: AbortSignal): Promise<void> {
 		if (this.isOptimizingHistories) {
 			this.logger.debug('Skipping recent optimization as there is already a running iteration');
 			return;
@@ -150,6 +171,7 @@ export class WorkflowHistoryCompactionService {
 				endDelta,
 				[RULES.mergeAdditiveChanges],
 				[SKIP_RULES.makeSkipTimeDifference(20 * 60 * 1000)],
+				signal,
 			);
 		} finally {
 			this.isOptimizingHistories = false;
@@ -161,6 +183,7 @@ export class WorkflowHistoryCompactionService {
 		endDeltaMs: number,
 		rules: DiffRule[],
 		skipRules: DiffRule[],
+		signal: AbortSignal,
 		metaData: Partial<Record<keyof DiffMetaData, boolean>> = {},
 	): Promise<void> {
 		const compactionStartTime = Date.now();
@@ -186,10 +209,19 @@ export class WorkflowHistoryCompactionService {
 		);
 
 		let batchSum = 0;
+		let workflowsProcessed = 0;
 		let totalVersionsSeen = 0;
 		let totalVersionsDeleted = 0;
 		let errorCount = 0;
 		for (const [index, workflowId] of workflowIds.entries()) {
+			if (signal.aborted) {
+				this.logger.debug(
+					`Stopping workflow history compaction after ${index} of ${workflowIds.length} workflows, the pass was aborted`,
+				);
+				break;
+			}
+			workflowsProcessed += 1;
+
 			try {
 				const { seen, deleted } = await this.workflowHistoryRepository.pruneHistory(
 					workflowId,
@@ -213,7 +245,7 @@ export class WorkflowHistoryCompactionService {
 				});
 
 				// Sleep after error to back off
-				await sleep(this.config.batchDelayMs);
+				await this.waitBetweenBatches(signal);
 			}
 
 			if (batchSum > this.config.batchSize) {
@@ -223,14 +255,14 @@ export class WorkflowHistoryCompactionService {
 				this.logger.debug(
 					`Compacted ${index} of ${workflowIds.length} workflows with versions between ${startIso} and ${endIso}`,
 				);
-				await sleep(this.config.batchDelayMs);
+				await this.waitBetweenBatches(signal);
 				batchSum = 0;
 			}
 		}
 
 		const durationMs = Date.now() - compactionStartTime;
 		const payload = {
-			workflowsProcessed: workflowIds.length,
+			workflowsProcessed,
 			totalVersionsSeen,
 			totalVersionsDeleted,
 			errorCount,
@@ -243,5 +275,14 @@ export class WorkflowHistoryCompactionService {
 
 		// Runs are frequent and often find no work; only report runs that did something
 		if (workflowIds.length > 0) this.eventService.emit('history-compacted', payload);
+	}
+
+	/** Waits out the batch delay, returning as soon as the pass is aborted. */
+	private async waitBetweenBatches(signal: AbortSignal): Promise<void> {
+		try {
+			await sleep(this.config.batchDelayMs, signal);
+		} catch {
+			// `sleep` rejects only on abort, which the loop checks for on its own.
+		}
 	}
 }

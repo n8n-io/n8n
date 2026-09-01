@@ -29,10 +29,10 @@ export class WorkflowHistoryCompactionTrimTask implements SystemTask {
 		private readonly compactionService: WorkflowHistoryCompactionService,
 	) {}
 
-	async run(): Promise<void> {
+	async run(signal: AbortSignal): Promise<void> {
 		if (!this.compactionService.isEnabled || !this.dbConnection.connectionState.migrated) return;
 		if (!this.compactionService.isTrimmingEnabled) return;
 		if (new Date().getHours() !== 3) return;
-		await this.compactionService.trimLongRunningHistories();
+		await this.compactionService.trimLongRunningHistories(signal);
 	}
 }
