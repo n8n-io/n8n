@@ -4,7 +4,7 @@
  * Credential selection is handled inside the model picker — no separate
  * credential field.
  */
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	N8nCallout,
@@ -199,6 +199,9 @@ watch(
 		// External updates (model-change seeding, AI edits) land while unfocused.
 		if (deploymentNameFocused.value) return;
 		if (value !== deploymentName.value) deploymentName.value = value;
+		// Parent replaced the value (agent switch / echo). Drop a queued emit
+		// so it cannot write the previous agent's name onto the new config.
+		cancelDeploymentNameEmit();
 	},
 );
 
@@ -210,6 +213,8 @@ function cancelDeploymentNameEmit() {
 	clearTimeout(deploymentNameEmitTimer);
 	deploymentNameEmitTimer = undefined;
 }
+
+onBeforeUnmount(cancelDeploymentNameEmit);
 
 function scheduleDeploymentNameEmit(value: string) {
 	cancelDeploymentNameEmit();
