@@ -3,8 +3,13 @@ import { OperationalError } from 'n8n-workflow';
 const DEFAULT_MAX_REDIRECTS = 20;
 
 export interface FollowRedirectsOptions {
-	/** Called before each hop; throw to reject. */
-	onBeforeHop?: (url: string) => void | Promise<void>;
+	/**
+	 * Called before each hop; throw to reject. `crossedOrigin` turns true once
+	 * the chain has left its original origin and stays true — fetchers that
+	 * inject their own credential headers must withhold them from then on,
+	 * mirroring how this helper strips credentials it carries in `init`.
+	 */
+	onBeforeHop?: (url: string, info: { crossedOrigin: boolean }) => void | Promise<void>;
 	maxRedirects?: number;
 }
 
@@ -25,11 +30,12 @@ export async function fetchFollowingRedirects(
 	let currentInput: string | URL = url;
 	let currentInit: RequestInit = { ...init };
 	let hops = 0;
+	let crossedOrigin = false;
 
 	while (true) {
 		const currentUrlString = currentInput instanceof URL ? currentInput.href : currentInput;
 		if (options?.onBeforeHop) {
-			await options.onBeforeHop(currentUrlString);
+			await options.onBeforeHop(currentUrlString, { crossedOrigin });
 		}
 
 		const response = await fetcher(currentInput, {
@@ -56,6 +62,7 @@ export async function fetchFollowingRedirects(
 		currentInput = new URL(location, currentUrlString);
 
 		if (currentInput.origin !== new URL(currentUrlString).origin) {
+			crossedOrigin = true;
 			const headers = new Headers(currentInit.headers);
 			for (const header of CREDENTIAL_HEADERS) headers.delete(header);
 			currentInit = { ...currentInit, headers };

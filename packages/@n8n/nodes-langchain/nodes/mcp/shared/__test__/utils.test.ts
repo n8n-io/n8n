@@ -651,6 +651,33 @@ describe('utils', () => {
 				);
 			});
 
+			it('should not send auth headers to a cross-origin redirect target', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch
+					.mockResolvedValueOnce(
+						new Response(null, {
+							status: 307,
+							headers: { location: 'https://other.example.com/moved' },
+						}),
+					)
+					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+				await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					headers: { Authorization: 'Bearer my-token' },
+					name: 'test-client',
+					version: 1,
+				});
+
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com/mcp', {});
+
+				expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
+				const [, secondCallOpts] = mockedProxyFetch.mock.calls[1];
+				expect(secondCallOpts?.headers).not.toHaveProperty('Authorization');
+			});
+
 			it('should preserve SDK headers passed as Headers instance', async () => {
 				mockClient.connect.mockResolvedValue(undefined);
 

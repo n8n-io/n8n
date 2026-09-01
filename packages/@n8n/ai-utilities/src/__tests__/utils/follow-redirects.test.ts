@@ -55,8 +55,28 @@ describe('fetchFollowingRedirects', () => {
 		});
 
 		expect(onBeforeHop).toHaveBeenCalledTimes(2);
-		expect(onBeforeHop).toHaveBeenNthCalledWith(1, 'https://example.com/start');
-		expect(onBeforeHop).toHaveBeenNthCalledWith(2, 'https://example.com/relative');
+		expect(onBeforeHop).toHaveBeenNthCalledWith(1, 'https://example.com/start', {
+			crossedOrigin: false,
+		});
+		expect(onBeforeHop).toHaveBeenNthCalledWith(2, 'https://example.com/relative', {
+			crossedOrigin: false,
+		});
+	});
+
+	it('reports crossedOrigin to onBeforeHop once the chain leaves its origin, permanently', async () => {
+		const fetcher = mockFetcher()
+			.mockResolvedValueOnce(makeRedirect(307, 'https://other.example.com/away'))
+			.mockResolvedValueOnce(makeRedirect(307, 'https://example.com/back'))
+			.mockResolvedValueOnce(makeResponse(200));
+		const onBeforeHop = vi.fn();
+
+		await fetchFollowingRedirects(fetcher, 'https://example.com', undefined, { onBeforeHop });
+
+		expect(onBeforeHop.mock.calls.map((call) => call[1])).toEqual([
+			{ crossedOrigin: false },
+			{ crossedOrigin: true },
+			{ crossedOrigin: true },
+		]);
 	});
 
 	it('aborts the chain when onBeforeHop throws', async () => {

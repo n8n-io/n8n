@@ -293,7 +293,9 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  *   - validates the initial URL and every redirect hop against `allowedDomains`
  *     so credentials are never sent to a host the credential doesn't allow,
  *   - validates the initial URL and every redirect hop against the instance
- *     `secureEgressFilter`, and pins the connection to the validated address.
+ *     `secureEgressFilter`, and pins the connection to the validated address,
+ *   - withholds the auth headers once a redirect crosses origins, so
+ *     credentials never reach a host other than the one the request started on.
  */
 function createAuthFetch(
 	initialHeaders: Record<string, string> | undefined,
@@ -305,43 +307,58 @@ function createAuthFetch(
 
 	const secureLookup = secureEgressFilter?.createSecureLookup();
 
-	const doFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
-		await proxyFetch(
-			input,
-			{ ...init, headers: { ...headersToRecord(init?.headers), ...headers } },
-			undefined,
-			secureLookup,
-		);
+	// `sendCredentials` is per redirect chain, so the fetcher is built per request
+	const makeAuthedFetch = (sendCredentials: () => boolean) => {
+		const doFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+			await proxyFetch(
+				input,
+				{
+					...init,
+					headers: sendCredentials()
+						? { ...headersToRecord(init?.headers), ...headers }
+						: headersToRecord(init?.headers),
+				},
+				undefined,
+				secureLookup,
+			);
 
-	const authedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const response = await doFetch(input, init);
+		return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+			const response = await doFetch(input, init);
 
-		if (response.status !== 401 || !onUnauthorized) {
-			return response;
-		}
+			if (response.status !== 401 || !onUnauthorized || !sendCredentials()) {
+				return response;
+			}
 
-		const refreshedHeaders = await onUnauthorized(headers);
-		if (!refreshedHeaders) {
-			return response;
-		}
+			const refreshedHeaders = await onUnauthorized(headers);
+			if (!refreshedHeaders) {
+				return response;
+			}
 
-		headers = refreshedHeaders;
-		return await doFetch(input, init);
+			headers = refreshedHeaders;
+			return await doFetch(input, init);
+		};
 	};
 
 	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		// `fetchFollowingRedirects` accepts `string | URL`. `Request` objects are
 		// unwrapped to their URL so the redirect loop can carry a stable input.
 		const startUrl = input instanceof Request ? input.url : input;
-		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
-			onBeforeHop: async (hopUrl) => {
-				assertUrlAllowed({ url: hopUrl, allowedDomains });
-				if (secureEgressFilter) {
-					const result = await secureEgressFilter.validateUrl(hopUrl);
-					if (!result.ok) throw result.error;
-				}
+		let sendCredentials = true;
+		return await fetchFollowingRedirects(
+			makeAuthedFetch(() => sendCredentials),
+			startUrl,
+			init,
+			{
+				onBeforeHop: async (hopUrl, { crossedOrigin }) => {
+					sendCredentials = !crossedOrigin;
+					assertUrlAllowed({ url: hopUrl, allowedDomains });
+					if (secureEgressFilter) {
+						const result = await secureEgressFilter.validateUrl(hopUrl);
+						if (!result.ok) throw result.error;
+					}
+				},
 			},
-		});
+		);
 	};
 }
 

@@ -67,7 +67,9 @@ function assertDomainPolicyAllowsUrl(url: string, policy: AuthFetchDomainPolicy)
  *      HTTP_PROXY settings apply uniformly),
  *   2. injects the latest auth headers on every request,
  *   3. on a single 401, calls `onUnauthorized` to refresh the token and
- *      retries the request once with the new headers.
+ *      retries the request once with the new headers,
+ *   4. when a domain policy is set, follows redirects manually, validating
+ *      every hop and withholding the auth headers once a hop crosses origins.
  *
  * This mirrors the langchain MCP node's `createAuthFetch` so an agent's MCP
  * connection behaves identically to one configured via the workflow editor.
@@ -80,30 +82,45 @@ export function createAuthFetch({
 }: CreateAuthFetchOptions): typeof fetch {
 	let headers = initialHeaders;
 
-	const authedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const response = await baseFetch(input, {
-			...init,
-			headers: { ...headersToRecord(init?.headers), ...headers },
-		});
+	// `sendCredentials` is per redirect chain, so the fetcher is built per request
+	const makeAuthedFetch =
+		(sendCredentials: () => boolean) =>
+		async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+			const buildInit = (): RequestInit => ({
+				...init,
+				headers: sendCredentials()
+					? { ...headersToRecord(init?.headers), ...headers }
+					: headersToRecord(init?.headers),
+			});
 
-		if (response.status !== 401 || !onUnauthorized) return response;
+			const response = await baseFetch(input, buildInit());
 
-		const refreshed = await onUnauthorized();
-		if (!refreshed) return response;
+			if (response.status !== 401 || !onUnauthorized || !sendCredentials()) return response;
 
-		headers = refreshed;
-		return await baseFetch(input, {
-			...init,
-			headers: { ...headersToRecord(init?.headers), ...headers },
-		});
-	};
+			const refreshed = await onUnauthorized();
+			if (!refreshed) return response;
 
-	if (!allowedDomains) return authedFetch;
+			headers = refreshed;
+			return await baseFetch(input, buildInit());
+		};
+
+	// Without a domain policy the native redirect handling applies, which
+	// already strips credential headers on cross-origin redirects
+	if (!allowedDomains) return makeAuthedFetch(() => true);
 
 	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		const startUrl = input instanceof Request ? input.url : input;
-		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
-			onBeforeHop: (hopUrl) => assertDomainPolicyAllowsUrl(hopUrl, allowedDomains),
-		});
+		let sendCredentials = true;
+		return await fetchFollowingRedirects(
+			makeAuthedFetch(() => sendCredentials),
+			startUrl,
+			init,
+			{
+				onBeforeHop: (hopUrl, { crossedOrigin }) => {
+					sendCredentials = !crossedOrigin;
+					assertDomainPolicyAllowsUrl(hopUrl, allowedDomains);
+				},
+			},
+		);
 	};
 }
