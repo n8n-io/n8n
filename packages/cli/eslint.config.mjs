@@ -411,7 +411,6 @@ export default defineConfig(
 		files: [
 			'./src/license.ts',
 			'./src/modules/agents/integrations/n8n-checkpoint-storage.ts',
-			'./src/modules/insights/insights.service.ts',
 			'./src/modules/instance-ai/instance-ai.service.ts',
 			'./src/modules/instance-registry/checks/check.service.ts',
 			'./src/modules/instance-registry/stale-member-cleanup.service.ts',

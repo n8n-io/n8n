@@ -42,8 +42,6 @@ describe('InsightsModule', () => {
 			InsightsService,
 			new InsightsService(
 				mock(),
-				mock(),
-				mock(),
 				Container.get(LicenseState),
 				mockInstanceSettings,
 				Container.get(Logger),
