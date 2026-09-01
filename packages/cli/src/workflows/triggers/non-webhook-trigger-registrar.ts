@@ -167,9 +167,16 @@ export class NonWebhookTriggerRegistrar {
 
 	/**
 	 * Deregister one active, poll, or schedule trigger node from memory, and drop
-	 * the durable jobs it provisioned.
+	 * the durable jobs it provisioned. When a durable removal failure propagates
+	 * while the in-memory teardown is still pending, that teardown is handed to
+	 * `onDetached`: it may still mutate the registry when it settles, so the
+	 * caller must not release the workflow's lifecycle lock until it does.
 	 */
-	async deregister(workflowId: WorkflowId, nodeId: INode['id']) {
+	async deregister(
+		workflowId: WorkflowId,
+		nodeId: INode['id'],
+		onDetached?: (work: Promise<unknown>) => void,
+	) {
 		await this.tracing.startSpan(
 			{
 				name: 'Non-webhook trigger deregister',
@@ -197,6 +204,14 @@ export class NonWebhookTriggerRegistrar {
 
 				try {
 					await this.removeDurableJobs(workflowId, nodeId);
+				} catch (error) {
+					// The in-memory teardown may still be pending, so hand it back before
+					// this failure lets the caller release the lifecycle lock.
+					onDetached?.(inMemory);
+					throw ensureError(error);
+				}
+
+				try {
 					await inMemory;
 				} catch (error) {
 					throw ensureError(error);
