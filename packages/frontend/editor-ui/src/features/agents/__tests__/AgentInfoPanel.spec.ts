@@ -195,14 +195,14 @@ describe('AgentInfoPanel', () => {
 		defaultModelHolder.value = null;
 	});
 
-	it('renders instructions as a contained markdown editor', () => {
+	it('renders instructions as a contained markdown editor with a floating toolbar', () => {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
 			variant: 'contained',
-			showToolbar: 'never',
+			showToolbar: 'floating',
 			maxHeight: '360px',
 		});
 		expect(editor.props('placeholder')).toBeUndefined();
@@ -211,12 +211,12 @@ describe('AgentInfoPanel', () => {
 		expect(wrapper.text()).not.toContain('Enter instructions here');
 	});
 
-	it('can show the markdown toolbar above instructions', () => {
+	it('keeps the markdown toolbar floating when the instructions toolbar is enabled', () => {
 		const wrapper = mountPanel('# Role\nHelp users.', { showInstructionsToolbar: true });
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
-			showToolbar: 'always',
+			showToolbar: 'floating',
 			variant: 'contained',
 		});
 	});
