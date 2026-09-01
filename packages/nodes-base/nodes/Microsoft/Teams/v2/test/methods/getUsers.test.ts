@@ -2,11 +2,13 @@
 /* eslint-disable n8n-nodes-base/node-param-option-description-identical-to-name */
 // The picker-result fixtures below carry a `description` (the UPN), which the node-param
 // linters read as node parameter copy.
-import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode, INodeProperties } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { versionDescription } from '../../actions/versionDescription';
+import { MicrosoftTeamsV2 } from '../../MicrosoftTeamsV2.node';
 import { getUsers } from '../../methods/listSearch';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
@@ -146,5 +148,46 @@ describe('Microsoft Teams v2 — getUsers', () => {
 		// Zoe Quinn only matches server-side through her UPN, so appending
 		// `filterSortSearchListItems` would drop her; its sort would also flip the pair.
 		expect(results.map((r) => r.name)).toEqual(['Zoe Quinn', 'Ackerman, Janet']);
+	});
+});
+
+describe('Microsoft Teams v2 — mention picker wiring', () => {
+	const mentionUserRlc = (resource: string) => {
+		const mentions = versionDescription.properties.find(
+			(property) =>
+				property.name === 'mentions' &&
+				property.displayOptions?.show?.resource?.includes(resource) &&
+				property.displayOptions?.show?.operation?.includes('create'),
+		);
+		const row = (mentions?.options ?? [])[0] as { values: INodeProperties[] };
+		return row?.values?.find((value) => value.name === 'userId');
+	};
+
+	it.each(['channelMessage', 'chatMessage'])(
+		'%s create offers a user picker backed by getUsers',
+		(resource) => {
+			const listMode = mentionUserRlc(resource)?.modes?.find((mode) => mode.name === 'list');
+
+			expect(listMode?.typeOptions?.searchListMethod).toBe('getUsers');
+			expect(new MicrosoftTeamsV2(versionDescription).methods.listSearch).toHaveProperty(
+				'getUsers',
+			);
+		},
+	);
+
+	it('leaves the By ID mode without an extractValue', () => {
+		const byId = mentionUserRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
+
+		// An extract regex runs before node code and rejects the email address an AI agent emits
+		// when it cannot know which mode is selected.
+		expect(byId?.extractValue).toBeUndefined();
+	});
+
+	it('accepts a non-v4 Entra user ID in the By ID mode', () => {
+		const byId = mentionUserRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
+		const { regex } = (byId?.validation?.[0] as unknown as { properties: { regex: string } })
+			.properties;
+
+		expect(new RegExp(regex).test('714c1202-cbac-10ff-c160-53ab5c4df9b8')).toBe(true);
 	});
 });
