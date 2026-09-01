@@ -115,7 +115,9 @@ ${renderRulesLines()}
  */
 export const GROUPING_GUIDANCE = `## Grouping
 
-Organise larger workflows into named node groups — visual frames drawn on the canvas — so the result is readable the first time the user sees it.
+Node groups are named visual frames drawn on the canvas, so a workflow reads correctly the first time the user sees it.
+
+Every workflow you build needs an explicit grouping decision, taken while you write the code: declare the groups, or conclude this workflow does not warrant any. Skipping the decision is not an option; deciding against groups often is.
 
 - **When to group:** only workflows big enough to split into clear stages (e.g. ingest → transform → deliver). A small or purely linear workflow gets no groups at all — a group there is just visual noise. When in doubt, fewer groups.
 - **How many:** one group per distinct stage or high-level objective — typically 3 to 5 for a medium-sized workflow. Keep the canvas top level to at most 7 items, counting the trigger (always ungrouped), every group, and every node left outside one.

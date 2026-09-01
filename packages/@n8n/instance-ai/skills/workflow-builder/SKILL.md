@@ -211,6 +211,10 @@ follow its build → publish → assign steps.
    and later `fixtureOverrides` can exercise those scenarios. Do not simulate
    every external read by default; use this when branch coverage or deterministic
    proof depends on controlling the upstream data.
+   Decide grouping now, while writing the source: `.group(...)` lives in the code, so
+   it cannot be added after the build. See [Node Groups](#node-groups) for the
+   criteria, and reach a decision either way — groups declared, or this workflow does
+   not warrant them.
 7. Before the first `build-workflow` (and again after substantive edits), run
    SDK validation on the workspace source file via
    `workspace_execute_command`:
@@ -893,6 +897,9 @@ workflow code or build specs unless the workflow actually needs to send or
 store its own public endpoint.
 
 ## Completion
+
+Do not report a build as done until you have made the grouping decision described in
+[Node Groups](#node-groups).
 
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is

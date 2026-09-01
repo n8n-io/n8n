@@ -185,6 +185,14 @@ describe('GROUPING_GUIDANCE', () => {
 	});
 
 	describe('when and how much to group', () => {
+		it('makes the grouping decision mandatory while leaving "no groups" a valid answer', () => {
+			// The observed failure was omission, not misjudgement: the agent knew the
+			// criteria and never reached the step.
+			expect(GROUPING_GUIDANCE).toMatch(/explicit grouping decision/i);
+			expect(GROUPING_GUIDANCE).toMatch(/skipping the decision is not an option/i);
+			expect(GROUPING_GUIDANCE).toMatch(/deciding against groups/i);
+		});
+
 		it('tells agents to leave small or linear workflows ungrouped', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/small or purely linear/i);
 			expect(GROUPING_GUIDANCE).toMatch(/no groups at all/i);
