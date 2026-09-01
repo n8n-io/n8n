@@ -4,6 +4,7 @@ import type {
 	Project,
 	ProjectExecutionQuota,
 	ProjectExecutionQuotaPeriodUnit,
+	ProjectExecutionQuotaSpike,
 	ProjectListItem,
 	ProjectsCount,
 } from './projects.types';
@@ -130,4 +131,11 @@ export const updateExecutionQuota = async (
 	payload: { limit: number; periodUnit: ProjectExecutionQuotaPeriodUnit },
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/execution-quota`, payload);
+};
+
+export const getExecutionQuotaSpikes = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectExecutionQuotaSpike[]> => {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/execution-quota/spikes`);
 };

@@ -49,3 +49,10 @@ export type ProjectExecutionQuota = {
 	consumed: number;
 	remaining: number | null;
 };
+
+export type ProjectExecutionQuotaSpike = {
+	workflowId: string;
+	todayCount: number;
+	baseline: number;
+	multiplier: number;
+};

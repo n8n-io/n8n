@@ -13,6 +13,7 @@ import type {
 	Project,
 	ProjectExecutionQuota,
 	ProjectExecutionQuotaPeriodUnit,
+	ProjectExecutionQuotaSpike,
 	ProjectListItem,
 	ProjectsCount,
 } from './projects.types';
@@ -324,6 +325,12 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		await projectsApi.updateExecutionQuota(rootStore.restApiContext, projectId, payload);
 	};
 
+	const getExecutionQuotaSpikes = async (
+		projectId: string,
+	): Promise<ProjectExecutionQuotaSpike[]> => {
+		return await projectsApi.getExecutionQuotaSpikes(rootStore.restApiContext, projectId);
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -408,5 +415,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		getProjectSecretProviders,
 		getExecutionQuota,
 		updateExecutionQuota,
+		getExecutionQuotaSpikes,
 	};
 });
