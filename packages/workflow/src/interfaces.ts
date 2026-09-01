@@ -1555,8 +1555,9 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
-	 * to gate a submission, before an execution is enqueued.
+	 * established). Used by the MCP trigger to gate a tool call, by the Form trigger to
+	 * gate a submission, and by the Chat trigger to gate a message send, before an
+	 * execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
@@ -1584,6 +1585,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	/** Whether this request arrived on the editor's session-scoped canvas chat test route. */
+	isChatSessionTest(): boolean;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
@@ -3068,6 +3071,13 @@ export interface IWebhookData {
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
 	isTest?: boolean;
+	/**
+	 * Set when this test webhook was registered for the editor's canvas chat session
+	 * (path rewritten to `{workflowId}/{chatSessionId}`). Lets the Chat Trigger skip
+	 * webhook auth for that trusted, session-scoped route only — every other test
+	 * request still enforces the configured authentication.
+	 */
+	isChatSessionTest?: boolean;
 	userId?: string;
 	staticData?: Workflow['staticData'];
 }

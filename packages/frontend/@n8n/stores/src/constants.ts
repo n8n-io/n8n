@@ -57,6 +57,7 @@ export const STORES = {
 	EXPERIMENT_EXPOSE_ALL_WORKFLOWS_TO_MCP: 'exposeAllWorkflowsToMcp',
 	EXPERIMENT_TRIAL_INTRO_MODAL: 'trialIntroModal',
 	EXPERIMENT_INSTANCE_AI_FREE_NUDGE: 'instanceAiFreeNudge',
+	EXPERIMENT_OPEN_WORKFLOW_IN_ASSISTANT: 'openWorkflowInAssistant',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
 	FAVORITES: 'favorites',

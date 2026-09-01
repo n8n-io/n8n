@@ -548,7 +548,7 @@ export class WorkflowService {
 		// Gate the save on policy before persisting, so the author learns about a violation
 		// while editing rather than at runtime. Carries the stored workflow alongside the
 		// submitted one so a check can restrict its verdict to what this save adds.
-		await this.policyEnforcementService.enforceWorkflowSave({
+		const cleared = await this.policyEnforcementService.enforceWorkflowSave({
 			workflow: {
 				id: workflow.id,
 				name: workflowUpdateData.name ?? workflow.name,
@@ -610,7 +610,9 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
-		await this.workflowRepository.update(workflowId, updatePayload);
+		await this.workflowRepository.updateContent(workflowId, updatePayload, {
+			policyCleared: cleared,
+		});
 		const tagsDisabled = this.globalConfig.tags.disabled;
 
 		if (tagIds && !tagsDisabled) {
@@ -864,6 +866,10 @@ export class WorkflowService {
 			this._validateTriggerNodeIds(workflowId, versionToActivate);
 		}
 
+		// The candidate below shares this array with the version row, and the hook may
+		// mutate it in place, so snapshot what will actually be registered.
+		const nodesToPublish = structuredClone(versionToActivate.nodes);
+
 		// Run hook before destructive state changes so a rejection leaves
 		// the previous active version running instead of deactivating it.
 		const candidateWorkflow = this.workflowRepository.create({
@@ -885,6 +891,23 @@ export class WorkflowService {
 			throw new WorkflowActivationBadRequestError(ensureError(error).message, {
 				nodeId: getErrorNodeId(error),
 				description: getErrorDescription(error),
+			});
+		}
+
+		// Polices what gets registered — the version row, not the hook's candidate.
+		// Enforced on a same-version republish too.
+		if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
+			// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is
+			// not a passed one, so a failed lookup fails the publish.
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+			await this.policyEnforcementService.enforceWorkflowPublish({
+				workflow: {
+					id: workflowId,
+					name: workflow.name,
+					nodes: nodesToPublish,
+				},
+				projectId: project.id,
 			});
 		}
 
@@ -1286,7 +1309,12 @@ export class WorkflowService {
 	 * If the user does not have the permissions to delete the workflow this does
 	 * nothing and returns void.
 	 */
-	async delete(user: User, workflowId: string, force = false): Promise<WorkflowEntity | undefined> {
+	async delete(
+		user: User,
+		workflowId: string,
+		force = false,
+		options?: { publicApi?: boolean },
+	): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [
 			workflowId,
 			toWorkflowLifecycleHookActor(user),
@@ -1360,7 +1388,11 @@ export class WorkflowService {
 		// committed delete, so it must not throw — the module swallows its own errors.
 		await this.workflowMutationHooks.afterWorkflowsDeleted([workflowId]);
 
-		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
+		this.eventService.emit('workflow-deleted', {
+			user,
+			workflowId,
+			publicApi: options?.publicApi ?? false,
+		});
 		await this.externalHooks.run('workflow.afterDelete', [
 			workflowId,
 			toWorkflowLifecycleHookActor(user),
@@ -1485,6 +1517,11 @@ export class WorkflowService {
 
 	async unarchiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		return await this.unarchive(user, workflowId, { publicApi: true });
+	}
+
+	async deleteForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		// The public API deletes without requiring the workflow to be archived first.
+		return await this.delete(user, workflowId, true, { publicApi: true });
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {

@@ -25,7 +25,7 @@ import {
 	SPLIT_IN_BATCHES_TYPE,
 	SPLIT_IN_BATCHES_TYPE_VERSION,
 } from './constants';
-import { isV1NodeStepConfig } from './guards';
+import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
 import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from './types';
 
@@ -45,16 +45,7 @@ export function toV1Execution(
 function toV1Nodes(graph: WorkflowGraph): INode[] {
 	return graph.nodes.flatMap((graphNode): INode[] => {
 		if (graphNode.type === 'trigger') {
-			return [
-				{
-					id: graphNode.id,
-					name: graphNode.name,
-					type: MANUAL_TRIGGER_TYPE,
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			];
+			return [toV1TriggerNode(graphNode)];
 		}
 
 		if (graphNode.type === 'batch') {
@@ -170,6 +161,20 @@ export function toV1Workflow(
 		active: false,
 		nodeTypes: tolerantNodeTypes(nodeTypes),
 	});
+}
+
+/** An older graph carries no config, and graphs are immutable, so a stub stands in. */
+function toV1TriggerNode(graphNode: GraphNode): INode {
+	const config = isTriggerStepConfig(graphNode.config) ? graphNode.config : undefined;
+
+	return {
+		id: graphNode.id,
+		name: graphNode.name,
+		type: config?.nodeType ?? MANUAL_TRIGGER_TYPE,
+		typeVersion: config?.typeVersion ?? 1,
+		position: [0, 0],
+		parameters: config?.parameters ?? {},
+	};
 }
 
 function toV1BatchNode(graphNode: GraphNode): INode {
