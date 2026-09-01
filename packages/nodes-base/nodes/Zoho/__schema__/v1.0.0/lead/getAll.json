@@ -85,9 +85,6 @@
         "$zia_owner_assignment": {
             "type": "string"
         },
-        "Coordinates": {
-            "type": "string"
-        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -108,12 +105,6 @@
         "Email_Opt_Out": {
             "type": "boolean"
         },
-        "Fax": {
-            "type": "null"
-        },
-        "Flat_House_No_Building_Apartment_Name": {
-            "type": "null"
-        },
         "Full_Name": {
             "type": "string"
         },
@@ -123,14 +114,8 @@
         "Last_Name": {
             "type": "string"
         },
-        "Latitude": {
-            "type": "null"
-        },
         "Locked__s": {
             "type": "boolean"
-        },
-        "Longitude": {
-            "type": "null"
         },
         "Modified_By": {
             "type": "object",
@@ -176,13 +161,7 @@
                     }
                 }
             }
-        },
-        "Unsubscribed_Mode": {
-            "type": "null"
-        },
-        "Unsubscribed_Time": {
-            "type": "null"
         }
     },
-    "version": 9
+    "version": 8
 }
