@@ -342,6 +342,20 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		expect((response.body as { error: string }).error).toBe('not_found');
 	});
 
+	it('returns 400 invalid_request for a misspelled query key', async () => {
+		const executionId = await createExecution();
+
+		// Stripping it would answer 200 with no steps, which reads the same as an
+		// execution that ran none.
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeStep: 'true' })
+			.set(authHeader());
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
 	it('returns 400 invalid_request for an includeSteps value that is not a boolean', async () => {
 		const executionId = await createExecution();
 

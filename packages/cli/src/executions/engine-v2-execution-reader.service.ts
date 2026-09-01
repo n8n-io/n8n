@@ -2,8 +2,11 @@ import type { IExecutionResponse, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ExecutionMode, ExecutionSnapshot, ExecutionStatus } from '@n8n/engine';
-import { toV1RunExecutionData } from '@n8n/node-engine-compatibility';
-import type { ExecutionStatus as ExecutionStatusV1, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	ExecutionStatus as ExecutionStatusV1,
+	IRunExecutionData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
@@ -52,12 +55,21 @@ export class EngineV2ExecutionReader {
 		const workflowData = await this.workflowRepository.findById(snapshot.workflowId);
 		if (!workflowData) return undefined;
 
-		return this.toExecutionResponse(snapshot, workflowData);
+		// Lazily imported: a top-level import would pull `@n8n/engine` into every
+		// n8n process, including ones with the module off.
+		const { toV1RunExecutionData } = await import('@n8n/node-engine-compatibility');
+
+		return this.toExecutionResponse(
+			snapshot,
+			workflowData,
+			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? []),
+		);
 	}
 
 	private toExecutionResponse(
 		snapshot: ExecutionSnapshot,
 		workflow: WorkflowEntity,
+		data: IRunExecutionData,
 	): IExecutionResponse {
 		// No real run timing yet (CAT-4234), so both come from the row.
 		const startedAt = new Date(snapshot.createdAt);
@@ -72,7 +84,7 @@ export class EngineV2ExecutionReader {
 			startedAt,
 			stoppedAt: snapshot.finishedAt ? new Date(snapshot.finishedAt) : undefined,
 			storedAt: 'db',
-			data: toV1RunExecutionData(snapshot.graph, snapshot.steps ?? []),
+			data,
 			// The same projection the v1 path reports, so the editor sees one shape.
 			// The cast: the declared type overstates what either path returns.
 			workflowData: toWorkflowSnapshot(workflow) as IExecutionResponse['workflowData'],

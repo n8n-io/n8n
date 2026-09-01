@@ -12,8 +12,12 @@ import { fail } from '../error-response';
 
 const ExecutionIdParams = z.object({ id: z.string().uuid() });
 
-/** Strict: an ignored typo would read as an execution that ran no steps. */
-const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).optional() });
+/**
+ * `strict`, because `z.object` strips an unknown key. A misspelled flag would
+ * otherwise answer 200 with no steps, which a caller cannot tell from an
+ * execution that ran none.
+ */
+const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).optional() }).strict();
 
 /** The validated `:id`, or `null` once the 400 has been sent. */
 function parseExecutionId(req: Request, res: Response): string | null {
