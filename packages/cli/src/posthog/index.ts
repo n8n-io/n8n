@@ -152,10 +152,7 @@ export class PostHogClient {
 		} catch {
 			// fall through to env overrides
 		}
-		return {
-			featureFlags: this.applyEnvOverrides(data.featureFlags),
-			featureFlagPayloads: data.featureFlagPayloads,
-		};
+		return this.applyEnvOverrides(data);
 	}
 
 	private async fetchFlagsFromPostHog(
@@ -222,8 +219,8 @@ export class PostHogClient {
 	 *    only; `false` defers to PostHog. Applied last so the generic map
 	 *    cannot undo a feature an operator enabled explicitly.
 	 */
-	private applyEnvOverrides(flags: FeatureFlags): FeatureFlags {
-		const overrides: FeatureFlags = { ...this.globalConfig.featureFlags.override };
+	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
+		const overrides = { ...this.globalConfig.featureFlags.override };
 
 		if (this.globalConfig.evaluation.collectionsEnabled) {
 			overrides[EVAL_COLLECTIONS_FLAG] = true;
@@ -247,6 +244,28 @@ export class PostHogClient {
 			overrides[CANVAS_NODE_CONTEXT_FLAG] = true;
 		}
 
-		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
+		if (Object.keys(overrides).length === 0) {
+			return {
+				featureFlags: data.featureFlags,
+				featureFlagPayloads: data.featureFlagPayloads,
+			};
+		}
+
+		const featureFlags = { ...data.featureFlags };
+		const featureFlagPayloads = { ...data.featureFlagPayloads };
+
+		for (const [key, override] of Object.entries(overrides)) {
+			const value = typeof override === 'object' ? override.value : override;
+			const payload = typeof override === 'object' ? override.payload : undefined;
+
+			featureFlags[key] = value;
+			if (payload === undefined || payload === null) {
+				delete featureFlagPayloads[key];
+			} else {
+				featureFlagPayloads[key] = payload;
+			}
+		}
+
+		return { featureFlags, featureFlagPayloads };
 	}
 }

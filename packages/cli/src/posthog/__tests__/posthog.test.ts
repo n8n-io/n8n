@@ -326,6 +326,47 @@ describe('PostHog', () => {
 				expect(flags).toEqual({ 'contested-flag': 'variant' });
 			});
 
+			it('applies flag and payload overrides together', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags(
+						{
+							'value-only-flag': 'variant',
+							'payload-flag': 'control',
+							'untouched-flag': true,
+						},
+						{
+							'value-only-flag': { source: 'posthog' },
+							'payload-flag': { source: 'posthog' },
+							'untouched-flag': { source: 'posthog' },
+						},
+					),
+				);
+				globalConfig.featureFlags.override = {
+					'value-only-flag': 'variant',
+					'payload-flag': {
+						value: 'variant',
+						payload: { source: 'environment' },
+					},
+				};
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const data = await ph.getFeatureFlagsAndPayloads({ id: userId, createdAt });
+
+				expect(data).toEqual({
+					featureFlags: {
+						'value-only-flag': 'variant',
+						'payload-flag': 'variant',
+						'untouched-flag': true,
+					},
+					featureFlagPayloads: {
+						'payload-flag': { source: 'environment' },
+						'untouched-flag': { source: 'posthog' },
+					},
+				});
+			});
+
 			// Unlike the per-feature envs (force-enable only), the generic map is
 			// also a kill switch — it must be able to turn an enabled flag off.
 			it('force-disables a flag PostHog resolved to true', async () => {
