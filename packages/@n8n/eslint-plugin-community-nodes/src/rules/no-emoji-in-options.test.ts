@@ -16,6 +16,27 @@ function createNodeCode(body: string): string {
 	`;
 }
 
+/**
+ * Versioned node layout from the node-building docs: the version class assigns
+ * `description` in its constructor instead of as a property initializer.
+ */
+function createVersionedNodeCode(body: string): string {
+	return `
+		import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+		export class TestNodeV1 implements INodeType {
+			description: INodeTypeDescription;
+
+			constructor(baseDescription: INodeTypeBaseDescription) {
+				this.description = {
+					...baseDescription,
+					${body}
+				};
+			}
+		}
+	`;
+}
+
 ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 	valid: [
 		{
@@ -75,6 +96,29 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 		},
 	],
 	invalid: [
+		{
+			// Same gap as `no-credential-reuse`: the traversal starts at the
+			// `description` property initializer, so a constructor-assigned
+			// description is never visited.
+			name: 'emoji in option name of a versioned node assigning description in its constructor',
+			filename: '/tmp/v1/TestNodeV1.node.ts',
+			code: createVersionedNodeCode(`
+				version: 1,
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: [
+							{ name: '✅ Create', value: 'create' },
+							{ name: 'Delete', value: 'delete' },
+						],
+						default: 'create',
+					},
+				],
+			`),
+			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
 		{
 			name: 'emoji in node displayName',
 			filename: '/tmp/TestNode.node.ts',
