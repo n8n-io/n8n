@@ -183,19 +183,6 @@ WithSlots.args = {
 	],
 };
 
-const smallVersionTemplate: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	components: { Breadcrumbs },
-	props: Object.keys(argTypes),
-	template: '<Breadcrumbs v-bind="args" />',
-});
-export const SmallVersion = smallVersionTemplate.bind({});
-SmallVersion.args = {
-	items,
-	theme: 'small',
-	showBorder: true,
-};
-
 const smallWithSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	components: { Breadcrumbs },
