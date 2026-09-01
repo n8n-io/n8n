@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { createDataSource, createStores, WorkflowExecution } from '../../database';
+import { generateId } from '../../database/generate-id';
 import { ExecutionQueryService, StartExecutionService } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
@@ -22,6 +23,14 @@ const secret = 'a'.repeat(32);
 
 const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
+});
+
+/** The caller always mints the id, so every valid body carries one. */
+const startBody = (overrides: Record<string, unknown> = {}) => ({
+	workflowId: 'wf-1',
+	graph: sampleGraph,
+	executionId: generateId(),
+	...overrides,
 });
 
 let container: StartedPostgreSqlContainer;
@@ -59,19 +68,17 @@ afterAll(async () => {
 });
 
 describe('POST /api/workflow-executions (integration)', () => {
-	it('creates an execution row, publishes execution:enqueued, returns 201', async () => {
+	it('creates the row under the caller-minted id, publishes execution:enqueued, returns 201', async () => {
+		const body = startBody({ triggerOutputs: [[{ json: { hello: 'world' } }]] });
+
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: [[{ json: { hello: 'world' } }]],
-			});
+			.send(body);
 
 		expect(response.status).toBe(201);
 		const { executionId } = response.body as { executionId: string };
-		expect(executionId).toBeTruthy();
+		expect(executionId).toBe(body.executionId);
 
 		const repo = dataSource.getRepository(WorkflowExecution);
 		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
@@ -85,6 +92,21 @@ describe('POST /api/workflow-executions (integration)', () => {
 
 		expect(workQueue.publish).toHaveBeenCalledWith({ type: 'execution:enqueued', executionId });
 	});
+
+	// v4 included: the id has to be time-ordered. `undefined` covers the omitted
+	// case — the engine never mints a replacement.
+	it.each(['not-a-uuid', '9f1b7d0e-2c4a-4f8b-9d3e-6a5c1b2d3e4f', undefined])(
+		'rejects the execution id %p with 400',
+		async (executionId) => {
+			const response = await request(url)
+				.post('/api/workflow-executions')
+				.set(authHeader())
+				.send({ workflowId: 'wf-1', graph: sampleGraph, executionId });
+
+			expect(response.status).toBe(400);
+			expect((response.body as { error: string }).error).toBe('invalid_request');
+		},
+	);
 
 	it('rejects an invalid body with 400', async () => {
 		const response = await request(url)
@@ -100,11 +122,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: { hello: 'world' },
-			});
+			.send(startBody({ triggerOutputs: { hello: 'world' } }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -114,18 +132,17 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({ workflowId: 'wf-1', graph: sampleGraph, triggerOutputs });
+			.send(startBody({ triggerOutputs }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 
 	it('rejects an empty-array triggerOutputs with 400 (send null or omit for "no payload")', async () => {
-		const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
-			workflowId: 'wf-1',
-			graph: sampleGraph,
-			triggerOutputs: [],
-		});
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ triggerOutputs: [] }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -135,11 +152,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: Array.from({ length: 102 }, () => []),
-			});
+			.send(startBody({ triggerOutputs: Array.from({ length: 102 }, () => []) }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -149,22 +162,20 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] },
-			});
+			.send(startBody({ graph: { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] } }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_graph');
 		expect(workQueue.publish).not.toHaveBeenCalled();
 	});
 
-	it('rejects a graph with back-edges with 501, creating nothing', async () => {
+	it('rejects a back-edge to a node that cannot loop with 400, creating nothing', async () => {
+		// only a batch node knows how to advance a loop, so this can never run
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
 			.send({
-				workflowId: 'wf-1',
+				...startBody(),
 				graph: {
 					nodes: [
 						{ id: 'trigger', name: 'T', type: 'trigger' },
@@ -173,6 +184,39 @@ describe('POST /api/workflow-executions (integration)', () => {
 					edges: [
 						{ from: 'trigger', to: 'a' },
 						{ from: 'a', to: 'trigger', isBackEdge: true },
+					],
+				},
+			});
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_graph');
+		expect(workQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it('rejects a nested loop with 501, creating nothing', async () => {
+		// coherent, but the engine does not run it yet
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send({
+				...startBody(),
+				graph: {
+					nodes: [
+						{ id: 'trigger', name: 'T', type: 'trigger' },
+						{ id: 'outer', name: 'Outer', type: 'batch', config: { batchSize: 1 } },
+						{ id: 'inner', name: 'Inner', type: 'batch', config: { batchSize: 1 } },
+						{ id: 'x', name: 'X', type: 'v1-node' },
+						{ id: 'tail', name: 'Tail', type: 'v1-node' },
+						{ id: 'done', name: 'Done', type: 'v1-node' },
+					],
+					edges: [
+						{ from: 'trigger', to: 'outer' },
+						{ from: 'outer', to: 'inner', outputIndex: 1 },
+						{ from: 'inner', to: 'x', outputIndex: 1 },
+						{ from: 'x', to: 'inner', isBackEdge: true },
+						{ from: 'inner', to: 'tail', outputIndex: 0 },
+						{ from: 'tail', to: 'outer', isBackEdge: true },
+						{ from: 'outer', to: 'done', outputIndex: 0 },
 					],
 				},
 			});
@@ -188,11 +232,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: [[{ json: { hello: 'world' } }]],
-			});
+			.send(startBody({ triggerOutputs: [[{ json: { hello: 'world' } }]] }));
 		return (response.body as { executionId: string }).executionId;
 	}
 
@@ -259,11 +299,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		const postResponse = await request(runtime.app)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: [[{ json: { hello: 'world' } }]],
-			});
+			.send(startBody({ triggerOutputs: [[{ json: { hello: 'world' } }]] }));
 		const { executionId } = postResponse.body as { executionId: string };
 		await finished;
 

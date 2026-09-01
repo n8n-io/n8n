@@ -86,6 +86,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		userHasScopesMock.mockResolvedValue(true);
+		repository.count.mockResolvedValue(0);
 		repository.create.mockImplementation((input) => input as GitConnection);
 		repository.save.mockImplementation(async (input) => {
 			const entity = input as GitConnection;
@@ -98,6 +99,21 @@ describe('GitConnectionsService (credential state machine)', () => {
 	});
 
 	describe('create', () => {
+		it('rejects a second connection without doing any key generation', async () => {
+			repository.count.mockResolvedValue(1);
+
+			await expect(
+				service.create({
+					name: 'c',
+					repositoryUrl: 'git@github.com:o/r.git',
+					connectionType: 'ssh',
+				} as CreateGitConnectionDto),
+			).rejects.toThrow(ConflictError);
+
+			expect(gitService.generateSshKeyPair).not.toHaveBeenCalled();
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
 		it('generates and encrypts an SSH key pair for ssh connections', async () => {
 			await service.create({
 				name: 'c',
@@ -245,10 +261,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
-			gitConnectionProjectRepository.findProjectIdsByConnection.mockResolvedValue([
-				'project-a',
-				'project-b',
-			]);
+			projectRepository.findTeamProjectIds.mockResolvedValue(['project-a', 'project-b']);
 			n8nPackagesService.exportPackageToDirectory.mockImplementation(
 				async (_request, { targetDir }) => {
 					await mkdir(path.join(targetDir, 'projects', 'alpha'), { recursive: true });
@@ -272,21 +285,21 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await rm(n8nFolder, { recursive: true, force: true });
 		});
 
-		it('exports all linked projects into the n8n-export subfolder, leaving the root untouched', async () => {
+		it('exports all team projects into the n8n-export subfolder, leaving the root untouched', async () => {
 			const repositoryFolder = path.join(n8nFolder, 'git-connections', '1', 'repository');
 			const exportFolder = path.join(repositoryFolder, 'n8n-export');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
 			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/main');
 			// A file the user keeps at the repository root must survive the export.
 			await writeFile(path.join(repositoryFolder, 'README.md'), '# my repo');
-			// A stale export from a project that is no longer linked must be removed.
+			// A stale export from a project that no longer exists must be removed.
 			await mkdir(exportFolder, { recursive: true });
 			await writeFile(path.join(exportFolder, 'stale.json'), '{}');
 
 			const result = await exportService.push('1', actor);
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
-			expect(gitConnectionProjectRepository.findProjectIdsByConnection).toHaveBeenCalledWith('1');
+			expect(projectRepository.findTeamProjectIds).toHaveBeenCalled();
 			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
 				{
 					user: actor,
@@ -334,7 +347,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await mkdir(exportFolder, { recursive: true });
 			await writeFile(path.join(exportFolder, 'manifest.json'), '{"previous":true}');
 			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
-				new BadRequestError('A linked project dependency is missing'),
+				new BadRequestError('A project dependency is missing'),
 			);
 
 			await expect(exportService.push('1', actor)).rejects.toThrow(BadRequestError);
@@ -356,7 +369,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await expect(exportService.push('missing', actor)).rejects.toThrow(
 				'Git connection not found',
 			);
-			expect(gitConnectionProjectRepository.findProjectIdsByConnection).not.toHaveBeenCalled();
+			expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 	});
@@ -515,6 +528,135 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 				expect(result).toEqual({ projectIds: ['p1', 'p2'] });
 			});
+		});
+	});
+
+	describe('pull import', () => {
+		let n8nFolder: string;
+		let importService: GitConnectionsService;
+		let exportFolder: string;
+		const actor = mock<User>({ id: 'actor' });
+
+		const importResult = () =>
+			({
+				package: { sourceN8nVersion: '1.0.0', sourceId: 'src', exportedAt: 'now' },
+				projects: [
+					{ status: 'created', localId: 'p1' },
+					{ status: 'updated', localId: 'p2' },
+				],
+				folders: [{ status: 'created' }, { status: 'skipped' }, { status: 'created' }],
+				workflows: [
+					{ status: 'created', publishing: { state: 'published' } },
+					{ status: 'created', publishing: { state: 'blocked', blockedReason: 'stub-credential' } },
+					{ status: 'updated', publishing: { state: 'unchanged' } },
+				],
+				removedWorkflows: [
+					{ deletion: 'archived' },
+					{ deletion: 'deleted' },
+					{ deletion: 'deleted' },
+				],
+				removedFolders: [{}, {}],
+				bindings: { workflows: {}, credentials: {} },
+				credentials: { matched: ['c1'], stubbed: ['c2', 'c3'] },
+				dataTables: { matched: 1, created: 2 },
+				variables: { matched: ['v1'], created: ['v2'], updated: ['v3'], stubbed: [], missing: [] },
+				tags: { matched: [], created: ['t1'], renamed: ['t2'], reconciled: [], skipped: [] },
+			}) as unknown as Awaited<ReturnType<N8nPackagesService['importPackageFromDirectory']>>;
+
+		beforeEach(async () => {
+			n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-git-connection-import-'));
+			exportFolder = path.join(n8nFolder, 'git-connections', '1', 'repository', 'n8n-export');
+			importService = new GitConnectionsService(
+				repository,
+				gitConnectionProjectRepository,
+				projectRepository,
+				gitService,
+				n8nPackagesService,
+				cipher,
+				mock<InstanceSettings>({ n8nFolder }),
+				logger,
+			);
+			repository.findOneBy.mockResolvedValue(sshEntity());
+			n8nPackagesService.importPackageFromDirectory.mockResolvedValue(importResult());
+		});
+
+		afterEach(async () => {
+			await rm(n8nFolder, { recursive: true, force: true });
+		});
+
+		it('imports from the n8n-export subfolder with the overwrite policy and maps counts by status', async () => {
+			await mkdir(exportFolder, { recursive: true });
+
+			const result = await importService.pull('1', actor);
+
+			expect(n8nPackagesService.importPackageFromDirectory).toHaveBeenCalledWith(
+				{
+					user: actor,
+					projectConflictPolicy: 'overwrite',
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'source',
+					workflowPublishingPolicy: 'match-source',
+					missingNodeTypeMode: 'fail',
+					credentialMatchingMode: 'id-only',
+					credentialMissingMode: 'create-stub',
+					folderConflictPolicy: 'overwrite',
+					overwriteDeletionPolicy: 'hard-delete',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'create',
+					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'create-with-value',
+					variableConflictPolicy: 'overwrite',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'rename',
+				},
+				{ sourceDir: exportFolder },
+			);
+			expect(result).toEqual({
+				connectionId: '1',
+				counts: {
+					projects: { created: 1, updated: 1, skipped: 0 },
+					folders: { created: 2, skipped: 1, removed: 2 },
+					workflows: {
+						created: 2,
+						updated: 1,
+						skipped: 0,
+						archived: 1,
+						deleted: 2,
+						publishing: { published: 1, unpublished: 0, unchanged: 1, blocked: 1, failed: 0 },
+					},
+					credentials: { matched: 1, stubbed: 2 },
+					dataTables: { matched: 1, created: 2 },
+					variables: { matched: 1, created: 1, updated: 1, stubbed: 0, missing: 0 },
+					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
+				},
+			});
+		});
+
+		it('reconciles the connection links to every imported project', async () => {
+			await mkdir(exportFolder, { recursive: true });
+
+			await importService.pull('1', actor);
+
+			expect(gitConnectionProjectRepository.syncConnectionProjects).toHaveBeenCalledWith('1', [
+				'p1',
+				'p2',
+			]);
+		});
+
+		it('fails with a clear error when there is no exported working copy', async () => {
+			await expect(importService.pull('1', actor)).rejects.toThrow(
+				'no exported working copy to import',
+			);
+			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+		});
+
+		it('does not touch the filesystem for a missing connection', async () => {
+			repository.findOneBy.mockResolvedValueOnce(null);
+
+			await expect(importService.pull('missing', actor)).rejects.toThrow(
+				'Git connection not found',
+			);
+			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 		});
 	});
 });

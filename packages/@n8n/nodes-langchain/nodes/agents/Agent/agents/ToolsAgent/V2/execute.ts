@@ -465,7 +465,11 @@ export async function toolsAgentExecute(
 		return [returnData];
 	} catch (error) {
 		failureType = getFailureType(error);
-		throw error;
+		// Failures raised outside the per-item batch handling (model/memory setup,
+		// parameter assertions) are still raw here, so enrich them the same way.
+		throw wrapLangChainParserError(error, this.getNode(), undefined, {
+			enrichNonParserErrors: true,
+		});
 	} finally {
 		applyAgentTracingMetadata(this, {
 			toolCalls,

@@ -93,7 +93,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
-| [oauth_refresh_tokens](oauth_refresh_tokens.md) | 7 |  | table |
+| [oauth_refresh_tokens](oauth_refresh_tokens.md) | 8 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
 | [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
@@ -117,6 +117,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [token_exchange_jti](token_exchange_jti.md) | 3 |  | table |
 | [trusted_key](trusted_key.md) | 4 |  | table |
 | [trusted_key_source](trusted_key_source.md) | 8 |  | table |
+| [type_availability_policy](type_availability_policy.md) | 7 |  | table |
+| [type_availability_policy_attachment](type_availability_policy_attachment.md) | 6 |  | table |
+| [type_availability_policy_scope](type_availability_policy_scope.md) | 8 |  | table |
 | [user](user.md) | 15 |  | table |
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
@@ -266,8 +269,8 @@ erDiagram
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "poller_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -297,6 +300,9 @@ erDiagram
 "test_run" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_run" }o--o| "evaluation_config" : "FOREIGN KEY (evaluationConfigId) REFERENCES evaluation_config (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "trusted_key" |o--|| "trusted_key_source" : "FOREIGN KEY (sourceId) REFERENCES trusted_key_source (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"type_availability_policy_attachment" |o--|| "type_availability_policy" : "FOREIGN KEY (policyId) REFERENCES type_availability_policy (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"type_availability_policy_attachment" |o--|| "type_availability_policy_scope" : "FOREIGN KEY (scopeId) REFERENCES type_availability_policy_scope (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"type_availability_policy_scope" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "user" }o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "user_api_keys" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "user_favorites" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1200,6 +1206,7 @@ erDiagram
   varchar clientId FK
   datetime_3_ createdAt
   bigint expiresAt
+  varchar resource
   TEXT scope
   varchar_255_ token PK
   datetime_3_ updatedAt
@@ -1417,6 +1424,33 @@ erDiagram
   varchar_32_ status
   varchar_32_ type
   datetime_3_ updatedAt
+}
+"type_availability_policy" {
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_64_ kind
+  TEXT rules
+  datetime_3_ updatedAt
+  varchar_36_ updatedBy
+  INTEGER version
+}
+"type_availability_policy_attachment" {
+  datetime_3_ createdAt
+  boolean isFloor
+  varchar_36_ policyId PK
+  INTEGER priority
+  varchar_36_ scopeId PK
+  datetime_3_ updatedAt
+}
+"type_availability_policy_scope" {
+  datetime_3_ createdAt
+  varchar_16_ defaultAction
+  varchar_36_ id PK
+  varchar_64_ kind
+  varchar_36_ projectId FK
+  datetime_3_ updatedAt
+  varchar_36_ updatedBy
+  INTEGER version
 }
 "user" {
   datetime_3_ createdAt

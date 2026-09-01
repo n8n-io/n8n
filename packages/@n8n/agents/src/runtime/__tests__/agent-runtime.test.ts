@@ -18,6 +18,7 @@ import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
+import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
 import { StaleResumeError } from '../state/run-state';
 import {
@@ -6523,6 +6524,165 @@ describe('AgentRuntime — observation log jobs', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Mid-run observation (AGENT-191 / AGENT-228)
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — mid-run observation', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const OBSERVE_TEXT = '* CRITICAL (14:30) Mid-run observation captured.';
+	const PERSISTENCE = { threadId: 'thread-1', resourceId: 'resource-1' };
+
+	type CapturedModelCall = {
+		instructions: { content: string } | Array<{ content: string }>;
+		messages: Array<{ role: string; content: unknown }>;
+	};
+
+	function capturedCall(index: number): CapturedModelCall {
+		return generateText.mock.calls[index][0] as CapturedModelCall;
+	}
+
+	function flattenInstructions(instructions: CapturedModelCall['instructions']): string {
+		return Array.isArray(instructions)
+			? instructions.map((entry) => entry.content).join('')
+			: instructions.content;
+	}
+
+	function makeStepTool(): BuiltTool {
+		return {
+			name: 'do_step',
+			description: 'Perform a step',
+			inputSchema: z.object({ step: z.number() }),
+			handler: async () => await Promise.resolve({ done: true }),
+		};
+	}
+
+	function buildMidRunRuntime(
+		memory: InMemoryMemory,
+		extra?: { tools?: BuiltTool[]; checkpointStorage?: CheckpointStore },
+	): AgentRuntime {
+		return new AgentRuntime({
+			name: 'mid-run-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			tools: extra?.tools ?? [makeStepTool()],
+			...(extra?.checkpointStorage ? { checkpointStorage: extra.checkpointStorage } : {}),
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () => await Promise.resolve(OBSERVE_TEXT),
+			},
+		});
+	}
+
+	it('compacts the live prompt after crossing the budget mid-run', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory);
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', 'do_step', { step: 2 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		const result = await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		expect(generateText).toHaveBeenCalledTimes(3);
+		expect(JSON.stringify(capturedCall(0).messages)).toContain('start work');
+
+		// After the first boundary's compaction the prompt is just the reminder,
+		// and the refreshed system prompt carries the observation.
+		const second = capturedCall(1);
+		expect(second.messages).toEqual([{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER }]);
+		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
+
+		// The caller still receives the full response set of the turn.
+		expect(result.messages).toHaveLength(3);
+		expect(JSON.stringify(result.messages)).toContain('all done');
+
+		const observations = await memory.getActiveObservationLog({
+			observationScopeId: 'thread-1',
+		});
+		expect(observations.length).toBeGreaterThanOrEqual(1);
+		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('re-derives the mask from the cursor when resuming a suspended run', async () => {
+		const memory = new InMemoryMemory();
+		const checkpointStore = makeClaimingCheckpointStore();
+		const tools = [makeStepTool(), makeInterruptibleTool()];
+
+		const runtime = buildMidRunRuntime(memory, { tools, checkpointStorage: checkpointStore });
+		generateText
+			// Iteration 1 crosses the budget and compacts before iteration 2.
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-step', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-approve', 'approve', { question: 'go on?' }),
+			);
+
+		const first = await runtime.generate('start work', { persistence: PERSISTENCE });
+		const suspension = first.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected the run to suspend on the approve tool');
+
+		const resumed = buildMidRunRuntime(memory, { tools, checkpointStorage: checkpointStore });
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('continued'));
+		await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await resumed.dispose();
+		await runtime.dispose();
+
+		const resumeCall = capturedCall(2);
+		expect(JSON.stringify(resumeCall.messages)).not.toContain('start work');
+		expect(resumeCall.messages[0]).toEqual({
+			role: 'user',
+			content: OBSERVATION_CONTINUATION_REMINDER,
+		});
+	});
+
+	it('observes at the resume boundary when the resumed tool results cross the budget', async () => {
+		const memory = new InMemoryMemory();
+		const checkpointStore = makeClaimingCheckpointStore();
+		const tools = [makeStepTool(), makeInterruptibleTool()];
+
+		const runtime = buildMidRunRuntime(memory, { tools, checkpointStorage: checkpointStore });
+		// Suspends on the very first iteration, so no boundary check has run and
+		// no cursor exists when the run parks.
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-approve', 'approve', { question: 'go on?' }),
+		);
+		const first = await runtime.generate('start work', { persistence: PERSISTENCE });
+		const suspension = first.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected the run to suspend on the approve tool');
+		expect(await memory.getCursor('thread-1')).toBeNull();
+
+		const resumed = buildMidRunRuntime(memory, { tools, checkpointStorage: checkpointStore });
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('continued'));
+		await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await resumed.dispose();
+		await runtime.dispose();
+
+		// The first post-resume model call already sees the compacted window:
+		// the resumed tool results were observed before reaching the model.
+		const resumeCall = capturedCall(1);
+		expect(resumeCall.messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+		expect(flattenInstructions(resumeCall.instructions)).toContain('Mid-run observation captured.');
+		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Runtime telemetry — generate / stream / tool execution
 // ---------------------------------------------------------------------------
 
@@ -7678,7 +7838,7 @@ describe('AgentRuntime — oversized tool results', () => {
 		);
 	}
 
-	function getModelToolResult(callIndex = 1): unknown {
+	function getModelToolResultOutput(callIndex = 1): { type: string; value: unknown } | undefined {
 		const call = generateText.mock.calls[callIndex][0] as {
 			messages: Array<{
 				role: string;
@@ -7686,7 +7846,11 @@ describe('AgentRuntime — oversized tool results', () => {
 			}>;
 		};
 		const toolMessage = call.messages.find((message) => message.role === 'tool');
-		return toolMessage?.content.find((part) => part.type === 'tool-result')?.output?.value;
+		return toolMessage?.content.find((part) => part.type === 'tool-result')?.output;
+	}
+
+	function getModelToolResult(callIndex = 1): unknown {
+		return getModelToolResultOutput(callIndex)?.value;
 	}
 
 	it('leaves a small transformed result unchanged', async () => {
@@ -7707,6 +7871,73 @@ describe('AgentRuntime — oversized tool results', () => {
 		await runtime.generate('run');
 
 		expect(getModelToolResult()).toEqual({ summary: 'small' });
+	});
+
+	it('preserves oversized content media without offloading it', async () => {
+		const rawOutput = { ok: true };
+		const modelOutput = {
+			type: 'content' as const,
+			value: [
+				{
+					type: 'file-data' as const,
+					data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					mediaType: 'application/pdf',
+				},
+			],
+		};
+		const tool: BuiltTool = {
+			name: 'file_result',
+			description: 'Return a file',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve(rawOutput),
+			toModelOutput: () => modelOutput,
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-file', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('run');
+
+		expect(getModelToolResultOutput()).toEqual(modelOutput);
+		expect(result.toolCalls?.[0]?.output).toEqual(rawOutput);
+
+		const { runtime: streamRuntime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-file-stream',
+									toolName: tool.name,
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-file-stream', toolName: tool.name, input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await streamRuntime.stream('run');
+		const chunks = await collectChunks(stream);
+		const streamResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-file-stream',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(streamResult?.output).toEqual(modelOutput);
 	});
 
 	it('bounds an oversized transformed result while preserving raw output', async () => {
@@ -7955,6 +8186,55 @@ describe('AgentRuntime — oversized tool results', () => {
 			handler: async () => await Promise.resolve(largeResultOutput),
 		};
 
+		it('offloads oversized content text while preserving media parts', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const textParts = [
+				{
+					type: 'text' as const,
+					text: `HEAD${'a '.repeat(Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6))}`,
+				},
+				{
+					type: 'text' as const,
+					text: `${'b '.repeat(Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6))}TAIL`,
+				},
+			];
+			const filePart = {
+				type: 'file-data' as const,
+				data: 'base64-pdf',
+				mediaType: 'application/pdf',
+			};
+			const tool: BuiltTool = {
+				name: 'mixed_content',
+				description: 'Return text and a file',
+				inputSchema: z.object({}),
+				handler: async () => await Promise.resolve({ ok: true }),
+				toModelOutput: () => ({
+					type: 'content',
+					value: [textParts[0], filePart, textParts[1]],
+				}),
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			let modelContent: Array<{ type: string; text?: string }> = [];
+			let storedResult: string | undefined;
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-mixed', toolName: tool.name, args: {} }]),
+				)
+				.mockImplementationOnce(async ({ messages }: { messages: ModelMessages }) => {
+					modelContent = toolResultsFromModelMessages(messages)[0] as typeof modelContent;
+					const envelope = parseOffloadedEnvelope(
+						modelContent.find((part) => part.type === 'text')?.text,
+					);
+					storedResult = String(await filesystem.readFile(envelope.path, { encoding: 'utf8' }));
+					return await Promise.resolve(makeGenerateSuccess());
+				});
+
+			await agent.generate('run');
+
+			expect(modelContent).toEqual([{ type: 'text', text: expect.any(String) }, filePart]);
+			expect(storedResult).toBe(JSON.stringify(textParts));
+		});
+
 		it('stores complete concurrent transformed results without changing raw outputs', async () => {
 			const filesystem = new InMemoryFilesystem();
 			const transformedOutputs = {
@@ -8080,14 +8360,42 @@ describe('AgentRuntime — oversized tool results', () => {
 		it('completes terminal runs when result cleanup hangs', async () => {
 			const filesystem = new InMemoryFilesystem();
 			const runId = 'hung-cleanup-run';
-			await filesystem.writeFile(`${getToolResultRunDirectory(runId)}/result.json`, '{}', {
-				recursive: true,
-			});
 			vi.spyOn(filesystem, 'rmdir').mockReturnValue(new Promise(() => undefined));
-			const runtime = createRunScopedRuntime(filesystem, [], runId);
-			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			const runtime = createRunScopedRuntime(filesystem, [largeResultTool], runId);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc-large', toolName: largeResultTool.name, args: {} },
+					]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
 
 			await expect(runtime.generate('run')).resolves.toMatchObject({ finishReason: 'stop' });
+		});
+
+		it('performs no filesystem calls during cleanup when the run never offloaded', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const existsSpy = vi.spyOn(filesystem, 'exists');
+			const rmdirSpy = vi.spyOn(filesystem, 'rmdir');
+			const smallResultTool: BuiltTool = {
+				name: 'small_result',
+				description: 'small result',
+				inputSchema: z.object({}),
+				handler: async () => await Promise.resolve({ ok: true }),
+			};
+			const runtime = createRunScopedRuntime(filesystem, [smallResultTool], 'no-offload-run');
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc-small', toolName: smallResultTool.name, args: {} },
+					]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			await runtime.generate('run');
+
+			expect(existsSpy).not.toHaveBeenCalled();
+			expect(rmdirSpy).not.toHaveBeenCalled();
 		});
 
 		it('retains offloaded results across suspension and re-suspension, then removes them', async () => {

@@ -44,6 +44,9 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
+import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
 import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -296,6 +299,9 @@ const canEditMcp = computed(
 	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
 );
 
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const openInAssistant = useOpenInAssistantCard(props);
+
 // Optimistic state for the legacy 3-dot menu fallback (used when the
 // 086_workflow_card_mcp_toggle experiment is off).
 const mcpToggleStatus = ref<boolean | null>(null);
@@ -325,6 +331,9 @@ const hasDynamicCredentials = computed(() => {
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	if (openInAssistant(event)) return;
+
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
@@ -732,6 +741,8 @@ const tags = computed(
 					:is-mcp-module-active="props.isMcpModuleActive"
 					:can-manage-instance-mcp="props.canManageInstanceMcp"
 				/>
+				<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+				<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
 				<N8nActionToggle
 					:actions="actions"
 					placement="bottom-end"

@@ -225,9 +225,10 @@ to force data through the trigger.
 **Reserve `executions(action="run")` for runs the user explicitly asked for**
 (e.g. "run it now", "execute it against my real data"). Never call it on your own
 to re-test, expand coverage, or "prove the full chain" of a workflow you just
-built or verified: re-run `verify-built-workflow` (with `fixtureOverrides` to
-reach an unverified branch) instead, or report the partial coverage and let the
-user decide whether to run it.
+built or verified: re-run `verify-built-workflow` instead — with
+`triggerNodeName` to reach another trigger's branch, or `fixtureOverrides` to
+reach another branch within one trigger's run — or report the partial coverage
+and let the user decide whether to run it.
 If `fixtureOverrides` is rejected with `invalid_fixture_override`, the target
 node was not classified as simulated in the build outcome. Do not retry the same
 override. If that node's data controls a branch that needs verification and you
@@ -235,18 +236,30 @@ have the source file, load `workflow-builder`, declare representative `output`
 fixtures on the controlling upstream node, rebuild the same workflow, and verify
 again.
 
-**Never edit a saved workflow to reach a branch.** Disabling or deleting nodes to
-steer a test mutates the user's workflow and leaves it broken for as long as the
-test runs — if it is published, its triggers fire against the broken version.
-For a workflow with more than one trigger (`triggerNodes` has multiple entries):
+**Never edit or copy a saved workflow to reach a branch.** Disabling, deleting,
+or reordering nodes to steer a test mutates the user's workflow and leaves it
+broken for as long as the test runs — if it is published, its triggers fire
+against the broken version. Building a throwaway second workflow is no better:
+the evidence is gathered against a copy that can drift from the workflow the
+user keeps, and the copy is left behind whenever the cleanup delete fails.
 
+For a workflow with more than one trigger (`triggerNodes` has multiple entries),
+**verify once per trigger**:
+
+- Pass `triggerNodeName` to `verify-built-workflow` and call it once for each
+  entry in `triggerNodes`. Naming no trigger verifies only the auto-detected
+  one. An unresolvable name is rejected outright, so a rejected call means the
+  name is wrong — re-read `triggerNodes`, never fall back to editing.
+- Each pass covers its own trigger's branch, so its `nodesNotReached` will list
+  the other triggers' nodes. That is expected, not a defect: coverage is the
+  **union** across passes. Only treat a node as unverified once no pass reached
+  it.
+- Report per-trigger coverage — name each trigger and whether its branch ran.
+  Claim the workflow is verified only when every trigger's branch has a
+  successful pass.
 - When the user asked for a live run, pass `triggerNodeName` to
-  `executions(action="run")` — one run per trigger — and report each branch's
-  result. Naming no trigger runs only the auto-detected one.
-- `verify-built-workflow` always exercises the auto-detected trigger, so it
-  covers one branch. Say which trigger was verified and which branches were not,
-  and offer the user a live run for the rest. Do not force coverage by editing
-  the workflow.
+  `executions(action="run")` the same way — one run per trigger — and report
+  each branch's result.
 
 ## After build-workflow succeeds
 
@@ -268,7 +281,8 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries):
 
 - If `verificationReadiness.status === "ready"`, call
   `verify-built-workflow` with the `workflowId`, the `workItemId` when you
-  have it, and the trigger-appropriate `inputData` shape.
+  have it, and the trigger-appropriate `inputData` shape. When `triggerNodes`
+  has more than one entry, call it once per trigger with `triggerNodeName`.
 - If `verificationReadiness.status === "needs_setup"`, call
   `workflows(action="setup")` with the workflowId so the user can configure it
   through the inline setup card in the AI Assistant panel.
@@ -291,7 +305,9 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries):
      were verified and which were not, and tell the user the unreached part
      needs a manual test. Do not start a live `executions(action="run")`
      yourself to reach those nodes; offer the user a test instead. Never claim
-     end-to-end verification when `nodesNotReached` is non-empty.
+     end-to-end verification when `nodesNotReached` is non-empty — except for
+     nodes another trigger's pass already reached, since per-trigger coverage
+     is the union across passes.
    - If the unreached nodes sit behind IF/Switch logic controlled by a live or
      nondeterministic upstream node, and alternate-branch verification is part
      of this turn's goal, first try one source-file repair: add representative
@@ -319,7 +335,7 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries):
    when the latest verification evidence used mocks or simulations. If this
    follow-up is due, ask only whether the user wants the live test. Do not
    mention publishing or ask about the error workflow in the same response.
-   If `credentialResolutionNote` says n8n credits are depleted,
+   If `credentialResolutionNote` says Gateway credits are depleted,
    that note wins: do not offer a live test.
 7. Before your final summary, scan the **whole conversation** for live runs that
    already wrote test data into an external system — earlier turns included, not
@@ -404,9 +420,9 @@ test without mocks. Ask only about the live test. Do not run it automatically.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.
 
-If `credentialResolutionNote` says n8n credits are depleted, that
+If `credentialResolutionNote` says Gateway credits are depleted, that
 note wins over this live-test offer: do not offer a live test. Tell the user
-they must top up n8n credits or add their own key on the node first.
+they must top up Gateway credits or add their own key on the node first.
 
 If the user agrees, use the explicit live execution path (`executions(action="run")`
 for a direct live run) and report the result separately from the earlier mocked

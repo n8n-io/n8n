@@ -197,7 +197,23 @@ describe('AgentSandboxRuntimeService', () => {
 			(createSandboxMock.mock.calls[0][0] as DaytonaSandboxConfig).autoDeleteInterval,
 		).toBeUndefined();
 		expect(sandbox._start).toHaveBeenCalled();
-		expect(createFilesystemMock).toHaveBeenCalledWith(sandbox);
+		expect(createFilesystemMock).toHaveBeenCalledWith(sandbox, undefined);
+	});
+
+	it('constructs workspace sandboxes without booting them and passes the filesystem init hook', async () => {
+		const service = makeService();
+		const onFilesystemInit = vi.fn();
+
+		await service.acquireWorkspaceSandbox(projectId, agentId, principalHash, {
+			onFilesystemInit,
+		});
+
+		expect(sandbox._start).not.toHaveBeenCalled();
+		expect(createFilesystemMock).toHaveBeenCalledWith(sandbox, { onInit: onFilesystemInit });
+
+		await service.acquireKnowledgeSandbox(projectId, agentId);
+
+		expect(sandbox._start).toHaveBeenCalledTimes(1);
 	});
 
 	it('single-flights concurrent knowledge acquisition for the same project and agent', async () => {
@@ -252,8 +268,8 @@ describe('AgentSandboxRuntimeService', () => {
 				autoDeleteInterval,
 			]),
 		).toEqual([
-			[true, 5, undefined, undefined],
-			[true, 5, undefined, undefined],
+			[false, 5, 60, 1_440],
+			[false, 5, 60, 1_440],
 			[false, 15, 60, 10_080],
 		]);
 	});

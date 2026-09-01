@@ -8,6 +8,7 @@ import { StepNotFoundError, type NewStepRecord } from '../../execution/step-stor
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
+import { generateId } from '../generate-id';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 import { TypeOrmStepStore } from '../typeorm-step-store';
 
@@ -39,6 +40,7 @@ describe('workflow_step_execution table (integration)', () => {
 	async function createExecution(): Promise<string> {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const execution = repo.create({
+			id: generateId(),
 			workflowId: 'wf-1',
 			status: 'running',
 			mode: 'production',
@@ -698,8 +700,6 @@ describe('workflow_step_execution table (integration)', () => {
 
 		const latest = await store.loadLatestStepSummaries(executionId, ['b', 'c', 'ghost']);
 
-		// one row per node asked about, the slim view: which slots were filled, not
-		// what they hold, and a node with no row is absent rather than null
 		expect(latest.b).toMatchObject({
 			nodeId: 'b',
 			iteration: 1,

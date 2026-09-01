@@ -19,13 +19,12 @@ type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 export class TypeOrmExecutionStore implements ExecutionStore {
 	constructor(private readonly repo: Repository<WorkflowExecution>) {}
 
-	async createExecution(record: NewExecutionRecord): Promise<{ id: string }> {
+	async createExecution(record: NewExecutionRecord): Promise<void> {
 		const execution = this.repo.create({ ...record, finishedAt: null });
 		// The cast is needed because the insert payload type recurses into the
 		// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
 		// NOTE: prefer insert to save for performance reasons.
 		await this.repo.insert(execution as InsertValues);
-		return { id: execution.id };
 	}
 
 	async loadExecution(id: string): Promise<ExecutionRecord> {
