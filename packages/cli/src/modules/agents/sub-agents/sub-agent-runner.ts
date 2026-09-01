@@ -49,7 +49,7 @@ import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
-export interface SubAgentForegroundRunContext {
+export interface SubAgentRunContext {
 	projectId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId?: string;
@@ -92,7 +92,7 @@ export interface SubAgentForegroundRunContext {
 	selfDelegationDifficulty?: SubAgentTaskDifficulty;
 }
 
-export interface SubAgentForegroundResult {
+export interface SubAgentRunResult {
 	taskPath: SubAgentTaskPath;
 	/** The child run's memory/session thread id, so callers can link or continue it. */
 	threadId: string;
@@ -115,7 +115,7 @@ type ForegroundOperation = {
 );
 
 @Service()
-export class SubAgentForegroundRunner {
+export class SubAgentRunner {
 	constructor(
 		private readonly sourceResolver: SubAgentSourceResolver,
 		private readonly agentExecutionService: AgentExecutionService,
@@ -123,17 +123,10 @@ export class SubAgentForegroundRunner {
 		private readonly logger: Logger,
 	) {}
 
-	async runForeground(
+	async run(
 		request: SubAgentSpawnRequest,
-		context: SubAgentForegroundRunContext,
-	): Promise<SubAgentForegroundResult> {
-		// Background execution (dispatch, return a receipt, reconcile the result
-		// later) is not yet implemented. Tracked in AGENT-186:
-		// https://linear.app/n8n/issue/AGENT-186
-		if (request.executionMode !== undefined && request.executionMode !== 'foreground') {
-			throw new UserError('Foreground sub-agent runner only supports foreground execution mode');
-		}
-
+		context: SubAgentRunContext,
+	): Promise<SubAgentRunResult> {
 		// The SDK delegate tool already assigned this delegation's task path and
 		// enforced the depth/fan-out policy before invoking the runner. Just
 		// validate the forwarded shape — don't recompute it or re-run the gates.
@@ -144,9 +137,9 @@ export class SubAgentForegroundRunner {
 
 	async resumeForeground(
 		request: DelegateSubAgentResumeRequest,
-		context: SubAgentForegroundRunContext,
+		context: SubAgentRunContext,
 		expectedSourceAgentId = request.subAgentId,
-	): Promise<SubAgentForegroundResult> {
+	): Promise<SubAgentRunResult> {
 		assertSubAgentTaskPath(request.taskPath);
 		if (request.childThreadId === undefined || request.resumeContext === undefined) {
 			throw new UserError('Configured sub-agent checkpoint metadata is missing or invalid');
@@ -178,8 +171,8 @@ export class SubAgentForegroundRunner {
 
 	private async executeForeground(
 		operation: ForegroundOperation,
-		context: SubAgentForegroundRunContext,
-	): Promise<SubAgentForegroundResult> {
+		context: SubAgentRunContext,
+	): Promise<SubAgentRunResult> {
 		// Same versioning model as sub-workflows and "Message an Agent": test runs
 		// resolve the child's current draft, production runs its published version.
 		// A resume carries the pinned versionId it started with, which wins either way.
@@ -188,8 +181,11 @@ export class SubAgentForegroundRunner {
 			{ projectId: context.projectId, usePublishedVersion: context.runType === 'production' },
 		);
 
-		// A delegated run uses the same fresh id for SDK memory and its session record.
-		const threadId = operation.type === 'run' ? uuid() : operation.threadId;
+		// A delegated run uses the same fresh id for SDK memory and its session
+		// record. A background dispatcher supplies the id itself so the job row
+		// can reference the child before the run starts.
+		const threadId =
+			operation.type === 'run' ? (operation.request.childThreadId ?? uuid()) : operation.threadId;
 		const resourceId =
 			operation.type === 'run' ? (operation.request.parentResourceId ?? threadId) : threadId;
 		const sandboxPrincipalHash = await this.resolveSandboxPrincipalHash(
@@ -465,7 +461,7 @@ export class SubAgentForegroundRunner {
 
 /**
  * Lazy resolution avoids a circular DI dependency: AgentRuntimeReconstructionService
- * injects SubAgentForegroundRunner into the delegate tool, while this runner needs
+ * injects SubAgentRunner into the delegate tool, while this runner needs
  * reconstruction only when a configured sub-agent run starts.
  */
 async function getReconstructionService() {

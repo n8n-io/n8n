@@ -1,16 +1,27 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { clearAtlassianAccessibleResourcesCache } from '@utils/atlassian';
+
 import { clearSpaceKeyCache } from '../../actions/common';
-import { getLabels, getPages, searchSpaces, searchSpacesWithAll } from '../../methods/listSearch';
-import { confluenceApiRequest } from '../../transport';
+import {
+	getLabels,
+	getPages,
+	getSites,
+	searchSpaces,
+	searchSpacesWithAll,
+} from '../../methods/listSearch';
+import { confluenceApiRequest, getConfluenceCloudId } from '../../transport';
 
 vi.mock('../../transport', () => ({
 	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
 	confluenceApiRequest: vi.fn(),
+	getConfluenceCloudId: vi.fn(),
 }));
 
 const apiRequest = vi.mocked(confluenceApiRequest);
+const cloudId = vi.mocked(getConfluenceCloudId);
 
 describe('Confluence listSearch.getPages', () => {
 	let ctx: ILoadOptionsFunctions;
@@ -18,6 +29,7 @@ describe('Confluence listSearch.getPages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		clearSpaceKeyCache();
+		cloudId.mockResolvedValue('cloud-1');
 		ctx = mockDeep<ILoadOptionsFunctions>();
 		vi.mocked(ctx.getNode).mockReturnValue({
 			id: 'test-node',
@@ -128,6 +140,31 @@ describe('Confluence listSearch.getPages', () => {
 			([, endpoint]) => endpoint === '/wiki/api/v2/spaces/999',
 		);
 		expect(spaceLookups).toHaveLength(2);
+	});
+
+	it('does not reuse cached space keys across sites of one credential', async () => {
+		let currentSite = 'cloud-1';
+		const keyPerSite: Record<string, string> = { 'cloud-1': 'DOCS', 'cloud-2': 'ENG' };
+		const cqls: string[] = [];
+		cloudId.mockImplementation(async () => currentSite);
+		apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+			if (endpoint === '/wiki/api/v2/spaces/999') return { id: 999, key: keyPerSite[currentSite] };
+			if (endpoint === '/wiki/rest/api/search') {
+				cqls.push((qs as { cql: string }).cql);
+				return { results: [] };
+			}
+			throw new Error(`unexpected endpoint ${endpoint}`);
+		});
+		vi.mocked(ctx.getCurrentNodeParameter).mockReturnValue('999');
+
+		await getPages.call(ctx);
+		currentSite = 'cloud-2';
+		await getPages.call(ctx);
+
+		expect(cqls).toEqual([
+			'type=page AND space = "DOCS" ORDER BY lastmodified DESC',
+			'type=page AND space = "ENG" ORDER BY lastmodified DESC',
+		]);
 	});
 
 	it('advances the offset even when a page comes back empty with a next link', async () => {
@@ -440,5 +477,81 @@ describe('Confluence listSearch.getLabels', () => {
 			expect.objectContaining({ cursor: 'abc==' }),
 		);
 		expect(result.paginationToken).toBe('xyz==');
+	});
+});
+
+describe('Confluence listSearch.getSites', () => {
+	let ctx: ILoadOptionsFunctions;
+	let httpRequestWithAuthentication: Mock;
+
+	const accessibleResources = [
+		{ id: 'cloud-2', url: 'https://zeta.atlassian.net', name: 'Zeta' },
+		{ id: 'cloud-1', url: 'https://alpha.atlassian.net', name: 'Alpha' },
+		{ id: 'cloud-3', url: 'https://nameless.atlassian.net' },
+		{ id: '', url: 'https://broken.atlassian.net', name: 'No ID' },
+	];
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearAtlassianAccessibleResourcesCache();
+		ctx = mockDeep<ILoadOptionsFunctions>();
+		httpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
+		ctx.helpers.httpRequestWithAuthentication = httpRequestWithAuthentication;
+		vi.mocked(ctx.getNode).mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
+		});
+	});
+
+	it('lists accessible sites sorted by name, cloudId as the value', async () => {
+		const result = await getSites.call(ctx);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({
+				url: 'https://api.atlassian.com/oauth/token/accessible-resources',
+			}),
+		);
+		expect(result).toEqual({
+			results: [
+				{ name: 'Alpha', value: 'cloud-1', url: 'https://alpha.atlassian.net' },
+				// A site without a name falls back to its URL; entries without an ID are dropped
+				{
+					name: 'https://nameless.atlassian.net',
+					value: 'cloud-3',
+					url: 'https://nameless.atlassian.net',
+				},
+				{ name: 'Zeta', value: 'cloud-2', url: 'https://zeta.atlassian.net' },
+			],
+		});
+	});
+
+	it('filters by name or URL, case-insensitively', async () => {
+		const byName = await getSites.call(ctx, 'alp');
+		expect(byName.results.map((r) => r.value)).toEqual(['cloud-1']);
+
+		const byUrl = await getSites.call(ctx, 'ZETA.atlassian');
+		expect(byUrl.results.map((r) => r.value)).toEqual(['cloud-2']);
+	});
+
+	it('refreshes on an unfiltered load so newly granted sites appear', async () => {
+		await getSites.call(ctx);
+		await getSites.call(ctx);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('serves filtered loads from the cache, so typing costs no requests', async () => {
+		await getSites.call(ctx);
+		await getSites.call(ctx, 'a');
+		await getSites.call(ctx, 'al');
+		await getSites.call(ctx, 'alp');
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });

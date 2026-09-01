@@ -326,7 +326,7 @@ onUnmounted(() => {
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
-		outline-offset: 2px;
+		outline-offset: var(--spacing--5xs);
 	}
 }
 

@@ -33,6 +33,7 @@ Reference these guidelines when:
   - `Core`: components used across the app
   - `Areas/<Product area>`: patterns and components for a specific product area, for example `Areas/Settings` or `Areas/Assistant`
   - `Experimental`: beta components that require caution
+- The last `title` segment is the component name and MUST be PascalCase (`Core/EmptyState`, not `Core/empty-state`). Category prefixes are unrestricted.
 
 ## Examples
 - "Add a modal dialog for confirming workflow deletion" → Use `N8nDialog`

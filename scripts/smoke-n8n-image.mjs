@@ -14,7 +14,7 @@ process.env.FORCE_COLOR = '1';
 const IMAGE = process.env.SMOKE_IMAGE || 'n8nio/n8n:local';
 // Runners images to exec-check. Tracks DOCKER_BUILD_DISTROLESS so the same
 // flag drives both build and check. SMOKE_RUNNERS_IMAGES (comma-separated)
-// overrides both, so the release job can point this at the pushed tags.
+// overrides both.
 const RUNNERS_IMAGES = process.env.SMOKE_RUNNERS_IMAGES
 	? process.env.SMOKE_RUNNERS_IMAGES.split(',')
 			.map((s) => s.trim())

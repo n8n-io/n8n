@@ -78,7 +78,7 @@ export const Group: Story = {
 			return { onClick: action('click') };
 		},
 		template: `
-			<div style="display: flex; gap: 4px; align-items: center;">
+			<div style="display: flex; gap: var(--spacing--4xs); align-items: center;">
 				<N8nHeaderAction icon="plus" label="Add" tooltip="Add" @click="onClick" />
 				<N8nHeaderAction icon="grip-vertical" label="Reorder" tooltip="Drag to reorder" @click="onClick" />
 				<N8nHeaderAction icon="trash-2" label="Delete" tooltip="Delete" danger @click="onClick" />
