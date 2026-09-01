@@ -136,7 +136,7 @@ export const Sizes: Story = {
 	render: () => ({
 		components: { N8nIcon },
 		template: `
-			<div style="display: flex; align-items: center; gap: var(--spacing--sm);">
+			<div style="display: flex; align-items: flex-start; gap: var(--spacing--sm);">
 				<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
 					<N8nIcon icon="info" size="xsmall" />
 					<span style="font-size: var(--font-size--2xs);">xsmall</span>
