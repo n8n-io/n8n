@@ -9,6 +9,7 @@ interface MockSandbox {
 	memory: number;
 	target: string;
 	state: string;
+	toolboxProxyUrl: string;
 	process: { executeCommand: Mock };
 	fs: Record<string, Mock>;
 	start: Mock;
@@ -50,13 +51,18 @@ const {
 	const queuedGetResults: MockSandbox[] = [];
 	const queuedCreateResults: Array<MockSandbox | Error> = [];
 
-	function makeMockSandbox(id: string, state = 'started'): MockSandbox {
+	function makeMockSandbox(
+		id: string,
+		state = 'started',
+		toolboxProxyUrl = 'https://proxy.example.test/v1/sandbox-proxy/toolbox/',
+	): MockSandbox {
 		return {
 			id,
 			cpu: 2,
 			memory: 4,
 			target: 'us',
 			state,
+			toolboxProxyUrl,
 			process: {
 				executeCommand: vi.fn().mockResolvedValue({
 					exitCode: 0,
@@ -1209,5 +1215,72 @@ describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
 
 		await filesystem.appendFile('/workspace/log.txt', 'entry');
 		expect(handle.fs.uploadFile).toHaveBeenCalled();
+	});
+});
+
+describe('DaytonaSandbox (stale toolbox URL recovery)', () => {
+	const PROXY_URL = 'https://proxy.example.test/v1/sandbox-proxy/toolbox/';
+	const PROVIDER_URL = 'https://proxy.app-eu.provider.test/toolbox';
+
+	function unauthorized() {
+		return new DaytonaError('unauthorized: authentication failed', 401);
+	}
+
+	// A resumed sandbox can arrive holding the provider's own toolbox URL. The SDK binds its
+	// toolbox client to that URL and keeps it, so every later call is rejected until the handle
+	// is replaced.
+	it('adopts the refetched sandbox and replays the command once', async () => {
+		const stale = makeMockSandbox('remote-stale', 'started', PROVIDER_URL);
+		stale.process.executeCommand
+			.mockRejectedValueOnce(unauthorized())
+			.mockResolvedValue({ exitCode: 0, artifacts: { stdout: 'ok' }, result: 'ok' });
+		queuedGetResults.push(stale, makeMockSandbox('remote-fresh', 'started', PROXY_URL));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			createRetryBackoffBaseMs: 1,
+		});
+		await sandbox.start();
+
+		const result = await sandbox.executeCommand('echo hi');
+
+		expect(result.exitCode).toBe(0);
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-fresh');
+	});
+
+	it('propagates the failure when the refetched toolbox URL is unchanged', async () => {
+		const handle = makeMockSandbox('remote-only', 'started', PROXY_URL);
+		handle.process.executeCommand.mockRejectedValue(unauthorized());
+		queuedGetResults.push(handle, makeMockSandbox('remote-probe', 'started', PROXY_URL));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			createRetryBackoffBaseMs: 1,
+		});
+		await sandbox.start();
+
+		await expect(sandbox.executeCommand('echo hi')).rejects.toThrow('unauthorized');
+		expect(handle.process.executeCommand).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not replace the handle for a non-auth failure', async () => {
+		const handle = makeMockSandbox('remote-only', 'started', PROVIDER_URL);
+		handle.process.executeCommand.mockRejectedValue(new DaytonaError('Bad Request', 400));
+		queuedGetResults.push(handle, makeMockSandbox('remote-probe', 'started', PROXY_URL));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			createRetryBackoffBaseMs: 1,
+		});
+		await sandbox.start();
+
+		await expect(sandbox.executeCommand('echo hi')).rejects.toThrow('Bad Request');
+		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-only');
 	});
 });

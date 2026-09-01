@@ -118,6 +118,15 @@ type ExistingSandboxLookup =
 
 type ConflictLookupResult = ExistingSandboxLookup | { status: 'timeout' };
 
+/**
+ * How a failed sandbox operation can be recovered.
+ * - `resume`: the remote is gone or not running — resume or recreate it, then replay.
+ * - `refresh-handle`: the remote is fine, but the cached handle was stale — adopt the refetched
+ *   one, then replay.
+ * - `none`: propagate the original error.
+ */
+type RecoveryPlan = 'resume' | 'refresh-handle' | 'none';
+
 export interface DaytonaSandboxOptions {
 	id?: string;
 	/** Static Daytona API key (direct mode). Mutually exclusive with `getAuthToken`. */
@@ -173,6 +182,12 @@ function toShellCommand(command: string, args: string[]): string {
 function isSandboxGone(error: unknown): boolean {
 	const { DaytonaNotFoundError } = loadDaytona();
 	return error instanceof DaytonaNotFoundError;
+}
+
+/** Whether the remote rejected our credentials (401/403), rather than failing the operation. */
+function isSandboxAuthError(error: unknown): boolean {
+	const { DaytonaError } = loadDaytona();
+	return error instanceof DaytonaError && (error.statusCode === 401 || error.statusCode === 403);
 }
 
 function isSandboxNameConflictError(error: unknown): boolean {
@@ -269,6 +284,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		} catch (error) {
 			throw this.toAcquisitionError(error);
 		}
+		this.logToolboxTarget();
 		await this.detectWorkingDirectory();
 	}
 
@@ -461,6 +477,35 @@ export class DaytonaSandbox extends BaseSandbox {
 		await this.getDaytona();
 	}
 
+	/**
+	 * Record where toolbox calls will go. In proxy mode they must target the configured
+	 * `apiUrl`. A different origin means the URL escaped the proxy's rewrite, and the failure
+	 * that follows reads as a credential problem rather than a routing one.
+	 */
+	private logToolboxTarget(): void {
+		const toolboxUrl = this.sandbox?.toolboxProxyUrl;
+		const configuredUrl = this.options.apiUrl;
+		if (!toolboxUrl || !configuredUrl) return;
+
+		const originOf = (url: string): string | undefined => {
+			try {
+				return new URL(url).origin;
+			} catch {
+				return undefined;
+			}
+		};
+		const toolboxOrigin = originOf(toolboxUrl);
+		const configuredOrigin = originOf(configuredUrl);
+		if (!toolboxOrigin || !configuredOrigin) return;
+
+		this.options.logger?.debug('Daytona toolbox target resolved', {
+			sandboxName: this.sandboxName,
+			toolboxOrigin,
+			configuredOrigin,
+			matchesConfiguredOrigin: toolboxOrigin === configuredOrigin,
+		});
+	}
+
 	getInfo(): SandboxInfo {
 		return {
 			id: this.id,
@@ -506,6 +551,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		const generation = this.auth.getGeneration();
 		if (this.sandbox && generation !== this.lastClientGeneration) {
 			this.sandbox = await client.get(this.sandboxName);
+			this.logToolboxTarget();
 		}
 		this.lastClientGeneration = generation;
 		return client;
@@ -535,19 +581,49 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * (running, a transient transition, or a failed build) propagates the original error so we
 	 * neither mask real failures nor recreate a sandbox off an unrelated error.
 	 *
-	 * A genuine auth failure is handled implicitly: the probe's own `get()` fails too (it
-	 * uses the same credentials), so we fall through to `false` and never recreate.
+	 * A credential failure against the management API is handled implicitly: the probe's own
+	 * `get()` fails too, so we fall through to `none` and never recreate.
+	 *
+	 * The probe refetches the sandbox, and that response carries the toolbox URL. A running
+	 * remote that rejected our credentials, plus a refetch that returns a different toolbox URL,
+	 * means the cached handle pointed somewhere stale — `refresh-handle` adopts the fresh one.
 	 */
-	private async isRecoverable(error: unknown): Promise<boolean> {
-		if (isSandboxGone(error)) return true;
+	private async planRecovery(error: unknown): Promise<RecoveryPlan> {
+		if (isSandboxGone(error)) return 'resume';
 		try {
 			const client = await this.auth.getClient();
 			const remote = await client.get(this.sandboxName);
-			return remote.state !== undefined && RECOVERABLE_SANDBOX_STATES.has(remote.state);
+			if (remote.state !== undefined && RECOVERABLE_SANDBOX_STATES.has(remote.state)) {
+				return 'resume';
+			}
+			return this.adoptFreshHandle(error, remote) ? 'refresh-handle' : 'none';
 		} catch (probeError) {
 			// Gone entirely → recreate; anything else (incl. auth) → don't mask the original.
-			return isSandboxGone(probeError);
+			return isSandboxGone(probeError) ? 'resume' : 'none';
 		}
+	}
+
+	/**
+	 * Replace the cached handle when it holds a stale toolbox URL.
+	 *
+	 * The SDK binds its toolbox client to the URL in whichever sandbox DTO it saw last, and
+	 * never revisits it. A DTO that reaches us holding the provider's own URL therefore points
+	 * every later toolbox call at the provider, which rejects our credentials — for the life of
+	 * the handle, not just for one call.
+	 */
+	private adoptFreshHandle(error: unknown, remote: Sandbox): boolean {
+		if (!isSandboxAuthError(error)) return false;
+		const staleUrl = this.sandbox?.toolboxProxyUrl;
+		if (!remote.toolboxProxyUrl || remote.toolboxProxyUrl === staleUrl) return false;
+
+		this.options.logger?.warn('Daytona toolbox URL was stale; adopting the refetched sandbox', {
+			sandboxName: this.sandboxName,
+			staleToolboxUrl: staleUrl,
+			freshToolboxUrl: remote.toolboxProxyUrl,
+		});
+		this.sandbox = remote;
+		this.lastClientGeneration = this.auth.getGeneration();
+		return true;
 	}
 
 	/**
@@ -555,19 +631,20 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * deleted out from under us. On a recoverable failure the sandbox is resumed (or recreated if
 	 * gone) and the operation is retried exactly once; a second failure propagates.
 	 *
-	 * Replaying the operation is safe because recovery only triggers when the probe confirms
-	 * the remote was NOT running (stopped/paused/archived/gone — see {@link isRecoverable}). In those
-	 * states the toolbox/exec request never reached a live container, so it could not have
-	 * partially executed. Operations on a running sandbox are never retried — their error
-	 * propagates untouched.
+	 * Replaying the operation is safe under both plans, because neither reached a live container:
+	 * `resume` only triggers when the probe confirms the remote was NOT running
+	 * (stopped/paused/archived/gone — see {@link planRecovery}), and `refresh-handle` only
+	 * triggers on a credential rejection, which the remote refuses before it runs anything.
+	 * Any other failure on a running sandbox propagates untouched.
 	 */
 	private async recoverAndRetry<T>(op: () => Promise<T>): Promise<T> {
 		try {
 			return await op();
 		} catch (error) {
 			if (isAbortError(error)) throw error;
-			if (!(await this.isRecoverable(error))) throw error;
-			await this.recover();
+			const plan = await this.planRecovery(error);
+			if (plan === 'none') throw error;
+			if (plan === 'resume') await this.recover();
 			return await op();
 		}
 	}
