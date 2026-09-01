@@ -2,7 +2,7 @@
  * Opt-in reviewer auto-assignment.
  *
  * When a PR carries the `Auto-assign reviewers` label, request review from
- * every team that owns a changed file (per .github/OWNERS). This is strictly
+ * every team that owns a changed file (per OWNERS). This is strictly
  * opt-in: without the label the script is a no-op, so it never adds friction
  * to PRs that don't want it.
  *
@@ -11,7 +11,7 @@
  * that marker is skipped. This stops later `synchronize` events from
  * re-requesting (and re-notifying) the same teams.
  *
- * Complements `owners-review-recommendations.mjs`, which only *suggests*
+ * Complements `review-recommendations.mjs`, which only *suggests*
  * reviewer teams in a comment — this one actually requests them.
  */
 
@@ -22,22 +22,18 @@ import {
 	readPrLabels,
 	removeLabel,
 	requestTeamReviewers,
-} from './github-helpers.mjs';
-import { assignOwnership, ownershipsToAllocations, parseOwnersFile } from './owners.mjs';
+} from '../github-helpers.mjs';
+import {
+	assignOwnership,
+	ownershipsToAllocations,
+	parseOwnersFile,
+	teamHandleToSlug,
+} from './owners.mjs';
+
+export { teamHandleToSlug };
 
 export const AUTO_ASSIGN_LABEL = 'Auto-assign reviewers';
 export const ASSIGNED_LABEL = 'Reviewers auto-assigned';
-
-/**
- * Convert an OWNERS team handle (`@n8n-io/catalysts`) into the GitHub team slug
- * (`catalysts`) expected by the requestReviewers API.
- *
- * @param { string } team
- * @returns { string }
- */
-export function teamHandleToSlug(team) {
-	return team.replace(/^@[^/]+\//, '');
-}
 
 /**
  * @param { string[] } labels
