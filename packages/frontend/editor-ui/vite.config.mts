@@ -38,7 +38,7 @@ const singleInstanceDedupe = ['zod'];
 
 const alias = editorUiAliases(__dirname, packagesDir);
 
-const { RELEASE: release } = process.env;
+const { RELEASE: release, SENTRY_AUTH_TOKEN: sentryAuthToken } = process.env;
 
 const plugins: UserConfig['plugins'] = [
 	devServerPlugin(process.env),
@@ -139,15 +139,19 @@ const plugins: UserConfig['plugins'] = [
 				sentryVitePlugin({
 					org: 'n8nio',
 					project: 'instance-frontend',
-					authToken: process.env.SENTRY_AUTH_TOKEN,
+					authToken: sentryAuthToken,
+					// Stop the deletion hook if the Sentry upload fails.
+					errorHandler: (error) => {
+						throw error;
+					},
 					telemetry: false,
 					release: {
 						name: `n8n@${release}`,
 					},
 					sourcemaps: {
 						// Sentry keeps these maps, so the image does not need them (156MB).
-						// The plugin deletes them only after the upload succeeds.
-						filesToDeleteAfterUpload: ['./dist/**/*.map'],
+						// Keep the maps if upload credentials are not available.
+						filesToDeleteAfterUpload: sentryAuthToken ? ['./dist/**/*.map'] : undefined,
 					},
 				}),
 			]
