@@ -208,8 +208,8 @@ onUnmounted(() => {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 2rem;
-	height: 2rem;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
 	padding: 0;
 	border: 0;
 	border-radius: var(--radius);
@@ -223,7 +223,7 @@ onUnmounted(() => {
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
-		outline-offset: 2px;
+		outline-offset: var(--spacing--5xs);
 	}
 }
 
@@ -231,7 +231,7 @@ onUnmounted(() => {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	line-height: 1;
-	padding: 2px 4px;
+	padding: var(--spacing--5xs) var(--spacing--4xs);
 	border-radius: var(--radius);
 	color: var(--text-color);
 	background: var(--color--white-alpha-500);

@@ -57,7 +57,7 @@ export const Variants: Story = {
 	render: () => ({
 		components: { N8nIconButton },
 		template: `
-			<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+			<div style="display: flex; gap: var(--spacing--xs); align-items: center; flex-wrap: wrap;">
 				<N8nIconButton icon="plus" aria-label="Create" variant="solid" />
 				<N8nIconButton icon="plus" aria-label="Create" variant="subtle" />
 				<N8nIconButton icon="plus" aria-label="Create" variant="outline" />
@@ -76,7 +76,7 @@ export const Sizes: Story = {
 	render: () => ({
 		components: { N8nIconButton },
 		template: `
-			<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+			<div style="display: flex; gap: var(--spacing--xs); align-items: center; flex-wrap: wrap;">
 				<N8nIconButton icon="plus" aria-label="Create" variant="solid" size="xsmall" />
 				<N8nIconButton icon="plus" aria-label="Create" variant="solid" size="small" />
 				<N8nIconButton icon="plus" aria-label="Create" variant="solid" size="medium" />
@@ -94,7 +94,7 @@ export const States: Story = {
 	render: () => ({
 		components: { N8nIconButton },
 		template: `
-			<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+			<div style="display: flex; gap: var(--spacing--xs); align-items: center; flex-wrap: wrap;">
 				<N8nIconButton icon="plus" aria-label="Create" variant="solid" />
 				<N8nIconButton icon="plus" aria-label="Create" variant="solid" :loading="true" />
 				<N8nIconButton icon="plus" aria-label="Create" variant="solid" :disabled="true" />

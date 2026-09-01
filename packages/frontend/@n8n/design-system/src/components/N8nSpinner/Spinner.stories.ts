@@ -46,12 +46,12 @@ export const Variants = {
 	render: () => ({
 		components: { N8nSpinner },
 		template: `
-			<div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
-				<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+			<div style="display: flex; align-items: center; gap: var(--spacing--lg); flex-wrap: wrap;">
+				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
 					<N8nSpinner type="dots" size="medium" />
 					<span>dots</span>
 				</div>
-				<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
 					<N8nSpinner type="ring" size="medium" />
 					<span>ring</span>
 				</div>
@@ -64,7 +64,7 @@ export const Sizes = {
 	render: () => ({
 		components: { N8nSpinner },
 		template: `
-			<div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+			<div style="display: flex; align-items: center; gap: var(--spacing--sm); flex-wrap: wrap;">
 				<N8nSpinner type="dots" size="small" />
 				<N8nSpinner type="dots" size="medium" />
 				<N8nSpinner type="dots" size="large" />

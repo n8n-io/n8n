@@ -22,7 +22,7 @@ const meta = {
 	},
 	decorators: [
 		() => ({
-			template: '<div style="width: 240px;"><story /></div>',
+			template: '<div style="width: var(--spacing--5xl);"><story /></div>',
 		}),
 	],
 } satisfies Meta<typeof N8nMenuItem>;
@@ -80,7 +80,7 @@ export const WithBadges: Story = {
 				},
 				{
 					id: 'credits',
-					label: 'AI Credits',
+					label: 'Gateway credits',
 					icon: 'sparkles',
 					creditsTag: '120 left',
 				},
@@ -88,7 +88,7 @@ export const WithBadges: Story = {
 			return { items };
 		},
 		template: `
-			<div style="display: flex; flex-direction: column; gap: 4px;">
+			<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
 				<N8nMenuItem v-for="item in items" :key="item.id" :item="item" />
 			</div>
 		`,
@@ -131,7 +131,7 @@ export const Compact: Story = {
 	},
 	decorators: [
 		() => ({
-			template: '<div style="width: 48px;"><story /></div>',
+			template: '<div style="width: var(--spacing--2xl);"><story /></div>',
 		}),
 	],
 };
