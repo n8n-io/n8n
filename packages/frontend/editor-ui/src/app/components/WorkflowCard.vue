@@ -334,15 +334,18 @@ const publicationIndicators: Record<
 	{ variant: StatusDotVariant; labelKey: BaseTextKey; tooltipKey?: BaseTextKey }
 > = {
 	published: { variant: 'success', labelKey: 'workflows.published' },
+	// Deliberately NOT the workflows.publish.*.tooltip keys the header uses: the
+	// header sits next to the Publish button ("Publish again to retry"), while the
+	// card's only affordance is opening the workflow, so its copy says that.
 	partial: {
 		variant: 'warning',
 		labelKey: 'workflows.publicationStatus.partial',
-		tooltipKey: 'workflows.publish.partial.tooltip',
+		tooltipKey: 'workflows.publicationStatus.partial.tooltip',
 	},
 	failed: {
 		variant: 'danger',
 		labelKey: 'workflows.publicationStatus.failed',
-		tooltipKey: 'workflows.publish.failed.tooltip',
+		tooltipKey: 'workflows.publicationStatus.failed.tooltip',
 	},
 };
 
