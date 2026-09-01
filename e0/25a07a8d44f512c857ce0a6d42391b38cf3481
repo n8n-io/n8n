@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationKinds.ts
+  s_36f3a67142d237::t_9bbfd21aef60bb 36-53
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_36f3a67142d237::t_34c9c7a0d5efb9 379
+  s_36f3a67142d237::t_3889f93e764e81 47-48
+  s_36f3a67142d237::t_35c6a4198c5300 609-619
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelState.ts
+  s_36f3a67142d237::t_a5471f12b01ba3 1-66
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.ts
+  s_36f3a67142d237::t_a9c564c6745440 1-135
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelState.test.ts
+  s_36f3a67142d237::t_7246980f73b220 1-34,51-121
+  s_36f3a67142d237::t_6b9cb8da6bab07 35-50
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/confirmationKinds.test.ts
+  s_36f3a67142d237::t_e43f4c60e5c169 1-43
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_36f3a67142d237::t_d0a99184010e3f 10
+  s_36f3a67142d237::t_71a5e9539e7391 1805-1887
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.test.ts
+  s_36f3a67142d237::t_56743eb9062fe5 1-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e025a07a8d44f512c857ce0a6d42391b38cf3481",
+  "prompts": {},
+  "sessions": {
+    "s_36f3a67142d237": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2d603ec-335c-4ef1-946a-d50e33d64e92",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
