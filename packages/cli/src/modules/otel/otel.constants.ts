@@ -1,7 +1,6 @@
 import { OTLP_PROTOCOLS, type OtlpProtocol } from '@n8n/api-types';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
-/** Re-exported so this module keeps one import site for its constants. */
 export { OTLP_PROTOCOLS, type OtlpProtocol };
 
 export const OTEL_ENV_VARS = {

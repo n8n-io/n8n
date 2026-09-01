@@ -1,10 +1,5 @@
 import { OTLP_PROTOCOLS, type OtlpProtocol } from './otel.constants';
 
-/**
- * Narrows the value the protocol dropdown emits: element-plus types its
- * `update:model-value` payload as `any`, so the store field stays honest only if
- * the value is checked against the protocols the backend accepts.
- */
 export function isOtlpProtocol(value: unknown): value is OtlpProtocol {
 	return OTLP_PROTOCOLS.some((protocol) => protocol === value);
 }

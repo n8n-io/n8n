@@ -12,10 +12,7 @@ export class OtelConfig {
 	@Env(OTEL_ENV_VARS.enabled)
 	enabled: boolean = false;
 
-	/**
-	 * Wire protocol used to export spans. The endpoint scheme (`http://` vs
-	 * `https://`) controls TLS for both protocols; gRPC endpoints take no path.
-	 */
+	/** Wire protocol used to export spans. A gRPC endpoint takes no URL path. */
 	@Env(OTEL_ENV_VARS.exporterProtocol, otlpProtocolSchema)
 	exporterProtocol: OtlpProtocol = 'http/protobuf';
 

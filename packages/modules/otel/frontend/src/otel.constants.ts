@@ -1,6 +1,5 @@
 import { OTLP_PROTOCOLS, type OtlpProtocol } from '@n8n/api-types';
 
-/** Re-exported so this module keeps one import site for its constants. */
 export { OTLP_PROTOCOLS, type OtlpProtocol };
 
 export const OTEL_STORE = 'otel';

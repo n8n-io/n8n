@@ -22,8 +22,8 @@ describe('OtelConfig', () => {
 			expect(exporterEndpoint).toBe(DEFAULT_ENDPOINT);
 		});
 
-		// Schemes are matched case-insensitively (RFC 3986), and the value is kept
-		// verbatim — the service lowercases the scheme before it reaches the exporter.
+		// Uppercase schemes stay verbatim here. The service lowercases the scheme
+		// before it reaches the exporter.
 		it.each([
 			'http://localhost:4318',
 			'https://collector.example.com:4317',
@@ -38,7 +38,6 @@ describe('OtelConfig', () => {
 			expect(exporterEndpoint).toBe(value);
 		});
 
-		// The scheme selects TLS, so a value without an http(s) scheme is unusable.
 		// The config framework warns and keeps the default instead of failing startup.
 		it.each(['localhost:4318', 'grpc://host:4317', 'ftp://x', 'not-a-url'])(
 			'falls back to the default for %p',

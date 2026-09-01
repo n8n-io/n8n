@@ -87,9 +87,8 @@ const typeIntoUnitInput = async (input: HTMLElement, value: string) => {
 };
 
 /**
- * The protocol dropdown is an element-plus select: click its input to open the
- * dropdown, then the option. The dropdown is teleported to the body, so the
- * option is queried through `screen` rather than the render container.
+ * Opens the element-plus select, then clicks the option. The dropdown is teleported
+ * to the body, so the option comes from `screen`, not the render container.
  */
 const selectProtocol = async (optionLabel: string) => {
 	const select = screen.getByTestId('otel-exporter-protocol');

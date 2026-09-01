@@ -27,7 +27,6 @@ import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
-/** What the startup connectivity check dials, and how. */
 type OtlpProbeTarget = { protocol: OtlpProtocol; url: string };
 
 @Service()
@@ -151,11 +150,6 @@ export class OtelService {
 		return { protocol: settings.exporterProtocol, url: this.resolveExporterUrl(settings) };
 	}
 
-	/**
-	 * Builds the OTLP trace exporter for the configured wire protocol.
-	 * `timeoutMillis` is the per-export deadline; the SDK exporter uses the
-	 * library default when it is not set.
-	 */
 	private async createTraceExporter(
 		connection: OtelConnectionParams,
 		timeoutMillis?: number,
@@ -177,10 +171,7 @@ export class OtelService {
 		return new OTLPTraceExporter({ url, headers, timeoutMillis });
 	}
 
-	/**
-	 * The gRPC exporter and grpc-js are imported lazily so instances on the
-	 * default HTTP/protobuf protocol never load grpc-js and its HTTP/2 stack.
-	 */
+	/** Imports lazily, so the default protocol never loads grpc-js and its HTTP/2 stack. */
 	private async createGrpcTraceExporter(
 		connection: OtelConnectionParams,
 		timeoutMillis?: number,
@@ -200,20 +191,14 @@ export class OtelService {
 		});
 	}
 
-	/**
-	 * Where spans are sent: the traces path is appended for HTTP, while gRPC
-	 * endpoints are used as-is — gRPC carries no URL path and the exporter
-	 * derives TLS from the scheme (`https://` → SSL, `http://` → insecure).
-	 */
 	private resolveExporterUrl(
 		connection: Pick<
 			OtelConnectionParams,
 			'exporterProtocol' | 'exporterEndpoint' | 'exporterTracingPath'
 		>,
 	): string {
-		// The gRPC exporter selects TLS with a raw-string `startsWith('http://')`,
-		// so an uppercase scheme silently picks TLS against a plaintext collector.
-		// Only the scheme is lowercased — the rest of the URL stays byte-for-byte.
+		// The gRPC exporter selects TLS with a raw-string `startsWith('http://')`, so
+		// an uppercase scheme silently picks TLS against a plaintext collector.
 		const endpoint = connection.exporterEndpoint.replace(/^https?:\/\//i, (scheme) =>
 			scheme.toLowerCase(),
 		);
@@ -224,10 +209,8 @@ export class OtelService {
 	}
 
 	/**
-	 * Copies parsed OTLP headers into gRPC metadata. Keys are lowercased because
-	 * gRPC metadata keys are lowercase ASCII, and grpc-js throws on anything it
-	 * considers illegal — since headers can come from an env var, an unusable
-	 * entry is skipped with a warning rather than failing startup.
+	 * gRPC metadata keys must be lowercase ASCII, and grpc-js throws on an illegal
+	 * key. Headers can come from an env var, so skip and warn instead of failing startup.
 	 */
 	private toGrpcMetadata(headers: Record<string, string>, metadata: Metadata): Metadata {
 		for (const [key, value] of Object.entries(headers)) {
@@ -311,9 +294,7 @@ export class OtelService {
 	}
 
 	private async probeHttpEndpoint(url: string, timeoutMs: number): Promise<void> {
-		// HEAD is used for a cheap connectivity check (no request/response body).
-		// OTLP endpoints are POST-only, so this will often return 4xx, but any
-		// HTTP response means the server is reachable. We only catch network errors.
+		// OTLP endpoints are POST-only, so a 4xx still means the server is reachable.
 		// SSRF is disabled: the OTLP endpoint is admin-configured observability
 		// infrastructure and is commonly an internal/localhost collector.
 		await this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' }).asCustomFetch()(url, {
@@ -323,10 +304,8 @@ export class OtelService {
 	}
 
 	/**
-	 * Waits until a grpc-js channel to the collector reports READY. Readiness
-	 * proves TCP, the TLS handshake for `https://`, and an HTTP/2 connection. The
-	 * channel uses the exporter's target and credentials. The probe stays advisory:
-	 * use "Send test trace" to prove that the endpoint serves OTLP.
+	 * Channel readiness proves TCP, the TLS handshake, and HTTP/2. The probe stays
+	 * advisory: only "Send test trace" proves that the endpoint serves OTLP.
 	 */
 	private async probeGrpcEndpoint(endpoint: string, timeoutMs: number): Promise<void> {
 		const { host, protocol } = new URL(endpoint);

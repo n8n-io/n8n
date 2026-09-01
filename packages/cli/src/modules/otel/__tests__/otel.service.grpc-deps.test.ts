@@ -7,9 +7,8 @@ import { mock } from 'vitest-mock-extended';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import { OtelService } from '../otel.service';
 
-// Only the gRPC exporter is mocked, so that grpc-js stays real: its metadata
-// rules are stricter than any stand-in (a `-bin` key also rejects string
-// values), and the warn-and-skip behaviour must hold against the real class.
+// Only the gRPC exporter is mocked, so that grpc-js stays real: its metadata rules
+// are stricter than any stand-in, and warn-and-skip must hold against the real class.
 const { exporterOptions } = vi.hoisted(() => ({
 	exporterOptions: [] as Array<{ url: string; metadata: Metadata }>,
 }));

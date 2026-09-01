@@ -85,12 +85,8 @@ const statusDescription = computed(() =>
 		: i18n.baseText('settings.opentelemetry.status.disabledDescription'),
 );
 
-/*
- * gRPC drops two things the HTTP exporter needs: the endpoint takes no URL path
- * (so the trace-path row goes away), and headers travel as gRPC metadata. The
- * connection copy follows the protocol so the fields describe what actually
- * happens on the wire.
- */
+// gRPC takes no URL path (so the trace-path row goes away) and sends headers as
+// metadata, so the connection copy follows the protocol.
 const isGrpc = computed(() => otelStore.settings.exporterProtocol === 'grpc');
 
 const endpointDescription = computed(() =>

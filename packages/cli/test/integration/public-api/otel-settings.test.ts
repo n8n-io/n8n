@@ -206,9 +206,6 @@ describe('OpenTelemetry settings in Public API', () => {
 				});
 			expect(grpc.body.exporterProtocol).toBe('grpc');
 
-			// Every field in this endpoint is overwritten on write, so a body written
-			// before the field existed resets the protocol to its default instead of
-			// keeping the stored value.
 			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
 			const replaced = await testServer
 				.publicApiAgentFor(owner)
@@ -361,7 +358,7 @@ describe('OpenTelemetry settings in Public API', () => {
 
 		it('rejects a body that omits the env-managed protocol with 409', async () => {
 			// The omitted field defaults to `http/protobuf`, which conflicts with the
-			// env-enforced `grpc` — the same 409 any other env-managed field returns.
+			// env-enforced `grpc`.
 			const { exporterProtocol: _omitted, ...bodyWithoutProtocol } = validSettings;
 
 			const response = await testServer

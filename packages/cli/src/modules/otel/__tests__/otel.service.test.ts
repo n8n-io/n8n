@@ -22,8 +22,7 @@ const outboundHttp = {
 	transport: () => ({ asCustomFetch: () => fetchMock }),
 } as unknown as OutboundHttp;
 
-// The channel-readiness check for gRPC endpoints, plus the metadata stand-in.
-// Hoisted because the service imports grpc-js lazily inside the probe.
+// Hoisted because the service imports grpc-js lazily, inside the exporter and probe.
 const {
 	metadataEntries,
 	MetadataMock,
@@ -38,7 +37,7 @@ const {
 	const entries = new Map<string, string>();
 	const legalKey = /^[:0-9a-z_.-]+$/;
 
-	/** Stand-in for grpc-js `Metadata`, mirroring its key validation. */
+	/** Mirrors the key validation of grpc-js `Metadata`. */
 	class MetadataMock {
 		set(key: string, value: string) {
 			if (!legalKey.test(key)) {
@@ -54,7 +53,6 @@ const {
 	const waitForReady = vi.fn();
 	const clientClose = vi.fn();
 
-	/** Stand-in for the grpc-js `Client` the probe builds a channel with. */
 	class ClientMock {
 		constructor(target: string, credentials: unknown, options: unknown) {
 			newClient(target, credentials, options);
@@ -202,7 +200,6 @@ describe('OtelService', () => {
 		instanceSettings = mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' });
 		logger = mock<Logger>();
 		fetchMock.mockResolvedValue({ ok: true });
-		// By default the channel reports READY right away.
 		waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) =>
 			callback(),
 		);
@@ -279,9 +276,6 @@ describe('OtelService', () => {
 
 			await service.init();
 
-			// The gRPC exporter selects TLS with a raw-string `startsWith('http://')`,
-			// so an uppercase scheme would silently pick TLS against a plaintext
-			// collector. Everything after the scheme is passed through untouched.
 			expect(OTLPGrpcTraceExporter).toHaveBeenCalledWith(
 				expect.objectContaining({ url: 'http://Collector.Example.com:4317' }),
 			);

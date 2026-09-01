@@ -5,20 +5,14 @@ import { Z } from '../../zod-class';
 /**
  * Wire protocols for the OTLP trace exporter, using the value strings from the
  * upstream `OTEL_EXPORTER_OTLP_PROTOCOL` spec. `http/json` is not supported.
- * Declared here because both the frontend and the backend use it.
  */
 export const OTLP_PROTOCOLS = ['http/protobuf', 'grpc'] as const;
 
 export type OtlpProtocol = (typeof OTLP_PROTOCOLS)[number];
 
 /**
- * The exporter endpoint. `z.string().url()` alone is too permissive: it accepts
- * opaque URLs such as `localhost:4318` and any scheme, e.g. `grpc://host:4317`.
- * The scheme is load-bearing — it selects TLS for both protocols — so only
- * `http://` and `https://` are valid. The match is case-insensitive because URL
- * schemes are case-insensitive (RFC 3986), so `HTTP://host` must keep passing.
- * Every value this rule rejects already fails at export time, so no working
- * configuration stops validating.
+ * `z.string().url()` alone accepts opaque URLs such as `localhost:4318` and any
+ * scheme. The scheme selects TLS for both protocols, so it must be http(s).
  */
 export const exporterEndpointSchema = z
 	.string()
