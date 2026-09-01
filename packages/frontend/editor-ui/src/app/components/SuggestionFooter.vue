@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nExternalLink, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { computed } from 'vue';
 import { usePostHog } from '@/app/stores/posthog.store';
 
@@ -33,13 +33,14 @@ const suggestionUrl = computed(() => {
 		<N8nText size="small" color="text-light">
 			{{ prompt }}
 		</N8nText>
-		<N8nExternalLink
+		<a
 			:class="[$style.link, 'ignore-key-press-node-creator']"
 			:href="suggestionUrl"
-			size="large"
+			target="_blank"
+			rel="noopener noreferrer"
 		>
 			{{ action }}
-		</N8nExternalLink>
+		</a>
 	</div>
 </template>
 
@@ -56,6 +57,14 @@ const suggestionUrl = computed(() => {
 	color: var(--text-color);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
+	text-decoration: none;
+
+	&::after {
+		content: '↗';
+		margin-left: 2px;
+		text-decoration: none;
+		display: inline-block;
+	}
 
 	&:hover {
 		color: var(--color--primary);
