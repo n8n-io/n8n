@@ -1,0 +1,183 @@
+operationId: getWorkflowVersion
+tags:
+  - Workflow
+summary: Retrieve a workflow version
+description: Retrieve a single version of a workflow from its version history.
+x-required-scope: workflow:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: workflowId
+    in: path
+  - schema:
+      type: string
+    required: true
+    name: versionId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            versionId:
+              type: string
+            workflowId:
+              type: string
+            nodes:
+              type: array
+              description: Nodes that make up the workflow
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: 0f5532f9-36ba-4bef-86c7-30d607400b15
+                  name:
+                    type: string
+                    example: Jira
+                  webhookId:
+                    type: string
+                  disabled:
+                    type: boolean
+                  notesInFlow:
+                    type: boolean
+                  notes:
+                    type: string
+                  type:
+                    type: string
+                    example: n8n-nodes-base.jira
+                  typeVersion:
+                    type: number
+                    example: 1
+                  executeOnce:
+                    type: boolean
+                    example: false
+                  alwaysOutputData:
+                    type: boolean
+                    example: false
+                  retryOnFail:
+                    type: boolean
+                    example: false
+                  maxTries:
+                    type: number
+                  waitBetweenTries:
+                    type: number
+                  continueOnFail:
+                    type: boolean
+                    example: false
+                    description: use onError instead
+                    deprecated: true
+                  onError:
+                    type: string
+                    example: stopWorkflow
+                  position:
+                    type: array
+                    items:
+                      type: number
+                    example:
+                      - -100
+                      - 80
+                  parameters:
+                    type: object
+                    additionalProperties: true
+                  credentials:
+                    type: object
+                    example:
+                      jiraSoftwareCloudApi:
+                        name: jiraApi
+                  customTelemetryTags:
+                    type: object
+                    properties:
+                      tag:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                            - key
+                            - value
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+            connections:
+              type: object
+              description: Connections between nodes, keyed by source node name
+              example:
+                Jira:
+                  main:
+                    - - node: Jira
+                        type: main
+                        index: 0
+            nodeGroups:
+              type: array
+              description: Visual groupings of nodes shown as frames on the canvas
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Unique identifier for the node group
+                    example: 9b1c8e2a-4d3f-4a6b-8c7d-1e2f3a4b5c6d
+                  name:
+                    type: string
+                    description: Display name of the node group
+                    example: Data processing
+                  description:
+                    type: string
+                    maxLength: 155
+                    description: Optional plain-text description of the node group
+                    example: Cleans and normalizes incoming records
+                  nodeIds:
+                    type: array
+                    description: IDs of the nodes that belong to this group
+                    items:
+                      type: string
+                required:
+                  - id
+                  - name
+                  - nodeIds
+            authors:
+              type: string
+            name:
+              type: string
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - versionId
+            - workflowId
+            - nodes
+            - connections
+            - nodeGroups
+            - authors
+            - name
+            - description
+            - createdAt
+            - updatedAt
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
