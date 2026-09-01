@@ -3,14 +3,14 @@ import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { versionDescription } from '../../../../v2/actions/versionDescription';
-import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
-import * as transport from '../../../../v2/transport';
-import type * as _importType0 from '../../../../v2/transport';
+import { versionDescription } from '../../../v2/actions/versionDescription';
+import { MicrosoftTeamsV2 } from '../../../v2/MicrosoftTeamsV2.node';
+import * as transport from '../../../v2/transport';
+import type * as _importType0 from '../../../v2/transport';
 
 // Real transport except the network helper, so the operation runs for real.
-vi.mock('../../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
+vi.mock('../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
@@ -22,7 +22,7 @@ const USERS: Record<string, IDataObject> = {
 	'/v1.0/users/bob%40example.com': { id: 'guid-2', displayName: 'Bob Jones' },
 };
 
-describe('Microsoft Teams V2, channelMessage:create per item', () => {
+describe('Microsoft Teams V2, create per item', () => {
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
@@ -43,14 +43,16 @@ describe('Microsoft Teams V2, channelMessage:create per item', () => {
 		) as unknown as IExecuteFunctions['helpers']['constructExecutionMetaData'];
 	});
 
-	it('mentions the user configured on each item', async () => {
+	it.each([
+		['channelMessage', { teamId: 'teamID', channelId: 'channelID' }],
+		['chatMessage', { chatId: 'chatID' }],
+	])('%s create mentions the user configured on each item', async (resource, target) => {
 		const mentionedPerItem = ['jane@example.com', 'bob@example.com'];
 		const params: Record<string, unknown> = {
 			authentication: 'microsoftTeamsOAuth2Api',
-			resource: 'channelMessage',
+			resource,
 			operation: 'create',
-			teamId: 'teamID',
-			channelId: 'channelID',
+			...target,
 			contentType: 'text',
 			message: 'hi',
 			options: { includeLinkToWorkflow: false },
@@ -64,8 +66,8 @@ describe('Microsoft Teams V2, channelMessage:create per item', () => {
 				return (name in params ? params[name] : fallback) as NodeParameterValueType;
 			},
 		);
-		apiRequest.mockImplementation(async (_method: string, resource: string) =>
-			resource in USERS ? USERS[resource] : { id: 'sent' },
+		apiRequest.mockImplementation(async (_method: string, resourcePath: string) =>
+			resourcePath in USERS ? USERS[resourcePath] : { id: 'sent' },
 		);
 
 		await node.execute.call(ctx);
