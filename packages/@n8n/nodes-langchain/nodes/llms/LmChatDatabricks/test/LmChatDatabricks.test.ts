@@ -146,7 +146,7 @@ describe('LmChatDatabricks', () => {
 				mockCredential,
 				undefined,
 			);
-			expect(mockedCreateDatabricksFetch).toHaveBeenCalledWith(mockTokenProvider);
+			expect(mockedCreateDatabricksFetch).toHaveBeenCalledWith(mockTokenProvider, undefined);
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
 			expect(callArgs?.configuration?.fetch).toBe(mockFetch);
 		});
@@ -168,6 +168,7 @@ describe('LmChatDatabricks', () => {
 				mockCredential,
 				egressFilter,
 			);
+			expect(mockedCreateDatabricksFetch).toHaveBeenCalledWith(mockTokenProvider, egressFilter);
 			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
 				'https://my.databricks.com/serving-endpoints',
 				expect.any(Object),
@@ -256,6 +257,14 @@ describe('LmChatDatabricks', () => {
 
 			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow(NodeOperationError);
 			expect(MockedChatOpenAI).not.toHaveBeenCalled();
+		});
+
+		it('should accept an uppercase HTTPS scheme', async () => {
+			const ctx = setupMockContext({ host: 'HTTPS://my.databricks.com' });
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalled();
 		});
 	});
 

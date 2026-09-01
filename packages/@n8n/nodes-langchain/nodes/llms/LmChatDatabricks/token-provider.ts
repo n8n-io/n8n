@@ -1,3 +1,4 @@
+import { fetchFollowingRedirects } from '@n8n/ai-utilities';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type { INode, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -77,9 +78,14 @@ export function getDatabricksTokenProvider(
 
 /**
  * Wraps fetch to inject a fresh bearer token per request. Never reads or
- * clones the body, so streaming responses pass through untouched.
+ * clones the body, so streaming responses pass through untouched. Redirects
+ * are followed manually so every hop is validated against the egress filter
+ * before the token is sent to it, matching the MCP client's fetch wrapper.
  */
-export function createDatabricksFetch(getToken: () => Promise<string>): typeof globalThis.fetch {
+export function createDatabricksFetch(
+	getToken: () => Promise<string>,
+	egressFilter?: NodeEgressFilter,
+): typeof globalThis.fetch {
 	return async (input, init) => {
 		// Passing headers in init replaces a Request input's own headers, so
 		// carry those over when init doesn't set any
@@ -87,6 +93,19 @@ export function createDatabricksFetch(getToken: () => Promise<string>): typeof g
 			init?.headers ?? (input instanceof Request ? input.headers : undefined),
 		);
 		headers.set('authorization', `Bearer ${await getToken()}`);
-		return await fetch(input, { ...init, headers });
+		const startUrl = input instanceof Request ? input.url : input;
+		return await fetchFollowingRedirects(
+			fetch,
+			startUrl,
+			{ ...init, headers },
+			{
+				onBeforeHop: async (hopUrl) => {
+					if (egressFilter) {
+						const result = await egressFilter.validateUrl(hopUrl);
+						if (!result.ok) throw result.error;
+					}
+				},
+			},
+		);
 	};
 }

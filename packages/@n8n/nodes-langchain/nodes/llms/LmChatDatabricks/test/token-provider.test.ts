@@ -1,4 +1,4 @@
-import type { INode } from 'n8n-workflow';
+import type { INode, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { DatabricksOAuth2Credential } from '../token-provider';
@@ -314,6 +314,53 @@ describe('createDatabricksFetch', () => {
 		const serialized = JSON.stringify(error, Object.getOwnPropertyNames(error));
 		expect(serialized).not.toContain('minted-token-abc');
 		expect(serialized).not.toContain('Bearer ');
+	});
+
+	it('should validate each redirect hop against the egress filter before following it', async () => {
+		const mockFetch = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(null, { status: 302, headers: { location: 'https://internal.evil/steal' } }),
+			)
+			.mockResolvedValue(new Response('ok'));
+		globalThis.fetch = mockFetch;
+		const validateUrl = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: true })
+			.mockResolvedValueOnce({ ok: false, error: new Error('egress blocked') });
+		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token', {
+			validateUrl,
+		} as unknown as NodeEgressFilter);
+
+		await expect(wrappedFetch('https://my.databricks.com/serving-endpoints')).rejects.toThrow(
+			'egress blocked',
+		);
+
+		expect(validateUrl).toHaveBeenNthCalledWith(2, 'https://internal.evil/steal');
+		// The redirect target must never be fetched
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('should follow a redirect the egress filter allows', async () => {
+		const finalResponse = new Response('ok');
+		const mockFetch = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(null, {
+					status: 302,
+					headers: { location: 'https://my.databricks.com/moved' },
+				}),
+			)
+			.mockResolvedValueOnce(finalResponse);
+		globalThis.fetch = mockFetch;
+		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token', {
+			validateUrl: vi.fn().mockResolvedValue({ ok: true }),
+		} as unknown as NodeEgressFilter);
+
+		const result = await wrappedFetch('https://my.databricks.com/serving-endpoints');
+
+		expect(result).toBe(finalResponse);
+		expect(mockFetch.mock.calls[1][0]).toEqual(new URL('https://my.databricks.com/moved'));
 	});
 
 	it('should send a rotated token after the previous one expires mid-execution', async () => {

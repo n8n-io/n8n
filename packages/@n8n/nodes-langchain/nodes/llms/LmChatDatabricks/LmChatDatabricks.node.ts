@@ -23,9 +23,22 @@ import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-h
 // Every request carries a secret (bearer token, or the client secret on the
 // mint path), so an http host would ship it in cleartext
 function assertHttpsHost(ctx: ILoadOptionsFunctions | ISupplyDataFunctions, host: string) {
-	if (!host.startsWith('https://')) {
+	if (!URL.canParse(host) || new URL(host).protocol !== 'https:') {
 		throw new NodeOperationError(ctx.getNode(), 'Databricks host must use https');
 	}
+}
+
+interface ServingEndpointsResponse {
+	endpoints?: Array<{
+		name: string;
+		task?: string;
+		config?: {
+			served_entities?: Array<{
+				external_model?: { name: string };
+				foundation_model?: { name: string };
+			}>;
+		};
+	}>;
 }
 
 async function searchModels(
@@ -36,23 +49,16 @@ async function searchModels(
 	assertHttpsHost(this, credentials.host);
 	const host = credentials.host.replace(/\/$/, '');
 
-	const response: {
-		endpoints?: Array<{
-			name: string;
-			task?: string;
-			config?: {
-				served_entities?: Array<{
-					external_model?: { name: string };
-					foundation_model?: { name: string };
-				}>;
-			};
-		}>;
-	} = await this.helpers.httpRequestWithAuthentication.call(this, 'databricksOAuth2Api', {
-		method: 'GET',
-		url: `${host}/api/2.0/serving-endpoints`,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	const response: ServingEndpointsResponse = await this.helpers.httpRequestWithAuthentication.call(
+		this,
+		'databricksOAuth2Api',
+		{
+			method: 'GET',
+			url: `${host}/api/2.0/serving-endpoints`,
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	);
 
 	const endpoints = response.endpoints ?? [];
 
@@ -301,6 +307,7 @@ export class LmChatDatabricks implements INodeType {
 			baseURL,
 			fetch: createDatabricksFetch(
 				getDatabricksTokenProvider(this.getNode(), credential, egressFilter),
+				egressFilter,
 			),
 			fetchOptions: {
 				dispatcher: getProxyAgent(
