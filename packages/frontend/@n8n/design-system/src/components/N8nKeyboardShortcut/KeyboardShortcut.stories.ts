@@ -22,8 +22,8 @@ const template: StoryFn = (args, { argTypes }) => ({
 	template: '<n8n-keyboard-shortcut v-bind="args" />',
 });
 
-export const defaultShortcut = template.bind({});
-defaultShortcut.args = {
+export const Default = template.bind({});
+Default.args = {
 	keys: ['s'],
 	altKey: true,
 	metaKey: true,

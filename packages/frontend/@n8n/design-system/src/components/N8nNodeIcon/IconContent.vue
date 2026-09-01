@@ -1,10 +1,9 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
-import N8nNodeIcon from '.';
+import N8nNodeIcon from './NodeIcon.vue';
 import N8nIcon from '../N8nIcon';
-import type { IconName, NodeIconName } from '../N8nIcon/icons';
-import { isSupportedIconName } from '../N8nIcon/icons';
+import { isSupportedIconName, type IconName, type NodeIconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 type IconType = 'file' | 'icon' | 'unknown';

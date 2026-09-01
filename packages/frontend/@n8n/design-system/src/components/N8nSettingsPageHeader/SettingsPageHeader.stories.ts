@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
 
 const meta = {
-	title: 'Areas/Settings/Page Header',
+	title: 'Areas/Settings/PageHeader',
 	component: N8nSettingsPageHeader,
 	argTypes: {
 		showDocsLink: { control: 'boolean' },

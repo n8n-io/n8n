@@ -49,7 +49,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nSuggestedActions,
 	},
 	template: `
-		<div style="padding: 50px;">
+		<div>
 			<p style="margin-bottom: 20px;">Popover is: {{ isOpen ? 'Open' : 'Closed' }}</p>
 			<N8nSuggestedActions
 				v-bind="args"
@@ -140,7 +140,7 @@ const AlignmentTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nSuggestedActions,
 	},
 	template: `
-		<div style="padding: 50px; display: flex; justify-content: space-between; width: 800px;">
+		<div style="display: flex; justify-content: space-between; width: 800px">
 			<div>
 				<h4 style="margin-bottom: 10px;">Start Alignment</h4>
 				<p>{{ startOpen ? 'Open' : 'Closed' }}</p>
@@ -235,7 +235,7 @@ const ControlledTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nSuggestedActions,
 	},
 	template: `
-		<div style="padding: 50px;">
+		<div>
 			<div style="margin-bottom: 20px;">
 				<button @click="toggleOpen" style="margin-right: 10px;">
 					{{ isOpen ? 'Close' : 'Open' }} Popover
