@@ -1,8 +1,6 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import type { ModuleRegistry } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
-import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -34,11 +32,9 @@ const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'use
 function makeService() {
 	const repository = mock<AgentCheckpointRepository>();
 	const service = new N8NCheckpointStorage(
-		mock<InstanceSettings>({ isLeader: false, instanceRole: 'follower' }),
 		repository,
 		mockLogger(),
 		mock<AgentsConfig>({ checkpointTtlSeconds: 60 }),
-		mock<ModuleRegistry>({ isActive: vi.fn().mockReturnValue(true) }),
 	);
 
 	return { service, repository };
