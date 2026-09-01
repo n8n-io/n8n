@@ -269,6 +269,27 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(1);
 		});
 
+		it('drops a pending retry once a newer occurrence runs', async () => {
+			const { runner, metadata } = setup();
+			dummy.retryDelaySeconds = 90;
+			dummy.onRun = async () => {
+				if (dummy.runCount === 1) {
+					throw new Error('failed');
+				}
+			};
+			metadata.register(DummySystemTask);
+			runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(dummy.runCount).toBe(1);
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(dummy.runCount).toBe(2);
+
+			await vi.advanceTimersByTimeAsync(45 * Time.seconds.toMilliseconds);
+			expect(dummy.runCount).toBe(2);
+		});
+
 		it('does not retry non-idempotent work', async () => {
 			const { runner, metadata } = setup();
 			dummy.effects = 'non-idempotent';

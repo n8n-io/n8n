@@ -253,6 +253,10 @@ export class SystemTaskRunner {
 				});
 			}
 		} else {
+			// A newer occurrence runs the same work, so it supersedes a pending retry.
+			clearTimeout(routed.retryTimer);
+			routed.retryTimer = undefined;
+
 			const inFlightRun: InFlightRun = {
 				promise: this.runOnce(routed).finally(() => {
 					if (routed.inFlightRun === inFlightRun) {
