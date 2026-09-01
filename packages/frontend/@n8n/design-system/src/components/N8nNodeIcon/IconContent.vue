@@ -2,10 +2,10 @@
 import { computed } from 'vue';
 
 import N8nIcon from '../N8nIcon';
-import type { IconName, NodeIconName } from '../N8nIcon/icons';
 import { isSupportedIconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 import N8nNodeIcon from './NodeIcon.vue';
+import type { IconName, NodeIconName } from '../N8nIcon/icons';
 
 type IconType = 'file' | 'icon' | 'unknown';
 
