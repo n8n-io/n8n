@@ -627,6 +627,7 @@ export const MultipleWithSwatches = {
 				v-bind="args"
 				v-model="value"
 				multiple
+				position="popper"
 				:style="{ width: '280px' }"
 				@update:model-value="onUpdate"
 			>
@@ -659,12 +660,13 @@ export const MultipleWithSwatches = {
 					<span
 						aria-hidden="true"
 						:style="{
-							display: 'inline-block',
+							display: 'block',
 							width: '9px',
 							height: '9px',
 							borderRadius: 'var(--radius--full)',
 							background: item.color,
 							flexShrink: 0,
+							alignSelf: 'center',
 						}"
 					/>
 				</template>
