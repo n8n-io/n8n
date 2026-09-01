@@ -85,7 +85,14 @@ describe('Microsoft Teams v2, getUsers', () => {
 
 			await getUsers.call(ctx, filter);
 
-			expect(apiRequest.mock.calls[0][3]).not.toHaveProperty('$search');
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/v1.0/users',
+				{},
+				FIRST_PAGE_QS,
+				undefined,
+				HEADERS,
+			);
 		},
 	);
 
@@ -192,6 +199,7 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 	it('leaves the By ID mode without an extractValue', () => {
 		const byId = mentionUserRlc('channelMessage')?.modes?.find((mode) => mode.name === 'id');
 
+		expect(byId).toBeDefined();
 		// An extract regex runs before node code and rejects the email address an AI agent emits
 		// when it cannot know which mode is selected.
 		expect(byId?.extractValue).toBeUndefined();

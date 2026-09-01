@@ -106,6 +106,9 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 
 		const content = (body.body as { content: string }).content;
 		const emitted = body.mentions as Array<Mention & { id: number }>;
+		expect(content).toBe(
+			'hi <at id="0">Jane Smith</at> <at id="1">Bob Jones</at> <at id="2">Ada Byron</at>',
+		);
 		for (const entry of emitted) {
 			expect(content).toContain(`<at id="${entry.id}">${entry.mentionText}</at>`);
 		}
@@ -188,26 +191,33 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(mentions).toEqual([mention('guid-1', 'Jane Smith')]);
 	});
 
-	// The `#` is what matters here: swapping back to buildTeamsPath/validateMicrosoftGraphId
-	// rejects it, so every B2B guest becomes unmentionable. Plain encoding is covered above.
-	it('accepts a guest UPN containing #EXT#', async () => {
-		setRows('jane_example.com#EXT#@tenant.onmicrosoft.com');
+	// The `#` is what matters in the guest UPN: swapping back to
+	// buildTeamsPath/validateMicrosoftGraphId rejects it, so every B2B guest becomes
+	// unmentionable. A user id has nothing to encode and must come through untouched.
+	it.each([
+		[
+			'a guest UPN containing #EXT#',
+			'jane_example.com#EXT#@tenant.onmicrosoft.com',
+			'jane_example.com%23EXT%23%40tenant.onmicrosoft.com',
+		],
+		[
+			'a bare user id',
+			'714c1202-cbac-40ff-9160-53ab5c4df9b8',
+			'714c1202-cbac-40ff-9160-53ab5c4df9b8',
+		],
+	])('accepts %s', async (_label, userId, path) => {
+		setRows(userId);
 		apiRequest.mockResolvedValue({ id: 'guid-1', displayName: 'Jane Smith' });
 
 		await resolveMentions.call(ctx, 0);
 
-		expect(apiRequest).toHaveBeenCalledWith(
-			'GET',
-			'/v1.0/users/jane_example.com%23EXT%23%40tenant.onmicrosoft.com',
-			{},
-			RESOLVE_QS,
-		);
+		expect(apiRequest).toHaveBeenCalledWith('GET', `/v1.0/users/${path}`, {}, RESOLVE_QS);
 	});
 
 	it.each([
-		[{ id: 'guid-1', displayName: '', userPrincipalName: 'jane@x.com' }, 'jane@x.com'],
-		[{ id: 'guid-1', displayName: '', userPrincipalName: '' }, 'guid-1'],
-	])('labels the mention %j as %s when the display name is empty', async (user, expected) => {
+		['the UPN', { id: 'guid-1', displayName: '', userPrincipalName: 'jane@x.com' }, 'jane@x.com'],
+		['the user id', { id: 'guid-1', displayName: '', userPrincipalName: '' }, 'guid-1'],
+	])('falls back to %s when the display name is empty', async (_label, user, expected) => {
 		setRows('jane@example.com');
 		apiRequest.mockResolvedValue(user);
 

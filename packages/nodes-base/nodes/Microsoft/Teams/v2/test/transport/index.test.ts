@@ -213,10 +213,11 @@ describe('Microsoft Teams Transport', () => {
 		});
 
 		// `getUsers` is the first Teams path handing a client-supplied string to the
-		// transport's `uri` argument, so a malformed pagination token must surface as a node
-		// error rather than a bare TypeError from `new URL`.
-		it.each(['not-a-url', 'http'])(
-			'getUsers rejects the malformed pagination token %j before any request',
+		// transport's `uri` argument: an unparseable token must surface as a node error rather
+		// than a bare TypeError from `new URL`, and a parseable one must still stay on the
+		// credential's Graph host.
+		it.each(['not-a-url', 'http', 'https://evil.example/users'])(
+			'getUsers rejects the pagination token %j before any request',
 			async (paginationToken) => {
 				mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
 
