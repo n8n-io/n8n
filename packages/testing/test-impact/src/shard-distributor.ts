@@ -132,14 +132,17 @@ function splitLargeGroups(
  * spends more time in setup than in tests. The limit applies before bin-packing,
  * so the packer still balances the shards it gets.
  *
- * The count never drops below the number of capability groups. One runner that
- * starts every image set pays back in container startup what it saved in setup.
+ * The count never drops below the number of capability packing items. A group
+ * split by maxGroupDuration needs one shard per piece, so counting distinct
+ * capabilities instead would leave the packer too few shards and merge the
+ * remaining capabilities' fixtures onto one runner. One runner that starts every
+ * image set pays back in container startup what it saved in setup.
  */
 function boundShardCount(
 	numShards: number,
 	totalTestTime: number,
 	specCount: number,
-	capabilityGroups: number,
+	capabilityItemCount: number,
 	config: DistributeConfig,
 ): number {
 	const limits = [numShards];
@@ -149,7 +152,7 @@ function boundShardCount(
 	if (config.minShardSpecs && config.minShardSpecs > 1) {
 		limits.push(Math.floor(specCount / config.minShardSpecs));
 	}
-	return Math.min(numShards, Math.max(1, capabilityGroups, Math.min(...limits)));
+	return Math.min(numShards, Math.max(1, capabilityItemCount, Math.min(...limits)));
 }
 
 function assignToShards(items: PackingItem[], numShards: number): Bucket[] {
@@ -199,7 +202,7 @@ export function distributeShards(
 		numShards,
 		totalTestTime,
 		enriched.length,
-		groups.size,
+		capabilityItems.length,
 		config,
 	);
 	const buckets = assignToShards([...capabilityItems, ...standardItems], targetShards);

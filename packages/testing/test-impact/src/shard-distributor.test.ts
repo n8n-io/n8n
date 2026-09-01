@@ -263,6 +263,21 @@ describe('distributeShards', () => {
 			expect(result.shards.every((s) => s.fixtureCount === 1)).toBe(true);
 		});
 
+		it('never merges capability groups when a large group is split', () => {
+			// 'proxy' totals 12 min and splits into 3 items, so the 5 capability items
+			// need 5 shards even though there are only 3 distinct capabilities.
+			const specs = [
+				...Array.from({ length: 12 }, (_, i) => spec(`proxy${i}.spec.ts`, ['proxy'])),
+				spec('email.spec.ts', ['email']),
+				spec('oidc.spec.ts', ['oidc']),
+			];
+			const metrics = Object.fromEntries(specs.map((s) => [s.path, 60_000]));
+
+			const result = distributeShards(specs, 16, metrics, withLimit);
+
+			expect(result.shards.every((s) => s.fixtureCount === 1)).toBe(true);
+		});
+
 		it('still collapses specs that share one capability group', () => {
 			const specs = Array.from({ length: 4 }, (_, i) => spec(`p${i}.spec.ts`, ['proxy']));
 			const metrics = Object.fromEntries(specs.map((s) => [s.path, 45_000]));
