@@ -98,6 +98,15 @@ const UNFILTERED: unique symbol = Symbol('unfiltered');
 
 const MAX_TYPE_DEFINITION_CACHE_BYTES = 16 * 1024 * 1024;
 
+/**
+ * How long a built second tier is trusted before the next opt-in rebuilds it.
+ * Mirrors the verified-registry refresh interval in CommunityNodeTypesService:
+ * node-type reloads alone are not enough to bound staleness, because an
+ * instance can run for days without one while the registry publishes new
+ * verified nodes.
+ */
+const UNINSTALLED_TIER_TTL_MS = 8 * 60 * 60 * 1000;
+
 const UNINSTALLED_SECTION_HEADING = [
 	'## Verified community nodes (not installed on this instance)',
 	'',
@@ -167,6 +176,9 @@ export class NodeCatalogService {
 	private uninstalledCandidates: RegistryCandidate[] = [];
 
 	private uninstalledPromise: Promise<void> | undefined;
+
+	/** When the current second tier was built, for {@link UNINSTALLED_TIER_TTL_MS}. */
+	private uninstalledBuiltAt = 0;
 
 	private readonly getCache = new Map<string, string>();
 
@@ -318,6 +330,12 @@ export class NodeCatalogService {
 	 * results rather than erroring.
 	 */
 	private async getUninstalledParser(): Promise<NodeTypeParser | undefined> {
+		// Expire a tier that has outlived the registry refresh interval. Dropped
+		// only once a build has completed, so this never discards an in-flight one.
+		if (this.uninstalledParser && Date.now() - this.uninstalledBuiltAt > UNINSTALLED_TIER_TTL_MS) {
+			this.dropUninstalledTier();
+		}
+
 		this.uninstalledPromise ??= this.buildUninstalledTier();
 		await this.uninstalledPromise;
 
@@ -349,10 +367,20 @@ export class NodeCatalogService {
 			this.uninstalledDescriptionsById.set(description.name, description);
 		}
 		this.uninstalledCandidates = entries.map((entry) => entry.candidate);
+		this.uninstalledBuiltAt = Date.now();
 
 		this.logger.debug('NodeCatalogService indexed uninstalled verified community nodes', {
 			nodeTypeCount: descriptions.length,
 		});
+	}
+
+	/** Discard the second tier so the next opt-in request rebuilds it. */
+	private dropUninstalledTier(): void {
+		this.uninstalledParser = undefined;
+		this.uninstalledDescriptionsById = new Map();
+		this.uninstalledCandidates = [];
+		this.uninstalledPromise = undefined;
+		this.uninstalledBuiltAt = 0;
 	}
 
 	/**
@@ -580,10 +608,7 @@ export class NodeCatalogService {
 
 		// A package installed since the last build moves from the second tier to
 		// the first, so drop the tier and let the next opt-in rebuild it.
-		this.uninstalledParser = undefined;
-		this.uninstalledDescriptionsById = new Map();
-		this.uninstalledCandidates = [];
-		this.uninstalledPromise = undefined;
+		this.dropUninstalledTier();
 
 		this.getCache.clear();
 		this.getDefinitionCache.clear();

@@ -138,11 +138,36 @@ export const createInstallCommunityNodeTool = (
 
 			const packageName = toPackageName(nodeType);
 
+			// Called for its refresh-if-stale side effect as much as its result: it
+			// warms the registry catalog so the exact-entry lookup below can read a
+			// populated map, and it distinguishes "unknown package" from "known
+			// package, unknown node" in the error the agent sees.
 			const vetted = await communityNodeTypesService.findVetted(packageName);
 			if (!vetted) {
 				return fail(
 					`Package '${packageName}' is not a verified community package, so it cannot be installed.`,
 					'Only packages vetted by n8n are installable. Use search_nodes to find a verified alternative, or use an HTTP Request node.',
+				);
+			}
+
+			// Authorization to install is not authorization to install *anything*
+			// vetted. Match the exact node type and require the same
+			// `isOfficialNode` flag that search_nodes filters on, so the tool can
+			// only install what discovery was willing to offer. Matching the
+			// package alone would let a caller name any node in a vetted package,
+			// including one search_nodes deliberately withheld.
+			const catalogEntry = await communityNodeTypesService.getCommunityNodeType(nodeType);
+			if (!catalogEntry) {
+				return fail(
+					`'${nodeType}' is not a node type in the verified community catalog, so it cannot be installed.`,
+					'Pass a node type exactly as search_nodes reported it under "not installed on this instance".',
+				);
+			}
+
+			if (!catalogEntry.isOfficialNode) {
+				return fail(
+					`'${nodeType}' is not an official verified node, so it cannot be installed.`,
+					'Use search_nodes to find an official alternative, or use an HTTP Request node.',
 				);
 			}
 
@@ -152,12 +177,8 @@ export const createInstallCommunityNodeTool = (
 			//
 			// Installed-ness comes from the same registry entry that search_nodes
 			// used to place the node in its "not installed" section, so the two
-			// surfaces cannot disagree about what needs installing. Checked after
-			// findVetted deliberately: findVetted refreshes the registry catalog
-			// when it is stale, while this lookup reads it as-is and would report
-			// nothing on a cold map.
-			const catalogEntry = await communityNodeTypesService.getCommunityNodeType(nodeType);
-			if (catalogEntry?.isInstalled) {
+			// surfaces cannot disagree about what needs installing.
+			if (catalogEntry.isInstalled) {
 				const credentialTypes = credentialTypesOf([nodeType], nodeTypes);
 				const payload = {
 					installed: false,
@@ -180,7 +201,9 @@ export const createInstallCommunityNodeTool = (
 			}
 
 			const installedPackage = await communityPackagesLifecycleService.install(
-				{ name: packageName, version: vetted.npmVersion, verify: true },
+				// Version comes from the matched entry, not the package-level lookup:
+				// findVetted returns whichever node in the package it saw first.
+				{ name: packageName, version: catalogEntry.npmVersion, verify: true },
 				user,
 				'mcp',
 			);

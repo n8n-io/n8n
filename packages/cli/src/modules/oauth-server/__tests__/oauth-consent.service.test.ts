@@ -866,8 +866,11 @@ describe('OAuthConsentService', () => {
 				resource: 'https://n8n.example.com/mcp-server/http',
 			});
 
-			const [, grantedScopes] =
-				authorizationCodeService.createAuthorizationCode.mock.calls[0] ?? [];
+			// `scopes` is the 7th argument of
+			// createAuthorizationCode(clientId, userId, redirectUri, codeChallenge, state, resource, scopes)
+			const grantedScopes =
+				authorizationCodeService.createAuthorizationCode.mock.calls[0]?.[6] ?? [];
+			expect(grantedScopes).toEqual(INSTANCE_SCOPES);
 			expect(grantedScopes).not.toContain(ADMIN_ONLY);
 		});
 	});

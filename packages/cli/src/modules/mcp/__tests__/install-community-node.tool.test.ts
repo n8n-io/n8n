@@ -28,6 +28,17 @@ const vettedEntry = () =>
 		checksum: 'sha512-abc',
 	}) as unknown as Awaited<ReturnType<CommunityNodeTypesService['findVetted']>>;
 
+/** Exact catalog entry for NODE_TYPE: official and not installed unless overridden. */
+const catalogEntry = (overrides: Record<string, unknown> = {}) =>
+	({
+		name: NODE_TYPE,
+		packageName: PACKAGE,
+		npmVersion: '1.4.2',
+		isOfficialNode: true,
+		isInstalled: false,
+		...overrides,
+	}) as never;
+
 const installedPackage = () =>
 	mock<InstalledPackages>({
 		packageName: PACKAGE,
@@ -57,8 +68,8 @@ describe('install_community_node MCP tool', () => {
 		});
 		telemetry = mock<Telemetry>();
 		communityNodeTypesService.findVetted.mockResolvedValue(vettedEntry());
-		// Default: not installed yet, so an install actually happens.
-		communityNodeTypesService.getCommunityNodeType.mockResolvedValue(null);
+		// Default: official and not installed yet, so an install actually happens.
+		communityNodeTypesService.getCommunityNodeType.mockResolvedValue(catalogEntry());
 		lifecycleService.install.mockResolvedValue(installedPackage());
 	});
 
@@ -132,9 +143,9 @@ describe('install_community_node MCP tool', () => {
 
 	describe('already installed', () => {
 		test('reports it as a normal result, not an error, and does not reinstall', async () => {
-			communityNodeTypesService.getCommunityNodeType.mockResolvedValue({
-				isInstalled: true,
-			} as never);
+			communityNodeTypesService.getCommunityNodeType.mockResolvedValue(
+				catalogEntry({ isInstalled: true }),
+			);
 			nodeTypes.getByNameAndVersion.mockReturnValue({ description: {} } as never);
 
 			const structured = await call();
@@ -150,9 +161,9 @@ describe('install_community_node MCP tool', () => {
 		});
 
 		test('still reports the credential types the user needs', async () => {
-			communityNodeTypesService.getCommunityNodeType.mockResolvedValue({
-				isInstalled: true,
-			} as never);
+			communityNodeTypesService.getCommunityNodeType.mockResolvedValue(
+				catalogEntry({ isInstalled: true }),
+			);
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: { credentials: [{ name: 'firecrawlApi' }] },
 			} as never);
@@ -161,9 +172,9 @@ describe('install_community_node MCP tool', () => {
 		});
 
 		test('counts as a success in telemetry', async () => {
-			communityNodeTypesService.getCommunityNodeType.mockResolvedValue({
-				isInstalled: true,
-			} as never);
+			communityNodeTypesService.getCommunityNodeType.mockResolvedValue(
+				catalogEntry({ isInstalled: true }),
+			);
 			nodeTypes.getByNameAndVersion.mockReturnValue({ description: {} } as never);
 
 			await call();
@@ -195,6 +206,30 @@ describe('install_community_node MCP tool', () => {
 
 			expect(lifecycleService.install).not.toHaveBeenCalled();
 			expect(structured.error).toContain('not a verified community package');
+		});
+
+		test('refuses a node type absent from the catalog even when its package is vetted', async () => {
+			// Package-level vetting is not enough: the exact node type has to be one
+			// search_nodes could have offered.
+			communityNodeTypesService.getCommunityNodeType.mockResolvedValue(null);
+
+			const structured = await call(`${PACKAGE}.notARealNode`);
+
+			expect(lifecycleService.install).not.toHaveBeenCalled();
+			expect(structured.error).toContain('not a node type in the verified community catalog');
+		});
+
+		test('refuses a vetted node that is not an official node', async () => {
+			// search_nodes filters on isOfficialNode, so installing one it withheld
+			// would let the tool bypass discovery.
+			communityNodeTypesService.getCommunityNodeType.mockResolvedValue(
+				catalogEntry({ isOfficialNode: false }),
+			);
+
+			const structured = await call();
+
+			expect(lifecycleService.install).not.toHaveBeenCalled();
+			expect(structured.error).toContain('not an official verified node');
 		});
 
 		test('reports an install failure instead of throwing', async () => {

@@ -550,6 +550,44 @@ describe('NodeCatalogService', () => {
 			expect(getCommunityNodeTypes).toHaveBeenCalledTimes(1);
 		});
 
+		test('rebuilds the tier once it outlives the registry refresh interval', async () => {
+			// Without a TTL the first successful build would pin the tier for the
+			// process lifetime, so a node verified later could never be discovered.
+			const getCommunityNodeTypes = vi
+				.fn()
+				.mockResolvedValueOnce([verifiedEntry('n8n-nodes-firecrawl.firecrawl')])
+				.mockResolvedValue([
+					verifiedEntry('n8n-nodes-firecrawl.firecrawl'),
+					verifiedEntry('n8n-nodes-tavily.tavily'),
+				]);
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+			);
+			await service.initialize();
+
+			vi.useFakeTimers();
+			try {
+				vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+				const before = await service.searchNodes(['tavily'], { includeUninstalled: true });
+				expect(before.uninstalledOffered).toBeUndefined();
+
+				// Just inside the window: still the first build.
+				vi.setSystemTime(new Date('2026-01-01T07:59:00Z'));
+				await service.searchNodes(['tavily'], { includeUninstalled: true });
+				expect(getCommunityNodeTypes).toHaveBeenCalledTimes(1);
+
+				// Past it: rebuilt, and the newly verified node is now discoverable.
+				vi.setSystemTime(new Date('2026-01-01T08:01:00Z'));
+				const after = await service.searchNodes(['tavily'], { includeUninstalled: true });
+
+				expect(getCommunityNodeTypes).toHaveBeenCalledTimes(2);
+				expect(after.uninstalledOffered).toEqual(['n8n-nodes-tavily.tavily']);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		describe('findUninstalledNodeTypes', () => {
 			test('names the package that ships an uninstalled node type', async () => {
 				await service.initialize();
