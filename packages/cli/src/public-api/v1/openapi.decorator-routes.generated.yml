@@ -3,6 +3,11 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /executions/{executionId}:
+    get:
+      $ref: ./handlers/executions/spec/paths/getExecution.generated.yml
+    delete:
+      $ref: ./handlers/executions/spec/paths/deleteExecution.generated.yml
   /git-connections:
     post:
       $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml

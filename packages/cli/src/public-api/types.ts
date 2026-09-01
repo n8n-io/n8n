@@ -54,13 +54,6 @@ export declare namespace ExecutionRequest {
 		}
 	>;
 
-	type Get = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{},
-		{ includeData?: boolean; ignoreDataSizeLimit?: boolean; redactExecutionData?: boolean }
-	>;
-	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
 	type Stop = AuthenticatedRequest<{ id: string }>;
 	type StopMany = AuthenticatedRequest<

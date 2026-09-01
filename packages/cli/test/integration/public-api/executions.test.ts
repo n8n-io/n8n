@@ -95,6 +95,18 @@ describe('GET /executions/:id', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1', 'abcXYZ'));
 
+	// A workflow is needed so the shared-workflow lookup does not 404 before the id is used.
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.get(`/executions/${executionId}`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('owner should be able to get an execution owned by him', async () => {
 		const workflow = await createWorkflow({}, owner);
 
@@ -258,6 +270,17 @@ describe('DELETE /executions/:id', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('delete', '/executions/1', 'abcXYZ'));
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.delete(`/executions/${executionId}`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should delete an execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createSuccessfulExecution(workflow);
@@ -291,6 +314,30 @@ describe('DELETE /executions/:id', () => {
 		expect(waitTill).toBeNull();
 
 		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
+	});
+
+	test('should return 400 when deleting a running execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createdExecutionWithStatus(workflow, 'running');
+
+		const response = await authOwnerAgent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(400);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
+	});
+
+	test('member should not delete an execution of another user', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(404);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
 	});
 });
 
