@@ -29,6 +29,7 @@ describe('ProjectExecutionQuota', () => {
 			periodUnit: 'day',
 			consumed: 42,
 			remaining: 58,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		});
 		vi.spyOn(projectsStore, 'updateExecutionQuota').mockResolvedValue(undefined);
 

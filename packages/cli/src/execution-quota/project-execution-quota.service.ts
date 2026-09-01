@@ -13,13 +13,16 @@ import { License } from '@/license';
 import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
 import { shouldSkipMode } from '@/modules/insights/insights-collection.service';
 
-import { computePeriodBucket } from './period-bucket';
+import { computePeriodBucket, computePeriodEnd } from './period-bucket';
 import { ProjectExecutionQuotaExceededError } from './project-execution-quota.error';
 import { resolveDefaultProjectExecutionLimit } from './project-execution-quota.helper';
 
 @Service()
 export class ProjectExecutionQuotaService {
 	private static readonly SPIKE_MULTIPLIER = 5;
+
+	/** Trailing window, in days, that the spike-guard baseline is averaged over. */
+	private static readonly BASELINE_WINDOW_DAYS = 7;
 
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -47,7 +50,8 @@ export class ProjectExecutionQuotaService {
 
 	async getConsumption(projectId: string) {
 		const { limit, periodUnit } = await this.resolveLimit(projectId);
-		const periodStart = computePeriodBucket(periodUnit, DateTime.utc());
+		const now = DateTime.utc();
+		const periodStart = computePeriodBucket(periodUnit, now);
 		const consumed = await this.counterRepository.getProjectPeriodTotal(
 			projectId,
 			periodUnit,
@@ -59,6 +63,7 @@ export class ProjectExecutionQuotaService {
 			periodUnit,
 			consumed,
 			remaining: limit === UNLIMITED_LICENSE_QUOTA ? null : Math.max(limit - consumed, 0),
+			resetsAt: computePeriodEnd(periodUnit, now).toISO(),
 		};
 	}
 
@@ -101,6 +106,19 @@ export class ProjectExecutionQuotaService {
 			periodUnit,
 			periodStart,
 		);
+
+		// Spike-guard stopgap: `getSpikes` always reads the `'day'`-unit bucket
+		// (see below), but the increment above only writes the project's
+		// *configured* `periodUnit` bucket. For a week/month-period project
+		// that means no `'day'` rows are ever created, so the spike-guard
+		// silently has nothing to read. Also increment a `'day'` bucket here so
+		// spike detection keeps working regardless of the enforcement period —
+		// guarded so a day-period project (where the two buckets are the same
+		// row) doesn't get double-counted.
+		if (periodUnit !== 'day') {
+			const dayBucket = computePeriodBucket('day', DateTime.utc());
+			await this.counterRepository.incrementWorkflowCount(project.id, workflowId, 'day', dayBucket);
+		}
 	}
 
 	/**
@@ -122,15 +140,26 @@ export class ProjectExecutionQuotaService {
 
 			const byDay = new Map<string, number>();
 			for (const row of hourlyRows) {
-				const day = DateTime.fromJSDate(row.periodStart).toFormat('yyyy-MM-dd');
+				// `zone: 'utc'` matters: `today` is a UTC day-key (from
+				// `computePeriodBucket('day', DateTime.utc())`), but
+				// `fromJSDate` without an explicit zone uses Luxon's
+				// system/local zone. On a non-UTC server the day-keys would
+				// drift apart, so `byDay.delete(today)` below would silently
+				// fail to strip today's own rows out of the baseline.
+				const day = DateTime.fromJSDate(row.periodStart, { zone: 'utc' }).toFormat('yyyy-MM-dd');
 				byDay.set(day, (byDay.get(day) ?? 0) + row.value);
 			}
 			byDay.delete(today);
 
-			const days = [...byDay.values()];
-			if (days.length === 0) continue;
-
-			const baseline = days.reduce((sum, value) => sum + value, 0) / days.length;
+			// Fixed 7-day denominator (zero-filling days with no data), per the
+			// spec: "summed per calendar day and averaged over the trailing 7
+			// days, excluding today." Averaging only over days that had
+			// activity (dividing by the number of populated days instead of a
+			// fixed 7) would inflate the baseline for a workflow that's only
+			// sporadically active, making it *harder* to flag a burst from a
+			// bursty/sparse workflow — the opposite of the intended effect.
+			const totalTrailingCount = [...byDay.values()].reduce((sum, value) => sum + value, 0);
+			const baseline = totalTrailingCount / ProjectExecutionQuotaService.BASELINE_WINDOW_DAYS;
 			if (baseline > 0 && count > baseline * ProjectExecutionQuotaService.SPIKE_MULTIPLIER) {
 				spikes.push({
 					workflowId,

@@ -48,6 +48,7 @@ export type ProjectExecutionQuota = {
 	periodUnit: ProjectExecutionQuotaPeriodUnit;
 	consumed: number;
 	remaining: number | null;
+	resetsAt: string;
 };
 
 export type ProjectExecutionQuotaSpike = {

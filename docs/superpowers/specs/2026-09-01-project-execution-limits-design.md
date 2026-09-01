@@ -149,6 +149,19 @@ for a project+period must equal what
 reports for the same window. The PoC test seeds only clean-completing
 executions (no cancellations) so the comparison is exact for that scenario.
 
+**Second known exception — workflow deletion:** `project_execution_counter`
+has a `CASCADE` foreign key on `workflowId` (and on `projectId`), so deleting
+a workflow (or its project) deletes its counter rows outright. Insights'
+metadata table (`InsightsMetadata`) instead does `SET NULL` on workflow
+deletion by design, so a deleted workflow's historical Insights rows survive
+(orphaned but intact) while its quota-counter rows do not. For any window
+that includes a workflow later deleted, `SUM(execution_counter.count)` and
+the equivalent Insights query can therefore diverge — not because either
+number is wrong, but because they encode different retention intents
+(fast-moving enforcement state vs. durable reporting history). As with the
+canceled-executions exception above, the PoC documents this rather than
+reconciling the two tables' deletion semantics.
+
 ### Spike-Guard (flag only)
 
 Computed on demand (no new scheduled job for the PoC) when a project's

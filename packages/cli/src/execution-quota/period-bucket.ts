@@ -17,3 +17,23 @@ export function computePeriodBucket(periodUnit: ExecutionQuotaPeriodUnit, date: 
 			return date.toFormat('yyyy-MM');
 	}
 }
+
+/**
+ * Symmetric counterpart to {@link computePeriodBucket}: the instant the
+ * current period bucket for `date` ends (i.e. the start of the *next*
+ * bucket). Used to surface `resetsAt` to callers so they can show a
+ * countdown to when the quota next resets.
+ *
+ * Luxon's `startOf('week')` is ISO-week-based (Monday start), matching the
+ * `kkkk-'W'WW` (ISO week/year) bucket key used by `computePeriodBucket`.
+ */
+export function computePeriodEnd(periodUnit: ExecutionQuotaPeriodUnit, date: DateTime): DateTime {
+	switch (periodUnit) {
+		case 'day':
+			return date.startOf('day').plus({ days: 1 });
+		case 'week':
+			return date.startOf('week').plus({ weeks: 1 });
+		case 'month':
+			return date.startOf('month').plus({ months: 1 });
+	}
+}

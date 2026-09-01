@@ -40,6 +40,7 @@ describe('ProjectExecutionQuotaCard', () => {
 			periodUnit: 'day',
 			consumed: 42,
 			remaining: 58,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		});
 
 		renderComponent();
@@ -57,12 +58,81 @@ describe('ProjectExecutionQuotaCard', () => {
 			periodUnit: 'day',
 			consumed: 12,
 			remaining: null,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		});
 
 		renderComponent();
 
 		await vi.waitFor(() => {
 			expect(screen.getByText('12 / ∞')).toBeInTheDocument();
+		});
+	});
+
+	it('renders a progress bar sized to the consumed/limit percentage, capped at 100%', async () => {
+		vi.spyOn(projectsStore, 'getExecutionQuota').mockResolvedValue({
+			limit: 100,
+			periodUnit: 'day',
+			consumed: 42,
+			remaining: 58,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+		});
+
+		renderComponent();
+
+		await vi.waitFor(() => {
+			const progress = screen.getByTestId('project-execution-quota-progress');
+			expect(progress).toHaveAttribute('aria-valuenow', '42');
+			expect(progress.firstElementChild).toHaveStyle({ width: '42%' });
+		});
+	});
+
+	it('caps the progress bar at 100% when consumed exceeds the limit', async () => {
+		vi.spyOn(projectsStore, 'getExecutionQuota').mockResolvedValue({
+			limit: 10,
+			periodUnit: 'day',
+			consumed: 15,
+			remaining: 0,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+		});
+
+		renderComponent();
+
+		await vi.waitFor(() => {
+			const progress = screen.getByTestId('project-execution-quota-progress');
+			expect(progress.firstElementChild).toHaveStyle({ width: '100%' });
+		});
+	});
+
+	it('does not render a progress bar for an unlimited project', async () => {
+		vi.spyOn(projectsStore, 'getExecutionQuota').mockResolvedValue({
+			limit: 0,
+			periodUnit: 'day',
+			consumed: 12,
+			remaining: null,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+		});
+
+		renderComponent();
+
+		await vi.waitFor(() => {
+			expect(screen.getByText('12 / ∞')).toBeInTheDocument();
+			expect(screen.queryByTestId('project-execution-quota-progress')).not.toBeInTheDocument();
+		});
+	});
+
+	it('renders a reset countdown derived from resetsAt', async () => {
+		vi.spyOn(projectsStore, 'getExecutionQuota').mockResolvedValue({
+			limit: 100,
+			periodUnit: 'day',
+			consumed: 42,
+			remaining: 58,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+		});
+
+		renderComponent();
+
+		await vi.waitFor(() => {
+			expect(screen.getByTestId('project-execution-quota-resets-at')).toBeInTheDocument();
 		});
 	});
 
@@ -94,6 +164,7 @@ describe('ProjectExecutionQuotaCard', () => {
 			periodUnit: 'day',
 			consumed: 42,
 			remaining: 58,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		});
 
 		const result = renderComponent();
@@ -108,6 +179,7 @@ describe('ProjectExecutionQuotaCard', () => {
 			periodUnit: 'day',
 			consumed: 3,
 			remaining: 7,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		});
 
 		await result.rerender({ projectId: 'project-2' });

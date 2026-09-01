@@ -5,12 +5,13 @@ import type {
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import { DateTime } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
 import type { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
 
+import { computePeriodBucket } from '../period-bucket';
 import { ProjectExecutionQuotaExceededError } from '../project-execution-quota.error';
 import { ProjectExecutionQuotaService } from '../project-execution-quota.service';
 
@@ -107,9 +108,62 @@ describe('ProjectExecutionQuotaService.assertWithinQuotaAndIncrement', () => {
 		expect(quotaRepository.findOneBy).not.toHaveBeenCalled();
 		expect(counterRepository.incrementWorkflowCount).not.toHaveBeenCalled();
 	});
+
+	// Regression test for: getSpikes always reads the 'day'-unit bucket via
+	// findByProjectId(projectId, 'day', today), but a project configured for
+	// 'week' or 'month' only ever had its configured-periodUnit bucket
+	// incremented — so no 'day' rows were ever created and the spike-guard
+	// silently had nothing to read, forever. This asserts the dual-increment
+	// stopgap: a 'week'-period project must also write a 'day' bucket, keyed
+	// exactly the way getSpikes reads it (computePeriodBucket('day', ...)).
+	it('also increments a day bucket for a week-period project, so getSpikes has day-level data to read', async () => {
+		quotaRepository.findOneBy.mockResolvedValue({
+			projectId: 'project-1',
+			limit: 100,
+			periodUnit: 'week',
+		} as never);
+		counterRepository.getProjectPeriodTotal.mockResolvedValue(5);
+
+		await service.assertWithinQuotaAndIncrement('workflow-1', 'webhook');
+
+		const expectedDayBucket = computePeriodBucket('day', DateTime.utc());
+
+		expect(counterRepository.incrementWorkflowCount).toHaveBeenCalledTimes(2);
+		expect(counterRepository.incrementWorkflowCount).toHaveBeenCalledWith(
+			'project-1',
+			'workflow-1',
+			'week',
+			expect.any(String),
+		);
+		expect(counterRepository.incrementWorkflowCount).toHaveBeenCalledWith(
+			'project-1',
+			'workflow-1',
+			'day',
+			expectedDayBucket,
+		);
+	});
+
+	it('does not double-increment when the configured periodUnit is already day', async () => {
+		quotaRepository.findOneBy.mockResolvedValue({
+			projectId: 'project-1',
+			limit: 100,
+			periodUnit: 'day',
+		} as never);
+		counterRepository.getProjectPeriodTotal.mockResolvedValue(5);
+
+		await service.assertWithinQuotaAndIncrement('workflow-1', 'webhook');
+
+		expect(counterRepository.incrementWorkflowCount).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('ProjectExecutionQuotaService.getSpikes', () => {
+	const originalDefaultZone = Settings.defaultZone;
+
+	afterEach(() => {
+		Settings.defaultZone = originalDefaultZone;
+	});
+
 	it('flags a workflow whose today count exceeds 5x its trailing baseline', async () => {
 		const counterRepository = mock<ProjectExecutionCounterRepository>();
 		const insightsByPeriodRepository = mock<InsightsByPeriodRepository>();
@@ -135,5 +189,149 @@ describe('ProjectExecutionQuotaService.getSpikes', () => {
 		expect(spikes).toEqual([
 			expect.objectContaining({ workflowId: 'workflow-1', todayCount: 500 }),
 		]);
+	});
+
+	// Regression test for the baseline-math fix: the spec says the baseline
+	// is "summed per calendar day and averaged over the trailing 7 days,
+	// excluding today" — a *fixed* 7-day denominator, zero-filling silent
+	// days. The old code divided by the number of days that actually had
+	// data, which inflates the baseline for a sparse/bursty workflow and
+	// makes it *harder* to flag (the opposite of the intended effect).
+	it('flags a workflow active on only 1 of the last 7 trailing days at a much lower today-count than an activity-only average would require', async () => {
+		const counterRepository = mock<ProjectExecutionCounterRepository>();
+		const insightsByPeriodRepository = mock<InsightsByPeriodRepository>();
+
+		// Old (buggy) calc: baseline = 70 / 1 populated day = 70 → today's
+		// count would need to exceed 350 (70 * 5) to flag.
+		// Fixed calc: baseline = 70 / 7 (fixed window) = 10 → today's count
+		// only needs to exceed 50 (10 * 5) to flag.
+		counterRepository.findByProjectId.mockResolvedValue([{ workflowId: 'workflow-1', count: 60 }]);
+		insightsByPeriodRepository.getTrailingHourlyRows.mockResolvedValue([
+			{ periodStart: DateTime.utc().minus({ days: 3 }).toJSDate(), value: 70 },
+		]);
+
+		const service = new ProjectExecutionQuotaService(
+			mock(),
+			mock(),
+			counterRepository,
+			mock(),
+			insightsByPeriodRepository,
+		);
+
+		const spikes = await service.getSpikes('project-1');
+
+		// 60 would NOT have flagged under the old days.length-averaged
+		// baseline (60 < 350) — only the fixed 7-day denominator flags it.
+		expect(spikes).toEqual([
+			expect.objectContaining({ workflowId: 'workflow-1', todayCount: 60, baseline: 10 }),
+		]);
+	});
+
+	// Regression test for the timezone fix: `today` is always a UTC day-key
+	// (computePeriodBucket('day', DateTime.utc())), but reading each row's
+	// `periodStart` without an explicit zone uses Luxon's default zone. On a
+	// non-UTC server that mismatch means `byDay.delete(today)` fails to
+	// strip today's own data out of the baseline, inflating it and masking
+	// a real spike. `Settings.defaultZone` simulates a non-UTC server here.
+	it('excludes today’s own data from the baseline using UTC day-keys, independent of the server’s local zone', async () => {
+		Settings.defaultZone = 'America/New_York';
+
+		const counterRepository = mock<ProjectExecutionCounterRepository>();
+		const insightsByPeriodRepository = mock<InsightsByPeriodRepository>();
+
+		counterRepository.findByProjectId.mockResolvedValue([{ workflowId: 'workflow-1', count: 60 }]);
+
+		// Five real trailing days at midday UTC (clear of any zone-boundary
+		// ambiguity), each contributing 14 → 70 total → a true baseline of
+		// 10/day over the fixed 7-day window.
+		const historicalRows = [1, 2, 3, 4, 5].map((daysAgo) => ({
+			periodStart: DateTime.utc().minus({ days: daysAgo }).set({ hour: 12 }).toJSDate(),
+			value: 14,
+		}));
+
+		// A bogus "today" row timestamped just after UTC midnight. Under the
+		// simulated non-UTC local zone, an unzoned reinterpretation of this
+		// instant lands on the *previous* calendar day — exactly the bug this
+		// fix closes. If this leaks into the baseline instead of being
+		// stripped, it inflates the baseline enough that the real spike below
+		// (60 vs a true baseline of 10) is missed.
+		const todayNearMidnightUtc = DateTime.utc().startOf('day').plus({ hours: 2 }).toJSDate();
+
+		insightsByPeriodRepository.getTrailingHourlyRows.mockResolvedValue([
+			...historicalRows,
+			{ periodStart: todayNearMidnightUtc, value: 500 },
+		]);
+
+		const service = new ProjectExecutionQuotaService(
+			mock(),
+			mock(),
+			counterRepository,
+			mock(),
+			insightsByPeriodRepository,
+		);
+
+		const spikes = await service.getSpikes('project-1');
+
+		expect(spikes).toEqual([
+			expect.objectContaining({ workflowId: 'workflow-1', todayCount: 60, baseline: 10 }),
+		]);
+	});
+});
+
+describe('ProjectExecutionQuotaService.getConsumption', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('includes resetsAt as the start of the next period bucket, for a day-period project', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-09-03T10:00:00.000Z'));
+
+		const quotaRepository = mock<ProjectExecutionQuotaRepository>();
+		const counterRepository = mock<ProjectExecutionCounterRepository>();
+		quotaRepository.findOneBy.mockResolvedValue({
+			projectId: 'project-1',
+			limit: 100,
+			periodUnit: 'day',
+		} as never);
+		counterRepository.getProjectPeriodTotal.mockResolvedValue(10);
+
+		const service = new ProjectExecutionQuotaService(
+			mock(),
+			quotaRepository,
+			counterRepository,
+			mock(),
+			mock(),
+		);
+
+		const consumption = await service.getConsumption('project-1');
+
+		expect(consumption.resetsAt).toBe('2026-09-04T00:00:00.000Z');
+	});
+
+	it('includes resetsAt as the start of the next month, for a month-period project', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-09-15T10:00:00.000Z'));
+
+		const quotaRepository = mock<ProjectExecutionQuotaRepository>();
+		const counterRepository = mock<ProjectExecutionCounterRepository>();
+		quotaRepository.findOneBy.mockResolvedValue({
+			projectId: 'project-1',
+			limit: 100,
+			periodUnit: 'month',
+		} as never);
+		counterRepository.getProjectPeriodTotal.mockResolvedValue(10);
+
+		const service = new ProjectExecutionQuotaService(
+			mock(),
+			quotaRepository,
+			counterRepository,
+			mock(),
+			mock(),
+		);
+
+		const consumption = await service.getConsumption('project-1');
+
+		expect(consumption.resetsAt).toBe('2026-10-01T00:00:00.000Z');
 	});
 });

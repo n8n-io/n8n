@@ -830,6 +830,7 @@ describe('Execution quota spikes', () => {
 			periodUnit: 'day',
 			consumed: 10,
 			remaining: 90,
+			resetsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		});
 		projectsStore.getExecutionQuotaSpikes.mockResolvedValue([
 			{ workflowId: '2', todayCount: 50, baseline: 5, multiplier: 5 },

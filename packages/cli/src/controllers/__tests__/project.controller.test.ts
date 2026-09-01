@@ -293,7 +293,13 @@ describe('ProjectController', () => {
 
 	describe('execution quota endpoints', () => {
 		it('getExecutionQuota delegates to the service', async () => {
-			const consumption = { limit: 100, periodUnit: 'day' as const, consumed: 5, remaining: 95 };
+			const consumption = {
+				limit: 100,
+				periodUnit: 'day' as const,
+				consumed: 5,
+				remaining: 95,
+				resetsAt: '2026-09-02T00:00:00.000Z',
+			};
 			projectExecutionQuotaService.getConsumption.mockResolvedValue(consumption);
 
 			const result = await controller.getExecutionQuota(req, makeRes(), 'p1');

@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 
-import { computePeriodBucket } from '../period-bucket';
+import { computePeriodBucket, computePeriodEnd } from '../period-bucket';
 
 describe('computePeriodBucket', () => {
 	const date = DateTime.utc(2026, 9, 1, 14, 30);
@@ -25,5 +25,23 @@ describe('computePeriodBucket', () => {
 		const week2 = DateTime.utc(2026, 9, 7);
 
 		expect(computePeriodBucket('week', week1)).not.toBe(computePeriodBucket('week', week2));
+	});
+});
+
+describe('computePeriodEnd', () => {
+	const date = DateTime.utc(2026, 9, 1, 14, 30);
+
+	it('resolves the end of a day period as the start of the next day', () => {
+		expect(computePeriodEnd('day', date).toISO()).toBe('2026-09-02T00:00:00.000Z');
+	});
+
+	it('resolves the end of a week period as the start of the next ISO week (Monday)', () => {
+		// 2026-09-01 is a Tuesday in ISO-week 2026-W36; the next ISO week
+		// starts Monday 2026-09-07.
+		expect(computePeriodEnd('week', date).toISO()).toBe('2026-09-07T00:00:00.000Z');
+	});
+
+	it('resolves the end of a month period as the start of the next month', () => {
+		expect(computePeriodEnd('month', date).toISO()).toBe('2026-10-01T00:00:00.000Z');
 	});
 });

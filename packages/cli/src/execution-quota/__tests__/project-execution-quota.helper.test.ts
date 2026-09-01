@@ -61,4 +61,30 @@ describe('resolveDefaultProjectExecutionLimit', () => {
 
 		expect(resolveDefaultProjectExecutionLimit(license)).toBe(1000);
 	});
+
+	it('defaults Community to unlimited (-1) rather than an instance-wide cap', () => {
+		delete process.env[ENV_VAR];
+		const license = mockLicense({ quota: undefined, planName: 'Community' });
+
+		expect(resolveDefaultProjectExecutionLimit(license)).toBe(
+			PROJECT_EXECUTION_LIMIT_TIER_DEFAULTS.Community,
+		);
+		expect(PROJECT_EXECUTION_LIMIT_TIER_DEFAULTS.Community).toBe(-1);
+	});
+
+	it('falls through to the license/tier precedence when the env var is malformed (NaN)', () => {
+		process.env[ENV_VAR] = 'not-a-number';
+		const license = mockLicense({ quota: 500, planName: 'Business' });
+
+		expect(resolveDefaultProjectExecutionLimit(license)).toBe(500);
+	});
+
+	it('falls through to the tier default when the malformed env var has no license opinion', () => {
+		process.env[ENV_VAR] = 'not-a-number';
+		const license = mockLicense({ quota: undefined, planName: 'Business' });
+
+		expect(resolveDefaultProjectExecutionLimit(license)).toBe(
+			PROJECT_EXECUTION_LIMIT_TIER_DEFAULTS.Business,
+		);
+	});
 });

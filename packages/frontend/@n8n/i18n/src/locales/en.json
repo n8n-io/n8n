@@ -5941,6 +5941,7 @@
 	"projects.settings.executionQuota.saveError": "An error occurred while saving the execution quota",
 	"projects.executionQuota.card.title": "Executions this period",
 	"projects.executionQuota.card.loadError": "Couldn't load the execution quota",
+	"projects.executionQuota.card.resetsAt": "Resets",
 	"projects.executionQuota.spike.badge": "Spike",
 	"projects.executionQuota.spike.tooltip": "{todayCount} executions today, vs a baseline of {baseline}",
 	"projects.settings.role.upgrade.title": "Upgrade to Enterprise",
