@@ -513,7 +513,7 @@ describe('SettingsOpenTelemetryView', () => {
 		await selectProtocol('gRPC');
 
 		await waitFor(() => {
-			expect(store.settings!.exporterProtocol).toBe('grpc');
+			expect(store.settings.exporterProtocol).toBe('grpc');
 			expect(queryByTestId('otel-tracing-path')).not.toBeInTheDocument();
 		});
 	});
