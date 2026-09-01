@@ -179,7 +179,6 @@ reviews:
         - .agents/review-rules/frontend/vue-correctness.md
         - .agents/review-rules/frontend/component-wrappers.md
         - .agents/review-rules/frontend/i18n.md
-        - .agents/review-rules/frontend/workflow-document-store.md
         - .agents/review-rules/testing/coverage.md
       include:
         - packages/frontend/**
