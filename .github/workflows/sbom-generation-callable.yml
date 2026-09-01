@@ -27,13 +27,14 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-  id-token: write
-  attestations: write
+permissions: {}
 
 jobs:
   generate-sbom:
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     name: Generate and Attach SBOM to Release
     runs-on: ubuntu-latest
     timeout-minutes: 15
