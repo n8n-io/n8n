@@ -19,7 +19,7 @@ import { jsonParse } from 'n8n-workflow';
 import * as path from 'path';
 
 import type { NodeTypeDescription } from './generate-types';
-import { orchestrateGeneration } from './generate-types';
+import { computeSchemaCorpusHash, orchestrateGeneration } from './generate-types';
 
 /** Name of the sentinel file storing the content hash */
 const HASH_SENTINEL_FILE = '.nodes-hash';
@@ -31,11 +31,20 @@ export interface GenerateNodeDefinitionsOptions {
 }
 
 /**
- * Compute a SHA-256 hash of the nodes.json content and SDK package version.
- * Including the SDK version ensures regeneration when generation logic changes.
+ * Compute a SHA-256 hash of the nodes.json content, SDK package version, and
+ * discovered `__schema__` corpus. The corpus hash isn't part of nodes.json, so
+ * without it, editing/adding an output schema wouldn't invalidate the hash-skip.
  */
-export function computeInputHash(content: string, sdkVersion: string): string {
-	return createHash('sha256').update(content).update(sdkVersion).digest('hex');
+export function computeInputHash(
+	content: string,
+	sdkVersion: string,
+	schemaCorpusHash = '',
+): string {
+	return createHash('sha256')
+		.update(content)
+		.update(sdkVersion)
+		.update(schemaCorpusHash)
+		.digest('hex');
 }
 
 /**
@@ -69,7 +78,8 @@ export async function generateNodeDefinitions(
 
 	// Hash-based skip: check if output is already up to date
 	const sdkVersion = getSdkVersion();
-	const inputHash = computeInputHash(content, sdkVersion);
+	const schemaCorpusHash = computeSchemaCorpusHash();
+	const inputHash = computeInputHash(content, sdkVersion, schemaCorpusHash);
 	const hashFilePath = path.join(outputDir, HASH_SENTINEL_FILE);
 
 	try {
