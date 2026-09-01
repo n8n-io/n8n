@@ -2293,7 +2293,7 @@ describe('WorkflowExecute', () => {
 				node,
 				{ main: [[], loopBackItems] },
 				{ main: [null, { previousNode }] },
-			) as INodeExecutionData[] | null;
+			);
 
 		test('should use data a node sent to a later input of itself', () => {
 			expect(prepare('Loop')).toEqual(loopBackItems);
