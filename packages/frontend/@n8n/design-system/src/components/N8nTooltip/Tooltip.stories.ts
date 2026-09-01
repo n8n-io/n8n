@@ -27,7 +27,7 @@ export const Default = {
 			return { args };
 		},
 		template: `
-		<div>
+		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
 			<Tooltip v-bind="args">
 				<N8nButton label="Hover me" />
 			</Tooltip>
@@ -47,7 +47,7 @@ export const Placements = {
 			return { args };
 		},
 		template: `
-		<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px">
+		<div style="padding: 200px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
 			<div style="text-align: right;">
 				<Tooltip content="Top start" placement="top-start">
 					<N8nButton label="top-start" />
@@ -136,7 +136,7 @@ export const HTMLContent = {
 			return { args };
 		},
 		template: `
-		<div>
+		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
 			<Tooltip v-bind="args">
 				<N8nButton label="Hover for rich content" />
 			</Tooltip>
@@ -156,7 +156,7 @@ export const CustomContentSlot = {
 			return { args };
 		},
 		template: `
-		<div>
+		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
 			<Tooltip v-bind="args">
 				<template #content>
 					<div style="display: flex; align-items: center; gap: 8px;">
@@ -184,7 +184,7 @@ export const DelayedShow = {
 			return { args };
 		},
 		template: `
-		<div>
+		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
 			<Tooltip v-bind="args">
 				<N8nButton label="Hover and wait..." />
 			</Tooltip>
@@ -211,7 +211,7 @@ export const ProgrammaticControl = {
 			return { args, isVisible, toggleTooltip };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; gap: 20px">
+		<div style="display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 100px;">
 			<N8nButton label="Toggle Tooltip" @click="toggleTooltip" />
 			<Tooltip v-bind="args" :visible="isVisible">
 				<div style="padding: 20px; border: 2px dashed #ccc; border-radius: 4px;">
@@ -235,7 +235,7 @@ export const Disabled = {
 			return { args, enabled };
 		},
 		template: `
-		<div style="display: flex; flex-direction: column; gap: 20px">
+		<div style="display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 100px;">
 			<label style="display: flex; align-items: center; gap: 8px;">
 				<input type="checkbox" v-model="enabled" />
 				Enable tooltip
@@ -259,7 +259,7 @@ export const WithOffset = {
 			return { args };
 		},
 		template: `
-		<div style="display: flex; gap: 40px">
+		<div style="display: flex; justify-content: center; gap: 40px; padding: 100px;">
 			<Tooltip content="No offset" placement="top">
 				<N8nButton label="No offset" />
 			</Tooltip>
@@ -282,7 +282,7 @@ export const WithIcon = {
 			return { args };
 		},
 		template: `
-		<div>
+		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
 			<Tooltip v-bind="args">
 				<N8nIcon icon="question-circle" size="large" />
 			</Tooltip>
@@ -302,7 +302,7 @@ export const NotEnterable = {
 			return { args };
 		},
 		template: `
-		<div>
+		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
 			<Tooltip v-bind="args">
 				<N8nButton label="Hover me (tooltip closes immediately when leaving)" />
 			</Tooltip>
@@ -337,7 +337,7 @@ export const WithButtons = {
 			};
 		},
 		template: `
-		<div>
+		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
 			<Tooltip v-bind="args" :buttons="buttons">
 				<N8nButton label="Hover for tooltip with buttons" />
 			</Tooltip>
@@ -357,7 +357,7 @@ export const WithContentClass = {
 			return { args };
 		},
 		template: `
-		<div>
+		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
 			<Tooltip v-bind="args">
 				<N8nButton label="Hover for styled tooltip" />
 			</Tooltip>
