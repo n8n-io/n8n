@@ -61,7 +61,7 @@ const suggestionUrl = computed(() => {
 
 	&::after {
 		content: '↗';
-		margin-left: 2px;
+		margin-left: var(--spacing--5xs);
 		text-decoration: none;
 		display: inline-block;
 	}
