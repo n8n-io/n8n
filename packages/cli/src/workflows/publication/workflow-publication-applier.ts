@@ -15,6 +15,9 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
@@ -69,6 +72,8 @@ export class WorkflowPublicationApplier {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowService: WorkflowService,
 		private readonly telemetry: Telemetry,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly ownershipService: OwnershipService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -131,6 +136,9 @@ export class WorkflowPublicationApplier {
 	): Promise<PublicationResult> {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
+
+		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
+		if (blocked !== null) return blocked;
 
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
@@ -236,6 +244,60 @@ export class WorkflowPublicationApplier {
 				failures: [],
 			}),
 		});
+	}
+
+	/**
+	 * Blocks a version that policy objects to, or `null` to carry on.
+	 *
+	 * Runs before the trigger diff: the no-change branch still advances the
+	 * published version, which running triggers re-read on their next fire.
+	 */
+	private async enforcePublishPolicy(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): Promise<PublicationResult | null> {
+		if (!this.policyEnforcementService.hasChecksFor('workflowPublish')) return null;
+
+		// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is not
+		// a passed one, so a failed lookup fails the publication.
+		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+
+		try {
+			await this.policyEnforcementService.enforceWorkflowPublish({
+				workflow: { id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
+				projectId: project.id,
+			});
+
+			return null;
+		} catch (e) {
+			// `instanceof`, not `isPolicyRefusal`: the violations and the `Error` shape
+			// below both need the typed instance.
+			if (!(e instanceof PolicyViolationError)) throw e;
+
+			this.logger.warn('Workflow publication blocked by policy', {
+				workflowId: workflow.id,
+				versionId: newVersion.versionId,
+				violations: e.violations.map((violation) => violation.kind),
+			});
+
+			// Report every trigger as failed: `activated` rows left behind read as drift
+			// to the reconciler, which would then re-enqueue this forever.
+			const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+			const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+
+			return {
+				type: 'failed',
+				error: e,
+				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+					activated: [],
+					failures: desiredTriggerNodes.map((node) => ({
+						nodeId: node.id,
+						nodeName: node.name,
+						error: e,
+					})),
+				}),
+			};
+		}
 	}
 
 	/**

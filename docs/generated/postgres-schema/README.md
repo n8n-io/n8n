@@ -93,7 +93,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_access_tokens](public.oauth_access_tokens.md) | 3 |  | BASE TABLE |
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
 | [public.oauth_clients](public.oauth_clients.md) | 10 |  | BASE TABLE |
-| [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) | 7 |  | BASE TABLE |
+| [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) | 8 |  | BASE TABLE |
 | [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
@@ -117,6 +117,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
 | [public.trusted_key_source](public.trusted_key_source.md) | 8 |  | BASE TABLE |
+| [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
+| [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
+| [public.type_availability_policy_scope](public.type_availability_policy_scope.md) | 8 |  | BASE TABLE |
 | [public.user](public.user.md) | 15 |  | BASE TABLE |
 | [public.user_api_keys](public.user_api_keys.md) | 9 |  | BASE TABLE |
 | [public.user_favorites](public.user_favorites.md) | 4 |  | BASE TABLE |
@@ -312,6 +315,9 @@ erDiagram
 "public.test_run" }o--o| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE SET NULL"
 "public.test_run" }o--o| "public.evaluation_collection" : "FOREIGN KEY (#quot;collectionId#quot;) REFERENCES evaluation_collection(id) ON DELETE SET NULL"
 "public.trusted_key" }o--|| "public.trusted_key_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES trusted_key_source(id) ON DELETE CASCADE"
+"public.type_availability_policy_attachment" }o--|| "public.type_availability_policy" : "FOREIGN KEY (#quot;policyId#quot;) REFERENCES type_availability_policy(id) ON DELETE RESTRICT"
+"public.type_availability_policy_attachment" }o--|| "public.type_availability_policy_scope" : "FOREIGN KEY (#quot;scopeId#quot;) REFERENCES type_availability_policy_scope(id) ON DELETE CASCADE"
+"public.type_availability_policy_scope" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.user" }o--|| "public.role" : "FOREIGN KEY (#quot;roleSlug#quot;) REFERENCES role(slug)"
 "public.user_api_keys" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.user_favorites" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -1213,6 +1219,7 @@ erDiagram
   varchar clientId FK
   timestamp_3__with_time_zone createdAt
   bigint expiresAt
+  varchar resource
   json scope
   varchar_255_ token
   timestamp_3__with_time_zone updatedAt
@@ -1428,6 +1435,33 @@ erDiagram
   varchar_32_ status
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt
+}
+"public.type_availability_policy" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_64_ kind
+  json rules
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ updatedBy
+  integer version
+}
+"public.type_availability_policy_attachment" {
+  timestamp_3__with_time_zone createdAt
+  boolean isFloor
+  varchar_36_ policyId FK
+  integer priority
+  varchar_36_ scopeId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.type_availability_policy_scope" {
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ defaultAction
+  varchar_36_ id
+  varchar_64_ kind
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ updatedBy
+  integer version
 }
 "public.user" {
   timestamp_3__with_time_zone createdAt

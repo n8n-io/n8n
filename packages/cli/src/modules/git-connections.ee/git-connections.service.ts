@@ -3,6 +3,7 @@ import {
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
 	type GitConnectionPublicDto,
+	type GitConnectionPullResultDto,
 	type GitConnectionPushResultDto,
 	type UpdateGitConnectionDto,
 } from '@n8n/api-types';
@@ -11,7 +12,7 @@ import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { mkdir, mkdtemp, rename, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -20,8 +21,23 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
+	DataTableMissingMode,
+	DataTableSchemaConflictPolicy,
+	FolderConflictPolicy,
+	MissingNodeTypeMode,
 	MissingWorkflowDependencyPolicy,
+	OverwriteDeletionPolicy,
+	ProjectConflictPolicy,
+	TagConflictPolicy,
+	TagMissingMode,
+	VariableConflictPolicy,
+	VariableMissingMode,
+	WorkflowConflictPolicy,
+	WorkflowIdPolicy,
+	WorkflowPublishingPolicy,
 	WorkflowVersionPolicy,
+	type ImportRequest,
+	type ImportResult,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -42,6 +58,26 @@ type ManageProjectLinkOptions = {
 	user: User;
 	connectionId: string;
 	projectId: string;
+};
+
+// Pull treats the working copy as source of truth; callers cannot override this policy.
+const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
+	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
+	workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+	workflowIdPolicy: WorkflowIdPolicy.Source,
+	workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
+	missingNodeTypeMode: MissingNodeTypeMode.Fail,
+	credentialMatchingMode: 'id-only',
+	credentialMissingMode: 'create-stub',
+	folderConflictPolicy: FolderConflictPolicy.Overwrite,
+	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
+	dataTableMatchingMode: 'by-id',
+	dataTableMissingMode: DataTableMissingMode.Create,
+	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
+	variableMissingMode: VariableMissingMode.CreateWithValue,
+	variableConflictPolicy: VariableConflictPolicy.Overwrite,
+	tagMissingMode: TagMissingMode.Create,
+	tagConflictPolicy: TagConflictPolicy.Rename,
 };
 
 @Service()
@@ -153,13 +189,6 @@ export class GitConnectionsService {
 	}
 
 	async push(connectionId: string, actor: User): Promise<GitConnectionPushResultDto> {
-		return await this.exportProjectsToRepository(connectionId, actor);
-	}
-
-	private async exportProjectsToRepository(
-		connectionId: string,
-		actor: User,
-	): Promise<GitConnectionPushResultDto> {
 		// Validates the connection exists (throws NotFound otherwise) before any export work.
 		await this.getEntity(connectionId);
 		// The instance connection covers every team project; personal projects are
@@ -277,6 +306,88 @@ export class GitConnectionsService {
 			projectId: link.projectId,
 			gitConnectionId: link.gitConnectionId,
 		});
+	}
+
+	async pull(connectionId: string, actor: User): Promise<GitConnectionPullResultDto> {
+		await this.getEntity(connectionId);
+		const importFolder = path.join(this.rootFolder(connectionId), 'repository', EXPORT_SUBFOLDER);
+
+		if (!(await this.exportedWorkingCopyExists(importFolder))) {
+			throw new BadRequestError(
+				'This Git connection has no exported working copy to import. Connect it and push projects first.',
+			);
+		}
+
+		this.logger.info('Importing projects from Git connection repository', { connectionId });
+
+		const result = await this.n8nPackagesService.importPackageFromDirectory(
+			{ user: actor, ...IMPORT_POLICY },
+			{ sourceDir: importFolder },
+		);
+
+		// Keep links aligned so later pushes preserve the pulled project set.
+		await this.gitConnectionProjectRepository.syncConnectionProjects(
+			connectionId,
+			result.projects.map((project) => project.localId),
+		);
+
+		return { connectionId, counts: this.toImportCounts(result) };
+	}
+
+	private async exportedWorkingCopyExists(folder: string): Promise<boolean> {
+		try {
+			return (await stat(folder)).isDirectory();
+		} catch {
+			return false;
+		}
+	}
+
+	private toImportCounts(result: ImportResult): GitConnectionPullResultDto['counts'] {
+		const tally = <S extends string>(rows: Array<{ status: S }>, statuses: readonly S[]) => {
+			const counts = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<S, number>;
+			for (const { status } of rows) counts[status] += 1;
+			return counts;
+		};
+
+		return {
+			projects: tally(result.projects, ['created', 'updated', 'skipped'] as const),
+			folders: {
+				...tally(result.folders, ['created', 'skipped'] as const),
+				removed: result.removedFolders.length,
+			},
+			workflows: {
+				...tally(result.workflows, ['created', 'updated', 'skipped'] as const),
+				archived: result.removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
+				deleted: result.removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
+				// Publishing happens after writes, so failures are reported without failing the pull.
+				publishing: tally(
+					result.workflows.map(({ publishing }) => ({ status: publishing.state })),
+					['published', 'unpublished', 'unchanged', 'blocked', 'failed'] as const,
+				),
+			},
+			credentials: {
+				matched: result.credentials.matched.length,
+				stubbed: result.credentials.stubbed.length,
+			},
+			dataTables: {
+				matched: result.dataTables.matched,
+				created: result.dataTables.created,
+			},
+			variables: {
+				matched: result.variables.matched.length,
+				created: result.variables.created.length,
+				updated: result.variables.updated.length,
+				stubbed: result.variables.stubbed.length,
+				missing: result.variables.missing.length,
+			},
+			tags: {
+				matched: result.tags.matched.length,
+				created: result.tags.created.length,
+				renamed: result.tags.renamed.length,
+				reconciled: result.tags.reconciled.length,
+				skipped: result.tags.skipped.length,
+			},
+		};
 	}
 
 	private async applyNewAuthentication(
