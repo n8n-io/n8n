@@ -1,6 +1,6 @@
-import { escapeForScriptContext } from '../escape';
 import {
 	createPage,
+	escapeForScriptContext,
 	getSanitizedCustomCss,
 	getSanitizedInitialMessages,
 	getSanitizedI18nConfig,
