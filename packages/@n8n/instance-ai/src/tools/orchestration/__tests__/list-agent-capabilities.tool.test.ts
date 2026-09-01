@@ -30,18 +30,22 @@ const sampleChannels: ChatIntegrationDescriptor[] = [
 ];
 
 describe('list-agent-capabilities tool', () => {
-	it('returns the delegate channel list verbatim plus the agent-level limitations', async () => {
+	it('returns the delegate channel list verbatim plus agent capabilities and limitations', async () => {
 		const delegate = mock<InstanceAiBuilderDelegate>();
 		delegate.listAgentCapabilities.mockResolvedValue(sampleChannels);
 
 		const tool = createListAgentCapabilitiesTool(makeContext(delegate));
 		const output = await executeTool<{
 			channels: ChatIntegrationDescriptor[];
+			agentCapabilities: string[];
 			limitations: string[];
 		}>(tool, {});
 
 		expect(delegate.listAgentCapabilities).toHaveBeenCalledWith();
 		expect(output.channels).toEqual(sampleChannels);
+		expect(output.agentCapabilities.length).toBeGreaterThan(0);
+		expect(output.agentCapabilities.some((c) => c.includes('MCP'))).toBe(true);
+		expect(output.agentCapabilities.some((c) => c.includes('scheduled tasks'))).toBe(true);
 		expect(output.limitations).toEqual([
 			'Agents cannot create n8n workflows or data tables; attach existing workflows only.',
 			'Chat channels must come from this list — any other channel is unsupported.',
@@ -55,18 +59,20 @@ describe('list-agent-capabilities tool', () => {
 		);
 	});
 
-	it('returns an empty channel list when the registry has no public integrations', async () => {
+	it('returns an empty channel list but still surfaces agent capabilities when the registry has no public integrations', async () => {
 		const delegate = mock<InstanceAiBuilderDelegate>();
 		delegate.listAgentCapabilities.mockResolvedValue([]);
 
 		const tool = createListAgentCapabilitiesTool(makeContext(delegate));
 		const output = await executeTool<{
 			channels: ChatIntegrationDescriptor[];
+			agentCapabilities: string[];
 			limitations: string[];
 		}>(tool, {});
 
 		expect(output.channels).toEqual([]);
-		// Limitations are static guidance, present regardless of channel count.
+		// Agent capabilities and limitations are static guidance, present regardless of channel count.
+		expect(output.agentCapabilities.length).toBeGreaterThan(0);
 		expect(output.limitations).toHaveLength(2);
 	});
 });
