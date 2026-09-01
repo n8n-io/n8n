@@ -43,6 +43,7 @@ import {
 import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import { executePriorRuns } from './prior-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -521,6 +522,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
 	// name). Lets an authored `attach` reference survive the per-run remap.
 	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
+	/** Declared seed name → the workflow id created for it, for `seed.priorRuns`. Keyed by
+	 *  the AUTHORED name: seed names are uniquified on restore, so the instance name and
+	 *  the name a case writes are not the same string. */
+	const priorRunWorkflowIds = new Map<string, string>();
 	// Credential-setup lane (fixture server + extension-loaded browser). Stays
 	// undefined unless the session resolved a fixture for this case.
 	let credentialSetupLane: CredentialSetupLane | undefined;
@@ -788,6 +793,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						)
 					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [] };
 				restoredWorkflowIds = restoreResult.workflowIds;
+				// Same index alignment the remap already relies on, so a case can name a
+				// prior run by the workflow name it authored.
+				seed.workflows.forEach((workflow, index) => {
+					const createdId = restoreResult.workflowIds[index];
+					if (createdId) priorRunWorkflowIds.set(workflow.name, createdId);
+				});
 				restoredDataTableIds = restoreResult.dataTableIds;
 				restoredAgentIds = restoreResult.agentIds;
 				// The server binds the thread to the agent the history LAST targeted, so
@@ -814,6 +825,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				throw new Error(
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
+			}
+			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
+			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
+			// not. Before the live turn, so the agent's first look already sees it.
+			if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
+				await executePriorRuns({
+					client,
+					priorRuns: config.seed.priorRuns,
+					workflowIdsByName: priorRunWorkflowIds,
+					logger,
+					laneTag: config.laneTag,
+				});
 			}
 		}
 
