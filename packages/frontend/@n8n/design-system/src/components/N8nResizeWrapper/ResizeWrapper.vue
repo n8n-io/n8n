@@ -310,7 +310,6 @@ const resizerMove = (event: MouseEvent) => {
 	&::after {
 		content: '';
 		position: absolute;
-		border-radius: var(--radius--4xs);
 		background-color: var(--resizer--indicator--color);
 		opacity: 0;
 		transition: opacity var(--duration--snappy) var(--easing--ease-out);
