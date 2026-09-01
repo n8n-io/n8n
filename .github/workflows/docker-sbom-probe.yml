@@ -1,5 +1,5 @@
 name: 'Docker: SBOM manifest-format probe'
-run-name: "Docker: SBOM probe (sbom=${{ inputs.sbom }})"
+run-name: 'Docker: SBOM probe (sbom=${{ inputs.sbom }})'
 
 # Asserts that the merged manifest is an OCI image index. 2.26.0 shipped as a
 # Docker manifest list and did not pull on AKS (#31997). Run this after a
