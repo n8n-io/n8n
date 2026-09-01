@@ -41,9 +41,11 @@ const MAX_TRACKED_BACKLOG_IDS = 5_000;
 // failed fetch cannot be told apart from a rate limit, and this node does not
 // retry inside a poll, so an id gets several polls to come back.
 export const MAX_PENDING_FETCH_ATTEMPTS = 10;
-// Consecutive polls that reach nothing new before the no-progress valve fires.
-// More than one sample is needed: one slow response can stop a scan short where
-// the next poll, with a fresh budget, reaches further.
+// The no-progress valve fires on this many consecutive polls that reach nothing
+// new. More than one sample is needed: one slow response can stop a scan short
+// where the next poll, with a fresh budget, reaches further. A window the page
+// cap wedges waits the same run, so it needs this many polls to give up where it
+// used to give up on the first.
 const MAX_NO_PROGRESS_TICKS = 3;
 
 export class GmailTrigger implements INodeType {
@@ -415,7 +417,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			});
 
 			// A fetched message is progress, whether it came from the pending queue or
-			// a fresh scan, so the no-progress run starts over.
+			// a fresh scan, so the no-progress run starts over. Unconditional, unlike
+			// the clear in the scan path: a poll that fetched anything writes the
+			// boundary set below in any case, so this write costs no extra save.
 			nodeStaticData.noProgressTicks = 0;
 
 			if (!includeDrafts && fullMessage.labelIds?.includes('DRAFT')) {
@@ -489,9 +493,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			const givenUp = setAside.filter(([, attempts]) => attempts >= MAX_PENDING_FETCH_ATTEMPTS);
 
 			if (shouldLimitMessages && retryable.length > 0) {
-				// Bounded per tick, and the untried tail moves to the front, so a long
-				// list cannot spend the whole poll on doomed requests or starve its own
-				// later entries.
+				// Bounded per tick. Ids this poll did not reach come first, then the
+				// untried tail, so a long list cannot spend the whole poll on doomed
+				// requests or starve its own later entries.
 				const retryNow = retryable.slice(0, maxResults);
 				const retryLater = retryable.slice(maxResults);
 				const stillFailing: Array<[string, number]> = [];
@@ -533,8 +537,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			}
 
 			// Process pending messages from a previous poll next. These are IDs a scan
-			// found but no poll fetched: beyond the maxResults budget, past this poll's
-			// time budget, or left over when a fetch failed mid-poll.
+			// found but no poll fetched: beyond the maxResults budget, past the time
+			// budget of the poll that scanned them, or left over when a fetch failed
+			// mid-poll.
 			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
 			if (shouldLimitMessages && pendingIds.length > 0 && budget > 0) {
 				const fetchQs = buildFetchQs();
@@ -565,7 +570,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 					// advance. A failed id leaves the queue for the set-aside list, which
 					// is written once the loop ends.
 					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
-					// Checked after the fetch so every tick handles at least one id.
+					// Checked after the fetch, and after the trim above, so every poll
+					// handles at least one id and the id it just delivered leaves the queue.
+					// A break above the trim re-delivers it: this drain does not filter
+					// against the boundary set.
 					if (Date.now() >= pollDeadline) break;
 				}
 
@@ -652,7 +660,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			messages = Array.from(new Map(messages.map((m) => [m.id, m])).values());
 
 			// An empty page set is not an early return: Gmail ends a list only by
-			// dropping the page token, so this must reach the no-progress valve below.
+			// dropping the page token, so on v1.4+ this must reach the no-progress valve
+			// below. Every other version falls through to the same null return.
 
 			// For v1.4+, filter out already-handled messages before fetching to save API
 			// calls. Gmail's `after:` query is inclusive at the second boundary, and a
@@ -759,7 +768,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							...messagesToProcess.slice(index + 1).map((m) => m.id),
 							...beyondBudgetIds,
 						];
-						// Checked after the fetch so every tick fetches at least one message.
+						// Checked after the fetch, and after the trim above, so every poll
+						// fetches at least one message and no delivered id stays queued.
 						if (Date.now() >= pollDeadline) break;
 					}
 				}

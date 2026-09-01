@@ -61,8 +61,9 @@ export type GmailWorkflowStaticData = {
 	/** v1.4+: IDs whose fetch failed, with how many attempts each has had so far */
 	failedFetches?: Array<[string, number]>;
 	/**
-	 * v1.4+: Consecutive polls whose scan stopped short and reached nothing new;
-	 * a delivery or a full scan clears it
+	 * Consecutive polls whose scan stopped short and reached nothing new. Any
+	 * fetched message clears it, delivered or filtered out. A scan that exhausted
+	 * the page token clears it too. Only v1.4+ reads it.
 	 */
 	noProgressTicks?: number;
 };

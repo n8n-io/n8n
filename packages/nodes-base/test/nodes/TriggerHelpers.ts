@@ -323,8 +323,9 @@ export async function testPollingTriggerNode(
 	(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
 
 	const { pollBudgetMs } = options;
-	// Defaults for __emit, __emitError, __commitCursor, __runPoll,
-	// resolveNodeStaticData — only the poll-budget getter is overridden.
+	// Each undefined keeps a PollContext default: __emit, __emitError,
+	// __commitCursor, __runPoll, resolveNodeStaticData. The poll-budget getter is
+	// the only constructor argument this helper sets.
 	const pollContext = new PollContext(
 		workflow,
 		node,
