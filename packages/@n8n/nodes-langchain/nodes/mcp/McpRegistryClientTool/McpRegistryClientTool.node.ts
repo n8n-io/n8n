@@ -82,6 +82,8 @@ export class McpRegistryClientTool implements INodeType {
 				required: true,
 			},
 		],
+		// endpointUrl and serverTransport are not used, kept as metadata for agent frontend configuration flow for tools
+		// TODO: update frontend flow to not rely on these properties
 		properties: [
 			{
 				displayName: 'Endpoint URL',
