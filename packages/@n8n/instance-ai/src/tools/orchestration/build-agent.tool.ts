@@ -932,10 +932,10 @@ async function resolveTargetForCall(
 					mode: 'continued',
 				};
 			}
-			// Adoption is authorized precisely when the id came from this thread's
+			// Adoption is authorized when the id came from this thread's
 			// own pending marker: the editor may have won the insert on it and
-			// already configured the row. A backend-minted id can't collide, so the
-			// flag is meaningless there.
+			// already configured the row. Without a marker the backend mints the id,
+			// which cannot collide — so `adoptOnCollision` would be meaningless.
 			const pendingId = await pendingAgentIdFor(domainContext);
 			// `createNew` asks for a second agent explicitly, so it keeps creating.
 			if (!pendingId && !input.createNew) {
