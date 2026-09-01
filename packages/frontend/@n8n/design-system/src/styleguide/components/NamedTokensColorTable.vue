@@ -19,6 +19,7 @@ const query = ref('');
 const tokenValues = ref<Record<string, string>>({});
 
 let observer: MutationObserver | null = null;
+let colorSchemeQuery: MediaQueryList | null = null;
 
 const groupLabelFor = (token: string) => {
 	const firstGroup = token.slice(2).split('--')[0] ?? token;
@@ -98,10 +99,16 @@ onMounted(() => {
 	});
 
 	observer.observe(document.body, { attributes: true });
+
+	if (typeof window.matchMedia === 'function') {
+		colorSchemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		colorSchemeQuery.addEventListener('change', updateValues);
+	}
 });
 
 onUnmounted(() => {
 	observer?.disconnect();
+	colorSchemeQuery?.removeEventListener('change', updateValues);
 });
 </script>
 
@@ -197,7 +204,7 @@ onUnmounted(() => {
 
 .row {
 	display: grid;
-	grid-template-columns: 2rem minmax(0, 1.2fr) minmax(0, 1fr);
+	grid-template-columns: var(--spacing--xl) minmax(0, 1.2fr) minmax(0, 1fr);
 	align-items: center;
 	gap: var(--spacing--sm);
 	width: 100%;
@@ -205,8 +212,8 @@ onUnmounted(() => {
 
 .swatch {
 	display: block;
-	width: 2rem;
-	height: 2rem;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow--outline);
 	background-color: var(--background--surface);
