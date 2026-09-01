@@ -1,5 +1,5 @@
 import type { ITaskData } from '../src/interfaces';
-import { mergeRunsPerBranch } from '../src/sub-workflow-output';
+import { mergeBranchesIntoSingleOutput, mergeRunsPerBranch } from '../src/sub-workflow-output';
 
 function buildRun(outputBranches: { json: object }[][]): ITaskData {
 	return {
@@ -60,6 +60,44 @@ describe('mergeRunsPerBranch', () => {
 		expect(mergeRunsPerBranch([runWithPrimaryBranchOnly, runWithBothBranches])).toEqual([
 			mergedPrimaryBranch,
 			secondaryBranchFromTheOnlyRunThatProducedIt,
+		]);
+	});
+});
+
+describe('mergeBranchesIntoSingleOutput', () => {
+	it('returns an empty array unchanged', () => {
+		expect(mergeBranchesIntoSingleOutput([])).toEqual([]);
+	});
+
+	it('returns a single branch unchanged, including the no-data sentinel', () => {
+		const singleBranch = [[{ json: { id: 1 } }]];
+
+		expect(mergeBranchesIntoSingleOutput(singleBranch)).toBe(singleBranch);
+		expect(mergeBranchesIntoSingleOutput([null])).toEqual([null]);
+	});
+
+	it('concatenates the branches of an If in branch order', () => {
+		const trueBranch = [{ json: { id: 55 } }];
+		const falseBranch = [{ json: { id: 56 } }, { json: { id: 57 } }];
+
+		expect(mergeBranchesIntoSingleOutput([trueBranch, falseBranch])).toEqual([
+			[{ json: { id: 55 } }, { json: { id: 56 } }, { json: { id: 57 } }],
+		]);
+	});
+
+	it('keeps items that only the second branch produced', () => {
+		const onlyTheSecondBranchHasItems = [[], [{ json: { id: 56 } }]];
+
+		expect(mergeBranchesIntoSingleOutput(onlyTheSecondBranchHasItems)).toEqual([
+			[{ json: { id: 56 } }],
+		]);
+	});
+
+	it('treats null branches as empty', () => {
+		const switchWithUnusedBranches = [null, [{ json: { id: 1 } }], null];
+
+		expect(mergeBranchesIntoSingleOutput(switchWithUnusedBranches)).toEqual([
+			[{ json: { id: 1 } }],
 		]);
 	});
 });

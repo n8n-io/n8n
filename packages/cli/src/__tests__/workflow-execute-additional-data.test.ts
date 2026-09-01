@@ -2017,6 +2017,61 @@ describe('WorkflowExecuteAdditionalData', () => {
 				),
 			).toEqual([null]);
 		});
+
+		describe('multi-output terminal node', () => {
+			// An `If` that sends every item out its false branch, with that branch
+			// left unconnected, so the `If` is the last node the sub-workflow ran.
+			const itemsOnTheFalseBranchOnly: Record<string, ITaskData[]> = {
+				[LAST_NODE_EXECUTED]: [
+					{
+						data: {
+							main: [[], [{ json: { itemId: 0 } }, { json: { itemId: 1 } }]],
+						},
+					},
+				] as unknown as ITaskData[],
+			};
+			const expectedItemsOnTheSingleOutput = [[{ json: { itemId: 0 } }, { json: { itemId: 1 } }]];
+
+			it('merges the branches on the merged-runs path', () => {
+				const output = buildSubWorkflowOutput(
+					buildRun({ mode: 'trigger', runData: itemsOnTheFalseBranchOnly }),
+					[trigger(1.2)],
+					false,
+				);
+
+				expect(output).toEqual(expectedItemsOnTheSingleOutput);
+			});
+
+			it('merges the branches on the `lastRunOnly` path', () => {
+				const output = buildSubWorkflowOutput(
+					buildRun({ mode: 'trigger', runData: itemsOnTheFalseBranchOnly }),
+					[trigger(1.1)],
+					false,
+				);
+
+				expect(output).toEqual(expectedItemsOnTheSingleOutput);
+			});
+
+			it('keeps the items of every branch, in branch order', () => {
+				const itemsOnBothBranches: Record<string, ITaskData[]> = {
+					[LAST_NODE_EXECUTED]: [
+						{
+							data: {
+								main: [[{ json: { itemId: 0 } }], [{ json: { itemId: 1 } }]],
+							},
+						},
+					] as unknown as ITaskData[],
+				};
+
+				const output = buildSubWorkflowOutput(
+					buildRun({ mode: 'trigger', runData: itemsOnBothBranches }),
+					[trigger(1.2)],
+					false,
+				);
+
+				expect(output).toEqual([[{ json: { itemId: 0 } }, { json: { itemId: 1 } }]]);
+			});
+		});
 	});
 
 	describe('triggerReturnsLastRunOnly', () => {

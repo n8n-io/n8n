@@ -9,3 +9,15 @@ export function mergeRunsPerBranch(runs: ITaskData[]): Array<INodeExecutionData[
 		runs.flatMap((run) => run.data?.main?.[branch] ?? []),
 	);
 }
+
+/**
+ * The calling `Execute Sub-workflow` node has a single main output, so items the
+ * sub-workflow's last node put on any other branch have nowhere to go and are
+ * dropped. Concatenate every branch into one, in branch order.
+ */
+export function mergeBranchesIntoSingleOutput(
+	branches: Array<INodeExecutionData[] | null>,
+): Array<INodeExecutionData[] | null> {
+	if (branches.length <= 1) return branches;
+	return [branches.flatMap((branch) => branch ?? [])];
+}

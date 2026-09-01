@@ -43,6 +43,7 @@ import {
 	UnexpectedError,
 	Workflow,
 	createRunExecutionData,
+	mergeBranchesIntoSingleOutput,
 	mergeRunsPerBranch,
 	attachDynamicCredentialsUsage,
 	summarizeDynamicCredentialsUsage,
@@ -506,6 +507,8 @@ export function triggerReturnsLastRunOnly(nodes: INode[]): boolean {
  * The caller can additionally force the legacy single-run output via `returnLastRunOnly`
  * (used by LangChain tool/retriever callers that need a single-answer output).
  * Pinned data on the last node always wins in manual mode.
+ * A last node with more than one output (an `If` or a `Switch`) has its branches
+ * merged, because the caller has a single main output to put them on.
  * See n8n-io/n8n#9989.
  */
 export function buildSubWorkflowOutput(
@@ -521,10 +524,12 @@ export function buildSubWorkflowOutput(
 		lastNodeExecuted !== undefined &&
 		pinData[lastNodeExecuted] !== undefined;
 
-	if (!lastRunOnly && runs.length > 0 && !manualPinDataOverride) {
-		return mergeRunsPerBranch(runs);
-	}
-	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
+	const branches =
+		!lastRunOnly && runs.length > 0 && !manualPinDataOverride
+			? mergeRunsPerBranch(runs)
+			: (WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null]);
+
+	return mergeBranchesIntoSingleOutput(branches);
 }
 
 async function startExecution(
