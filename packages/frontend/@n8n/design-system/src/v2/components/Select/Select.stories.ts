@@ -11,12 +11,24 @@ import N8nInput from '@n8n/design-system/components/N8nInput';
 import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
 import N8nText from '@n8n/design-system/components/N8nText';
 
-import type { SelectItem, SelectOptionBase, SelectSizes } from './Select.types';
+import type {
+	SelectItem,
+	SelectOptionBase,
+	SelectProps,
+	SelectSizes,
+	SelectValue,
+} from './Select.types';
 import Select from './Select.vue';
 import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
-type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
-	component: Record<keyof C, unknown>;
+type SelectStoryProps = Omit<SelectProps, 'modelValue' | 'defaultValue' | 'multiple'> & {
+	multiple?: boolean;
+	modelValue?: SelectValue | SelectValue[];
+	defaultValue?: SelectValue | SelectValue[];
+};
+
+type SelectMeta = Omit<Meta<SelectStoryProps>, 'component'> & {
+	component: object;
 };
 
 const meta = {
@@ -49,10 +61,10 @@ const meta = {
 			description: 'Shows a clear button when a value is selected. Hidden when disabled or empty.',
 		},
 	},
-} satisfies GenericMeta<typeof Select>;
+} satisfies SelectMeta;
 export default meta;
 
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<SelectStoryProps>;
 
 const fruitItems: SelectItem[] = [
 	{
@@ -233,7 +245,9 @@ export const WithSlots = {
 	},
 } satisfies Story;
 
-type DescribedOption = SelectOptionBase & { description: string };
+interface DescribedOption extends SelectOptionBase {
+	description: string;
+}
 
 const modeItems: DescribedOption[] = [
 	{
@@ -593,7 +607,9 @@ export const AsyncItems = {
 	},
 } satisfies Story;
 
-type StatusOption = SelectOptionBase & { color: string };
+interface StatusOption extends SelectOptionBase {
+	color: string;
+}
 
 const statusItemsWithSwatches: StatusOption[] = [
 	{ label: 'Backlog', value: 'backlog', color: 'var(--color--neutral-400)' },
