@@ -211,8 +211,7 @@ const resizerMove = (event: MouseEvent) => {
 <style lang="scss" module>
 .resize {
 	--resizer--size: 4px;
-	--resizer--side--size: var(--spacing--2xs);
-	--resizer--spacing--side: calc(var(--resizer--side--size) / -2);
+	--resizer--spacing--side: calc(var(--resizer--size) / -2);
 	--resizer--spacing--corner: -3px;
 	--resizer--indicator--thickness: var(--spacing--4xs);
 	--resizer--indicator--color: light-dark(var(--color--neutral-250), var(--color--neutral-700));
@@ -297,13 +296,11 @@ const resizerMove = (event: MouseEvent) => {
 .right,
 .left {
 	top: 0;
-	width: var(--resizer--side--size);
 }
 
 .top,
 .bottom {
 	left: 0;
-	height: var(--resizer--side--size);
 }
 
 .right,
