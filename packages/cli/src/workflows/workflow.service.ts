@@ -1,4 +1,5 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
@@ -29,6 +30,7 @@ import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-w
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
+import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -72,6 +74,16 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 /** Internal rollback vehicle for `publishAsSystem`'s guarded transaction; never escapes it. */
 class SystemPublishSupersededError extends Error {}
 
+/** What `getMany` should enrich or scope beyond the plain list query. */
+export type GetManyOptions = {
+	includeScopes?: boolean;
+	includeFolders?: boolean;
+	onlySharedWithMe?: boolean;
+	/** Attach the list publication badge; only the workflow list UI wants this. */
+	includePublicationStatus?: boolean;
+	requiredScopes?: Scope[];
+};
+
 @Service()
 export class WorkflowService {
 	constructor(
@@ -107,15 +119,19 @@ export class WorkflowService {
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	async getMany(
 		user: User,
 		options?: ListQuery.Options,
-		includeScopes?: boolean,
-		includeFolders?: boolean,
-		onlySharedWithMe?: boolean,
-		requiredScopes: Scope[] = ['workflow:read'],
+		{
+			includeScopes = false,
+			includeFolders = false,
+			onlySharedWithMe = false,
+			includePublicationStatus = false,
+			requiredScopes = ['workflow:read'],
+		}: GetManyOptions = {},
 	) {
 		let count;
 		let workflows;
@@ -203,16 +219,30 @@ export class WorkflowService {
 
 		this.cleanupSharedField(workflows);
 
+		// Kicked off before the folder merge — `workflows` holds only workflow rows
+		// here — and awaited last, so it overlaps the resolvable-credentials lookup.
+		const publicationStatuses =
+			includePublicationStatus && this.globalConfig.workflows.useWorkflowPublicationService
+				? this.getListPublicationStatuses(workflows.map((w) => w.id))
+				: null;
+
 		if (includeFolders) {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
 
 		// Add hasResolvableCredentials if dynamic credentials feature is licensed
 		if (this.licenseState.isDynamicCredentialsLicensed()) {
-			return {
-				workflows: await this.addResolvableCredentialsFlag(workflows),
-				count,
-			};
+			workflows = await this.addResolvableCredentialsFlag(workflows);
+		}
+
+		if (publicationStatuses) {
+			const statuses = await publicationStatuses;
+			// Only attach when set: workflows with no trigger rows (and folder rows,
+			// whose ids never match) keep the legacy card indicator.
+			workflows = workflows.map((workflow) => {
+				const publicationStatus = statuses.get(workflow.id);
+				return publicationStatus ? { ...workflow, publicationStatus } : workflow;
+			});
 		}
 
 		return {
@@ -240,6 +270,23 @@ export class WorkflowService {
 		);
 
 		return parentWorkflow ? parentWorkflowId : undefined;
+	}
+
+	/**
+	 * The badge is decorative, so a failure of the aggregate must degrade to an
+	 * unbadged list instead of failing the whole request.
+	 */
+	private async getListPublicationStatuses(
+		workflowIds: string[],
+	): Promise<Map<string, WorkflowListPublicationStatus>> {
+		try {
+			return await this.workflowPublicationStatusService.getListStatusesByWorkflowIds(workflowIds);
+		} catch (error) {
+			this.logger.warn('Failed to resolve publication statuses for the workflow list', {
+				error: ensureError(error),
+			});
+			return new Map();
+		}
 	}
 
 	private async addResolvableCredentialsFlag<
