@@ -172,8 +172,16 @@ Notes:
   skipped with a warning instead of failing startup.
 - The startup connectivity check waits for a grpc-js channel to become ready for
   `grpc` (an HTTP `HEAD` request is meaningless against an HTTP/2-only server).
-  The channel uses the exporter's target and credentials, so readiness proves TCP,
+  The channel dials the host and port of the endpoint, so readiness proves TCP,
   the TLS handshake for `https://`, and an HTTP/2 connection. It is not proof that
   OTLP/gRPC is served there — use "Send test trace" in Settings → OpenTelemetry
   for the real check.
-- Custom CAs and mTLS are not configurable beyond `NODE_EXTRA_CA_CERTS`.
+- An endpoint without a port dials the grpc-js default port 443, not 4317. Always
+  give the port, e.g. `http://127.0.0.1:4317`.
+- The check uses the default TLS trust store. It does not use the certificate
+  material that the exporter reads from `OTEL_EXPORTER_OTLP_CERTIFICATE`,
+  `OTEL_EXPORTER_OTLP_CLIENT_KEY` and `OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE`, so a
+  collector behind a private CA, or one that needs mTLS, can fail the check and
+  still receive spans.
+- n8n has no setting for a custom CA or mTLS. Use the upstream
+  `OTEL_EXPORTER_OTLP_*` certificate variables above, or `NODE_EXTRA_CA_CERTS`.

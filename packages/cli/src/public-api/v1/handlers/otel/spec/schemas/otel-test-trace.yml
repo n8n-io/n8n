@@ -19,8 +19,8 @@ properties:
     description: >
       The wire protocol used to send the test span. Collectors conventionally serve OTLP/HTTP on
       port 4318 and OTLP/gRPC on port 4317. The endpoint scheme (`http://` or `https://`)
-      controls TLS for both protocols. Optional for backward compatibility: omitting it selects
-      `http/protobuf`, the value in force before this field existed.
+      controls TLS for both protocols. Optional: omitting it selects `http/protobuf`, unless an
+      environment variable manages this field, which then supplies the value.
     example: http/protobuf
   exporterEndpoint:
     type: string

@@ -29,8 +29,9 @@ properties:
     description: >
       The wire protocol used to export spans. Collectors conventionally serve OTLP/HTTP on port
       4318 and OTLP/gRPC on port 4317. The endpoint scheme (`http://` or `https://`) controls
-      TLS for both protocols. Optional for backward compatibility: omitting it on a write
-      selects `http/protobuf`, the value in force before this field existed.
+      TLS for both protocols. Optional: a write that omits it selects `http/protobuf`, but an
+      instance that sets this field to another value with an environment variable rejects that
+      write with 409.
     example: http/protobuf
   exporterEndpoint:
     type: string
