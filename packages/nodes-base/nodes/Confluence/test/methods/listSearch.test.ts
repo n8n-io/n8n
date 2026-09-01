@@ -18,6 +18,7 @@ vi.mock('../../transport', () => ({
 	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
 	confluenceApiRequest: vi.fn(),
 	getConfluenceCloudId: vi.fn(),
+	getConfluenceCredentialName: vi.fn(() => 'confluenceCloudOAuth2Api'),
 }));
 
 const apiRequest = vi.mocked(confluenceApiRequest);
