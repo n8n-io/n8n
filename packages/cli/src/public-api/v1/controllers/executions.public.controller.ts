@@ -21,6 +21,7 @@ import {
 import type { Response } from 'express';
 import { replaceCircularReferences } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
@@ -29,6 +30,17 @@ import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
+
+/**
+ * The legacy spec typed this parameter as `number`, so the request validator rejected a non-numeric
+ * id with a 400. The generated spec declares a string, so without this the value reaches the query
+ * and fails against the integer column.
+ */
+function assertNumericExecutionId(executionId: string): void {
+	if (!/^\d+$/.test(executionId)) {
+		throw new BadRequestError('The execution ID must be a positive integer');
+	}
+}
 
 @PublicApiController('/executions')
 export class ExecutionsPublicController {
@@ -53,6 +65,8 @@ export class ExecutionsPublicController {
 		@Param('executionId') executionId: string,
 		@Query query: GetExecutionQueryDto,
 	): Promise<ExecutionPublicDto> {
+		assertNumericExecutionId(executionId);
+
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:read'],
@@ -108,6 +122,8 @@ export class ExecutionsPublicController {
 		_res: Response,
 		@Param('executionId') executionId: string,
 	): Promise<DeletedExecutionPublicDto> {
+		assertNumericExecutionId(executionId);
+
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:delete'],
