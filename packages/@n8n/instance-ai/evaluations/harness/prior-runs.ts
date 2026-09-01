@@ -6,16 +6,32 @@ import {
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
 	shouldRetryScenarioExecution,
+	throwIfServerBudgetStop,
 } from './transient-error';
 import type { N8nClient } from '../clients/n8n-client';
 import type { SeedPriorRun } from '../types';
 
-/** What one pre-turn run did, so the caller can see what history the agent was given
- *  — and, above all, whether the run failed the way the case intended. */
+/**
+ * Staging is not the graded turn, so it gets its own, much tighter budget. The build
+ * budget is 15 minutes and a prior run may retry, which would let scene-setting outspend
+ * the thing under test.
+ */
+export const STAGING_TIMEOUT_MS = 120_000;
+
+/** What one pre-turn run did, so the caller can see what history the agent was given. */
 export interface PriorRunOutcome {
-	/** The name the case declared, not the uniquified name on the instance. */
+	/** The seed id the case named. */
 	workflow: string;
 	workflowId: string;
+	/**
+	 * Whether an execution record exists. This is the field that separates "failed
+	 * exactly as the case staged" from "never ran, so the premise is missing" —
+	 * `success: false` alone cannot tell those apart, and only the second is a reason
+	 * to distrust the grade.
+	 */
+	ran: boolean;
+	/** Present whenever the run reached the instance. Proof the record landed. */
+	executionId?: string;
 	success: boolean;
 	errors: string[];
 }
@@ -23,9 +39,10 @@ export interface PriorRunOutcome {
 export interface PriorRunsOptions {
 	client: N8nClient;
 	priorRuns: SeedPriorRun[];
-	/** Declared seed name → the workflow id created for it. */
-	workflowIdsByName: Map<string, string>;
+	/** Authored seed id → the restored workflow, as `seedWorkflowsBySeedId` holds it. */
+	seedWorkflows: Map<string, { id: string; name: string }>;
 	logger: EvalLogger;
+	/** Defaults to `STAGING_TIMEOUT_MS`. */
 	timeoutMs?: number;
 	laneTag?: string;
 	/** Injectable for tests. */
@@ -41,34 +58,40 @@ export interface PriorRunsOptions {
  * died on the HTTP node" and then ask only "it broke again" — the agent has to go and
  * find out how.
  *
- * A failed prior run therefore NEVER fails the build. Outcomes come back for the log;
- * the only fatal case is a workflow the seed never created, which is an authoring
- * mistake worth stopping for.
+ * A failed prior run therefore never fails the build. A prior run that never RAN is a
+ * different matter: the caller reads `ran` and routes the case to infra, because the
+ * premise it was graded against does not exist.
  *
  * Runs sequentially in declared order: a case can stage a sequence (a run that succeeds,
  * then one that fails) and later runs may depend on state the earlier ones left behind.
  */
 export async function executePriorRuns(options: PriorRunsOptions): Promise<PriorRunOutcome[]> {
-	const { client, priorRuns, workflowIdsByName, logger, timeoutMs, laneTag } = options;
+	const { client, priorRuns, seedWorkflows, logger, laneTag } = options;
 	const delay = options.sleep ?? sleep;
+	const timeoutMs = options.timeoutMs ?? STAGING_TIMEOUT_MS;
 	const outcomes: PriorRunOutcome[] = [];
 
 	for (const priorRun of priorRuns) {
-		const workflowId = workflowIdsByName.get(priorRun.workflow);
-		if (!workflowId) {
-			// The schema cross-checks these names at load, so reaching here means the
-			// seed did not create what it declared. Failing loudly beats grading a case
-			// whose premise silently never happened.
+		const restored = seedWorkflows.get(priorRun.workflow);
+		if (!restored) {
+			// The schema cross-checks these ids at load, so reaching here means the seed
+			// did not create what it declared. Failing loudly beats grading a case whose
+			// premise silently never happened.
 			throw new Error(
-				`Prior run names workflow "${priorRun.workflow}", which the seed did not create. Created: ${[...workflowIdsByName.keys()].join(', ') || '(none)'}`,
+				`Prior run names seed workflow id "${priorRun.workflow}", which the seed did not create. Created: ${[...seedWorkflows.keys()].join(', ') || '(none)'}`,
 			);
 		}
 
-		const outcome = await runOnce(client, priorRun, workflowId, logger, delay, timeoutMs);
+		const label = `${restored.name} (${priorRun.workflow})`;
+		const outcome = await runOnce(client, priorRun, restored.id, label, logger, delay, timeoutMs);
 		outcomes.push(outcome);
 		logger.info(
-			`  Prior run "${priorRun.workflow}": ${
-				outcome.success ? 'succeeded' : `failed (${outcome.errors.join('; ') || 'no error detail'})`
+			`  Prior run "${label}": ${
+				outcome.ran
+					? outcome.success
+						? 'succeeded'
+						: `failed (${outcome.errors.join('; ') || 'no error detail'})`
+					: `NEVER RAN — no execution record (${outcome.errors.join('; ') || 'no error detail'})`
 			}${laneTag ?? ''}`,
 		);
 	}
@@ -80,9 +103,10 @@ async function runOnce(
 	client: N8nClient,
 	priorRun: SeedPriorRun,
 	workflowId: string,
+	label: string,
 	logger: EvalLogger,
 	delay: (ms: number) => Promise<void>,
-	timeoutMs?: number,
+	timeoutMs: number,
 ): Promise<PriorRunOutcome> {
 	const base = { workflow: priorRun.workflow, workflowId };
 	let lastErrors: string[] = [];
@@ -91,10 +115,20 @@ async function runOnce(
 		let retryReason: string;
 		try {
 			const result = await client.executeWithLlmMock(workflowId, priorRun.hints, timeoutMs);
+			// A run the server stopped for exceeding its budget comes back in-band. Recording
+			// it as a staged failure would put HARNESS text in the execution record the graded
+			// agent then reads as the workflow's own failure reason.
+			throwIfServerBudgetStop(result);
 			// A DB write race aborts the run before any node executes and reports in-band.
 			// That is not the failure the case is staging, so retry it rather than record it.
 			if (result.success || !isTransientExecutionAbort(result.errors)) {
-				return { ...base, success: result.success, errors: result.errors };
+				return {
+					...base,
+					ran: true,
+					executionId: result.executionId,
+					success: result.success,
+					errors: result.errors,
+				};
 			}
 			lastErrors = result.errors;
 			retryReason = `transient DB abort (${result.errors.join('; ') || 'no error detail'})`;
@@ -104,8 +138,8 @@ async function runOnce(
 			// execution gets, because a blip here silently voids the case's premise: the
 			// graded turn would then run against history that never landed.
 			if (!shouldRetryScenarioExecution(message, attempt)) {
-				logger.warn(`    Prior run "${priorRun.workflow}" could not complete: ${message}`);
-				return { ...base, success: false, errors: [message] };
+				logger.warn(`    Prior run "${label}" could not complete: ${message}`);
+				return { ...base, ran: false, success: false, errors: [message] };
 			}
 			lastErrors = [message];
 			retryReason = message;
@@ -115,13 +149,13 @@ async function runOnce(
 		// announce a retry it will not make and sleep before giving up.
 		if (attempt < MAX_EXEC_ATTEMPTS) {
 			logger.warn(
-				`    Prior run "${priorRun.workflow}" ${retryReason} (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}); retrying`,
+				`    Prior run "${label}" ${retryReason} (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}); retrying`,
 			);
 			await delay(500 * attempt);
 		}
 	}
 
-	// Every attempt hit a retryable fault. Reports the last real errors rather than a
-	// synthetic message, so the log still names what actually went wrong.
-	return { ...base, success: false, errors: lastErrors };
+	// Every attempt hit a retryable fault, so no execution record landed. Reports the last
+	// real errors rather than a synthetic message, so the log names what went wrong.
+	return { ...base, ran: false, success: false, errors: lastErrors };
 }

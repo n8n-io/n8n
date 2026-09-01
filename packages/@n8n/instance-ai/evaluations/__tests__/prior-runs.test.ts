@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { N8nClient } from '../clients/n8n-client';
 import { remapSeedArtifactIds, type ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
-import { executePriorRuns } from '../harness/prior-runs';
+import { executePriorRuns, STAGING_TIMEOUT_MS } from '../harness/prior-runs';
 import { EvalTestCaseSchema } from '../harness/schema';
 import { MAX_EXEC_ATTEMPTS } from '../harness/transient-error';
 
@@ -27,7 +27,7 @@ function logger() {
 }
 
 const noSleep = async () => {};
-const ids = new Map([['Daily Sync', 'wf-1']]);
+const seeded = new Map([['dS8xQ2mV6bTn4Kp1', { id: 'wf-1', name: 'Daily Sync' }]]);
 
 describe('executePriorRuns', () => {
 	it('runs each declared workflow and reports what happened', async () => {
@@ -36,21 +36,29 @@ describe('executePriorRuns', () => {
 
 		const outcomes = await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'Daily Sync', hints: 'the HTTP node returns 500' }],
-			workflowIdsByName: ids,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1', hints: 'the HTTP node returns 500' }],
+			seedWorkflows: seeded,
 			logger: logger(),
 			sleep: noSleep,
 		});
 
 		expect(outcomes).toEqual([
-			{ workflow: 'Daily Sync', workflowId: 'wf-1', success: true, errors: [] },
+			{
+				workflow: 'dS8xQ2mV6bTn4Kp1',
+				workflowId: 'wf-1',
+				ran: true,
+				executionId: 'exec-1',
+				success: true,
+				errors: [],
+			},
 		]);
 		// `hints` reaches the mock layer the same way `dataSetup` does — that is how a
 		// case stages one specific failure.
+		// Staging gets its own tight budget, not the 15-minute build budget.
 		expect(client.executeWithLlmMock).toHaveBeenCalledWith(
 			'wf-1',
 			'the HTTP node returns 500',
-			undefined,
+			STAGING_TIMEOUT_MS,
 		);
 	});
 
@@ -64,8 +72,8 @@ describe('executePriorRuns', () => {
 
 		const outcomes = await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'Daily Sync' }],
-			workflowIdsByName: ids,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
 			logger: logger(),
 			sleep: noSleep,
 		});
@@ -83,8 +91,8 @@ describe('executePriorRuns', () => {
 
 		await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'Daily Sync' }],
-			workflowIdsByName: ids,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
 			logger: log,
 			sleep: noSleep,
 		});
@@ -105,10 +113,10 @@ describe('executePriorRuns', () => {
 
 		await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'First' }, { workflow: 'Second' }],
-			workflowIdsByName: new Map([
-				['First', 'wf-a'],
-				['Second', 'wf-b'],
+			priorRuns: [{ workflow: 'fIrStSeEd1234567' }, { workflow: 'sEcOnDsEeD123456' }],
+			seedWorkflows: new Map([
+				['fIrStSeEd1234567', { id: 'wf-a', name: 'First' }],
+				['sEcOnDsEeD123456', { id: 'wf-b', name: 'Second' }],
 			]),
 			logger: logger(),
 			sleep: noSleep,
@@ -130,8 +138,8 @@ describe('executePriorRuns', () => {
 
 		const outcomes = await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'Daily Sync' }],
-			workflowIdsByName: ids,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
 			logger: logger(),
 			sleep: noSleep,
 		});
@@ -149,8 +157,8 @@ describe('executePriorRuns', () => {
 
 		const outcomes = await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'Daily Sync' }],
-			workflowIdsByName: ids,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
 			logger: logger(),
 			sleep: noSleep,
 		});
@@ -171,8 +179,8 @@ describe('executePriorRuns', () => {
 
 		await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'Daily Sync' }],
-			workflowIdsByName: ids,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
 			logger: log,
 			sleep: async (ms) => {
 				delays.push(ms);
@@ -194,8 +202,8 @@ describe('executePriorRuns', () => {
 
 		const outcomes = await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'Daily Sync' }],
-			workflowIdsByName: ids,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
 			logger: log,
 			sleep: noSleep,
 		});
@@ -213,8 +221,8 @@ describe('executePriorRuns', () => {
 
 		const outcomes = await executePriorRuns({
 			client,
-			priorRuns: [{ workflow: 'Daily Sync' }],
-			workflowIdsByName: ids,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
 			logger: logger(),
 			sleep: noSleep,
 		});
@@ -222,6 +230,60 @@ describe('executePriorRuns', () => {
 		expect(client.executeWithLlmMock).toHaveBeenCalledTimes(MAX_EXEC_ATTEMPTS);
 		expect(outcomes[0].success).toBe(false);
 		expect(outcomes[0].errors).toEqual(['ECONNRESET']);
+	});
+
+	it('does not record a server budget stop as the staged failure', async () => {
+		// The stop comes back in-band. Recorded as-is, HARNESS text would become the
+		// workflow's failure reason in the execution record the graded agent then reads.
+		const client = mock<N8nClient>();
+		client.executeWithLlmMock.mockResolvedValue(
+			execResult({
+				success: false,
+				errors: ['Workflow exceeded its 120s eval budget and was stopped'],
+			}),
+		);
+
+		const outcomes = await executePriorRuns({
+			client,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
+			logger: logger(),
+			sleep: noSleep,
+		});
+
+		// Thrown, then classified as a timeout — so it never reaches the staged-failure
+		// return, and the case is left with no execution record rather than a fake one.
+		expect(outcomes[0].ran).toBe(false);
+		expect(outcomes[0].errors.join(' ')).toContain('aborted due to timeout');
+	});
+
+	it('separates "failed as staged" from "never ran"', async () => {
+		// `success: false` alone cannot tell these apart, and only the second is a reason
+		// to distrust the grade.
+		const staged = mock<N8nClient>();
+		staged.executeWithLlmMock.mockResolvedValue(
+			execResult({ success: false, errors: ['HTTP Request: 500'] }),
+		);
+		const [asStaged] = await executePriorRuns({
+			client: staged,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
+			logger: logger(),
+			sleep: noSleep,
+		});
+		expect(asStaged).toMatchObject({ ran: true, executionId: 'exec-1', success: false });
+
+		const broken = mock<N8nClient>();
+		broken.executeWithLlmMock.mockRejectedValue(new Error('workflow is not runnable'));
+		const [neverRan] = await executePriorRuns({
+			client: broken,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
+			logger: logger(),
+			sleep: noSleep,
+		});
+		expect(neverRan.ran).toBe(false);
+		expect(neverRan.executionId).toBeUndefined();
 	});
 
 	it('throws when the seed never created the named workflow', async () => {
@@ -232,8 +294,8 @@ describe('executePriorRuns', () => {
 		await expect(
 			executePriorRuns({
 				client,
-				priorRuns: [{ workflow: 'Never Seeded' }],
-				workflowIdsByName: ids,
+				priorRuns: [{ workflow: 'nEvErSeEdEd12345' }],
+				seedWorkflows: seeded,
 				logger: logger(),
 				sleep: noSleep,
 			}),
@@ -246,7 +308,7 @@ describe('executePriorRuns', () => {
 		const outcomes = await executePriorRuns({
 			client,
 			priorRuns: [],
-			workflowIdsByName: ids,
+			seedWorkflows: seeded,
 			logger: logger(),
 			sleep: noSleep,
 		});
@@ -272,8 +334,8 @@ describe('priorRuns schema validation', () => {
 		};
 	}
 
-	it('accepts a prior run naming a workflow the seed declares', () => {
-		const parsed = EvalTestCaseSchema.safeParse(caseWith([{ workflow: 'Daily Sync' }]));
+	it('accepts a prior run naming a seed workflow id', () => {
+		const parsed = EvalTestCaseSchema.safeParse(caseWith([{ workflow: 'dS8xQ2mV6bTn4Kp1' }]));
 		expect(parsed.success).toBe(true);
 	});
 
@@ -281,21 +343,21 @@ describe('priorRuns schema validation', () => {
 		// Every seed goes through `remapSeedArtifactIds` at build time, and it refuses ids
 		// shorter than 8 characters. A documented example that throws there is worse than
 		// no example, and schema parsing alone would not catch it.
-		const parsed = EvalTestCaseSchema.safeParse(caseWith([{ workflow: 'Daily Sync' }]));
+		const parsed = EvalTestCaseSchema.safeParse(caseWith([{ workflow: 'dS8xQ2mV6bTn4Kp1' }]));
 		expect(parsed.success).toBe(true);
 		if (parsed.success && parsed.data.seed?.mode === 'inline') {
 			expect(() => remapSeedArtifactIds(parsed.data.seed as ConversationSeed)).not.toThrow();
 		}
 	});
 
-	it('rejects a prior run naming a workflow the seed does not declare', () => {
+	it('rejects a prior run naming an id the seed does not declare', () => {
 		// Catching the typo at load beats a mid-build failure, which reads like an
 		// infrastructure fault rather than an authoring mistake.
-		const parsed = EvalTestCaseSchema.safeParse(caseWith([{ workflow: 'Nightly Sync' }]));
+		const parsed = EvalTestCaseSchema.safeParse(caseWith([{ workflow: 'nOtDeClArEd12345' }]));
 		expect(parsed.success).toBe(false);
 		if (!parsed.success) {
 			expect(JSON.stringify(parsed.error.issues)).toContain('which this seed does not declare');
-			expect(JSON.stringify(parsed.error.issues)).toContain('Daily Sync');
+			expect(JSON.stringify(parsed.error.issues)).toContain('dS8xQ2mV6bTn4Kp1');
 		}
 	});
 });

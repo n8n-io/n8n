@@ -107,7 +107,9 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 		messages: inlineSeedMessagesSchema.default([]),
 		/**
 		 * Workflows to RUN before the graded turn, creating real execution records the
-		 * agent can look up. Names must match this seed's `workflows[].name`.
+		 * agent can look up. `workflow` is the seed workflow's **id**, the same key
+		 * `conversation[0].attach.workflow` uses — one rule for pointing at a seeded
+		 * workflow, and it stays unambiguous without depending on seed names being unique.
 		 *
 		 * A failing prior run is the point rather than a problem: `hints` steers the mock
 		 * layer, so a case can establish "the 06:00 run died on the HTTP node" and then ask
@@ -315,13 +317,13 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		// A prior run needs a workflow to run. Catching the typo at authoring time beats a
 		// mid-build failure, which reads like an infrastructure fault rather than a typo.
 		if (c.seed?.mode === 'inline' && c.seed.priorRuns?.length) {
-			const declared = new Set(c.seed.workflows.map((workflow) => workflow.name));
+			const declared = new Set(c.seed.workflows.map((workflow) => workflow.id));
 			for (const [index, priorRun] of c.seed.priorRuns.entries()) {
 				if (!declared.has(priorRun.workflow)) {
 					ctx.addIssue({
 						code: z.ZodIssueCode.custom,
 						path: ['seed', 'priorRuns', index, 'workflow'],
-						message: `priorRuns names workflow "${priorRun.workflow}", which this seed does not declare. Seeded workflow names: ${[...declared].join(', ') || '(none)'}`,
+						message: `priorRuns names workflow id "${priorRun.workflow}", which this seed does not declare. Seeded workflow ids: ${[...declared].join(', ') || '(none)'}`,
 					});
 				}
 			}

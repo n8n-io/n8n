@@ -263,6 +263,11 @@ export interface BuildResult {
 	/** Transport-level failure (network error, or the lane unreachable right
 	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
 	transportFailure?: boolean;
+	/** Set when a `seed.priorRuns` staging run produced no execution record, so the
+	 *  history the case grades against does not exist. Unlike the other infra flags this
+	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
+	 *  otherwise be scored as an agent failure. */
+	priorRunFailed?: string;
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
@@ -519,13 +524,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
+	let priorRunFailed: string | undefined;
 	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
 	// name). Lets an authored `attach` reference survive the per-run remap.
 	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
-	/** Declared seed name → the workflow id created for it, for `seed.priorRuns`. Keyed by
-	 *  the AUTHORED name: seed names are uniquified on restore, so the instance name and
-	 *  the name a case writes are not the same string. */
-	const priorRunWorkflowIds = new Map<string, string>();
 	// Credential-setup lane (fixture server + extension-loaded browser). Stays
 	// undefined unless the session resolved a fixture for this case.
 	let credentialSetupLane: CredentialSetupLane | undefined;
@@ -793,12 +795,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						)
 					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [] };
 				restoredWorkflowIds = restoreResult.workflowIds;
-				// Same index alignment the remap already relies on, so a case can name a
-				// prior run by the workflow name it authored.
-				seed.workflows.forEach((workflow, index) => {
-					const createdId = restoreResult.workflowIds[index];
-					if (createdId) priorRunWorkflowIds.set(workflow.name, createdId);
-				});
 				restoredDataTableIds = restoreResult.dataTableIds;
 				restoredAgentIds = restoreResult.agentIds;
 				// The server binds the thread to the agent the history LAST targeted, so
@@ -830,14 +826,25 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
 			// not. Before the live turn, so the agent's first look already sees it.
 			if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
-				await executePriorRuns({
+				const outcomes = await executePriorRuns({
 					client,
 					priorRuns: config.seed.priorRuns,
-					workflowIdsByName: priorRunWorkflowIds,
+					// Already maps authored seed id → the restored workflow, and it is built
+					// from `remapped`, which the server pins its ids to.
+					seedWorkflows: seedWorkflowsBySeedId,
 					logger,
-					timeoutMs,
 					laneTag: config.laneTag,
 				});
+				// A staged run that never produced an execution record leaves the case's
+				// premise missing, so the graded turn answers a question the instance cannot
+				// support. Recorded rather than thrown: the build itself is fine, and the
+				// case is routed to infra instead of scored.
+				const missing = outcomes.filter((outcome) => !outcome.ran);
+				if (missing.length > 0) {
+					priorRunFailed = missing
+						.map((outcome) => `${outcome.workflow}: ${outcome.errors.join('; ') || 'unknown'}`)
+						.join(' | ');
+				}
 			}
 		}
 
@@ -1065,6 +1072,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					transcript,
 					credentialViewPinned,
 					seedingFailed,
+					...(priorRunFailed ? { priorRunFailed } : {}),
 					credentialSetup: await credentialSetupFacts(),
 				};
 			}
@@ -1085,6 +1093,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				transcript,
 				credentialViewPinned,
 				seedingFailed,
+				...(priorRunFailed ? { priorRunFailed } : {}),
 				credentialSetup: await credentialSetupFacts(),
 			};
 		}
@@ -1145,6 +1154,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			threadId,
 			credentialViewPinned,
 			seedingFailed,
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			laneBootFailed,
 			credentialSetup: await credentialSetupFacts(),
 		};

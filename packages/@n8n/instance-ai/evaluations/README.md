@@ -794,7 +794,7 @@ requires the agent to read it.
   "mode": "inline",
   "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
   "priorRuns": [
-    { "workflow": "Daily Sync", "hints": "the HTTP Request node returns 500" }
+    { "workflow": "dS8xQ2mV6bTn4Kp1", "hints": "the HTTP Request node returns 500" }
   ]
 }
 ```
@@ -805,9 +805,14 @@ requires the agent to read it.
   record, or did it ask the user?
 - **A prior run that fails does not fail the build.** Outcomes go to the log, named by the
   workflow the case declared.
-- **`workflow` must match a `seed.workflows[].name`.** The schema rejects a name the seed
-  does not declare, so a typo fails at load rather than mid-build.
-- Runs execute sequentially in declared order, before the live turn.
+- **`workflow` is the seed workflow's `id`**, the same key `conversation[0].attach.workflow`
+  uses. The schema rejects an id the seed does not declare, so a typo fails at load rather
+  than mid-build.
+- **A run that never happens is not a staged failure.** If no execution record lands, the
+  case is reported as a framework issue rather than scored — it would otherwise be graded
+  against history the instance does not have.
+- Runs execute sequentially in declared order, before the live turn, on a tighter budget
+  than the graded turn.
 
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 
