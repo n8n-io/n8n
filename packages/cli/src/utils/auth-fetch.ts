@@ -1,4 +1,4 @@
-import { fetchFollowingRedirects } from '@n8n/ai-utilities';
+import { createRefreshingAuthFetch } from '@n8n/ai-utilities';
 import type { CustomFetch } from '@n8n/backend-network';
 import { assertUrlAllowed, UserError } from 'n8n-workflow';
 import type { DomainRestrictionMode, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -21,13 +21,6 @@ interface CreateAuthFetchOptions {
 	 * unauthorized host. Mode `none` blocks all requests.
 	 */
 	allowedDomains?: AuthFetchDomainPolicy;
-}
-
-function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
-	if (!headers) return {};
-	if (headers instanceof Headers) return Object.fromEntries(headers.entries());
-	if (Array.isArray(headers)) return Object.fromEntries(headers);
-	return headers;
 }
 
 export function resolveAllowedDomains(
@@ -80,47 +73,14 @@ export function createAuthFetch({
 	onUnauthorized,
 	allowedDomains,
 }: CreateAuthFetchOptions): typeof fetch {
-	let headers = initialHeaders;
-
-	// `sendCredentials` is per redirect chain, so the fetcher is built per request
-	const makeAuthedFetch =
-		(sendCredentials: () => boolean) =>
-		async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-			const buildInit = (): RequestInit => ({
-				...init,
-				headers: sendCredentials()
-					? { ...headersToRecord(init?.headers), ...headers }
-					: headersToRecord(init?.headers),
-			});
-
-			const response = await baseFetch(input, buildInit());
-
-			if (response.status !== 401 || !onUnauthorized || !sendCredentials()) return response;
-
-			const refreshed = await onUnauthorized();
-			if (!refreshed) return response;
-
-			headers = refreshed;
-			return await baseFetch(input, buildInit());
-		};
-
-	// Without a domain policy the native redirect handling applies, which
-	// already strips credential headers on cross-origin redirects
-	if (!allowedDomains) return makeAuthedFetch(() => true);
-
-	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const startUrl = input instanceof Request ? input.url : input;
-		let sendCredentials = true;
-		return await fetchFollowingRedirects(
-			makeAuthedFetch(() => sendCredentials),
-			startUrl,
-			init,
-			{
-				onBeforeHop: (hopUrl, { crossedOrigin }) => {
-					sendCredentials = !crossedOrigin;
-					assertDomainPolicyAllowsUrl(hopUrl, allowedDomains);
-				},
-			},
-		);
-	};
+	return createRefreshingAuthFetch({
+		baseFetch,
+		initialHeaders,
+		...(onUnauthorized ? { refreshHeaders: async () => await onUnauthorized() } : {}),
+		...(allowedDomains
+			? {
+					assertAllowedUrl: (url: string) => assertDomainPolicyAllowsUrl(url, allowedDomains),
+				}
+			: {}),
+	});
 }

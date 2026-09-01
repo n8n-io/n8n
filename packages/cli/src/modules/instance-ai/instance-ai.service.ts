@@ -128,6 +128,7 @@ import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instan
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -175,7 +176,6 @@ import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
-import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -834,6 +834,7 @@ export class InstanceAiService {
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
+		private readonly push: Push,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -880,9 +881,8 @@ export class InstanceAiService {
 		});
 		this.tracing = new InstanceAiTracingService({
 			logger: this.logger,
-			// `first_visible_state` has to see the run's streamed text, which under
-			// the durable log lives in the log (as coalesced blocks), never in the
-			// bus cache.
+			// `first_visible_state` has to see the run's streamed text, which lives
+			// in the log as coalesced blocks — the bus retains nothing.
 			eventReader: {
 				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
 			},
@@ -900,7 +900,6 @@ export class InstanceAiService {
 			aiService: this.aiService,
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
-			durableLog: globalConfig.instanceAi.durableLog,
 			// The terminal guard and outcome-replay dedup must see the run's events
 			// after a restart too, which only the durable log can provide (the bus
 			// cache is empty in a fresh process).
@@ -1952,8 +1951,8 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.clear();
 		this.tracing.clear();
 
-		// Durable-log flag: flush in-flight drains + open coalesce buffers so the
-		// tail of every streamed segment survives the restart. No-op when off.
+		// Flush in-flight drains + open coalesce buffers so the tail of every
+		// streamed segment survives the restart.
 		await this.eventLog.flushAll();
 
 		this.eventBus.clear();
@@ -2647,7 +2646,7 @@ export class InstanceAiService {
 			checkpointStore: this.checkpointStore,
 			eventBus: this.eventBus,
 			logger: this.logger,
-			outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+			outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 			trackTelemetry: (eventName, properties) => {
 				this.telemetry.track(eventName, redactTelemetryProperties(properties));
 			},
@@ -4104,7 +4103,7 @@ export class InstanceAiService {
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							stopSignal,
-							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
 				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -4116,7 +4115,7 @@ export class InstanceAiService {
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
-						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
 			if (result.status === 'suspended') {
 				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
@@ -5483,7 +5482,7 @@ export class InstanceAiService {
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							stopSignal,
-							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
 				: await resumeAgentRun(agent, resumeData, resumeOptions, {
@@ -5496,7 +5495,7 @@ export class InstanceAiService {
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
-						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
@@ -6873,18 +6872,13 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The one place the run-event source is chosen. With the durable log on it
-	 * is a read-own-writes barrier: settle the thread's drain (including open
-	 * coalesce buffers) so everything published before this call is visible,
-	 * then read the log. With it off the in-memory bus store is the only
-	 * source. Every caller is a run boundary — terminal-guard inputs, trace
-	 * metadata, snapshot builds — where closing the open segment early is
-	 * correct anyway.
+	 * Read-own-writes barrier for run-scoped reads: settle the thread's drain
+	 * (including open coalesce buffers) so everything published before this call
+	 * is visible, then read the log. Every caller is a run boundary —
+	 * terminal-guard inputs, trace metadata, snapshot builds — where closing the
+	 * open segment early is correct anyway.
 	 */
 	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
-		if (!this.instanceAiConfig.durableLog) {
-			return this.eventBus.getEventsForRuns(threadId, runIds);
-		}
 		await this.eventLog.flush(threadId);
 		return await this.eventLog.getEventsForRuns(threadId, runIds);
 	}
@@ -6915,10 +6909,10 @@ export class InstanceAiService {
 			} else {
 				events = await this.readRunEvents(threadId, [runId]);
 			}
-			// Durable-log flag on: the tree input comes from the DB, so long runs can
-			// no longer out-evict their own snapshot input (the empty-agentTree bug
-			// class). The snapshot write itself stays during migration so pre-log
-			// threads keep rendering; INS-841 moves history to fold-on-read.
+			// The tree input comes from the DB, so long runs cannot out-evict their
+			// own snapshot input (the empty-agentTree bug class). The snapshot write
+			// itself stays for now so pre-log threads keep rendering; history moves
+			// to fold-on-read separately.
 			if (isUpdate && events.length === 0) {
 				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
 					threadId,
@@ -6973,6 +6967,7 @@ export class InstanceAiService {
 	}): void {
 		const serverSlug = server.metadata?.serverSlug;
 		const userId = server.metadata?.userId;
+		const connectionId = server.metadata?.connectionId;
 		if (serverSlug && userId) {
 			this.telemetry.track('Instance AI mcp tool called', {
 				user_id: userId,
@@ -6980,6 +6975,12 @@ export class InstanceAiService {
 				tool_name: toolName,
 				success,
 			});
+		}
+
+		if (!success && connectionId && userId) {
+			this.push.sendToUsers({ type: 'instanceAiMcpToolCallFailed', data: { connectionId } }, [
+				userId,
+			]);
 		}
 	}
 }

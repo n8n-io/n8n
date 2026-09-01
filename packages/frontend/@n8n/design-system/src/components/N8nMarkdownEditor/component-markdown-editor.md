@@ -33,7 +33,7 @@ A reusable rich-text Markdown editor for editing Markdown-backed content in the 
 - `placeholder?: string` - Placeholder text displayed when the editor is empty. Default: `''`
 - `disabled?: boolean` - When `true`, prevents user interaction and dims the editor. Default: `false`
 - `readonly?: boolean` - When `true`, content can be selected but not edited. Default: `false`
-- `showToolbar?: MarkdownEditorToolbarMode` - Controls toolbar visibility. Values: `'never' | 'hover' | 'always'`. Default: `'always'`
+- `showToolbar?: MarkdownEditorToolbarMode` - Controls toolbar visibility. Values: `'never' | 'hover' | 'always' | 'floating'`. The floating toolbar appears above a non-empty text selection. Default: `'always'`
 - `maxHeight?: string | number` - Maximum editor content height. Number values are treated as pixels. Default: `'480px'`
 - `extensions?: Extension[]` - Optional TipTap extension escape hatch for concrete callsite needs. Default extensions remain design-system managed.
 - `editorProps?: EditorOptions['editorProps']` - Optional TipTap editor props escape hatch.

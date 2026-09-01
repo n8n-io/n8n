@@ -27,6 +27,17 @@
                 }
             }
         },
+        "assignment_group": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
         "business_duration": {
             "type": "string"
         },
@@ -73,6 +84,14 @@
         },
         "comments_and_work_notes": {
             "type": "string"
+        },
+        "company": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                }
+            }
         },
         "contract": {
             "type": "string"
@@ -270,5 +289,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }
