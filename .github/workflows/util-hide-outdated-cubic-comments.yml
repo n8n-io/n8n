@@ -7,8 +7,14 @@ name: Hide outdated cubic review comments
 # visible by default. Hidden comments are collapsed, not deleted -- anyone can
 # still expand them.
 
+# Runs on `pull_request` (not `pull_request_target`) so it never executes with
+# elevated permissions against untrusted fork code. The tradeoff: GitHub only
+# grants a write-capable token to `pull_request` runs when the PR's head repo
+# is this same repo, so the job below is skipped for PRs from forks -- outdated
+# cubic comments on external-contributor PRs won't be minimized.
+
 on:
-  pull_request_target:
+  pull_request:
     types: [synchronize]
 
 permissions:
@@ -16,6 +22,7 @@ permissions:
 
 jobs:
   hide-old-cubic-reviews:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Minimize previous cubic-dev-ai review comments
