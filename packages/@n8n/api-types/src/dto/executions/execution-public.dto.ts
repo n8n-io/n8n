@@ -9,12 +9,10 @@ import {
 	tracingContextOpenApi,
 	workflowDataOpenApi,
 } from './execution-public.openapi';
+import { objectGuardSchema } from '../../schemas/object-guard.schema';
 import { Z } from '../../zod-class';
 
-const anyObjectSchema = z.custom<Record<string, unknown>>(
-	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
-	{ message: 'Must be an object' },
-);
+const anyObjectSchema = objectGuardSchema<Record<string, unknown>>();
 
 const tracingContextSchema = z
 	.object({ traceparent: z.string(), tracestate: z.string().optional() })
