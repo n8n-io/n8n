@@ -29,7 +29,8 @@ export const conversationHistorySearchHitSchema = z.object({
 
 export const conversationHistorySearchResultSchema = z.object({
 	hits: z.array(conversationHistorySearchHitSchema),
-	/** Threads matched before the limit was applied. */
+	/** Threads matched before the limit was applied. Approximate: counted at the
+	 *  SQL prefilter, so it can include threads the excerpt re-check would drop. */
 	totalThreadsMatched: z.number(),
 });
 

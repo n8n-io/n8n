@@ -1144,7 +1144,9 @@ tool's relevance self-evident.
 without an anchor is a schema-level rejection.
 
 **`search`** → `{ hits: [{ threadId, title, updatedAt, matchedIn, firstMessageExcerpt?, excerpts: [{ messageId, text, createdAt }], totalMatches }], totalThreadsMatched, error? }`,
-recency-ordered. `matchedIn` is an array containing zero or more of `'title' | 'messages' | 'user-answers'`. Without a
+recency-ordered. `matchedIn` is an array containing zero or more of `'title' | 'messages' | 'user-answers'`.
+`totalThreadsMatched` (like `totalMatches`) is a SQL-prefilter count — a LIKE
+over serialized JSON — so it can exceed the verified hits. Without a
 `query` the same shape carries a recency listing: empty `matchedIn`/`excerpts`
 and a zero `totalMatches` — pair it with a `get-messages` tail read to continue
 recent work.
@@ -1153,12 +1155,16 @@ recent work.
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
 user experienced it: their messages, ask-user Q&A, and each turn's final
-text-only reply. Mid-turn assistant rows without ask-user Q&A — the agent loop only continues on
-tool calls, so these rows are working narration rather than reply that
-ended the turn — are omitted and do not consume window slots: ask-user Q&A rows remain visible: visibility is
-filtered in SQL via structural markers (unescaped `"type":"tool-call"` can
-only be block structure — quotes inside text are escaped), so `before`/`after`
-count visible messages.
+text-only reply. Mid-turn assistant rows — the agent loop only continues on
+tool calls, so a row carrying them is working narration rather than the reply
+that ended the turn — are filtered out in SQL via structural markers
+(unescaped `"type":"tool-call"` can only be block structure — quotes inside
+text are escaped) and so don't consume window slots; ask-user rows stay
+visible for their Q&A. A small residue is only recognizable after parsing and
+is dropped post-window — internal auto-follow-up user rows, ask-user rows
+still awaiting an answer, unreadable content — so `before`/`after` count
+SQL-visible rows: a window can return slightly fewer messages than asked for,
+and `hasMoreBefore`/`hasMoreAfter` are computed before that drop.
 
 Both actions return `{ ..., error: '...' }` with empty/default fields — never a
 thrown tool error — when the service is unavailable or a lookup fails.

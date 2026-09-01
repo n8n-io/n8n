@@ -1,4 +1,5 @@
 import { Tool } from '@n8n/agents';
+import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -106,9 +107,19 @@ const conversationHistoryOutputSchema = z.union([searchOutputSchema, getMessages
 function requireConversationHistoryService(context: InstanceAiContext) {
 	const { conversationHistoryService } = context;
 	if (!conversationHistoryService) {
-		throw new Error('Conversation history is not available on this instance.');
+		throw new UserError('Conversation history is not available on this instance.');
 	}
 	return conversationHistoryService;
+}
+
+/** `UserError`s are written for the caller and pass through; anything else could
+ *  carry driver/SQL detail — the model gets the fallback, the log the real error. */
+function toSafeErrorMessage(context: InstanceAiContext, error: unknown, fallback: string): string {
+	if (error instanceof UserError) return error.message;
+	context.logger.warn('conversation-history tool call failed', {
+		error: error instanceof Error ? error.message : String(error),
+	});
+	return fallback;
 }
 
 async function handleSearch(
@@ -124,7 +135,7 @@ async function handleSearch(
 		return {
 			hits: [],
 			totalThreadsMatched: 0,
-			error: error instanceof Error ? error.message : 'Failed to search conversation history.',
+			error: toSafeErrorMessage(context, error, 'Failed to search conversation history.'),
 		};
 	}
 }
@@ -147,7 +158,7 @@ async function handleGetMessages(
 			messages: [],
 			hasMoreBefore: false,
 			hasMoreAfter: false,
-			error: error instanceof Error ? error.message : 'Failed to read the conversation.',
+			error: toSafeErrorMessage(context, error, 'Failed to read the conversation.'),
 		};
 	}
 }

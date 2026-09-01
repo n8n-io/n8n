@@ -35,14 +35,18 @@ export function buildSearchLikePattern(query: string): string {
 }
 
 /**
- * Rows `get-messages` can actually show — window counts must mean visible
- * messages, not storage rows, or a tool-heavy turn eats the whole window with
- * rows the reader never sees. Visible: user rows, assistant rows without tool
- * calls (the turn-ending reply — the loop only continues on tool calls), and
+ * Rows `get-messages` can show — window counts should mean visible messages,
+ * not storage rows, or a tool-heavy turn eats the whole window with rows the
+ * reader never sees. Visible: user rows, assistant rows without tool calls
+ * (the turn-ending reply — the loop only continues on tool calls), and
  * ask-user rows (mid-turn, but they carry the user's own answers). Inside
  * serialized JSON the unescaped `"type":"tool-call"` pair can only be block
  * structure — quotes inside text blocks are escaped — so the markers are
  * structural, not textual.
+ *
+ * Coarse layer only: rows recognizable as invisible just after parsing (e.g.
+ * auto-follow-ups, unanswered ask-user rows) pass it and are dropped by the
+ * service post-window, so a window can come back slightly short.
  *
  * Expects `:askUserMarker`, `:toolCallMarker` and `:invalidToolCallMarker` to
  * be set on the query builder.

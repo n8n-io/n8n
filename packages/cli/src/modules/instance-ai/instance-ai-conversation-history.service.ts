@@ -531,6 +531,8 @@ function buildHit(
  * them is working narration, not the reply that ended the turn). Ask-user
  * rows are mid-turn tool activity too, but they hold the user's own
  * answers — they stay.
+ * Rows dropped here already counted toward the SQL window, so the returned
+ * window shrinks rather than shifts.
  */
 function toHistoryMessage(row: InstanceAiMessage): ConversationHistoryMessage | undefined {
 	if (row.role !== 'user' && row.role !== 'assistant') return undefined;

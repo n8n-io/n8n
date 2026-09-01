@@ -1,6 +1,8 @@
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../__tests__/tool-test-utils';
+import type { Logger } from '../logger';
 import type {
 	ConversationHistoryMessagesResult,
 	ConversationHistorySearchResult,
@@ -63,6 +65,7 @@ function makeContext(
 ): InstanceAiContext {
 	const context = mock<InstanceAiContext>();
 	context.conversationHistoryService = conversationHistoryService;
+	context.logger = mock<Logger>();
 	return context;
 }
 
@@ -142,9 +145,9 @@ describe('conversation-history tool', () => {
 			).rejects.toThrow();
 		});
 
-		it('catches a service failure into the error field instead of throwing', async () => {
+		it('passes a UserError message through — it is written for the caller', async () => {
 			const service = makeService({
-				search: vi.fn().mockRejectedValue(new Error('db unavailable')),
+				search: vi.fn().mockRejectedValue(new UserError('Conversation not found')),
 			});
 			const tool = createConversationHistoryTool(makeContext(service));
 
@@ -153,10 +156,32 @@ describe('conversation-history tool', () => {
 				query: 'timezone',
 			});
 
-			expect(output).toEqual({ hits: [], totalThreadsMatched: 0, error: 'db unavailable' });
+			expect(output).toEqual({
+				hits: [],
+				totalThreadsMatched: 0,
+				error: 'Conversation not found',
+			});
 		});
 
-		it('falls back to a generic message when the service throws a non-Error value', async () => {
+		it('hides an unexpected error behind the generic message instead of throwing', async () => {
+			const service = makeService({
+				search: vi.fn().mockRejectedValue(new Error('SQLITE_BUSY: database is locked')),
+			});
+			const tool = createConversationHistoryTool(makeContext(service));
+
+			const output = await executeTool<SearchOutput>(tool, {
+				action: 'search',
+				query: 'timezone',
+			});
+
+			expect(output).toEqual({
+				hits: [],
+				totalThreadsMatched: 0,
+				error: 'Failed to search conversation history.',
+			});
+		});
+
+		it('falls back to the generic message when the service throws a non-Error value', async () => {
 			const service = makeService({ search: vi.fn().mockRejectedValue('boom') });
 			const tool = createConversationHistoryTool(makeContext(service));
 
@@ -165,7 +190,7 @@ describe('conversation-history tool', () => {
 				query: 'timezone',
 			});
 
-			expect(output.error).toBeTruthy();
+			expect(output.error).toBe('Failed to search conversation history.');
 			expect(output.hits).toEqual([]);
 		});
 	});
@@ -224,9 +249,9 @@ describe('conversation-history tool', () => {
 			});
 		});
 
-		it('catches a service failure into the error field instead of throwing', async () => {
+		it('passes a UserError message through into the error field instead of throwing', async () => {
 			const service = makeService({
-				getMessages: vi.fn().mockRejectedValue(new Error('thread not found')),
+				getMessages: vi.fn().mockRejectedValue(new UserError('Conversation not found')),
 			});
 			const tool = createConversationHistoryTool(makeContext(service));
 
@@ -241,7 +266,28 @@ describe('conversation-history tool', () => {
 				messages: [],
 				hasMoreBefore: false,
 				hasMoreAfter: false,
-				error: 'thread not found',
+				error: 'Conversation not found',
+			});
+		});
+
+		it('hides an unexpected error behind the generic message', async () => {
+			const service = makeService({
+				getMessages: vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED 10.0.0.5:5432')),
+			});
+			const tool = createConversationHistoryTool(makeContext(service));
+
+			const output = await executeTool<GetMessagesOutput>(tool, {
+				action: 'get-messages',
+				threadId: 'thread-1',
+			});
+
+			expect(output).toEqual({
+				threadId: 'thread-1',
+				title: '',
+				messages: [],
+				hasMoreBefore: false,
+				hasMoreAfter: false,
+				error: 'Failed to read the conversation.',
 			});
 		});
 
