@@ -92,7 +92,7 @@ export class ExecutionsPublicController {
 			publicApi: true,
 		});
 
-		return this.toExecutionPublicDto(execution);
+		return toExecutionPublicDto(execution);
 	}
 
 	@Delete('/:executionId')
@@ -119,60 +119,56 @@ export class ExecutionsPublicController {
 
 		const execution = await this.executionService.deleteOne(executionId, sharedWorkflowsIds);
 
-		return this.toDeletedExecutionPublicDto(execution, executionId);
+		return toDeletedExecutionPublicDto(execution, executionId);
 	}
+}
 
-	private toBaseFields(execution: PublicExecution) {
-		return {
-			finished: execution.finished,
-			mode: execution.mode,
-			retryOf: execution.retryOf ?? null,
-			retrySuccessId: execution.retrySuccessId ?? null,
-			status: execution.status,
-			createdAt: execution.createdAt.toISOString(),
-			startedAt: execution.startedAt ? execution.startedAt.toISOString() : null,
-			stoppedAt: execution.stoppedAt ? execution.stoppedAt.toISOString() : null,
-			deletedAt: execution.deletedAt ? execution.deletedAt.toISOString() : null,
-			workflowId: execution.workflowId,
-			waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
-			storedAt: execution.storedAt,
-			tracingContext: execution.tracingContext ?? null,
-			deduplicationKey: execution.deduplicationKey ?? null,
-			jsonSizeBytes: execution.jsonSizeBytes ?? 0,
-			binaryDataSizeBytes: execution.binaryDataSizeBytes ?? 0,
-			workflowVersionId: execution.workflowVersionId ?? null,
-			usedPrivateCredentials: execution.usedPrivateCredentials ?? false,
-		};
-	}
+function toBaseFields(execution: PublicExecution) {
+	return {
+		finished: execution.finished,
+		mode: execution.mode,
+		retryOf: execution.retryOf ?? null,
+		retrySuccessId: execution.retrySuccessId ?? null,
+		status: execution.status,
+		createdAt: execution.createdAt.toISOString(),
+		startedAt: execution.startedAt ? execution.startedAt.toISOString() : null,
+		stoppedAt: execution.stoppedAt ? execution.stoppedAt.toISOString() : null,
+		deletedAt: execution.deletedAt ? execution.deletedAt.toISOString() : null,
+		workflowId: execution.workflowId,
+		waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
+		storedAt: execution.storedAt,
+		tracingContext: execution.tracingContext ?? null,
+		deduplicationKey: execution.deduplicationKey ?? null,
+		jsonSizeBytes: execution.jsonSizeBytes ?? 0,
+		binaryDataSizeBytes: execution.binaryDataSizeBytes ?? 0,
+		workflowVersionId: execution.workflowVersionId ?? null,
+		usedPrivateCredentials: execution.usedPrivateCredentials ?? false,
+	};
+}
 
-	private toExecutionPublicDto(execution: PublicExecution): ExecutionPublicDto {
-		return this.serialize({
-			id: execution.id,
-			...this.toBaseFields(execution),
-			// Absent unless `includeData` is set. An undefined value is dropped by `res.json`, so the
-			// key stays out of the response.
-			data: execution.data,
-			customData: execution.customData,
-			workflowData: execution.workflowData,
-			dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
-		});
-	}
-
-	private toDeletedExecutionPublicDto(
-		execution: PublicExecution,
-		executionId: string,
-	): DeletedExecutionPublicDto {
-		return this.serialize({
-			id: Number(executionId),
-			...this.toBaseFields(execution),
-		});
-	}
-
+function toExecutionPublicDto(execution: PublicExecution): ExecutionPublicDto {
 	/**
-	 * `replaceCircularReferences` makes `data` and `workflowData` safe to serialise, and converts any
-	 * `Date` nested inside them. The cast covers that change, which the type system cannot see.
+	 * Run data is stored with `flatted`, whose `parse` rebuilds circular references, so `data` and
+	 * `workflowData` can carry cycles that `res.json` would throw on.
 	 */
-	private serialize<T>(response: object): T {
-		return replaceCircularReferences(response) as unknown as T;
-	}
+	return replaceCircularReferences({
+		id: execution.id,
+		...toBaseFields(execution),
+		// Absent unless `includeData` is set. An undefined value is dropped by `res.json`, so the
+		// key stays out of the response.
+		data: execution.data,
+		customData: execution.customData,
+		workflowData: execution.workflowData,
+		dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
+	}) as unknown as ExecutionPublicDto;
+}
+
+function toDeletedExecutionPublicDto(
+	execution: PublicExecution,
+	executionId: string,
+): DeletedExecutionPublicDto {
+	return {
+		id: Number(executionId),
+		...toBaseFields(execution),
+	};
 }
