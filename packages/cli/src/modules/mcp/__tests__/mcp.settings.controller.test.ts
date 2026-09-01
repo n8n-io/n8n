@@ -321,6 +321,7 @@ describe('McpSettingsController', () => {
 				false, // includeScopes
 				false, // includeFolders
 				false, // onlySharedWithMe
+				false, // includePublicationStatus
 				['workflow:update'], // requiredScopes
 			);
 		});
@@ -374,6 +375,7 @@ describe('McpSettingsController', () => {
 				false,
 				false,
 				false,
+				false,
 				['workflow:update'],
 			);
 		});
@@ -400,6 +402,7 @@ describe('McpSettingsController', () => {
 						availableInMCP: false,
 					}),
 				}),
+				false,
 				false,
 				false,
 				false,
