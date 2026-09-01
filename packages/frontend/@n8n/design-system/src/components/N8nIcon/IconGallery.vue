@@ -86,9 +86,6 @@ onUnmounted(() => {
 					<N8nIcon icon="search" size="small" />
 				</template>
 			</N8nInput>
-			<N8nText size="small" color="text-light">
-				{{ icons.length }} / {{ allIconNames.length }}
-			</N8nText>
 		</form>
 
 		<div v-if="icons.length" :class="$style.grid">
@@ -128,21 +125,18 @@ onUnmounted(() => {
 
 .toolbar {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	width: 100%;
-	max-width: calc(var(--spacing--5xl) * 2);
 }
 
 .search {
-	flex: 1 1 var(--spacing--5xl);
-	min-width: 0;
+	inline-size: var(--spacing--5xl);
+	max-inline-size: 100%;
 }
 
 .grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(var(--spacing--4xl), 1fr));
-	gap: var(--spacing--2xs);
+	border-block-start: var(--border);
+	border-inline-start: var(--border);
 }
 
 .tile {
@@ -154,7 +148,9 @@ onUnmounted(() => {
 	min-block-size: var(--spacing--4xl);
 	padding: var(--spacing--xs);
 	border: none;
-	border-radius: var(--radius);
+	border-block-end: var(--border);
+	border-inline-end: var(--border);
+	border-radius: 0;
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
