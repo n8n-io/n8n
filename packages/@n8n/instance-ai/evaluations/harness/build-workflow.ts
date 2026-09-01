@@ -1119,6 +1119,11 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// per-scenario rows are seeded in runScenario via seededScenarioTableIdsByName.
 		return {
 			success: true,
+			// Carried on the SUCCESS path too. A staged run that never landed is the one
+			// infra signal that outlives a healthy build, and that is exactly the case
+			// `case-pipeline` has to catch — the graded turn answered a question the
+			// instance cannot support.
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			workflowId: outcome.workflowsCreated[0].id,
 			workflowJsons: outcome.workflowJsons,
 			buildTrace,

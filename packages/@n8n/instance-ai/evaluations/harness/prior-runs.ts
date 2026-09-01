@@ -99,6 +99,32 @@ export async function executePriorRuns(options: PriorRunsOptions): Promise<Prior
 	return outcomes;
 }
 
+/**
+ * Whether an execution record actually exists for this result.
+ *
+ * The result SHAPE cannot answer it. The eval service rejects some requests before it
+ * ever calls the workflow runner — an unknown workflow, no trigger node — and returns an
+ * error result carrying a freshly minted UUID that no execution was ever stored under.
+ * Trusting `executionId` there would report a premise that does not exist as staged
+ * history, which is the reading this whole flag exists to prevent.
+ *
+ * Only checked on a failed result: a run that succeeded necessarily executed.
+ */
+async function executionRecordExists(
+	client: N8nClient,
+	result: { success: boolean; executionId: string },
+): Promise<boolean> {
+	if (result.success) return true;
+	if (!result.executionId) return false;
+	try {
+		const execution = await client.getExecution(result.executionId);
+		return execution.id === result.executionId;
+	} catch {
+		// A miss is the answer, not an error: the record is not there.
+		return false;
+	}
+}
+
 async function runOnce(
 	client: N8nClient,
 	priorRun: SeedPriorRun,
@@ -124,7 +150,7 @@ async function runOnce(
 			if (result.success || !isTransientExecutionAbort(result.errors)) {
 				return {
 					...base,
-					ran: true,
+					ran: await executionRecordExists(client, result),
 					executionId: result.executionId,
 					success: result.success,
 					errors: result.errors,

@@ -69,6 +69,7 @@ describe('executePriorRuns', () => {
 		client.executeWithLlmMock.mockResolvedValue(
 			execResult({ success: false, errors: ['HTTP Request: 500'] }),
 		);
+		client.getExecution.mockResolvedValue({ id: 'exec-1' } as never);
 
 		const outcomes = await executePriorRuns({
 			client,
@@ -87,6 +88,7 @@ describe('executePriorRuns', () => {
 		client.executeWithLlmMock.mockResolvedValue(
 			execResult({ success: false, errors: ['HTTP Request: 500'] }),
 		);
+		client.getExecution.mockResolvedValue({ id: 'exec-1' } as never);
 		const log = logger();
 
 		await executePriorRuns({
@@ -264,6 +266,7 @@ describe('executePriorRuns', () => {
 		staged.executeWithLlmMock.mockResolvedValue(
 			execResult({ success: false, errors: ['HTTP Request: 500'] }),
 		);
+		staged.getExecution.mockResolvedValue({ id: 'exec-1' } as never);
 		const [asStaged] = await executePriorRuns({
 			client: staged,
 			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
@@ -284,6 +287,54 @@ describe('executePriorRuns', () => {
 		});
 		expect(neverRan.ran).toBe(false);
 		expect(neverRan.executionId).toBeUndefined();
+	});
+
+	it('does not trust a fabricated executionId from a pre-run rejection', async () => {
+		// The eval service rejects some requests BEFORE it calls the workflow runner —
+		// unknown workflow, no trigger node — and returns an error result carrying a
+		// freshly minted UUID no execution was ever stored under. Trusting it would report
+		// a premise that does not exist as staged history.
+		const client = mock<N8nClient>();
+		client.executeWithLlmMock.mockResolvedValue(
+			execResult({
+				success: false,
+				executionId: '3f7c1e90-0000-4000-8000-000000000000',
+				errors: ['No trigger or start node found in the workflow'],
+			}),
+		);
+		client.getExecution.mockRejectedValue(new Error('404 not found'));
+
+		const [outcome] = await executePriorRuns({
+			client,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
+			logger: logger(),
+			sleep: noSleep,
+		});
+
+		expect(outcome.ran).toBe(false);
+	});
+
+	it('confirms the record for a genuinely staged failure', async () => {
+		const client = mock<N8nClient>();
+		client.executeWithLlmMock.mockResolvedValue(
+			execResult({ success: false, executionId: '42', errors: ['HTTP Request: 500'] }),
+		);
+		client.getExecution.mockResolvedValue({
+			id: '42',
+			workflowId: 'wf-1',
+			status: 'error',
+		} as never);
+
+		const [outcome] = await executePriorRuns({
+			client,
+			priorRuns: [{ workflow: 'dS8xQ2mV6bTn4Kp1' }],
+			seedWorkflows: seeded,
+			logger: logger(),
+			sleep: noSleep,
+		});
+
+		expect(outcome).toMatchObject({ ran: true, executionId: '42', success: false });
 	});
 
 	it('throws when the seed never created the named workflow', async () => {
