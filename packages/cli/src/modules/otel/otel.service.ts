@@ -1,4 +1,5 @@
 import type { Metadata } from '@grpc/grpc-js';
+import { exporterEndpointSchema, otlpProtocolSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
@@ -20,20 +21,20 @@ import { OperationalError } from 'n8n-workflow';
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
-import type { OtlpProtocol } from './otel.constants';
-import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
+import { ATTR, OTEL_ENV_VARS, OTEL_TEST_SPAN_NAME } from './otel.constants';
 
 import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
-
-type OtlpProbeTarget = { protocol: OtlpProtocol; url: string };
 
 @Service()
 export class OtelService {
 	private static isDiagnosticsLoggerConfigured = false;
 	private sdk?: NodeSDK;
 	private hasLoggedStartupConnectivityFailure = false;
+
+	/** Incremented by every start, so a probe from an earlier start can be discarded. */
+	private startGeneration = 0;
 
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
@@ -44,6 +45,7 @@ export class OtelService {
 
 	async init(): Promise<void> {
 		const settings = await this.otelSettingsService.loadSettings();
+		this.warnAboutInvalidEnvValues(settings);
 		await this.start(settings);
 	}
 
@@ -62,53 +64,68 @@ export class OtelService {
 	 * the active OTel configuration.
 	 */
 	async sendTestTrace(connection: OtelConnectionParams): Promise<OtelTestTraceResult> {
-		const exporter = await this.createTraceExporter(
-			connection,
-			connection.startupConnectivityTimeoutMs,
-		);
-
 		let provider: BasicTracerProvider | undefined;
 		try {
-			return await new Promise<OtelTestTraceResult>((resolve) => {
-				const processor: SpanProcessor = {
-					onStart: () => {},
-					onEnd: (span: ReadableSpan) =>
-						exporter.export([span], (result) =>
-							resolve(
-								result.error ? { success: false, error: result.error.message } : { success: true },
+			const exporter = await this.createTraceExporter(
+				connection,
+				connection.startupConnectivityTimeoutMs,
+			);
+
+			try {
+				return await new Promise<OtelTestTraceResult>((resolve) => {
+					const processor: SpanProcessor = {
+						onStart: () => {},
+						onEnd: (span: ReadableSpan) =>
+							exporter.export([span], (result) =>
+								resolve(
+									result.error
+										? { success: false, error: result.error.message }
+										: { success: true },
+								),
 							),
-						),
-					forceFlush: async () => {},
-					shutdown: async () => {},
-				};
-				provider = new BasicTracerProvider({
-					resource: resourceFromAttributes({
-						[ATTR.OTEL_SERVICE_NAME]: connection.exporterServiceName,
-						[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
-						[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
-						[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
-					}),
-					sampler: new TraceIdRatioBasedSampler(1),
-					spanProcessors: [processor],
+						forceFlush: async () => {},
+						shutdown: async () => {},
+					};
+					provider = new BasicTracerProvider({
+						resource: resourceFromAttributes({
+							[ATTR.OTEL_SERVICE_NAME]: connection.exporterServiceName,
+							[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
+							[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
+							[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
+						}),
+						sampler: new TraceIdRatioBasedSampler(1),
+						spanProcessors: [processor],
+					});
+					const span = provider
+						.getTracer('n8n-otel-test')
+						.startSpan(OTEL_TEST_SPAN_NAME, { attributes: { [ATTR.IS_TEST_TRACE]: true } });
+					span.end();
 				});
-				const span = provider
-					.getTracer('n8n-otel-test')
-					.startSpan(OTEL_TEST_SPAN_NAME, { attributes: { [ATTR.IS_TEST_TRACE]: true } });
-				span.end();
-			});
-		} finally {
-			await provider?.shutdown().catch(() => {});
-			await exporter.shutdown().catch(() => {});
+			} finally {
+				await provider?.shutdown().catch(() => {});
+				await exporter.shutdown().catch(() => {});
+			}
+		} catch (error) {
+			return { success: false, error: error instanceof Error ? error.message : String(error) };
 		}
 	}
 
 	private async start(settings: OtelConfig): Promise<void> {
+		const generation = ++this.startGeneration;
 		this.hasLoggedStartupConnectivityFailure = false;
 		if (!settings.enabled) return;
 
 		this.configureDiagnosticsLogger();
-		const probeTarget = await this.startSdk(settings);
-		void this.checkEndpointReachability(probeTarget, settings.startupConnectivityTimeoutMs);
+		try {
+			await this.startSdk(settings);
+		} catch (error) {
+			this.logger.error('Failed to start OpenTelemetry tracing, so tracing stays off', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+
+		void this.checkEndpointReachability(settings, generation);
 	}
 
 	async shutdown(): Promise<void> {
@@ -132,7 +149,7 @@ export class OtelService {
 		}
 	}
 
-	private async startSdk(settings: OtelConfig): Promise<OtlpProbeTarget> {
+	private async startSdk(settings: OtelConfig): Promise<void> {
 		const traceExporter = await this.createTraceExporter(settings);
 
 		this.sdk = new NodeSDK({
@@ -147,7 +164,6 @@ export class OtelService {
 		});
 
 		this.sdk.start();
-		return { protocol: settings.exporterProtocol, url: this.resolveExporterUrl(settings) };
 	}
 
 	private async createTraceExporter(
@@ -252,6 +268,37 @@ export class OtelService {
 		return headers;
 	}
 
+	/**
+	 * `@n8n/config` only prints to the console when an env var fails its schema, and
+	 * the field still reads as env-managed in the UI. Repeat it through the n8n logger.
+	 */
+	private warnAboutInvalidEnvValues(settings: OtelConfig): void {
+		const checks = [
+			{
+				envVar: OTEL_ENV_VARS.exporterProtocol,
+				parse: (value: string) => otlpProtocolSchema.safeParse(value),
+				valueInUse: settings.exporterProtocol,
+			},
+			{
+				envVar: OTEL_ENV_VARS.exporterEndpoint,
+				parse: (value: string) => exporterEndpointSchema.safeParse(value),
+				valueInUse: settings.exporterEndpoint,
+			},
+		];
+
+		for (const { envVar, parse, valueInUse } of checks) {
+			const rawValue = process.env[envVar];
+			if (rawValue === undefined) continue;
+
+			const result = parse(rawValue);
+			if (result.success) continue;
+
+			this.logger.warn(
+				`Ignoring the invalid value "${rawValue}" of ${envVar}. n8n uses "${valueInUse}" instead. ${result.error.issues[0].message}`,
+			);
+		}
+	}
+
 	private configureDiagnosticsLogger() {
 		if (OtelService.isDiagnosticsLoggerConfigured) return;
 
@@ -272,22 +319,25 @@ export class OtelService {
 		return `${exporterEndpointWithoutTrailingSlash}${path}`;
 	}
 
-	private async checkEndpointReachability(
-		target: OtlpProbeTarget,
-		timeoutMs: number,
-	): Promise<void> {
+	private async checkEndpointReachability(settings: OtelConfig, generation: number): Promise<void> {
+		const url = this.resolveExporterUrl(settings);
+		const timeoutMs = settings.startupConnectivityTimeoutMs;
+
 		try {
-			if (target.protocol === 'grpc') {
-				await this.probeGrpcEndpoint(target.url, timeoutMs);
+			if (settings.exporterProtocol === 'grpc') {
+				await this.probeGrpcEndpoint(url, timeoutMs);
 			} else {
-				await this.probeHttpEndpoint(target.url, timeoutMs);
+				await this.probeHttpEndpoint(url, timeoutMs);
 			}
 		} catch (error) {
+			// A probe of a previous start can settle after a restart. Its result
+			// describes an endpoint that the instance no longer exports to.
+			if (generation !== this.startGeneration) return;
 			if (this.hasLoggedStartupConnectivityFailure) return;
 			this.hasLoggedStartupConnectivityFailure = true;
 
 			this.logger.error('Failed to connect to OpenTelemetry OTLP endpoint during startup', {
-				endpoint: target.url,
+				endpoint: url,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -308,7 +358,7 @@ export class OtelService {
 	 * advisory: only "Send test trace" proves that the endpoint serves OTLP.
 	 */
 	private async probeGrpcEndpoint(endpoint: string, timeoutMs: number): Promise<void> {
-		const { host, protocol } = new URL(endpoint);
+		const { host, port, protocol } = new URL(endpoint);
 		const { Client, credentials } = await import('@grpc/grpc-js');
 		const client = new Client(
 			host,
@@ -321,9 +371,17 @@ export class OtelService {
 				client.waitForReady(Date.now() + timeoutMs, (error) => {
 					if (!error) return resolve();
 
+					const portHint = port
+						? ''
+						: ' The endpoint has no port, so grpc-js dials its default 443, not 4317.';
+					const tlsHint =
+						protocol === 'https:'
+							? ' This check ignores the OTEL_EXPORTER_OTLP_CERTIFICATE, client key and client certificate variables, so a private-CA or mTLS collector can fail it and still receive spans.'
+							: '';
+
 					reject(
 						new OperationalError(
-							`gRPC channel was not ready after ${timeoutMs}ms (${error.message}). Either nothing listens on the endpoint, or the endpoint does not speak gRPC, or its TLS mode does not match the "${protocol}" scheme.`,
+							`gRPC channel to "${host}" was not ready after ${timeoutMs}ms (${error.message}): nothing listens there, or it does not speak gRPC, or its TLS mode does not match the "${protocol}" scheme.${portHint}${tlsHint}`,
 						),
 					);
 				});

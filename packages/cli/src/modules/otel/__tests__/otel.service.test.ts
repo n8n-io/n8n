@@ -35,14 +35,10 @@ const {
 	INSECURE_CREDS,
 } = vi.hoisted(() => {
 	const entries = new Map<string, string>();
-	const legalKey = /^[:0-9a-z_.-]+$/;
 
-	/** Mirrors the key validation of grpc-js `Metadata`. */
+	/** Records only. `otel.service.grpc-deps.test.ts` owns the real key rules. */
 	class MetadataMock {
 		set(key: string, value: string) {
-			if (!legalKey.test(key)) {
-				throw new Error(`Metadata key "${key}" contains illegal characters`);
-			}
 			entries.set(key, value);
 		}
 	}
@@ -298,19 +294,6 @@ describe('OtelService', () => {
 			});
 		});
 
-		it('warns and skips metadata keys that grpc-js rejects', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue({
-				...grpcSettings,
-				exporterHeaders: 'bad key=value,x-tenant=acme',
-			});
-
-			await service.init();
-
-			expect(Object.fromEntries(metadataEntries)).toEqual({ 'x-tenant': 'acme' });
-			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('bad key'));
-			expect(start).toHaveBeenCalledTimes(1);
-		});
-
 		it('probes channel readiness instead of sending an HTTP request', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
 			const startedAt = Date.now();
@@ -378,10 +361,44 @@ describe('OtelService', () => {
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
 				{
 					endpoint: 'http://collector.example.com:4317',
-					error: expect.stringContaining('gRPC channel was not ready after 2000ms'),
+					error: expect.stringContaining(
+						'gRPC channel to "collector.example.com:4317" was not ready after 2000ms',
+					),
 				},
 			);
 			expect(clientClose).toHaveBeenCalledTimes(1);
+		});
+
+		it('names the default port and the ignored TLS material in a port-less https failure', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...grpcSettings,
+				exporterEndpoint: 'https://collector.example.com',
+			});
+			waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) =>
+				callback(new Error('Failed to connect before the deadline')),
+			);
+
+			await service.init();
+			await flushPromises();
+
+			const [, logContext] = logger.error.mock.calls[0] as [string, { error: string }];
+			expect(logContext.error).toContain('grpc-js dials its default 443, not 4317');
+			expect(logContext.error).toContain('OTEL_EXPORTER_OTLP_CERTIFICATE');
+			expect(logContext.error).toContain('still receive spans');
+		});
+
+		it('leaves out the TLS-material note for a plaintext endpoint', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+			waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) =>
+				callback(new Error('Failed to connect before the deadline')),
+			);
+
+			await service.init();
+			await flushPromises();
+
+			const [, logContext] = logger.error.mock.calls[0] as [string, { error: string }];
+			expect(logContext.error).not.toContain('OTEL_EXPORTER_OTLP_CERTIFICATE');
+			expect(logContext.error).not.toContain('default 443');
 		});
 
 		it('logs a connectivity failure when the readiness check throws', async () => {
@@ -445,6 +462,47 @@ describe('OtelService', () => {
 			await service.restart();
 
 			expect(start).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('SDK startup failure', () => {
+		const exporterFailure = () => {
+			vi.mocked(OTLPTraceExporter).mockImplementationOnce(function () {
+				throw new Error('exporter unavailable');
+			});
+		};
+
+		it('logs once and leaves tracing off instead of failing module init', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			exporterFailure();
+
+			await expect(service.init()).resolves.not.toThrow();
+
+			expect(start).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to start OpenTelemetry tracing, so tracing stays off',
+				{ error: 'exporter unavailable' },
+			);
+		});
+
+		it('leaves the service in a non-exporting state when a restart fails', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			await service.init();
+			vi.clearAllMocks();
+			exporterFailure();
+
+			await expect(service.restart()).resolves.not.toThrow();
+
+			expect(start).not.toHaveBeenCalled();
+			expect(shutdown).toHaveBeenCalledTimes(1);
+
+			shutdown.mockClear();
+			await service.shutdown();
+
+			// The failed start left no SDK behind, so the next shutdown has nothing to flush.
+			expect(shutdown).not.toHaveBeenCalled();
 		});
 	});
 
@@ -535,6 +593,38 @@ describe('OtelService', () => {
 			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 
+		it('discards a probe of the previous start and still logs the current failure', async () => {
+			const rejectProbes: Array<(error: Error) => void> = [];
+			fetchMock.mockImplementation(
+				async () => await new Promise<never>((_, reject) => rejectProbes.push(reject)),
+			);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			await service.init();
+
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...enabledSettings,
+				exporterEndpoint: 'http://new-collector:4318',
+			});
+			await service.restart();
+
+			rejectProbes[0](new Error('ECONNREFUSED on the old endpoint'));
+			await flushPromises();
+
+			expect(logger.error).not.toHaveBeenCalled();
+
+			rejectProbes[1](new Error('ECONNREFUSED on the new endpoint'));
+			await flushPromises();
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
+				{
+					endpoint: 'http://new-collector:4318/v1/traces',
+					error: 'ECONNREFUSED on the new endpoint',
+				},
+			);
+		});
+
 		it('logs string errors that are not Error instances', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			fetchMock.mockRejectedValue('string-error');
@@ -546,6 +636,41 @@ describe('OtelService', () => {
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
 				expect.objectContaining({ error: 'string-error' }),
 			);
+		});
+	});
+
+	describe('invalid env var values', () => {
+		afterEach(() => {
+			delete process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL;
+			delete process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT;
+		});
+
+		it('warns which env var is invalid and which value n8n uses instead', async () => {
+			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'http/json';
+			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'localhost:4318';
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+
+			await service.init();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'Ignoring the invalid value "http/json" of N8N_OTEL_EXPORTER_OTLP_PROTOCOL. n8n uses "http/protobuf" instead.',
+				),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'Ignoring the invalid value "localhost:4318" of N8N_OTEL_EXPORTER_OTLP_ENDPOINT. n8n uses "http://localhost:4318" instead.',
+				),
+			);
+		});
+
+		it('stays quiet for a valid or an unset env var', async () => {
+			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
+			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+
+			await service.init();
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -617,6 +742,16 @@ describe('OtelService', () => {
 			const result = await service.sendTestTrace(connection);
 
 			expect(result).toEqual({ success: false, error: '401 Unauthorized' });
+		});
+
+		it('returns failure instead of throwing when the exporter cannot be built', async () => {
+			vi.mocked(OTLPTraceExporter).mockImplementationOnce(function () {
+				throw new Error('Configuration: timeoutMillis is invalid');
+			});
+
+			const result = await service.sendTestTrace(connection);
+
+			expect(result).toEqual({ success: false, error: 'Configuration: timeoutMillis is invalid' });
 		});
 
 		it('builds the exporter with the OTLP url, parsed headers and supplied timeout', async () => {
