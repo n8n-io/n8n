@@ -37,6 +37,9 @@ export async function httpRequestWithAuthentication(
 	}
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+	// A single-use body only counts as consumed once a send was actually attempted;
+	// a failure in preAuthentication/authenticate leaves it intact and replayable.
+	let requestSent = false;
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing
 	if (additionalData.evalLlmMockHandler) {
@@ -103,6 +106,7 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
+		requestSent = true;
 		return await Container.get(OutboundHttp).requests().request(requestOptions);
 	} catch (error) {
 		// if there is a pre authorization method defined and
@@ -136,7 +140,7 @@ export async function httpRequestWithAuthentication(
 				// would send a request that advertises a body it never delivers and hang
 				// until timeout. Keep the refreshed credential for the next run, but
 				// surface the original error (same rule as requestOAuth2).
-				if (hasSingleUseBody(requestOptions)) {
+				if (requestSent && hasSingleUseBody(requestOptions)) {
 					this.logger.warn(
 						`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
 					);

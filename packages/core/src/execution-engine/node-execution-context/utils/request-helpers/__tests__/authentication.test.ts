@@ -167,6 +167,38 @@ describe('httpRequestWithAuthentication', () => {
 			true,
 		);
 	});
+
+	test('still retries a form-data body when the 401 happened before any send', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		// The initial token mint 401s before the request goes out; the body was never
+		// sent, so the retry may (and must) send it.
+		const error401 = Object.assign(new Error('401 - mint rejected'), {
+			response: { status: 401 },
+		});
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockRejectedValueOnce(error401)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => requestOptions as IHttpRequestOptions,
+		);
+		request.mockResolvedValueOnce({ ok: true });
+
+		const formData = new FormData();
+		formData.append('file', Buffer.from('content'), { filename: 'file.txt' });
+
+		const result = await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			{ method: 'POST', url: `${baseUrl}/upload`, body: formData },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(request).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('requestWithAuthentication (legacy) — preAuthentication retry', () => {
