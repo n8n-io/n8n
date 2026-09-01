@@ -612,18 +612,14 @@ import {
 
 ## Node Groups
 
-Organise multi-stage workflows into named node groups — visual frames on the canvas — so the
-result is readable the first time the user sees it. Group each clear stage (ingest → transform
-→ deliver); small workflows don't need groups. Give every group a one-sentence
-`description` — groups are collapsed by default, so name + description is what the user sees
-first.
+{{GROUPING_GUIDANCE_PLACEHOLDER}}
 
-`.group(name, members, { description })` on the workflow builder; members are the node handles.
-Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
-one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
-tools drop an invalid group from the saved workflow and report a warning, so fix the source
-instead of re-emitting it. When editing an existing workflow, keep existing `.group(...)` calls
-and their descriptions intact unless the change is about grouping.
+Declare a group with `.group(name, members, { description })` on the workflow builder; members
+are the node handles. Before you emit a `.group(...)`, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/node-groups.md` — it carries the rules that make
+a group valid and the contract for editing an existing workflow's groups. Do not restate those
+rules from memory: an invalid group is dropped from the saved workflow with a warning, so the
+source has to be fixed rather than re-emitted.
 
 ## Workflow Rules
 

@@ -6,6 +6,7 @@ import {
 	type Workspace,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
+import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
@@ -397,5 +398,47 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(message).toBe('Runtime skill file exceeds load_skill output limit');
 		expect(meta?.skill).toBe('large-skill');
 		expect(meta?.maxBytes).toBe(runtimeSkillMaxOutputBytes);
+	});
+});
+
+describe('grouping guidance injection', () => {
+	const root = '/home/daytona/workspace';
+	const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/workflow-builder/SKILL.md`;
+
+	it('injects the shared grouping guidance into the builder skill', async () => {
+		const bundle = await buildRuntimeSkillWorkspaceBundle({
+			source: loadInstanceAiRuntimeSkillSource(),
+			root,
+			logger: mockLogger,
+		});
+
+		expect(bundle?.files.get(skillPath)).toContain(GROUPING_GUIDANCE);
+	});
+
+	it('leaves no unresolved placeholder in any materialized skill', async () => {
+		const bundle = await buildRuntimeSkillWorkspaceBundle({
+			source: loadInstanceAiRuntimeSkillSource(),
+			root,
+			logger: mockLogger,
+		});
+
+		if (!bundle) {
+			throw new Error('Expected runtime skill bundle');
+		}
+
+		for (const [path, content] of bundle.files) {
+			expect(content, path).not.toMatch(/\{\{[A-Z_]+\}\}/);
+		}
+	});
+
+	it('keeps the builder skill source free of its own grouping criteria', async () => {
+		const skill = await loadInstanceAiRuntimeSkillSource().loadSkill('workflow-builder');
+
+		if (!skill) {
+			throw new Error('Expected the workflow-builder skill to load');
+		}
+
+		expect(skill.instructions).toContain('{{GROUPING_GUIDANCE_PLACEHOLDER}}');
+		expect(skill.instructions).not.toMatch(/3 to 5|at most 7 items|one-sentence/i);
 	});
 });
