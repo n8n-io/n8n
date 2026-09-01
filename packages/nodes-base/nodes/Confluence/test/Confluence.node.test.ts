@@ -18,7 +18,7 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the attachment, page, search and space resources with their operations', () => {
+	it('should expose the page resource with its operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
 		expect(resource?.options).toEqual([
 			expect.objectContaining({ value: 'attachment' }),
@@ -35,12 +35,17 @@ describe('Confluence Node', () => {
 		// Delete sorts first alphabetically; the default must stay non-destructive
 		expect(operationProperty('attachment')?.default).toBe('getMany');
 		expect(operationOptions('page')).toEqual([
+			expect.objectContaining({ value: 'addComment' }),
+			expect.objectContaining({ value: 'addLabels' }),
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
+			expect.objectContaining({ value: 'deleteComment' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'getComments' }),
 			expect.objectContaining({ value: 'getLabels' }),
 			expect.objectContaining({ value: 'getManyByLabel' }),
+			expect.objectContaining({ value: 'removeLabel' }),
 			expect.objectContaining({ value: 'update' }),
 		]);
 		expect(operationOptions('search')).toEqual([expect.objectContaining({ value: 'query' })]);
@@ -48,6 +53,18 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'get' }),
 			expect.objectContaining({ value: 'getMany' }),
 		]);
+	});
+
+	it('carries the top-level Site selector on every resource', () => {
+		for (const resource of ['attachment', 'page', 'search', 'space']) {
+			const site = node.description.properties.find(
+				(p) => p.name === 'site' && p.displayOptions?.show?.resource?.includes(resource),
+			);
+			expect(site?.type).toBe('resourceLocator');
+			expect(site?.required).toBeUndefined();
+			expect(site?.modes?.map((mode) => mode.name)).toEqual(['list', 'url']);
+			expect(site?.modes?.[0].typeOptions?.searchListMethod).toBe('getSites');
+		}
 	});
 
 	it('exposes the getLabels fields on the node description', () => {
@@ -61,6 +78,16 @@ describe('Confluence Node', () => {
 
 		const limit = forGetLabels.find((p) => p.name === 'limit');
 		expect(limit?.displayOptions?.show?.returnAll).toEqual([false]);
+	});
+
+	it('should render the label operations own fields', () => {
+		const fieldsFor = (operation: string) =>
+			node.description.properties
+				.filter((p) => (p.displayOptions?.show?.operation ?? []).includes(operation))
+				.map((p) => p.name);
+
+		expect(fieldsFor('addLabels')).toEqual(['space', 'page', 'labels']);
+		expect(fieldsFor('removeLabel')).toEqual(['space', 'page', 'labelName']);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {

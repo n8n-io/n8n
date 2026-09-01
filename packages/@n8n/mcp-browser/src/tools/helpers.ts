@@ -142,7 +142,9 @@ export function createConnectedTool<
 			const resource = getResourceFromArgs
 				? getResourceFromArgs(args)
 				: getConnectionResource(connection);
-			return [{ toolGroup: 'browser', resource, description: `Browser: ${resource}` }];
+			return [
+				{ toolGroup: 'browser', kind: 'host', resource, description: `Browser: ${resource}` },
+			];
 		},
 	};
 }

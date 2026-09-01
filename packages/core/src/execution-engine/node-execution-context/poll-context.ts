@@ -1,7 +1,9 @@
+import { Time } from '@n8n/constants';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteData,
 	INode,
 	IPollFunctions,
 	IWorkflowExecuteAdditionalData,
@@ -44,6 +46,11 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		// staging scope (e.g. a manual test run).
 		private readonly resolveNodeStaticData: () => IDataObject = () =>
 			this.workflow.getStaticData('node', this.node),
+		// Generous fallback for polls that run outside the durable scheduler (e.g. a
+		// manual test run): no lease bounds them, but nodes still size their fetch
+		// loop from a finite budget.
+		readonly getPollBudgetMs: IPollFunctions['getPollBudgetMs'] = () =>
+			5 * Time.minutes.toMilliseconds,
 	) {
 		super(workflow, node, additionalData, mode);
 
@@ -66,6 +73,10 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		// No real task run backs a poll, so this only exists to surface `node` to
+		// the credentials helper (e.g. for policy checks) — `data`/`source` are unused.
+		const executeData: IExecuteData = { data: {}, node: this.node, source: null };
+
+		return await this._getCredentials<T>(type, executeData);
 	}
 }

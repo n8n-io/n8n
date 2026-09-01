@@ -7,10 +7,47 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
+import {
+	CONFLUENCE_CREDENTIAL_NAME,
+	confluenceApiRequest,
+	getConfluenceCloudId,
+} from '../transport';
 
 /** The v2 list endpoints' documented max page size, and the max IDs per batched `/pages` request */
 export const PAGE_LIMIT = 250;
+
+/**
+ * Top-level site selector carried by every operation (each resource spreads it
+ * right after its Operation field). The stored From List value is the cloudId
+ * itself — accessible-resources returns it, so list mode needs no resolution;
+ * By URL is hostname-matched against the connection's sites at execute time.
+ * Left empty, single-site connections auto-resolve at runtime.
+ */
+export const siteRLC: INodeProperties = {
+	displayName: 'Site',
+	name: 'site',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description:
+		'The Confluence site to use. Can be left empty when the connection has access to exactly one site.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getSites',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://your-site.atlassian.net',
+		},
+	],
+};
 
 /**
  * Shared page-selection fields: operations spread `spaceRLC`/`pageRLC`/
@@ -25,7 +62,7 @@ export const pageRLC: INodeProperties = {
 	required: true,
 	description: 'The page to operate on',
 	typeOptions: {
-		loadOptionsDependsOn: ['space.value'],
+		loadOptionsDependsOn: ['site.value', 'space.value'],
 	},
 	modes: [
 		{
@@ -87,6 +124,9 @@ export const labelRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description: 'The label to operate on',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -147,6 +187,9 @@ export const spaceRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	description: 'The Confluence space',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -206,6 +249,26 @@ export const spaceOptionsCollection: INodeProperties = {
 	],
 };
 
+/** Companion to an endpoint-specific Sort By option; composed into `sort` by `sortQs`. */
+export const sortDirectionOption: INodeProperties = {
+	displayName: 'Sort Direction',
+	name: 'sortDirection',
+	type: 'options',
+	default: 'asc',
+	description: 'The direction to order in. Only applies when Sort By is set.',
+	options: [
+		{ name: 'ASC', value: 'asc' },
+		{ name: 'DESC', value: 'desc' },
+	],
+};
+
+/** Builds the v2 `sort` query fragment from an operation's Sort By / Sort Direction
+ * options. The API takes one enum encoding both field and direction, e.g. `name` / `-name`. */
+export function sortQs(options: IDataObject): IDataObject {
+	if (typeof options.sortBy !== 'string' || options.sortBy === '') return {};
+	return { sort: options.sortDirection === 'desc' ? `-${options.sortBy}` : options.sortBy };
+}
+
 /** Builds the `description-format` query fragment from an operation's Options collection. */
 export function spaceDescriptionFormatQs(options: IDataObject): IDataObject {
 	return typeof options.descriptionFormat === 'string' && options.descriptionFormat !== ''
@@ -254,10 +317,11 @@ export async function resolveSpaceKey(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	spaceId: string,
 ): Promise<string | undefined> {
-	// Space IDs are only unique per site, so the cache is keyed per credential
+	// Space IDs are only unique per site, and one credential can reach several
 	const rawCredentialId = this.getNode().credentials?.[CONFLUENCE_CREDENTIAL_NAME]?.id;
 	const credentialId = typeof rawCredentialId === 'string' ? rawCredentialId : '';
-	const cacheKey = `${credentialId}:${spaceId}`;
+	const cloudId = await getConfluenceCloudId.call(this);
+	const cacheKey = `${credentialId}:${cloudId}:${spaceId}`;
 
 	const cached = spaceKeyCache.get(cacheKey);
 	if (cached !== undefined) return cached;
@@ -289,9 +353,16 @@ const ADF_BLOCK_TYPES = new Set([
 	'taskList',
 ]);
 
+// Inline leaves whose rendered text lives in `attrs.text` instead of a text node
+const ADF_ATTRS_TEXT_TYPES = new Set(['mention', 'emoji', 'status']);
+
 function adfToPlainText(node: IDataObject): string {
 	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
 	if (node.type === 'hardBreak') return '\n';
+	if (ADF_ATTRS_TEXT_TYPES.has(node.type as string)) {
+		const text = (node.attrs as IDataObject | undefined)?.text;
+		return typeof text === 'string' ? text : '';
+	}
 	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
 	let inner = '';
 	for (const child of content) {
@@ -347,6 +418,15 @@ export function extractNextCursor(response: IDataObject): string | undefined {
 	return next?.key === 'cursor' ? next.value : undefined;
 }
 
+/** `extractNextCursor` with a repeat guard: a cursor seen before ends the
+ * pagination instead of looping forever on a server that echoes it back. */
+export function nextUnseenCursor(response: IDataObject, seen: Set<string>): string | undefined {
+	const cursor = extractNextCursor(response);
+	if (cursor === undefined || seen.has(cursor)) return undefined;
+	seen.add(cursor);
+	return cursor;
+}
+
 /** Validates a count parameter that an expression may hand back as a numeric string. */
 export function parsePositiveInt(
 	this: IExecuteFunctions,
@@ -385,11 +465,8 @@ export async function fetchPaginatedResults(
 		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 		records.push.apply(records, results);
 
-		const next = extractNextCursor(response);
-		if (next === undefined || seenCursors.has(next)) break;
-		seenCursors.add(next);
-		cursor = next;
-	} while (records.length < max);
+		cursor = nextUnseenCursor(response, seenCursors);
+	} while (cursor !== undefined && records.length < max);
 
 	return records.length > max ? records.slice(0, max) : records;
 }

@@ -347,10 +347,13 @@ this tool with `filePath`.
 |-------|------|----------|-------------|
 | `filePath` | string | yes | Workspace path to the `.workflow.ts` or WorkflowJSON source file |
 | `workflowId` | string | no | Existing n8n workflow ID to bind to this file on the first update |
-| `projectId` | string | no | Project ID to create the workflow in |
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
+
+There is deliberately **no `projectId`**: a build writes to the project the
+conversation is bound to, and nothing can redirect it. The field used to exist and
+the adapter ignored it, so a build could report a project it had not written to.
 
 **Returns**: `{ success, workflowId?, workflowName?, workItemId?, filePath, sourceHash?, remediation?, errors?, warnings? }`
 
@@ -614,7 +617,7 @@ List credentials accessible to the current user. Never exposes secrets.
 | `offset` | number | no | Number of credentials to skip. Default 0 |
 
 **Returns**: `{ credentials: [{ id, name, type }], total, hasMore, hint? }`.
-An n8n Connect managed entry can have `id: null` and
+A Gateway credits managed entry can have `id: null` and
 `__aiGatewayManaged: true`.
 
 ### `credentials(action="get")`
@@ -645,11 +648,11 @@ Search available credential types by name or description.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | no | Search query. Required unless `n8nConnectOnly` is true |
-| `n8nConnectOnly` | boolean | no | Return credential types supported by n8n credits |
+| `query` | string | no | Search query. Required unless `gatewayCreditsOnly` is true |
+| `gatewayCreditsOnly` | boolean | no | Return credential types supported by Gateway credits |
 
-**Returns**: `{ results: [...] }`. n8n Connect-only results have
-`{ type, n8nConnect: true }`.
+**Returns**: `{ results: [...] }`. Gateway-credits-only results have
+`{ type, gatewayCredits: true }`.
 
 ### `credentials(action="setup")`
 
@@ -705,7 +708,7 @@ List available node types in the n8n instance.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `query` | string | no | Filter by name or description |
-| `n8nConnectOnly` | boolean | no | Return only nodes supported by n8n credits |
+| `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
 
 **Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
 
@@ -1026,8 +1029,9 @@ appears in the agents-module builder UI.
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
 **Returns**: `{ ok: true, builderReply, configUpdated, agentId,
-agentName? }` on success, or `{ ok: false, error, configUpdated?, agentId?,
-agentName? }` on failure (`agentId`/`agentName` identify the targeted agent
+agentName?, requiredArtifacts? }` on success, or `{ ok: false, error,
+configUpdated?, agentId?, agentName?, requiredArtifacts? }` on failure
+(`agentId`/`agentName` identify the targeted agent
 once a builder turn was dispatched; precondition failures before any turn
 omit them). `configUpdated` is optional: it's included (reporting mutations
 from passes that already ran) once a builder turn has actually been
@@ -1036,6 +1040,13 @@ checkpoint ref — but omitted for precondition failures before any turn
 starts (agents module not configured, missing `name`/`agentId`, no project
 context to bind `agentId`, or a resume whose suspend payload has no
 checkpoint ref to carry).
+
+`requiredArtifacts` contains structured workflows or data tables that the
+embedded builder cannot create. Build an `agent-tool` workflow and pass it back
+through `workflowContext`. Build an `agent-entrypoint` workflow around the
+returned Agent ID and never attach it to the Agent; this is used for unsupported
+chat channels whose trigger and reply nodes live in a workflow. Requirements
+reported before an interactive suspension are carried across its checkpoint.
 
 **Interactive requests:** when the builder suspends on one of its interactive
 tools (batched questions, a credential picker, channel setup, or a standard SDK

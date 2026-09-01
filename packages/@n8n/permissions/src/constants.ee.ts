@@ -34,7 +34,7 @@ export const RESOURCES = {
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage', 'read'] as const,
-	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects'] as const,
+	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [
 		'resetPassword',
@@ -107,8 +107,13 @@ export const API_KEY_RESOURCES = {
 	testRun: ['read', 'list', 'create', 'cancel'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
+<<<<<<< HEAD
 	sourceControl: ['pull', 'read'] as const,
 	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects'] as const,
+=======
+	sourceControl: ['pull'] as const,
+	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
+>>>>>>> master
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,

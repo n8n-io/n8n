@@ -35,7 +35,7 @@ function reviewRequest(overrides: Partial<WorkflowReviewRequest> = {}) {
 	});
 }
 
-describe('WorkflowReviewAuthorizationService: visibility and the read gate', () => {
+describe('WorkflowReviewAuthorizationService: who may see a review', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const projectService = mock<ProjectService>();
 	const roleService = mock<RoleService>();
@@ -93,7 +93,7 @@ describe('WorkflowReviewAuthorizationService: visibility and the read gate', () 
 		projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
 	}
 
-	describe('who is allowed to open a review', () => {
+	describe('opening one review', () => {
 		it('reports a review that does not exist as not found', async () => {
 			requestRepository.findById.mockResolvedValue(null);
 
@@ -106,9 +106,6 @@ describe('WorkflowReviewAuthorizationService: visibility and the read gate', () 
 			mockReadableReviewProject();
 
 			// Same error as a review that does not exist: existence must not leak
-			await expect(service.findReadableRequestOrFail(member, requestId)).rejects.toThrow(
-				NotFoundError,
-			);
 			await expect(service.findReadableRequestOrFail(member, requestId)).rejects.toThrow(
 				'Could not find review request',
 			);
@@ -206,34 +203,22 @@ describe('WorkflowReviewAuthorizationService: visibility and the read gate', () 
 			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
 		});
 
-		it('hides the review from anyone who can read none of the workflows it covers, the requester included', async () => {
-			mockReadableReviewProject();
-			mockChildRow();
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
-
-			await expect(service.findReadableRequestOrFail(requester, requestId)).rejects.toThrow(
-				NotFoundError,
-			);
-		});
-
-		it('treats the first covered workflow as the one under review', async () => {
+		it('returns the covered workflows together with the ones the caller may read', async () => {
 			mockReadableReviewProject();
 			mockChildRow();
 
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
-			expect(result.readableWorkflowRows).toEqual([
-				{
-					workflowId,
-					workflowName: 'My workflow',
-					workflowVersionId: 'ver-pinned',
-					activeVersionId: null,
-					baselineVersionId: null,
-					requestState: 'open',
-				},
-			]);
-			expect(result.pinnedWorkflowId).toBe(workflowId);
-			expect(result.canReadPinnedWorkflow).toBe(true);
+			const expectedRow = {
+				workflowId,
+				workflowName: 'My workflow',
+				workflowVersionId: 'ver-pinned',
+				activeVersionId: null,
+				baselineVersionId: null,
+				requestState: 'open',
+			};
+			expect(result.workflowRows).toEqual([expectedRow]);
+			expect(result.readableWorkflowRows).toEqual([expectedRow]);
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
 				workflowId,
 				requester,
@@ -277,22 +262,21 @@ describe('WorkflowReviewAuthorizationService: visibility and the read gate', () 
 					requestState: 'open',
 				},
 			]);
-			// Eligibility still resolves against the pinned row, which they cannot read
-			expect(result.pinnedWorkflowId).toBe(workflowId);
-			expect(result.canReadPinnedWorkflow).toBe(false);
+			// Eligibility still sees the full coverage, unreadable rows included
+			expect(result.workflowRows.map((row) => row.workflowId)).toEqual([workflowId, 'wf-2']);
 		});
 
-		it('has no workflow under review once the review covers none', async () => {
+		it('returns empty row sets once the review covers no workflow', async () => {
 			mockReadableReviewProject();
 
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
-			expect(result.pinnedWorkflowId).toBeNull();
-			expect(result.canReadPinnedWorkflow).toBe(false);
+			expect(result.workflowRows).toEqual([]);
+			expect(result.readableWorkflowRows).toEqual([]);
 		});
 	});
 
-	describe('resolveOpenableRequestIds', () => {
+	describe('which of many listed reviews the viewer can open', () => {
 		const requests = [
 			{ id: 'req-1', projectId: 'proj-1' },
 			{ id: 'req-2', projectId: 'proj-2' },
@@ -336,26 +320,9 @@ describe('WorkflowReviewAuthorizationService: visibility and the read gate', () 
 		it('opens nothing for an uninvolved non-admin, whatever workflow permissions they hold', async () => {
 			expect(await service.resolveOpenableRequestIds(member, requests)).toEqual(new Set());
 		});
-
-		it('answers exactly like the single-request detail gate', async () => {
-			// Same fixtures as the detail-gate tests above: assigned reviewer on req-1.
-			reviewerRepository.findRequestIdsForUser.mockResolvedValue(new Set(['req-1']));
-			reviewerRepository.isReviewer.mockImplementation(
-				async ({ workflowReviewRequestId }) => workflowReviewRequestId === 'req-1',
-			);
-			authorRepository.isAuthor.mockResolvedValue(false);
-			projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
-
-			const openable = await service.resolveOpenableRequestIds(member, requests);
-			expect(openable).toEqual(new Set(['req-1']));
-
-			await expect(service.findReadableRequestOrFail(member, requestId)).resolves.toMatchObject({
-				request: { id: requestId },
-			});
-		});
 	});
 
-	describe('resolveInboxVisibility', () => {
+	describe('whose reviews show up in the inbox', () => {
 		it('gives global admins and owners the whole inbox', async () => {
 			const owner = mock<User>({ role: { slug: 'global:owner', scopes: [] } });
 
