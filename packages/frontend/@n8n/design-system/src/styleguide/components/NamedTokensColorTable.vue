@@ -4,7 +4,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import N8nIcon from '../../components/N8nIcon/Icon.vue';
 import N8nInput from '../../components/N8nInput/Input.vue';
 import tokensSource from '../../css/_tokens.scss?raw';
-import { getColorTokenNames } from '../cssTokenSource';
+import { getColorTokenNames } from '../utils/cssTokenSource';
 
 const SEMANTIC_COLOR_TOKENS = getColorTokenNames(tokensSource);
 

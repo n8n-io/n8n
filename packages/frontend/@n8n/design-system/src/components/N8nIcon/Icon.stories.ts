@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { computed, onUnmounted, ref } from 'vue';
 
 import N8nIcon from './Icon.vue';
-import IconGallery from './IconGallery.vue';
 import { updatedIconSet, type IconName } from './icons';
+import N8nInput from '../N8nInput';
+import N8nText from '../N8nText';
 
 const iconNames = (Object.keys(updatedIconSet) as IconName[]).toSorted((a, b) =>
 	a.localeCompare(b),
@@ -72,14 +74,169 @@ export const Default: Story = {
 	},
 };
 
+const galleryLayout = {
+	root: {
+		display: 'flex',
+		flexDirection: 'column',
+		gap: 'var(--spacing--md)',
+		width: '100%',
+		color: 'var(--text-color)',
+	},
+	toolbar: {
+		display: 'flex',
+	},
+	search: {
+		inlineSize: 'var(--spacing--5xl)',
+		maxInlineSize: '100%',
+	},
+	grid: {
+		display: 'grid',
+		gridTemplateColumns: 'repeat(auto-fill, minmax(var(--spacing--4xl), 1fr))',
+		borderBlockStart: 'var(--border)',
+		borderInlineStart: 'var(--border)',
+	},
+	tile: {
+		display: 'flex',
+		flexDirection: 'column',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 'var(--spacing--2xs)',
+		minBlockSize: 'var(--spacing--4xl)',
+		padding: 'var(--spacing--xs)',
+		border: 'none',
+		borderBlockEnd: 'var(--border)',
+		borderInlineEnd: 'var(--border)',
+		borderRadius: '0',
+		background: 'transparent',
+		color: 'inherit',
+		cursor: 'pointer',
+		userSelect: 'none',
+	},
+	label: {
+		maxWidth: '100%',
+		overflow: 'hidden',
+		textAlign: 'center',
+		textOverflow: 'ellipsis',
+		whiteSpace: 'nowrap',
+	},
+} as const;
+
 export const AllIcons: Story = {
 	render: (args) => ({
-		components: { IconGallery },
+		components: { N8nIcon, N8nInput, N8nText },
 		setup() {
-			return { args };
+			const COPY_RESET_MS = 1500;
+			const query = ref('');
+			const copiedName = ref<IconName | null>(null);
+			let copyTimeout: ReturnType<typeof setTimeout> | undefined;
+			const canHover =
+				typeof window !== 'undefined' &&
+				typeof window.matchMedia === 'function' &&
+				window.matchMedia('(hover: hover)').matches;
+
+			const icons = computed(() => {
+				const normalizedQuery = query.value.trim().toLowerCase();
+				if (!normalizedQuery) {
+					return iconNames;
+				}
+
+				return iconNames.filter((name) => name.includes(normalizedQuery));
+			});
+
+			const copyName = async (name: IconName) => {
+				try {
+					await navigator.clipboard.writeText(name);
+				} catch {
+					return;
+				}
+
+				copiedName.value = name;
+
+				if (copyTimeout) {
+					clearTimeout(copyTimeout);
+				}
+
+				copyTimeout = setTimeout(() => {
+					if (copiedName.value === name) {
+						copiedName.value = null;
+					}
+				}, COPY_RESET_MS);
+			};
+
+			const setTileHover = (event: MouseEvent, hovering: boolean) => {
+				if (!canHover) {
+					return;
+				}
+
+				const target = event.currentTarget;
+				if (!(target instanceof HTMLElement)) {
+					return;
+				}
+
+				target.style.background = hovering ? 'var(--background--hover)' : 'transparent';
+			};
+
+			onUnmounted(() => {
+				if (copyTimeout) {
+					clearTimeout(copyTimeout);
+				}
+			});
+
+			return {
+				args,
+				galleryLayout,
+				query,
+				copiedName,
+				icons,
+				copyName,
+				setTileHover,
+			};
 		},
-		template:
-			'<IconGallery :size="args.size" :color="args.color" :spin="args.spin" :stroke-width="args.strokeWidth" />',
+		template: `
+			<div :style="galleryLayout.root">
+				<form :style="galleryLayout.toolbar" @submit.prevent>
+					<N8nInput
+						v-model="query"
+						:style="galleryLayout.search"
+						size="small"
+						placeholder="Search icons"
+						clearable
+						autocomplete="off"
+						aria-label="Search icons"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" size="small" />
+						</template>
+					</N8nInput>
+				</form>
+
+				<div v-if="icons.length" :style="galleryLayout.grid">
+					<button
+						v-for="name in icons"
+						:key="name"
+						type="button"
+						:style="galleryLayout.tile"
+						:aria-label="'Copy ' + name"
+						:title="name"
+						@click="copyName(name)"
+						@mouseenter="setTileHover($event, true)"
+						@mouseleave="setTileHover($event, false)"
+					>
+						<N8nIcon
+							:icon="name"
+							:size="args.size"
+							:color="args.color"
+							:spin="args.spin"
+							:stroke-width="args.strokeWidth"
+						/>
+						<N8nText :style="galleryLayout.label" size="xsmall" color="text-light">
+							{{ copiedName === name ? 'Copied' : name }}
+						</N8nText>
+					</button>
+				</div>
+				<N8nText v-else size="small" color="text-light">No icons match "{{ query }}"</N8nText>
+			</div>
+		`,
 	}),
 	args: {
 		size: 'large',

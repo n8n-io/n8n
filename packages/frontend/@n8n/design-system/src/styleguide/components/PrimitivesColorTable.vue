@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 
 import N8nTooltip from '../../components/N8nTooltip/Tooltip.vue';
 import primitivesSource from '../../css/_primitives.scss?raw';
-import { getColorTokenNames } from '../cssTokenSource';
+import { getColorTokenNames } from '../utils/cssTokenSource';
 
 const SCALE_STEPS = [
 	'50',
