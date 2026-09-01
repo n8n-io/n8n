@@ -38,8 +38,7 @@ import { isSameProtectedResource } from './resource-identity';
  */
 @Service()
 export class OAuthTokenService implements OAuthTokenVerifier {
-	// private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
-	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 120;
+	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
 	constructor(
