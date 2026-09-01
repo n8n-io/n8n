@@ -42,12 +42,13 @@ on:
         required: true
         type: boolean
 
-permissions:
-  contents: write
-  id-token: write
+permissions: {}
 
 jobs:
   create-github-releases:
+    permissions:
+      contents: write
+      id-token: write
     name: Create GitHub releases
     runs-on: ubuntu-slim
     environment: release

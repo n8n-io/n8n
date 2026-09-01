@@ -42,6 +42,14 @@ export class CloneGitConnectionDto extends Z.class({
 	branchName: branchNameSchema.optional(),
 }) {}
 
+export class PushGitConnectionDto extends Z.class(
+	{
+		commitMessage: z.string().trim().min(1).max(1000),
+		force: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
 export class ListGitConnectionsQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
@@ -76,10 +84,10 @@ export const gitConnectionExportCountsSchema = z.object({
 	tags: z.number().int().nonnegative(),
 });
 
-/** Outcome of a push: which connection, and per-entity counts of what was exported to its working copy. */
 export const gitConnectionPushResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionExportCountsSchema,
+	commitSha: z.string(),
 });
 
 export class GitConnectionPushResultDto extends Z.class(gitConnectionPushResultSchema.shape) {}
@@ -87,7 +95,7 @@ export class GitConnectionPushResultDto extends Z.class(gitConnectionPushResultS
 const count = () => z.number().int().nonnegative();
 
 export const gitConnectionImportCountsSchema = z.object({
-	projects: z.object({ created: count(), updated: count(), skipped: count() }),
+	projects: z.object({ created: count(), updated: count(), skipped: count(), deleted: count() }),
 	folders: z.object({ created: count(), skipped: count(), removed: count() }),
 	workflows: z.object({
 		created: count(),
@@ -124,6 +132,7 @@ export const gitConnectionImportCountsSchema = z.object({
 export const gitConnectionPullResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionImportCountsSchema,
+	commitSha: z.string(),
 });
 
 export class GitConnectionPullResultDto extends Z.class(gitConnectionPullResultSchema.shape) {}

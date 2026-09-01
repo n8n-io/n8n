@@ -230,6 +230,8 @@ export interface ExportPackageRequest {
 	credentialExportPolicy?: CredentialExportPolicy;
 }
 
+export type PackageImportSource = 'package-import' | 'git-pull';
+
 export type ImportRequest = {
 	user: User;
 	projectId?: string;

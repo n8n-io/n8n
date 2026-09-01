@@ -39,6 +39,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -198,6 +199,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
+		private readonly mcpRegistryService: McpRegistryService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
@@ -498,6 +500,8 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 				onConnectionFailed: (event) => {
 					this.logger.warn('Skipped MCP server that failed to connect', {
 						agentId: memoryOwnerAgentId,

@@ -4,14 +4,21 @@
  * Posts (or updates) a single PR comment that combines:
  *   - Recommended reviewer teams based on file ownership
  *   - A breakdown of changed lines by category (source code, test files, misc)
+ *   - The required team reviews (OWNERS entries with `required`), with a
+ *     prompt to request review from those teams
  *
- * Advisory only — does not gate merging.
+ * Advisory only — does not gate merging. Enforcement of required reviews
+ * lives in required-reviews.mjs.
  */
 
-import { minimatch } from 'minimatch';
-import { ensureEnvVar, getPrFiles, postOrUpdateComment } from './github-helpers.mjs';
-import { assignOwnership, ownershipsToAllocations, parseOwnersFile } from './owners.mjs';
-import { MISC_PATTERNS, SIZE_LIMIT, TEST_PATTERNS } from './quality/check-pr-size.mjs';
+import { ensureEnvVar, getPrFiles, postOrUpdateComment } from '../github-helpers.mjs';
+import { categorizeFile, SIZE_LIMIT } from '../quality/check-pr-size.mjs';
+import {
+	assignOwnership,
+	ownershipsToAllocations,
+	parseOwnersFile,
+	resolveRequiredTeams,
+} from './owners.mjs';
 
 /** @typedef {import('./owners.mjs').Allocation} Allocation */
 
@@ -41,19 +48,9 @@ function createEmptyLineStats() {
  * @param {{ filename: string, additions: number, deletions: number }} file
  */
 function addFileToLineStats(stats, file) {
-	const isTest = TEST_PATTERNS.some((p) => minimatch(file.filename, p));
-	const isMisc = !isTest && MISC_PATTERNS.some((p) => minimatch(file.filename, p));
-
-	if (isTest) {
-		stats.testFilesAdded += file.additions;
-		stats.testFilesRemoved += file.deletions;
-	} else if (isMisc) {
-		stats.miscAdded += file.additions;
-		stats.miscRemoved += file.deletions;
-	} else {
-		stats.sourceCodeAdded += file.additions;
-		stats.sourceCodeRemoved += file.deletions;
-	}
+	const category = categorizeFile(file.filename);
+	stats[`${category}Added`] += file.additions;
+	stats[`${category}Removed`] += file.deletions;
 }
 
 /**
@@ -193,6 +190,35 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
 }
 
 /**
+ * Build the section that lists required team approvals. Returns null when no
+ * approval is required.
+ *
+ * Suggests a team review request instead of naming an individual: GitHub then
+ * assigns reviewers according to the team's own review settings (assignment
+ * algorithm, excluded members), which the API does not let us read.
+ *
+ * @param { Map<string, string[]> } requiredTeamFiles Required team handle -> files that triggered the requirement.
+ * @returns { string | null }
+ */
+export function buildRequiredReviewsSection(requiredTeamFiles) {
+	if (requiredTeamFiles.size === 0) return null;
+
+	const plural = requiredTeamFiles.size > 1;
+
+	return [
+		'### Required reviews',
+		'',
+		'Some changed files have a `required` owner in `OWNERS`. A member of each of these teams must approve this PR before it can merge:',
+		'',
+		'| Team | Files |',
+		'| --- | ---: |',
+		...[...requiredTeamFiles].map(([team, files]) => `| ${team} | ${files.length} |`),
+		'',
+		`Request a review from the team${plural ? 's' : ''} — GitHub assigns reviewers according to the team's review settings. The \`Auto-assign reviewers\` label does this for all owning teams.`,
+	].join('\n');
+}
+
+/**
  * Construct the full PR comment body from reviewer allocations and line stats.
  *
  * @param { Allocation[] } allocations
@@ -200,13 +226,18 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
  * @param { LineStats } lineStats
  * @param { Map<string, LineStats> } lineStatsByTeam
  * @param { Allocation[] } [otherAllocations]
+ * @param { string | null } [requiredSection]
  * @returns { string }
  */
-export function buildComment(allocations, changedFiles, lineStats, lineStatsByTeam = new Map(), otherAllocations = []) {
+export function buildComment(allocations, changedFiles, lineStats, lineStatsByTeam = new Map(), otherAllocations = [], requiredSection = null) {
 	const body = [
 		BOT_MARKER,
 		buildOverviewTable(allocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations),
 	];
+
+	if (requiredSection) {
+		body.push('', requiredSection);
+	}
 
 	if (lineStats.sourceCodeAdded > SIZE_LIMIT) {
 		body.push('', `❗ Source code additions (${lineStats.sourceCodeAdded.toLocaleString()}) exceed the ${SIZE_LIMIT.toLocaleString()}-line limit.`);
@@ -243,7 +274,10 @@ export async function run(pullRequestNumber) {
 	const topAllocations = sortedAllocations.slice(0, 3);
 	const otherAllocations = sortedAllocations.slice(3);
 
-	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations);
+	const requiredTeamFiles = resolveRequiredTeams(changedFiles, owners);
+	const requiredSection = buildRequiredReviewsSection(requiredTeamFiles);
+
+	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations, requiredSection);
 
 	await postOrUpdateComment(pullRequestNumber, body, BOT_MARKER);
 }
