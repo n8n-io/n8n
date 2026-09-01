@@ -104,12 +104,12 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 </script>
 
 <template>
-	<div class="type-examples">
-		<div class="controls">
+	<div :class="$style.container">
+		<div :class="$style.controls">
 			<N8nInput
 				:id="sampleInputId"
 				v-model="sampleText"
-				class="sample-control"
+				:class="$style.sampleControl"
 				size="small"
 				placeholder="Type a sample string"
 				aria-label="Sample"
@@ -117,7 +117,7 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 			<N8nSelect
 				:id="weightInputId"
 				v-model="selectedWeight"
-				class="weight-control"
+				:class="$style.weightControl"
 				size="small"
 				aria-label="Weight"
 			>
@@ -130,11 +130,11 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 			</N8nSelect>
 		</div>
 
-		<div class="specimens" :style="{ fontFamily, fontWeight: selectedWeightToken }">
-			<div v-for="size in sizes" :key="size.name" class="row">
-				<span class="size">{{ size.name }}</span>
+		<div :class="$style.specimens" :style="{ fontFamily, fontWeight: selectedWeightToken }">
+			<div v-for="size in sizes" :key="size.name" :class="$style.row">
+				<span :class="$style.size">{{ size.name }}</span>
 				<p
-					class="sample"
+					:class="$style.sample"
 					:style="{
 						fontSize: size.fontSize,
 						letterSpacing: size.letterSpacing,
@@ -148,66 +148,66 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 	</div>
 </template>
 
-<style lang="scss" scoped>
-.type-examples {
+<style lang="scss" module>
+.container {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
 	margin-block: var(--spacing--xl);
 	color: var(--text-color);
+}
 
-	.controls {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--spacing--sm);
-		align-items: center;
-	}
+.controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
+	align-items: center;
+}
 
-	.sample-control {
-		flex: 1 1 var(--spacing--5xl);
-		min-width: 0;
-	}
+.sampleControl {
+	flex: 1 1 var(--spacing--5xl);
+	min-width: 0;
+}
 
-	.weight-control {
-		flex: 0 0 var(--spacing--5xl);
+.weightControl {
+	flex: 0 0 var(--spacing--5xl);
+}
 
-		:deep(.el-select) {
-			width: 100%;
-		}
-	}
+.weightControl :global(.el-select) {
+	width: 100%;
+}
 
-	.specimens {
-		display: flex;
-		flex-direction: column;
-		border: var(--border);
-		border-radius: var(--radius);
-		overflow: hidden;
-	}
+.specimens {
+	display: flex;
+	flex-direction: column;
+	border: var(--border);
+	border-radius: var(--radius);
+	overflow: hidden;
+}
 
-	.row {
-		display: flex;
-		gap: var(--spacing--lg);
-		align-items: baseline;
-		padding: var(--spacing--sm) var(--spacing--md);
-		border-bottom: var(--border);
+.row {
+	display: flex;
+	gap: var(--spacing--lg);
+	align-items: baseline;
+	padding: var(--spacing--sm) var(--spacing--md);
+	border-bottom: var(--border);
+}
 
-		&:last-child {
-			border-bottom: none;
-		}
-	}
+.row:last-child {
+	border-bottom: none;
+}
 
-	.size {
-		flex: 0 0 var(--spacing--2xl);
-		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--medium);
-		color: var(--text-color--subtle);
-		font-family: var(--font-family);
-	}
+.size {
+	flex: 0 0 var(--spacing--2xl);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
+	color: var(--text-color--subtle);
+	font-family: var(--font-family);
+}
 
-	.sample {
-		flex: 1 1 auto;
-		min-width: 0;
-		margin: 0;
-	}
+.sample {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: 0;
 }
 </style>
