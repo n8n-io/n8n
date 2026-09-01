@@ -28,6 +28,15 @@ export const STATUS_CONTEXT = 'Required Reviews';
 const TARGET_BRANCH = 'master';
 
 /**
+ * A PR review as returned by the reviews API.
+ *
+ * @typedef Review
+ * @property { { login: string } | null } user
+ * @property { string } state
+ * @property { string } [submitted_at]
+ */
+
+/**
  * Resolve the PR number from the triggering event.
  *
  * @param { string } eventName
@@ -51,7 +60,7 @@ export function resolvePullRequestNumber(eventName, event, pullRequestNumberEnv)
  * CHANGES_REQUESTED (or a dismissal) replaces the reviewer's earlier state;
  * COMMENTED and PENDING reviews carry no state.
  *
- * @param { Array<{ user: { login: string } | null, state: string, submitted_at?: string }> } reviews
+ * @param { Review[] } reviews
  * @returns { Map<string, string> } login -> latest review state
  */
 export function latestReviewStates(reviews) {
@@ -68,7 +77,7 @@ export function latestReviewStates(reviews) {
 }
 
 /**
- * @param { Array<{ user: { login: string } | null, state: string, submitted_at?: string }> } reviews
+ * @param { Review[] } reviews
  * @returns { Set<string> } logins whose latest review state is APPROVED
  */
 export function collectApprovers(reviews) {
