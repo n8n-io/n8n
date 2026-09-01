@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
-import type { IMenuItem } from '../../types';
 import N8nMenuItem from './MenuItem.vue';
+import type { IMenuItem } from '../../types';
 
 const meta = {
 	title: 'Core/MenuItem',

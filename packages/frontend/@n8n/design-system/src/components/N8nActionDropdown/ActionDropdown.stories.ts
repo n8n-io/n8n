@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
-import type { ActionDropdownItem } from '../../types';
 import N8nActionDropdown from './ActionDropdown.vue';
+import type { ActionDropdownItem } from '../../types';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
