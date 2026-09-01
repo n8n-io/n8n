@@ -474,6 +474,49 @@ describe('establishChatSessionIdentity', () => {
 		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
 	});
 
+	// Nothing ever clears the refresh cookie, so a cookie the AS has finished with has
+	// to heal itself. It does: the refresh fails, the visitor is sent through the AS,
+	// and the callback writes a live token over the dead one.
+	it('overwrites a stale refresh cookie rather than needing it cleared', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			query: {},
+			headers: { cookie: 'n8n-chat-oauth-refresh=long-dead-token' },
+			originalUrl: '/webhook/abc/chat',
+		} as never);
+		mockContext.refreshN8nOAuth2Flow.mockResolvedValue({ valid: false, reason: 'invalid_grant' });
+		mockContext.beginN8nOAuth2Flow.mockResolvedValue('https://as.example.com/authorize');
+
+		expect(await establishChatSessionIdentity(mockContext, resourceUrl)).toBeNull();
+		expect(mockContext.getResponseObject().clearCookie).not.toHaveBeenCalled();
+		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
+			Location: 'https://as.example.com/authorize',
+		});
+
+		// The AS auto-approves against the visitor's existing consent, so this leg is
+		// silent, and its callback replaces the dead cookie.
+		mockContext.getResponseObject.mockReturnValue(mockRes());
+		mockContext.getRequestObject.mockReturnValue({
+			query: { code: 'auth-code', state: 'flow-state' },
+			headers: { cookie: 'n8n-chat-oauth-refresh=long-dead-token' },
+			originalUrl: '/webhook/abc/chat?code=auth-code&state=flow-state',
+		} as never);
+		mockContext.completeN8nOAuth2Flow.mockResolvedValue({
+			valid: true,
+			token: 'as-token',
+			refreshToken: 'brand-new-refresh-token',
+			expiresIn: 3600,
+			user,
+		});
+
+		expect(await establishChatSessionIdentity(mockContext, resourceUrl)).toBeNull();
+		expect(mockContext.getResponseObject().cookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth-refresh',
+			'brand-new-refresh-token',
+			expect.objectContaining({ httpOnly: true }),
+		);
+		expect(mockContext.getResponseObject().clearCookie).not.toHaveBeenCalled();
+	});
+
 	it('reports denial without restarting the flow', async () => {
 		mockContext.getRequestObject.mockReturnValue({
 			query: { error: 'access_denied' },
@@ -551,8 +594,9 @@ describe('handleChatTokenRefresh', () => {
 	});
 
 	// A token a concurrent refresh already consumed loses the AS's atomic rotation
-	// race. The page must be told to stop, not handed a token that will not work.
-	it('answers 401 and drops the cookie when the AS refuses the token', async () => {
+	// race. The page must be told to stop — but the cookie belongs to the winner by
+	// then, so clearing it would erase a live grant.
+	it('answers 401 without touching the refresh cookie when the AS refuses the token', async () => {
 		mockContext.getRequestObject.mockReturnValue({
 			headers: { cookie: 'n8n-chat-oauth-refresh=consumed-token' },
 		} as never);
@@ -564,12 +608,43 @@ describe('handleChatTokenRefresh', () => {
 		await handleChatTokenRefresh(mockContext, resourceUrl);
 
 		const res = mockContext.getResponseObject();
-		expect(res.clearCookie).toHaveBeenCalledWith(
-			'n8n-chat-oauth-refresh',
-			expect.objectContaining({ httpOnly: true }),
-		);
+		expect(res.clearCookie).not.toHaveBeenCalled();
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.json).toHaveBeenCalledWith({ error: 'invalid_grant' });
+	});
+
+	// Two tabs on one chat page share the single cookie slot on that path. The loser
+	// must leave the winner's rotated token alone: it is the only copy of the grant.
+	it('leaves a cookie a concurrent shell just rotated intact', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			headers: { cookie: 'n8n-chat-oauth-refresh=rotated-by-the-winner' },
+		} as never);
+		mockContext.refreshN8nOAuth2Flow.mockResolvedValueOnce({
+			valid: false,
+			reason: 'invalid_grant',
+		});
+
+		await handleChatTokenRefresh(mockContext, resourceUrl);
+
+		const loserRes = mockContext.getResponseObject();
+		expect(loserRes.status).toHaveBeenCalledWith(401);
+		expect(loserRes.clearCookie).not.toHaveBeenCalled();
+
+		// The loser's 5s retry now presents the same cookie, which the winner rotated.
+		mockContext.getResponseObject.mockReturnValue(mockRes());
+		mockContext.refreshN8nOAuth2Flow.mockResolvedValueOnce({
+			valid: true,
+			token: 'fresh-token',
+			refreshToken: 'rotated-again',
+			expiresIn: 3600,
+		});
+
+		await handleChatTokenRefresh(mockContext, resourceUrl);
+
+		const retryRes = mockContext.getResponseObject();
+		expect(retryRes.status).toHaveBeenCalledWith(200);
+		expect(retryRes.json).toHaveBeenCalledWith({ token: 'fresh-token', expiresIn: 3600 });
+		expect(retryRes.clearCookie).not.toHaveBeenCalled();
 	});
 
 	it('answers 401 rather than throwing when the AS call itself fails', async () => {
@@ -580,7 +655,10 @@ describe('handleChatTokenRefresh', () => {
 
 		await expect(handleChatTokenRefresh(mockContext, resourceUrl)).resolves.toBeUndefined();
 
-		expect(mockContext.getResponseObject().status).toHaveBeenCalledWith(401);
+		const res = mockContext.getResponseObject();
+		expect(res.status).toHaveBeenCalledWith(401);
+		// A transient AS failure says nothing about the grant, so the cookie stays.
+		expect(res.clearCookie).not.toHaveBeenCalled();
 	});
 });
 

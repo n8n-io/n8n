@@ -4,7 +4,6 @@ import {
 	buildChatRefreshUrl,
 	buildInnerFrameSrc,
 	clearChatOAuthToken,
-	clearChatRefreshToken,
 	isChatOAuth2Enabled,
 	isChatRefreshRequest,
 	isShellInnerRequest,
@@ -287,20 +286,6 @@ describe('chat OAuth2 refresh cookie', () => {
 
 	it('returns null when the cookie is absent', () => {
 		expect(readChatRefreshToken(request({ headers: { cookie: 'n8n-chat-oauth=x' } }))).toBeNull();
-	});
-
-	it('clears the cookie scoped to the same path', () => {
-		const req = request({ headers: { host: 'localhost:5678' }, protocol: 'http' });
-		const res = response();
-
-		clearChatRefreshToken(res, req, resourceUrl);
-
-		expect(res.clearCookie).toHaveBeenCalledWith('n8n-chat-oauth-refresh', {
-			httpOnly: true,
-			sameSite: 'lax',
-			secure: false,
-			path: '/webhook/abc/chat',
-		});
 	});
 });
 

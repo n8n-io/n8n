@@ -5,7 +5,6 @@ import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-work
 import { ChatTriggerAuthorizationError } from './error';
 import {
 	clearChatOAuthToken,
-	clearChatRefreshToken,
 	isChatOAuth2Enabled,
 	readChatOAuthToken,
 	readChatRefreshToken,
@@ -264,9 +263,11 @@ export async function handleChatTokenRefresh(
 
 	const refreshed = await refreshChatSession(context, resourceUrl);
 	if (!refreshed) {
-		// Drop the cookie so the page stops retrying against a token the AS won't take;
-		// the reload it falls back to then runs a clean handshake.
-		clearChatRefreshToken(res, req, resourceUrl);
+		// The cookie stays. A concurrent refresh on the same path — a second tab — wins
+		// the AS's atomic rotation and has already written its rotated token here, so
+		// clearing would erase a live grant and take the winner down with the loser. A
+		// cookie the AS really has finished with self-heals instead: the next shell GET
+		// fails its refresh, redirects through the AS, and the callback overwrites it.
 		res.status(401).json({ error: 'invalid_grant' });
 		res.end();
 		return;
