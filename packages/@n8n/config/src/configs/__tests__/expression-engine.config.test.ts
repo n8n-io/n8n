@@ -66,6 +66,22 @@ describe('ExpressionEngineConfig', () => {
 			expect(Container.get(ExpressionEngineConfig).bridgeTimeout).toBe(5000);
 			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
+
+		test('falls back to default on fractional value', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_TIMEOUT', '2.5');
+			expect(Container.get(ExpressionEngineConfig).bridgeTimeout).toBe(5000);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+
+		test('falls back to default on non-positive value', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_TIMEOUT', '0');
+			expect(Container.get(ExpressionEngineConfig).bridgeTimeout).toBe(5000);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
 	});
 
 	describe('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT', () => {
@@ -78,6 +94,22 @@ describe('ExpressionEngineConfig', () => {
 			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			vi.stubEnv('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT', 'not-a-number');
+			expect(Container.get(ExpressionEngineConfig).bridgeMemoryLimit).toBe(128);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+
+		test('falls back to default on value below the isolate minimum', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT', '4');
+			expect(Container.get(ExpressionEngineConfig).bridgeMemoryLimit).toBe(128);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+
+		test('falls back to default on fractional value', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT', '8.5');
 			expect(Container.get(ExpressionEngineConfig).bridgeMemoryLimit).toBe(128);
 			expect(consoleWarnSpy).toHaveBeenCalled();
 		});

@@ -660,8 +660,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Handler for `$evaluateExpression(expression, itemIndex?)`. Forwards
 	 * the string to the host's nested-evaluation helper, which re-enters
 	 * the expression engine on the inner expression. Under the VM engine
-	 * this round-trips through the bridge again on a fresh evaluation
-	 * cycle, which is the same shape the legacy engine supports.
+	 * this round-trips through the bridge again as a new evaluation on the
+	 * enclosing call's time budget, which is the same shape the legacy
+	 * engine supports.
 	 *
 	 * @private
 	 */
@@ -709,7 +710,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *    from the closure-scoped references.
 	 *
 	 * Each call gets its own closure, so nested and concurrent evaluations
-	 * cannot interfere with each other.
+	 * cannot see each other's data. Time is the exception: a nested call runs
+	 * on what is left of the enclosing call's budget (see `elapsedMs`).
 	 *
 	 * @param code - JavaScript expression to evaluate
 	 * @param data - Workflow data (e.g., { $json: {...}, $runIndex: 0 })
@@ -719,6 +721,23 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown {
 		if (!this.initialized || !this.context) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
+		}
+
+		// A nested call runs on what is left of the configured timeout, so the
+		// chain shares one budget: subtracting elapsed makes every frame's
+		// deadline the same instant. A configured timeout of 0 means "no limit",
+		// so there is nothing to share. A positive elapsed is the only nested
+		// case that needs handling — a frame that has spent nothing is owed the
+		// full timeout anyway.
+		const elapsedMs = options?.elapsedMs ?? 0;
+		const nested = elapsedMs > 0 && this.config.timeout > 0;
+		let timeout = this.config.timeout;
+		if (nested) {
+			// isolated-vm rejects a fractional timeout and reads 0 or less as "no
+			// timeout at all", so truncate, and fail here rather than pass on a
+			// budget that is already gone.
+			timeout = Math.trunc(this.config.timeout - elapsedMs);
+			if (timeout <= 0) throw this.timeoutError(true);
 		}
 
 		// Host callbacks are ivm.Callback instances: inside the isolate they
@@ -773,7 +792,7 @@ try {
 			const result = this.context.evalClosureSync(
 				wrappedCode,
 				[getValueAtPath, getArrayElement, callHost],
-				{ result: { copy: true }, timeout: this.config.timeout },
+				{ result: { copy: true }, timeout },
 			);
 
 			if (isErrorSentinel(result)) {
@@ -797,7 +816,7 @@ try {
 			}
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			if (errorMessage.includes('Script execution timed out')) {
-				throw new TimeoutError(`Expression timed out after ${this.config.timeout}ms`, {});
+				throw this.timeoutError(nested);
 			}
 			if (errorMessage.includes('memory limit')) {
 				throw new MemoryLimitError(
@@ -807,6 +826,19 @@ try {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		}
+	}
+
+	/**
+	 * Always names the configured limit, never the reduced budget a nested call
+	 * ran on — reporting "timed out after 137ms" would misstate the limit.
+	 */
+	private timeoutError(nested: boolean): TimeoutError {
+		return new TimeoutError(
+			nested
+				? `Nested expressions timed out after sharing the ${this.config.timeout}ms limit`
+				: `Expression timed out after ${this.config.timeout}ms`,
+			{},
+		);
 	}
 
 	/**

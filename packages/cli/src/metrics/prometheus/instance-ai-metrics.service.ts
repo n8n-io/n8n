@@ -74,8 +74,7 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 			},
 		});
 
-		// Durable event log (RFC: instance-ai durable event log). All series are
-		// flat when N8N_INSTANCE_AI_DURABLE_LOG is off.
+		// Durable event log (RFC: instance-ai durable event log).
 		const durableLogRowsTotal = new promClient.Counter({
 			name: `${this.config.prefix}instance_ai_durable_log_rows_total`,
 			help: 'Durable Instance AI event rows appended (structural facts + coalesced blocks).',

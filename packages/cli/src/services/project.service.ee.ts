@@ -29,14 +29,14 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { UserManagementMailer } from '@/user-management/email';
+
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -52,8 +52,8 @@ export class UnlicensedProjectRoleError extends UserError {
 	}
 }
 
-class ProjectNotFoundError extends NotFoundError {
-	constructor(projectId: string) {
+export class ProjectNotFoundError extends NotFoundError {
+	constructor(readonly projectId: string) {
 		super(`Could not find project with ID: ${projectId}`);
 	}
 
@@ -992,6 +992,10 @@ export class ProjectService {
 			where: { projectId },
 			relations: { user: true, role: true },
 		});
+	}
+
+	async findUserIdsByProjectId(projectId: string): Promise<string[]> {
+		return await this.projectRelationRepository.findUserIdsByProjectId(projectId);
 	}
 
 	async getProjectRelationForUserAndProject(

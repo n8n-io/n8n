@@ -12,6 +12,7 @@ import * as getLabels from './getLabels.operation';
 import * as getManyByLabel from './getManyByLabel.operation';
 import * as removeLabel from './removeLabel.operation';
 import * as update from './update.operation';
+import { siteRLC } from '../common';
 
 export {
 	addComment,
@@ -114,6 +115,14 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+	},
+	{
+		...siteRLC,
+		displayOptions: {
+			show: {
+				resource: ['page'],
+			},
+		},
 	},
 	...addComment.description,
 	...addLabels.description,

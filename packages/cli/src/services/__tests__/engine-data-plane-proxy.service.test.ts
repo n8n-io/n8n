@@ -8,12 +8,13 @@ import type { EngineDataPlaneProvider } from '../engine-data-plane-proxy.service
 import { EngineDataPlaneProxyService } from '../engine-data-plane-proxy.service';
 
 describe('EngineDataPlaneProxyService', () => {
+	const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
+
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		executionId,
 	};
-
-	const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
 
 	let proxy: EngineDataPlaneProxyService;
 

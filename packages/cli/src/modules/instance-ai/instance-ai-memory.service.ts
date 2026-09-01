@@ -472,22 +472,19 @@ export class InstanceAiMemoryService {
 		// a tree to pair with, and hydrating it unbounded would read the whole
 		// thread to render nothing.
 		//
-		// Durable-log flag (fold-on-read): history trees derive from the event
-		// log; the stored snapshots (the flag-off and rollback path) are only
-		// loaded when the fold needs its pre-log/failure fallback, keeping the
-		// heaviest instance-ai table out of the flag-on hot path.
+		// Fold-on-read: history trees derive from the event log. Stored snapshots
+		// are only loaded for the fold's pre-log/failure fallback, keeping the
+		// heaviest instance-ai table out of the hot path.
 		const snapshots = !pageWindow
 			? []
-			: this.instanceAiConfig.durableLog
-				? await this.foldSnapshotsFromLog(
-						threadId,
-						loadStoredSnapshots,
-						collectSuspendedHostRunIds(activeCheckpoints),
-						pageWindow,
-						options?.excludeRunIds,
-						options?.excludeMessageGroupIds,
-					)
-				: await loadStoredSnapshots();
+			: await this.foldSnapshotsFromLog(
+					threadId,
+					loadStoredSnapshots,
+					collectSuspendedHostRunIds(activeCheckpoints),
+					pageWindow,
+					options?.excludeRunIds,
+					options?.excludeMessageGroupIds,
+				);
 
 		// Surface the in-flight messages from any suspended checkpoint. The
 		// user's prompt is persisted to memory on receipt, but the intermediate
@@ -511,10 +508,9 @@ export class InstanceAiMemoryService {
 	}
 
 	/**
-	 * Durable-log fold-on-read: with the flag on, history agent trees derive
-	 * from the event log. Stored snapshot rows keep being written (they are the
-	 * flag-off and rollback path) but are neither read nor loaded here; the
-	 * lazy loader runs only when the thread has no log rows or the read
+	 * Fold-on-read: history agent trees derive from the event log. Stored
+	 * snapshot rows keep being written but are neither read nor loaded here;
+	 * the lazy loader runs only when the thread has no log rows or the read
 	 * fails/derives nothing.
 	 *
 	 * Only the runs behind the requested page are read and folded, so a long
@@ -534,10 +530,10 @@ export class InstanceAiMemoryService {
 		const start = Date.now();
 		let rows;
 		try {
-			// Pre-log thread (instance ran before the flag): no run has a start
-			// fact, so stored snapshots still render. Production flips the flag
-			// together with the backfill migration (INS-851), so this branch is a
-			// dev-instance safety, not a design. Checked on run starts rather than
+			// Pre-log thread: no run has a start fact, so stored snapshots still
+			// render. The backfill migration gave every pre-existing run event
+			// rows, so this branch is a dev-instance safety, not a design.
+			// Checked on run starts rather than
 			// on the windowed rows, which are also empty for a thread whose log
 			// simply has nothing inside the page.
 			const runStarts = await this.eventLogRepository.getRunStarts(threadId);

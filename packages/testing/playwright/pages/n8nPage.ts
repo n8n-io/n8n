@@ -19,6 +19,7 @@ import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
 import { WorkflowMenu } from './components/WorkflowMenu';
+import { WorkflowReviewControls } from './components/WorkflowReviewControls';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -51,6 +52,7 @@ import { VersionsPage } from './VersionsPage';
 import { WorkerViewPage } from './WorkerViewPage';
 import { WorkflowActivationModal } from './WorkflowActivationModal';
 import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
+import { WorkflowReviewsPage } from './WorkflowReviewsPage';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
@@ -102,6 +104,7 @@ export class n8nPage {
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
 	readonly workerView: WorkerViewPage;
+	readonly workflowReviews: WorkflowReviewsPage;
 	readonly workflows: WorkflowsPage;
 	readonly notifications: NotificationsPage;
 	readonly credentials: CredentialsPage;
@@ -119,6 +122,7 @@ export class n8nPage {
 	readonly projectTabs: ProjectTabsComponent;
 	readonly commandBar: CommandBar;
 	readonly workflowMenu: WorkflowMenu;
+	readonly workflowReviewControls: WorkflowReviewControls;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
@@ -187,6 +191,7 @@ export class n8nPage {
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
 		this.workerView = new WorkerViewPage(page);
+		this.workflowReviews = new WorkflowReviewsPage(page);
 		this.workflows = new WorkflowsPage(page);
 		this.notifications = new NotificationsPage(page);
 		this.credentials = new CredentialsPage(page);
@@ -208,6 +213,7 @@ export class n8nPage {
 		this.projectTabs = new ProjectTabsComponent(page);
 		this.commandBar = new CommandBar(page);
 		this.workflowMenu = new WorkflowMenu(page);
+		this.workflowReviewControls = new WorkflowReviewControls(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);

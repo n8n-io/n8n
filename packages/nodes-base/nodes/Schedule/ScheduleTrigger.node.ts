@@ -117,6 +117,10 @@ export class ScheduleTrigger implements INodeType {
 										field: ['seconds'],
 									},
 								},
+								typeOptions: {
+									minValue: 1,
+									maxValue: 59,
+								},
 								description: 'Number of seconds between each workflow trigger',
 								hint: 'Must be in range 1-59',
 							},
@@ -130,6 +134,10 @@ export class ScheduleTrigger implements INodeType {
 										field: ['minutes'],
 									},
 								},
+								typeOptions: {
+									minValue: 1,
+									maxValue: 59,
+								},
 								description: 'Number of minutes between each workflow trigger',
 								hint: 'Must be in range 1-59',
 							},
@@ -141,6 +149,10 @@ export class ScheduleTrigger implements INodeType {
 									show: {
 										field: ['hours'],
 									},
+								},
+								typeOptions: {
+									minValue: 1,
+									maxValue: 23,
 								},
 								default: 1,
 								description: 'Number of hours between each workflow trigger',
@@ -154,6 +166,10 @@ export class ScheduleTrigger implements INodeType {
 									show: {
 										field: ['days'],
 									},
+								},
+								typeOptions: {
+									minValue: 1,
+									maxValue: 31,
 								},
 								default: 1,
 								description: 'Number of days between each workflow trigger',
