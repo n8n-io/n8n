@@ -88,9 +88,6 @@
                 "AuthorLookupId": {
                     "type": "string"
                 },
-                "authType": {
-                    "type": "string"
-                },
                 "ContentType": {
                     "type": "string"
                 },
@@ -130,13 +127,7 @@
                 "ParentVersionStringLookupId": {
                     "type": "string"
                 },
-                "system": {
-                    "type": "string"
-                },
                 "Title": {
-                    "type": "string"
-                },
-                "token": {
                     "type": "string"
                 }
             }
@@ -198,5 +189,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 5
 }
