@@ -2733,6 +2733,29 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['A']);
 		});
 
+		it('should not write the no-progress count when a quiet poll has nothing to clear', async () => {
+			// An idle node reaches this path on every tick. Any write to the static
+			// data marks it dirty and has it saved again, so a poll with no count to
+			// clear must leave the field alone.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					possibleDuplicates: ['A'],
+				},
+			};
+
+			mockLabels();
+			mockList(listPage(['A']));
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 10 } },
+				workflowStaticData,
+			});
+
+			expect(response).toBeNull();
+			expect(workflowStaticData['Gmail Trigger']).not.toHaveProperty('noProgressTicks');
+		});
+
 		it('should give up once consecutive ticks keep making no progress', async () => {
 			// Repeated no-progress ticks are no longer one unlucky sample: the
 			// window is wedged, so give up loudly rather than hold forever.
