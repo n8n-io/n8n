@@ -29,7 +29,7 @@ Reference these guidelines when:
 
 - ALWAYS add new stories to `packages/frontend/@n8n/design-system`.
 - Every story must use one of these title categories:
-  - `Style guide`: styles, tokens, and utilities
+  - `Style Guide`: styles, tokens, and utilities
   - `Core`: components used across the app
   - `Areas/<Product area>`: patterns and components for a specific product area, for example `Areas/Settings` or `Areas/Assistant`
   - `Experimental`: beta components that require caution
