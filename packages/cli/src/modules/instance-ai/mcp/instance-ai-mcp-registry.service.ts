@@ -20,14 +20,16 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import {
+	prepareMcpRegistryConnection,
+	resolveMcpRegistryConnection,
+	toAgentMcpTransport,
+} from '@/modules/mcp-registry/mcp-registry-connection';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type {
-	McpRegistryRemote,
-	McpRegistryServer,
-} from '@/modules/mcp-registry/registry/mcp-registry.types';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+import { createAuthFetch } from '@/utils/auth-fetch';
 
 import type {
 	InstanceAiMcpRegistryConnection,
@@ -35,52 +37,11 @@ import type {
 } from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
-type Transport = 'sse' | 'streamableHttp';
-
 interface ResolvedRegistryServer {
 	serverSlug: string;
 	credentialId: string;
 	authType: McpRegistryServer['authType'];
-	endpointUrl: string;
-	transport: Transport;
-}
-
-interface OAuth2FetchContext {
-	credentialId: string;
-	accessToken: string;
-	projectId: string;
-	credentialData: ICredentialDataDecryptedObject;
-}
-
-function readString(data: Record<string, unknown>, key: string): string | undefined {
-	const value = data[key];
-	return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function readAccessToken(tokenData: Record<string, unknown>): string | undefined {
-	return readString(tokenData, 'accessToken') ?? readString(tokenData, 'access_token');
-}
-
-function readOAuthTokenData(data: ICredentialDataDecryptedObject): Record<string, unknown> | null {
-	const tokenData = data.oauthTokenData;
-	return isObjectLiteral(tokenData) ? tokenData : null;
-}
-
-function getPreferredRemote(remotes: McpRegistryRemote[]): {
-	transport: Transport;
-	endpointUrl: string;
-} | null {
-	const streamable = remotes.find((remote) => remote.type === 'streamable-http');
-	if (streamable?.url) {
-		return { transport: 'streamableHttp', endpointUrl: streamable.url };
-	}
-
-	const sse = remotes.find((remote) => remote.type === 'sse');
-	if (sse?.url) {
-		return { transport: 'sse', endpointUrl: sse.url };
-	}
-
-	return null;
+	connection: NonNullable<ReturnType<typeof resolveMcpRegistryConnection>>;
 }
 
 const MCP_REGISTRY_SERVER_PREFIX = 'mcp_';
@@ -297,8 +258,7 @@ export class InstanceAiMcpRegistryService {
 			connection.id,
 			connection.serverSlug,
 			connection.credentialId,
-			server.authType,
-			server.remotes,
+			server,
 		);
 		if (!resolvedServer) return disconnectedToolsResponse(connection.id);
 
@@ -331,8 +291,8 @@ export class InstanceAiMcpRegistryService {
 		const client = new McpClient([
 			{
 				name: serverName,
-				url: resolvedServer.endpointUrl,
-				transport: resolvedServer.transport,
+				url: resolvedServer.connection.endpointUrl,
+				transport: toAgentMcpTransport(resolvedServer.connection.transport),
 				fetch: classifiedFetch,
 				connectionTimeoutMs: 10_000,
 			},
@@ -386,8 +346,7 @@ export class InstanceAiMcpRegistryService {
 				connection.id,
 				connection.serverSlug,
 				connection.credentialId,
-				server.authType,
-				server.remotes,
+				server,
 			);
 			if (!resolvedServer) {
 				continue;
@@ -397,23 +356,18 @@ export class InstanceAiMcpRegistryService {
 			slugCounts.set(resolvedServer.serverSlug, nextCount);
 			const serverConfig: McpServerConfig = {
 				name: buildServerName(resolvedServer.serverSlug, nextCount),
-				url: resolvedServer.endpointUrl,
-				transport: resolvedServer.transport,
+				url: resolvedServer.connection.endpointUrl,
+				transport: toAgentMcpTransport(resolvedServer.connection.transport),
 				cacheKey: `registry-connection:${connection.id}`,
 				toolFilter: connection.toolFilter ?? undefined,
-				metadata: { serverSlug: resolvedServer.serverSlug, userId: user.id },
+				metadata: {
+					connectionId: connection.id,
+					serverSlug: resolvedServer.serverSlug,
+					userId: user.id,
+				},
 			};
 
-			if (resolvedServer.authType === 'oauth2') {
-				const oauth2FetchContext = await this.buildOAuth2FetchContext(
-					resolvedServer,
-					user,
-					connection.id,
-				);
-				if (!oauth2FetchContext) {
-					continue;
-				}
-
+			if (resolvedServer.authType === 'oauth2' || resolvedServer.authType === 'extendsCredential') {
 				const requestFetch = await this.buildRegistryServerFetch(
 					resolvedServer,
 					user,
@@ -423,7 +377,6 @@ export class InstanceAiMcpRegistryService {
 				if (!requestFetch) {
 					continue;
 				}
-
 				serverConfig.fetch = requestFetch;
 			}
 
@@ -437,11 +390,10 @@ export class InstanceAiMcpRegistryService {
 		connectionId: string,
 		serverSlug: string,
 		credentialId: string,
-		authType: McpRegistryServer['authType'],
-		remotes: McpRegistryRemote[],
+		server: McpRegistryServer,
 	): ResolvedRegistryServer | null {
-		const remote = getPreferredRemote(remotes);
-		if (!remote) {
+		const connection = resolveMcpRegistryConnection(server);
+		if (!connection) {
 			this.logger.warn('Skipping MCP registry connection without supported remote transport', {
 				connectionId,
 				serverSlug,
@@ -453,9 +405,8 @@ export class InstanceAiMcpRegistryService {
 		return {
 			serverSlug,
 			credentialId,
-			authType,
-			endpointUrl: remote.endpointUrl,
-			transport: remote.transport,
+			authType: server.authType,
+			connection,
 		};
 	}
 
@@ -465,37 +416,6 @@ export class InstanceAiMcpRegistryService {
 		connectionId: string,
 		baseFetch: CustomFetch,
 	): Promise<CustomFetch | null> {
-		if (config.authType !== 'oauth2') {
-			return baseFetch;
-		}
-
-		const oauth2FetchContext = await this.buildOAuth2FetchContext(config, user, connectionId);
-		if (!oauth2FetchContext) {
-			return null;
-		}
-
-		return createAuthFetch({
-			baseFetch,
-			initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
-			onUnauthorized: async () => {
-				if (!oauth2FetchContext.projectId) {
-					return null;
-				}
-
-				return await this.oauthService.refreshOAuth2CredentialById(
-					oauth2FetchContext.credentialId,
-					oauth2FetchContext.projectId,
-				);
-			},
-			allowedDomains: resolveAllowedDomains(oauth2FetchContext.credentialData),
-		});
-	}
-
-	private async buildOAuth2FetchContext(
-		config: ResolvedRegistryServer,
-		user: User,
-		connectionId: string,
-	): Promise<OAuth2FetchContext | null> {
 		const credentialWithData = await this.getCredentialWithData(config.credentialId, user);
 		if (!credentialWithData) {
 			this.logger.warn('Skipping MCP registry connection with inaccessible credential', {
@@ -507,41 +427,33 @@ export class InstanceAiMcpRegistryService {
 			return null;
 		}
 
-		const tokenData = readOAuthTokenData(credentialWithData.data);
-		if (!tokenData) {
-			this.logger.warn('Skipping MCP registry connection without OAuth2 token data', {
+		const prepared = prepareMcpRegistryConnection({
+			connection: config.connection,
+			credentialData: credentialWithData.data,
+		});
+		if (!prepared.ok) {
+			this.logger.warn('Skipping MCP registry connection with invalid credential', {
 				connectionId,
 				serverSlug: config.serverSlug,
 				credentialId: config.credentialId,
-			});
-			return null;
-		}
-
-		const accessToken = readAccessToken(tokenData);
-		if (!accessToken) {
-			this.logger.warn('Skipping MCP registry connection without access token', {
-				connectionId,
-				serverSlug: config.serverSlug,
-				credentialId: config.credentialId,
+				reason: prepared.error.code,
 			});
 			return null;
 		}
 
 		const projectId = credentialWithData.credential.shared?.[0]?.projectId ?? null;
-		if (!projectId) {
-			this.logger.warn('Skipping OAuth2 token refresh for credential without project sharing', {
-				connectionId,
-				serverSlug: config.serverSlug,
-				credentialId: config.credentialId,
-			});
-		}
-
-		return {
-			credentialId: config.credentialId,
-			accessToken,
-			projectId,
-			credentialData: credentialWithData.data,
-		};
+		return createAuthFetch({
+			baseFetch,
+			initialHeaders: prepared.value.headers,
+			onUnauthorized: async () =>
+				projectId
+					? await this.oauthService.refreshOAuth2CredentialById(config.credentialId, projectId)
+					: null,
+			allowedDomains: {
+				mode: 'domains',
+				domains: prepared.value.allowedDomains,
+			},
+		});
 	}
 
 	private async getCredentialWithData(

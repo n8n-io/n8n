@@ -20,12 +20,46 @@ export class UserRepository extends Repository<User> {
 	async findManyByIds(
 		userIds: string[],
 		options?: {
-			includeRole: boolean;
+			includeRole?: boolean;
+			offset?: number;
+			limit?: number;
 		},
 	) {
 		return await this.find({
 			where: { id: In(userIds) },
+			skip: options?.offset,
+			take: options?.limit,
 			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findMany(options?: { includeRole?: boolean; offset?: number; limit?: number }) {
+		return await this.find({
+			skip: options?.offset,
+			take: options?.limit,
+			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findByIdWithRole(id: string): Promise<User | null> {
+		return await this.findOne({
+			where: { id },
+			relations: ['role'],
+		});
+	}
+
+	async findByEmailWithRole(email: string): Promise<User | null> {
+		return await this.findOne({
+			where: { email },
+			relations: ['role'],
+		});
+	}
+
+	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
+		return await this.findOneByOrFail({
+			projectRelations: { projectId },
 		});
 	}
 

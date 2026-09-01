@@ -76,6 +76,16 @@ function srcFileOf(component) {
 }
 
 /**
+ * An npm name is `name` or `@scope/name` — neither part may contain a slash. A
+ * further slash means the scanner named a directory inside a package, i.e. an
+ * `exports` subpath (@google/genai/node, @linear/sdk/webhooks).
+ */
+function isExportsSubpath(component) {
+	const qualified = qualifiedName(component) ?? '';
+	return qualified.replace(/^@[^/]+\//, '').includes('/');
+}
+
+/**
  * A scan of a container image filesystem (unlike the pnpm-lockfile scan of the
  * release closure) deep-walks node_modules and mis-catalogs nested package.json
  * as standalone components: `exports` subpaths (@google/genai/web), sub-builds
@@ -90,6 +100,11 @@ function srcFileOf(component) {
 export function isPhantomNpm(component) {
 	const purl = component.purl ?? '';
 	if (!purl.startsWith('pkg:npm/')) return false;
+
+	// Checked before the path rules: a subpath stub lives at
+	// node_modules/@google/genai/node/package.json, which *does* end with its own
+	// qualified name, so the canonical-path check below would call it real.
+	if (isExportsSubpath(component)) return true;
 
 	const src = srcFileOf(component);
 	// syft writes "UNKNOWN" where cdxgen omits the field. Neither is a real

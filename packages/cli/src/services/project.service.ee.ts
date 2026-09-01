@@ -994,6 +994,10 @@ export class ProjectService {
 		});
 	}
 
+	async findUserIdsByProjectId(projectId: string): Promise<string[]> {
+		return await this.projectRelationRepository.findUserIdsByProjectId(projectId);
+	}
+
 	async getProjectRelationForUserAndProject(
 		userId: string,
 		projectId: string,

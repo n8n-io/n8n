@@ -74,7 +74,7 @@ const meta: Meta<typeof N8nMarkdownEditor> = {
 		},
 		showToolbar: {
 			control: 'select',
-			options: ['never', 'hover', 'always'],
+			options: ['never', 'hover', 'always', 'floating'],
 		},
 		maxHeight: {
 			control: 'text',
@@ -176,6 +176,20 @@ export const AlwaysVisibleToolbar: Story = {
 	args: {
 		...Default.args,
 		showToolbar: 'always',
+	},
+};
+
+export const FloatingToolbar: Story = {
+	args: {
+		...Default.args,
+		showToolbar: 'floating',
+	},
+	parameters: {
+		docs: {
+			description: {
+				story: 'Select text in the editor to show the floating toolbar.',
+			},
+		},
 	},
 };
 

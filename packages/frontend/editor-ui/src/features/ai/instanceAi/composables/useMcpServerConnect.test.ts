@@ -213,6 +213,31 @@ describe('useMcpServerConnect', () => {
 	});
 
 	describe('credential edit modal reconciliation', () => {
+		it('refreshes connections using an edited credential when the modal closes', async () => {
+			mcpStore.connections = [
+				makeConnection({ id: 'conn-1', credentialId: 'cred-1' }),
+				makeConnection({ id: 'conn-2', credentialId: 'cred-2' }),
+			];
+			const adapter = useMcpServerConnect().createCredentialAdapter(vi.fn());
+
+			adapter.openExistingCredential('cred-1');
+			await closeCredentialModal();
+
+			expect(mcpStore.fetchConnectionTools).toHaveBeenCalledOnce();
+			expect(mcpStore.fetchConnectionTools).toHaveBeenCalledWith('conn-1');
+		});
+
+		it('does not refresh connections removed while the modal is open', async () => {
+			mcpStore.connections = [makeConnection()];
+			const adapter = useMcpServerConnect().createCredentialAdapter(vi.fn());
+
+			adapter.openExistingCredential('cred-1');
+			mcpStore.connections = [];
+			await closeCredentialModal();
+
+			expect(mcpStore.fetchConnectionTools).not.toHaveBeenCalled();
+		});
+
 		it('connects the credential the user created', async () => {
 			const { connecting } = await startConnect();
 
