@@ -1,7 +1,7 @@
 import { QueryFailedError } from '@n8n/typeorm';
 
 /**
- * Whether `error` is a unique-constraint violation, across PostgreSQL and SQLite.
+ * Whether `error` is a unique-constraint violation, across PostgreSQL, MySQL and SQLite.
  */
 export function isUniqueConstraintError(error: unknown): boolean {
 	if (!(error instanceof QueryFailedError)) return false;
@@ -14,8 +14,8 @@ export function isUniqueConstraintError(error: unknown): boolean {
 	const code =
 		'code' in driverError && typeof driverError.code === 'string' ? driverError.code : undefined;
 
-	// PostgreSQL: 23505 = unique_violation.
-	if (code === '23505') return true;
+	// PostgreSQL: 23505 = unique_violation. MySQL/MariaDB: ER_DUP_ENTRY.
+	if (code === '23505' || code === 'ER_DUP_ENTRY') return true;
 
 	// SQLite: the extended code is unambiguous; the base code covers all constraint
 	// kinds (NOT NULL, FK, CHECK, UNIQUE), so disambiguate via the message.
