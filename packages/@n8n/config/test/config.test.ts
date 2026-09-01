@@ -367,6 +367,7 @@ describe('GlobalConfig', () => {
 			thinkingEnabled: true,
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
+			nodeUsageEnabled: true,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
 		},

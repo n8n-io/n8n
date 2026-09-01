@@ -666,6 +666,7 @@ export type {
 	WorkflowTaskService,
 	WorkflowSummary,
 	WorkflowDetail,
+	NodeUsageResult,
 	WorkflowNode,
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,

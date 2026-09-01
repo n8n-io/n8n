@@ -198,6 +198,16 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
+	 * Let the agent read node-type usage from the workflow dependency index — the `node-usage`
+	 * action and the `nodeTypes` filter on `workflows(action="list")`.
+	 *
+	 * Gated on its own rather than with any other context surface, so a measurement can tell which
+	 * one moved a result; a combined switch could not.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_USAGE_ENABLED')
+	nodeUsageEnabled: boolean = true;
+
+	/**
 	 * Activation-capped trial variant for n8n cloud experiment.
 	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
 	 */

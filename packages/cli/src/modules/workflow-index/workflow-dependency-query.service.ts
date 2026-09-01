@@ -23,6 +23,22 @@ import { DataTableRepository } from '@/modules/data-table/data-table.repository'
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+/** Workflows named for a node type when the caller does not say how many it wants. */
+const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
+
+/**
+ * Node-type usage over the workflows in scope. Exactly one of `nodeTypes` and `workflows` is set:
+ * the histogram when no node type was named, the workflows using it when one was.
+ */
+export interface NodeTypeUsage {
+	/** Indexed, non-archived workflows in scope — the denominator for every count. */
+	workflowsInScope: number;
+	nodeTypes?: Array<{ nodeType: string; workflowCount: number }>;
+	workflows?: Array<{ workflowId: string; name: string; updatedAt: Date }>;
+	/** Set when the limit cut the list short, so a partial answer is never read as the whole. */
+	truncated?: boolean;
+}
+
 interface RawDepMaps {
 	agentUsageMap: Map<string, Set<string>>;
 	credMap: Map<string, Set<string>>;
@@ -52,6 +68,52 @@ export class WorkflowDependencyQueryService {
 		private readonly agentRepository: AgentRepository,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
+
+	/**
+	 * Node-type usage across the workflows a user can read, read from the dependency index rather
+	 * than by fetching workflows.
+	 *
+	 * Without `nodeType` it returns the histogram; with one, the workflows using it. Either way the
+	 * denominator ships with the answer, because a count means nothing without it.
+	 */
+	async getNodeTypeUsage(
+		user: User,
+		options: { projectId?: string; nodeType?: string; limit?: number } = {},
+	): Promise<NodeTypeUsage> {
+		// The same scopes-to-roles step the workflow listing performs, so this reads exactly the
+		// workflows a listing would return rather than applying a rule of its own.
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', ['workflow:read']),
+			this.roleService.rolesWithScope('workflow', ['workflow:read']),
+		]);
+		const scope = {
+			projectRoles,
+			workflowRoles,
+			...(options.projectId ? { projectId: options.projectId } : {}),
+		};
+
+		if (!options.nodeType) {
+			return await this.dependencyRepository.countNodeTypeUsage(user, scope);
+		}
+
+		const limit = options.limit ?? DEFAULT_NODE_USAGE_WORKFLOW_LIMIT;
+		const [rows, workflowsInScope] = await Promise.all([
+			// One over the limit, so a truncated list is reported as truncated rather than guessed at.
+			this.dependencyRepository.findWorkflowsUsingNodeType(
+				user,
+				scope,
+				options.nodeType,
+				limit + 1,
+			),
+			this.dependencyRepository.countWorkflowsInScope(user, scope),
+		]);
+
+		return {
+			workflowsInScope,
+			workflows: rows.slice(0, limit),
+			...(rows.length > limit ? { truncated: true } : {}),
+		};
+	}
 
 	async getDependencyCounts(
 		resourceIds: string[],
