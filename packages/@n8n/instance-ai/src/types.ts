@@ -1086,6 +1086,80 @@ export type LocalGatewayStatus =
 			status: 'disabledGlobally' | 'disconnected' | 'disabled';
 	  };
 
+// ── Conversation history ─────────────────────────────────────────────────────
+
+/**
+ * Caps shared between the `conversation-history` tool schema and the host
+ * service. The host mirrors them as local literals annotated with these
+ * consts' literal types, so raising one without the other fails typecheck —
+ * without forcing a runtime import on cli test suites that stub this package.
+ */
+export const CONVERSATION_HISTORY_MAX_SEARCH_LIMIT = 20;
+export const CONVERSATION_HISTORY_MAX_WINDOW_SIDE = 5;
+
+/** Where a conversation-history search hit matched. */
+export type ConversationHistoryMatchSource = 'title' | 'messages' | 'user-answers';
+
+export interface ConversationHistoryExcerpt {
+	/** Anchor for a follow-up get-messages read. */
+	messageId: string;
+	text: string;
+	createdAt: string;
+}
+
+export interface ConversationHistorySearchHit {
+	threadId: string;
+	title: string;
+	updatedAt: string;
+	matchedIn: ConversationHistoryMatchSource[];
+	/** Opening user message of the conversation — the original ask. */
+	firstMessageExcerpt?: string;
+	excerpts: ConversationHistoryExcerpt[];
+	/** Matching message rows in the thread (0 for title-only hits). */
+	totalMatches: number;
+}
+
+export interface ConversationHistorySearchResult {
+	hits: ConversationHistorySearchHit[];
+	/** Threads matched before the limit was applied. */
+	totalThreadsMatched: number;
+}
+
+export interface ConversationHistoryMessage {
+	messageId: string;
+	role: 'user' | 'assistant';
+	createdAt: string;
+	/** Text blocks of the message, truncated. */
+	text: string;
+	/** Resolved ask-user Q&A pairs carried by this (assistant) message, if any. */
+	userAnswers?: Array<{ question: string; answer: string }>;
+}
+
+export interface ConversationHistoryMessagesResult {
+	threadId: string;
+	title: string;
+	/** Oldest-first. */
+	messages: ConversationHistoryMessage[];
+	hasMoreBefore: boolean;
+	hasMoreAfter: boolean;
+}
+
+/**
+ * Read-only recall over the user's past conversations. Scoped by the host
+ * adapter to the current user and project, with the current thread excluded
+ * from search. Presence on the context gates the `conversation-history` tool
+ * (orchestrator only).
+ */
+export interface InstanceAiConversationHistoryService {
+	search(params: { query?: string; limit?: number }): Promise<ConversationHistorySearchResult>;
+	getMessages(params: {
+		threadId: string;
+		aroundMessageId?: string;
+		before?: number;
+		after?: number;
+	}): Promise<ConversationHistoryMessagesResult>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
@@ -1114,6 +1188,9 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** Optional — wired by the host when the run has a bound project. Presence
+	 *  gates the `conversation-history` tool (orchestrator only). */
+	conversationHistoryService?: InstanceAiConversationHistoryService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

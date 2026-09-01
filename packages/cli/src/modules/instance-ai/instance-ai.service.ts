@@ -144,6 +144,7 @@ import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-a
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
+import { InstanceAiConversationHistoryService } from './instance-ai-conversation-history.service';
 import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import {
@@ -166,6 +167,7 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withPastConversations,
 	withProjectContext,
 	getProjectContextSection,
 } from './internal-messages';
@@ -833,6 +835,7 @@ export class InstanceAiService {
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
+		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2420,8 +2423,8 @@ export class InstanceAiService {
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
 
-		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
-		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
+		const { configEvalsEnabled, mcpConnectionsEnabled, conversationHistoryEnabled } =
+			await this.adapterService.resolveExperimentGates(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2432,6 +2435,7 @@ export class InstanceAiService {
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
+			conversationHistoryEnabled,
 			modelId,
 		});
 
@@ -3987,15 +3991,35 @@ export class InstanceAiService {
 				.join('\n\n');
 			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
 			// so putting it in the cached system prefix would break caching.
-			const projectSection = await this.resolveProjectContextSection(context);
+			//
+			// The past-conversations hint: nothing else tells the agent the
+			// conversation-history tool has anything in it, so a thread's opening turn
+			// names the project's recent conversations. `context.conversationHistoryService`
+			// presence doubles as the experiment gate — the adapter only wires it for
+			// flagged-in users. Self-gating and best-effort beyond that: the service
+			// returns undefined on a later turn, on a project with no history, and on
+			// any failure — the hint must never block a turn.
+			const [projectSection, pastConversationsSection] = await Promise.all([
+				this.resolveProjectContextSection(context),
+				context.conversationHistoryService && context.projectId
+					? this.conversationHistoryService.getPastConversationsSection(
+							user.id,
+							context.projectId,
+							threadId,
+						)
+					: undefined,
+			]);
 			const messageWithProject = projectSection
 				? withProjectContext(messageWithContext, projectSection)
 				: messageWithContext;
+			const messageWithPastConversations = pastConversationsSection
+				? withPastConversations(messageWithProject, pastConversationsSection)
+				: messageWithProject;
 
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithProject,
+				messageWithPastConversations,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 

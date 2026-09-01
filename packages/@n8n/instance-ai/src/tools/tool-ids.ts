@@ -16,6 +16,7 @@ export const DOMAIN_TOOL_IDS = {
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
+	CONVERSATION_HISTORY: 'conversation-history',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -74,6 +75,10 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
+	// Same reasoning: recall only works proactively — the agent won't search for
+	// a history tool when nothing tells it relevant history exists. Deferred, it
+	// was only reached when the user explicitly asked.
+	DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 	'web-search',
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it

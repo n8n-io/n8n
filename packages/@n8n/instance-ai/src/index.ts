@@ -702,6 +702,17 @@ export type {
 	BuilderTurnStream,
 	BuilderOpenSuspension,
 	SessionWorkflowRef,
+	InstanceAiConversationHistoryService,
+	ConversationHistoryMatchSource,
+	ConversationHistoryExcerpt,
+	ConversationHistorySearchHit,
+	ConversationHistorySearchResult,
+	ConversationHistoryMessage,
+	ConversationHistoryMessagesResult,
+} from './types';
+export {
+	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
+	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
 } from './types';
 export type {
 	OrchestratorRunHandoffReason,

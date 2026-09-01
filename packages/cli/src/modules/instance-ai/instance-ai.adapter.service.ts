@@ -7,6 +7,8 @@ import {
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -91,6 +93,7 @@ import {
 	type IConnections,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
+	type FeatureFlags,
 	type DataTableFilter,
 	type DataTableRow,
 	type DataTableRows,
@@ -160,6 +163,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
+import { InstanceAiConversationHistoryService } from './instance-ai-conversation-history.service';
 import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
@@ -335,6 +339,7 @@ export class InstanceAiAdapterService {
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
 		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
+		private readonly conversationHistoryService?: InstanceAiConversationHistoryService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -359,12 +364,15 @@ export class InstanceAiAdapterService {
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
-			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
+			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
-			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
+			/** Per-user MCP registry gate (via `resolveExperimentGates`). Falsy →
 			 *  mcp service/tool not wired. */
 			mcpConnectionsEnabled?: boolean;
+			/** Per-user experiment gate (via `resolveExperimentGates`). Falsy →
+			 *  conversation-history service/tool not wired. */
+			conversationHistoryEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -380,6 +388,7 @@ export class InstanceAiAdapterService {
 			agentId,
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
+			conversationHistoryEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -412,6 +421,13 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			// Past-conversation recall only makes sense once the run is bound to a
+			// project (the search scope) and a thread (excluded from its own search),
+			// and only for users in the experiment.
+			conversationHistoryService:
+				conversationHistoryEnabled && projectId && threadId
+					? this.conversationHistoryService?.forContext(user.id, projectId, threadId)
+					: undefined,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -475,12 +491,45 @@ export class InstanceAiAdapterService {
 		}
 	}
 
+	/** The user's PostHog flag map. Gates checking it fail closed:
+	 *  `getFeatureFlags` returns `{}` on a PostHog outage. */
+	private async getUserFlags(user: User): Promise<FeatureFlags> {
+		return await Container.get(PostHogClient).getFeatureFlags(user);
+	}
+
+	/**
+	 * All per-user experiment gates for a run's context, resolved from ONE
+	 * PostHog fetch — the client dedupes per-user only after a fetch resolves,
+	 * so gating each flag with its own call fires concurrent identical requests
+	 * on a cold cache.
+	 */
+	async resolveExperimentGates(user: User): Promise<{
+		/** Config-based evals: never create evals the user can't run. */
+		configEvalsEnabled: boolean;
+		/** MCP registry discovery tool (see {@link isMcpConnectionsEnabled}). */
+		mcpConnectionsEnabled: boolean;
+		/** Past-conversation recall — the tool, the system-prompt section, and
+		 *  the first-turn hint all key off it. */
+		conversationHistoryEnabled: boolean;
+	}> {
+		const flags = await this.getUserFlags(user);
+		return {
+			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
+			mcpConnectionsEnabled:
+				this.mcpPreconditionsHold() &&
+				flags[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+			conversationHistoryEnabled:
+				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
+				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+		};
+	}
+
 	/** Per-user gate for config-based evals: on when the config-evaluations
 	 *  experiment is on the enabled variant, so we never create evals the user
-	 *  can't run. Fails closed: `getFeatureFlags` returns `{}` on a PostHog outage. */
+	 *  can't run. */
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
-		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
-		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+		const flags = await this.getUserFlags(user);
+		return flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
 	}
 
 	/** Gate for MCP registry discovery tool. All three must hold:
@@ -488,11 +537,15 @@ export class InstanceAiAdapterService {
 	 * 2. the admin allows MCP access instance-wide
 	 * 3. the user is part of the MCP connections experiment */
 	async isMcpConnectionsEnabled(user: User): Promise<boolean> {
-		if (!Container.get(ModuleRegistry).isActive('mcp-registry')) return false;
-		if (!this.settingsService.isMcpAccessEnabled()) return false;
-		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		if (!this.mcpPreconditionsHold()) return false;
+		const flags = await this.getUserFlags(user);
+		return flags[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT;
+	}
+
+	private mcpPreconditionsHold(): boolean {
 		return (
-			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
+			Container.get(ModuleRegistry).isActive('mcp-registry') &&
+			this.settingsService.isMcpAccessEnabled()
 		);
 	}
 

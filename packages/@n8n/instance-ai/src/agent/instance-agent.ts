@@ -206,6 +206,9 @@ export async function createInstanceAgent(
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
 		projectId: context.projectId,
+		// Presence of the service IS the experiment gate — the host only wires it
+		// for flagged-in users on project-bound runs.
+		conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 		workspaceRoot:
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot

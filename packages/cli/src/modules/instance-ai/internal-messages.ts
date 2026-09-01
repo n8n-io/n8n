@@ -51,15 +51,19 @@ const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
 const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
 
 /** Match the final opening tag so user-authored lookalikes earlier in the message stay visible. */
-const CURRENT_DATE_TIME_BLOCK =
-	/\n*<current-date-time>(?:(?!<current-date-time>)[\s\S])*?<\/current-date-time>\s*$/;
+function trailingBlockRegex(tag: string): RegExp {
+	return new RegExp(`\\n*<${tag}>(?:(?!<${tag}>)[\\s\\S])*?</${tag}>\\s*$`);
+}
 
-/** Same shape as the clock block, for the same reason — see `withProjectContext`. */
-const PROJECT_CONTEXT_BLOCK =
-	/\n*<project-context>(?:(?!<project-context>)[\s\S])*?<\/project-context>\s*$/;
-
-/** Every trailing block the service appends. */
-const TRAILING_CONTEXT_BLOCKS = [CURRENT_DATE_TIME_BLOCK, PROJECT_CONTEXT_BLOCK];
+/**
+ * Every trailing block the service appends. Registering here is what makes a
+ * block invisible to BOTH readers of a stored message: the UI, and the
+ * conversation-history tool's text extraction — so injected context never
+ * pollutes a later history search.
+ */
+const TRAILING_CONTEXT_BLOCKS = ['current-date-time', 'project-context', 'past-conversations'].map(
+	trailingBlockRegex,
+);
 
 /** Strip each trailing block once, in whatever order they were composed. */
 function stripTrailingContextBlocks(message: string): string {
@@ -94,6 +98,16 @@ export function withCurrentDateTime(message: string, dateTimeSection: string): s
  */
 export function withProjectContext(message: string, projectSection: string): string {
 	return `${message}\n\n<project-context>\n${projectSection}\n</project-context>`;
+}
+
+/**
+ * Tell the agent the project has searchable past conversations. First turn of a
+ * thread only — it exists to make the agent reach for the `conversation-history`
+ * tool, which it otherwise has no reason to believe has anything in it.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
+ */
+export function withPastConversations(message: string, section: string): string {
+	return `${message}\n\n<past-conversations>\n${section}\n</past-conversations>`;
 }
 
 /** The fact, and only the fact. The rule that follows from it ("writes are locked to

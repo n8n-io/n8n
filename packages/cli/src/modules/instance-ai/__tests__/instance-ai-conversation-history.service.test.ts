@@ -1,0 +1,885 @@
+import type { Logger } from '@n8n/backend-common';
+import type { InstanceAiConversationHistoryService as ScopedConversationHistory } from '@n8n/instance-ai';
+import { UserError } from 'n8n-workflow';
+import { mock, type MockProxy } from 'vitest-mock-extended';
+
+import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
+import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
+import { InstanceAiConversationHistoryService } from '../instance-ai-conversation-history.service';
+import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
+import type {
+	ConversationThreadSearchRow,
+	InstanceAiThreadRepository,
+} from '../repositories/instance-ai-thread.repository';
+import {
+	askUserContent,
+	assistantTextContent,
+	assistantWorkingContent,
+	userContent,
+} from './conversation-history-content.fixtures';
+
+const USER_ID = 'user-1';
+const PROJECT_ID = 'project-1';
+const CURRENT_THREAD_ID = 'thread-current';
+const PAST_THREAD_ID = 'thread-past';
+
+const CREATED_AT = new Date('2026-01-01T10:00:00.000Z');
+const UPDATED_AT = new Date('2026-01-02T10:00:00.000Z');
+
+function setup() {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const threadRepository = mock<InstanceAiThreadRepository>();
+	const messageRepository = mock<InstanceAiMessageRepository>();
+
+	// Nothing matches and no thread exists unless a test says otherwise.
+	threadRepository.searchProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
+	threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
+	threadRepository.findOneBy.mockResolvedValue(null);
+	messageRepository.countSearchMatchesByThread.mockResolvedValue(new Map());
+	messageRepository.findSearchMatchRows.mockResolvedValue([]);
+	messageRepository.findFirstUserMessages.mockResolvedValue(new Map());
+	messageRepository.findMessageInThread.mockResolvedValue(null);
+	messageRepository.threadHasMessages.mockResolvedValue(false);
+	messageRepository.getConversationWindow.mockResolvedValue({
+		rows: [],
+		hasMoreBefore: false,
+		hasMoreAfter: false,
+	});
+
+	const service = new InstanceAiConversationHistoryService(
+		logger,
+		threadRepository,
+		messageRepository,
+	);
+
+	return {
+		service,
+		history: service.forContext(USER_ID, PROJECT_ID, CURRENT_THREAD_ID),
+		threadRepository,
+		messageRepository,
+		logger,
+	};
+}
+
+function threadHit(
+	overrides: Partial<ConversationThreadSearchRow> = {},
+): ConversationThreadSearchRow {
+	return {
+		id: PAST_THREAD_ID,
+		title: 'Weekly digest',
+		updatedAt: UPDATED_AT,
+		...overrides,
+	};
+}
+
+function messageRow(overrides: {
+	id?: string;
+	role: string;
+	content: string;
+	threadId?: string;
+	createdAt?: Date;
+}): InstanceAiMessage {
+	return mock<InstanceAiMessage>({
+		id: overrides.id ?? 'message-1',
+		threadId: overrides.threadId ?? PAST_THREAD_ID,
+		role: overrides.role,
+		content: overrides.content,
+		createdAt: overrides.createdAt ?? CREATED_AT,
+	});
+}
+
+/** A thread row plus its candidate message rows, as the repositories return them. */
+function givenSearchHit(
+	repos: {
+		threadRepository: MockProxy<InstanceAiThreadRepository>;
+		messageRepository: MockProxy<InstanceAiMessageRepository>;
+	},
+	options: {
+		row?: ConversationThreadSearchRow;
+		candidates?: InstanceAiMessage[];
+		total?: number;
+		matchCount?: number;
+		firstUserMessage?: InstanceAiMessage | null;
+	} = {},
+) {
+	const row = options.row ?? threadHit();
+	repos.threadRepository.searchProjectThreadsForUser.mockResolvedValue({
+		rows: [row],
+		total: options.total ?? 1,
+	});
+	repos.messageRepository.findSearchMatchRows.mockResolvedValue(options.candidates ?? []);
+	repos.messageRepository.countSearchMatchesByThread.mockResolvedValue(
+		new Map([[row.id, options.matchCount ?? 1]]),
+	);
+	repos.messageRepository.findFirstUserMessages.mockResolvedValue(
+		options.firstUserMessage ? new Map([[row.id, options.firstUserMessage]]) : new Map(),
+	);
+}
+
+describe('InstanceAiConversationHistoryService', () => {
+	describe('search', () => {
+		it('scopes the query to the user, the project and away from the current thread', async () => {
+			const { history, threadRepository } = setup();
+
+			await history.search({ query: 'Slack digest', limit: 10 });
+
+			expect(threadRepository.searchProjectThreadsForUser).toHaveBeenCalledWith({
+				userId: USER_ID,
+				projectId: PROJECT_ID,
+				excludeThreadId: CURRENT_THREAD_ID,
+				query: 'Slack digest',
+				limit: 10,
+			});
+		});
+
+		it('defaults the limit to 10 when searching and 5 when listing', async () => {
+			const { history, threadRepository } = setup();
+
+			await history.search({ query: 'Slack digest' });
+			await history.search({});
+
+			expect(threadRepository.searchProjectThreadsForUser).toHaveBeenCalledWith(
+				expect.objectContaining({ limit: 10 }),
+			);
+			expect(threadRepository.listRecentProjectThreadsForUser).toHaveBeenCalledWith(
+				expect.objectContaining({ limit: 5 }),
+			);
+		});
+
+		// LIKE escaping is the repository's job — covered by the integration test.
+		it('passes wildcard characters through as part of the raw query', async () => {
+			const { history, threadRepository } = setup();
+
+			await history.search({ query: '50% off_now', limit: 5 });
+
+			expect(threadRepository.searchProjectThreadsForUser).toHaveBeenCalledWith(
+				expect.objectContaining({ query: '50% off_now' }),
+			);
+		});
+
+		it('lists the most recent conversations when the query is absent or blank', async () => {
+			const { history, threadRepository } = setup();
+
+			await history.search({ limit: 5 });
+			await history.search({ query: '   ', limit: 5 });
+
+			expect(threadRepository.listRecentProjectThreadsForUser).toHaveBeenCalledTimes(2);
+			expect(threadRepository.listRecentProjectThreadsForUser).toHaveBeenCalledWith({
+				userId: USER_ID,
+				projectId: PROJECT_ID,
+				excludeThreadId: CURRENT_THREAD_ID,
+				limit: 5,
+			});
+			expect(threadRepository.searchProjectThreadsForUser).not.toHaveBeenCalled();
+		});
+
+		it('builds listing hits without any match work', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({
+				rows: [threadHit()],
+				total: 7,
+			});
+			messageRepository.findFirstUserMessages.mockResolvedValue(
+				new Map([
+					[
+						PAST_THREAD_ID,
+						messageRow({ role: 'user', content: userContent('Build me a weekly digest workflow') }),
+					],
+				]),
+			);
+
+			const result = await history.search({ limit: 5 });
+
+			expect(result).toEqual({
+				hits: [
+					{
+						threadId: PAST_THREAD_ID,
+						title: 'Weekly digest',
+						updatedAt: UPDATED_AT.toISOString(),
+						matchedIn: [],
+						firstMessageExcerpt: 'Build me a weekly digest workflow',
+						excerpts: [],
+						totalMatches: 0,
+					},
+				],
+				totalThreadsMatched: 7,
+			});
+			expect(messageRepository.findSearchMatchRows).not.toHaveBeenCalled();
+			expect(messageRepository.countSearchMatchesByThread).not.toHaveBeenCalled();
+		});
+
+		it('centers each excerpt on the match and elides both open ends', async () => {
+			const repos = setup();
+			const text = `${'x'.repeat(300)} needle ${'y'.repeat(300)}`;
+			givenSearchHit(repos, {
+				candidates: [messageRow({ id: 'message-7', role: 'user', content: userContent(text) })],
+				matchCount: 4,
+			});
+
+			const { hits } = await repos.history.search({ query: 'needle', limit: 10 });
+
+			expect(hits).toHaveLength(1);
+			expect(hits[0].excerpts).toHaveLength(1);
+			const [excerpt] = hits[0].excerpts;
+			expect(excerpt.messageId).toBe('message-7');
+			expect(excerpt.createdAt).toBe(CREATED_AT.toISOString());
+			expect(excerpt.text).toContain('needle');
+			expect(excerpt.text.startsWith('…')).toBe(true);
+			expect(excerpt.text.endsWith('…')).toBe(true);
+			// 200 characters of context plus the two ellipses.
+			expect(excerpt.text).toHaveLength(202);
+			expect(hits[0].totalMatches).toBe(4);
+		});
+
+		it('keeps short matches whole', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					messageRow({ role: 'user', content: userContent('post the summary to Slack') }),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'slack', limit: 10 });
+
+			expect(hits[0].excerpts[0].text).toBe('post the summary to Slack');
+		});
+
+		it('caps excerpts per thread', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [1, 2, 3, 4, 5].map((n) =>
+					messageRow({ id: `message-${n}`, role: 'user', content: userContent(`slack run ${n}`) }),
+				),
+			});
+
+			const { hits } = await repos.history.search({ query: 'slack', limit: 10 });
+
+			expect(hits[0].excerpts).toHaveLength(3);
+			expect(hits[0].excerpts.map((excerpt) => excerpt.messageId)).toEqual([
+				'message-1',
+				'message-2',
+				'message-3',
+			]);
+		});
+
+		it('strips internal enrichment from user text before matching and excerpting', async () => {
+			const repos = setup();
+			const stored =
+				'can you see my other sessions?\n\n<project-context>\nThis conversation is scoped to the project "s d" (personal).\n</project-context>\n\n<current-date-time>\n## Current Date and Time\n\n2026-08-31\n</current-date-time>';
+			givenSearchHit(repos, {
+				candidates: [messageRow({ role: 'user', content: userContent(stored) })],
+			});
+
+			// Matches only inside the enrichment wrapper — not something the user wrote.
+			const wrapperOnly = await repos.history.search({ query: 'scoped to the project', limit: 10 });
+			expect(wrapperOnly.hits).toEqual([]);
+
+			// Matches the real text; the excerpt shows the message as the user saw it.
+			const real = await repos.history.search({ query: 'other sessions', limit: 10 });
+			expect(real.hits[0].excerpts[0].text).toBe('can you see my other sessions?');
+		});
+
+		it('strips internal enrichment from the first-message excerpt', async () => {
+			const repos = setup();
+			// The default title "Weekly digest" makes this a title match for "digest".
+			givenSearchHit(repos, {
+				firstUserMessage: messageRow({
+					role: 'user',
+					content: userContent(
+						'build a weekly digest\n\n<project-context>\nThis conversation is scoped to the project "x" (personal).\n</project-context>',
+					),
+				}),
+			});
+
+			const { hits } = await repos.history.search({ query: 'digest', limit: 10 });
+
+			expect(hits[0].firstMessageExcerpt).toBe('build a weekly digest');
+		});
+
+		it('drops a thread whose match was only in the serialized JSON', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				total: 3,
+				candidates: [
+					messageRow({
+						role: 'user',
+						// The term sits in a sibling field, not in the text the user wrote.
+						content: userContent('hello there', { metadata: { note: 'timezone' } }),
+					}),
+				],
+			});
+
+			const result = await repos.history.search({ query: 'timezone', limit: 10 });
+
+			expect(result.hits).toEqual([]);
+			// The thread-level count is unaffected — it reports what SQL matched.
+			expect(result.totalThreadsMatched).toBe(3);
+		});
+
+		it('keeps a title-only hit even when no message excerpt survives', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				row: threadHit({ title: 'Timezone setup' }),
+				candidates: [messageRow({ role: 'user', content: userContent('hello there') })],
+				matchCount: 0,
+			});
+
+			const { hits } = await repos.history.search({ query: 'timezone', limit: 10 });
+
+			expect(hits).toHaveLength(1);
+			expect(hits[0].matchedIn).toEqual(['title']);
+			expect(hits[0].excerpts).toEqual([]);
+			expect(hits[0].totalMatches).toBe(0);
+		});
+
+		it('renders resolved ask-user answers as question/answer pairs', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					messageRow({
+						role: 'assistant',
+						content: askUserContent([
+							{ question: 'Which timezone?', selectedOptions: ['Europe/Berlin'] },
+						]),
+					}),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'timezone', limit: 10 });
+
+			expect(hits[0].excerpts[0].text).toBe('Q: Which timezone? → A: Europe/Berlin');
+			expect(hits[0].matchedIn).toEqual(['user-answers']);
+		});
+
+		it('ignores ask-user calls that were never resolved', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					messageRow({
+						role: 'assistant',
+						content: askUserContent([{ question: 'Which timezone?', selectedOptions: [] }], {
+							state: 'pending',
+						}),
+					}),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'timezone', limit: 10 });
+
+			expect(hits).toEqual([]);
+		});
+
+		it('ignores assistant text, which the agent can re-derive from its own turns', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					messageRow({
+						role: 'assistant',
+						content: assistantTextContent('I set the timezone to Europe/Berlin'),
+					}),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'timezone', limit: 10 });
+
+			expect(hits).toEqual([]);
+		});
+
+		it('skips rows whose content is not readable JSON', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					messageRow({ id: 'broken', role: 'user', content: '{not json' }),
+					messageRow({ id: 'intact', role: 'user', content: userContent('slack digest') }),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'slack', limit: 10 });
+
+			expect(hits[0].excerpts.map((excerpt) => excerpt.messageId)).toEqual(['intact']);
+		});
+
+		it('reports every source a thread matched in', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				row: threadHit({ title: 'Slack digest' }),
+				candidates: [
+					messageRow({ id: 'm-user', role: 'user', content: userContent('send it to slack') }),
+					messageRow({
+						id: 'm-answer',
+						role: 'assistant',
+						content: askUserContent([
+							{ question: 'Which slack channel?', selectedOptions: ['#ops'] },
+						]),
+					}),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'slack', limit: 10 });
+
+			expect(hits[0].matchedIn).toEqual(['title', 'messages', 'user-answers']);
+		});
+
+		it('includes the opening user message of a hit thread', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [messageRow({ role: 'user', content: userContent('add slack later') })],
+				firstUserMessage: messageRow({
+					id: 'message-first',
+					role: 'user',
+					content: userContent(`build a nightly report ${'z'.repeat(300)}`),
+				}),
+			});
+
+			const { hits } = await repos.history.search({ query: 'slack', limit: 10 });
+
+			expect(hits[0].firstMessageExcerpt).toHaveLength(201);
+			expect(hits[0].firstMessageExcerpt?.startsWith('build a nightly report')).toBe(true);
+			expect(hits[0].firstMessageExcerpt?.endsWith('…')).toBe(true);
+		});
+
+		it('reports the thread total and the recency order the repository returned', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			threadRepository.searchProjectThreadsForUser.mockResolvedValue({
+				rows: [
+					threadHit({ id: 'thread-new', title: 'Slack new' }),
+					threadHit({ id: 'thread-old', title: 'Slack old' }),
+				],
+				total: 7,
+			});
+			messageRepository.countSearchMatchesByThread.mockResolvedValue(new Map());
+
+			const result = await history.search({ query: 'slack', limit: 2 });
+
+			expect(result.hits.map((hit) => hit.threadId)).toEqual(['thread-new', 'thread-old']);
+			expect(result.hits[0].updatedAt).toBe(UPDATED_AT.toISOString());
+			expect(result.totalThreadsMatched).toBe(7);
+		});
+	});
+
+	describe('getMessages', () => {
+		function givenThread(
+			threadRepository: MockProxy<InstanceAiThreadRepository>,
+			overrides: Partial<Pick<InstanceAiThread, 'id' | 'resourceId' | 'projectId' | 'title'>> = {},
+		) {
+			threadRepository.findOneBy.mockResolvedValue(
+				mock<InstanceAiThread>({
+					id: PAST_THREAD_ID,
+					resourceId: USER_ID,
+					projectId: PROJECT_ID,
+					title: 'Weekly digest',
+					...overrides,
+				}),
+			);
+		}
+
+		async function expectNotFound(history: ScopedConversationHistory) {
+			const read = history.getMessages({ threadId: PAST_THREAD_ID });
+			await expect(read).rejects.toThrow(UserError);
+			await expect(read).rejects.toThrow('Conversation not found');
+		}
+
+		it('rejects a thread that does not exist', async () => {
+			const { history, threadRepository } = setup();
+			threadRepository.findOneBy.mockResolvedValue(null);
+
+			await expectNotFound(history);
+		});
+
+		it('rejects a thread owned by another user with the same message', async () => {
+			const { history, threadRepository } = setup();
+			givenThread(threadRepository, { resourceId: 'user-2' });
+
+			await expectNotFound(history);
+		});
+
+		it('rejects a thread bound to another project with the same message', async () => {
+			const { history, threadRepository } = setup();
+			givenThread(threadRepository, { projectId: 'project-2' });
+
+			await expectNotFound(history);
+		});
+
+		it('reads the current thread as well — only search excludes it', async () => {
+			const { history, threadRepository } = setup();
+			givenThread(threadRepository, { id: CURRENT_THREAD_ID });
+
+			await expect(history.getMessages({ threadId: CURRENT_THREAD_ID })).resolves.toMatchObject({
+				threadId: CURRENT_THREAD_ID,
+			});
+		});
+
+		it('reads the last five messages for a bare request', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+
+			await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			expect(messageRepository.getConversationWindow).toHaveBeenCalledWith({
+				threadId: PAST_THREAD_ID,
+				anchor: undefined,
+				before: 5,
+				after: 0,
+			});
+		});
+
+		it('reads five messages either side of an anchor', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			// Compare against the mock row's own createdAt: the deep-mock proxies the
+			// Date override, so a fresh Date would not be strictly equal to it.
+			const anchorRow = messageRow({ id: 'anchor-1', role: 'user', content: userContent('here') });
+			messageRepository.findMessageInThread.mockResolvedValue(anchorRow);
+
+			await history.getMessages({ threadId: PAST_THREAD_ID, aroundMessageId: 'anchor-1' });
+
+			expect(messageRepository.getConversationWindow).toHaveBeenCalledWith({
+				threadId: PAST_THREAD_ID,
+				anchor: { id: 'anchor-1', createdAt: anchorRow.createdAt },
+				before: 5,
+				after: 5,
+			});
+		});
+
+		it('keeps a one-sided request one-sided', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+
+			await history.getMessages({ threadId: PAST_THREAD_ID, after: 2 });
+
+			expect(messageRepository.getConversationWindow).toHaveBeenCalledWith(
+				expect.objectContaining({ before: 0, after: 2 }),
+			);
+		});
+
+		it('clamps oversized window requests', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			messageRepository.findMessageInThread.mockResolvedValue(
+				messageRow({ id: 'anchor-1', role: 'user', content: userContent('here') }),
+			);
+
+			await history.getMessages({
+				threadId: PAST_THREAD_ID,
+				aroundMessageId: 'anchor-1',
+				before: 99,
+				after: 99,
+			});
+
+			expect(messageRepository.getConversationWindow).toHaveBeenCalledWith(
+				expect.objectContaining({ before: 5, after: 5 }),
+			);
+		});
+
+		it('rejects an anchor that is not in the thread', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			messageRepository.findMessageInThread.mockResolvedValue(null);
+
+			const read = history.getMessages({ threadId: PAST_THREAD_ID, aroundMessageId: 'ghost' });
+			await expect(read).rejects.toThrow(UserError);
+			await expect(read).rejects.toThrow('Message not found in this conversation');
+			expect(messageRepository.getConversationWindow).not.toHaveBeenCalled();
+		});
+
+		it('returns the window with the thread title and the more-flags', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			messageRepository.getConversationWindow.mockResolvedValue({
+				rows: [
+					messageRow({ id: 'm-1', role: 'user', content: userContent('do the thing') }),
+					messageRow({
+						id: 'm-2',
+						role: 'assistant',
+						content: assistantTextContent('done'),
+						createdAt: new Date('2026-01-01T10:05:00.000Z'),
+					}),
+				],
+				hasMoreBefore: true,
+				hasMoreAfter: false,
+			});
+
+			const result = await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			expect(result).toEqual({
+				threadId: PAST_THREAD_ID,
+				title: 'Weekly digest',
+				messages: [
+					{
+						messageId: 'm-1',
+						role: 'user',
+						createdAt: CREATED_AT.toISOString(),
+						text: 'do the thing',
+					},
+					{
+						messageId: 'm-2',
+						role: 'assistant',
+						createdAt: '2026-01-01T10:05:00.000Z',
+						text: 'done',
+					},
+				],
+				hasMoreBefore: true,
+				hasMoreAfter: false,
+			});
+		});
+
+		it('returns user text as the user saw it and hides internal auto-follow-ups', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			messageRepository.getConversationWindow.mockResolvedValue({
+				rows: [
+					messageRow({
+						id: 'm-enriched',
+						role: 'user',
+						content: userContent(
+							'can you see my other sessions?\n\n<project-context>\nThis conversation is scoped to the project "s d" (personal).\n</project-context>',
+						),
+					}),
+					messageRow({ id: 'm-continue', role: 'user', content: userContent('(continue)') }),
+				],
+				hasMoreBefore: false,
+				hasMoreAfter: false,
+			});
+
+			const result = await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			expect(result.messages).toEqual([
+				{
+					messageId: 'm-enriched',
+					role: 'user',
+					createdAt: CREATED_AT.toISOString(),
+					text: 'can you see my other sessions?',
+				},
+			]);
+		});
+
+		it('renders ask-user answers, including custom text and skips', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			messageRepository.getConversationWindow.mockResolvedValue({
+				rows: [
+					messageRow({
+						id: 'm-answers',
+						role: 'assistant',
+						content: askUserContent([
+							{ question: 'Which timezone?', selectedOptions: ['Europe/Berlin'] },
+							{ question: 'How often?', selectedOptions: ['Daily'], customText: 'at 9am' },
+							{ question: 'Which channel?', selectedOptions: [], skipped: true },
+						]),
+					}),
+				],
+				hasMoreBefore: false,
+				hasMoreAfter: false,
+			});
+
+			const result = await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			expect(result.messages[0].userAnswers).toEqual([
+				{ question: 'Which timezone?', answer: 'Europe/Berlin' },
+				{ question: 'How often?', answer: 'Daily, at 9am' },
+				{ question: 'Which channel?', answer: '(skipped)' },
+			]);
+			// The row carried no text blocks, only tool activity.
+			expect(result.messages[0].text).toBe('');
+		});
+
+		it('drops mid-turn narration and pure tool-call rows — only the final reply remains', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			messageRepository.getConversationWindow.mockResolvedValue({
+				rows: [
+					messageRow({
+						id: 'm-tools-only',
+						role: 'assistant',
+						content: assistantWorkingContent(''),
+					}),
+					messageRow({
+						id: 'm-narration',
+						role: 'assistant',
+						content: assistantWorkingContent('Validation is clean. Building the workflow now.'),
+					}),
+					messageRow({ id: 'm-reply', role: 'assistant', content: assistantTextContent('Done.') }),
+				],
+				hasMoreBefore: false,
+				hasMoreAfter: false,
+			});
+
+			const result = await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			expect(result.messages.map((message) => message.messageId)).toEqual(['m-reply']);
+		});
+
+		it('truncates user text harder for assistant rows', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			messageRepository.getConversationWindow.mockResolvedValue({
+				rows: [
+					messageRow({ id: 'm-user', role: 'user', content: userContent('u'.repeat(2000)) }),
+					messageRow({
+						id: 'm-assistant',
+						role: 'assistant',
+						content: assistantTextContent('a'.repeat(2000)),
+					}),
+				],
+				hasMoreBefore: false,
+				hasMoreAfter: false,
+			});
+
+			const result = await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			expect(result.messages[0].text).toHaveLength(1501);
+			expect(result.messages[0].text.endsWith('…')).toBe(true);
+			expect(result.messages[1].text).toHaveLength(801);
+			expect(result.messages[1].text.endsWith('…')).toBe(true);
+		});
+
+		it('drops rows whose content is not readable JSON', async () => {
+			const { history, threadRepository, messageRepository } = setup();
+			givenThread(threadRepository);
+			messageRepository.getConversationWindow.mockResolvedValue({
+				rows: [
+					messageRow({ id: 'broken', role: 'user', content: 'not json at all' }),
+					messageRow({ id: 'intact', role: 'user', content: userContent('still here') }),
+				],
+				hasMoreBefore: false,
+				hasMoreAfter: false,
+			});
+
+			const result = await history.getMessages({ threadId: PAST_THREAD_ID });
+
+			expect(result.messages.map((message) => message.messageId)).toEqual(['intact']);
+		});
+	});
+
+	describe('getPastConversationsSection', () => {
+		/** Ages are relative, so the clock is pinned rather than the timestamps. */
+		const NOW = new Date('2026-03-01T12:00:00.000Z');
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(NOW);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		function daysAgo(days: number): Date {
+			return new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000);
+		}
+
+		it('asks for the three most recent conversations, scoped away from the current thread', async () => {
+			const { service, threadRepository } = setup();
+
+			await service.getPastConversationsSection(USER_ID, PROJECT_ID, CURRENT_THREAD_ID);
+
+			expect(threadRepository.listRecentProjectThreadsForUser).toHaveBeenCalledWith({
+				userId: USER_ID,
+				projectId: PROJECT_ID,
+				excludeThreadId: CURRENT_THREAD_ID,
+				limit: 3,
+			});
+		});
+
+		it('names up to three conversations with their coarse ages, and the full count', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({
+				rows: [
+					threadHit({ id: 't-1', title: 'Weekly digest', updatedAt: daysAgo(0.2) }),
+					threadHit({ id: 't-2', title: 'Slack alerts', updatedAt: daysAgo(3.1) }),
+					threadHit({ id: 't-3', title: 'CRM sync', updatedAt: daysAgo(15) }),
+				],
+				total: 9,
+			});
+
+			const section = await service.getPastConversationsSection(
+				USER_ID,
+				PROJECT_ID,
+				CURRENT_THREAD_ID,
+			);
+
+			expect(section).toBe(
+				'This project has 9 past conversations with you. Most recent: "Weekly digest" (today), "Slack alerts" (3d ago), "CRM sync" (2w ago).',
+			);
+		});
+
+		it('uses the singular for a project with exactly one past conversation', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({
+				rows: [threadHit({ title: 'Weekly digest', updatedAt: daysAgo(1.4) })],
+				total: 1,
+			});
+
+			const section = await service.getPastConversationsSection(
+				USER_ID,
+				PROJECT_ID,
+				CURRENT_THREAD_ID,
+			);
+
+			expect(section).toContain('This project has 1 past conversation with you.');
+			expect(section).toContain('Most recent: "Weekly digest" (1d ago).');
+		});
+
+		it('labels a conversation the titler never got to', async () => {
+			const { service, threadRepository } = setup();
+			threadRepository.listRecentProjectThreadsForUser.mockResolvedValue({
+				rows: [
+					threadHit({ id: 't-1', title: '', updatedAt: daysAgo(0) }),
+					threadHit({ id: 't-2', title: '   ', updatedAt: daysAgo(0) }),
+				],
+				total: 2,
+			});
+
+			const section = await service.getPastConversationsSection(
+				USER_ID,
+				PROJECT_ID,
+				CURRENT_THREAD_ID,
+			);
+
+			expect(section).toContain('Most recent: "(untitled)" (today), "(untitled)" (today).');
+		});
+
+		// The hint is for the opening turn only; from turn two the agent has the tool
+		// description and the conversation itself.
+		it('returns undefined once the thread has messages of its own', async () => {
+			const { service, threadRepository, messageRepository } = setup();
+			messageRepository.threadHasMessages.mockResolvedValue(true);
+
+			const section = await service.getPastConversationsSection(
+				USER_ID,
+				PROJECT_ID,
+				CURRENT_THREAD_ID,
+			);
+
+			expect(section).toBeUndefined();
+			expect(threadRepository.listRecentProjectThreadsForUser).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when the project has no other conversations', async () => {
+			const { service } = setup();
+
+			expect(
+				await service.getPastConversationsSection(USER_ID, PROJECT_ID, CURRENT_THREAD_ID),
+			).toBeUndefined();
+		});
+
+		// Best-effort by design: a hint that cannot be built must not fail the turn.
+		it('returns undefined and warns when a repository read fails', async () => {
+			const { service, threadRepository, logger } = setup();
+			threadRepository.listRecentProjectThreadsForUser.mockRejectedValue(new Error('db is down'));
+
+			const section = await service.getPastConversationsSection(
+				USER_ID,
+				PROJECT_ID,
+				CURRENT_THREAD_ID,
+			);
+
+			expect(section).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('past-conversations hint'),
+				expect.objectContaining({ threadId: CURRENT_THREAD_ID, error: 'db is down' }),
+			);
+		});
+	});
+});
