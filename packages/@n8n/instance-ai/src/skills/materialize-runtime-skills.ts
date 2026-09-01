@@ -12,7 +12,6 @@ import {
 	type Workspace,
 } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix';
 
 import type { Logger } from '../logger';
@@ -30,8 +29,6 @@ export const RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION = 1;
 export const N8N_SKILLS_DIR_ENV = 'N8N_SKILLS_DIR';
 export const N8N_SKILL_DIR_ENV = 'N8N_SKILL_DIR';
 export const N8N_WORKSPACE_DIR_ENV = 'N8N_WORKSPACE_DIR';
-
-type SkillPlaceholder = 'GROUPING_GUIDANCE_PLACEHOLDER';
 
 export interface MaterializedRuntimeSkill {
 	id: string;
@@ -182,14 +179,6 @@ function substituteRuntimeSkillVars(
 		.replaceAll(N8N_WORKSPACE_DIR_TEMPLATE, workspaceRoot);
 }
 
-function substitutePlaceholderWithText(
-	content: string,
-	placeholder: SkillPlaceholder,
-	replacement: string,
-): string {
-	return content.replaceAll(`{{${placeholder}}}`, replacement);
-}
-
 function toFrontmatterInterface(
 	value: RuntimeSkillInterfaceContract | undefined,
 ): Record<string, unknown> | undefined {
@@ -273,12 +262,9 @@ function renderRuntimeSkillMarkdown(
 	addFrontmatterField(lines, 'metadata', skill.metadata);
 	lines.push('---', '');
 
+	// At this point, any {{placeholder}}s in the instructions text are already resolved
 	const instructions = substituteRuntimeSkillVars(
-		substitutePlaceholderWithText(
-			skill.instructions,
-			'GROUPING_GUIDANCE_PLACEHOLDER',
-			GROUPING_GUIDANCE,
-		),
+		skill.instructions,
 		skillDir,
 		workspaceRoot,
 		skillsRoot,
