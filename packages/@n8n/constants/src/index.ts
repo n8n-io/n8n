@@ -151,3 +151,6 @@ export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl
 
 /** Protected-resource id of the instance MCP server, shared by the mcp and oauth-server modules. */
 export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
+
+// EXPERIMENT MARKER: forces cli into the upstream-affected full-suite path so
+// both shard arms measure the same workload. Throwaway, never merged.
