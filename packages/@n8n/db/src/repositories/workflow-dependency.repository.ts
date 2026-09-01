@@ -71,9 +71,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	async countNodeTypeUsage(
 		user: User,
 		scope: NodeUsageScope,
+		limit: number,
 	): Promise<{
 		workflowsInScope: number;
 		nodeTypes: Array<{ nodeType: string; workflowCount: number }>;
+		truncated: boolean;
 	}> {
 		const rows = await this.buildScopedDependencyQuery(user, scope)
 			.andWhere('dependency.dependencyType = :dependencyType', { dependencyType: 'nodeType' })
@@ -85,18 +87,24 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			.groupBy('dependency.dependencyKey')
 			.orderBy('COUNT(DISTINCT dependency.workflowId)', 'DESC')
 			.addOrderBy('dependency.dependencyKey', 'ASC')
+			// One over the limit, so a cut list is reported as cut rather than guessed at. The
+			// histogram has to be bounded: an instance-wide read on a large estate would otherwise
+			// return hundreds of rows, which is the cost this surface exists to avoid.
+			.limit(limit + 1)
 			.getRawMany<{ nodeType: string; workflowCount: number | string }>();
 
-		// The denominator is read in the same call as the counts so a caller never assembles
-		// "10 of 10" from two reads of a moving target.
+		// Two queries, not one transaction: the counts and the denominator can disagree by a
+		// workflow if one is written between them. Reading both here still beats making every
+		// caller pair them up, and the drift is a row, not a wrong shape.
 		const workflowsInScope = await this.countWorkflowsInScope(user, scope);
 
 		return {
 			workflowsInScope,
-			nodeTypes: rows.map((row) => ({
+			nodeTypes: rows.slice(0, limit).map((row) => ({
 				nodeType: row.nodeType,
 				workflowCount: Number(row.workflowCount),
 			})),
+			truncated: rows.length > limit,
 		};
 	}
 

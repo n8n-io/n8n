@@ -128,7 +128,9 @@ const nodeUsageAction = z.object({
 			'A single full node type, e.g. "@n8n/n8n-nodes-langchain.lmChatAnthropic". Omit it for the ' +
 				'overview of every type in use.',
 		),
-	limit: z.number().int().positive().max(50).optional().describe(LIMIT_FIELD_DESCRIPTION),
+	// Caps both shapes: node types in the overview, workflows when a `nodeType` is given. The
+	// ceiling is above the overview's default so raising it after a truncated answer works.
+	limit: z.number().int().positive().max(200).optional().describe(LIMIT_FIELD_DESCRIPTION),
 	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 });
@@ -547,16 +549,24 @@ async function handleNodeUsage(
 		};
 	}
 
+	// What an absence means depends on whether the list is complete. On a full list, a missing
+	// type is a choice the user has not made, and saying so is most of the value. On a cut list
+	// it means nothing at all, and the note must withdraw the claim rather than repeat it.
+	const absence = result.truncated
+		? 'This list is CUT at the top ' +
+			`${result.nodeTypes?.length ?? 0} most-used types — a type missing from it may still be ` +
+			'in use, so do not read an absence as evidence. Raise `limit`, or narrow with `projectId`.'
+		: 'A type absent from this list is used by no workflow in scope.';
+
 	return {
 		workflowsInScope: result.workflowsInScope,
 		nodeTypes: result.nodeTypes ?? [],
-		// Stated rather than left implicit: an absent type is evidence, not a gap in the answer —
-		// what a project never uses is as much a preference as what it always uses. And the limit
-		// of the surface is named so counts are not quoted as parameter-level house style.
+		...(result.truncated ? { truncated: true } : {}),
+		// The limit of the surface is named so counts are never quoted as parameter-level house style.
 		note:
-			'Counts are how many workflows use each type, out of workflowsInScope. A type absent ' +
-			'from this list is used by no workflow in scope. Node types only — for parameter-level ' +
-			'convention (retry settings, naming, model options), read one workflow with `get`.',
+			`Counts are how many workflows use each type, out of workflowsInScope. ${absence} ` +
+			'Node types only — for parameter-level convention (retry settings, naming, model ' +
+			'options), read one workflow with `get`.',
 	};
 }
 

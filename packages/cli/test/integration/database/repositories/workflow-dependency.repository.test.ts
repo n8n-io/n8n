@@ -353,7 +353,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			//
 			// ACT
 			//
-			const result = await repository.countNodeTypeUsage(member, readerScope);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
 
 			//
 			// ASSERT
@@ -377,10 +377,11 @@ describe('WorkflowDependencyRepository node usage', () => {
 			await seedWorkflow(first, [ANTHROPIC]);
 			await seedWorkflow(second, [OPENAI]);
 
-			const result = await repository.countNodeTypeUsage(member, {
-				...readerScope,
-				projectId: first.id,
-			});
+			const result = await repository.countNodeTypeUsage(
+				member,
+				{ ...readerScope, projectId: first.id },
+				50,
+			);
 
 			expect(result.workflowsInScope).toBe(1);
 			expect(result.nodeTypes).toEqual([{ nodeType: ANTHROPIC, workflowCount: 1 }]);
@@ -393,7 +394,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 
 			await seedWorkflow(project, [SLACK, SLACK, SLACK]);
 
-			const result = await repository.countNodeTypeUsage(member, readerScope);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
 
 			expect(result.nodeTypes).toEqual([{ nodeType: SLACK, workflowCount: 1 }]);
 		});
@@ -406,7 +407,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			await seedWorkflow(project, [ANTHROPIC]);
 			await seedWorkflow(project, [OPENAI], { isArchived: true });
 
-			const result = await repository.countNodeTypeUsage(member, readerScope);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
 
 			expect(result.workflowsInScope).toBe(1);
 			expect(result.nodeTypes).toEqual([{ nodeType: ANTHROPIC, workflowCount: 1 }]);
@@ -424,7 +425,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			published.add({ dependencyType: 'nodeType', dependencyKey: OPENAI, dependencyInfo: null });
 			await repository.updateDependenciesForWorkflow(workflow.id, published);
 
-			const result = await repository.countNodeTypeUsage(member, readerScope);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
 
 			expect(result.nodeTypes).toEqual([{ nodeType: ANTHROPIC, workflowCount: 1 }]);
 		});
@@ -437,7 +438,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			await seedWorkflow(first, [ANTHROPIC]);
 			await seedWorkflow(second, [OPENAI]);
 
-			const result = await repository.countNodeTypeUsage(owner, readerScope);
+			const result = await repository.countNodeTypeUsage(owner, readerScope, 50);
 
 			expect(result.workflowsInScope).toBe(2);
 			expect(result.nodeTypes).toEqual([
@@ -451,9 +452,47 @@ describe('WorkflowDependencyRepository node usage', () => {
 			const someoneElses = await createTeamProject('someone-elses');
 			await seedWorkflow(someoneElses, [ANTHROPIC]);
 
-			const result = await repository.countNodeTypeUsage(member, readerScope);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
 
-			expect(result).toEqual({ workflowsInScope: 0, nodeTypes: [] });
+			expect(result).toEqual({ workflowsInScope: 0, nodeTypes: [], truncated: false });
+		});
+
+		it('caps the histogram at the limit and says the list is cut', async () => {
+			const member = await createMember();
+			const project = await createTeamProject('project');
+			await linkUserToProject(member, project, 'project:editor');
+
+			// One workflow per type, so every type has the same count and only the limit decides
+			// how many come back.
+			await seedWorkflow(project, [ANTHROPIC]);
+			await seedWorkflow(project, [OPENAI]);
+			await seedWorkflow(project, [SLACK]);
+
+			const capped = await repository.countNodeTypeUsage(member, readerScope, 2);
+			const complete = await repository.countNodeTypeUsage(member, readerScope, 50);
+
+			expect(capped.nodeTypes).toHaveLength(2);
+			expect(capped.truncated).toBe(true);
+			// The denominator still describes the whole scope, not the shown rows.
+			expect(capped.workflowsInScope).toBe(3);
+
+			expect(complete.nodeTypes).toHaveLength(3);
+			expect(complete.truncated).toBe(false);
+		});
+
+		it('keeps the most-used types when it cuts', async () => {
+			const member = await createMember();
+			const project = await createTeamProject('project');
+			await linkUserToProject(member, project, 'project:editor');
+
+			await seedWorkflow(project, [ANTHROPIC, SLACK]);
+			await seedWorkflow(project, [ANTHROPIC]);
+			await seedWorkflow(project, [OPENAI]);
+
+			const result = await repository.countNodeTypeUsage(member, readerScope, 1);
+
+			expect(result.nodeTypes).toEqual([{ nodeType: ANTHROPIC, workflowCount: 2 }]);
+			expect(result.truncated).toBe(true);
 		});
 	});
 
@@ -560,7 +599,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 				async (chunk) => await repository.insert(chunk),
 			);
 
-			const result = await repository.countNodeTypeUsage(member, readerScope);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
 
 			expect(result.workflowsInScope).toBe(workflowCount);
 			expect(result.nodeTypes).toEqual([

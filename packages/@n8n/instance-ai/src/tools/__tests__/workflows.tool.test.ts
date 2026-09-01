@@ -2958,6 +2958,36 @@ describe('node usage', () => {
 			expect(result.note).toContain('absent from this list is used by no workflow in scope');
 			expect(result.note).toContain('Node types only');
 		});
+
+		// The claim above is only true of a complete list. On a cut one it is actively wrong, so
+		// the note has to withdraw it rather than repeat it.
+		it('withdraws the absence claim when the list is cut', async () => {
+			const context = withNodeUsage({
+				workflowsInScope: 40,
+				nodeTypes: [{ nodeType: 'n8n-nodes-base.slack', workflowCount: 9 }],
+				truncated: true,
+			});
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool<{ truncated?: boolean; note: string }>(
+				tool,
+				{ action: 'node-usage', limit: 1 } as never,
+				{} as never,
+			);
+
+			expect(result.truncated).toBe(true);
+			expect(result.note).toContain('do not read an absence as evidence');
+			expect(result.note).not.toContain('used by no workflow in scope');
+		});
+
+		it('passes the limit through to the service', async () => {
+			const context = withNodeUsage();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(tool, { action: 'node-usage', limit: 5 } as never, {} as never);
+
+			expect(context.workflowService.nodeUsage).toHaveBeenCalledWith({ limit: 5 });
+		});
 	});
 
 	describe('workflows for a node type', () => {

@@ -26,6 +26,12 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 /** Workflows named for a node type when the caller does not say how many it wants. */
 const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
 
+/** Node types in the histogram when the caller does not say how many it wants. Higher than the
+ *  workflow limit because the histogram is the answer rather than a sample of it, and a project
+ *  rarely reaches for more types than this — but it stays bounded, because an instance-wide read
+ *  otherwise returns every type in use. */
+const DEFAULT_NODE_USAGE_TYPE_LIMIT = 100;
+
 /**
  * Node-type usage over the workflows in scope. Exactly one of `nodeTypes` and `workflows` is set:
  * the histogram when no node type was named, the workflows using it when one was.
@@ -35,7 +41,11 @@ export interface NodeTypeUsage {
 	workflowsInScope: number;
 	nodeTypes?: Array<{ nodeType: string; workflowCount: number }>;
 	workflows?: Array<{ workflowId: string; name: string; updatedAt: Date }>;
-	/** Set when the limit cut the list short, so a partial answer is never read as the whole. */
+	/**
+	 * Whether the limit cut the list short. On the histogram this also decides whether an absent
+	 * node type means "not used" or "not shown", so callers must not report absence as evidence
+	 * when it is true.
+	 */
 	truncated?: boolean;
 }
 
@@ -93,7 +103,11 @@ export class WorkflowDependencyQueryService {
 		};
 
 		if (!options.nodeType) {
-			return await this.dependencyRepository.countNodeTypeUsage(user, scope);
+			return await this.dependencyRepository.countNodeTypeUsage(
+				user,
+				scope,
+				options.limit ?? DEFAULT_NODE_USAGE_TYPE_LIMIT,
+			);
 		}
 
 		const limit = options.limit ?? DEFAULT_NODE_USAGE_WORKFLOW_LIMIT;
