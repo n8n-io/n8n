@@ -461,10 +461,12 @@ jobs:
       # Not `gh api --method DELETE`: written on Blacksmith runners, where
       # actions/cache is transparently intercepted, so GitHub's cache has no
       # such entry and the REST call would no-op.
+      # Key must track build-n8n-docker/load-n8n-docker; a mismatch makes the
+      # delete a silent no-op rather than a failure.
       - name: Delete the image tarball from the cache
         uses: useblacksmith/cache-delete@941f534fcf46c8d0a89feeceeb0f5377d82dd5e7 # v2
         with:
-          key: n8n-docker-image-standard-${{ github.sha }}
+          key: n8n-docker-image-v2-standard-${{ github.sha }}
 
   # Posts a QA metrics comparison comment on the PR.
   # Runs after all checks so any job can emit metrics before this reports.
