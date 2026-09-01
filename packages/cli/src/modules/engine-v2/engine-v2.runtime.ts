@@ -2,13 +2,19 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EngineRuntime } from '@n8n/engine';
-import { AllowAllAdmittance, createDataSource, createEngineRuntime } from '@n8n/engine';
+import {
+	AllowAllAdmittance,
+	createDataSource,
+	createEngineRuntime,
+	SharedSecretIdentityVerifier,
+} from '@n8n/engine';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
 import { UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 
 import { NodeTypes } from '@/node-types';
+import { EngineControlPlaneClient } from './engine-control-plane-client';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 /**
@@ -31,6 +37,7 @@ export class EngineV2Runtime {
 		private readonly engineConfig: EngineConfig,
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
+		private readonly controlPlaneClient: EngineControlPlaneClient,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 	}
@@ -76,7 +83,11 @@ export class EngineV2Runtime {
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
+			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
+			logger: this.logger,
 			externalDependencies: ({ executionStore, stepStore }) => ({
+				lifecycleEventCallback: async (events, signal) =>
+					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
 					// TODO(CAT-2880): no credential access. A v1 node that needs credentials

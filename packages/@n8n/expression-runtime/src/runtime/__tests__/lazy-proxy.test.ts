@@ -513,4 +513,149 @@ describe('createDeepLazyProxy', () => {
 			expect('length' in p).toBe(true);
 		});
 	});
+
+	// -----------------------------------------------------------------------
+	// 12. Materialize-on-first-write (evaluation-scoped copy-on-write)
+	// -----------------------------------------------------------------------
+
+	describe('materialize-on-first-write', () => {
+		/** Array proxy over host data ['a', 'b', 'c'] (or a custom array). */
+		function writableArrayProxy(data: unknown[] = ['a', 'b', 'c']): any {
+			mocks.getArrayElement.mockImplementation((_path: string[], idx: number) => data[idx]);
+			return arrayProxy(['arr'], data.length);
+		}
+
+		/** Object proxy over host data {name: 'Alice', email: 'a@x'}. */
+		function writableObjectProxy(data: Record<string, unknown> = { name: 'Alice', email: 'a@x' }) {
+			mocks.getValueAtPath.mockImplementation((path: string[]) => data[path[path.length - 1]]);
+			return proxy(['user'], Object.keys(data));
+		}
+
+		describe('array proxies', () => {
+			it('index write is applied and visible to later reads', () => {
+				const p = writableArrayProxy();
+				p[0] = 'X';
+				expect(p[0]).toBe('X');
+				expect(p[1]).toBe('b');
+			});
+
+			it('reads never materialize; first write fetches each element exactly once', () => {
+				const p = writableArrayProxy();
+				expect(p[0]).toBe('a');
+				expect(mocks.getArrayElement).toHaveBeenCalledTimes(1);
+
+				p[0] = 'X';
+				// materialization fetches the remaining uncached elements (1, 2)
+				expect(mocks.getArrayElement).toHaveBeenCalledTimes(3);
+
+				// subsequent reads and writes cause no further bridge calls
+				expect(p[1]).toBe('b');
+				p[2] = 'Y';
+				expect(p[2]).toBe('Y');
+				expect(mocks.getArrayElement).toHaveBeenCalledTimes(3);
+			});
+
+			it('push() appends and updates length', () => {
+				const p = writableArrayProxy();
+				expect(p.push('d')).toBe(4);
+				expect(p.length).toBe(4);
+				expect(p[3]).toBe('d');
+			});
+
+			it('pop() returns the last element and shrinks length', () => {
+				const p = writableArrayProxy();
+				expect(p.pop()).toBe('c');
+				expect(p.length).toBe(2);
+				expect(2 in p).toBe(false);
+			});
+
+			it('splice() removes in place with consistent length and contents', () => {
+				const p = writableArrayProxy();
+				expect(p.splice(0, 2)).toEqual(['a', 'b']);
+				expect(p.length).toBe(1);
+				expect([...p]).toEqual(['c']);
+			});
+
+			it('native sort() mutates in place and is visible to later reads', () => {
+				const p = writableArrayProxy([3, 1, 2]);
+				p.sort();
+				expect([...p]).toEqual([1, 2, 3]);
+				expect(p[0]).toBe(1);
+			});
+
+			it('delete removes the element without resurrecting it on the next read', () => {
+				const p = writableArrayProxy();
+				delete p[1];
+				expect(1 in p).toBe(false);
+				expect(p[1]).toBeUndefined();
+				expect(Object.keys(p)).toEqual(['0', '2']);
+			});
+
+			it('index descriptor reports writable after materialization', () => {
+				const p = writableArrayProxy();
+				p[0] = 'X';
+				const desc = Object.getOwnPropertyDescriptor(p, '0');
+				expect(desc).toMatchObject({ writable: true, value: 'X' });
+			});
+
+			it('error sentinel during materialization propagates', () => {
+				const sentinel = { __isError: true, name: 'Error', message: 'fetch failed' };
+				mocks.getArrayElement.mockImplementation((_path: string[], idx: number) =>
+					idx === 2 ? sentinel : 'val',
+				);
+				const p = arrayProxy(['arr'], 3);
+				expect(() => {
+					p[0] = 'X';
+				}).toThrow();
+			});
+		});
+
+		describe('object proxies', () => {
+			it('existing-key write is applied and visible to later reads', () => {
+				const p = writableObjectProxy();
+				p.name = 'Zed';
+				expect(p.name).toBe('Zed');
+				expect(p.email).toBe('a@x');
+			});
+
+			it('new-key write is visible and enumerable', () => {
+				const p = writableObjectProxy();
+				p.extra = 42;
+				expect(p.extra).toBe(42);
+				expect(Object.keys(p)).toEqual(['name', 'email', 'extra']);
+			});
+
+			it('delete removes the key without resurrecting it on the next read', () => {
+				const p = writableObjectProxy();
+				delete p.email;
+				expect('email' in p).toBe(false);
+				expect(p.email).toBeUndefined();
+				expect(Object.keys(p)).toEqual(['name']);
+			});
+
+			it('host data with an own __proto__ key is cached as an own property, not a prototype', () => {
+				const protoValue = { polluted: true };
+				mocks.getValueAtPath.mockImplementation((path: string[]) => {
+					const key = path[path.length - 1];
+					if (key === 'name') return 'Alice';
+					if (key === '__proto__') return protoValue;
+					return undefined;
+				});
+				const p = proxy(['user'], ['name', '__proto__']);
+				p.name = 'Zed'; // triggers materialization over all keys
+				expect(Object.keys(p)).toEqual(['name', '__proto__']);
+				expect(p.polluted).toBeUndefined();
+				expect(p['__proto__']).toBe(protoValue);
+			});
+
+			it('write fetches each key exactly once; later access stays local', () => {
+				const p = writableObjectProxy();
+				p.name = 'Zed';
+				const callsAfterWrite = mocks.getValueAtPath.mock.calls.length;
+				expect(p.email).toBe('a@x');
+				p.email = 'b@x';
+				expect(mocks.getValueAtPath.mock.calls.length).toBe(callsAfterWrite);
+			});
+		});
+	});
 });

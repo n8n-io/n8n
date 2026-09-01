@@ -5,7 +5,8 @@
  */
 import { Tool } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { dropInvalidWorkflowJsonGroups, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -52,9 +53,11 @@ import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import {
 	grantSessionWorkflowUpdate,
 	canSkipWorkflowUpdateHitl,
+	formatWarning,
 } from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
-import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { ensureUniqueNodeIds, getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { nodeGroupDroppedWarnings } from './workflows/workflow-validation-warnings';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -172,10 +175,12 @@ const setupAction = z.object({
 		.array(z.string())
 		.optional()
 		.describe(
-			'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on an ' +
-				'explicit request like "create a new Slack credential", never as a default. The card opens with ' +
-				'nothing preselected so the user lands on credential creation; existing credentials of the type ' +
-				'stay listed in case they change their mind. Pass the same list you passed to build-workflow.',
+			'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
+				'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
+				'credential whose secret is invalid or rotated (e.g. pasted a new token in chat, which you ' +
+				'cannot store). Never pass as a default. The card opens with nothing preselected so the user ' +
+				'lands on credential creation; existing credentials of the type stay listed in case they ' +
+				'change their mind. Pass the same list you passed to build-workflow.',
 		),
 	reopenSkipped: z
 		.array(z.string())
@@ -750,13 +755,36 @@ function collectCredentialTestFailures(
  * Carry the "user asked for a fresh credential" types into every setup analysis
  * of this call, so no re-analysis (trigger test, apply) quietly reinstates the
  * auto-applied credential the first analysis withheld.
+ *
+ * Types the user has just applied a credential for are dropped: that ask is
+ * fulfilled, and keeping the flag would render the slot unbound again and
+ * report it as still needing configuration.
  */
-function preferNewCredentialOptions(input: Extract<Input, { action: 'setup' }>): {
+function preferNewCredentialOptions(
+	input: Extract<Input, { action: 'setup' }>,
+	appliedCredentials?: SetupResumeData['credentials'],
+): {
 	preferNewCredentialTypes?: readonly string[];
 } {
-	return input.preferNewCredentials?.length
-		? { preferNewCredentialTypes: input.preferNewCredentials }
-		: {};
+	const appliedTypes = new Set(
+		Object.values(appliedCredentials ?? {}).flatMap((byType) => Object.keys(byType)),
+	);
+	const remaining = (input.preferNewCredentials ?? []).filter((type) => !appliedTypes.has(type));
+	return remaining.length ? { preferNewCredentialTypes: remaining } : {};
+}
+
+/** Ids this resume applied — the analysis treats a slot bound to one as settled
+ *  even when its credential list view lags the just-created credential. Only
+ *  nodes the apply reported as successful vouch for their ids: a failed
+ *  application must not settle a stale binding elsewhere. */
+function appliedCredentialIdList(
+	applied: SetupResumeData['credentials'],
+	appliedNodeNames: readonly string[],
+): string[] {
+	const appliedNodes = new Set(appliedNodeNames);
+	return Object.entries(applied ?? {})
+		.filter(([nodeName]) => appliedNodes.has(nodeName))
+		.flatMap(([, byType]) => Object.values(byType));
 }
 
 /** Setup state 3: persist setup, run the trigger, and re-suspend with the refreshed requests. */
@@ -792,7 +820,10 @@ async function handleSetupTestTrigger(
 		context,
 		input.workflowId,
 		{ [testTriggerNode]: triggerTestResult },
-		preferNewCredentialOptions(input),
+		{
+			...preferNewCredentialOptions(input, resumeData.credentials),
+			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, preTestApply.applied),
+		},
 	);
 	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
 	// builds the panel, and without it a trigger test mid-session puts back the cards state 1
@@ -898,7 +929,8 @@ async function handleSetupApply(
 		// a bound credential is settled for routing even when its test fails.
 		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
 			includeSettled: true,
-			...preferNewCredentialOptions(input),
+			...preferNewCredentialOptions(input, resumeData.credentials),
+			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
 		});
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
@@ -1320,6 +1352,13 @@ async function handleUpdate(
 	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
 
 	try {
+		ensureUniqueNodeIds(input.workflow);
+		const droppedGroupWarnings = nodeGroupDroppedWarnings(
+			dropInvalidWorkflowJsonGroups(
+				input.workflow,
+				context.nodeTypesProvider ? makeGetNodeTypeForGrouping(context.nodeTypesProvider) : null,
+			),
+		);
 		const saved = expectedChecksum
 			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
 					expectedChecksum,
@@ -1331,7 +1370,17 @@ async function handleUpdate(
 		if (saved.checksum) {
 			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
 		}
-		return { success: true, workflowId: input.workflowId };
+		return {
+			success: true,
+			workflowId: input.workflowId,
+			...(droppedGroupWarnings.length > 0
+				? {
+						warnings: droppedGroupWarnings.map((warning) =>
+							formatWarning(warning.code, warning.message),
+						),
+					}
+				: {}),
+		};
 	} catch (error) {
 		if (error instanceof WorkflowSaveConflictError) {
 			return {

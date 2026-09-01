@@ -8,7 +8,7 @@ import type { Telemetry } from '@/telemetry';
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
 import { toN8nConnectCoverage } from '../../mcp-ai-gateway.helper';
 import {
-	LIST_N8N_CONNECT_SERVICES_TOOL_NAME,
+	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from '../../mcp.constants';
 import type {
@@ -36,18 +36,20 @@ const outputSchema = {
 	results: z
 		.string()
 		.describe('Search results with matching node IDs, discriminators, and related nodes'),
-	n8nConnect: z
+	gatewayCredits: z
 		.object({
-			credentialTypes: z.array(z.string()).describe('Credential types n8n Connect can provide.'),
+			credentialTypes: z
+				.array(z.string())
+				.describe('Credential types Gateway credits can provide.'),
 			nodes: z
 				.array(z.string())
 				.describe(
-					'Node types n8n Connect may cover. Prefer these when the user has not specified an integration. Candidate coverage only — exact eligibility also depends on the node action, minimum type version, and hidden properties.',
+					'Node types Gateway credits may cover. Prefer these when the user has not specified an integration. Candidate coverage only — exact eligibility also depends on the node action, minimum type version, and hidden properties.',
 				),
 		})
 		.optional()
 		.describe(
-			`Present when n8n Connect is available. Candidate coverage — cross-reference against the search results, but call ${LIST_N8N_CONNECT_SERVICES_TOOL_NAME} for exact eligibility (supported actions, min versions, hidden properties).`,
+			`Present when Gateway credits are available. Candidate coverage — cross-reference against the search results, but call ${LIST_N8N_GATEWAY_SERVICES_TOOL_NAME} for exact eligibility (supported actions, min versions, hidden properties).`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -122,14 +124,14 @@ export const createSearchWorkflowNodesTool = (
 
 			const structured: {
 				results: string;
-				n8nConnect?: N8nConnectCoverage;
+				gatewayCredits?: N8nConnectCoverage;
 			} = {
 				results,
 			};
 			const coverage = toN8nConnectCoverage(availability);
-			if (coverage) structured.n8nConnect = coverage;
+			if (coverage) structured.gatewayCredits = coverage;
 
-			const text = coverage ? `${results}\n\nn8nConnect: ${JSON.stringify(coverage)}` : results;
+			const text = coverage ? `${results}\n\ngatewayCredits: ${JSON.stringify(coverage)}` : results;
 
 			return {
 				content: [{ type: 'text', text }],

@@ -14,6 +14,11 @@
     click on it times out while typing into it works. That is the real
     CodeMirror behaviour and the live reproduction for LangTracer case 599 —
     replacing it with a plain visible textarea deletes the trap
+  - the editor auto-closes brackets ON KEYSTROKE. Entering the manifest one key
+    at a time therefore leaves stray closers behind and "Next" rejects it; one
+    atomic insert is the only way through. Dropping that handler deletes the
+    trap. It keys off real key events, so a typer built on Input.insertText
+    sails past it — that is the difference under test, not an oversight
   - "Next" is ENABLED throughout. The real run assumed it was disabled and spent
     three browser_evaluate scripts on that theory; it never was (not NODE-5755)
 -->
@@ -116,6 +121,25 @@
 			document.getElementById('from-manifest').addEventListener('click', () => {
 				chooser.hidden = true;
 				dialog.hidden = false;
+			});
+
+			// Auto-close, as the real editor does. It fires on keydown only, so one
+			// atomic insert is unaffected — that difference is the point.
+			const PAIRS = { '{': '}', '[': ']', '"': '"' };
+
+			input.addEventListener('keydown', (event) => {
+				if (event.metaKey || event.ctrlKey || event.altKey) return;
+				if (!PAIRS[event.key]) return;
+
+				event.preventDefault();
+				const start = input.selectionStart;
+				input.value =
+					input.value.slice(0, start) +
+					event.key +
+					PAIRS[event.key] +
+					input.value.slice(input.selectionEnd);
+				input.selectionStart = input.selectionEnd = start + 1;
+				input.dispatchEvent(new Event('input', { bubbles: true }));
 			});
 
 			// Mirror typed text into the rendered surface, as the editor does.

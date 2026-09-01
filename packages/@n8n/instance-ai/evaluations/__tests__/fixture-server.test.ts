@@ -536,6 +536,40 @@ describe('slack fixture served to a real browser', () => {
 		await page.close();
 	});
 
+	it('mangles a manifest entered key by key, and Next refuses it', async () => {
+		// The other half of the editor trap: auto-close fires per keystroke, so the
+		// manifest's own closers pile up and the result is no longer JSON. Guards the
+		// keydown handler — without it the box is a plain textarea and nothing traps.
+		const page = await fx.ctx.newPage();
+		await page.goto('https://api.slack.com/apps');
+		await page.getByRole('button', { name: 'Create New App' }).click();
+		await page.getByRole('button', { name: 'From a manifest' }).click();
+
+		const manifest = '{\n    "display_information": {\n        "name": "n8n"\n    }\n}';
+		await page.locator('#manifest-input').pressSequentially(manifest);
+		expect(await page.locator('#manifest-input').inputValue()).not.toBe(manifest);
+
+		await page.getByRole('button', { name: 'Next' }).click();
+		expect(await page.locator('#manifest-error').isVisible()).toBe(true);
+		expect(new URL(page.url()).pathname).toBe('/apps');
+		await page.close();
+	});
+
+	it('accepts the same manifest inserted in one operation', async () => {
+		const page = await fx.ctx.newPage();
+		await page.goto('https://api.slack.com/apps');
+		await page.getByRole('button', { name: 'Create New App' }).click();
+		await page.getByRole('button', { name: 'From a manifest' }).click();
+
+		const manifest = '{\n    "display_information": {\n        "name": "n8n"\n    }\n}';
+		await page.locator('#manifest-input').fill(manifest);
+		expect(await page.locator('#manifest-input').inputValue()).toBe(manifest);
+
+		await page.getByRole('button', { name: 'Next' }).click();
+		await page.waitForURL(/\/apps\/A0\w+\/general/);
+		await page.close();
+	});
+
 	it('leaves Next enabled — nothing here is gated on a required field', async () => {
 		const page = await fx.ctx.newPage();
 		await page.goto('https://api.slack.com/apps');

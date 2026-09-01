@@ -106,6 +106,11 @@ describe('PolicyEnforcementService', () => {
 
 			expect(second.violations).toEqual([]);
 		});
+
+		it('reports no checks for any point', () => {
+			expect(service.hasChecksFor('workflowStart')).toBe(false);
+			expect(service.hasChecksFor('credentialDecrypt')).toBe(false);
+		});
 	});
 
 	describe('setImplementation', () => {
@@ -127,6 +132,13 @@ describe('PolicyEnforcementService', () => {
 			backend = mock<PolicyEnforcementBackend>();
 			service = new PolicyEnforcementService();
 			service.setImplementation(backend);
+		});
+
+		it('asks the implementation about the point it was given', () => {
+			backend.hasChecksFor.mockReturnValue(true);
+
+			expect(service.hasChecksFor('workflowStart')).toBe(true);
+			expect(backend.hasChecksFor).toHaveBeenCalledExactlyOnceWith('workflowStart');
 		});
 
 		it('throws with every violation instead of minting', async () => {

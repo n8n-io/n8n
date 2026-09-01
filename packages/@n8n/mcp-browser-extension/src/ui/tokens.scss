@@ -37,3 +37,19 @@ body {
 	background-color: var(--color--background);
 	color: var(--color--text--shade-1);
 }
+
+// Grouping box shared by the views and the allowed-instances list.
+.panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	background: var(--background--surface);
+	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--lg);
+	min-height: 0;
+}
+
+.panel + .panel {
+	margin-top: var(--spacing--md);
+}

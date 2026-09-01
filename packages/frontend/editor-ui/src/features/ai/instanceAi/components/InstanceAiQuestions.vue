@@ -414,7 +414,14 @@ function onOptionMouseEnter(idx: number) {
 						>
 							<span :class="$style.numberBadge">{{ idx + 1 }}</span>
 							<span :class="$style.optionLabel">{{ option }}</span>
-							<N8nIcon :class="$style.arrowIndicator" icon="arrow-right" :size="16" />
+							<span :class="$style.arrowIndicator">
+								<N8nIcon
+									:class="$style.arrowIcon"
+									icon="arrow-right"
+									size="large"
+									:stroke-width="2.5"
+								/>
+							</span>
 						</button>
 
 						<div
@@ -585,9 +592,9 @@ function onOptionMouseEnter(idx: number) {
 
 .container {
 	outline: none;
-	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .question {
@@ -609,8 +616,9 @@ function onOptionMouseEnter(idx: number) {
 	@include questionOptions.active-selected;
 
 	&:hover .arrowIndicator,
-	&.highlighted .arrowIndicator {
-		opacity: 1;
+	&.highlighted .arrowIndicator,
+	&.activeSelected .arrowIndicator {
+		visibility: visible;
 	}
 }
 
@@ -620,10 +628,21 @@ function onOptionMouseEnter(idx: number) {
 
 .arrowIndicator {
 	margin-left: auto;
-	opacity: 0;
-	color: var(--color--text--tint-1);
+	visibility: hidden;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius--full);
+	background-color: var(--color--primary);
+	color: var(--color--neutral-white);
 	flex-shrink: 0;
-	transition: opacity 0.15s ease;
+}
+
+.arrowIcon {
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 }
 
 .optionLabel {

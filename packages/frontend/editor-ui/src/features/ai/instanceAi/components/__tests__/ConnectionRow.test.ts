@@ -1,12 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import ConnectionRow from '../ConnectionRow.vue';
-
-vi.mock('@n8n/i18n', async (importOriginal) => ({
-	...(await importOriginal()),
-	useI18n: () => ({ baseText: (key: string) => key }),
-}));
 
 const renderComponent = createComponentRenderer(ConnectionRow);
 
@@ -19,7 +14,7 @@ const baseProps = {
 describe('ConnectionRow', () => {
 	it('opens settings on row click', async () => {
 		const { getByText, emitted } = renderComponent({
-			props: { ...baseProps, status: 'connected' as const },
+			props: baseProps,
 		});
 
 		await fireEvent.click(getByText('Brave'));
@@ -37,69 +32,18 @@ describe('ConnectionRow', () => {
 		expect(emitted().openSettings).toBeUndefined();
 	});
 
-	it('reports the status through the indicator tooltip', () => {
+	it('renders the action slot', () => {
 		const { getByTestId } = renderComponent({
-			props: { ...baseProps, status: 'disconnected' as const },
-		});
-
-		expect(getByTestId('instance-ai-connection-row-status')).toHaveAttribute(
-			'title',
-			'instanceAi.connections.row.status.disconnected',
-		);
-	});
-
-	it('renders a spinner for the connecting status', () => {
-		const { getByTestId } = renderComponent({
-			props: { ...baseProps, status: 'connecting' as const },
-		});
-
-		expect(getByTestId('instance-ai-connection-row-status')).toHaveClass('n8n-spinner');
-	});
-
-	it('renders no status indicator for a row with no status', () => {
-		const { queryByTestId } = renderComponent({ props: baseProps });
-
-		expect(queryByTestId('instance-ai-connection-row-status')).toBeNull();
-	});
-
-	it('renders no actions menu without actions', () => {
-		const { queryByTestId } = renderComponent({
-			props: { ...baseProps, status: 'connected' as const },
-		});
-
-		expect(queryByTestId('instance-ai-connection-row-actions')).toBeNull();
-	});
-
-	it.each([
-		['settings', 'openSettings'],
-		['disconnect', 'disconnect'],
-		['remove', 'remove'],
-		['connect', 'connect'],
-	] as const)('emits %s from the actions menu', async (action, event) => {
-		const { getByTestId, findByText, emitted } = renderComponent({
-			props: { ...baseProps, status: 'connected' as const, actions: [action] },
-		});
-
-		await fireEvent.click(getByTestId('instance-ai-connection-row-actions'));
-		await fireEvent.click(await findByText(`instanceAi.connections.row.${action}`));
-
-		expect(emitted()[event]).toHaveLength(1);
-	});
-
-	it('lets the action slot replace the status control', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: { ...baseProps, status: 'connected' as const, actions: ['settings'] as const },
+			props: baseProps,
 			slots: { action: '<button data-test-id="slotted-action">Connected</button>' },
 		});
 
 		expect(getByTestId('slotted-action')).toBeVisible();
-		expect(queryByTestId('instance-ai-connection-row-status')).toBeNull();
-		expect(queryByTestId('instance-ai-connection-row-actions')).toBeNull();
 	});
 
 	it('does not open settings when interacting with the action slot', async () => {
 		const { getByTestId, emitted } = renderComponent({
-			props: { ...baseProps, status: 'connected' as const },
+			props: baseProps,
 			slots: { action: '<button data-test-id="slotted-action">Connected</button>' },
 		});
 

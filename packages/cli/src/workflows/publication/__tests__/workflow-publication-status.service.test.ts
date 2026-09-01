@@ -211,4 +211,34 @@ describe('WorkflowPublicationStatusService', () => {
 			]);
 		});
 	});
+
+	describe('getListStatusesByWorkflowIds', () => {
+		it('derives per-workflow terminal status and omits workflows with no rows', async () => {
+			triggerStatusRepository.getStatusCountsByWorkflowIds.mockResolvedValue(
+				new Map([
+					['wf-ok', { total: 2, failed: 0 }],
+					['wf-partial', { total: 3, failed: 1 }],
+					['wf-failed', { total: 2, failed: 2 }],
+				]),
+			);
+
+			const statuses = await service.getListStatusesByWorkflowIds([
+				'wf-ok',
+				'wf-partial',
+				'wf-failed',
+				'wf-none',
+			]);
+
+			expect(statuses.get('wf-ok')).toBe('published');
+			expect(statuses.get('wf-partial')).toBe('partial');
+			expect(statuses.get('wf-failed')).toBe('failed');
+			expect(statuses.has('wf-none')).toBe(false);
+		});
+
+		it('does not consult the outbox (terminal states only)', async () => {
+			triggerStatusRepository.getStatusCountsByWorkflowIds.mockResolvedValue(new Map());
+			await service.getListStatusesByWorkflowIds(['wf-a']);
+			expect(outboxRepository.findInFlightByWorkflowId).not.toHaveBeenCalled();
+		});
+	});
 });

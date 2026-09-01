@@ -45,6 +45,8 @@ export default {
 	'codeDiff.replaceMyCode': 'Replace my code',
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
+	'generic.copy': 'Copy',
+	'generic.copiedToClipboard': 'Copied to clipboard',
 	'codeBlock.copy': 'Copy code',
 	'codeBlock.copiedToClipboard': 'Copied to clipboard',
 	'codeBlock.copyFailed': "Couldn't copy code. Try again or copy it manually.",

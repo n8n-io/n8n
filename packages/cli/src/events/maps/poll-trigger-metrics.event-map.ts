@@ -1,8 +1,8 @@
 /**
  * Low-cardinality metrics events emitted by the poll-cursor persistence path and
- * consumed by the Prometheus poll-trigger collector. Payloads carry only the
- * metric labels and values, so the collector stays a dumb recorder and the
- * cursor code stays decoupled from `prom-client`.
+ * the durable scheduler's poll handler, consumed by the Prometheus poll-trigger
+ * collector. Payloads carry only the metric labels and values, so the collector
+ * stays a dumb recorder and the emitters stay decoupled from `prom-client`.
  */
 
 /** Which cursor write was attempted. */
@@ -19,5 +19,9 @@ export type PollTriggerMetricsEventMap = {
 		operation: PollCursorCommitOperation;
 		result: PollCursorCommitResult;
 		durationMs: number;
+	};
+
+	'poll-tick-timed-out': {
+		nodeType: string;
 	};
 };

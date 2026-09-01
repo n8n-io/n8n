@@ -35,7 +35,11 @@ export interface ConsumeWithHitlOptions {
 	resumeOptions?: Record<string, unknown>;
 	/** Native agent persistence owner for suspended sub-agent state. */
 	persistence?: { threadId: string; resourceId: string };
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	/**
+	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
+	 * default policy, which on the durable-log path would persist redacted text
+	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
+	 */
 	outputRedaction?: RedactionOptions | false;
 }
 
@@ -127,7 +131,11 @@ export interface ConsumeStreamCascadingOptions {
 	logger: Logger;
 	threadId: string;
 	abortSignal: AbortSignal;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	/**
+	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
+	 * default policy, which on the durable-log path would persist redacted text
+	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
+	 */
 	outputRedaction?: RedactionOptions | false;
 }
 

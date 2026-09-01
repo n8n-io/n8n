@@ -16,6 +16,9 @@ import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import type { ArtifactTab } from '../useCanvasPreview';
 
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
+
 const props = withDefaults(
 	defineProps<{
 		tabs: ArtifactTab[];
@@ -103,6 +106,9 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'data-table') {
 		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
 	}
+	if (tab.type === 'agent') {
+		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
+	}
 	return undefined;
 }
 
@@ -163,6 +169,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 				</ContextMenuPortal>
 			</ContextMenuRoot>
 		</TabsList>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<ManualEditorButton :tabs="tabs" :active-tab-id="activeTabId" />
 		<N8nIconButton
 			:icon="isExpanded ? 'minimize-2' : 'maximize-2'"
 			variant="ghost"

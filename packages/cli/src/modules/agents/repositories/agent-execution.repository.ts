@@ -197,6 +197,20 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
+	/**
+	 * Whether the thread ever parked a run. Counts rows on the
+	 * `(threadId, createdAt)` index without loading any execution data, so it is
+	 * cheap enough to ask on every inbound message.
+	 *
+	 * A row keeps `hitlStatus: 'suspended'` after its resume (the resumed turn is
+	 * a separate row), so this can only rule a thread out, never confirm that
+	 * something is parked right now — the checkpoint is the authority for that.
+	 */
+	async hasSuspendedRun(threadId: string): Promise<boolean> {
+		const count = await this.count({ where: { threadId, hitlStatus: 'suspended' } });
+		return count > 0;
+	}
+
 	/** Backfill model on a set of executions in a single statement. */
 	async backfillModel(executionIds: string[], model: string): Promise<void> {
 		if (executionIds.length === 0) return;

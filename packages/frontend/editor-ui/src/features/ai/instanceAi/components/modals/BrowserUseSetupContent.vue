@@ -1,8 +1,7 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useEventListener } from '@vueuse/core';
 import { N8nButton, N8nCallout, N8nHeading, N8nText } from '@n8n/design-system';
-import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
@@ -30,7 +29,6 @@ const props = withDefaults(
 const emit = defineEmits<{ close: [] }>();
 
 const i18n = useI18n();
-const toast = useToast();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
 const { onDocumentVisible } = useDocumentVisibility();
@@ -56,29 +54,10 @@ async function refreshExtensionState(): Promise<void> {
 }
 
 onMounted(async () => {
-	telemetry.trackModalOpened(isBrowserSupported);
 	if (!isBrowserSupported) return;
 	await Promise.all([refreshExtensionState(), store.fetchBrowserStatus()]);
 	statusChecked.value = true;
 });
-
-// When the connection is driven from this view, reporting success as a toast keeps
-// the screen free instead of parking the user on a status-only modal. Flushed
-// synchronously because other views watch the same state to close this one, and a
-// deferred callback would be dropped along with the unmounting component.
-watch(
-	isConnected,
-	(connected) => {
-		if (!connected || !props.autoConnect) return;
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('instanceAi.browserUse.connected'),
-			message: i18n.baseText('instanceAi.browserUse.connected.toastMessage'),
-		});
-		emit('close');
-	},
-	{ flush: 'sync' },
-);
 
 // Re-probe when the user returns from installing the extension. Coming back by tab switch
 // only fires `visibilitychange` — the window's focus can land in DevTools or another pane —

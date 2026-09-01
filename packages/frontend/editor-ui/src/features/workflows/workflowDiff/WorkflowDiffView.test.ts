@@ -327,5 +327,43 @@ describe('WorkflowDiffView', () => {
 				});
 			});
 		});
+
+		describe('fullscreen toggle', () => {
+			it('is hidden by default, so the modal and full-page usages are unaffected', () => {
+				const { queryByTestId } = renderView({
+					props: { sourceWorkflow, targetWorkflow },
+				});
+
+				expect(queryByTestId('workflow-diff-fullscreen-toggle')).not.toBeInTheDocument();
+			});
+
+			it('teleports the diff to the body and back as the viewer toggles it', async () => {
+				const { getByTestId, baseElement } = renderView({
+					props: { sourceWorkflow, targetWorkflow, showFullscreenButton: true },
+				});
+
+				const diff = getByTestId('workflow-diff-view');
+				expect(diff.parentElement).not.toBe(baseElement);
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				// Teleported, so a `container-type` ancestor cannot trap it.
+				expect(getByTestId('workflow-diff-view').parentElement).toBe(baseElement);
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				expect(getByTestId('workflow-diff-view').parentElement).not.toBe(baseElement);
+			});
+
+			it('leaves fullscreen on Escape', async () => {
+				const { getByTestId, baseElement } = renderView({
+					props: { sourceWorkflow, targetWorkflow, showFullscreenButton: true },
+				});
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				expect(getByTestId('workflow-diff-view').parentElement).toBe(baseElement);
+
+				await userEvent.keyboard('{Escape}');
+				expect(getByTestId('workflow-diff-view').parentElement).not.toBe(baseElement);
+			});
+		});
 	});
 });

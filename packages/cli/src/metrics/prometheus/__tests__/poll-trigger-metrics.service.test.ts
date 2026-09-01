@@ -109,6 +109,7 @@ describe('PrometheusPollTriggerMetricsService', () => {
 				expect.arrayContaining([
 					'n8n_poll_trigger_errors_total',
 					'n8n_poll_trigger_overlapping_ticks_total',
+					'n8n_poll_trigger_timeouts_total',
 					'n8n_poll_trigger_cursor_commits_total',
 				]),
 			);
@@ -138,6 +139,7 @@ describe('PrometheusPollTriggerMetricsService', () => {
 				'poll-cursor-commit-settled',
 				expect.any(Function),
 			);
+			expect(eventService.on).toHaveBeenCalledWith('poll-tick-timed-out', expect.any(Function));
 		});
 	});
 
@@ -192,6 +194,22 @@ describe('PrometheusPollTriggerMetricsService', () => {
 			});
 
 			expect(counterIncFor('n8n_poll_trigger_overlapping_ticks_total')).toHaveBeenCalledWith({
+				node_type: 'n8n-nodes-base.testPoll',
+			});
+		});
+	});
+
+	describe('poll-tick-timed-out handler', () => {
+		it('counts the timed-out poll by node type', () => {
+			service.init();
+
+			const calls = eventService.on.mock.calls as unknown as Array<
+				[string, (payload: unknown) => void]
+			>;
+			const handler = calls.find((c) => c[0] === 'poll-tick-timed-out')![1];
+			handler({ nodeType: 'n8n-nodes-base.testPoll' });
+
+			expect(counterIncFor('n8n_poll_trigger_timeouts_total')).toHaveBeenCalledWith({
 				node_type: 'n8n-nodes-base.testPoll',
 			});
 		});

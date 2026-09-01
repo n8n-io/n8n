@@ -409,6 +409,15 @@ export class AgentExecutionService {
 	}
 
 	/**
+	 * Whether the thread ever parked a run — a cheap negative filter in front of
+	 * the checkpoint lookup, which has no thread index and must parse each of the
+	 * agent's active checkpoints to find the thread's.
+	 */
+	async hasSuspendedRun(threadId: string): Promise<boolean> {
+		return await this.agentExecutionRepository.hasSuspendedRun(threadId);
+	}
+
+	/**
 	 * Backfill `model` on suspended runs in a thread that don't yet have it.
 	 * Called when the resumed run finishes — the model applies to the whole
 	 * suspend/resume cycle but only arrives once the resume completes.

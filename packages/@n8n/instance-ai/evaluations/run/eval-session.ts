@@ -160,6 +160,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							// launches and no port opens.
 							credentialSetupSelection: await resolveCredentialSetupFixture(buildArgs),
 							credentialSetupType: buildArgs.credentials?.[0]?.type,
+							caseIdentity: { fileSlug: buildArgs.fileSlug, iteration: buildArgs.iteration },
 						}),
 					),
 			),

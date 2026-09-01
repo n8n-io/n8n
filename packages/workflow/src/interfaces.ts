@@ -1417,6 +1417,12 @@ export interface IPollFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
+	/**
+	 * Milliseconds this poll may spend before the engine abandons the tick.
+	 * A node draining a large backlog should stop fetching before the budget
+	 * runs out, return what it has, and leave the rest to the next poll.
+	 */
+	getPollBudgetMs(): number;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -1543,14 +1549,15 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * Call only after the token is validated. The identity persists for the whole
 	 * execution (including across a Wait), within the token's validity window.
 	 */
-	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void>;
 	/**
 	 * Checks the status of the triggering identity's resolvable (end-user) credentials
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
-	 * to gate a submission, before an execution is enqueued.
+	 * established). Used by the MCP trigger to gate a tool call, by the Form trigger to
+	 * gate a submission, and by the Chat trigger to gate a message send, before an
+	 * execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
@@ -1578,6 +1585,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	/** Whether this request arrived on the editor's session-scoped canvas chat test route. */
+	isChatSessionTest(): boolean;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
@@ -3022,12 +3031,29 @@ export type TriggerPanelDefinition = {
 	activationHint?: string | { active: string; inactive: string };
 };
 
+/**
+ * Collapses hints that report the same kind of problem, so a node reporting it
+ * for 20 fields shows one summary line instead of 20 near-identical callouts.
+ */
+export type NodeHintGroup = {
+	/** Hints sharing this key are collapsed together */
+	key: string;
+	/** Text shown while collapsed. `{count}` is replaced with the number of hints in the group. */
+	summary: string;
+	/**
+	 * Short form listed when the group is expanded, e.g. just the field name.
+	 * Falls back to `message` when not set.
+	 */
+	label?: string;
+};
+
 export type NodeHint = {
 	message: string;
 	type?: 'info' | 'warning' | 'danger';
 	location?: 'outputPane' | 'inputPane' | 'ndv';
 	displayCondition?: string;
 	whenToDisplay?: 'always' | 'beforeExecution' | 'afterExecution';
+	group?: NodeHintGroup;
 };
 
 export type NodeExecutionHint = Omit<NodeHint, 'whenToDisplay' | 'displayCondition'>;
@@ -3045,6 +3071,13 @@ export interface IWebhookData {
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
 	isTest?: boolean;
+	/**
+	 * Set when this test webhook was registered for the editor's canvas chat session
+	 * (path rewritten to `{workflowId}/{chatSessionId}`). Lets the Chat Trigger skip
+	 * webhook auth for that trusted, session-scoped route only — every other test
+	 * request still enforces the configured authentication.
+	 */
+	isChatSessionTest?: boolean;
 	userId?: string;
 	staticData?: Workflow['staticData'];
 }
@@ -3301,6 +3334,27 @@ export interface RelatedExecution {
 	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
 	shouldResume?: boolean;
 	executionContext?: IExecutionContext;
+}
+
+/**
+ * The suspended agent tool call an execution should wake when it finishes — the
+ * agent-run counterpart to `RelatedExecution`, which wakes a parent workflow.
+ * Stamped by the agent workflow tool onto the sub-executions it starts.
+ */
+export interface RelatedAgentRun {
+	agentId: string;
+	projectId: string;
+	/** Agent memory thread the run belongs to; addresses the chat thread to reply in. */
+	threadId: string;
+	runId: string;
+	toolCallId: string;
+	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
+	integrationType?: string;
+	/**
+	 * The interactive n8n user, when there is one. The preview chat resumes the draft
+	 * agent version, which gates node and workflow tools by this user's access.
+	 */
+	userId?: string;
 }
 
 type SubNodeExecutionDataAction = {
@@ -3710,7 +3764,7 @@ export interface IWorkflowExecuteAdditionalData {
 		token: string,
 		resourceUrl: string,
 	) => Promise<N8nOAuth2ValidationResult>;
-	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity?(token: string, resource: string, subject?: string): Promise<void>;
 	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;

@@ -114,6 +114,12 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).toMatch(/keep the .+ and their descriptions\s+intact/is);
 	});
 
+	it('tells agents invalid groups are dropped with warnings and source should be fixed', () => {
+		expect(NODE_GROUPS_REFERENCE).toMatch(/drop an invalid group.+report a warning/is);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/fix the source.+not re-emitted/is);
+		expect(NODE_GROUPS_REFERENCE).not.toContain('rejected on save');
+	});
+
 	it('states the single entry/exit boundary rule that grouping enforces', () => {
 		// reason: 'invalid-subgraph' — grouping rejects a group with more than one
 		// incoming or outgoing main connection (single entry/exit *boundary*).

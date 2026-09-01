@@ -35,7 +35,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import {
-	dropInvalidNodeGroups,
+	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
@@ -128,7 +128,7 @@ const outputSchema = {
 					.enum(['user', 'aiGateway'])
 					.optional()
 					.describe(
-						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via n8n credits.',
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via Gateway credits.',
 					),
 			}),
 		)
@@ -323,7 +323,7 @@ export const createCreateWorkflowFromCodeTool = (
 			// own (fatal) check, so an invalid group is dropped and reported instead
 			// of aborting the whole creation.
 			const skippedGroups = options.canvasGroupsEnabled
-				? dropInvalidNodeGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
+				? dropInvalidWorkflowGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
 						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
 					)
 				: [];

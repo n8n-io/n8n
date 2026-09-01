@@ -95,5 +95,6 @@ export enum VIEWS {
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	GIT_CONNECTIONS_SETTINGS = 'GitConnectionsSettings',
 	RESOURCE_CENTER = 'ResourceCenter',
 }

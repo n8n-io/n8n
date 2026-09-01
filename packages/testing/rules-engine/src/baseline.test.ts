@@ -78,7 +78,25 @@ describe('baseline', () => {
 		const loaded = loadBaseline(filePath);
 
 		expect(loaded).not.toBeNull();
-		expect(loaded!.totalViolations).toBe(1);
+		expect(loaded!.version).toBe(1);
+		expect(loaded!.violations['src/a.ts']).toHaveLength(1);
+		expect(loaded!.violations['src/a.ts'][0].hash).toBe(baseline.violations['src/a.ts'][0].hash);
+	});
+
+	// These sat at the top of the file, so two branches that both refreshed the baseline
+	// conflicted there on every merge even when their entries merged cleanly.
+	it('does not persist the derived timestamp and total', () => {
+		const report = makeReport([
+			{ file: '/root/src/a.ts', rule: 'test-rule', message: 'bad thing' },
+		]);
+		const baseline = generateBaseline(report, '/root');
+		const filePath = path.join(tmpDir, 'baseline.json');
+
+		saveBaseline(baseline, filePath);
+
+		const persisted = fs.readFileSync(filePath, 'utf-8');
+		expect(persisted).not.toContain('"generated"');
+		expect(persisted).not.toContain('"totalViolations"');
 	});
 
 	it('returns null for missing baseline', () => {

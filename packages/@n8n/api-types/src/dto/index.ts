@@ -105,7 +105,10 @@ export {
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPullResultDto,
+	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
+	PushGitConnectionDto,
 	UpdateGitConnectionDto,
 	gitConnectionTypeSchema,
 	gitKeyGeneratorTypeSchema,
@@ -149,19 +152,29 @@ export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
+export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
+export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
+export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
+	CreatedWorkflowPublicDto,
 	WorkflowListPublicDto,
 	WorkflowPublishPublicDto,
 	workflowPublicSchema,
+	createdWorkflowPublicSchema,
 	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
+	workflowParentFolderPublicSchema,
+	DeletedWorkflowPublicDto,
+	UpdatedWorkflowPublicDto,
 } from './workflows/workflow-public.dto';
 export {
+	ActivateWorkflowPublicDto,
+	activateWorkflowPublicSchema,
 	PublishWorkflowPublicDto,
 	publishWorkflowPublicSchema,
 } from './workflows/publish-workflow-public.dto';
@@ -331,6 +344,10 @@ export {
 	WorkflowVersionHistoryListPublicDto,
 	workflowVersionListItemPublicSchema,
 } from './workflow-history/workflow-version-history-public.dto';
+export {
+	WorkflowVersionPublicDto,
+	workflowVersionPublicSchema,
+} from './workflow-history/workflow-version-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';

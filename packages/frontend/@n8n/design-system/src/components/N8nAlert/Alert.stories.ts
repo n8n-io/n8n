@@ -32,12 +32,11 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nAlert,
 	},
-	template:
-		'<div style="position: relative; width: 100%; height: 300px;"><n8n-alert v-bind="args"><template #aside>custom content slot</template></n8n-alert></div>',
+	template: '<n8n-alert v-bind="args"><template #aside>custom content slot</template></n8n-alert>',
 });
 
-export const ContentAsProps = Template.bind({});
-ContentAsProps.args = {
+export const Default = Template.bind({});
+Default.args = {
 	type: 'info',
 	effect: 'light',
 	title: 'Alert title',
@@ -47,6 +46,18 @@ ContentAsProps.args = {
 	background: true,
 };
 
+export const Variants: StoryFn = () => ({
+	components: { N8nAlert },
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 12px;">
+			<n8n-alert type="success" title="Success" description="This is a success alert." />
+			<n8n-alert type="info" title="Info" description="This is an info alert." />
+			<n8n-alert type="warning" title="Warning" description="This is a warning alert." />
+			<n8n-alert type="error" title="Error" description="This is an error alert." />
+		</div>
+	`,
+});
+
 const TemplateForSlots: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
@@ -54,16 +65,14 @@ const TemplateForSlots: StoryFn = (args, { argTypes }) => ({
 		N8nAlert,
 		N8nIcon,
 	},
-	template: `<div style="position: relative; width: 100%; height: 300px;">
-			  <n8n-alert v-bind="args">
+	template: `<n8n-alert v-bind="args">
 					<template #title>Title</template>
 					Description
 					<template #aside><button>Button</button></template>
 					<template #icon>
 						<n8n-icon icon="grin-stars" size="xlarge" />
 					</template>
-				</n8n-alert>
-		</div>`,
+				</n8n-alert>`,
 });
 
 export const ContentInSlots = TemplateForSlots.bind({});

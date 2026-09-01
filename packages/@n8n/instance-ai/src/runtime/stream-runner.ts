@@ -31,7 +31,11 @@ export interface StreamRunOptions {
 	logger: Logger;
 	onActivity?: () => void;
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	/**
+	 * Redaction policy. `false` disables scanning; OMITTING IT ENABLES the
+	 * default policy, which on the durable-log path would persist redacted text
+	 * — Instance AI passes `false` everywhere (raw-at-rest, INS-837).
+	 */
 	outputRedaction?: RedactionOptions | false;
 }
 

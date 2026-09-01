@@ -30,6 +30,8 @@ import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
 import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
 import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
+import { NoLegacyCipherMethodsRule } from './no-legacy-cipher-methods.js';
+import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -63,4 +65,6 @@ export const rules = {
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
 	'require-public-api-controller': RequirePublicApiControllerRule,
 	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
+	'no-legacy-cipher-methods': NoLegacyCipherMethodsRule,
+	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
 } satisfies Record<string, AnyRuleModule>;

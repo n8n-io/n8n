@@ -133,7 +133,12 @@ function editCredential(credentialId: string) {
 				size="small"
 				data-test-id="tool-credential-picker-trigger-disconnected"
 			>
-				<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
+				<N8nIcon
+					icon="circle-x"
+					:size="14"
+					:class="$style.statusIconDisconnected"
+					aria-hidden="true"
+				/>
 				<span>{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</N8nButton>
@@ -143,7 +148,7 @@ function editCredential(credentialId: string) {
 				:class="$style.statusPill"
 				:data-test-id="`tool-credential-picker-trigger-${item.status}`"
 			>
-				<span :class="$style.statusDot" aria-hidden="true" />
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
 				<span>{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</button>
@@ -251,16 +256,17 @@ function editCredential(credentialId: string) {
 	cursor: pointer;
 }
 
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--color--success);
+.statusIconConnected,
+.statusIconDisconnected {
 	flex-shrink: 0;
 }
 
-.statusDotDisconnected {
-	background: var(--color--danger);
+.statusIconConnected {
+	color: var(--color--success);
+}
+
+.statusIconDisconnected {
+	color: var(--color--danger);
 }
 
 .searchWrapper {

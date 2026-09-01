@@ -45,7 +45,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 const { mockRouterPush, mockRouterResolve } = vi.hoisted(() => ({
 	mockRouterPush: vi.fn(),
 	mockRouterResolve: vi.fn(({ params }: { params: { reviewRequestId: string } }) => ({
-		href: `/workflow-review-requests/${params.reviewRequestId}`,
+		href: `/reviews/${params.reviewRequestId}`,
 	})),
 }));
 
@@ -709,7 +709,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Latest changes submitted to the existing review',
-				message: '<a href="/workflow-review-requests/req-1">Open review</a>',
+				message: '<a href="/reviews/req-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 			const toastConfig = mockShowToast.mock.calls.at(-1)?.[0];
@@ -816,7 +816,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Workflow version submitted for review',
-				message: '<a href="/workflow-review-requests/review-1">Open review</a>',
+				message: '<a href="/reviews/review-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 		});
@@ -842,7 +842,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(mockShowToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: 'Workflow version submitted for review',
-					message: '<a href="/workflow-review-requests/review-1">Open review</a>',
+					message: '<a href="/reviews/review-1">Open review</a>',
 					onClick: expect.any(Function),
 				});
 			});

@@ -4,13 +4,13 @@ import type {
 	RichCardComponentType,
 } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type AgentIntegrationRemovalContext,
 	type BridgeExecutionContext,
@@ -21,6 +21,7 @@ import {
 	type UnauthenticatedWebhookResponse,
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
+import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadSlackAdapter } from '../../esm-loader';
 import { connectionUnavailable } from '../../integration-helpers';
 import {
@@ -68,10 +69,11 @@ export class SlackIntegration extends AgentChatIntegration {
 			'The agent should be chatted with from Slack, invoked with @mentions, or keep conversing in Slack threads.',
 			'The agent needs Slack message context, user/channel lookup, DMs, channel messages, emoji reactions, or rich UI in Slack.',
 			'The agent should communicate as the connected Slack bot rather than merely call Slack as a backend API.',
+			'A scheduled Agent task should proactively send a DM or channel message through the connected Slack bot.',
 		],
 		useNodeToolWhen: [
 			'Slack is only a backend API step in a broader task and the agent does not need Slack conversation context.',
-			'The user asks for a one-off Slack operation from another trigger and does not need the agent connected as a Slack chat surface.',
+			'The Slack operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
 		],
 	};
 
@@ -104,16 +106,12 @@ export class SlackIntegration extends AgentChatIntegration {
 		'do_not_respond',
 	]);
 
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(`Slack credential is already connected to agent "${others[0].name}"`);
-		}
+		await this.assertStartupPreconditions(ctx);
 	}
 
 	async onRemove(
@@ -130,6 +128,28 @@ export class SlackIntegration extends AgentChatIntegration {
 			return;
 		}
 		await subscribeSlackThread(thread);
+	}
+
+	messageThreadId(
+		message: { id: string; threadId: string; raw?: unknown },
+		context?: { inbound?: boolean },
+	): string | undefined {
+		// 1:1 DMs and group DMs (MPIMs) are conversation-scoped. Re-anchoring
+		// each inbound top-level message at its own ts would split that into a
+		// new session per message. Private-channel G ids still re-anchor below.
+		// Outbound still re-anchors so threaded replies bind at the sent
+		// message ts. Threaded inbound already has thread_ts and is not
+		// rewritten below.
+		if (context?.inbound && this.isConversationScopedInbound(message)) return undefined;
+		// Only Slack thread ids are `slack:{channel}:{threadTs}`. A top-level
+		// post or DM arrives on the channel-level pseudo-thread (empty threadTs);
+		// anchor it at the message's own id so replies correlate. Already-threaded
+		// messages keep their id.
+		const match = /^slack:([CDG][^:]*):(.*)$/.exec(message.threadId);
+		if (!match) return undefined;
+		const [, channel, threadTs] = match;
+		if (threadTs) return undefined;
+		return `slack:${channel}:${message.id}`;
 	}
 
 	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
@@ -243,5 +263,16 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	private isConversationScopedDm(threadId: string): boolean {
 		return /^slack:D[^:]+:$/.test(threadId);
+	}
+
+	private isConversationScopedInbound(message: { threadId: string; raw?: unknown }): boolean {
+		if (this.isConversationScopedDm(message.threadId)) return true;
+		// G is shared by MPIMs and legacy private channels; only MPIMs are
+		// one conversation. Missing channel_type is treated as a channel.
+		return (
+			/^slack:G[^:]+:$/.test(message.threadId) &&
+			isRecord(message.raw) &&
+			message.raw.channel_type === 'mpim'
+		);
 	}
 }
