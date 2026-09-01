@@ -272,6 +272,23 @@ describe('DurableScheduler', () => {
 		});
 	});
 
+	describe('isActive', () => {
+		it('is true on a main when the scheduler is enabled', () => {
+			const { scheduler } = makeScheduler({ enabled: true, instanceType: 'main' });
+
+			expect(scheduler.isActive()).toBe(true);
+		});
+
+		it.each([
+			{ case: 'the scheduler is disabled', enabled: false, instanceType: 'main' },
+			{ case: 'the instance is not a main', enabled: true, instanceType: 'webhook' },
+		])('is false when $case', ({ enabled, instanceType }) => {
+			const { scheduler } = makeScheduler({ enabled, instanceType });
+
+			expect(scheduler.isActive()).toBe(false);
+		});
+	});
+
 	describe('registerTaskHandler', () => {
 		it('delegates to the inner scheduler when active', () => {
 			const { scheduler, inner } = makeScheduler();
