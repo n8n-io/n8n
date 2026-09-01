@@ -1133,7 +1133,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask-user answers (2–200 chars). Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask-user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 20) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1144,7 +1144,7 @@ tool's relevance self-evident.
 without an anchor is a schema-level rejection.
 
 **`search`** → `{ hits: [{ threadId, title, updatedAt, matchedIn, firstMessageExcerpt?, excerpts: [{ messageId, text, createdAt }], totalMatches }], totalThreadsMatched, error? }`,
-recency-ordered. `matchedIn` is `'title' | 'messages' | 'user-answers'`. Without a
+recency-ordered. `matchedIn` is an array containing zero or more of `'title' | 'messages' | 'user-answers'`. Without a
 `query` the same shape carries a recency listing: empty `matchedIn`/`excerpts`
 and a zero `totalMatches` — pair it with a `get-messages` tail read to continue
 recent work.
@@ -1153,9 +1153,9 @@ recent work.
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
 user experienced it: their messages, ask-user Q&A, and each turn's final
-text-only reply. Mid-turn assistant rows — the agent loop only continues on
-tool calls, so a row carrying them is working narration, not the reply that
-ended the turn — never appear and do not consume window slots: visibility is
+text-only reply. Mid-turn assistant rows without ask-user Q&A — the agent loop only continues on
+tool calls, so these rows are working narration rather than reply that
+ended the turn — are omitted and do not consume window slots: ask-user Q&A rows remain visible: visibility is
 filtered in SQL via structural markers (unescaped `"type":"tool-call"` can
 only be block structure — quotes inside text are escaped), so `before`/`after`
 count visible messages.
