@@ -63,20 +63,28 @@ describe('fetchFollowingRedirects', () => {
 		});
 	});
 
-	it('reports crossedOrigin to onBeforeHop once the chain leaves its origin, permanently', async () => {
+	it('treats crossedOrigin as permanent, even when the chain returns to the original origin', async () => {
 		const fetcher = mockFetcher()
 			.mockResolvedValueOnce(makeRedirect(307, 'https://other.example.com/away'))
 			.mockResolvedValueOnce(makeRedirect(307, 'https://example.com/back'))
 			.mockResolvedValueOnce(makeResponse(200));
 		const onBeforeHop = vi.fn();
 
-		await fetchFollowingRedirects(fetcher, 'https://example.com', undefined, { onBeforeHop });
+		await fetchFollowingRedirects(
+			fetcher,
+			'https://example.com',
+			{ headers: { authorization: 'Bearer secret' } },
+			{ onBeforeHop },
+		);
 
 		expect(onBeforeHop.mock.calls.map((call) => call[1])).toEqual([
 			{ crossedOrigin: false },
 			{ crossedOrigin: true },
 			{ crossedOrigin: true },
 		]);
+		// Credential headers stripped on the cross-origin hop are not restored either
+		const hop3Headers = new Headers((fetcher.mock.calls[2][1] as RequestInit).headers);
+		expect(hop3Headers.get('authorization')).toBeNull();
 	});
 
 	it('aborts the chain when onBeforeHop throws', async () => {
@@ -196,20 +204,6 @@ describe('fetchFollowingRedirects', () => {
 
 		const hop2Headers = new Headers((fetcher.mock.calls[1][1] as RequestInit).headers);
 		expect(hop2Headers.get('authorization')).toBe('Bearer secret');
-	});
-
-	it('does not restore credential headers after a cross-origin hop returns to the original origin', async () => {
-		const fetcher = mockFetcher()
-			.mockResolvedValueOnce(makeRedirect(307, 'https://other.example.com/away'))
-			.mockResolvedValueOnce(makeRedirect(307, 'https://example.com/back'))
-			.mockResolvedValueOnce(makeResponse(200));
-
-		await fetchFollowingRedirects(fetcher, 'https://example.com', {
-			headers: { authorization: 'Bearer secret' },
-		});
-
-		const hop3Headers = new Headers((fetcher.mock.calls[2][1] as RequestInit).headers);
-		expect(hop3Headers.get('authorization')).toBeNull();
 	});
 
 	it('preserves a URL input object on the first hop', async () => {

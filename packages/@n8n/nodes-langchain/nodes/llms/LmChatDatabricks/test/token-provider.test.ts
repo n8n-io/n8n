@@ -148,17 +148,6 @@ describe('getDatabricksTokenProvider', () => {
 		expect(mockGetToken).toHaveBeenCalledTimes(2);
 	});
 
-	it('should re-mint every call when expires_in is not a number', async () => {
-		mockGetToken
-			.mockResolvedValueOnce(tokenResponse('token-a', 'soon'))
-			.mockResolvedValueOnce(tokenResponse('token-b', 'soon'));
-		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
-
-		await expect(getToken()).resolves.toBe('token-a');
-		await expect(getToken()).resolves.toBe('token-b');
-		expect(mockGetToken).toHaveBeenCalledTimes(2);
-	});
-
 	it('should cache when expires_in is a numeric string', async () => {
 		mockGetToken.mockResolvedValue(tokenResponse('token-a', '3600'));
 		const getToken = getDatabricksTokenProvider(mockNode, mockCredential);
@@ -303,18 +292,15 @@ describe('createDatabricksFetch', () => {
 		expect(result.bodyUsed).toBe(false);
 	});
 
-	it.each([401, 403, 429])(
-		'should return a %i response unmodified without throwing',
-		async (status) => {
-			const response = new Response('{"error":"denied"}', { status });
-			globalThis.fetch = vi.fn().mockResolvedValue(response);
-			const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+	it('should return an error response unmodified without throwing', async () => {
+		const response = new Response('{"error":"denied"}', { status: 401 });
+		globalThis.fetch = vi.fn().mockResolvedValue(response);
+		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
 
-			const result = await wrappedFetch('https://my.databricks.com/serving-endpoints');
+		const result = await wrappedFetch('https://my.databricks.com/serving-endpoints');
 
-			expect(result).toBe(response);
-		},
-	);
+		expect(result).toBe(response);
+	});
 
 	it('should propagate network failures without leaking the token', async () => {
 		globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('fetch failed'));

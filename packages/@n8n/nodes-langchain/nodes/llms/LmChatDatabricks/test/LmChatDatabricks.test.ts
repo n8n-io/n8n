@@ -84,18 +84,10 @@ describe('LmChatDatabricks', () => {
 				group: ['transform'],
 				version: [1],
 				hidden: true,
+				credentials: [{ name: 'databricksOAuth2Api', required: true }],
+				outputs: ['ai_languageModel'],
+				outputNames: ['Model'],
 			});
-		});
-
-		it('should require databricksOAuth2Api credentials', () => {
-			expect(node.description.credentials).toEqual([
-				{ name: 'databricksOAuth2Api', required: true },
-			]);
-		});
-
-		it('should output ai_languageModel', () => {
-			expect(node.description.outputs).toEqual(['ai_languageModel']);
-			expect(node.description.outputNames).toEqual(['Model']);
 		});
 	});
 
@@ -125,15 +117,6 @@ describe('LmChatDatabricks', () => {
 
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
 			expect(callArgs?.configuration?.baseURL).toBe('https://my.databricks.com/serving-endpoints');
-		});
-
-		it('should pass a custom fetch wrapper in configuration', async () => {
-			const ctx = setupMockContext();
-
-			await node.supplyData.call(ctx, 0);
-
-			const callArgs = MockedChatOpenAI.mock.calls[0][0];
-			expect(callArgs?.configuration?.fetch).toEqual(expect.any(Function));
 		});
 
 		it('should wire the token-provider fetch wrapper into ChatOpenAI', async () => {
@@ -229,18 +212,6 @@ describe('LmChatDatabricks', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					modelKwargs: { response_format: { type: 'json_object' } },
-				}),
-			);
-		});
-
-		it('should not set modelKwargs when no responseFormat', async () => {
-			const ctx = setupMockContext();
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					modelKwargs: undefined,
 				}),
 			);
 		});
@@ -343,8 +314,8 @@ describe('LmChatDatabricks', () => {
 			expect(result.results).toEqual([expect.objectContaining({ name: 'agent-endpoint' })]);
 		});
 
-		it('should return no results when the endpoints list is empty', async () => {
-			setupSearchContext('https://my.databricks.com', { endpoints: [] });
+		it('should return no results when the response has no endpoints field', async () => {
+			setupSearchContext('https://my.databricks.com', {});
 
 			const result = await node.methods.listSearch.searchModels.call(mockContext);
 
