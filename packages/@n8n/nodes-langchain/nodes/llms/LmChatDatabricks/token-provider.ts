@@ -80,7 +80,8 @@ export function getDatabricksTokenProvider(
  * Wraps fetch to inject a fresh bearer token per request. Never reads or
  * clones the body, so streaming responses pass through untouched. Redirects
  * are followed manually so every hop is validated against the egress filter
- * before the token is sent to it, matching the MCP client's fetch wrapper.
+ * before the token is sent to it, matching the MCP client's fetch wrapper;
+ * the redirect helper also drops the bearer on cross-origin hops.
  */
 export function createDatabricksFetch(
 	getToken: () => Promise<string>,
@@ -93,11 +94,22 @@ export function createDatabricksFetch(
 			init?.headers ?? (input instanceof Request ? input.headers : undefined),
 		);
 		headers.set('authorization', `Bearer ${await getToken()}`);
+		// The redirect loop takes a URL, so unwrap a Request input and carry its
+		// method/body/signal over (init still wins, per fetch spec). The body is
+		// buffered, which also lets 307/308 hops replay it.
+		const requestInit: RequestInit = { ...init };
+		if (input instanceof Request) {
+			requestInit.method ??= input.method;
+			requestInit.signal ??= input.signal;
+			if (requestInit.body === undefined && input.body) {
+				requestInit.body = await input.arrayBuffer();
+			}
+		}
 		const startUrl = input instanceof Request ? input.url : input;
 		return await fetchFollowingRedirects(
 			fetch,
 			startUrl,
-			{ ...init, headers },
+			{ ...requestInit, headers },
 			{
 				onBeforeHop: async (hopUrl) => {
 					if (egressFilter) {

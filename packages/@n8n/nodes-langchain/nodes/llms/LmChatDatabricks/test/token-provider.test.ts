@@ -276,6 +276,22 @@ describe('createDatabricksFetch', () => {
 		expect(sentHeaders.get('authorization')).toBe('Bearer fresh-token');
 	});
 
+	it('should preserve the method and body of a Request input passed without init', async () => {
+		const mockFetch = vi.fn().mockResolvedValue(new Response('ok'));
+		globalThis.fetch = mockFetch;
+		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token');
+
+		const request = new Request('https://my.databricks.com/serving-endpoints/chat/completions', {
+			method: 'POST',
+			body: JSON.stringify({ messages: [] }),
+		});
+		await wrappedFetch(request);
+
+		const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+		expect(init.method).toBe('POST');
+		expect(Buffer.from(init.body as ArrayBuffer).toString()).toBe('{"messages":[]}');
+	});
+
 	it('should return the exact Response instance with an unread body', async () => {
 		const response = new Response('data: chunk\n\n');
 		globalThis.fetch = vi.fn().mockResolvedValue(response);
@@ -361,6 +377,27 @@ describe('createDatabricksFetch', () => {
 
 		expect(result).toBe(finalResponse);
 		expect(mockFetch.mock.calls[1][0]).toEqual(new URL('https://my.databricks.com/moved'));
+	});
+
+	it('should not send the bearer token to a cross-origin redirect target', async () => {
+		const mockFetch = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(null, {
+					status: 307,
+					headers: { location: 'https://other-allowed.example.com/endpoint' },
+				}),
+			)
+			.mockResolvedValueOnce(new Response('ok'));
+		globalThis.fetch = mockFetch;
+		const wrappedFetch = createDatabricksFetch(async () => 'fresh-token', {
+			validateUrl: vi.fn().mockResolvedValue({ ok: true }),
+		} as unknown as NodeEgressFilter);
+
+		await wrappedFetch('https://my.databricks.com/serving-endpoints');
+
+		const hop2Headers = new Headers((mockFetch.mock.calls[1][1] as RequestInit).headers);
+		expect(hop2Headers.get('authorization')).toBeNull();
 	});
 
 	it('should send a rotated token after the previous one expires mid-execution', async () => {

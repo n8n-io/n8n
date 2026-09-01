@@ -144,6 +144,54 @@ describe('fetchFollowingRedirects', () => {
 		);
 	});
 
+	it('strips credential headers when a redirect crosses origins', async () => {
+		const fetcher = mockFetcher()
+			.mockResolvedValueOnce(makeRedirect(307, 'https://other.example.com/target'))
+			.mockResolvedValueOnce(makeResponse(200));
+
+		await fetchFollowingRedirects(fetcher, 'https://example.com', {
+			headers: {
+				authorization: 'Bearer secret',
+				cookie: 'session=abc',
+				'proxy-authorization': 'Basic xyz',
+				'content-type': 'application/json',
+			},
+		});
+
+		const hop2Headers = new Headers((fetcher.mock.calls[1][1] as RequestInit).headers);
+		expect(hop2Headers.get('authorization')).toBeNull();
+		expect(hop2Headers.get('cookie')).toBeNull();
+		expect(hop2Headers.get('proxy-authorization')).toBeNull();
+		expect(hop2Headers.get('content-type')).toBe('application/json');
+	});
+
+	it('keeps credential headers on a same-origin redirect', async () => {
+		const fetcher = mockFetcher()
+			.mockResolvedValueOnce(makeRedirect(307, '/moved'))
+			.mockResolvedValueOnce(makeResponse(200));
+
+		await fetchFollowingRedirects(fetcher, 'https://example.com/start', {
+			headers: { authorization: 'Bearer secret' },
+		});
+
+		const hop2Headers = new Headers((fetcher.mock.calls[1][1] as RequestInit).headers);
+		expect(hop2Headers.get('authorization')).toBe('Bearer secret');
+	});
+
+	it('does not restore credential headers after a cross-origin hop returns to the original origin', async () => {
+		const fetcher = mockFetcher()
+			.mockResolvedValueOnce(makeRedirect(307, 'https://other.example.com/away'))
+			.mockResolvedValueOnce(makeRedirect(307, 'https://example.com/back'))
+			.mockResolvedValueOnce(makeResponse(200));
+
+		await fetchFollowingRedirects(fetcher, 'https://example.com', {
+			headers: { authorization: 'Bearer secret' },
+		});
+
+		const hop3Headers = new Headers((fetcher.mock.calls[2][1] as RequestInit).headers);
+		expect(hop3Headers.get('authorization')).toBeNull();
+	});
+
 	it('preserves a URL input object on the first hop', async () => {
 		const fetcher = mockFetcher().mockResolvedValue(makeResponse(200));
 		const url = new URL('https://example.com');

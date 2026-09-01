@@ -8,9 +8,12 @@ export interface FollowRedirectsOptions {
 	maxRedirects?: number;
 }
 
+const CREDENTIAL_HEADERS = ['authorization', 'cookie', 'proxy-authorization'];
+
 /**
  * Manual redirect handling so each hop can be validated before the request is
- * sent. 301/302/303 demote unsafe methods to GET per fetch spec.
+ * sent. Per fetch spec, 301/302/303 demote unsafe methods to GET, and
+ * credential headers are stripped when a redirect crosses origins.
  */
 export async function fetchFollowingRedirects(
 	fetcher: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
@@ -51,6 +54,12 @@ export async function fetchFollowingRedirects(
 		await response.body?.cancel().catch(() => {});
 
 		currentInput = new URL(location, currentUrlString);
+
+		if (currentInput.origin !== new URL(currentUrlString).origin) {
+			const headers = new Headers(currentInit.headers);
+			for (const header of CREDENTIAL_HEADERS) headers.delete(header);
+			currentInit = { ...currentInit, headers };
+		}
 
 		const method = (currentInit.method ?? 'GET').toUpperCase();
 		const isUnsafe = method !== 'GET' && method !== 'HEAD';
