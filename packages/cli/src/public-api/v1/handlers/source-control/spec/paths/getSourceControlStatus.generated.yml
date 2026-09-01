@@ -80,6 +80,10 @@ responses:
                     type: array
                     items:
                       type: string
+                  remoteFolderPath:
+                    type: array
+                    items:
+                      type: string
                   owner:
                     type: object
                     properties:
@@ -113,6 +117,47 @@ responses:
                       - reason
                       - workflowReviewRequestId
                     additionalProperties: false
+                  contentImportPolicy:
+                    type: object
+                    properties:
+                      violations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            kind:
+                              type: string
+                            checkId:
+                              type: string
+                            message:
+                              type: string
+                            subject:
+                              type: string
+                            subjectType:
+                              type: string
+                            scope:
+                              type: string
+                            matchedRuleId:
+                              type: string
+                          required:
+                            - kind
+                            - checkId
+                            - message
+                      checkErrors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            checkId:
+                              type: string
+                            correlationId:
+                              type: string
+                          required:
+                            - checkId
+                            - correlationId
+                    required:
+                      - violations
+                      - checkErrors
                 required:
                   - file
                   - id
