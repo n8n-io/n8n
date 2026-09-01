@@ -198,6 +198,15 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
+	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
+	 * the chat input replaces the suspending setup wizard. Env-settable so eval
+	 * lanes can exercise both paths; a managed rollout flag may layer on top
+	 * later behind the same accessors.
+	 */
+	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
+	instanceAiSetupPanelEnabled: boolean = false;
+
+	/**
 	 * Activation-capped trial variant for n8n cloud experiment.
 	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
 	 */

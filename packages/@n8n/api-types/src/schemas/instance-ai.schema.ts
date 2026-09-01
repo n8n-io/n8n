@@ -177,6 +177,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-interrupted',
 	'confirmation-request',
 	'tasks-update',
+	'setup-items',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -944,6 +945,50 @@ export const tasksUpdatePayloadSchema = z.object({
 	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
+/**
+ * One entry of the setup panel checklist. Service-keyed (one row per
+ * credential type, fanned out to all nodes that use it via `nodeBindings`),
+ * not per-node like the wizard's `workflowSetupNodeSchema`. Carries identity
+ * and requirements only — done-ness is always derived client-side (usable
+ * credential exists / slot bound / parameter filled), never stored, so
+ * replay, refresh, and out-of-band completion stay consistent.
+ */
+const setupItemBase = {
+	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
+	 *  for credential items, nodeName for parameter items. */
+	id: z.string(),
+};
+
+/** No 'question' kind in v1 (agent questions stay in chat); arms are additive. */
+export const setupItemSchema = z.discriminatedUnion('kind', [
+	z.object({
+		...setupItemBase,
+		kind: z.literal('credential'),
+		credentialType: z.string(),
+		appDisplayName: z.string().optional(),
+		nodeBindings: z.array(z.object({ nodeName: z.string() })).optional(),
+		setupHint: credentialSetupHintSchema.optional(),
+		/** Why the app is needed, e.g. "for the docs search". */
+		reason: z.string().optional(),
+	}),
+	// Parameter names only — values always derive from the workflow.
+	z.object({
+		...setupItemBase,
+		kind: z.literal('parameters'),
+		nodeName: z.string(),
+		parameterNames: z.array(z.string()),
+	}),
+]);
+export type InstanceAiSetupItem = z.infer<typeof setupItemSchema>;
+
+export const setupItemsPayloadSchema = z.object({
+	workflowId: z.string().min(1).max(64),
+	/** FULL current list for this workflow. Each event replaces the previous
+	 *  snapshot — removal is implicit (an item absent from the next snapshot is
+	 *  gone). No delta/retraction protocol. */
+	items: z.array(setupItemSchema),
+});
+
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
@@ -1010,6 +1055,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		payload: confirmationRequestPayloadSchema,
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
+	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -1046,6 +1092,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	{ type: 'confirmation-request' }
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
+export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -1472,6 +1519,13 @@ export interface InstanceAiAgentNode {
 	tasks?: TaskList;
 	/** Full planned task details — updated by create-tasks via tasks-update. */
 	planItems?: PlannedTaskArg[];
+	/**
+	 * Latest setup-panel snapshot per workflow — updated by setup-items events
+	 * (last event wins per workflowId). Thread-level state: always folded onto
+	 * the ROOT node so history restore, which reads the tree root, sees it
+	 * regardless of which agent emitted.
+	 */
+	setupItemsByWorkflowId?: Record<string, InstanceAiSetupItem[]>;
 	result?: string;
 	error?: string;
 	errorDetails?: {
