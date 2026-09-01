@@ -156,6 +156,16 @@ jobs:
               .tbls.sqlite.yml
               .tbls.postgres.yml
 
+      # New migrations must sort after every migration already on the base
+      # branch, so fresh installs and upgraded installs apply them in the
+      # same order. Runs on merge_group too: the older-timestamp file can
+      # appear only when another migration merges first.
+      - name: Check migration timestamps
+        if: fromJSON(steps.ci-filter.outputs.results).db
+        env:
+          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
+        run: node .github/scripts/check-migration-timestamps.mjs
+
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
         uses: ./.github/actions/setup-nodejs
