@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from '@n8n/expression-runtime';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
@@ -11,6 +10,7 @@ import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED }
 import { UnexpectedError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { isExpression } from './expressions/expression-helpers';
+import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './expressions/removed-globals';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {
