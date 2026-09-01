@@ -49,11 +49,11 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock(),
 				mock<EventService>(),
 			);
-			const startCompacting = vi.spyOn(compactingService, 'startCompacting');
+			const runStartupCompaction = vi.spyOn(compactingService, 'runStartupCompaction');
 
 			compactingService.init();
 
-			expect(startCompacting).toHaveBeenCalled();
+			expect(runStartupCompaction).toHaveBeenCalled();
 		});
 
 		it('should not start pruning on main instance that is a follower', () => {
@@ -66,40 +66,11 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock(),
 				mock<EventService>(),
 			);
-			const startCompacting = vi.spyOn(compactingService, 'startCompacting');
+			const runStartupCompaction = vi.spyOn(compactingService, 'runStartupCompaction');
 
 			compactingService.init();
 
-			expect(startCompacting).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('startCompacting', () => {
-		it('should start compacting if service is enabled and DB is migrated', () => {
-			const compactingService = new WorkflowHistoryCompactionService(
-				config,
-				globalConfig,
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock<EventService>(),
-			);
-
-			const scheduleOptimizationSpy = vi
-				// @ts-expect-error Private method
-				.spyOn(compactingService, 'scheduleOptimization')
-				.mockImplementation((() => {}) as never);
-
-			const scheduleTrimmingSpy = vi
-				// @ts-expect-error Private method
-				.spyOn(compactingService, 'scheduleTrimming')
-				.mockImplementation((() => {}) as never);
-
-			compactingService.startCompacting();
-
-			expect(scheduleOptimizationSpy).toHaveBeenCalled();
-			expect(scheduleTrimmingSpy).toHaveBeenCalled();
+			expect(runStartupCompaction).not.toHaveBeenCalled();
 		});
 	});
 
@@ -119,13 +90,11 @@ describe('WorkflowHistoryCompactionService', () => {
 			.spyOn(compactingService, 'compactHistories')
 			.mockImplementation((() => {}) as never);
 
-		const trimLongRunningHistoriesSpy = vi
-			// @ts-expect-error Private method
-			.spyOn(compactingService, 'trimLongRunningHistories');
+		const trimLongRunningHistoriesSpy = vi.spyOn(compactingService, 'trimLongRunningHistories');
 
-		compactingService.startCompacting();
+		compactingService.runStartupCompaction();
 
-		expect(compactingService['trimmingInterval']).toBe(undefined);
+		expect(compactingService.isTrimmingEnabled).toBe(false);
 		expect(trimLongRunningHistoriesSpy).not.toBeCalled();
 	});
 	it('should not skip trimming if pruneTime > trimAge', () => {
@@ -139,16 +108,12 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		vi
-			// @ts-expect-error Private method
-			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation((() => {}) as never);
+		vi.spyOn(compactingService, 'optimizeHistories').mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation((() => {}) as never);
 
-		compactingService.startCompacting();
+		compactingService.runStartupCompaction();
 
 		expect(trimLongRunningHistoriesSpy).toBeCalled();
 	});
@@ -165,15 +130,13 @@ describe('WorkflowHistoryCompactionService', () => {
 		);
 
 		const optimizeHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
 			.mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation((() => {}) as never);
 
-		compactingService.startCompacting();
+		compactingService.runStartupCompaction();
 
 		expect(optimizeHistoriesSpy).toHaveBeenCalled();
 		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
@@ -191,21 +154,16 @@ describe('WorkflowHistoryCompactionService', () => {
 		);
 
 		const optimizeHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
 			.mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation((() => {}) as never);
 
-		compactingService.startCompacting();
+		compactingService.runStartupCompaction();
 
 		expect(optimizeHistoriesSpy).not.toHaveBeenCalled();
 		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
-		// intervals still scheduled
-		expect(compactingService['optimizingInterval']).toBeDefined();
-		expect(compactingService['trimmingInterval']).toBeDefined();
 	});
 
 	it('should trim on start up if flag is provided', () => {
@@ -220,15 +178,13 @@ describe('WorkflowHistoryCompactionService', () => {
 		);
 
 		const optimizeHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
 			.mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation((() => {}) as never);
 
-		compactingService.startCompacting();
+		compactingService.runStartupCompaction();
 
 		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
 		// should still call recent history compaction
@@ -249,16 +205,12 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		vi
-			// @ts-expect-error Private method
-			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation((() => {}) as never);
+		vi.spyOn(compactingService, 'optimizeHistories').mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation((() => {}) as never);
 
-		compactingService.startCompacting();
+		compactingService.runStartupCompaction();
 
 		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
 
@@ -324,16 +276,12 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		vi
-			// @ts-expect-error Private method
-			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation((() => {}) as never);
+		vi.spyOn(compactingService, 'optimizeHistories').mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
-			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation((() => {}) as never);
 
-		compactingService.startCompacting();
+		compactingService.runStartupCompaction();
 
 		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
 

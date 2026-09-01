@@ -7,6 +7,16 @@ export async function mainSystemTasks(): Promise<SystemTaskClass[]> {
 	const { ExecutionPruningSoftDeleteTask } = await import(
 		'@/services/pruning/execution-pruning-soft-delete.task.js'
 	);
+	const { WorkflowHistoryCompactionOptimizeTask } = await import(
+		'@/services/pruning/workflow-history-compaction-optimize.task.js'
+	);
+	const { WorkflowHistoryCompactionTrimTask } = await import(
+		'@/services/pruning/workflow-history-compaction-trim.task.js'
+	);
 
-	return [ExecutionPruningSoftDeleteTask];
+	return [
+		ExecutionPruningSoftDeleteTask,
+		WorkflowHistoryCompactionOptimizeTask,
+		WorkflowHistoryCompactionTrimTask,
+	];
 }

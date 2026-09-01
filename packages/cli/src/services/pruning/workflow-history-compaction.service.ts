@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -15,8 +15,10 @@ import { RelayEventMap } from '@/events/maps/relay.event-map';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
+ * The periodic cadence lives on the `workflow-history-compaction-optimize` and
+ * `workflow-history-compaction-trim` system tasks.
  *
- * Every hour (`optimizingTimeWindowHours` / 2):
+ * Every `optimizingTimeWindowHours` / 2 hours:
  *
  * 1. Find workflows with new versions in the time window determined
  *    by `optimizingMinimumAgeHours` and `optimizingTimeWindowHours`
@@ -43,11 +45,6 @@ import { RelayEventMap } from '@/events/maps/relay.event-map';
  */
 @Service()
 export class WorkflowHistoryCompactionService {
-	private optimizingInterval: NodeJS.Timeout | undefined;
-	private trimmingInterval: NodeJS.Timeout | undefined;
-
-	private isShuttingDown = false;
-
 	private isOptimizingHistories = false;
 	private isTrimmingHistories = false;
 
@@ -66,88 +63,40 @@ export class WorkflowHistoryCompactionService {
 	init() {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
-		if (this.instanceSettings.isLeader) this.startCompacting();
+		if (this.instanceSettings.isLeader) this.runStartupCompaction();
 	}
 
 	get isEnabled() {
 		return this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader;
 	}
 
-	@OnLeaderTakeover()
-	startCompacting() {
-		const { connectionState } = this.dbConnection;
-		if (!this.isEnabled || !connectionState.migrated || this.isShuttingDown) return;
-
-		this.logger.debug('Started workflow histories optimization and trimming', { ...this.config });
-
-		this.scheduleOptimization();
-		this.scheduleTrimming();
-	}
-
-	@OnLeaderStepdown()
-	stopCompacting() {
-		if (!this.optimizingInterval && !this.trimmingInterval) return;
-
-		clearInterval(this.optimizingInterval);
-		clearInterval(this.trimmingInterval);
-
-		this.logger.debug('Stopped workflow histories compaction and trimming');
-	}
-
-	private scheduleTrimming() {
-		if (
-			this.globalConfig.workflowHistory.pruneTime !== -1 &&
-			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds <
+	/** Whether trimming may run at all: a prune horizon shorter than the trim window makes trimming pointless. */
+	get isTrimmingEnabled() {
+		return (
+			this.globalConfig.workflowHistory.pruneTime === -1 ||
+			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds >=
 				this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds
-		) {
-			this.logger.debug('Skipping workflow history trimming as pruneAge < trimmingMinimumAge');
-			return;
-		}
-
-		// This is written this way as it needs to account for leader changes and in particular
-		// the same instance being re-elected leader, so just starting a 1 day interval is unlikely
-		// to ever trigger in queue mode/multi-main
-		const trimOnceADay = async () => {
-			if (new Date().getHours() === 3) {
-				await this.trimLongRunningHistories();
-			}
-		};
-
-		this.trimmingInterval = setInterval(trimOnceADay, 1 * Time.hours.toMilliseconds);
-
-		if (!this.config.skipOnStartUp) {
-			if (this.config.trimOnStartUp) {
-				void this.trimLongRunningHistories();
-			} else {
-				void trimOnceADay();
-			}
-		}
-
-		this.logger.debug('Trimming histories once a day at 3am server time');
-	}
-
-	private scheduleOptimization() {
-		// We run optimization twice as often as the window for which we optimize workflows
-		// This allows redundancy for covering first and last versions in the window, accounts
-		// for restarts and other small gaps, e.g. caused by the next internal needing to wait
-		// for computing resources if the instance is busy
-		const rateMs = (this.config.optimizingTimeWindowHours / 2) * Time.hours.toMilliseconds;
-		this.optimizingInterval = setInterval(async () => await this.optimizeHistories(), rateMs);
-
-		this.logger.debug(
-			`Optimizing histories every ${this.config.optimizingTimeWindowHours / 2.0} hour(s)`,
 		);
-
-		if (!this.config.skipOnStartUp) void this.optimizeHistories();
 	}
 
-	@OnShutdown()
-	shutdown(): void {
-		this.isShuttingDown = true;
-		this.stopCompacting();
+	// One-shot catch-up pass on startup and on leader change, so a gap between
+	// leaders is compacted without waiting a full task interval.
+	@OnLeaderTakeover()
+	runStartupCompaction() {
+		const { connectionState } = this.dbConnection;
+		if (!this.isEnabled || !connectionState.migrated) return;
+		if (this.config.skipOnStartUp) return;
+
+		void this.optimizeHistories();
+
+		if (!this.isTrimmingEnabled) return;
+		if (this.config.trimOnStartUp || new Date().getHours() === 3) {
+			void this.trimLongRunningHistories();
+		}
 	}
 
-	private async trimLongRunningHistories(): Promise<void> {
+	/** One trimming pass over long-running histories. A pass overlapping a running one is skipped. */
+	async trimLongRunningHistories(): Promise<void> {
 		if (this.isTrimmingHistories) {
 			this.logger.debug('Skipping trimming as there is already a running iteration');
 			return;
@@ -182,7 +131,8 @@ export class WorkflowHistoryCompactionService {
 		}
 	}
 
-	private async optimizeHistories(): Promise<void> {
+	/** One optimization pass over recent histories. A pass overlapping a running one is skipped. */
+	async optimizeHistories(): Promise<void> {
 		if (this.isOptimizingHistories) {
 			this.logger.debug('Skipping recent optimization as there is already a running iteration');
 			return;
