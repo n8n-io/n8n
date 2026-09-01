@@ -2,17 +2,18 @@ import z from 'zod';
 
 import { Config, Env } from '../decorators';
 
-const expressionEngineSchema = z.enum(['legacy', 'vm']);
+const expressionEngineSchema = z.enum(['legacy', 'vm', 'quickjs']);
 
 @Config
 export class ExpressionEngineConfig {
 	/**
 	 * Which expression engine to use.
-	 * - `vm` (default) runs expressions in a V8 isolate.
+	 * - `vm` (default) runs expressions in a V8 isolate (isolated-vm).
 	 * - `legacy` runs expressions without isolation. Less secure and soon to be deprecated.
+	 * - `quickjs` runs expressions in a QuickJS WASM sandbox. Experimental.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE', expressionEngineSchema)
-	engine: 'legacy' | 'vm' = 'vm';
+	engine: 'legacy' | 'vm' | 'quickjs' = 'vm';
 
 	/** Number of V8 isolates ready in the pool. */
 	@Env('N8N_EXPRESSION_ENGINE_POOL_SIZE')
@@ -41,8 +42,8 @@ export class ExpressionEngineConfig {
 
 	/**
 	 * Whether to emit observability signals (metrics, traces, logs) for the VM evaluator.
-	 * Only takes effect when `engine === 'vm'`; legacy mode never emits expression metrics
-	 * regardless of this setting.
+	 * Only takes effect when `engine === 'vm'` or `engine === 'quickjs'`; legacy mode never
+	 * emits expression metrics regardless of this setting.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_OBSERVABILITY_ENABLED')
 	observabilityEnabled: boolean = true;

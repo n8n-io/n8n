@@ -12,6 +12,8 @@ import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
 } from './composables/useInstanceAiHandoff';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
 import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
@@ -43,6 +45,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					path: 'new',
 					component: InstanceAiEmptyView,
 					beforeEnter: async (to) => {
+						// Experiment cleanup: remove with openWorkflowInAssistant.
+						const workflowRedirect = await launchWorkflowThread(to.query);
+						if (workflowRedirect) return workflowRedirect;
+
 						// Numeric ids only, so a crafted URL can't inject prompt text.
 						const raw = to.query.templateId;
 						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
@@ -162,6 +168,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		updateInstanceAiCredits: async (event) => {
 			const { useInstanceAiStore } = await import('./instanceAi.store');
 			useInstanceAiStore().handleCreditsPush(event.data);
+		},
+		instanceAiMcpToolCallFailed: async (event) => {
+			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');
+			useInstanceAiMcpStore().handleToolCallFailed(event.data.connectionId);
 		},
 	},
 	settingsPages: [

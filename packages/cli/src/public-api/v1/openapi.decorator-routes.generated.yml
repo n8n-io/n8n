@@ -32,6 +32,9 @@ paths:
       $ref: ./handlers/git-connections/spec/paths/addProjectToGitConnection.generated.yml
     delete:
       $ref: ./handlers/git-connections/spec/paths/removeProjectFromGitConnection.generated.yml
+  /git-connections/{id}/pull:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
