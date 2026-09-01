@@ -13,10 +13,7 @@ import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pendi
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
+import { getErrorMessage } from './utils/get-error-message';
 
 /** A claimed pending-confirmation row, regardless of whether it can be resumed. */
 type ClaimedOrphan = InstanceAiPendingConfirmation;

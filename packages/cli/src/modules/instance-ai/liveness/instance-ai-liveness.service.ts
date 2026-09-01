@@ -8,15 +8,12 @@ import {
 } from '@n8n/instance-ai';
 
 import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
+import { getErrorMessage } from '../utils/get-error-message';
 
 export const INSTANCE_AI_RUN_TIMEOUT_REASON = 'timeout';
 
 const RUN_TIMEOUT_MESSAGE =
 	'The run stopped making progress, so I cancelled it. You can retry or adjust the request.';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 export type InstanceAiLivenessTimedOutActiveRun = {
 	runId: string;

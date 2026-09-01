@@ -14,6 +14,7 @@ import {
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import { getErrorMessage } from './utils/get-error-message';
 import {
 	parseWorkflowBuildOutcome,
 	type WorkflowVerificationObligationService,
@@ -40,10 +41,6 @@ const DETAIL = {
 
 type TaskItem = TaskList['tasks'][number];
 type TaskStatus = TaskItem['status'];
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /** Stable id for the synthetic "Verify workflow" row attached to a build task. */
 function verifyRowId(buildTaskId: string): string {

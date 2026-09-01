@@ -4,10 +4,7 @@ import { Service } from '@n8n/di';
 
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
+import { getErrorMessage } from './utils/get-error-message';
 
 /**
  * Owns the lifecycle of the throwaway workflows the AI builder creates while

@@ -26,15 +26,12 @@ import {
 } from '../run-trace-metadata';
 import type { DbSnapshotStorage } from '../storage/db-snapshot-storage';
 import { TraceReplayState } from '../trace-replay-state';
+import { getErrorMessage } from '../utils/get-error-message';
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
 // (key, responseId) pair twice produces the same feedback UUID so LangSmith
 // upserts the record (thumbs-down → later text comment = one record, not two).
 const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 export interface MessageTraceFinalization {
 	status: 'completed' | 'cancelled' | 'error' | 'suspended';

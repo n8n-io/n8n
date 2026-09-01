@@ -27,12 +27,9 @@ import type {
 	InstanceAiTracingService,
 	MessageTraceFinalization,
 } from './tracing/instance-ai-tracing.service';
+import { getErrorMessage } from './utils/get-error-message';
 
 type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 function getBackgroundOutcomeResponseId(outcome: TerminalOutcome): string {
 	return `background-outcome:${outcome.id}`;

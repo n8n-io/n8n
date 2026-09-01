@@ -16,10 +16,7 @@ import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiMessageRepository } from './repositories/instance-ai-message.repository';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
+import { getErrorMessage } from './utils/get-error-message';
 
 /**
  * Owns Instance AI credit accounting: claims decimal, token-based credits per
