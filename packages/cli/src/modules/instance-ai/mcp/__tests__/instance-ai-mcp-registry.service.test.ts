@@ -382,7 +382,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	});
 
 	describe('credential domain restrictions', () => {
-		it('returns a fetch that blocks when credential mode is "none" (block all)', async () => {
+		it('pins registry requests to the MCP hostname when credential mode is "none"', async () => {
 			const {
 				service,
 				connectionRepository,
@@ -403,11 +403,13 @@ describe('InstanceAiMcpRegistryService', () => {
 			const result = await service.getRegistryMcpServers(user);
 
 			expect(result).toHaveLength(1);
-			await expect(result[0].fetch?.('https://linear.example.com/mcp')).rejects.toThrow();
-			expect(proxyFetchMock).not.toHaveBeenCalled();
+			proxyFetchMock.mockResolvedValue(new Response('ok'));
+			await expect(result[0].fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
+			await expect(result[0].fetch?.('https://other.example.com/mcp')).rejects.toThrow();
+			expect(proxyFetchMock).toHaveBeenCalledOnce();
 		});
 
-		it('returns a fetch that blocks when endpoint URL is not in the credential allowlist', async () => {
+		it('pins registry requests independently of the credential allowlist', async () => {
 			const {
 				service,
 				connectionRepository,
@@ -429,8 +431,10 @@ describe('InstanceAiMcpRegistryService', () => {
 			const result = await service.getRegistryMcpServers(user);
 
 			expect(result).toHaveLength(1);
-			await expect(result[0].fetch?.('https://linear.example.com/mcp')).rejects.toThrow();
-			expect(proxyFetchMock).not.toHaveBeenCalled();
+			proxyFetchMock.mockResolvedValue(new Response('ok'));
+			await expect(result[0].fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
+			await expect(result[0].fetch?.('https://other.example.com/mcp')).rejects.toThrow();
+			expect(proxyFetchMock).toHaveBeenCalledOnce();
 		});
 
 		it('allows connection when endpoint URL matches the credential allowlist', async () => {
