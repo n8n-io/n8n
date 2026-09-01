@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
+import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from './constants';
 import { ToolWorkflow } from './ToolWorkflow.node';
 import type { ToolWorkflowV1 } from './v1/ToolWorkflowV1.node';
 import type { ToolWorkflowV2 } from './v2/ToolWorkflowV2.node';
@@ -274,17 +275,8 @@ describe('ToolWorkflowV1', () => {
 		const tool = supplyDataResult.response as DynamicTool;
 		const result = await tool.func('test query');
 
-		expect(result).toBe('{}');
+		expect(result).toBe(JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER));
 		expect(result).not.toContain('The workflow did not return a response');
-		expect(context.executeWorkflow).toHaveBeenCalledWith(
-			expect.objectContaining({ id: 'workflow-id' }),
-			expect.any(Array),
-			undefined,
-			expect.objectContaining({
-				parentExecution: expect.objectContaining({ shouldResume: true }),
-				returnLastRunOnly: true,
-			}),
-		);
 	});
 
 	it('should return the payload when the sub-workflow is waiting with items', async () => {

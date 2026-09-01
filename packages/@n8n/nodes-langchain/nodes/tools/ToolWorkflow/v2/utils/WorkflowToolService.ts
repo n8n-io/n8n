@@ -29,6 +29,8 @@ import {
 import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities';
 import { sleep } from '@n8n/utils/sleep';
 
+import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../../constants';
+
 function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
 	return isArray(data) && Boolean(data.length) && isObject(data[0]) && 'json' in data[0];
 }
@@ -286,7 +288,9 @@ export class WorkflowToolService {
 		if (response === undefined) {
 			if (waiting) {
 				// Parent is already waiting via BaseExecuteContext.executeWorkflow.
-				response = this.returnAllItems ? [] : {};
+				response = this.returnAllItems
+					? [{ json: SUB_WORKFLOW_WAITING_PLACEHOLDER }]
+					: SUB_WORKFLOW_WAITING_PLACEHOLDER;
 			} else {
 				throw new NodeOperationError(
 					context.getNode(),

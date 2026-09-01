@@ -9,6 +9,7 @@ import type {
 	INode,
 } from 'n8n-workflow';
 
+import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../constants';
 import { WorkflowToolService } from './utils/WorkflowToolService';
 import type { MockedFunction } from 'vitest';
 
@@ -278,7 +279,6 @@ describe('WorkflowTool::WorkflowToolService', () => {
 					parentExecution: expect.objectContaining({
 						executionId: 'exec-id',
 						workflowId: 'workflow-id',
-						shouldResume: true,
 					}),
 					returnLastRunOnly: true,
 				}),
@@ -371,7 +371,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			).rejects.toThrow('There was an error: "The workflow did not return a response"');
 		});
 
-		it('should return an empty object when the sub-workflow is waiting with no items', async () => {
+		it('should return the waiting placeholder when the sub-workflow is waiting with no items', async () => {
 			const workflowInfo = { id: 'test-workflow' };
 			const items: INodeExecutionData[] = [];
 			const workflowProxyMock = {
@@ -394,11 +394,11 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				workflowProxyMock,
 			);
 
-			expect(result.response).toEqual({});
+			expect(result.response).toEqual(SUB_WORKFLOW_WAITING_PLACEHOLDER);
 			expect(result.subExecutionId).toBe('test-execution');
 		});
 
-		it('should return an empty array when waiting with returnAllItems and no items', async () => {
+		it('should return the waiting placeholder as an item when waiting with returnAllItems and no items', async () => {
 			const serviceWithReturnAllItems = new WorkflowToolService(context, { returnAllItems: true });
 			const workflowInfo = { id: 'test-workflow' };
 			const items: INodeExecutionData[] = [];
@@ -422,7 +422,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 				workflowProxyMock,
 			);
 
-			expect(result.response).toEqual([]);
+			expect(result.response).toEqual([{ json: SUB_WORKFLOW_WAITING_PLACEHOLDER }]);
 			expect(result.subExecutionId).toBe('test-execution');
 		});
 

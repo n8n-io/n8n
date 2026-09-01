@@ -25,6 +25,7 @@ import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow
 import { versionDescription } from './versionDescription';
 import type { DynamicZodObject } from '../../../../types/zod.types';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '../../../../utils/schemaParsing';
+import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../constants';
 
 export class ToolWorkflowV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -139,7 +140,7 @@ export class ToolWorkflowV1 implements INodeType {
 			if (response === undefined) {
 				if (waiting) {
 					// Parent is already waiting via BaseExecuteContext.executeWorkflow.
-					return '{}';
+					return JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER);
 				}
 				throw new NodeOperationError(
 					this.getNode(),
