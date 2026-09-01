@@ -1,6 +1,7 @@
-import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, NODE_GROUPING_RULES } from 'n8n-workflow';
 
 import {
+	GROUPING_GUIDANCE,
 	NODE_GROUPS_REFERENCE,
 	SDK_LANGUAGE_REFERENCE,
 	buildSdkLanguageReference,
@@ -105,9 +106,10 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).toMatch(/\.group\('[^']+', \[/);
 	});
 
-	it('documents the optional description and its length limit', () => {
+	it('documents the description and its length limit without calling it optional', () => {
 		expect(NODE_GROUPS_REFERENCE).toContain('description:');
 		expect(NODE_GROUPS_REFERENCE).toContain(`${GROUP_DESCRIPTION_MAX_LENGTH} characters`);
+		expect(NODE_GROUPS_REFERENCE).not.toMatch(/`description` is optional/i);
 	});
 
 	it('tells an editing agent to keep existing descriptions', () => {
@@ -171,6 +173,105 @@ describe('NODE_GROUPS_REFERENCE', () => {
 
 		it('states the at-least-one-member rule', () => {
 			expect(NODE_GROUPS_REFERENCE).toMatch(/at least one (node|member)/i);
+		});
+	});
+});
+
+describe('GROUPING_GUIDANCE', () => {
+	it('is served under the heading both consumers key on', () => {
+		// MCP (best-practices tool) and Instance AI (node-groups KB entry) both assert
+		// on this heading to detect that grouping guidance shipped.
+		expect(GROUPING_GUIDANCE).toContain('## Grouping');
+	});
+
+	describe('when and how much to group', () => {
+		it('tells agents to leave small or linear workflows ungrouped', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/small or purely linear/i);
+			expect(GROUPING_GUIDANCE).toMatch(/no groups at all/i);
+		});
+
+		it('breaks ties toward fewer groups', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/in doubt, fewer groups/i);
+		});
+
+		it('gives a group count for a medium workflow', () => {
+			// Without a number, "larger workflows" is unfalsifiable and the model
+			// over-groups — this range is the main fix.
+			expect(GROUPING_GUIDANCE).toMatch(/3 to 5|3-5/);
+		});
+
+		it('caps what is visible at the canvas top level', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/at most 7 items/i);
+			expect(GROUPING_GUIDANCE).toMatch(/counting the trigger/i);
+		});
+
+		it('makes a group a business outcome rather than a technical category', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/business outcome/i);
+			expect(GROUPING_GUIDANCE).toMatch(/never a technical category/i);
+			expect(GROUPING_GUIDANCE).toMatch(/merge two groups/i);
+		});
+
+		it('keeps the groups-vs-sub-workflows distinction', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/sub-workflow/i);
+		});
+	});
+
+	describe('naming', () => {
+		it('caps titles at 2-4 words and demands outcome-first phrasing', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/outcome-first/i);
+			expect(GROUPING_GUIDANCE).toMatch(/2-4 words/);
+		});
+
+		it('bans implementation jargon in titles', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/no node, credential, or API names/i);
+		});
+
+		it('gives the self-explanatory test for a title', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/from the title alone, without expanding/i);
+		});
+
+		it('tells agents to split a group whose purpose will not fit the title', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/doing too much — split it/i);
+		});
+	});
+
+	describe('descriptions', () => {
+		it('requires one on every group', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/write one for every group/i);
+		});
+
+		it('forbids restating the title', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/add to the title, never restate it/i);
+		});
+
+		it('interpolates the length cap instead of hardcoding it', () => {
+			// A hardcoded number silently starts lying the day the constant moves.
+			expect(GROUPING_GUIDANCE).toContain(`${GROUP_DESCRIPTION_MAX_LENGTH} characters`);
+		});
+
+		it('shows worked title-to-description pairs', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/^- "[^"]+" → "[^"]+"$/m);
+		});
+	});
+
+	describe('boundary with NODE_GROUPS_REFERENCE', () => {
+		it.each(Object.values(NODE_GROUPING_RULES))(
+			'does not restate the structural validity rules',
+			(rule) => {
+				// Duplicating a rule lets the two copies contradict each other
+				// and MCP can serve one without the other.
+				expect(GROUPING_GUIDANCE).not.toContain(rule.sdkReference);
+			},
+		);
+
+		it('does not claim invalid groups are rejected on save', () => {
+			// Agent save tools prune the invalid group and warn, so an agent never hits the
+			// server-side rejection — promising one would misdescribe what it will see.
+			expect(GROUPING_GUIDANCE).not.toContain('rejected on save');
+		});
+
+		it('points agents at the reference for the exact rules', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/node groups reference/i);
 		});
 	});
 });

@@ -66,21 +66,13 @@ const SAFE_METHODS_SENTENCE =
 	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
 
 /**
- * Node-groups documentation, extracted so consumers can import just this section
- * without the whole builder-language reference. Shared by Instance AI (embedded
- * in `SDK_LANGUAGE_REFERENCE` below) and the MCP `get_sdk_reference` tool.
+ * Node-groups documentation, shared by Instance AI and the MCP `get_sdk_reference` tool.
  *
  * The rules stated here must match what the server enforces on save:
  * - basic rules (unique id/name, non-empty): `validateWorkflowGroups`
  * - structural rules: `validateNodeSelectionForGrouping`
- * The four structural rules (and their save-path rejection messages) are sourced
- * from the shared `NODE_GROUPING_RULES` constant in `n8n-workflow`, so this doc,
+ * Sourced from the `NODE_GROUPING_RULES` constant in `n8n-workflow`, so this doc,
  * the canvas, and the save path share one definition.
- *
- * Grouping DOES enforce a single entry/exit *boundary* (at most one incoming and
- * one outgoing main connection) via the `invalid-subgraph` rule. The stricter
- * per-node single-main-port check (`multiple-input/-output-branches`) is
- * extraction-only (`validateNodeSelectionForExtraction`) and is not stated here.
  */
 export const NODE_GROUPS_REFERENCE = `## Node groups
 
@@ -100,8 +92,9 @@ export default workflow('id', 'My workflow')
   });
 \`\`\`
 
-\`description\` is optional and shown when the group is collapsed. Keep it to one
-sentence — anything past ${GROUP_DESCRIPTION_MAX_LENGTH} characters is cut off.
+\`description\` is what the user sees while the group is collapsed, so always set one.
+Anything past ${GROUP_DESCRIPTION_MAX_LENGTH} characters is cut off. What the description
+should say is covered by the grouping guidance.
 
 When editing an existing workflow, **keep the \`.group(...)\` calls and their descriptions
 intact** unless the change is specifically about grouping.
@@ -124,10 +117,32 @@ export const GROUPING_GUIDANCE = `## Grouping
 
 Organise larger workflows into named node groups — visual frames drawn on the canvas — so the result is readable the first time the user sees it.
 
-- **When to group:** larger workflows that split into clear stages (e.g. ingest → transform → deliver). Give each stage its own group. Small workflows don't need groups — a group there is just noise.
+- **When to group:** only workflows big enough to split into clear stages (e.g. ingest → transform → deliver). A small or purely linear workflow gets no groups at all — a group there is just visual noise. When in doubt, fewer groups.
+- **How many:** one group per distinct stage or high-level objective — typically 3 to 5 for a medium-sized workflow. Keep the canvas top level to at most 7 items, counting the trigger (always ungrouped), every group, and every node left outside one.
+- **What belongs together:** a group is one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Put the boundary where the objective changes, and merge two groups that serve the same outcome.
 - **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is a separately-executed, reusable unit. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
-- **Naming:** short, outcome-first titles ("Fetch new recordings", not "HTTP + Drive").
-- Groups are created collapsed by default, so the name is what the user sees first — make it descriptive.
+
+### Naming
+
+Groups are created collapsed, so the title is the first and often the only thing the user reads.
+
+- Outcome-first and 2-4 words: "Fetch new recordings", not "HTTP + Drive"; "Generate call summary", not "Claude + Edit Fields".
+- No implementation jargon — no node, credential, or API names.
+- Test it: could someone who has never seen this workflow tell what the group does from the title alone, without expanding it? If not, fix the title or the boundary.
+- If the purpose does not fit in 2-4 words, the group is doing too much — split it.
+
+### Descriptions
+
+- Write one for every group, at most ${GROUP_DESCRIPTION_MAX_LENGTH} characters.
+- It must add to the title, never restate it. For "Fetch new recordings", "Fetches new recordings from Gong" is wasted space.
+- The detail worth adding is the trigger or input, the destination or output, or the scope boundary.
+- Plain language a non-technical reader follows — no node types or parameter values.
+
+Examples:
+
+- "Fetch new recordings" → "Polls Gong every 15 min for fresh calls, downloads audio, stores raw files in Google Drive"
+- "Generate call summary" → "Transcribes the audio, then extracts action items, sentiment, and key topics"
+- "Save and notify" → "Writes summary and metadata to Supabase, then alerts the sales team in Slack"
 
 Read the node groups reference for the exact rules before creating groups.`;
 
