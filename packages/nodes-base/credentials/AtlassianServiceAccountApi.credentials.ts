@@ -73,8 +73,10 @@ export async function getAccessToken(credentials: ICredentialDataDecryptedObject
 		});
 	} catch (error) {
 		// Static message only — never interpolate or log the response body or credentials.
+		// 400 included: the token endpoint reports an unknown client as `invalid_client`
+		// with HTTP 400, which is a credential problem, not a malformed request.
 		const status = httpStatusFromError(error);
-		if (status === 401 || status === 403) {
+		if (status === 400 || status === 401 || status === 403) {
 			throw new OperationalError(
 				'Atlassian rejected the service account credentials — check the Client ID and Client Secret',
 			);

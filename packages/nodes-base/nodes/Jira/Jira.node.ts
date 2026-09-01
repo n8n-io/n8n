@@ -1326,7 +1326,15 @@ export class Jira implements INodeType {
 								{},
 								{},
 								attachment?.json.content as string,
-								{ json: false, encoding: null, useStream: true },
+								// The download 303s to the Atlassian media host, which authenticates
+								// the hop via its own signed token in the redirect URL; the credential
+								// header must not follow cross-origin.
+								{
+									json: false,
+									encoding: null,
+									useStream: true,
+									sendCredentialsOnCrossOriginRedirect: false,
+								},
 							);
 
 							returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
@@ -1397,7 +1405,13 @@ export class Jira implements INodeType {
 								{},
 								{},
 								attachment.json.content as string,
-								{ json: false, encoding: null, useStream: true },
+								// Same signed-redirect rule as the single-attachment download above.
+								{
+									json: false,
+									encoding: null,
+									useStream: true,
+									sendCredentialsOnCrossOriginRedirect: false,
+								},
 							);
 							returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
 								buffer as Buffer,

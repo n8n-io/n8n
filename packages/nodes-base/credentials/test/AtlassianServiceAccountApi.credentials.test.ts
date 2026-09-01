@@ -124,15 +124,18 @@ describe('AtlassianServiceAccountApi Credential', () => {
 			expect(requestMock).not.toHaveBeenCalled();
 		});
 
-		it.each([401, 403])('maps a %d token response to a static credential error', async (status) => {
-			requestMock.mockRejectedValue(
-				Object.assign(new Error('Request failed'), { response: { status } }),
-			);
+		it.each([400, 401, 403])(
+			'maps a %d token response to a static credential error',
+			async (status) => {
+				requestMock.mockRejectedValue(
+					Object.assign(new Error('Request failed'), { response: { status } }),
+				);
 
-			await expect(getAccessToken(baseCredentials)).rejects.toThrow(
-				'Atlassian rejected the service account credentials — check the Client ID and Client Secret',
-			);
-		});
+				await expect(getAccessToken(baseCredentials)).rejects.toThrow(
+					'Atlassian rejected the service account credentials — check the Client ID and Client Secret',
+				);
+			},
+		);
 
 		it('rethrows non-auth token errors unchanged', async () => {
 			requestMock.mockRejectedValue(
