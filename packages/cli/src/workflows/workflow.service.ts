@@ -74,6 +74,16 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 /** Internal rollback vehicle for `publishAsSystem`'s guarded transaction; never escapes it. */
 class SystemPublishSupersededError extends Error {}
 
+/** What `getMany` should enrich or scope beyond the plain list query. */
+export type GetManyOptions = {
+	includeScopes?: boolean;
+	includeFolders?: boolean;
+	onlySharedWithMe?: boolean;
+	/** Attach the list publication badge; only the workflow list UI wants this. */
+	includePublicationStatus?: boolean;
+	requiredScopes?: Scope[];
+};
+
 @Service()
 export class WorkflowService {
 	constructor(
@@ -115,11 +125,13 @@ export class WorkflowService {
 	async getMany(
 		user: User,
 		options?: ListQuery.Options,
-		includeScopes?: boolean,
-		includeFolders?: boolean,
-		onlySharedWithMe?: boolean,
-		includePublicationStatus?: boolean,
-		requiredScopes: Scope[] = ['workflow:read'],
+		{
+			includeScopes = false,
+			includeFolders = false,
+			onlySharedWithMe = false,
+			includePublicationStatus = false,
+			requiredScopes = ['workflow:read'],
+		}: GetManyOptions = {},
 	) {
 		let count;
 		let workflows;

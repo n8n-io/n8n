@@ -318,11 +318,7 @@ describe('McpSettingsController', () => {
 						availableInMCP: false,
 					}),
 				}),
-				false, // includeScopes
-				false, // includeFolders
-				false, // onlySharedWithMe
-				false, // includePublicationStatus
-				['workflow:update'], // requiredScopes
+				{ requiredScopes: ['workflow:update'] },
 			);
 		});
 
@@ -372,11 +368,7 @@ describe('McpSettingsController', () => {
 					take: 10,
 					skip: 5,
 				}),
-				false,
-				false,
-				false,
-				false,
-				['workflow:update'],
+				{ requiredScopes: ['workflow:update'] },
 			);
 		});
 
@@ -402,11 +394,7 @@ describe('McpSettingsController', () => {
 						availableInMCP: false,
 					}),
 				}),
-				false,
-				false,
-				false,
-				false,
-				['workflow:update'],
+				{ requiredScopes: ['workflow:update'] },
 			);
 		});
 	});

@@ -82,7 +82,12 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 
 	/**
 	 * Aggregate settled trigger counts per workflow for a set of workflows.
-	 * Returns an entry only for workflows that have at least one row.
+	 * Returns a map containing the total and failed trigger counts for each specified workflow.
+	 * This lets us determine the overall status for that workflow.  A workflow with no triggers
+	 * will not appear in the map.
+	 *
+	 * @param workflowIds The IDs of the workflows to aggregate trigger counts for.
+	 * @returns A map from workflow ID to an object containing the total and failed trigger counts.
 	 */
 	async getStatusCountsByWorkflowIds(
 		workflowIds: string[],
@@ -92,8 +97,7 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 		// silently miscounting inside the raw SQL literal.
 		const failedStatus: WorkflowPublicationTriggerStatus['status'] = 'failed';
 
-		// Chunked: the list endpoint is unpaginated without `take`, so the id list
-		// can exceed driver bind-parameter limits on large instances.
+		// Break workflowIds into chunks to avoid exceeding driver bind-parameter limits.
 		for (const chunk of chunkIds(workflowIds)) {
 			const rows = await this.createQueryBuilder('t')
 				.select('t.workflowId', 'workflowId')

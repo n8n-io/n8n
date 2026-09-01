@@ -152,15 +152,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const customScopes: Scope[] = ['workflow:update'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				undefined, // includePublicationStatus
-				customScopes,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: customScopes });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
@@ -180,15 +172,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const customScopes: Scope[] = ['workflow:read', 'workflow:update'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				undefined, // includePublicationStatus
-				customScopes,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: customScopes });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
@@ -208,15 +192,7 @@ describe('WorkflowService', () => {
 			const user = mock<User>();
 			const executeScope: Scope[] = ['workflow:execute'];
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				undefined, // includePublicationStatus
-				executeScope,
-			);
+			await workflowService.getMany(user, undefined, { requiredScopes: executeScope });
 
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', executeScope);
 			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', executeScope);
@@ -351,7 +327,11 @@ describe('WorkflowService', () => {
 					new Map([['wf-1', 'partial']]),
 				);
 
-				const { workflows } = await workflowService.getMany(user, {}, false, false, false, true);
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{ includePublicationStatus: true },
+				);
 
 				expect(workflows.find((w) => w.id === 'wf-1')).toMatchObject({
 					publicationStatus: 'partial',
@@ -362,7 +342,11 @@ describe('WorkflowService', () => {
 			it('is a no-op when the flag is off', async () => {
 				globalConfigMock.workflows.useWorkflowPublicationService = false;
 
-				const { workflows } = await workflowService.getMany(user, {}, false, false, false, true);
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{ includePublicationStatus: true },
+				);
 
 				expect(
 					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
@@ -373,7 +357,7 @@ describe('WorkflowService', () => {
 			it('is a no-op when the caller does not opt in, even with the flag on', async () => {
 				globalConfigMock.workflows.useWorkflowPublicationService = true;
 
-				const { workflows } = await workflowService.getMany(user, {}, false, false, false);
+				const { workflows } = await workflowService.getMany(user, {});
 
 				expect(
 					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
@@ -390,10 +374,9 @@ describe('WorkflowService', () => {
 				const { workflows, count } = await workflowService.getMany(
 					user,
 					{},
-					false,
-					false,
-					false,
-					true,
+					{
+						includePublicationStatus: true,
+					},
 				);
 
 				expect(count).toBe(2);
@@ -417,7 +400,14 @@ describe('WorkflowService', () => {
 					new Map([['wf-1', 'published']]),
 				);
 
-				const { workflows } = await workflowService.getMany(user, {}, false, true, false, true);
+				const { workflows } = await workflowService.getMany(
+					user,
+					{},
+					{
+						includeFolders: true,
+						includePublicationStatus: true,
+					},
+				);
 
 				// Folder ids are never fed to the aggregate query.
 				expect(
