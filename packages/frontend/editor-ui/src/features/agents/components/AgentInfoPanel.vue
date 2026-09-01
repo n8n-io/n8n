@@ -52,6 +52,7 @@ const props = withDefaults(
 		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
+		/** Not in withDefaults: vue-tsc drops this prop when it shares a prefix with `showInstructions`. */
 		showInstructionsToolbar?: boolean;
 		/**
 		 * Emit instructions edits per keystroke instead of debounced. For hosts
@@ -66,7 +67,6 @@ const props = withDefaults(
 		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
-		showInstructionsToolbar: false,
 		immediateUpdates: false,
 	},
 );
