@@ -142,31 +142,6 @@ describe('useExpressionEditor', () => {
 		});
 	});
 
-	test('reports the removed $getPairedItem as an error segment', async () => {
-		mockResolveExpression();
-
-		const {
-			expressionEditor: { segments },
-		} = await renderExpressionEditor({
-			editorValue: '{{ $getPairedItem }}',
-			extensions: [n8nLang()],
-		});
-
-		await waitFor(() => {
-			expect(toValue(segments.resolvable)).toEqual([
-				{
-					error: expect.any(Error),
-					from: 0,
-					kind: 'resolvable',
-					resolvable: '{{ $getPairedItem }}',
-					resolved: "[$getPairedItem was removed. Use $('Node').item instead]",
-					state: 'invalid',
-					to: 20,
-				},
-			]);
-		});
-	});
-
 	test('render [empty] when expression evaluates to an empty string', async () => {
 		mockResolveExpression().mockReturnValueOnce('');
 

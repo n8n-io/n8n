@@ -44,7 +44,6 @@ import {
 	getResolvableState,
 } from '@/app/utils/expressions';
 import { isCredentialsModalOpen } from '../plugins/codemirror/completions/utils';
-import { usesRemovedExpressionFunction } from '../plugins/codemirror/expressionDeprecations';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
@@ -405,12 +404,6 @@ export const useExpressionEditor = ({
 		const isCredentialModal = !expressionLocalResolveContext.value && isCredentialsModalOpen();
 
 		try {
-			// Removed functions no longer resolve anywhere. Report them here so the
-			// preview names the replacement instead of an undefined-call error.
-			if (usesRemovedExpressionFunction(resolvable)) {
-				throw new Error(i18n.baseText('expressionEditor.removed.getPairedItem'));
-			}
-
 			if (expressionLocalResolveContext.value) {
 				result.resolved = await workflowHelpers.resolveExpression('=' + resolvable, undefined, {
 					...expressionLocalResolveContext.value,

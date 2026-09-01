@@ -12,6 +12,7 @@ import {
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
 import { isKeyOf } from './utils';
+import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './removed-globals';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
@@ -315,6 +316,18 @@ export function buildContext(
 		throwIfErrorSentinel(result);
 		return result;
 	};
+
+	// Globals removed in a major version. Bound to a thrower so a call fails
+	// with a message naming the replacement, instead of resolving to undefined
+	// and feeding that into the workflow's data. Thrown in-isolate: the message
+	// is static, so no host round-trip is needed.
+	for (const name of Object.keys(REMOVED_EXPRESSION_GLOBALS) as Array<
+		keyof typeof REMOVED_EXPRESSION_GLOBALS
+	>) {
+		target[name] = () => {
+			throw new ExpressionError(removedGlobalMessage(name));
+		};
+	}
 
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps

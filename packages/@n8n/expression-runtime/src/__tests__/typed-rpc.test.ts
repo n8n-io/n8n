@@ -790,12 +790,16 @@ describe('Typed RPC: $getPairedItem is removed', () => {
 		await evaluator.dispose();
 	});
 
-	it('is not reachable in the isolate even when the host data provides it', () => {
+	it('throws in the isolate even when the host data provides it', () => {
 		const data: Record<string, unknown> = {
 			$getPairedItem: () => ({ json: { city: 'Prague' } }),
 		};
 
-		expect(evaluator.evaluate('{{ typeof $getPairedItem }}', data, caller)).toBe('undefined');
+		// The in-isolate thrower shadows whatever the host supplies, so a stale
+		// host binding cannot silently keep the removed helper alive.
+		expect(() => evaluator.evaluate("{{ $getPairedItem('n', {}, {}) }}", data, caller)).toThrow(
+			'$getPairedItem was removed',
+		);
 	});
 });
 

@@ -1737,7 +1737,6 @@
 	"expressionEdit.expression": "Expression",
 	"expressionEdit.resultOfItem1": "Result of item 1",
 	"expressionEditor.uncalledFunction": "[this is a function, please add ()]",
-	"expressionEditor.removed.getPairedItem": "$getPairedItem was removed. Use $('Node').item instead",
 	"expressionModalInput.empty": "[empty]",
 	"expressionModalInput.evaluatedDuringExecution": "[evaluated during execution]",
 	"expressionModalInput.secretNotFound": "[secret not found]",

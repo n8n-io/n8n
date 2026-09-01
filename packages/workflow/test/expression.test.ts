@@ -1369,17 +1369,20 @@ describe('Expression', () => {
 				},
 			);
 
-		it('resolves to undefined instead of walking the ancestry chain (parity)', () => {
-			// The helper was removed from the expression API in v3. Neither engine
-			// binds it any more, so the call resolves to undefined, which is how
-			// both engines already treat any unknown global.
+		it('throws instead of walking the ancestry chain (parity)', () => {
+			// The helper was removed from the expression API in v3. Both engines
+			// bind the name to a thrower so a call fails with the replacement
+			// named, rather than resolving to undefined and feeding that into
+			// the workflow's data.
 			const expr =
 				"={{ JSON.stringify($getPairedItem('source', { previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }, { item: 0 })) }}";
-			expect(evaluate(expr)).toBeUndefined();
+			expect(() => evaluate(expr)).toThrow('$getPairedItem was removed');
 		});
 
-		it('resolves to undefined rather than a function (parity)', () => {
-			expect(evaluate('={{ typeof $getPairedItem }}')).toBe('undefined');
+		it('names the replacement in the error (parity)', () => {
+			expect(() => evaluate("={{ $getPairedItem('source', {}, { item: 0 }) }}")).toThrow(
+				"Use $('Node').item, $('Node').itemMatching(n), or $('Node').pairedItem(n) instead",
+			);
 		});
 	});
 

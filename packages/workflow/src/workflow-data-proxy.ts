@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
+import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from '@n8n/expression-runtime';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
@@ -811,10 +812,6 @@ export class WorkflowDataProxy {
 	}
 
 	/**
-	 * Returns the data proxy object which allows to query data from current run
-	 *
-	 */
-	/**
 	 * Paired-item resolution and the expression errors it raises. Kept out of
 	 * `getDataProxy` so the execution engine can resolve paired items without
 	 * building the expression data object.
@@ -1107,6 +1104,10 @@ export class WorkflowDataProxy {
 		);
 	}
 
+	/**
+	 * Returns the data proxy object which allows to query data from current run
+	 *
+	 */
 	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
 		const that = this;
 
@@ -1144,6 +1145,21 @@ export class WorkflowDataProxy {
 			createNoConnectionError,
 			getPairedItem,
 		} = this.pairedItemHelpers();
+
+		// Globals removed in a major version. Bound to a thrower so a call fails
+		// with a message naming the replacement, instead of resolving to undefined
+		// and feeding that into the workflow's data. The VM engine binds the same
+		// names in-isolate from the same list.
+		const removedGlobals = Object.fromEntries(
+			(
+				Object.keys(REMOVED_EXPRESSION_GLOBALS) as Array<keyof typeof REMOVED_EXPRESSION_GLOBALS>
+			).map((name) => [
+				name,
+				() => {
+					throw createExpressionError(removedGlobalMessage(name));
+				},
+			]),
+		);
 
 		const handleFromAi = (
 			name: string,
@@ -1695,6 +1711,7 @@ export class WorkflowDataProxy {
 
 			Duration,
 			...that.additionalKeys,
+			...removedGlobals,
 
 			// deprecated
 			$jmespath: jmespathWrapper,
