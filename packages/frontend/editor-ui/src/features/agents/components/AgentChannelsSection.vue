@@ -224,7 +224,20 @@ const remainingChannelOptionLabels = computed(() => {
 					<div v-else :class="$style.credentialnameSkeleton" />
 				</div>
 			</button>
-
+			<button
+				:class="$style.channelCard"
+				,
+				:disabled="props.disabled"
+				data-testid="agent-channels-preview-tile"
+			>
+				<N8nIcon icon="message-circle" size="large" />
+				<div :class="$style.channelCardText">
+					<N8nText step="sm" bold>{{ i18n.baseText('agents.channels.preview.title') }}</N8nText>
+					<N8nText step="xs" color="text-light">
+						{{ i18n.baseText('agents.channels.preview.description') }}
+					</N8nText>
+				</div>
+			</button>
 			<button
 				:class="$style.channelCard"
 				:disabled="props.disabled"
