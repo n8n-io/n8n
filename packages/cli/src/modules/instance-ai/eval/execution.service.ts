@@ -9,6 +9,7 @@ import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 import {
@@ -141,7 +142,7 @@ export class EvalExecutionService {
 		]);
 		if (!workflowEntity) {
 			for (const delayMs of [200, 500, 1000]) {
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
+				await sleep(delayMs);
 				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
