@@ -63,6 +63,10 @@ export {
 	type FollowRedirectsOptions,
 } from './utils/follow-redirects';
 export {
+	createRefreshingAuthFetch,
+	type RefreshingAuthFetchOptions,
+} from './utils/refreshing-auth-fetch';
+export {
 	getConnectionHintNoticeField,
 	metadataFilterField,
 	getBatchingOptionFields,

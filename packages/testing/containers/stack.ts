@@ -37,6 +37,11 @@ export interface N8NStack {
 	stop: () => Promise<void>;
 	containers: StartedTestContainer[];
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
+	/**
+	 * Env of the services a hosted deployment stood in for, so they started no
+	 * containers and have no `serviceResults` entry. Keyed by service name.
+	 */
+	hostedServiceEnv: Partial<Record<ServiceName, Record<string, string>>>;
 	services: ServiceHelpers;
 	logs: ServiceHelpers['observability']['logs'];
 	metrics: ServiceHelpers['observability']['metrics'];
@@ -121,6 +126,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	const containers: StartedTestContainer[] = [];
 	const serviceResults: Record<string, ServiceResult> = {};
+	const hostedServiceEnv: Partial<Record<ServiceName, Record<string, string>>> = {};
 	let environment: Record<string, string> = {};
 
 	log(`Starting: ${uniqueProjectName}`);
@@ -164,9 +170,26 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// Local benchmarks showed individual containers booting 2-4× faster sequentially under
 		// contention, with only modest wall-clock cost on uncontended hardware.
 		const allServiceNames = Object.keys(SERVICE_REGISTRY) as ServiceName[];
-		const servicesToStart = allServiceNames.filter((name) =>
+		const requestedServices = allServiceNames.filter((name) =>
 			shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
 		);
+
+		// A requested service that reports a healthy hosted deployment contributes its
+		// env and starts nothing. A service that declines (no config, or the
+		// deployment did not answer) falls through to its local containers below.
+		for (const name of requestedServices) {
+			const hostedEnv = await SERVICE_REGISTRY[name].hostedEnv?.(ctx);
+			if (!hostedEnv) continue;
+			environment = { ...environment, ...hostedEnv };
+			hostedServiceEnv[name] = hostedEnv;
+		}
+		const hostedServices = Object.keys(hostedServiceEnv) as ServiceName[];
+		if (hostedServices.length > 0) {
+			ctx.environment = environment;
+			log(`Using hosted: ${hostedServices.map((n) => SERVICE_REGISTRY[n].description).join(', ')}`);
+		}
+
+		const servicesToStart = requestedServices.filter((name) => !(name in hostedServiceEnv));
 		const dependencyLevels = groupByDependencyLevel(servicesToStart);
 
 		const startService = async (name: ServiceName) => {
@@ -359,6 +382,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			stop: async () => await stopN8NStack(containers, network, uniqueProjectName, coverageHostDir),
 			containers,
 			serviceResults,
+			hostedServiceEnv,
 			services: servicesProxy,
 			get logs() {
 				return servicesProxy.observability.logs;

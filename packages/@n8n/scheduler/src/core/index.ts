@@ -16,6 +16,7 @@ export type {
 	Schedule,
 } from './types';
 export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
+export { scheduleFromDefinition } from './recurrence/resolve';
 export { validateSchedule } from './recurrence/validate';
 
 export {
