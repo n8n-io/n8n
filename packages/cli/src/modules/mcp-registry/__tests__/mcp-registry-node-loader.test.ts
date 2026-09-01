@@ -48,8 +48,9 @@ const baseDescription: INodeTypeDescription = {
 };
 
 function createBaseNodeClass() {
-	const baseInstance: INodeType = {
+	const baseInstance: INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> } = {
 		description: baseDescription,
+		setRegistryRuntime: vi.fn(),
 		methods: {
 			loadOptions: {
 				getTools: vi.fn(),
@@ -107,7 +108,7 @@ describe('McpRegistryNodeLoader', () => {
 
 	describe('loadAll', () => {
 		it('populates `types`, `known`, registers synthetic nodes and credentials for each supported server', async () => {
-			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials();
+			const { loadNodesAndCredentials, baseNode, sourcePath } = createLoadNodesAndCredentials();
 			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
 			loader.setServers([notionMockServer]);
 
@@ -140,6 +141,16 @@ describe('McpRegistryNodeLoader', () => {
 				sourcePath: '',
 				extends: ['mcpOAuth2Api'],
 				supportedNodes: ['notion'],
+			});
+			expect(
+				(baseNode as typeof baseNode & { setRegistryRuntime: ReturnType<typeof vi.fn> })
+					.setRegistryRuntime,
+			).toHaveBeenCalledOnce();
+			expect(loader.getConnection('@n8n/mcp-registry.notion')).toMatchObject({
+				nodeTypeName: '@n8n/mcp-registry.notion',
+				endpointUrl: 'https://mcp.notion.com/mcp',
+				endpointHostname: 'mcp.notion.com',
+				transport: 'httpStreamable',
 			});
 		});
 
@@ -385,6 +396,7 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loader.types.credentials).toEqual([]);
 			expect(loader.known.nodes).toEqual({});
 			expect(loader.known.credentials).toEqual({});
+			expect(loader.getConnection('@n8n/mcp-registry.notion')).toBeUndefined();
 			expect(() => loader.getNode('notion')).toThrow(UnrecognizedNodeTypeError);
 			expect(() => loader.getCredential('notionMcpOAuth2Api')).toThrow(
 				UnrecognizedCredentialTypeError,

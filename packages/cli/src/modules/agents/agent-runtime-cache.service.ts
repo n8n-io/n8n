@@ -21,6 +21,7 @@ import {
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import type { UserToolAccessSnapshot } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
@@ -43,12 +44,28 @@ export interface GetRuntimeParams {
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 }
 
+/**
+ * How long a passing tool-access re-check stays valid. Cache hits inside this
+ * window skip the DB checks entirely, so revoked access takes effect within
+ * one interval instead of whenever the runtime happens to rebuild.
+ */
+const TOOL_ACCESS_RECHECK_INTERVAL_MS = Time.minutes.toMilliseconds;
+
 export interface AgentRuntime {
 	agent: RuntimeAgent;
 	agentId: string;
 	toolRegistry: ToolRegistry;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
+	/**
+	 * Grants baked into the runtime's tool list by `filterToolsForUser`.
+	 * The sliding TTL can keep an active runtime alive indefinitely, so these
+	 * are re-checked on cache hits (debounced) rather than waiting for
+	 * eviction. Absent when no user-gated tools made it into the runtime.
+	 */
+	userToolAccessSnapshot?: UserToolAccessSnapshot;
+	/** Epoch ms of the last passing tool-access re-check (build counts as one). */
+	toolAccessCheckedAt: number;
 }
 
 interface RuntimeInitialization {
@@ -63,8 +80,12 @@ export class AgentRuntimeCacheService {
 	 *   Draft:     `{agentId}:draft[:{integrationType}][:{callerScope}]`
 	 *   Published: `{agentId}:published[:{integrationType}][:{callerScope}]`
 	 *
-	 * TTL = 30 minutes — entries are evicted when the agent is idle so that
-	 * memory is freed without requiring an explicit shutdown step.
+	 * TTL = 30 minutes of inactivity (sliding — each cache hit refreshes the
+	 * expiry) so actively used runtimes stay cached while idle agents are
+	 * evicted and their memory freed without an explicit shutdown step.
+	 * Because the slide can keep a runtime alive indefinitely, user-scoped
+	 * runtimes re-verify their baked-in tool access grants on hits (see
+	 * `toolAccessStillCurrent`) so revocations don't outlive the cache.
 	 *
 	 * Separating draft and published with explicit prefixes prevents a draft
 	 * runtime from being mistakenly returned to a published-agent execution.
@@ -79,6 +100,8 @@ export class AgentRuntimeCacheService {
 	);
 
 	private readonly runtimeInitializations = new Map<string, RuntimeInitialization>();
+
+	private readonly toolAccessRechecks = new WeakMap<AgentRuntime, Promise<boolean>>();
 
 	private readonly activeRuntimeLeases = new WeakMap<RuntimeAgent, number>();
 
@@ -220,7 +243,22 @@ export class AgentRuntimeCacheService {
 		const cacheKey = this.computeRuntimeCacheKey(params);
 
 		const cached = this.runtimes.get(cacheKey);
-		if (cached) return this.acquireRuntimeLease(cached);
+		if (cached) {
+			const accessStillCurrent = await this.toolAccessStillCurrent(cached, params);
+			const current = this.runtimes.get(cacheKey);
+			// The awaited re-check may race with cache invalidation or replacement.
+			if (current !== cached) {
+				if (current) return this.acquireRuntimeLease(current);
+			} else if (accessStillCurrent) {
+				this.runtimes.touch(cacheKey);
+				return this.acquireRuntimeLease(cached);
+			} else {
+				// Revoked grants: retire this runtime and rebuild below so the tool
+				// list is re-filtered against the user's current access.
+				this.runtimes.delete(cacheKey);
+				this.closeAgentResources(cached.agent, params.agentId);
+			}
+		}
 
 		const initialization = this.runtimeInitializations.get(cacheKey);
 		if (initialization) return this.acquireRuntimeLease(await initialization.promise);
@@ -249,6 +287,55 @@ export class AgentRuntimeCacheService {
 		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
 
 		return this.acquireRuntimeLease(await runtimeInitialization.promise);
+	}
+
+	/**
+	 * Node/workflow tools are permission-filtered once at build time, so an
+	 * actively used runtime kept alive by the sliding TTL would otherwise
+	 * honor grants forever. Re-check the baked-in grants at most once per
+	 * `TOOL_ACCESS_RECHECK_INTERVAL_MS`; hits inside the window are free.
+	 */
+	private async toolAccessStillCurrent(
+		runtime: AgentRuntime,
+		params: GetRuntimeParams,
+	): Promise<boolean> {
+		const { userToolAccessSnapshot } = runtime;
+		const { user } = params;
+		if (!userToolAccessSnapshot || !user) return true;
+		if (Date.now() - runtime.toolAccessCheckedAt < TOOL_ACCESS_RECHECK_INTERVAL_MS) return true;
+
+		const inFlight = this.toolAccessRechecks.get(runtime);
+		if (inFlight) return await inFlight;
+
+		const recheck = (async () => {
+			try {
+				const stillGranted = await this.agentRuntimeReconstructionService.userStillHasToolAccess(
+					userToolAccessSnapshot,
+					params.projectId,
+					user,
+				);
+				if (stillGranted) runtime.toolAccessCheckedAt = Date.now();
+				return stillGranted;
+			} catch (error) {
+				// Availability over freshness: a failing re-check must not take down
+				// the chat — serve the cached runtime and retry next interval.
+				runtime.toolAccessCheckedAt = Date.now();
+				this.logger.warn('[AgentRuntimeCacheService] Failed to re-check tool access', {
+					agentId: runtime.agentId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return true;
+			}
+		})();
+		this.toolAccessRechecks.set(runtime, recheck);
+
+		try {
+			return await recheck;
+		} finally {
+			if (this.toolAccessRechecks.get(runtime) === recheck) {
+				this.toolAccessRechecks.delete(runtime);
+			}
+		}
 	}
 
 	private async reconstructRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
@@ -283,7 +370,7 @@ export class AgentRuntimeCacheService {
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
 		);
-		const { agent: agentInstance, toolRegistry } = await reconstruction;
+		const { agent: agentInstance, toolRegistry, userToolAccessSnapshot } = await reconstruction;
 
 		return {
 			agent: agentInstance,
@@ -291,6 +378,8 @@ export class AgentRuntimeCacheService {
 			toolRegistry,
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
+			toolAccessCheckedAt: Date.now(),
 		};
 	}
 }

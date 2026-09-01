@@ -10,14 +10,18 @@ import type { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ExecutionIdV2 } from '@/executions/execution-id';
+
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 
 const authSecret = 'a'.repeat(32);
+const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
 
 describe('EngineDataPlaneClient', () => {
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		executionId: EXECUTION_ID,
 	};
 
 	let http: HttpRequestClient;
@@ -171,6 +175,35 @@ describe('EngineDataPlaneClient', () => {
 
 			expect(error).toBeInstanceOf(errorClass);
 			expect(error).toHaveProperty('message', message);
+		});
+	});
+
+	describe('getExecution', () => {
+		it('reads the execution from the engine', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', status: 'completed' };
+			respondWith(200, snapshot);
+
+			await expect(client.getExecution(EXECUTION_ID)).resolves.toEqual(snapshot);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `/api/workflow-executions/${EXECUTION_ID}`,
+					method: 'GET',
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('returns undefined for an execution the engine does not have', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.getExecution(EXECUTION_ID)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.getExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
 		});
 	});
 });

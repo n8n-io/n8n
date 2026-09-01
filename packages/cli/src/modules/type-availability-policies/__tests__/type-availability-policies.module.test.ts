@@ -16,4 +16,16 @@ describe('TypeAvailabilityPoliciesModule', () => {
 
 		await expect(module.init()).resolves.toBeUndefined();
 	});
+
+	it('exposes its entities so the datasource picks them up', async () => {
+		const module = new TypeAvailabilityPoliciesModule();
+
+		const entities = (await module.entities()) as unknown as Array<{ name: string }>;
+
+		expect(entities.map((entity) => entity.name)).toEqual([
+			'TypeAvailabilityPolicy',
+			'TypeAvailabilityPolicyScope',
+			'TypeAvailabilityPolicyAttachment',
+		]);
+	});
 });

@@ -6,6 +6,9 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { resolveMcpRegistryConnection } from '../../mcp-registry-connection';
+import { McpRegistryNodeLoader } from '../../mcp-registry-node-loader';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../../node-description-transform';
 import type { McpRegistryApiClient, McpRegistryServerMetadata } from '../mcp-registry-api.client';
 import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
 import type { McpRegistryServerRepository } from '../mcp-registry-server.repository';
@@ -83,6 +86,7 @@ function createService(options: CreateServiceOptions = {}) {
 		apiClient,
 		push,
 		publisher,
+		loadNodesAndCredentials,
 	};
 }
 
@@ -318,6 +322,25 @@ describe('McpRegistryService', () => {
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
 
 			service.shutdown();
+		});
+	});
+
+	describe('getConnection', () => {
+		it('returns the connection from the registry node loader', async () => {
+			const { service, loadNodesAndCredentials } = createService();
+			const connection = resolveMcpRegistryConnection(notionMockServer);
+			const loader = Object.create(McpRegistryNodeLoader.prototype) as McpRegistryNodeLoader;
+			loader.getConnection = vi.fn().mockReturnValue(connection);
+			loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
+
+			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toEqual(connection);
+			expect(loader.getConnection).toHaveBeenCalledWith('@n8n/mcp-registry.notion');
+		});
+
+		it('returns undefined when the registry loader is not registered', async () => {
+			const { service } = createService();
+
+			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toBeUndefined();
 		});
 	});
 

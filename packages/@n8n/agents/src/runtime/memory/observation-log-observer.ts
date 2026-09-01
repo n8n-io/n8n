@@ -82,7 +82,7 @@ export interface RunObservationLogObserverOpts {
 }
 
 export type RunObservationLogObserverResult =
-	| { status: 'skipped'; reason: 'no-delta' }
+	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' }
 	| { status: 'skipped'; reason: 'below-threshold'; tokenCount: number }
 	| {
 			status: 'ran';
@@ -132,7 +132,11 @@ export function renderObserverTranscript(
 	const lines: string[] = [];
 	for (const message of messages) {
 		if (!isLlmMessage(message)) continue;
-		const timestamp = message.createdAt.toISOString();
+		// Store adapters are an open interface: a JSON-backed one hands back
+		// createdAt as an ISO string, so coerce before rendering.
+		const createdAt =
+			message.createdAt instanceof Date ? message.createdAt : new Date(message.createdAt);
+		const timestamp = createdAt.toISOString();
 		const text = message.content
 			.filter((content): content is { type: 'text'; text: string } => content.type === 'text')
 			.map((content) => content.text)
@@ -187,8 +191,18 @@ export async function runObservationLogObserver(
 	);
 	if (deltaMessages.length === 0) return { status: 'skipped', reason: 'no-delta' };
 
+	// A pending tool call (e.g. suspended for a HITL approval) has no outcome
+	// yet. Observing past its host would advance the cursor over it, and the
+	// later in-place resolution would land behind the cursor — masked from the
+	// LLM window and never part of a future observer delta. Observe only the
+	// messages before the host; the rest is picked up once the call settles.
+	const firstPendingIndex = deltaMessages.findIndex(hasPendingToolCall);
+	const observable =
+		firstPendingIndex === -1 ? deltaMessages : deltaMessages.slice(0, firstPendingIndex);
+	if (observable.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
+
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
-	const transcript = renderObserverTranscript(deltaMessages);
+	const transcript = renderObserverTranscript(observable);
 	const tokenCount = await tokenCounter(transcript);
 	if (tokenCount < opts.observerThresholdTokens) {
 		return { status: 'skipped', reason: 'below-threshold', tokenCount };
@@ -206,7 +220,7 @@ export async function runObservationLogObserver(
 	const markdown = await opts.observe({
 		observationScopeId,
 		now,
-		deltaMessages,
+		deltaMessages: observable,
 		transcript,
 		transcriptTokenCount: tokenCount,
 		observationLogTail,
@@ -254,12 +268,7 @@ export async function runObservationLogObserver(
 	// for them, which permanently orphans them from loaded history.
 	const cursorAdvanced = inserted.length > 0;
 	if (cursorAdvanced) {
-		await advanceObserverCursor(
-			memory,
-			observationScopeId,
-			deltaMessages[deltaMessages.length - 1],
-			now,
-		);
+		await advanceObserverCursor(memory, observationScopeId, observable[observable.length - 1], now);
 	}
 
 	return {
@@ -269,6 +278,11 @@ export async function runObservationLogObserver(
 		tokenCount,
 		skippedLines: parsed.skippedLines,
 	};
+}
+
+function hasPendingToolCall(message: AgentDbMessage): boolean {
+	if (!isLlmMessage(message)) return false;
+	return message.content.some((c) => c.type === 'tool-call' && c.state === 'pending');
 }
 
 function isLlmMessage(message: AgentDbMessage): message is AgentDbMessage & Message {

@@ -213,6 +213,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -243,6 +244,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -273,6 +275,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -481,6 +484,7 @@ describe('McpServerMiddlewareService', () => {
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: 'test-client',
 				client_version: '1.0.0',
@@ -521,6 +525,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: 'Claude',
 				client_version: '3.0.0',

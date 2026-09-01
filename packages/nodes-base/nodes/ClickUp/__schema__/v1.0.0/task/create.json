@@ -9,6 +9,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "email": {
                         "type": "string"
                     },
@@ -54,6 +57,9 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "required": {
+                        "type": "boolean"
                     },
                     "type": {
                         "type": "string"
@@ -271,5 +277,5 @@
             }
         }
     },
-    "version": 3
+    "version": 5
 }
