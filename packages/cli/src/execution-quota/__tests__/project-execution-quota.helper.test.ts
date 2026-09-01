@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { License } from '@/license';
 
 import {
@@ -9,8 +10,8 @@ const ENV_VAR = 'N8N_PROJECT_EXECUTION_LIMIT_DEFAULT';
 
 function mockLicense(overrides: { quota?: number; planName?: string } = {}): License {
 	return {
-		getValue: jest.fn().mockReturnValue(overrides.quota),
-		getPlanName: jest.fn().mockReturnValue(overrides.planName ?? 'Community'),
+		getValue: vi.fn().mockReturnValue(overrides.quota),
+		getPlanName: vi.fn().mockReturnValue(overrides.planName ?? 'Community'),
 	} as unknown as License;
 }
 
