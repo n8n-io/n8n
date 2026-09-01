@@ -73,6 +73,7 @@ function makeService() {
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
+		mock(),
 		sandboxRuntimeService,
 		mock<AiService>(),
 		outboundHttp,

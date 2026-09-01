@@ -43,6 +43,11 @@ add to it.
 
 - List endpoints: cursor-based pagination (internal API uses both cursor- and
   page-based — don't copy an internal endpoint's model).
+- Pagination args are always `offset` and `limit` — on service methods, handler
+  calls, and repository methods you add. Never `skip`/`take` (TypeORM names).
+  Translate to `skip`/`take` only inside a repository, at the TypeORM `find`
+  call. The public query string is still `cursor` + `limit`; `offset` is the
+  decoded cursor field passed into the service, never a client-facing param.
 - Updates: full-object `PUT`, not `PATCH`. A successful `GET` body should be
   acceptable as a `PUT` body for the same resource (round-trip), aside from
   server-managed/immutable fields.

@@ -1181,6 +1181,10 @@ async function trackCredentialAssignment(
 		credential_type: opts.credType,
 		node_type: opts.nodeType,
 		workflow_id: opts.workflowId,
+		// The join key back to `User created credentials`; n8n Connect slots have no
+		// stored credential of the user's own.
+		credential_id: isGateway ? null : opts.credential.id,
+		thread_id: context.threadId ?? null,
 		credential_kind: isGateway ? 'n8n_connect' : 'own',
 		source,
 	});

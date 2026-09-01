@@ -3,7 +3,8 @@
  * 1. Enrich specs with duration from metrics
  * 2. Group by capability (specs sharing a capability stay together)
  * 3. Split large groups exceeding maxGroupDuration
- * 4. Greedy bin-packing: assign heaviest items to lightest shard
+ * 4. Limit the bucket count to keep each shard near targetShardDuration
+ * 5. Greedy bin-packing: assign heaviest items to lightest shard
  */
 
 import type { DiscoveredSpec } from './types.js';
@@ -24,6 +25,8 @@ export interface ShardDistribution {
 interface DistributeConfig {
 	defaultDuration: number;
 	maxGroupDuration: number;
+	targetShardDuration?: number;
+	minShardSpecs?: number;
 }
 
 interface SpecWithDuration {
@@ -124,6 +127,34 @@ function splitLargeGroups(
 	return items;
 }
 
+/**
+ * Each shard pays the same fixed setup cost, so a small selection on many shards
+ * spends more time in setup than in tests. The limit applies before bin-packing,
+ * so the packer still balances the shards it gets.
+ *
+ * The count never drops below the number of capability packing items. A group
+ * split by maxGroupDuration needs one shard per piece, so counting distinct
+ * capabilities instead would leave the packer too few shards and merge the
+ * remaining capabilities' fixtures onto one runner. One runner that starts every
+ * image set pays back in container startup what it saved in setup.
+ */
+function boundShardCount(
+	numShards: number,
+	totalTestTime: number,
+	specCount: number,
+	capabilityItemCount: number,
+	config: DistributeConfig,
+): number {
+	const limits = [numShards];
+	if (config.targetShardDuration && config.targetShardDuration > 0) {
+		limits.push(Math.ceil(totalTestTime / config.targetShardDuration));
+	}
+	if (config.minShardSpecs && config.minShardSpecs > 1) {
+		limits.push(Math.floor(specCount / config.minShardSpecs));
+	}
+	return Math.min(numShards, Math.max(1, capabilityItemCount, Math.min(...limits)));
+}
+
 function assignToShards(items: PackingItem[], numShards: number): Bucket[] {
 	const allItems = items.sort((a, b) => b.duration - a.duration);
 
@@ -166,8 +197,15 @@ export function distributeShards(
 		duration: spec.duration,
 	}));
 
-	const buckets = assignToShards([...capabilityItems, ...standardItems], numShards);
 	const totalTestTime = enriched.reduce((sum, s) => sum + s.duration, 0);
+	const targetShards = boundShardCount(
+		numShards,
+		totalTestTime,
+		enriched.length,
+		capabilityItems.length,
+		config,
+	);
+	const buckets = assignToShards([...capabilityItems, ...standardItems], targetShards);
 
 	return {
 		shards: buckets

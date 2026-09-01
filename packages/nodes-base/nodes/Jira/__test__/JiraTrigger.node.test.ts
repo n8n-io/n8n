@@ -8,7 +8,7 @@ import type {
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
-import { clearAtlassianCloudIdCache } from '@utils/atlassian';
+import { clearAtlassianAccessibleResourcesCache } from '@utils/atlassian';
 
 import {
 	allEvents,
@@ -27,9 +27,15 @@ describe('JiraTrigger', () => {
 		const mockCloudIdLookup = () =>
 			vi.fn().mockResolvedValueOnce([{ id: OAUTH2_CLOUD_ID, url: OAUTH2_DOMAIN }]);
 
+		// The accessible-resources cache is keyed by credential ID
+		const mockJiraNode = mock<INode>({
+			typeVersion: 1,
+			credentials: { jiraSoftwareCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
+		});
+
 		beforeEach(() => {
 			staticData = {};
-			clearAtlassianCloudIdCache();
+			clearAtlassianAccessibleResourcesCache();
 		});
 
 		function mockHookFunctions(
@@ -44,7 +50,7 @@ describe('JiraTrigger', () => {
 
 			return mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
@@ -196,7 +202,7 @@ describe('JiraTrigger', () => {
 			) {
 				return mockDeep<IHookFunctions>({
 					getWorkflowStaticData: () => staticData,
-					getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNode: vi.fn(() => mockJiraNode),
 					getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 					getNodeParameter: vi.fn((param: string) => {
 						if (param === 'events') return ['comment_created'];
@@ -314,7 +320,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['comment_created'];
@@ -367,7 +373,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['comment_created'];
@@ -402,7 +408,7 @@ describe('JiraTrigger', () => {
 
 			const webhookFns = mockDeep<IWebhookFunctions>();
 			webhookFns.getWorkflowStaticData.mockReturnValue(staleData);
-			webhookFns.getNode.mockReturnValue(mock<INode>({ typeVersion: 1 }));
+			webhookFns.getNode.mockReturnValue(mockJiraNode);
 			webhookFns.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'jiraVersion') return 'cloudOAuth2';
 				if (param === 'incomingAuthentication') return 'none';
@@ -446,7 +452,7 @@ describe('JiraTrigger', () => {
 
 			const webhookFns = mockDeep<IWebhookFunctions>();
 			webhookFns.getWorkflowStaticData.mockReturnValue(freshData);
-			webhookFns.getNode.mockReturnValue(mock<INode>({ typeVersion: 1 }));
+			webhookFns.getNode.mockReturnValue(mockJiraNode);
 			webhookFns.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'jiraVersion') return 'cloudOAuth2';
 				if (param === 'incomingAuthentication') return 'none';
@@ -486,7 +492,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return selectedEvents;
@@ -529,7 +535,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['*'];
@@ -575,7 +581,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
@@ -606,7 +612,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
@@ -640,7 +646,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
@@ -671,7 +677,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['board_created', 'user_deleted'];
@@ -708,7 +714,7 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNode: vi.fn(() => mockJiraNode),
 				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
 				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['*'];
