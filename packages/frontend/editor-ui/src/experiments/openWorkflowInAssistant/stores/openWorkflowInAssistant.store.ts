@@ -10,7 +10,7 @@ import { OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT } from '@/app/constants/experimen
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
-import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 
 export const OPEN_IN_ASSISTANT_CALLOUT_KEY = 'open-workflows-in-assistant';
@@ -25,7 +25,9 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 		const usersStore = useUsersStore();
 		const uiStore = useUIStore();
 		const telemetry = useTelemetry();
-		const instanceAiAvailable = useInstanceAiAvailable();
+		// `useInstanceAiReady`, not `useInstanceAiAvailable`: the experiment opens a
+		// thread, and `available` lets admins in before setup finishes (GROX-623).
+		const instanceAiReady = useInstanceAiReady();
 
 		const currentVariant = computed(() =>
 			posthogStore.getVariant(OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name),
@@ -44,10 +46,10 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 		);
 
 		const opensInAssistant = computed(
-			() => isTreatment.value && instanceAiAvailable.value && !optedOut.value,
+			() => isTreatment.value && instanceAiReady.value && !optedOut.value,
 		);
 		const showsOptedOutCardButton = computed(
-			() => isTreatment.value && instanceAiAvailable.value && optedOut.value,
+			() => isTreatment.value && instanceAiReady.value && optedOut.value,
 		);
 
 		function experimentPayload<const T extends ITelemetryTrackProperties>(payload: T) {

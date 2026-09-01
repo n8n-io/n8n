@@ -6,6 +6,7 @@ import {
 	ensurePersonalProjectId,
 	provisionLaunchedThread,
 } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import {
 	INSTANCE_AI_SOURCE_QUERY,
 	INSTANCE_AI_THREAD_VIEW,
@@ -31,6 +32,12 @@ export async function launchWorkflowThread(
 	if (!WORKFLOW_ID_PATTERN.test(workflowIdRaw)) return { name: INSTANCE_AI_VIEW };
 	const workflowId = workflowIdRaw;
 	const editorFallback = { name: VIEWS.WORKFLOW, params: { workflowId } };
+
+	// Not ready means provisioning would succeed but the thread view would render
+	// the setup wizard instead of the workflow (GROX-623). Unlike the templateId
+	// branch, the manual editor is the right fallback: the workflow opens fine
+	// without the assistant.
+	if (!useInstanceAiReady().value) return editorFallback;
 
 	let name: string;
 	let projectId: string | null | undefined;

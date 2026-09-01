@@ -22,9 +22,9 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 
-const instanceAiAvailable = ref(true);
+const instanceAiReady = ref(true);
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
-	useInstanceAiAvailable: () => instanceAiAvailable,
+	useInstanceAiReady: () => instanceAiReady,
 }));
 
 vi.mock('@n8n/rest-api-client/api/users', () => ({
@@ -56,7 +56,7 @@ describe('openWorkflowInAssistant.store', () => {
 		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
 		instanceAiStore = mockedStore(useInstanceAiStore);
-		instanceAiAvailable.value = true;
+		instanceAiReady.value = true;
 		usersStore.currentUser = { id: 'u1', settings: {} } as never;
 		dismissCallouts();
 	});
@@ -85,9 +85,11 @@ describe('openWorkflowInAssistant.store', () => {
 		expect(store.showsOptedOutCardButton).toBe(false);
 	});
 
-	it('does nothing when the assistant is unavailable', () => {
+	// Ready (not merely available) is the gate: `available` lets admins in before
+	// setup finishes, and the redirect would land them on the wizard (GROX-623).
+	it('does nothing when the assistant is not ready', () => {
 		setVariant('variant');
-		instanceAiAvailable.value = false;
+		instanceAiReady.value = false;
 		const store = useOpenWorkflowInAssistantStore();
 		expect(store.opensInAssistant).toBe(false);
 		expect(store.showsOptedOutCardButton).toBe(false);

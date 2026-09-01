@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { ref } from 'vue';
 
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -17,10 +18,16 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
 	ensurePersonalProjectId: () => ensurePersonalProjectId(),
 }));
 
+const instanceAiReady = ref(true);
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
+	useInstanceAiReady: () => instanceAiReady,
+}));
+
 describe('launchWorkflowThread', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia());
+		instanceAiReady.value = true;
 		fetchWorkflow.mockResolvedValue({
 			id: 'wf1',
 			name: 'Gmail fetch',
@@ -33,6 +40,18 @@ describe('launchWorkflowThread', () => {
 	it('ignores a query with no workflowId', async () => {
 		await expect(launchWorkflowThread({ templateId: '1234' })).resolves.toBeUndefined();
 		expect(fetchWorkflow).not.toHaveBeenCalled();
+	});
+
+	// Provisioning succeeds on an unconfigured instance, but the thread view
+	// would render the setup wizard instead of the workflow (GROX-623).
+	it('falls back to the manual editor when the assistant is not ready', async () => {
+		instanceAiReady.value = false;
+		await expect(launchWorkflowThread({ workflowId: 'wf1' })).resolves.toEqual({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: 'wf1' },
+		});
+		expect(fetchWorkflow).not.toHaveBeenCalled();
+		expect(provisionLaunchedThread).not.toHaveBeenCalled();
 	});
 
 	it('rejects a malformed workflow id without fetching', async () => {
