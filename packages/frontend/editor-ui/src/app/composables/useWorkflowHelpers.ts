@@ -56,6 +56,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
+	deriveHomeProject,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
@@ -865,7 +866,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setPinData(workflowData.pinData ?? {});
 		initializedWorkflowDocumentStore.setCreatedAt(workflowData.createdAt);
 		initializedWorkflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
-		initializedWorkflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
+		initializedWorkflowDocumentStore.setHomeProject(deriveHomeProject(workflowData));
 		if (workflowData.checksum) {
 			initializedWorkflowDocumentStore.setChecksum(workflowData.checksum);
 		}

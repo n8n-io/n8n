@@ -121,10 +121,20 @@ function hasReplayableReasoningProviderOptions(
 	});
 }
 
-type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
+export type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
-function isContentToolResultOutput(value: unknown): value is ContentToolResultOutput {
-	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
+export function isContentToolResultOutput(value: unknown): value is ContentToolResultOutput {
+	return (
+		isRecord(value) &&
+		value.type === 'content' &&
+		Array.isArray(value.value) &&
+		value.value.every(
+			(part) =>
+				isRecord(part) &&
+				typeof part.type === 'string' &&
+				(part.type !== 'text' || typeof part.text === 'string'),
+		)
+	);
 }
 
 function normalizeReasoningFileData(

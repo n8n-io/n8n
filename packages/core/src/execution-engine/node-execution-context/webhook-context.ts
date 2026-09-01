@@ -170,6 +170,10 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
+	isChatSessionTest() {
+		return this.webhookData.isChatSessionTest === true;
+	}
+
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
 		this.additionalData.logHitlResponse?.({
 			...payload,

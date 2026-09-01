@@ -4,22 +4,13 @@ import { parse } from 'yaml';
 
 describe('workflow publication blocker in OpenAPI', () => {
 	const specRoot = path.join(__dirname, '../spec');
-	const blockerSchemaRef = '../schemas/workflowPublishBlockedError.yml';
 
 	const readSpec = (relativePath: string) =>
 		parse(fs.readFileSync(path.join(specRoot, relativePath), 'utf8'));
 
-	test('documents the blocker for active workflow updates', () => {
-		const workflowPath = readSpec('paths/workflows.id.yml');
-
-		expect(workflowPath.put.responses['409'].content['application/json'].schema.$ref).toBe(
-			blockerSchemaRef,
-		);
-	});
-
 	// These generate their 409 from `WorkflowPublishBlockedErrorPublicDto`, so the body is inline
-	// rather than a $ref to the hand-written schema the route above still uses.
-	test.each(['publishWorkflow', 'activateWorkflow'])(
+	// rather than a $ref to a hand-written schema.
+	test.each(['publishWorkflow', 'activateWorkflow', 'updateWorkflow'])(
 		'documents the blocker for the generated %s route',
 		(route) => {
 			const { schema } = readSpec(`paths/${route}.generated.yml`).responses['409'].content[
@@ -47,14 +38,12 @@ describe('workflow publication blocker in OpenAPI', () => {
 		});
 	});
 
+	// The update route replaces the shared 403 with its own body, because a refused
+	// re-publication still saved a draft the caller needs to be told about.
 	test('documents the permission refusal separately, naming the saved draft', () => {
-		const workflowPath = readSpec('paths/workflows.id.yml');
-
-		expect(workflowPath.put.responses['403'].content['application/json'].schema.$ref).toBe(
-			'../schemas/workflowPublishForbiddenError.yml',
-		);
-
-		const schema = readSpec('schemas/workflowPublishForbiddenError.yml');
+		const { schema } = readSpec('paths/updateWorkflow.generated.yml').responses['403'].content[
+			'application/json'
+		];
 
 		expect(schema.required).toEqual(['message']);
 		expect(schema.properties.reason.enum).toEqual([

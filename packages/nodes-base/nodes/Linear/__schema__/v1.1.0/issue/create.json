@@ -13,6 +13,9 @@
                 "displayName": {
                     "type": "string"
                 },
+                "email": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 }
@@ -41,9 +44,20 @@
                 }
             }
         },
+        "team": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "title": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
