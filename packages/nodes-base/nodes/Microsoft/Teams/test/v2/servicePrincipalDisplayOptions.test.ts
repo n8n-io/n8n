@@ -81,7 +81,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			const meetingFields = actionProps.filter((p) =>
 				p.displayOptions?.show?.resource?.includes('onlineMeeting'),
 			);
-			// subject, start/end times, options, getBy, meetingId, joinWebUrl…
+			// subject, start/end times, options, meetingId…
 			const gatedFields = meetingFields.filter(
 				(p) => p.type !== 'notice' && p.name !== 'operation',
 			);
