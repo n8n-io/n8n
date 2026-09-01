@@ -343,7 +343,7 @@ describe('registerWorkflowJob', () => {
 		executionId: 'exec-1',
 	};
 
-	it('registers a running workflow job keyed to its execution, without a timeout', async () => {
+	it('registers a running workflow job keyed to its execution', async () => {
 		const { service, jobRepository } = setup();
 
 		const receipt = await service.registerWorkflowJob(workflowParams);

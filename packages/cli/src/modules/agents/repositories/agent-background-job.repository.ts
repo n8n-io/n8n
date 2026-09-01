@@ -48,12 +48,7 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 
 	/**
 	 * Insert a workflow job, or read back the job already tracking the same
-	 * execution. The partial unique index on `childExecutionId` makes the
-	 * execution the job's identity: `orIgnore` (`ON CONFLICT DO NOTHING` on
-	 * both supported drivers) lets a concurrent or earlier insert win silently,
-	 * and the readback deliberately ignores status — the identity holds after
-	 * settlement too, so a replayed registration can never start a second
-	 * tracker for a finished execution.
+	 * execution.
 	 */
 	async insertWorkflowJobOrGetExisting(
 		job: NewWorkflowJob,
@@ -71,9 +66,6 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		const existing = await this.findOne({ where: { childExecutionId: job.childExecutionId } });
 		if (existing) return { inserted: false, existing };
 
-		// Only the 30-day retention prune deletes rows, so losing the insert
-		// without a readback hit means something outside this code path removed
-		// the winner mid-flight.
 		throw new OperationalError('Failed to register workflow background job');
 	}
 

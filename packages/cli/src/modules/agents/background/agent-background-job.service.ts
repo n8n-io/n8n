@@ -39,20 +39,17 @@ export type BackgroundJobView = Pick<
 	| 'childExecutionId'
 >;
 
-/** Cap on the result text persisted on a workflow job row at settle. */
+/** Cap on the result text persisted on a workflow job row. */
 export const WORKFLOW_JOB_RESULT_MAX_CHARS = 8000;
 
 /**
  * Error recorded on a job whose execution vanished before its outcome was
- * read. A successful execution is hard-deleted at completion when the
- * workflow's save settings say not to keep it, so a missing execution is NOT
- * evidence of failure — and the wording is the trust boundary that keeps the
- * model from re-running a workflow that may already have completed.
+ * read.
  */
 export const EXECUTION_OUTCOME_UNKNOWN_ERROR =
 	'The workflow execution was not retained (check the workflow’s save settings), so its outcome is unknown — it may have completed. Do not run the workflow again without checking for its effects.';
 
-/** Job settlement status a finished workflow execution maps to. */
+/** Completed workflow execution status -> job status */
 export function settlementStatusForExecution(
 	status: TerminalExecutionStatus,
 ): 'completed' | 'failed' | 'cancelled' {
@@ -68,7 +65,7 @@ function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): unknown[] {
 	return lastRun.data.main.flatMap((items) => items ?? []).map((item) => item.json);
 }
 
-/** Build the resultData map from an execution's runData, scoped by `allOutputs`. */
+/** Build the resultData map from an execution's runData. */
 export function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
 	const resultData: Record<string, unknown> = {};
 
@@ -94,8 +91,7 @@ export function collectResultData(runData: IRunData, allOutputs: boolean): Recor
 }
 
 /**
- * Serialize a workflow's result data for the job row, bounded so a large
- * output cannot bloat the table — the execution itself keeps the full data.
+ * Serialize a workflow's result data for the job row, with truncation.
  */
 export function serializeWorkflowJobResult(
 	resultData: Record<string, unknown> | undefined,
@@ -115,8 +111,7 @@ export function serializeWorkflowJobResult(
 /**
  * Registry of durable background jobs dispatched by top-level agents. The job
  * row is the receipt handed to the model and the single source of truth for
- * status checks — nothing the check tool depends on lives in memory. The
- * in-process abort map only carries live cancellation handles.
+ * status checks.
  */
 @Service()
 export class AgentBackgroundJobService {
@@ -140,9 +135,6 @@ export class AgentBackgroundJobService {
 	async registerSubAgentJob(
 		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'>,
 	): Promise<BackgroundJobReceipt> {
-		// ponytail: count-then-insert can briefly admit one job over the cap under
-		// concurrent spawns; the limit is advisory. Wrap in a transaction if it
-		// ever needs to be exact.
 		const running = await this.jobRepository.countRunningByParentThread(params.parentThreadId);
 		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
 
@@ -151,26 +143,24 @@ export class AgentBackgroundJobService {
 			kind: 'subagent',
 			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		});
+
 		return { status: 'started', jobId: params.id };
 	}
 
 	/**
 	 * Register a workflow execution parked at a Wait node as a background job.
-	 * The execution is already running either way, so there is no cap check and
-	 * no timeout — its own lifecycle governs. The schema allows exactly one job
-	 * per execution: a concurrent or replayed registration converges on the job
-	 * that won the insert, so the receipt always names the row actually tracking
-	 * the execution.
 	 */
 	async registerWorkflowJob(
 		params: Omit<NewWorkflowJob, 'kind' | 'childExecutionId'> & { executionId: string },
 	): Promise<BackgroundJobReceipt> {
 		const { executionId, ...job } = params;
+
 		const outcome = await this.jobRepository.insertWorkflowJobOrGetExisting({
 			...job,
 			kind: 'workflow',
 			childExecutionId: executionId,
 		});
+
 		return { status: 'started', jobId: outcome.inserted ? params.id : outcome.existing.id };
 	}
 
@@ -200,9 +190,7 @@ export class AgentBackgroundJobService {
 	}
 
 	/**
-	 * Jobs of the given thread, with running rows reconciled first so the model
-	 * gets a truthful answer instead of a forever-running job when the settle
-	 * never ran (crash, restart).
+	 * Jobs of the given thread, with running rows reconciled first.
 	 */
 	async listForThread(parentThreadId: string, ids?: string[]): Promise<BackgroundJobView[]> {
 		let jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
@@ -228,7 +216,7 @@ export class AgentBackgroundJobService {
 	}
 
 	/**
-	 * Claim the row as cancelled, then abort the live run. When this process
+	 * Claim the row as canceled, then abort the live run. When this process
 	 * holds the handle the abort is direct; otherwise the spawning main is
 	 * reached via pubsub. The row is claimed first either way, so the aborted
 	 * run's own settle write loses to the claim.
@@ -354,6 +342,7 @@ export class AgentBackgroundJobService {
 		for (const job of candidates) {
 			const executionId = job.childExecutionId;
 			if (executionId === null) continue;
+
 			try {
 				const execution = await this.executionPersistence.findSingleExecution(executionId);
 				if (!execution) {
@@ -381,6 +370,7 @@ export class AgentBackgroundJobService {
 				});
 			}
 		}
+
 		return settledAny;
 	}
 
@@ -390,6 +380,7 @@ export class AgentBackgroundJobService {
 			includeData: true,
 			unflattenData: true,
 		});
+
 		const runData = execution?.data?.resultData?.runData;
 		if (!runData) return null;
 
@@ -403,6 +394,7 @@ export class AgentBackgroundJobService {
 			// order would race the aborted run's own settle write. Grab the handle
 			// before settle drops it from the map.
 			const controller = this.abortControllers.get(job.id);
+
 			try {
 				const settled = await this.settle(job.id, {
 					status: 'failed',
