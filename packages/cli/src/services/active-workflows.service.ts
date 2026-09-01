@@ -2,10 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @Service()
@@ -16,6 +16,7 @@ export class ActiveWorkflowsService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	async getAllActiveIdsInStorage() {
@@ -27,15 +28,22 @@ export class ActiveWorkflowsService {
 	async getAllActiveIdsFor(user: User) {
 		const activationErrors = await this.activationErrorsService.getAll();
 		const activeWorkflowIds = await this.workflowRepository.getActiveIds();
+		const projectRoleSlugs = await this.projectScopeService.getProjectRoleSlugs(user, [
+			'workflow:list',
+		]);
 
-		const hasFullAccess = hasGlobalScope(user, 'workflow:list');
-		if (hasFullAccess) {
-			return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
-		}
+		const listableWorkflowIds =
+			projectRoleSlugs === null
+				? new Set(activeWorkflowIds)
+				: await this.sharedWorkflowRepository.findWorkflowIdsInUserProjects(
+						activeWorkflowIds,
+						user.id,
+						projectRoleSlugs,
+					);
 
-		const sharedWorkflowIds =
-			await this.sharedWorkflowRepository.getSharedWorkflowIds(activeWorkflowIds);
-		return sharedWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
+		return activeWorkflowIds.filter(
+			(workflowId) => listableWorkflowIds.has(workflowId) && !activationErrors[workflowId],
+		);
 	}
 
 	async getActivationError(workflowId: string, user: User) {

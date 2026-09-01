@@ -132,7 +132,7 @@ const outputSchema = {
 					.enum(['user', 'aiGateway'])
 					.optional()
 					.describe(
-						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via n8n credits.',
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via Gateway credits.',
 					),
 			}),
 		)

@@ -1,5 +1,6 @@
 import type {
 	CredentialsEntity,
+	FolderRepository,
 	Project,
 	SharedWorkflow,
 	User,
@@ -13,6 +14,9 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -22,6 +26,10 @@ describe('EnterpriseWorkflowService', () => {
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const workflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const workflowMutationHooks = mock<WorkflowMutationHooksProxy>();
+	const workflowFinderService = mock<WorkflowFinderService>();
+	const projectService = mock<ProjectService>();
+	const folderRepository = mock<FolderRepository>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -32,14 +40,15 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // credentialsRepository
 			mock(), // credentialsService
 			mock(), // ownershipService
-			mock(), // projectService
+			projectService,
 			activeWorkflowManager,
 			mock(), // credentialsFinderService
 			mock(), // enterpriseCredentialsService
-			mock(), // workflowFinderService
-			mock(), // folderRepository
+			workflowFinderService,
+			folderRepository,
 			workflowPublishHistoryRepository,
 			workflowMutationHooks,
+			policyEnforcementService,
 		);
 	});
 
@@ -350,6 +359,96 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result).toBeUndefined();
 			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 			expect(workflowRepository.updateActiveState).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('transferWorkflow()', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const sourceProject = mock<Project>({ id: 'proj-source' });
+		const destinationProject = mock<Project>({ id: 'proj-dest' });
+
+		const makeWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
+			mock<WorkflowEntity>({
+				id: 'wf-1',
+				name: 'My workflow',
+				nodes: [],
+				activeVersionId: null,
+				parentFolder: null,
+				shared: [mock<SharedWorkflow>({ role: 'workflow:owner', project: sourceProject })],
+				...overrides,
+			});
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let transferOwnershipSpy: ReturnType<typeof vi.spyOn<any, any>>;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let shareCredentialsSpy: ReturnType<typeof vi.spyOn<any, any>>;
+
+		beforeEach(() => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflow());
+			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
+			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
+			// Ownership transfer and credential sharing are exercised by their own
+			// describe blocks below; stubbed here so these tests isolate the
+			// policy-enforcement wiring in `transferWorkflow` itself.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			transferOwnershipSpy = vi
+				.spyOn(service as any, 'transferWorkflowOwnership')
+				.mockResolvedValue(undefined);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			shareCredentialsSpy = vi
+				.spyOn(service as any, 'shareCredentialsWithProject')
+				.mockResolvedValue(undefined);
+		});
+
+		it('calls enforceWorkflowTransfer with the target project, not the source', async () => {
+			const workflow = makeWorkflow();
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith({
+				workflow,
+				targetProjectId: destinationProject.id,
+			});
+		});
+
+		it('proceeds with the transfer unchanged when the policy check clears', async () => {
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
+			expect(shareCredentialsSpy).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.update).toHaveBeenCalledWith(
+				{ id: 'wf-1' },
+				{ parentFolder: null },
+			);
+		});
+
+		it('blocks the transfer and performs no mutation when the policy check throws', async () => {
+			const violation = new Error('blocked by policy');
+			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValue(violation);
+
+			await expect(service.transferWorkflow(user, 'wf-1', 'proj-dest')).rejects.toThrow(violation);
+
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(transferOwnershipSpy).not.toHaveBeenCalled();
+			expect(shareCredentialsSpy).not.toHaveBeenCalled();
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('resolves the destination project before enforcing the policy check', async () => {
+			const callOrder: string[] = [];
+			projectService.getProjectWithScope.mockImplementation(async () => {
+				callOrder.push('getProjectWithScope');
+				return destinationProject;
+			});
+			policyEnforcementService.enforceWorkflowTransfer.mockImplementation(async () => {
+				callOrder.push('enforceWorkflowTransfer');
+				return await mock();
+			});
+
+			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
+
+			expect(callOrder).toEqual(['getProjectWithScope', 'enforceWorkflowTransfer']);
 		});
 	});
 

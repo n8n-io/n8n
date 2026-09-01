@@ -208,6 +208,28 @@ describe('PolicyDecisionService', () => {
 		});
 	});
 
+	describe('hasChecksFor', () => {
+		it('is false when nothing is registered', () => {
+			expect(serviceWith().hasChecksFor('workflowStart')).toBe(false);
+		});
+
+		it('is true for a point a registered check implements', () => {
+			expect(serviceWith(StartOnlyCheck).hasChecksFor('workflowStart')).toBe(true);
+		});
+
+		it('is false for a point no registered check implements', () => {
+			expect(serviceWith(SilentCheck).hasChecksFor('workflowStart')).toBe(false);
+		});
+
+		it('agrees with what enforce would run', async () => {
+			const service = serviceWith(SilentCheck);
+
+			expect(service.hasChecksFor('workflowSave')).toBe(true);
+			expect((await service.enforce('workflowSave', saveContext)).violations).toEqual([]);
+			expect(service.hasChecksFor('workflowStart')).toBe(false);
+		});
+	});
+
 	describe('evaluate', () => {
 		it('returns an empty decision when no checks are registered', async () => {
 			expect(await serviceWith().evaluate('workflowSave', saveContext)).toEqual({

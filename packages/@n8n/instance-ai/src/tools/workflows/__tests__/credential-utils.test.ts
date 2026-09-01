@@ -41,7 +41,7 @@ describe('resolveCredentialForApply', () => {
 
 			expect(result).toEqual({
 				resolved: false,
-				error: 'Credential type "openAiApi" is not supported by n8n credits',
+				error: 'Credential type "openAiApi" is not supported by Gateway credits',
 			});
 		});
 

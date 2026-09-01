@@ -80,7 +80,7 @@ describe('PollTriggerJobRegistrar', () => {
 		await pollerStateRepository.insert({ workflowId: workflow.id, nodeId: node.id, cursor: {} });
 		await pollerStateRepository.recordFailure(workflow.id, node.id, 60 * 60 * 1000);
 
-		const failingBefore = await pollerStateRepository.findFailureState(workflow.id, node.id);
+		const failingBefore = await pollerStateRepository.findState(workflow.id, node.id);
 		expect(failingBefore?.consecutiveErrors).toBe(1);
 		expect(failingBefore?.backoffUntil).toBeInstanceOf(Date);
 
@@ -99,8 +99,8 @@ describe('PollTriggerJobRegistrar', () => {
 		});
 		expect(jobs).toHaveLength(1);
 
-		const failureStateAfter = await pollerStateRepository.findFailureState(workflow.id, node.id);
-		expect(failureStateAfter).toEqual({ consecutiveErrors: 0, backoffUntil: null });
+		const failureStateAfter = await pollerStateRepository.findState(workflow.id, node.id);
+		expect(failureStateAfter).toEqual({ consecutiveErrors: 0, backoffUntil: null, cursor: {} });
 	});
 
 	it('leaves a failing poller_state row untouched when durable cursors are disabled, even though a job is inserted', async () => {
@@ -110,7 +110,7 @@ describe('PollTriggerJobRegistrar', () => {
 
 		await pollerStateRepository.insert({ workflowId: workflow.id, nodeId: node.id, cursor: {} });
 		await pollerStateRepository.recordFailure(workflow.id, node.id, 60 * 60 * 1000);
-		const failingBefore = await pollerStateRepository.findFailureState(workflow.id, node.id);
+		const failingBefore = await pollerStateRepository.findState(workflow.id, node.id);
 
 		const { inserted } = await registrar.register(
 			workflow.id,
@@ -120,7 +120,7 @@ describe('PollTriggerJobRegistrar', () => {
 		);
 
 		expect(inserted).toBe(true);
-		const failureStateAfter = await pollerStateRepository.findFailureState(workflow.id, node.id);
+		const failureStateAfter = await pollerStateRepository.findState(workflow.id, node.id);
 		expect(failureStateAfter).toEqual(failingBefore);
 	});
 });

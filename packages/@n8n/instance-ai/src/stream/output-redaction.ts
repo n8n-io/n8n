@@ -15,8 +15,10 @@ import type { Logger } from '../logger';
  * secret patterns plus credit-card numbers. Other PII categories (`email`,
  * `ssn-us`) are implemented but off by default until we decide which to enable.
  *
- * Instance AI always redacts matches. The SDK's `GuardrailStrategy` also defines
- * `block` and `warn`, but those are not implemented here.
+ * Instance AI's own streams pass `false` (raw-at-rest, INS-837), so this policy
+ * applies only to callers that opt in. When it does run it always redacts
+ * matches; the SDK's `GuardrailStrategy` also defines `block` and `warn`, but
+ * those are not implemented here.
  */
 export const DEFAULT_OUTPUT_REDACTION_OPTIONS: RedactionOptions = {
 	secrets: true,
@@ -29,8 +31,10 @@ interface OutputRedactorContext {
 	runId: string;
 	agentId: string;
 	/**
-	 * Redaction policy: omit for the safe default, pass options to customise, or
-	 * `false` to disable scanning entirely (events pass through untouched).
+	 * Redaction policy: omit for the default policy, pass options to customise,
+	 * or `false` to disable scanning entirely (events pass through untouched).
+	 * NOTE: omission means ENABLED — callers on a persistence path must pass
+	 * `false` explicitly or the stored text is redacted.
 	 */
 	options?: RedactionOptions | false;
 }

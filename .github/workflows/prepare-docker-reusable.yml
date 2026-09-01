@@ -11,7 +11,7 @@ on:
   workflow_call:
     inputs:
       build-variant:
-        description: 'standard or coverage'
+        description: 'standard, coverage, or pc'
         required: false
         default: 'standard'
         type: string

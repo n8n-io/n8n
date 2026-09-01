@@ -117,14 +117,8 @@ paths:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
-  /workflows/{id}:
-    $ref: './handlers/workflows/spec/paths/workflows.id.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
-  /workflows/{id}/activate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
-  /workflows/{id}/deactivate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
   /workflows/{id}/test-runs:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:

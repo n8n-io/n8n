@@ -85,6 +85,10 @@ describe('getAllowedToolNames', () => {
 	it('grants only call_agent with agent:execute', () => {
 		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
 	});
+
+	it('exposes the renamed list_n8n_gateway_services tool via credential:read', () => {
+		expect(getAllowedToolNames(['credential:read'])).toContain('list_n8n_gateway_services');
+	});
 });
 
 describe('McpService scope enforcement', () => {

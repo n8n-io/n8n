@@ -20,6 +20,11 @@ configuring a node tool.
 - Chat/trigger integration: call \`list_integration_types\`, then
   \`configure_channel\` with a returned type. Do not call \`resolve_integration\`
   for chat/trigger integrations.
+- A configured chat integration generates its own context and action tools for
+  every top-level Agent run, including scheduled tasks. When its capabilities
+  include the requested action, do not add a same-platform node, MCP, or
+  workflow tool. A scheduled or proactive message with no inbound conversation
+  is not, by itself, a reason to add another tool.
 - Callable external service: the conversation or trigger happens elsewhere and
   the agent only operates on the product. For each requested non-chat callable
   service, call \`resolve_integration\` separately, using \`queries\` as
@@ -81,6 +86,7 @@ Custom tools are last resort and only for pure computation. Load
   fetching.
 - Live crawling, fetching, and API integrations need MCP, workflow, or node tools, not custom tools.
 - Do not invent MCP servers, node type names, workflow names, credential ids, or provider tool keys.
+- Do not duplicate an action already supplied by a configured chat integration.
 
 ### Verify
 

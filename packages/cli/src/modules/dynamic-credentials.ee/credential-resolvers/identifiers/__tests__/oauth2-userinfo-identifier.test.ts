@@ -1,6 +1,5 @@
-import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import type { JSONWebKeySet, JWTPayload, KeyObject } from 'jose';
@@ -87,13 +86,7 @@ describe('OAuth2UserInfoIdentifier', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request }));
-		const httpClient = new OAuth2MetadataHttpClient(
-			logger,
-			cache,
-			outboundHttp,
-			mock<SsrfProtectionService>(),
-			mock<SsrfProtectionConfig>({ enabled: true }),
-		);
+		const httpClient = new OAuth2MetadataHttpClient(logger, cache, outboundHttp);
 		identifier = new OAuth2UserInfoIdentifier(logger, cache, httpClient);
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();

@@ -20,8 +20,6 @@ export type * from './v2/components/Checkbox/Checkbox.types';
 export type * from './components/N8nPagination/Pagination.types';
 export { default as N8nLoading2 } from './v2/components/Loading/Loading.vue';
 export type * from './v2/components/Loading/Loading.types';
-export { default as N8nInputNumber2 } from './v2/components/InputNumber/InputNumber.vue';
-export type * from './v2/components/InputNumber/InputNumber.types';
 export { default as N8nRadioGroupItem } from './components/N8nRadioGroup/RadioGroupItem.vue';
 export { default as N8nRadioGroup } from './components/N8nRadioGroup/RadioGroup.vue';
 export type * from './components/N8nRadioGroup/RadioGroupItem.types';

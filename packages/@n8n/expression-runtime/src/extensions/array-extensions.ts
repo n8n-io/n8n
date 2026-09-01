@@ -30,6 +30,12 @@ function last(value: unknown[]): unknown {
 	return value[value.length - 1];
 }
 
+// reverse() deliberately stays copy-first: it has shadowed the native for
+// years and is documented as an extension. Do NOT add other native mutator
+// names here — registry names shadow natives on every receiver the expression
+// transformer sees, including plain local arrays created inside expressions
+// (in-place mutation on lazy-proxied workflow data is handled by the proxies
+// themselves, see CAT-4266).
 function reverse(value: unknown[]): unknown[] {
 	return [...value].reverse();
 }

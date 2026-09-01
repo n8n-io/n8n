@@ -60,6 +60,7 @@ vi.mock('../workflow-source-compiler', () => ({
 vi.mock('../resolve-credentials', () => ({
 	buildCredentialMap: vi.fn(async () => await Promise.resolve(new Map())),
 	buildCredentialResolutionNote: vi.fn(() => undefined),
+	isN8nCreditsWalletDepleted: vi.fn(async () => await Promise.resolve(false)),
 	resolveCredentials: vi.fn(
 		async () =>
 			await Promise.resolve({
@@ -215,6 +216,23 @@ describe('createBuildWorkflowTool', () => {
 			informational: warnings,
 		}));
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
+	});
+
+	// The field that caused the misreport: `projectId` was advertised here as "Project
+	// ID to create the workflow in", while the adapter resolved the bound project and
+	// ignored it. So the agent picked a project, the workflow went somewhere else, and
+	// the build reported the project it had asked for. Writes are bound-project only —
+	// there must be no knob suggesting otherwise.
+	it("offers no projectId — a build writes to the conversation's own project", () => {
+		expect(buildWorkflowInputSchema.shape).not.toHaveProperty('projectId');
+
+		// The schema is `.strict()`, so a stale caller that still sends one fails LOUDLY
+		// rather than having it quietly dropped — which is the right end of the trade:
+		// the old silent drop is exactly what let a build report a project it never
+		// wrote to.
+		expect(() =>
+			buildWorkflowInputSchema.parse({ filePath: 'wf.workflow.ts', projectId: 'other-project-id' }),
+		).toThrow(/projectId/);
 	});
 
 	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
@@ -1910,7 +1928,7 @@ describe('createBuildWorkflowTool', () => {
 			heldForNewCredentialTypes: [],
 			resolvedCredentialsByNode: {
 				'OpenAI Chat Model': [
-					{ type: 'openAiApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					{ type: 'openAiApi', id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 				],
 			},
 		});

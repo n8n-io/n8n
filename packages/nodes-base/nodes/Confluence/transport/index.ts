@@ -1,14 +1,16 @@
+import type FormData from 'form-data';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	INodeParameterResourceLocator,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { getAtlassianApiBaseUrl, getAtlassianCloudId } from '@utils/atlassian';
+import { getAtlassianApiBaseUrl, resolveAtlassianCloudId } from '@utils/atlassian';
 
 export const CONFLUENCE_CREDENTIAL_NAME = 'confluenceCloudOAuth2Api';
 
@@ -81,28 +83,44 @@ function toConfluenceApiError(
 	return new NodeApiError(this.getNode(), error as JsonObject);
 }
 
+/**
+ * Reads the top-level Site parameter in both contexts: dropdown searches run in
+ * a load-options context, where only `getCurrentNodeParameter` sees the NDV's
+ * unsaved value. The selector is node-level, so execute contexts read it once
+ * at item 0 — an expression on it cannot vary the site per item.
+ */
+function getSiteParameter(
+	ctx: IExecuteFunctions | ILoadOptionsFunctions,
+): INodeParameterResourceLocator | undefined {
+	const raw =
+		'getCurrentNodeParameter' in ctx
+			? ctx.getCurrentNodeParameter('site')
+			: ctx.getNodeParameter('site', 0, null);
+
+	return typeof raw === 'object' && raw !== null && 'value' in raw
+		? (raw as INodeParameterResourceLocator)
+		: undefined;
+}
+
+export async function getConfluenceCloudId(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+): Promise<string> {
+	return await resolveAtlassianCloudId.call(
+		this,
+		CONFLUENCE_CREDENTIAL_NAME,
+		getSiteParameter(this),
+		'confluence',
+	);
+}
+
 export async function confluenceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	body: IDataObject = {},
+	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 ): Promise<IDataObject> {
-	const credentials = await this.getCredentials(CONFLUENCE_CREDENTIAL_NAME);
-	// Keyed `domain` for backwards compatibility with Jira credentials; labeled "Site URL" in the UI
-	const siteUrl = credentials.domain;
-	if (typeof siteUrl !== 'string' || siteUrl === '') {
-		throw new NodeOperationError(
-			this.getNode(),
-			'The Confluence credential is missing the Site URL field',
-		);
-	}
-	const cloudId = await getAtlassianCloudId.call(
-		this,
-		CONFLUENCE_CREDENTIAL_NAME,
-		siteUrl,
-		'confluence',
-	);
+	const cloudId = await getConfluenceCloudId.call(this);
 
 	// The URL is concatenated onto the api.atlassian.com base, so caller input can't
 	// change the host; a future verbatim-URL param needs an origin check first.
@@ -134,20 +152,7 @@ export async function confluenceApiRequestBinary(
 	this: IExecuteFunctions,
 	endpoint: string,
 ): Promise<Buffer> {
-	const credentials = await this.getCredentials(CONFLUENCE_CREDENTIAL_NAME);
-	const siteUrl = credentials.domain;
-	if (typeof siteUrl !== 'string' || siteUrl === '') {
-		throw new NodeOperationError(
-			this.getNode(),
-			'The Confluence credential is missing the Site URL field',
-		);
-	}
-	const cloudId = await getAtlassianCloudId.call(
-		this,
-		CONFLUENCE_CREDENTIAL_NAME,
-		siteUrl,
-		'confluence',
-	);
+	const cloudId = await getConfluenceCloudId.call(this);
 
 	// Downloads 302 to the Atlassian media host, which authenticates the hop via its
 	// own signed token in the redirect URL; the OAuth header must not follow cross-origin.
@@ -173,4 +178,39 @@ export async function confluenceApiRequestBinary(
 	if (data instanceof ArrayBuffer) return Buffer.from(data);
 	if (typeof data === 'string') return Buffer.from(data);
 	throw new NodeOperationError(this.getNode(), 'Confluence returned an unexpected binary response');
+}
+
+/**
+ * Uploads a multipart body (e.g. a file) through the gateway. PUT, not POST:
+ * the same endpoint's POST is create-only and 400s on a filename that already
+ * exists on the page, while PUT upserts (creates if new, new version if the
+ * filename matches) so the delete+upload replace-a-file story becomes a single
+ * call. No `json: true` and no explicit Content-Type: `form-data` sets its own
+ * multipart boundary, and an explicit header would clobber it.
+ */
+export async function confluenceApiRequestUpload(
+	this: IExecuteFunctions,
+	endpoint: string,
+	formData: FormData,
+): Promise<IDataObject> {
+	const cloudId = await getConfluenceCloudId.call(this);
+
+	const options: IHttpRequestOptions = {
+		method: 'PUT',
+		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
+		body: formData,
+		// Bypasses XSRF checks on this v1 endpoint; without it the gateway answers
+		// 403 "XSRF check failed" before the request ever reaches Confluence.
+		headers: { 'X-Atlassian-Token': 'nocheck' },
+	};
+
+	try {
+		return await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			CONFLUENCE_CREDENTIAL_NAME,
+			options,
+		);
+	} catch (error) {
+		throw toConfluenceApiError.call(this, error);
+	}
 }

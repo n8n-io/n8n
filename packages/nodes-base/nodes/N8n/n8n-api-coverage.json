@@ -176,6 +176,9 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
+		"GET /workflows/{workflowId}/versions/{versionId}": {
+			"status": "gap"
+		},
 		"GET /workflows/{id}/history": {
 			"status": "gap"
 		},
@@ -242,6 +245,9 @@
 			"status": "gap"
 		},
 		"POST /git-connections/{id}/push": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/pull": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

@@ -3,13 +3,12 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, type InstanceAiThreadSummary, type PushMessage } from '@n8n/api-types';
 import {
 	ensureThread,
 	getInstanceAiCredits,
 	type InstanceAiThreadLaunchInput,
 } from './instanceAi.api';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
@@ -21,6 +20,8 @@ import { NEW_CONVERSATION_TITLE } from './constants';
 import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
+
+type InstanceAiCreditsPushData = Extract<PushMessage, { type: 'updateInstanceAiCredits' }>['data'];
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
@@ -115,40 +116,30 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	 */
 	const showCreditWarning = computed(() => isLowCredits.value || quotaLocked.value);
 
-	// --- Credits push listener ---
+	// --- Credits push handling ---
 
-	let removeCreditsPushListener: (() => void) | null = null;
-
-	function startCreditsPushListener(): void {
-		if (removeCreditsPushListener) return;
-		const pushStore = usePushConnectionStore();
-		removeCreditsPushListener = pushStore.addEventListener((message) => {
-			if (message.type !== 'updateInstanceAiCredits') return;
-			creditsQuota.value = message.data.creditsQuota;
-			creditsClaimed.value = message.data.creditsClaimed;
-			// Absent means "no opinion", not "unlocked". Only the lock itself reports this; a claim
-			// push carries no lock state, and claims can land after the lock — a background memory
-			// task or a fire-and-forget HITL segment claim from an earlier run — so treating absence
-			// as false would clear the warning the lock had just raised.
-			if (message.data.quotaLocked !== undefined) {
-				quotaLocked.value = message.data.quotaLocked;
+	// Applies an `updateInstanceAiCredits` push. The instance-ai module descriptor
+	// registers this through its `pushHandlers`, so the shell owns the subscription
+	// lifecycle and credits stay current instance-wide; the store just applies the
+	// payload.
+	function handleCreditsPush(data: InstanceAiCreditsPushData): void {
+		creditsQuota.value = data.creditsQuota;
+		creditsClaimed.value = data.creditsClaimed;
+		// Absent means "no opinion", not "unlocked". Only the lock itself reports this; a claim
+		// push carries no lock state, and claims can land after the lock — a background memory
+		// task or a fire-and-forget HITL segment claim from an earlier run — so treating absence
+		// as false would clear the warning the lock had just raised.
+		if (data.quotaLocked !== undefined) {
+			quotaLocked.value = data.quotaLocked;
+		}
+		// Per-message claims also carry the thread's running total — write it onto the
+		// matching thread so the credits dropdown updates live for the acting user.
+		const { creditsPerThread } = data;
+		if (creditsPerThread !== undefined) {
+			const thread = threads.value.find((t) => t.id === creditsPerThread.threadId);
+			if (thread) {
+				thread.metadata = { ...thread.metadata, creditsUsed: creditsPerThread.totalCreditsUsed };
 			}
-			// Per-message claims also carry the thread's running total — write it onto the
-			// matching thread so the credits dropdown updates live for the acting user.
-			const { creditsPerThread } = message.data;
-			if (creditsPerThread !== undefined) {
-				const thread = threads.value.find((t) => t.id === creditsPerThread.threadId);
-				if (thread) {
-					thread.metadata = { ...thread.metadata, creditsUsed: creditsPerThread.totalCreditsUsed };
-				}
-			}
-		});
-	}
-
-	function stopCreditsPushListener(): void {
-		if (removeCreditsPushListener) {
-			removeCreditsPushListener();
-			removeCreditsPushListener = null;
 		}
 	}
 
@@ -310,8 +301,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		updateThreadMetadata,
 		loadThreads,
 		fetchCredits,
-		startCreditsPushListener,
-		stopCreditsPushListener,
+		handleCreditsPush,
 		getOrCreateRuntime,
 		getRuntime,
 		disposeRuntime,

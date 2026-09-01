@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
 	DeploymentKeyRepository,
@@ -38,6 +38,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
@@ -73,6 +74,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	override needsTaskRunner = true;
 
 	override seedsInstanceIdentity = true;
+
+	override readonly isMainServer = true;
 
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
@@ -161,8 +164,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		let scriptsString = '';
 		if (hooksUrls) {
+			// The placeholder takes the request's nonce, so `script-src` allows these scripts.
 			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
-				return `${acc}<script src="${curr}"></script>`;
+				return `${acc}<script nonce="${HTML_NONCE_PLACEHOLDER}" src="${curr}"></script>`;
 			}, '');
 		}
 
@@ -420,6 +424,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
 		Container.get(N8NCheckpointStorage).init();
+		Container.get(SystemTaskRunner).init();
 		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {

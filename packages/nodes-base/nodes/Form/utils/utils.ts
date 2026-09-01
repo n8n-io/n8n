@@ -100,10 +100,6 @@ function userFromFormUserAuthClaims(claims: FormUserAuthClaims): IUser {
 	};
 }
 
-export function isFormOAuth2Enabled(): boolean {
-	return process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 === 'true';
-}
-
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
 		allowedTags: [
@@ -1062,11 +1058,11 @@ async function isSessionForDifferentUser(
  */
 async function authenticateFormUserOrRespond(
 	context: IWebhookFunctions,
-	oauth2Enabled: boolean = false,
+	runOAuth2Flow: boolean = false,
 ): Promise<{ user: IUser; token: string | null } | null> {
 	const req = context.getRequestObject();
 
-	if (oauth2Enabled) {
+	if (runOAuth2Flow) {
 		const res = context.getResponseObject();
 		const url = context.getWebhookResourceUrl('default');
 		if (!url) {
@@ -1415,8 +1411,7 @@ export async function formWebhook(
 	let oAuth2Token: string | undefined;
 	if (node.typeVersion > 1) {
 		if (authentication === 'n8nUserAuth') {
-			const { user, token } =
-				(await authenticateFormUserOrRespond(context, isFormOAuth2Enabled())) ?? {};
+			const { user, token } = (await authenticateFormUserOrRespond(context, true)) ?? {};
 			if (!user) return { noWebhookResponse: true };
 			authedUser = user;
 			oAuth2Token = token ?? undefined;
@@ -1513,17 +1508,11 @@ export async function formWebhook(
 
 		// Connect-before-submit: when the workflow needs the submitter's own
 		// (private) credentials, establish their identity from the OAuth2 token and
-		// check readiness server-side. As long as the trigger requires any end-user
-		// account — and we're not already rendering the inner iframe — wrap the form
-		// in the hosting shell (form + connect panel). No-op unless OAuth2 form auth
-		// and the dynamic-credentials module are both active.
-		if (
-			authentication === 'n8nUserAuth' &&
-			authedUser &&
-			isFormOAuth2Enabled() &&
-			oAuth2Token &&
-			!shellInner
-		) {
+		// check readiness server-side. If anything is still missing — and we're not
+		// already rendering the inner iframe — wrap the form in the hosting shell
+		// (form + connect panel, submit disabled). No-op unless OAuth2 form auth and
+		// the dynamic-credentials module are both active.
+		if (authentication === 'n8nUserAuth' && authedUser && oAuth2Token && !shellInner) {
 			// Must name the endpoint actually being served (test vs production) — the
 			// OAuth2 token is bound to that resource, same as in the auth path above.
 			const resourceUrl = trimTrailingSlash(context.getWebhookResourceUrl('default') ?? '');
@@ -1559,16 +1548,9 @@ export async function formWebhook(
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
 			if (authentication === 'n8nUserAuth' && authedUser) {
-				if (!isFormOAuth2Enabled()) {
-					// Cookies aren't sent on POST from the sandboxed form page
-					// (null origin + SameSite=Lax). Embed an HMAC token so the
-					// POST handler can re-authenticate the user.
-					authToken = generateFormUserAuthToken(node, authedUser, {
-						workflowId: context.getWorkflow().id,
-					});
-				} else {
-					authToken = oAuth2Token;
-				}
+				// Cookies aren't sent on POST from the sandboxed form page (null origin +
+				// SameSite=Lax), so the POST re-authenticates off this token.
+				authToken = oAuth2Token;
 			} else {
 				authToken = await generateFormPostBasicAuthToken(context, authProperty);
 			}
