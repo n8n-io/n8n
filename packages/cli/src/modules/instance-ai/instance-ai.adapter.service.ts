@@ -1,5 +1,6 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
@@ -2662,7 +2663,7 @@ export class InstanceAiAdapterService {
 			async listAvailable(options) {
 				const [nodes, gatewayConfig] = await Promise.all([
 					getNodes(),
-					options?.n8nConnectOnly ? getGatewayConfig() : Promise.resolve(null),
+					options?.gatewayCreditsOnly ? getGatewayConfig() : Promise.resolve(null),
 				]);
 				let filtered = nodes;
 
@@ -2689,9 +2690,9 @@ export class InstanceAiAdapterService {
 					return summary;
 				});
 
-				// n8nConnectOnly answers "which nodes support n8n Connect?" — keep only
+				// gatewayCreditsOnly answers "which nodes support Gateway credits?" — keep only
 				// nodes the gateway covers (meta present).
-				return options?.n8nConnectOnly ? summaries.filter((s) => s.aiGateway) : summaries;
+				return options?.gatewayCreditsOnly ? summaries.filter((s) => s.aiGateway) : summaries;
 			},
 
 			async listSearchable() {
@@ -4016,20 +4017,42 @@ function hasCredentialId(value: unknown): boolean {
 	return typeof id === 'string' && id.trim() !== '';
 }
 
+/**
+ * Convert the n8n credits managed tag, when written as a credential id, to the
+ * runtime sentinel. Build-time resolve already does this; normalizing at save
+ * also covers direct saves (e.g. workflows update) so the tag never persists as
+ * a real id the runtime would fail to resolve.
+ */
+function normalizeManagedCredentialForSave(value: unknown): unknown {
+	if (typeof value !== 'object' || value === null) return value;
+	if (Reflect.get(value, 'id') !== AI_GATEWAY_MANAGED_TAG) return value;
+	const name = Reflect.get(value, 'name');
+	return {
+		id: null,
+		name: typeof name === 'string' && name !== '' ? name : 'Gateway credits',
+		__aiGatewayManaged: true,
+	};
+}
+
 function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): WorkflowJSON['nodes'] {
 	return nodes.map((node) => {
 		if (!node.credentials) return node;
 
+		let changed = false;
 		const credentials = Object.entries(node.credentials).reduce<
 			NonNullable<typeof node.credentials>
-		>((acc, [type, value]) => {
+		>((acc, [type, rawValue]) => {
+			const value = normalizeManagedCredentialForSave(rawValue);
+			if (value !== rawValue) changed = true;
 			if (hasCredentialId(value)) {
-				acc[type] = value;
+				acc[type] = value as NonNullable<typeof node.credentials>[string];
+			} else {
+				changed = true;
 			}
 			return acc;
 		}, {});
 
-		if (Object.keys(credentials).length === Object.keys(node.credentials).length) return node;
+		if (!changed) return node;
 
 		const sanitized = { ...node };
 		if (Object.keys(credentials).length > 0) {

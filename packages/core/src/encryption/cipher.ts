@@ -18,12 +18,14 @@ export class Cipher {
 		private readonly encryptionKeyProxy: EncryptionKeyProxy,
 	) {}
 
+	/** @deprecated Use {@link encryptV2} instead, or {@link encryptWithKey} for an explicit key. */
 	encrypt(data: string | object, customEncryptionKey?: string): string {
 		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
 		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
 		return this.encryptWithKey(plaintext, key, 'aes-256-cbc');
 	}
 
+	/** @deprecated Use {@link decryptV2} instead, or {@link decryptWithKey} for an explicit key. */
 	decrypt(data: string, customEncryptionKey?: string): string {
 		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
 		return this.decryptWithKey(data, key, 'aes-256-cbc');

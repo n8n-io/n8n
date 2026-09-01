@@ -151,6 +151,23 @@ describe('Git connections in Public API', () => {
 		expect(after.encryptedPassword).toBe(before.encryptedPassword);
 	});
 
+	it('rejects creating a second connection', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const payload = {
+			name: 'HTTPS repository',
+			repositoryUrl: 'https://example.com/org/repo.git',
+			connectionType: 'https',
+			username: 'git-user',
+			password: 'secret',
+		};
+		await agent.post('/git-connections').send(payload);
+
+		const response = await agent.post('/git-connections').send({ ...payload, name: 'Second' });
+
+		expect(response.status).toBe(409);
+		expect(await Container.get(GitConnectionRepository).count()).toBe(1);
+	});
+
 	it('rejects mismatched URL and authentication types without persisting', async () => {
 		const response = await testServer.publicApiAgentFor(owner).post('/git-connections').send({
 			name: 'Invalid',
@@ -174,6 +191,30 @@ describe('Git connections in Public API', () => {
 				password: 'secret',
 			});
 			return response.body.id as string;
+		}
+
+		/**
+		 * A second connection cannot be created through the API — the instance is
+		 * limited to one — but the one-connection-per-project link rules still have
+		 * to hold for multiple rows, so insert it directly.
+		 */
+		async function insertConnection(name: string) {
+			const repository = Container.get(GitConnectionRepository);
+			const connection = await repository.save(
+				repository.create({
+					name,
+					repositoryUrl: 'https://example.com/org/other.git',
+					branchName: 'main',
+					connectionType: 'https',
+					publicKey: null,
+					encryptedPrivateKey: null,
+					encryptedUsername: 'encrypted-username',
+					encryptedPassword: 'encrypted-password',
+					keyGeneratorType: null,
+					baseCommit: null,
+				}),
+			);
+			return connection.id;
 		}
 
 		it('adds, lists, and removes a team project', async () => {
@@ -211,7 +252,7 @@ describe('Git connections in Public API', () => {
 		it('rejects adding a project already linked to another connection', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const first = await createConnection('First');
-			const second = await createConnection('Second');
+			const second = await insertConnection('Second');
 			const project = await createTeamProject('Team project', owner);
 
 			await agent.post(`/git-connections/${first}/projects/${project.id}`);
@@ -223,7 +264,7 @@ describe('Git connections in Public API', () => {
 		it('does not reassign a project when different connections add it concurrently', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const first = await createConnection('First');
-			const second = await createConnection('Second');
+			const second = await insertConnection('Second');
 			const project = await createTeamProject('Team project', owner);
 
 			const responses = await Promise.all([
@@ -240,7 +281,7 @@ describe('Git connections in Public API', () => {
 		it('rejects removing a project through a different connection', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const first = await createConnection('First');
-			const second = await createConnection('Second');
+			const second = await insertConnection('Second');
 			const project = await createTeamProject('Team project', owner);
 			await agent.post(`/git-connections/${first}/projects/${project.id}`);
 
@@ -294,5 +335,44 @@ describe('Git connections in Public API', () => {
 				await Container.get(GitConnectionProjectRepository).findByProjectId(project.id),
 			).toBeNull();
 		});
+	});
+	async function createConnection(agent: ReturnType<typeof testServer.publicApiAgentFor>) {
+		const response = await agent.post('/git-connections').send({
+			name: 'Deployments',
+			repositoryUrl: 'https://example.com/org/repo.git',
+			branchName: 'main',
+			connectionType: 'https',
+			username: 'git-user',
+			password: 'secret',
+		});
+		return response.body.id as string;
+	}
+
+	it('rejects a push with a clear error when the repository is not cloned', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const id = await createConnection(agent);
+
+		const response = await agent
+			.post(`/git-connections/${id}/push`)
+			.send({ commitMessage: 'sync projects' });
+		expect(response.status).toBe(400);
+		expect(response.body.message).toContain('not cloned');
+	});
+
+	it('rejects a pull with a clear error when the repository is not cloned', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const id = await createConnection(agent);
+
+		const response = await agent.post(`/git-connections/${id}/pull`);
+		expect(response.status).toBe(400);
+		expect(response.body.message).toContain('not cloned');
+	});
+
+	it('rejects a pull from a key without the gitConnection:pull scope', async () => {
+		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
+		const response = await testServer
+			.publicApiAgentFor(unscopedOwner)
+			.post('/git-connections/some-id/pull');
+		expect(response.status).toBe(403);
 	});
 });

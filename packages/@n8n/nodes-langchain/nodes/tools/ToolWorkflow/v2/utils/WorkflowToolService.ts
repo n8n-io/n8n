@@ -26,7 +26,7 @@ import {
 	parseErrorMetadata,
 } from 'n8n-workflow';
 
-import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities';
+import { createZodSchemaFromArgs, extractFromAIParameters, logAiEvent } from '@n8n/ai-utilities';
 import { sleep } from '@n8n/utils/sleep';
 
 function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
@@ -95,6 +95,21 @@ export class WorkflowToolService {
 			}
 
 			let lastError: ExecutionError | undefined;
+			const cancelledResponse = 'There was an error: "Execution was cancelled"';
+
+			const emitCancelledToolCall = (
+				loggingContext: ISupplyDataFunctions | IExecuteFunctions,
+				outputRunIndex: number,
+			) => {
+				if (!manualLogging) {
+					return;
+				}
+				const cancelledData: INodeExecutionData[] = [{ json: { error: cancelledResponse } }];
+				void loggingContext.addOutputData(NodeConnectionTypes.AiTool, outputRunIndex, [
+					cancelledData,
+				]);
+				logAiEvent(loggingContext, 'ai-tool-called', { query, response: cancelledResponse });
+			};
 
 			for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 				const localRunIndex = runIndex++;
@@ -115,7 +130,8 @@ export class WorkflowToolService {
 
 				// Check if execution was cancelled before retry
 				if (abortSignal?.aborted) {
-					return 'There was an error: "Execution was cancelled"';
+					emitCancelledToolCall(context, localRunIndex);
+					return cancelledResponse;
 				}
 
 				if (tryIndex !== 0) {
@@ -125,7 +141,8 @@ export class WorkflowToolService {
 						try {
 							await sleep(waitBetweenTries, abortSignal);
 						} catch (abortError) {
-							return 'There was an error: "Execution was cancelled"';
+							emitCancelledToolCall(context, localRunIndex);
+							return cancelledResponse;
 						}
 					}
 				}
@@ -167,7 +184,7 @@ export class WorkflowToolService {
 							[responseData],
 							metadata,
 						);
-
+						logAiEvent(context, 'ai-tool-called', { query, response: processedResponse });
 						return processedResponse;
 					}
 					// If manualLogging is false we've been called by the engine and need
@@ -181,7 +198,8 @@ export class WorkflowToolService {
 				} catch (error) {
 					// Check if error is due to cancellation
 					if (abortSignal?.aborted) {
-						return 'There was an error: "Execution was cancelled"';
+						emitCancelledToolCall(context, localRunIndex);
+						return cancelledResponse;
 					}
 
 					const executionError = error as ExecutionError;
@@ -199,6 +217,7 @@ export class WorkflowToolService {
 							[errorData],
 							metadata,
 						);
+						logAiEvent(context, 'ai-tool-called', { query, response: errorResponse });
 					}
 
 					if (tryIndex === maxTries - 1) {

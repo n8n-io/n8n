@@ -1,16 +1,13 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
-import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { SecurityConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { access as fsAccess } from 'fs/promises';
+import { access as fsAccess, readFile } from 'fs/promises';
 import helmet from 'helmet';
-import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
@@ -24,10 +21,12 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
+import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
 import { PostHogClient } from '@/posthog';
 import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
+import { resolveContentSecurityPolicies } from '@/security/content-security-policy';
 import type { FrontendService } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
 
@@ -202,6 +201,23 @@ export class Server extends AbstractServer {
 			req.browserId = req.headers['browser-id'] as string;
 			next();
 		});
+
+		// Installed here on purpose, and the order is the mechanism: `AbstractServer` has
+		// already registered the webhook and form routes, so they never reach this
+		// middleware. Those pages serve HTML that a workflow author wrote, which the
+		// instance policy must not constrain - including when the `sandbox` policy is
+		// switched off with `N8N_INSECURE_DISABLE_*_SANDBOX`, where they carry no policy
+		// at all. Moving this line above `AbstractServer` would silently change that.
+		const securityConfig = Container.get(SecurityConfig);
+		this.app.use(
+			createContentSecurityPolicyMiddleware(
+				resolveContentSecurityPolicies(
+					securityConfig.contentSecurityPolicy,
+					securityConfig.contentSecurityPolicyReportOnly,
+					this.logger,
+				),
+			),
+		);
 
 		// ----------------------------------------
 		// Public API
@@ -390,24 +406,11 @@ export class Server extends AbstractServer {
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
-			const cspDirectives = jsonParse<{ [key: string]: Iterable<string> }>(
-				Container.get(SecurityConfig).contentSecurityPolicy,
-				{
-					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
-				},
-			);
 			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
-			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
+			// `createContentSecurityPolicyMiddleware` serves the CSP instead: helmet cannot
+			// inject a per-request nonce.
 			const securityHeadersMiddleware = helmet({
-				contentSecurityPolicy: isEmpty(cspDirectives)
-					? false
-					: {
-							useDefaults: false,
-							reportOnly: cspReportOnly,
-							directives: {
-								...cspDirectives,
-							},
-						},
+				contentSecurityPolicy: false,
 				xFrameOptions:
 					isPreviewMode || inE2ETests || inDevelopment ? false : { action: 'sameorigin' },
 				dnsPrefetchControl: false,
@@ -443,21 +446,46 @@ export class Server extends AbstractServer {
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
-			const historyApiHandler: express.RequestHandler = (req, res, next) => {
+
+			// `index.html` does not change while n8n runs. Read it once and keep it split
+			// around the nonce placeholders, so serving a request is only a join.
+			let indexHtmlParts: string[] | undefined;
+			const indexHtmlTemplate = async () => {
+				indexHtmlParts ??= (await readFile(resolve(staticCacheDir, 'index.html'), 'utf8')).split(
+					HTML_NONCE_PLACEHOLDER,
+				);
+				return indexHtmlParts;
+			};
+
+			const historyApiHandler: express.RequestHandler = async (req, res, next) => {
 				const {
 					method,
 					headers: { accept },
 				} = req;
+				// A request with no `Accept` also gets the page. Only this handler fills in the
+				// nonce placeholders, so `express.static` would serve `index.html` with the
+				// placeholders intact, and no script on it could run under the CSP.
 				if (
 					method === 'GET' &&
-					accept &&
-					(accept.includes('text/html') || accept.includes('*/*')) &&
+					(!accept || req.accepts('html') || accept.includes('*/*')) &&
 					!req.path.endsWith('.wasm') &&
 					!nonUIRoutesRegex.test(req.path)
 				) {
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
+
+					let template: string[];
+					try {
+						template = await indexHtmlTemplate();
+					} catch (error) {
+						this.logger.error('Could not read index.html', { error });
+						res.sendStatus(500);
+						return;
+					}
+
+					// Only the placeholders the build wrote get the nonce. Markup that arrived
+					// any other way must not get one.
 					securityHeadersMiddleware(req, res, () => {
-						res.sendFile('index.html', { root: staticCacheDir, maxAge: 0, lastModified: false });
+						res.type('html').send(template.join(res.locals.cspNonce));
 					});
 				} else {
 					next();
@@ -481,8 +509,6 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
-
-		installGlobalProxyAgent();
 	}
 
 	private configureSettingsRoute() {

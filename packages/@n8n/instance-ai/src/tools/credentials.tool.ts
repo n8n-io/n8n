@@ -3,6 +3,7 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	credentialRequestSchema,
 	instanceAiConfirmationSeveritySchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
@@ -334,13 +335,13 @@ const searchTypesAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `n8nConnectOnly` is set.',
+			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `gatewayCreditsOnly` is set.',
 		),
-	n8nConnectOnly: z
+	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
 		.describe(
-			'When true, ignore `query` and return every credential type supported by n8n credits. Use to answer "which credential types support n8n credits?".',
+			'When true, ignore `query` and return every credential type supported by Gateway credits. Use to answer "which credential types support Gateway credits?".',
 		),
 });
 
@@ -369,7 +370,7 @@ const setupAction = z.object({
 					.boolean()
 					.optional()
 					.describe(
-						'Set ONLY when the user explicitly asked to create a new credential of this type ("create a new Slack credential"). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
+						'Set when the user explicitly asked to create a new credential of this type ("create a new Slack credential"), or needs to enter a replacement for one whose secret is invalid or rotated (e.g. pasted a new token in chat, which you cannot store). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
 					),
 				setupHint: setupHintField.optional(),
 			}),
@@ -531,7 +532,10 @@ interface StoredCredentialListItem {
 }
 
 interface AiGatewayManagedListItem {
-	id: null;
+	// Use the shared managed tag as the id so the builder references n8n credits
+	// like a stored credential (`newCredential(name, id)`); resolve recognizes the
+	// tag and attaches the managed credential.
+	id: typeof AI_GATEWAY_MANAGED_TAG;
 	name: string;
 	type: string;
 	__aiGatewayManaged: true;
@@ -570,7 +574,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 			const supported = await context.credentialService.isAiGatewayCredentialType(input.type);
 			if (supported) {
 				items.push({
-					id: null,
+					id: AI_GATEWAY_MANAGED_TAG,
 					name: N8N_CONNECT_DISPLAY_NAME,
 					type: input.type,
 					__aiGatewayManaged: true,
@@ -605,8 +609,8 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 
 	return {
 		credentials: page.map((c) =>
-			c.id === null
-				? { id: c.id, name: c.name, type: c.type, __aiGatewayManaged: c.__aiGatewayManaged }
+			c.id === AI_GATEWAY_MANAGED_TAG
+				? { id: c.id, name: c.name, type: c.type, __aiGatewayManaged: true }
 				: { id: c.id, name: c.name, type: c.type },
 		),
 		total,
@@ -656,9 +660,9 @@ async function handleSearchTypes(
 	input: Extract<Input, { action: 'search-types' }>,
 ) {
 	// Enumerate n8n Connect–supported types regardless of query.
-	if (input.n8nConnectOnly) {
+	if (input.gatewayCreditsOnly) {
 		const types = (await context.credentialService.listAiGatewayCredentialTypes?.()) ?? [];
-		return { results: types.map((type) => ({ type, n8nConnect: true })) };
+		return { results: types.map((type) => ({ type, gatewayCredits: true })) };
 	}
 
 	if (!context.credentialService.searchCredentialTypes) {
@@ -668,7 +672,7 @@ async function handleSearchTypes(
 	if (!input.query) {
 		return {
 			results: [],
-			error: 'A `query` is required for search-types unless `n8nConnectOnly` is set.',
+			error: 'A `query` is required for search-types unless `gatewayCreditsOnly` is set.',
 		};
 	}
 

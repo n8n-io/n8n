@@ -249,6 +249,10 @@ export type {
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
 
+// Plain re-export, not a lazyFunction: this is a pure mapping with no imports,
+// so it costs nothing to load eagerly.
+export { threadProvenanceMetadata } from './tracing/thread-provenance';
+
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
 

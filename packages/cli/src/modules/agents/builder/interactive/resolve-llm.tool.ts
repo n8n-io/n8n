@@ -4,15 +4,16 @@ import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { z } from 'zod';
 
-import { BUILDER_TOOLS } from '../builder-tool-names';
 import {
 	LLM_PROVIDER_DEFAULTS,
 	LLM_PROVIDER_PRIORITY,
 	type LlmProviderDefault,
 } from '../../llm-provider-defaults';
+import { findVerifiedModelId, normalizeProviderModelId } from '../../utils/provider-model-id';
+import { BUILDER_TOOLS } from '../builder-tool-names';
 
 /** User-facing name written for an n8n credits (AI Gateway managed) model credential. */
-const N8N_CONNECT_CREDENTIAL_NAME = 'n8n credits';
+const N8N_CONNECT_CREDENTIAL_NAME = 'Gateway credits';
 
 export interface ModelLookup {
 	list(
@@ -83,6 +84,45 @@ function toLlmResolution(
 	};
 }
 
+interface CallableModel {
+	name: string;
+	value: string;
+}
+
+function modelLookupFailed(provider: string, requestedModel: string, error: unknown) {
+	return {
+		ok: false as const,
+		reason: 'model_lookup_failed' as const,
+		provider,
+		requestedModel,
+		error: error instanceof Error ? error.message : String(error),
+	};
+}
+
+/**
+ * The provider's live model list for this credential, every id in SDK-callable
+ * form. Normalizing here is what keeps a `models/`-prefixed Google id out of
+ * the agent config — it passes config validation and then fails at run time.
+ */
+async function listCallableModels(
+	credential: CredentialListItem,
+	provider: string,
+	modelLookup: ModelLookup,
+): Promise<{ ok: true; models: CallableModel[] } | { ok: false; error: unknown }> {
+	try {
+		const models = await modelLookup.list(credential.id, credential.type, provider);
+		return {
+			ok: true,
+			models: models.map(({ name, value }) => ({
+				name: normalizeProviderModelId(provider, name),
+				value: normalizeProviderModelId(provider, value),
+			})),
+		};
+	} catch (error) {
+		return { ok: false, error };
+	}
+}
+
 async function resolveModelAgainstLookup(
 	credential: CredentialListItem,
 	defaults: LlmProviderDefault,
@@ -94,25 +134,18 @@ async function resolveModelAgainstLookup(
 		return toLlmResolution(credential, defaults, requestedModel);
 	}
 
-	let availableModels: Array<{ name: string; value: string }>;
-	try {
-		availableModels = await modelLookup.list(credential.id, credential.type, defaults.provider);
-	} catch (error) {
-		return {
-			ok: false as const,
-			reason: 'model_lookup_failed' as const,
-			provider: defaults.provider,
-			requestedModel: trimmedModel,
-			error: error instanceof Error ? error.message : String(error),
-		};
-	}
+	const lookup = await listCallableModels(credential, defaults.provider, modelLookup);
+	if (!lookup.ok) return modelLookupFailed(defaults.provider, trimmedModel, lookup.error);
 
-	const lowerHint = trimmedModel.toLowerCase();
-	const exactMatch = availableModels.find((m) => m.value.toLowerCase() === lowerHint);
-	if (exactMatch) {
-		return toLlmResolution(credential, defaults, exactMatch.value);
-	}
+	const availableModels = lookup.models;
+	const verified = findVerifiedModelId(
+		defaults.provider,
+		trimmedModel,
+		availableModels.map((m) => m.value),
+	);
+	if (verified) return toLlmResolution(credential, defaults, verified);
 
+	const lowerHint = normalizeProviderModelId(defaults.provider, trimmedModel).toLowerCase();
 	const candidates = availableModels.filter(
 		(m) => m.value.toLowerCase().includes(lowerHint) || m.name.toLowerCase().includes(lowerHint),
 	);
@@ -129,44 +162,50 @@ async function resolveModelAgainstLookup(
 	};
 }
 
+/**
+ * The provider default is a maintained hint, not a guarantee: a provider can
+ * stop serving it, and a given key may never have been able to reach it. So it
+ * is checked against this credential's live list like any other candidate — an
+ * unvalidated default ships straight into the agent config, and every model
+ * call then fails with `404 Not Found`.
+ */
 async function resolveDefaultModelForCredential(
 	credential: CredentialListItem,
 	defaults: LlmProviderDefault,
 	modelLookup: ModelLookup,
 ) {
-	// Managed credential: no fallback key, and gateway discovery is authoritative — the
-	// static default may not be on the allowlist — so pick the default (or first served)
-	// model from the gateway's list. Own credentials keep the static default.
-	if (credential.id !== AI_GATEWAY_MANAGED_TAG || !isModelDiscoveryProvider(defaults.provider)) {
+	if (!isModelDiscoveryProvider(defaults.provider)) {
 		return toLlmResolution(credential, defaults);
 	}
 
-	let availableModels: Array<{ name: string; value: string }>;
-	try {
-		availableModels = await modelLookup.list(credential.id, credential.type, defaults.provider);
-	} catch (error) {
-		return {
-			ok: false as const,
-			reason: 'model_lookup_failed' as const,
-			provider: defaults.provider,
-			requestedModel: defaults.defaultModel,
-			error: error instanceof Error ? error.message : String(error),
-		};
+	const lookup = await listCallableModels(credential, defaults.provider, modelLookup);
+	if (!lookup.ok) return modelLookupFailed(defaults.provider, defaults.defaultModel, lookup.error);
+
+	const availableModels = lookup.models;
+	if (availableModels.length > 0) {
+		const verified = findVerifiedModelId(
+			defaults.provider,
+			defaults.defaultModel,
+			availableModels.map((m) => m.value),
+		);
+		if (verified) return toLlmResolution(credential, defaults, verified);
+
+		// The managed allowlist is short and curated, so its first entry is a safe
+		// stand-in for an un-allowlisted default. A provider's own catalog is long
+		// and name-sorted, where the first entry is arbitrary — surface the list and
+		// let the agent choose instead of persisting a coin flip.
+		if (credential.id === AI_GATEWAY_MANAGED_TAG) {
+			return toLlmResolution(credential, defaults, availableModels[0].value);
+		}
 	}
 
-	if (availableModels.length === 0) {
-		return {
-			ok: false as const,
-			reason: 'unknown_model' as const,
-			provider: defaults.provider,
-			requestedModel: defaults.defaultModel,
-			availableModels,
-		};
-	}
-
-	const preferred =
-		availableModels.find((m) => m.value === defaults.defaultModel) ?? availableModels[0];
-	return toLlmResolution(credential, defaults, preferred.value);
+	return {
+		ok: false as const,
+		reason: 'unknown_model' as const,
+		provider: defaults.provider,
+		requestedModel: defaults.defaultModel,
+		availableModels,
+	};
 }
 
 /**
@@ -199,7 +238,7 @@ async function resolveManagedCredentialForProvider(
 	if (!served) {
 		return {
 			ok: false as const,
-			reason: 'n8n_credits_unsupported_provider' as const,
+			reason: 'gateway_credits_unsupported_provider' as const,
 			provider: defaults.provider,
 		};
 	}
@@ -238,7 +277,10 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'with provider/model when the user named them, otherwise without arguments. ' +
 				'Also call it whenever the user names or changes a provider or model. ' +
 				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
-				'provider default model. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
+				'provider default model. Every model it returns — the default included — is checked ' +
+				'against the list the chosen credential can actually reach, so reason "unknown_model" ' +
+				'(carrying availableModels) can come back even when you passed no model: retry with a ' +
+				'value from availableModels, never the id that just failed. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
 				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
 				'ask; keep building with model "" and include the model choice in the trailing ' +
@@ -247,14 +289,14 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
 				'claims them automatically and resolves to openai/gpt-5-mini — the result carries ' +
 				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the ' +
-				'provider has no own credential but n8n credits (the managed option) serves it, the tool ' +
-				'resolves to the managed credential — the result credentialName is "n8n credits"; persist it ' +
-				'like any credential and tell the user the model runs on n8n credits. When the user ' +
-				'explicitly asks to use n8n credits, pass useN8nCredits: true (with provider when named): ' +
-				'the tool resolves n8n credits for that provider without a picker even if the user has their ' +
-				'own credential for it, and returns ok=false with reason "n8n_credits_unsupported_provider", ' +
-				'"ambiguous_n8n_credits_provider" (with providers), or "n8n_credits_unavailable" (n8n ' +
-				'credits serves no provider on this instance) when it cannot. When multiple ' +
+				'provider has no own credential but Gateway credits (the managed option) serve it, the tool ' +
+				'resolves to the managed credential — the result credentialName is "Gateway credits"; persist it ' +
+				'like any credential and tell the user the model runs on Gateway credits. When the user ' +
+				'explicitly asks to use Gateway credits, pass useGatewayCredits: true (with provider when named): ' +
+				'the tool resolves Gateway credits for that provider without a picker even if the user has their ' +
+				'own credential for it, and returns ok=false with reason "gateway_credits_unsupported_provider", ' +
+				'"ambiguous_gateway_credits_provider" (with providers), or "gateway_credits_unavailable" (Gateway ' +
+				'credits serve no provider on this instance) when it cannot. When multiple ' +
 				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
 				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. ' +
 				'When the user picks between multiple credentials of one provider, pass the picked credentialId ' +
@@ -278,12 +320,12 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					.describe(
 						'Credential id picked by the user from an earlier ambiguous resolve_llm result.',
 					),
-				useN8nCredits: z
+				useGatewayCredits: z
 					.boolean()
 					.optional()
 					.describe(
-						'Set true when the user explicitly asked to use n8n credits for the main model. ' +
-							'Resolves n8n credits for the requested provider even if the user already has ' +
+						'Set true when the user explicitly asked to use Gateway credits for the main model. ' +
+							'Resolves Gateway credits for the requested provider even if the user already has ' +
 							'their own credential for it, and never asks. Pass `provider` when the user named one.',
 					),
 			}),
@@ -293,17 +335,17 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				provider,
 				model,
 				credentialId,
-				useN8nCredits,
+				useGatewayCredits,
 			}: {
 				provider?: string;
 				model?: string;
 				credentialId?: string;
-				useN8nCredits?: boolean;
+				useGatewayCredits?: boolean;
 			}) => {
 				// Explicit "use n8n credits" wins over own credentials and never asks:
 				// resolve the managed credential for the named provider, or the sole
 				// gateway-served provider when none is named.
-				if (useN8nCredits) {
+				if (useGatewayCredits) {
 					if (provider) {
 						return await resolveManagedCredentialForProvider(provider, model, deps);
 					}
@@ -312,11 +354,11 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 						return await resolveManagedCredentialForProvider(served[0], model, deps);
 					}
 					if (served.length === 0) {
-						return { ok: false as const, reason: 'n8n_credits_unavailable' as const };
+						return { ok: false as const, reason: 'gateway_credits_unavailable' as const };
 					}
 					return {
 						ok: false as const,
-						reason: 'ambiguous_n8n_credits_provider' as const,
+						reason: 'ambiguous_gateway_credits_provider' as const,
 						providers: served,
 					};
 				}

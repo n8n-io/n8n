@@ -84,6 +84,7 @@ export class EngineV2Runtime {
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
+			logger: this.logger,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),

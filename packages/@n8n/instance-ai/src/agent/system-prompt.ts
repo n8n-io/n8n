@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
-import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
+import { SECRET_ASK_GUARDRAIL, SECRET_PASTE_GUARDRAIL } from './credential-guardrails.prompt';
 import {
 	ASK_USER_FALLBACK,
 	getSandboxWorkspaceSection,
@@ -156,6 +156,7 @@ ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBas
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${SECRET_ASK_GUARDRAIL}
+${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
 ## Communication Style
 

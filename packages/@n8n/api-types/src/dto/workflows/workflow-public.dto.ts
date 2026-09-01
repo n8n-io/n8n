@@ -157,6 +157,23 @@ export const workflowPublishPublicSchema = workflowPublicSchema.omit({ shared: t
 
 export class WorkflowPublishPublicDto extends Z.class(workflowPublishPublicSchema.shape) {}
 
+// Update returns the publish history only when it re-published, so both shapes must pass.
+export const updatedWorkflowActiveVersionPublicSchema = activeWorkflowVersionPublicSchema.extend({
+	workflowPublishHistory: z.array(workflowPublishHistoryPublicSchema).optional(),
+});
+
+export const updatedWorkflowPublicSchema = workflowPublicSchema.omit({ shared: true }).extend({
+	activeVersion: updatedWorkflowActiveVersionPublicSchema.nullable(),
+});
+
+export class UpdatedWorkflowPublicDto extends Z.class(updatedWorkflowPublicSchema.shape) {}
+
+export const deletedWorkflowPublicSchema = workflowPublicSchema.extend({
+	activeVersion: activeWorkflowVersionPublicSchema.nullable().optional(),
+});
+
+export class DeletedWorkflowPublicDto extends Z.class(deletedWorkflowPublicSchema.shape) {}
+
 // The list query selects fewer columns than a single-workflow fetch, so these are absent from every
 // item — adding them back makes the response fail its own validation.
 export const workflowListItemSharedPublicSchema = sharedWorkflowPublicSchema.omit({

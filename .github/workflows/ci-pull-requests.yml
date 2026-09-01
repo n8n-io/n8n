@@ -115,6 +115,7 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              OWNERS
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
@@ -218,7 +219,9 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     env:
-      NODE_OPTIONS: --max-old-space-size=7168
+      # Inherited by every worker turbo spawns, so the real budget is
+      # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
@@ -227,7 +230,9 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm typecheck
+          # turbo directly, not the root `typecheck` script, to keep the
+          # concurrency bound CI-only.
+          build-command: pnpm turbo typecheck --concurrency=2
 
   lint:
     name: Lint
@@ -272,27 +277,6 @@ jobs:
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
-    secrets: inherit
-
-  # Internal-only 1-spec fail-fast sanity check on sqlite.
-  sqlite-sanity:
-    name: 'SQLite: Sanity Check'
-    needs: [install-and-build, prepare-docker]
-    if: >-
-      needs.prepare-docker.result == 'success' &&
-      (needs.install-and-build.outputs.runtime == 'true'
-        || needs.install-and-build.outputs.e2e == 'true'
-        || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
-      github.repository == 'n8n-io/n8n' &&
-      github.event_name != 'merge_group' &&
-      github.event.pull_request.head.repo.fork != true
-    uses: ./.github/workflows/test-e2e-reusable.yml
-    with:
-      branch: ${{ needs.install-and-build.outputs.commit_sha }}
-      test-mode: docker-artifact
-      test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
-      workers: '1'
-      artifact-prefix: sanity
     secrets: inherit
 
   # Full e2e run. Internal PRs run multi-main (postgres + redis + caddy + 2 mains + 1 worker).
@@ -409,7 +393,6 @@ jobs:
         typecheck,
         lint,
         check-packaging,
-        sqlite-sanity,
         e2e,
         dev-server-smoke,
         db-tests,
@@ -429,6 +412,62 @@ jobs:
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+
+  # A red `chore: Bundle/*` PR blocks publishing every fix batched into it, so the
+  # failure is announced instead of waiting to be noticed. Only fires in n8n-private,
+  # where bundle branches exist.
+  notify-bundle-pr-failure:
+    name: Notify Slack on bundle PR failure
+    needs: required-checks
+    if: >-
+      always() &&
+      needs.required-checks.result == 'failure' &&
+      (github.head_ref == 'bundle/2.x' || github.head_ref == 'bundle/1.x')
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text "<${PR_URL}|Required Checks failed on the ${HEAD_REF} PR> - the batched fixes stay unpublished until it is green."
+
+  # The tarball is scoped to one run and nothing else deleted it, so it evicted
+  # the entries that are reused across runs (DEVP-912). Gated on the whole run
+  # being green, not just the image consumers: a re-run of a red workflow should
+  # restore the image rather than rebuild it.
+  #
+  # Blacksmith-only rather than following the usual `runs-on` provider switch: off
+  # Blacksmith the tarball lands in GitHub's own cache, which this action does not
+  # address, so there is nothing here to delete.
+  cleanup-docker-image:
+    name: Cleanup Docker image
+    needs: [prepare-docker, e2e-performance, required-checks]
+    if: |
+      always() &&
+      vars.RUNNER_PROVIDER != 'github' &&
+      needs.prepare-docker.result == 'success' &&
+      needs.required-checks.result == 'success' &&
+      (needs.e2e-performance.result == 'success' || needs.e2e-performance.result == 'skipped')
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      # Not `gh api --method DELETE`: written on Blacksmith runners, where
+      # actions/cache is transparently intercepted, so GitHub's cache has no
+      # such entry and the REST call would no-op.
+      # Key must track build-n8n-docker/load-n8n-docker; a mismatch makes the
+      # delete a silent no-op rather than a failure.
+      - name: Delete the image tarball from the cache
+        uses: useblacksmith/cache-delete@941f534fcf46c8d0a89feeceeb0f5377d82dd5e7 # v2
+        with:
+          key: n8n-docker-image-v2-standard-${{ github.sha }}
 
   # Posts a QA metrics comparison comment on the PR.
   # Runs after all checks so any job can emit metrics before this reports.

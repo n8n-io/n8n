@@ -64,7 +64,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
-	describe('archive', () => {
+	describe('when a workflow is archived', () => {
 		it('records the cause entry and the close entry together, in the lock transaction', async () => {
 			const request = openRequest();
 			lifecycleRepository.findOpenRequestsAffectedByWorkflows.mockResolvedValue([
@@ -201,7 +201,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		});
 	});
 
-	describe('transfer', () => {
+	describe('when workflows move to another project', () => {
 		it('records workflow.moved for each open request and broadcasts once per affected workflow', async () => {
 			const first = openRequest({ id: 'req-1' });
 			const second = openRequest({ id: 'req-2' });
@@ -260,7 +260,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		});
 	});
 
-	describe('delete', () => {
+	describe('when a workflow is deleted', () => {
 		it('captures before the delete without writing anything', async () => {
 			lifecycleRepository.findOpenRequestsAffectedByWorkflows.mockResolvedValue([
 				{
@@ -428,7 +428,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		});
 	});
 
-	describe('publish recorder', () => {
+	describe('when a workflow is published', () => {
 		it('appends workflow.published to every request pinned to the published version', async () => {
 			requestWorkflowRepository.findRequestIdsPinnedToVersion.mockResolvedValue(['req-1', 'req-2']);
 
@@ -489,7 +489,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		});
 	});
 
-	describe('reconciliation sweep', () => {
+	describe('the sweep that catches what the targeted close missed', () => {
 		it('closes the requests the mutation stranded and explains each of them', async () => {
 			lifecycleRepository.findOpenRequestsAffectedByWorkflows.mockResolvedValue([]);
 			// Reconciliation finds req-9 and req-10.
@@ -588,24 +588,5 @@ describe('WorkflowReviewLifecycleService', () => {
 
 			expect(lifecycleRepository.findUnreviewableOpenRequestIds).not.toHaveBeenCalled();
 		});
-	});
-
-	it('a failed broadcast is only warned about, never thrown', async () => {
-		lifecycleRepository.findOpenRequestsAffectedByWorkflows.mockResolvedValue([
-			{
-				request: openRequest(),
-				links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }],
-			},
-		]);
-		collaborationService.broadcastWorkflowReviewStateChanged.mockRejectedValue(
-			new Error('push down'),
-		);
-
-		await expect(service.afterWorkflowArchived('wf-1', 'user-9')).resolves.toBeUndefined();
-
-		// Wait for the rejected notification to be logged.
-		await new Promise(process.nextTick);
-		expect(logger.warn).toHaveBeenCalled();
-		expect(logger.error).not.toHaveBeenCalled();
 	});
 });

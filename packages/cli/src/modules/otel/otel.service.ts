@@ -112,16 +112,24 @@ export class OtelService {
 	}
 
 	async shutdown(): Promise<void> {
-		await this.sdk?.shutdown();
-		this.sdk = undefined;
+		try {
+			await this.sdk?.shutdown();
+		} catch (error) {
+			this.logger.warn(
+				'Failed to cleanly shut down OpenTelemetry SDK (exporter flush may have failed)',
+				{ error: error instanceof Error ? error.message : String(error) },
+			);
+		} finally {
+			this.sdk = undefined;
 
-		// Unregister the global providers so the next NodeSDK.start() can register
-		// new ones. Without this, OTel's allowOverride=false guard blocks
-		// re-registration and the restart silently fails.
-		trace?.disable();
-		context?.disable();
-		propagation?.disable();
-		metrics?.disable();
+			// Unregister the global providers so the next NodeSDK.start() can register
+			// new ones. Without this, OTel's allowOverride=false guard blocks
+			// re-registration and the restart silently fails.
+			trace?.disable();
+			context?.disable();
+			propagation?.disable();
+			metrics?.disable();
+		}
 	}
 
 	private startSdk(settings: OtelConfig): string {

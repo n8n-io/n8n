@@ -11,6 +11,7 @@ import {
 	getHighlightedInputKey,
 	HIGHLIGHTED_SESSION_KEY,
 	CHAT_TRIGGER_PATH_SUFFIX,
+	buildCredentialConnectionsRequiredResponse,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -21,6 +22,7 @@ import type {
 	INodeExecutionData,
 	IBinaryData,
 	INodeProperties,
+	CredentialCheckResult,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
@@ -439,6 +441,21 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
+				displayName: 'Require Workflow Execute Permission',
+				name: 'requireExecuteAccess',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						mode: ['hostedChat'],
+						public: [true],
+					},
+				},
+				description:
+					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
 				displayName: 'Initial Message(s)',
 				name: 'initialMessages',
 				type: 'string',
@@ -830,8 +847,8 @@ export class ChatTrigger extends Node {
 
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
-		// Allow execution in manual mode (test) even when not public
-		if (!isPublic && mode !== 'test') {
+		// Only the editor's session-scoped canvas test route may execute a non-public chat
+		if (!isPublic && (mode !== 'test' || !ctx.isChatSessionTest())) {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
@@ -870,10 +887,10 @@ export class ChatTrigger extends Node {
 		const bodyData = ctx.getBodyData() ?? {};
 
 		try {
-			// The editor's canvas chat can't supply webhook credentials, and test webhooks
-			// are only ever registered through an authenticated editor session, so auth is
-			// only enforced for production executions.
-			if (mode !== 'test') {
+			// The editor's canvas chat can't supply webhook credentials, so its session-scoped
+			// test route (flagged by the backend at registration) is exempt from auth. Every
+			// other request — production or sessionless test — enforces the configured auth.
+			if (mode !== 'test' || !ctx.isChatSessionTest()) {
 				await validateAuth(ctx);
 			}
 		} catch (error) {
@@ -1002,6 +1019,20 @@ export class ChatTrigger extends Node {
 				return {
 					webhookResponse: { data: [] },
 				};
+			}
+		} else {
+			let readiness: CredentialCheckResult | undefined;
+			try {
+				readiness = await ctx.checkTriggerCredentialStatus();
+			} catch (error) {
+				ctx.logger.error('Chat trigger credential readiness check failed', { error });
+				res.status(503).json({ status: 'credential_readiness_check_failed' });
+				return { noWebhookResponse: true };
+			}
+
+			if (readiness && !readiness.readyToExecute) {
+				res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+				return { noWebhookResponse: true };
 			}
 		}
 

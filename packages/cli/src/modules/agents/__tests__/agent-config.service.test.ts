@@ -715,7 +715,7 @@ describe('AgentConfigService', () => {
 			});
 		});
 
-		it('stores only existing published subagents and rejects invalid subagent refs', async () => {
+		it('stores existing subagents regardless of publication and rejects self references', async () => {
 			const { service, agentRepository } = makeService();
 			const agent = makeAgent();
 			const publishedSubAgent = makeAgent({ id: 'agent-2', activeVersionId: 'published-v2' });
@@ -753,20 +753,22 @@ describe('AgentConfigService', () => {
 				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent-2'),
 			).toHaveLength(1);
 
-			await expect(
-				service.updateConfig(
-					agentId,
-					projectId,
-					{
-						...baseConfig,
-						subAgents: {
-							agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
-						},
+			agentRepository.saveDraftFenced.mockClear();
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					subAgents: {
+						agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
 					},
-					user,
-					byUser,
-				),
-			).rejects.toThrow('must be published');
+				},
+				user,
+				byUser,
+			);
+			expect(agentRepository.saveDraftFenced.mock.calls[0][0].schema?.subAgents).toEqual({
+				agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
+			});
 
 			await expect(
 				service.updateConfig(
