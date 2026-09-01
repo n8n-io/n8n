@@ -65,6 +65,8 @@ export type PushGitConnectionResult = {
 	connectionId: string;
 	counts: ExportPackageCounts;
 	commitSha: string;
+	/** Absent when the server predates timestamped promotion branches. */
+	branchName?: string;
 };
 
 export interface ImportPackageCounts {

@@ -208,7 +208,7 @@ export class GitConnectionsPublicController {
 	@GlobalScope('gitConnection:push')
 	@ApiSummary('Push all team projects to a Git connection')
 	@ApiDescription(
-		'Exports all team projects, commits them, and pushes to the configured branch. Personal projects are ignored. Requires the repository to be cloned first.',
+		'Exports all team projects, commits them, and pushes to the configured branch — or to a new timestamped branch when the connection has `createBranchOnPromotion` enabled. The response reports the branch in `branchName`. Personal projects are ignored. Requires the repository to be cloned first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPushResultDto)

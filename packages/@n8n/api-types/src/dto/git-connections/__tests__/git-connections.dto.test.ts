@@ -1,5 +1,6 @@
 import {
 	CreateGitConnectionDto,
+	GitConnectionPushResultDto,
 	PushGitConnectionDto,
 	UpdateGitConnectionDto,
 } from '../git-connections.dto';
@@ -97,6 +98,20 @@ describe('Git connection DTOs', () => {
 			expect(
 				PushGitConnectionDto.safeParse({ commitMessage: 'Update', dryRun: true }).success,
 			).toBe(false);
+		});
+	});
+
+	describe('GitConnectionPushResultDto', () => {
+		it('requires the branch name the push landed on', () => {
+			const base = {
+				connectionId: '1',
+				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+				commitSha: 'abc123',
+			};
+			expect(GitConnectionPushResultDto.safeParse({ ...base, branchName: 'main' }).success).toBe(
+				true,
+			);
+			expect(GitConnectionPushResultDto.safeParse(base).success).toBe(false);
 		});
 	});
 });

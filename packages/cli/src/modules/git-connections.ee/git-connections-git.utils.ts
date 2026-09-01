@@ -5,10 +5,19 @@ import { generateKeyPairSync } from 'node:crypto';
 import {
 	HTTP_LOW_SPEED_LIMIT_BYTES,
 	HTTP_LOW_SPEED_TIME_SECONDS,
+	PROMOTION_BRANCH_PREFIX,
 	SSH_CONNECT_TIMEOUT_SECONDS,
 	SSH_SERVER_ALIVE_COUNT_MAX,
 	SSH_SERVER_ALIVE_INTERVAL_SECONDS,
 } from './constants';
+
+/**
+ * Build the branch name a promote pushes to when the connection requires
+ * branching. `:` and `.` are not valid in Git ref names, so replace them.
+ */
+export function buildPromotionBranchName(now: Date): string {
+	return `${PROMOTION_BRANCH_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}`;
+}
 
 /** Quote a value for use as one POSIX shell argument. */
 const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;

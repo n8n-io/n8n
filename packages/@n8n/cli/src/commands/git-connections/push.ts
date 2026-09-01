@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class GitConnectionsPush extends BaseCommand {
 	static override description =
-		'Export all team projects, commit, and push to the configured branch. Requires the repository to be cloned first.';
+		'Export all team projects, commit, and push to the configured branch, or to a new timestamped branch when the connection requires branching. Requires the repository to be cloned first.';
 	static override args = {
 		id: Args.string({ description: 'ID of the Git connection', required: true }),
 	};
@@ -28,8 +28,9 @@ export default class GitConnectionsPush extends BaseCommand {
 				commitMessage: flags.message,
 				force: flags.force,
 			});
+			const branchInfo = result.branchName ? ` on branch ${result.branchName}` : '';
 			this.succeed(
-				`Projects pushed to Git connection ${args.id} as commit ${result.commitSha}.`,
+				`Projects pushed to Git connection ${args.id} as commit ${result.commitSha}${branchInfo}.`,
 				flags,
 				result,
 			);

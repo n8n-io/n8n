@@ -4,6 +4,9 @@ export const GIT_KEY_COMMENT = 'n8n git connection';
 export const GIT_DEFAULT_COMMIT_NAME = 'n8n user';
 export const GIT_DEFAULT_COMMIT_EMAIL = 'n8n@example.com';
 
+/** Prefix of the timestamped branches that promotes create when `createBranchOnPromotion` is set. */
+export const PROMOTION_BRANCH_PREFIX = 'n8n-promotion/';
+
 // Timeouts that bound how long a stalled Git operation can hang. Transport-level
 // limits (SSH, HTTP) fire first based on real network inactivity; the process
 // stall timeout is a transport-agnostic backstop.

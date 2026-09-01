@@ -43,11 +43,12 @@ describe('N8nClient packages', () => {
 	});
 
 	describe('pushGitConnectionProjects', () => {
-		it('POSTs the commit message and returns the connection id, counts, and commit SHA', async () => {
+		it('POSTs the commit message and returns the connection id, counts, commit SHA, and branch', async () => {
 			const response = {
 				connectionId: 'connection-id',
 				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
 				commitSha: 'abc123',
+				branchName: 'n8n-promotion/2026-09-01T10-15-30-123Z',
 			};
 			fetchMock.mockResolvedValue(jsonResponse(200, response));
 
