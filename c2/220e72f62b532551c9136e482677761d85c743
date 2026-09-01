@@ -1,0 +1,20 @@
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_d9e16822303de5::t_91597af3ce4b53 875,878-880
+  s_d9e16822303de5::t_b424e6bd99f051 856-857
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c2220e72f62b532551c9136e482677761d85c743",
+  "prompts": {},
+  "sessions": {
+    "s_d9e16822303de5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83e7085a-aab6-4d55-b8b1-cc8a43cb8fd1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
