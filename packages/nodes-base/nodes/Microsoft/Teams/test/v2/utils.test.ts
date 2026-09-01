@@ -216,6 +216,18 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(mentions).toEqual([mention('guid-1', expected)]);
 	});
 
+	it('leaves the resolved display name raw', async () => {
+		setRows('jane@example.com');
+		apiRequest.mockResolvedValue({ id: 'guid-1', displayName: 'A & B <Ops>' });
+
+		const [resolved] = await resolveMentions.call(ctx, 0);
+
+		// Only the `<at>` inner text is escaped, downstream in `prepareMessage`. Escaping here
+		// too renders `A &amp;amp; B`.
+		expect(resolved.mentionText).toBe('A & B <Ops>');
+		expect(resolved.mentioned.user.displayName).toBe('A & B <Ops>');
+	});
+
 	it('trims a pasted user id before validating and encoding it', async () => {
 		setRows(' jane@example.com ');
 		apiRequest.mockResolvedValue({ id: 'guid-1', displayName: 'Jane Smith' });
