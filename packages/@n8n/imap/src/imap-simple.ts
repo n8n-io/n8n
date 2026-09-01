@@ -320,7 +320,7 @@ export class ImapSimple {
 
 		// Wired before the SELECT, so a transport that drops under it is still recovered from.
 		client.on('error', (error: Error) => this.onTransportError(error));
-		client.on('close', () => this.onTransportClose());
+		client.on('close', () => this.onTransportClose(client));
 
 		const mailbox = this.reconnectOptions?.mailbox;
 		if (mailbox !== undefined) await selectMailbox(client, mailbox);
@@ -344,7 +344,12 @@ export class ImapSimple {
 		this.reportError(error);
 	}
 
-	private onTransportClose(): void {
+	private onTransportClose(client: ImapTransport): void {
+		// A transport still being dialled is let go by the SELECT its drop interrupted; only the
+		// one in service may start a restore, or a dial failing this way would spawn one with a
+		// fresh budget on every try, and the running loop would never spend its own.
+		if (this.installed && client !== this.client) return;
+
 		this.lose();
 
 		if (!this.canRestore()) {
