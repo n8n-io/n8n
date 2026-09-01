@@ -12,8 +12,6 @@ describe('InstanceAiConfig concurrency caps', () => {
 		vi.restoreAllMocks();
 	});
 
-	// The caps ship dormant: enabling them is an explicit per-deployment decision, so an
-	// upgrade must not start refusing runs that used to be admitted.
 	it('defaults to unlimited so the feature is off until opted into', () => {
 		const { instanceAi } = Container.get(GlobalConfig);
 

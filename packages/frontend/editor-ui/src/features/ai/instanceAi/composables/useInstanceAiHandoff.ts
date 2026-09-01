@@ -221,8 +221,6 @@ export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingHandoffContext(threadId);
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
-	// Included so a thread that disappears before its opening message is replayed doesn't
-	// leave the payload behind forever.
 	clearPendingFirstMessage(threadId);
 }
 
