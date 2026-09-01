@@ -39,9 +39,9 @@ export class CreateActivityEventTable1788253087010 implements ReversibleMigratio
 				),
 				column('projectId')
 					.varchar(36)
-					.comment(
-						'Scopes the entry to one project. NULL for entries about the instance rather ' +
-							'than one project',
+					.notNull.comment(
+						'The access boundary; every read filters on it, so an entry without a project ' +
+							'could never be shown and is not worth writing',
 					),
 				column('resourceType')
 					.varchar(32)

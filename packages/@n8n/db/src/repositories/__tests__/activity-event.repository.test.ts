@@ -19,14 +19,14 @@ describe('ActivityEventRepository', () => {
 
 	describe('record', () => {
 		it('fills the nullable pointer fields so a row shape is never partial', async () => {
-			await repository.record({ category: 'workflow', action: 'deleted' });
+			await repository.record({ category: 'workflow', action: 'deleted', projectId: 'project1' });
 
 			expect(entityManager.insert).toHaveBeenCalledWith(ActivityEvent, {
 				category: 'workflow',
 				action: 'deleted',
 				typeVersion: 1,
+				projectId: 'project1',
 				userId: null,
-				projectId: null,
 				resourceType: null,
 				resourceId: null,
 				resourceName: null,
@@ -38,6 +38,7 @@ describe('ActivityEventRepository', () => {
 			await repository.record({
 				category: 'workflow',
 				action: 'saved',
+				projectId: 'project1',
 				resourceName: 'x'.repeat(activityResourceNameMaxLength + 50),
 			});
 
@@ -53,6 +54,7 @@ describe('ActivityEventRepository', () => {
 			await repository.record({
 				category: 'workflow',
 				action: 'saved',
+				projectId: 'project1',
 				data: { note: 'y'.repeat(activityDataMaxLength) },
 			});
 
@@ -66,6 +68,7 @@ describe('ActivityEventRepository', () => {
 			await repository.record({
 				category: 'workflow',
 				action: 'saved',
+				projectId: 'project1',
 				data: { addedNodes: ['HTTP Request'] },
 			});
 

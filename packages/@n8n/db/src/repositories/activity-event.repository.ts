@@ -25,10 +25,8 @@ function isEmptyPage(limit: number): boolean {
 	return !Number.isInteger(limit) || limit <= 0;
 }
 
-export type ActivityEventInput = Pick<ActivityEvent, 'category' | 'action'> &
-	Partial<
-		Pick<ActivityEvent, 'typeVersion' | 'userId' | 'projectId' | 'resourceType' | 'resourceId'>
-	> & {
+export type ActivityEventInput = Pick<ActivityEvent, 'category' | 'action' | 'projectId'> &
+	Partial<Pick<ActivityEvent, 'typeVersion' | 'userId' | 'resourceType' | 'resourceId'>> & {
 		resourceName?: string | null;
 		data?: IDataObject | null;
 	};
@@ -70,7 +68,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 			action: input.action,
 			typeVersion: input.typeVersion ?? 1,
 			userId: input.userId ?? null,
-			projectId: input.projectId ?? null,
+			projectId: input.projectId,
 			resourceType: input.resourceType ?? null,
 			resourceId: input.resourceId ?? null,
 			resourceName: truncateResourceName(input.resourceName),

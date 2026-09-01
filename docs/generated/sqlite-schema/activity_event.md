@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "activity_event" ("id" integer PRIMARY KEY NOT NULL, "category" varchar(32) NOT NULL, "action" varchar(64) NOT NULL, "typeVersion" integer NOT NULL DEFAULT (1), "userId" varchar, "projectId" varchar(36), "resourceType" varchar(32), "resourceId" varchar(36), "resourceName" text, "data" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_29654477f37189453b353d3f46a" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_6bf94d5542661d2e1b9e0c41436" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
+CREATE TABLE "activity_event" ("id" integer PRIMARY KEY NOT NULL, "category" varchar(32) NOT NULL, "action" varchar(64) NOT NULL, "typeVersion" integer NOT NULL DEFAULT (1), "userId" varchar, "projectId" varchar(36) NOT NULL, "resourceType" varchar(32), "resourceId" varchar(36), "resourceName" text, "data" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_29654477f37189453b353d3f46a" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_6bf94d5542661d2e1b9e0c41436" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -20,7 +20,7 @@ CREATE TABLE "activity_event" ("id" integer PRIMARY KEY NOT NULL, "category" var
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | true |  |  |  |
 | id | INTEGER |  | false |  |  |  |
-| projectId | varchar(36) |  | true |  | [project](project.md) |  |
+| projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | resourceId | varchar(36) |  | true |  |  |  |
 | resourceName | TEXT |  | true |  |  |  |
 | resourceType | varchar(32) |  | true |  |  |  |
@@ -47,7 +47,7 @@ CREATE TABLE "activity_event" ("id" integer PRIMARY KEY NOT NULL, "category" var
 ```mermaid
 erDiagram
 
-"activity_event" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"activity_event" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "activity_event" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "activity_event" {

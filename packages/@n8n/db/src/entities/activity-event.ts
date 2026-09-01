@@ -82,12 +82,16 @@ export class ActivityEvent extends WithCreatedAt {
 	userId: string | null;
 
 	/**
-	 * Null for entries about the instance rather than one project. A project deletion cascades its
-	 * entries away; recording that deletion needs a resource vocabulary that covers projects, which
-	 * is why no writer emits one yet.
+	 * The access boundary. Required, because every read filters on it: an entry without a project
+	 * could never be shown to anyone, so writing one would only lose it quietly.
+	 *
+	 * A writer must therefore resolve the project before recording, including for events that fire
+	 * after the resource is gone — `workflow-deleted` reaches a relay after the `shared_workflow`
+	 * rows that name the project have cascaded away, so the project has to be captured ahead of the
+	 * delete. Failing to resolve one is a logged failure, not a row nobody can read.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	projectId: string | null;
+	@Column({ type: 'varchar', length: 36 })
+	projectId: string;
 
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	resourceType: ActivityResourceType | null;

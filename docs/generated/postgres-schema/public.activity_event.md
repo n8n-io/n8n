@@ -9,7 +9,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | json |  | true |  |  | Minimal detail that makes an entry meaningful unexpanded (a save node delta, and whether the assistant or the user changed it). Size-capped on write; no user ids |
 | id | integer |  | false |  |  |  |
-| projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Scopes the entry to one project. NULL for entries about the instance rather than one project |
+| projectId | varchar(36) |  | false |  | [public.project](public.project.md) | The access boundary; every read filters on it, so an entry without a project could never be shown and is not worth writing |
 | resourceId | varchar(36) |  | true |  |  | Id of the resource, for fetching the full record. No FK: entries outlive it |
 | resourceName | text |  | true |  |  | Name at the time of the entry, denormalised so a row reads without a join and survives the resource being deleted. Truncated on write |
 | resourceType | varchar(32) |  | true |  |  | What `resourceId` points at; see ActivityResourceType in @n8n/db. NULL when an entry is about the instance rather than a resource |
@@ -27,6 +27,7 @@
 | activity_event_category_not_null | n | NOT NULL category |
 | activity_event_createdAt_not_null | n | NOT NULL "createdAt" |
 | activity_event_id_not_null | n | NOT NULL id |
+| activity_event_projectId_not_null | n | NOT NULL "projectId" |
 | activity_event_typeVersion_not_null | n | NOT NULL "typeVersion" |
 
 ## Indexes
@@ -42,7 +43,7 @@
 ```mermaid
 erDiagram
 
-"public.activity_event" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.activity_event" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.activity_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 
 "public.activity_event" {

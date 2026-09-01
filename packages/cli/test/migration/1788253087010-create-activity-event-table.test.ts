@@ -26,6 +26,7 @@ type ActivityRow = {
 
 describe('CreateActivityEventTable migration', () => {
 	let dataSource: DataSource;
+	let projectId: string;
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
 		const context = createTestMigrationContext(dataSource);
@@ -46,6 +47,9 @@ describe('CreateActivityEventTable migration', () => {
 		await initDbUpToMigration(MIGRATION_NAME);
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
+		// `projectId` is NOT NULL, so every entry needs a project to belong to.
+		projectId = randomUUID();
+		await withContext(async (context) => await insertProject(context, projectId));
 	});
 
 	afterAll(async () => {
@@ -87,7 +91,7 @@ describe('CreateActivityEventTable migration', () => {
 			category: string;
 			action: string;
 			userId?: string | null;
-			projectId?: string | null;
+			projectId?: string;
 			resourceId?: string | null;
 			resourceName?: string | null;
 			data?: string | null;
@@ -101,7 +105,7 @@ describe('CreateActivityEventTable migration', () => {
 				category: entry.category,
 				action: entry.action,
 				userId: entry.userId ?? null,
-				projectId: entry.projectId ?? null,
+				projectId: entry.projectId ?? projectId,
 				resourceType: 'workflow',
 				resourceId: entry.resourceId ?? null,
 				resourceName: entry.resourceName ?? null,
@@ -181,24 +185,42 @@ describe('CreateActivityEventTable migration', () => {
 		expect(rows[0].userId).toBeNull();
 	});
 
-	it("removes a project's entries when the project is deleted", async () => {
-		const projectId = randomUUID();
+	it("removes a project's entries when the project is deleted, and only that project's", async () => {
+		const doomedProjectId = randomUUID();
 
 		const rows = await withContext(async (context) => {
-			await insertProject(context, projectId);
-			await insertActivity(context, { category: 'workflow', action: 'saved', projectId });
-			// An instance-level entry, which is where a project deletion itself is recorded.
-			await insertActivity(context, { category: 'workflow', action: 'deleted' });
+			await insertProject(context, doomedProjectId);
+			await insertActivity(context, { category: 'workflow', action: 'saved' });
+			await insertActivity(context, {
+				category: 'workflow',
+				action: 'deleted',
+				projectId: doomedProjectId,
+			});
 
 			const projectTable = context.escape.tableName('project');
-			await context.runQuery(`DELETE FROM ${projectTable} WHERE "id" = :projectId`, { projectId });
+			await context.runQuery(`DELETE FROM ${projectTable} WHERE "id" = :id`, {
+				id: doomedProjectId,
+			});
 
 			return await getActivity(context);
 		});
 
 		expect(rows).toHaveLength(1);
-		expect(rows[0].action).toBe('deleted');
-		expect(rows[0].projectId).toBeNull();
+		expect(rows[0].action).toBe('saved');
+		expect(rows[0].projectId).toBe(projectId);
+	});
+
+	it('refuses an entry with no project, since no read could ever return it', async () => {
+		await expect(
+			withContext(async (context) => {
+				const table = context.escape.tableName(ACTIVITY_TABLE);
+				await context.runQuery(
+					`INSERT INTO ${table} ("category", "action", "projectId", "createdAt")
+					 VALUES (:category, :action, :projectId, :createdAt)`,
+					{ category: 'workflow', action: 'saved', projectId: null, createdAt: new Date() },
+				);
+			}),
+		).rejects.toThrow();
 	});
 
 	it('drops the table on revert', async () => {
