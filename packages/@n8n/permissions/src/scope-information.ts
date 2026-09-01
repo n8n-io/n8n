@@ -90,6 +90,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Export Project',
 		description: 'Allows including projects in a portable package export.',
 	},
+	'project:manageMembers': {
+		displayName: 'Manage Project Members',
+		description:
+			"Allows adding members to a project, changing a member's project role, and removing members.",
+	},
 	'credential:unshare': {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',
@@ -127,5 +132,42 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'role:manageProject': {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
+	},
+	'gitConnection:create': {
+		displayName: 'Create Git Connection',
+		description: 'Allows creating Git connections and their authentication material.',
+	},
+	'gitConnection:read': {
+		displayName: 'Read Git Connection',
+		description: 'Allows reading Git connection configuration. Secrets are never returned.',
+	},
+	'gitConnection:update': {
+		displayName: 'Update Git Connection',
+		description: 'Allows updating Git connections, including their authentication material.',
+	},
+	'gitConnection:delete': {
+		displayName: 'Delete Git Connection',
+		description: 'Allows deleting Git connections and their local files.',
+	},
+	'gitConnection:list': {
+		displayName: 'List Git Connections',
+		description: 'Allows listing Git connections.',
+	},
+	'gitConnection:clone': {
+		displayName: 'Clone Git Connection',
+		description: 'Allows cloning and removing the local working copy of a Git connection.',
+	},
+	'gitConnection:push': {
+		displayName: 'Push Git Connection',
+		description: 'Allows pushing all projects linked to a Git connection to its remote repository.',
+	},
+	'gitConnection:manageProjects': {
+		displayName: 'Manage Git Connection Projects',
+		description: 'Allows adding projects to and removing projects from a Git connection.',
+	},
+	'gitConnection:pull': {
+		displayName: 'Pull Git Connection',
+		description:
+			'Allows importing all projects from a Git connection working copy into the instance.',
 	},
 };

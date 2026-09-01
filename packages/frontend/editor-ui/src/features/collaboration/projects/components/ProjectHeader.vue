@@ -122,7 +122,11 @@ const externalSecretsProviderPermissions = computed(
 const showSettings = computed(
 	() =>
 		!!route?.params?.projectId &&
-		(!!projectPermissions.value.update || !!externalSecretsProviderPermissions.value.read) &&
+		// Each section of the settings page is entered by its own scope, so any one
+		// of them is enough to reach the page.
+		(!!projectPermissions.value.update ||
+			!!projectPermissions.value.manageMembers ||
+			!!externalSecretsProviderPermissions.value.read) &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 

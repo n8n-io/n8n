@@ -64,6 +64,7 @@ vi.mock('@ai-sdk/google', () => ({
 		provider: 'google',
 		modelId: model,
 		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
@@ -167,6 +168,42 @@ vi.mock('@ai-sdk/openai-compatible', () => ({
 		includeUsage: opts.includeUsage,
 		supportsStructuredOutputs: opts.supportsStructuredOutputs,
 		specificationVersion: 'v3',
+	}),
+}));
+
+vi.mock('@ai-sdk/moonshotai', () => ({
+	createMoonshotAI: (opts?: ProviderOpts) => (model: string) => ({
+		provider: 'moonshotai.chat',
+		modelId: model,
+		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
+		headers: opts?.headers,
+		fetch: opts?.fetch,
+		specificationVersion: 'v4',
+	}),
+}));
+
+vi.mock('@ai-sdk/alibaba', () => ({
+	createAlibaba: (opts?: ProviderOpts) => (model: string) => ({
+		provider: 'alibaba.chat',
+		modelId: model,
+		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
+		headers: opts?.headers,
+		fetch: opts?.fetch,
+		specificationVersion: 'v4',
+	}),
+}));
+
+vi.mock('@ai-sdk/minimax', () => ({
+	createMiniMax: (opts?: ProviderOpts) => (model: string) => ({
+		provider: 'minimax.messages',
+		modelId: model,
+		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
+		headers: opts?.headers,
+		fetch: opts?.fetch,
+		specificationVersion: 'v4',
 	}),
 }));
 
@@ -397,6 +434,35 @@ describe('createModel', () => {
 			expect(model.supportsStructuredOutputs).toBeUndefined();
 		});
 
+		it('should create model for moonshotai', () => {
+			const model = createModel({
+				id: 'moonshotai/kimi-k3',
+				apiKey: 'ms-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('moonshotai.chat');
+			expect(model.modelId).toBe('kimi-k3');
+			expect(model.apiKey).toBe('ms-test');
+		});
+
+		it('should pass a region-specific baseURL through for moonshotai', () => {
+			const model = createModel({
+				id: 'moonshotai/kimi-k3',
+				apiKey: 'ms-test',
+				url: 'https://api.moonshot.cn/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://api.moonshot.cn/v1');
+		});
+
+		it('should create model for alibaba', () => {
+			const model = createModel({
+				id: 'alibaba/qwen-plus',
+				apiKey: 'ali-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('alibaba.chat');
+			expect(model.modelId).toBe('qwen-plus');
+			expect(model.apiKey).toBe('ali-test');
+		});
+
 		it('should have undefined supportsStructuredOutputs for custom when unset', () => {
 			const model = createModel({
 				id: 'custom/Kimi-K3',
@@ -452,6 +518,111 @@ describe('createModel', () => {
 				unknown
 			>;
 			expect(model.baseURL).toBeUndefined();
+		});
+	});
+
+	describe('google baseURL normalization', () => {
+		const baseURLFor = (creds: Record<string, unknown>) =>
+			(
+				createModel({
+					id: 'google/gemini-3.7-flash',
+					apiKey: 'g-test',
+					...creds,
+				}) as unknown as Record<string, unknown>
+			).baseURL;
+
+		// `googlePalmApi.host` defaults to the bare host, which drops the API
+		// version from every request path — Google then 404s for any model.
+		it('appends the API version to the credential host', () => {
+			expect(baseURLFor({ url: 'https://generativelanguage.googleapis.com' })).toBe(
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+		});
+
+		it('leaves a baseURL that already targets the API version unchanged', () => {
+			expect(baseURLFor({ url: 'https://generativelanguage.googleapis.com/v1beta' })).toBe(
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+		});
+
+		it('appends to a proxy host', () => {
+			expect(baseURLFor({ url: 'https://proxy.example/gemini' })).toBe(
+				'https://proxy.example/gemini/v1beta',
+			);
+		});
+
+		it('leaves the SDK default in place when no host is configured', () => {
+			expect(baseURLFor({})).toBeUndefined();
+		});
+	});
+
+	describe('alibaba baseURL normalization', () => {
+		const baseURLFor = (creds: Record<string, unknown>) =>
+			(
+				createModel({ id: 'alibaba/qwen-plus', apiKey: 'ali-test', ...creds }) as unknown as Record<
+					string,
+					unknown
+				>
+			).baseURL;
+
+		it('appends the OpenAI-compatible path to a region base host', () => {
+			expect(baseURLFor({ url: 'https://dashscope-intl.aliyuncs.com' })).toBe(
+				'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+			);
+		});
+
+		it('appends it to a non-default region host too', () => {
+			expect(baseURLFor({ url: 'https://cn-hongkong.dashscope.aliyuncs.com' })).toBe(
+				'https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1',
+			);
+		});
+
+		it('leaves a baseURL that already targets compatible mode unchanged', () => {
+			expect(baseURLFor({ url: 'https://proxy.example/compatible-mode/v1' })).toBe(
+				'https://proxy.example/compatible-mode/v1',
+			);
+		});
+
+		it('leaves baseURL undefined when none is provided', () => {
+			expect(baseURLFor({})).toBeUndefined();
+		});
+	});
+
+	describe('minimax baseURL normalization', () => {
+		const baseURLFor = (creds: Record<string, unknown>) =>
+			(
+				createModel({ id: 'minimax/MiniMax-M3', apiKey: 'mm-test', ...creds }) as unknown as Record<
+					string,
+					unknown
+				>
+			).baseURL;
+
+		it('rewrites the OpenAI-compatible base to the Anthropic-compatible one', () => {
+			expect(baseURLFor({ url: 'https://api.minimax.io/v1' })).toBe(
+				'https://api.minimax.io/anthropic/v1',
+			);
+		});
+
+		it('rewrites the China region base too', () => {
+			expect(baseURLFor({ url: 'https://api.minimaxi.com/v1' })).toBe(
+				'https://api.minimaxi.com/anthropic/v1',
+			);
+		});
+
+		it('appends to a bare host', () => {
+			expect(baseURLFor({ url: 'https://api.minimax.io' })).toBe(
+				'https://api.minimax.io/anthropic/v1',
+			);
+		});
+
+		it('leaves a baseURL that already targets the Anthropic base unchanged', () => {
+			expect(baseURLFor({ url: 'https://proxy.example/minimax/anthropic/v1' })).toBe(
+				'https://proxy.example/minimax/anthropic/v1',
+			);
+		});
+
+		it('leaves baseURL undefined when none is provided', () => {
+			expect(baseURLFor({})).toBeUndefined();
 		});
 	});
 

@@ -2,7 +2,7 @@ import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, type User } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
@@ -11,6 +11,8 @@ import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
+import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -135,13 +137,26 @@ export class OidcController {
 		if (stateInfo.testMode) {
 			try {
 				const result = await this.oidcService.processTestCallback(callbackUrl, state, nonce);
-				return res.send(renderOidcTestSuccess(result));
+				return res.send(renderOidcTestSuccess(result, res.locals.cspNonce));
 			} catch (error) {
-				return res.send(renderOidcTestFailure(error));
+				return res.send(renderOidcTestFailure(error, res.locals.cspNonce));
 			}
 		}
 
-		const { user, idToken } = await this.oidcService.loginUser(callbackUrl, state, nonce);
+		let user: User;
+		let idToken: string | undefined;
+		try {
+			({ user, idToken } = await this.oidcService.loginUser(callbackUrl, state, nonce));
+		} catch (error) {
+			if (error instanceof SsoAccessDeniedError) {
+				this.eventService.emit('user-login-failed', {
+					userEmail: 'unknown',
+					authenticationMethod: 'oidc',
+				});
+				return res.redirect(this.urlService.getInstanceBaseUrl() + SSO_ACCESS_DENIED_REDIRECT_PATH);
+			}
+			throw error;
+		}
 
 		this.authService.issueCookie(res, user, true, req.browserId);
 

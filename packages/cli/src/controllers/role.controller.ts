@@ -14,7 +14,7 @@ import type {
 	RoleProjectMembersResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthenticatedRequest, User } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -27,10 +27,10 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { hasGlobalScope, Role as RoleDTO } from '@n8n/permissions';
+import { Role as RoleDTO } from '@n8n/permissions';
 
 import { EventService } from '@/events/event.service';
-import { assertCanManageRoleType } from '@/services/role-authorization';
+import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
 @RestController('/roles')
@@ -39,23 +39,6 @@ export class RoleController {
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
 	) {}
-
-	/**
-	 * Reassigning a deleted role's users is effectively a bulk instance-role change,
-	 * so it is only honored for callers entitled to change users' instance roles
-	 * (the same scopes the dedicated role-change endpoint requires), never for
-	 * project roles, and never for the caller's own role. When it is not honored the
-	 * reassignment target is ignored, so a role that still has users cannot be
-	 * deleted.
-	 */
-	private canReassignUsers(user: User, role: RoleDTO): boolean {
-		return (
-			role.roleType === 'global' &&
-			user.role.slug !== role.slug &&
-			hasGlobalScope(user, 'role:manage') &&
-			hasGlobalScope(user, 'user:changeRole')
-		);
-	}
 
 	@Get('/')
 	async getAllRoles(
@@ -80,7 +63,10 @@ export class RoleController {
 		@Param('projectId') projectId: string,
 	): Promise<RoleProjectMembersResponse> {
 		const role = await this.roleService.getRole(slug);
-		assertCanManageRoleType(req.user, role.roleType);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
 		const result = await this.roleService.getRoleProjectMembers(slug, projectId);
 		return RoleProjectMembersResponseDto.parse(result);
 	}
@@ -92,7 +78,10 @@ export class RoleController {
 		@Param('slug') slug: string,
 	): Promise<RoleAssignmentsResponse> {
 		const role = await this.roleService.getRole(slug);
-		assertCanManageRoleType(req.user, role.roleType);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
 		const result = await this.roleService.getRoleAssignments(slug);
 		return RoleAssignmentsResponseDto.parse(result);
 	}
@@ -127,14 +116,15 @@ export class RoleController {
 		@Body updateRole: UpdateRoleDto,
 	): Promise<RoleDTO> {
 		const role = await this.roleService.getRole(slug);
-		assertCanManageRoleType(req.user, role.roleType);
-		const result = await this.roleService.updateCustomRole(slug, updateRole);
-		this.eventService.emit('custom-role-updated', {
-			userId: req.user.id,
-			roleSlug: result.slug,
-			scopes: result.scopes,
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
 		});
-		return result;
+		return await this.roleService.updateCustomRole({
+			slug,
+			newRole: updateRole,
+			userId: req.user.id,
+		});
 	}
 
 	@Delete('/:slug')
@@ -146,16 +136,18 @@ export class RoleController {
 		@Query query: RoleDeleteQueryDto,
 	): Promise<RoleDTO> {
 		const role = await this.roleService.getRole(slug);
-		assertCanManageRoleType(req.user, role.roleType);
-		const reassignRoleSlug = this.canReassignUsers(req.user, role)
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
+		const reassignRoleSlug = canReassignUsers({ role, user: req.user })
 			? query.reassignRoleSlug
 			: undefined;
-		const result = await this.roleService.removeCustomRole(slug, reassignRoleSlug);
-		this.eventService.emit('custom-role-deleted', {
+		return await this.roleService.removeCustomRole({
+			slug,
+			reassignRoleSlug,
 			userId: req.user.id,
-			roleSlug: result.slug,
 		});
-		return result;
 	}
 
 	@Post('/')
@@ -165,7 +157,10 @@ export class RoleController {
 		_res: Response,
 		@Body createRole: CreateRoleDto,
 	): Promise<RoleDTO> {
-		assertCanManageRoleType(req.user, createRole.roleType);
+		assertCanManageRoleType({
+			roleType: createRole.roleType,
+			user: req.user,
+		});
 		const result = await this.roleService.createCustomRole(createRole);
 		this.eventService.emit('custom-role-created', {
 			userId: req.user.id,

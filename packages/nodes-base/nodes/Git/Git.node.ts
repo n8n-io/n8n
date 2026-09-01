@@ -16,7 +16,7 @@ import {
 import { randomBytes } from 'node:crypto';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve } from 'path';
-import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
+import type { ConfigListSummary, LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
 import { URL, fileURLToPath } from 'url';
 
@@ -35,6 +35,7 @@ import {
 import {
 	type ConfiguredRemoteRepositories,
 	getConfiguredRemoteRepositories,
+	findBlacklistedKeys,
 	getRepositoryTypeForRemoteConfigKey,
 	mapGitConfigList,
 	validateGitReference,
@@ -411,11 +412,10 @@ export class Git implements INodeType {
 		};
 
 		const validateConfiguredRemoteRepositories = async (
-			git: SimpleGit,
 			repositoryType: 'source' | 'target',
 			baseDir: string,
+			config: ConfigListSummary,
 		): Promise<ConfiguredRemoteRepositories> => {
-			const config = await git.listConfig();
 			const remoteRepositories = getConfiguredRemoteRepositories(config.values, this.getNode());
 			const validationTargets =
 				repositoryType === 'source'
@@ -540,7 +540,7 @@ export class Git implements INodeType {
 					...(Object.keys(unsafe).length > 0 && { unsafe }),
 				};
 
-				const cleanEnv = Object.create(null) as Record<string, unknown>;
+				const cleanEnv = Object.create(null) as Record<string, string>;
 				const isWriteOperation = operation === 'push' || operation === 'pushTags';
 				// Tell git not to ask for any information via the terminal like for
 				// example the username. As nobody will be able to answer it would
@@ -549,6 +549,25 @@ export class Git implements INodeType {
 				cleanEnv['GIT_ALLOW_PROTOCOL'] =
 					isWriteOperation && !enableHooks ? 'git:http:https:ssh' : 'file:git:http:https:ssh';
 				const git: SimpleGit = simpleGit(gitOptions).env(cleanEnv);
+
+				const validateGitConfig = async (): Promise<ConfigListSummary> => {
+					const repositoryConfig = await git.listConfig();
+					if (securityConfig.enableGitNodeAllConfigKeys) {
+						return repositoryConfig;
+					}
+
+					const localConfig = await git.listConfig('local');
+
+					const blacklistedConfigKeys = findBlacklistedKeys(repositoryConfig, localConfig.files);
+					if (blacklistedConfigKeys.length > 0) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Repository Git config key '${blacklistedConfigKeys[0]}' is not allowed`,
+						);
+					}
+
+					return repositoryConfig;
+				};
 
 				if (operation === 'add') {
 					// ----------------------------------
@@ -562,6 +581,7 @@ export class Git implements INodeType {
 						.filter((p) => p.length > 0);
 
 					// Use -- separator to prevent argument injection
+					await validateGitConfig();
 					await git.add(['--', ...paths]);
 
 					returnItems.push({
@@ -658,6 +678,7 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const message = this.getNodeParameter('message', itemIndex, '') as string;
+					await validateGitConfig();
 					const branch = options.branch;
 					if (branch !== undefined && branch !== '') {
 						assertParamIsString('branch', branch, this.getNode());
@@ -694,8 +715,12 @@ export class Git implements INodeType {
 					// ----------------------------------
 					//         fetch
 					// ----------------------------------
-
-					await validateConfiguredRemoteRepositories(git, 'source', resolvedRepositoryPath);
+					const repositoryConfig = await validateGitConfig();
+					await validateConfiguredRemoteRepositories(
+						'source',
+						resolvedRepositoryPath,
+						repositoryConfig,
+					);
 					await git.fetch();
 					returnItems.push({
 						json: {
@@ -736,7 +761,12 @@ export class Git implements INodeType {
 					//         pull
 					// ----------------------------------
 
-					await validateConfiguredRemoteRepositories(git, 'source', resolvedRepositoryPath);
+					const repositoryConfig = await validateGitConfig();
+					await validateConfiguredRemoteRepositories(
+						'source',
+						resolvedRepositoryPath,
+						repositoryConfig,
+					);
 					await git.pull();
 					returnItems.push({
 						json: {
@@ -751,6 +781,7 @@ export class Git implements INodeType {
 					//         push
 					// ----------------------------------
 
+					const repositoryConfig = await validateGitConfig();
 					const branch = options.branch;
 					if (branch !== undefined && branch !== '') {
 						assertParamIsString('branch', branch, this.getNode());
@@ -770,9 +801,9 @@ export class Git implements INodeType {
 					} else {
 						const authentication = this.getNodeParameter('authentication', 0) as string;
 						const { pushTarget } = await validateConfiguredRemoteRepositories(
-							git,
 							'target',
 							resolvedRepositoryPath,
+							repositoryConfig,
 						);
 
 						if (authentication === 'gitPassword') {
@@ -799,8 +830,12 @@ export class Git implements INodeType {
 					// ----------------------------------
 					//         pushTags
 					// ----------------------------------
-
-					await validateConfiguredRemoteRepositories(git, 'target', resolvedRepositoryPath);
+					const repositoryConfig = await validateGitConfig();
+					await validateConfiguredRemoteRepositories(
+						'target',
+						resolvedRepositoryPath,
+						repositoryConfig,
+					);
 					await git.pushTags();
 					returnItems.push({
 						json: {
@@ -883,6 +918,7 @@ export class Git implements INodeType {
 					//         status
 					// ----------------------------------
 
+					await validateGitConfig();
 					const status = await git.status();
 
 					returnItems.push(
@@ -926,6 +962,7 @@ export class Git implements INodeType {
 						assertParamIsBoolean('force', force, this.getNode());
 					}
 
+					await validateGitConfig();
 					await checkoutBranch(git, {
 						branchName,
 						createBranch,
@@ -952,6 +989,7 @@ export class Git implements INodeType {
 					const name = this.getNodeParameter('name', itemIndex, '') as string;
 					validateGitTag(name, this.getNode());
 
+					await validateGitConfig();
 					await git.addTag(name);
 					returnItems.push({
 						json: {

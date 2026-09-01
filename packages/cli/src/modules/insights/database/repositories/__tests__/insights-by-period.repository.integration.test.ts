@@ -1,11 +1,22 @@
-import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
+import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import { InsightsConfig } from '@/modules/insights/insights.config';
+import { createMember } from '@test-integration/db/users';
 
 import { createCompactedInsightsEvent, createMetadata } from '../../entities/__tests__/db-utils';
+import type { InsightsByPeriod } from '../../entities/insights-by-period';
+import { TypeToNumber } from '../../entities/insights-shared';
+import type { InsightsAccessFilter } from '../insights-by-period.repository';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 
 const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
@@ -266,6 +277,154 @@ describe('InsightsByPeriodRepository', () => {
 			// await all promises concurrently
 			await expect(Promise.all(promises)).resolves.toBeDefined();
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('access filter', () => {
+		let member: User;
+		let accessibleProject: Project;
+		let accessibleWorkflow: WorkflowEntity;
+		let accessibleInsight: InsightsByPeriod;
+		let inaccessibleProject: Project;
+		let inaccessibleWorkflow: WorkflowEntity;
+		let inaccessibleInsight: InsightsByPeriod;
+		let accessFilter: InsightsAccessFilter;
+		let startDate: Date;
+		let endDate: Date;
+
+		beforeAll(async () => {
+			member = await createMember();
+
+			accessibleProject = await createTeamProject();
+			await linkUserToProject(member, accessibleProject, 'project:viewer');
+			accessibleWorkflow = await createWorkflow({}, accessibleProject);
+
+			inaccessibleProject = await createTeamProject();
+			inaccessibleWorkflow = await createWorkflow({}, inaccessibleProject);
+
+			const now = DateTime.utc();
+			startDate = now.minus({ days: 7 }).toJSDate();
+			endDate = now.toJSDate();
+
+			[accessibleInsight, inaccessibleInsight] = await Promise.all([
+				createCompactedInsightsEvent(accessibleWorkflow, {
+					type: 'success',
+					value: 4,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 1 }),
+				}),
+				createCompactedInsightsEvent(inaccessibleWorkflow, {
+					type: 'success',
+					value: 10,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 1 }),
+				}),
+			]);
+
+			accessFilter = {
+				user: member,
+				projectRoles: ['project:viewer'],
+				workflowRoles: ['workflow:owner'],
+			};
+		});
+
+		describe('getPreviousAndCurrentPeriodTypeAggregates', () => {
+			test('should aggregate both workflows when no access filter is applied', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const rows = await insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
+					startDate,
+					endDate,
+				});
+
+				const currentSuccessTotal = rows.find(
+					(row) => row.period === 'current' && row.type === TypeToNumber.success,
+				)?.total_value;
+
+				expect(Number(currentSuccessTotal)).toBe(
+					accessibleInsight.value + inaccessibleInsight.value,
+				);
+			});
+
+			test('should exclude workflows outside the access filter', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const rows = await insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
+					startDate,
+					endDate,
+					accessFilter,
+				});
+
+				const currentSuccessTotal = rows.find(
+					(row) => row.period === 'current' && row.type === TypeToNumber.success,
+				)?.total_value;
+
+				expect(Number(currentSuccessTotal)).toBe(accessibleInsight.value);
+			});
+		});
+
+		describe('getInsightsByWorkflow', () => {
+			test('should return both workflows when no access filter is applied', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const { count, rows } = await insightsByPeriodRepository.getInsightsByWorkflow({
+					startDate,
+					endDate,
+				});
+
+				expect(count).toBe(2);
+				expect(rows.map((row) => row.workflowId).sort()).toEqual(
+					[accessibleWorkflow.id, inaccessibleWorkflow.id].sort(),
+				);
+			});
+
+			test('should exclude workflows outside the access filter', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const { count, rows } = await insightsByPeriodRepository.getInsightsByWorkflow({
+					startDate,
+					endDate,
+					accessFilter,
+				});
+
+				expect(count).toBe(1);
+				expect(rows).toHaveLength(1);
+				expect(rows[0].workflowId).toBe(accessibleWorkflow.id);
+				expect(rows[0].succeeded).toBe(accessibleInsight.value);
+			});
+		});
+
+		describe('getInsightsByTime', () => {
+			test('should aggregate both workflows when no access filter is applied', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const rows = await insightsByPeriodRepository.getInsightsByTime({
+					startDate,
+					endDate,
+					periodUnit: 'day',
+					insightTypes: ['success'],
+				});
+
+				const totalSucceeded = rows.reduce((sum, row) => sum + (row.succeeded ?? 0), 0);
+
+				expect(totalSucceeded).toBe(accessibleInsight.value + inaccessibleInsight.value);
+			});
+
+			test('should exclude workflows outside the access filter', async () => {
+				const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+
+				const rows = await insightsByPeriodRepository.getInsightsByTime({
+					startDate,
+					endDate,
+					periodUnit: 'day',
+					insightTypes: ['success'],
+					accessFilter,
+				});
+
+				const totalSucceeded = rows.reduce((sum, row) => sum + (row.succeeded ?? 0), 0);
+
+				expect(totalSucceeded).toBe(accessibleInsight.value);
+			});
 		});
 	});
 });

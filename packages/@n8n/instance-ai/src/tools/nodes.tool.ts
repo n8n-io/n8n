@@ -34,11 +34,11 @@ const listAction = z.object({
 		.string()
 		.optional()
 		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
-	n8nConnectOnly: z
+	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
 		.describe(
-			'When true, return only nodes supported by n8n credits (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support n8n credits?".',
+			'When true, return only nodes supported by Gateway credits (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support Gateway credits?".',
 		),
 });
 
@@ -153,7 +153,7 @@ async function handleList(
 ) {
 	const nodes = await context.nodeService.listAvailable({
 		query: input.query,
-		n8nConnectOnly: input.n8nConnectOnly,
+		gatewayCreditsOnly: input.gatewayCreditsOnly,
 	});
 	return { nodes };
 }

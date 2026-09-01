@@ -19,6 +19,10 @@ export async function scanDirectoryForPackages(
 		cwd: nodeModulesDir,
 		onlyDirectories: true,
 		deep: 1,
+		// Excludes leftover `<package>.backup-<timestamp>` directories from a crashed
+		// install (see `backupPackageDirectory` in `CommunityPackagesService`), which
+		// would otherwise collide with the real package and crash boot.
+		ignore: ['**/*.backup-+([0-9])'],
 	};
 
 	const installedPackagePaths = [

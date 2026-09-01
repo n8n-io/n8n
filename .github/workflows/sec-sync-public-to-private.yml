@@ -5,6 +5,10 @@
 #
 # Scheduled runs only sync if private is not ahead of public.
 # Manual runs always sync (for conflict recovery after failed cherry-pick).
+#
+# A skipped branch or a hard failure is reported to #alerts-build.
+#
+# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml.
 
 name: 'Security: Sync from Public'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
@@ -25,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Generate App Token
@@ -41,6 +46,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Sync master from public
+        id: sync-master
         env:
           EVENT_NAME: ${{ github.event_name }}
           FORCE: ${{ inputs.force }}
@@ -53,9 +59,11 @@ jobs:
           if [ "$AHEAD_COUNT" -gt 0 ]; then
             if [ "$EVENT_NAME" = "schedule" ]; then
               echo "Private is $AHEAD_COUNT commit(s) ahead of public, skipping scheduled sync"
+              echo "ahead_count=$AHEAD_COUNT" >> "$GITHUB_OUTPUT"
               exit 0
             elif [ "$FORCE" != "true" ]; then
               echo "Private is $AHEAD_COUNT commit(s) ahead of public, skipping (force not enabled)"
+              echo "ahead_count=$AHEAD_COUNT" >> "$GITHUB_OUTPUT"
               exit 0
             else
               echo "Private is $AHEAD_COUNT commit(s) ahead of public, force syncing anyway"
@@ -66,6 +74,7 @@ jobs:
           git push origin master --force-with-lease
 
       - name: Sync 1.x from public
+        id: sync-1x
         env:
           EVENT_NAME: ${{ github.event_name }}
           FORCE: ${{ inputs.force }}
@@ -79,9 +88,11 @@ jobs:
           if [ "$AHEAD_COUNT" -gt 0 ]; then
             if [ "$EVENT_NAME" = "schedule" ]; then
               echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, skipping scheduled sync"
+              echo "ahead_count=$AHEAD_COUNT" >> "$GITHUB_OUTPUT"
               exit 0
             elif [ "$FORCE" != "true" ]; then
               echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, skipping (force not enabled)"
+              echo "ahead_count=$AHEAD_COUNT" >> "$GITHUB_OUTPUT"
               exit 0
             else
               echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, force syncing anyway"
@@ -91,57 +102,57 @@ jobs:
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
 
-      - name: Ensure bundle/2.x exists
+      - name: Re-create missing bundle branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git ls-remote --exit-code origin refs/heads/bundle/2.x; then
-            echo "bundle/2.x already exists, skipping"
-          else
-            echo "bundle/2.x not found, creating from master"
-            git checkout master
-            git checkout -b bundle/2.x
-            git push origin bundle/2.x
-          fi
+          EXISTING=$(git ls-remote --heads origin 'refs/heads/bundle/*')
 
-      - name: Ensure bundle/1.x exists
-        run: |
-          if git ls-remote --exit-code origin refs/heads/bundle/1.x; then
-            echo "bundle/1.x already exists, skipping"
-          else
-            echo "bundle/1.x not found, creating from 1.x"
-            git checkout 1.x
-            git checkout -b bundle/1.x
-            git push origin bundle/1.x
-          fi
+          MISSING=()
+          for BRANCH in bundle/2.x bundle/1.x; do
+            if ! grep -qF "refs/heads/$BRANCH" <<<"$EXISTING"; then
+              MISSING+=("$BRANCH")
+            fi
+          done
 
-      - name: Update bundle/2.x from master
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git fetch origin bundle/2.x
-          git checkout -B bundle/2.x FETCH_HEAD
-
-          if git merge --no-edit master; then
-            git push origin bundle/2.x
-          else
-            # A conflict needs a human; keep the run green so the rest of the sync still reports success
-            git merge --abort || true
-            echo "::warning title=bundle/2.x is out of sync::Merging master into bundle/2.x hit a conflict. Resolve it manually, then re-run this workflow."
+          if [ ${#MISSING[@]} -eq 0 ]; then
+            echo 'Both bundle branches exist; nothing to dispatch.'
             exit 0
           fi
 
-      - name: Update bundle/1.x from 1.x
+          echo "Missing: ${MISSING[*]} - dispatching Security: Sync Bundle Branches"
+          gh workflow run sec-sync-bundle-branches.yml --ref master
+
+      - name: Notify Slack on failure
+        if: failure()
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        continue-on-error: true
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text "<${RUN_URL}|Public → private sync failed>"
 
-          git fetch origin bundle/1.x
-          git checkout -B bundle/1.x FETCH_HEAD
-
-          if git merge --no-edit 1.x; then
-            git push origin bundle/1.x
-          else
-            git merge --abort || true
-            echo "::warning title=bundle/1.x is out of sync::Merging 1.x into bundle/1.x hit a conflict. Resolve it manually, then re-run this workflow."
-            exit 0
+      - name: Notify Slack on skipped sync
+        continue-on-error: true
+        if: ${{ !cancelled() && (steps.sync-master.outputs.ahead_count || steps.sync-1x.outputs.ahead_count) }}
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          MASTER_AHEAD: ${{ steps.sync-master.outputs.ahead_count }}
+          ONE_X_AHEAD: ${{ steps.sync-1x.outputs.ahead_count }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          DETAILS=''
+          if [ -n "$MASTER_AHEAD" ]; then
+            DETAILS="master is $MASTER_AHEAD commit(s) ahead"
           fi
+          if [ -n "$ONE_X_AHEAD" ]; then
+            [ -z "$DETAILS" ] || DETAILS="$DETAILS, "
+            DETAILS="${DETAILS}1.x is $ONE_X_AHEAD commit(s) ahead"
+          fi
+
+          # Non-Bundle commits on private master/1.x keep the sync skipped until they are removed or force-synced
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text "<${RUN_URL}|Public → private sync skipped>: ${DETAILS} of public. Re-run with force once resolved."

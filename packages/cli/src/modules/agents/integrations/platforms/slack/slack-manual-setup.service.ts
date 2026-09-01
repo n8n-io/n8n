@@ -1,5 +1,3 @@
-import { randomBytes } from 'node:crypto';
-
 import type { CreateSlackAgentAppResponse, SlackAgentAppManifestResponse } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -7,44 +5,35 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { randomBytes } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { SlackMethodsService } from './slack-methods.service';
+import { childRecord, type SlackAppSetupSession, slackSetupCacheKey } from './slack-setup.types';
+import { stringProperty } from '../../integration-helpers';
 
-const SLACK_APP_SETUP_CACHE_PREFIX = 'agents:slack-app-setup:';
-const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
-
-interface CreateSlackAppOptions {
+export interface CreateSlackAppOptions {
 	projectId: string;
 	agentId: string;
 	appConfigurationToken: string;
 	user: User;
 }
 
-interface GetSlackAppManifestOptions {
+export interface GetSlackAppManifestOptions {
 	projectId: string;
 	agentId: string;
 }
 
-interface CompleteSlackAppInstallOptions {
+export interface CompleteSlackAppInstallOptions {
 	projectId: string;
 	agentId: string;
 	code: string;
 	state: string;
-}
-
-interface SlackAppSetupSession {
-	projectId: string;
-	agentId: string;
-	userId: string;
-	appId: string;
-	clientId: string;
-	clientSecret: string;
-	signingSecret: string;
-	redirectUrl: string;
 }
 
 function hasSessionShape(value: unknown): value is SlackAppSetupSession {
@@ -68,6 +57,7 @@ export class SlackManualSetupService {
 		private readonly userRepository: UserRepository,
 		private readonly cacheService: CacheService,
 		private readonly cipher: Cipher,
+		private readonly projectService: ProjectService,
 	) {}
 
 	async createApp(options: CreateSlackAppOptions): Promise<CreateSlackAgentAppResponse> {
@@ -85,16 +75,16 @@ export class SlackManualSetupService {
 			token: appConfigurationToken,
 			manifest: JSON.stringify(manifest),
 		});
-		if (response.ok !== true) {
+		if (!response.ok) {
 			throw this.methods.slackError('create the Slack app', response);
 		}
 
-		const credentials = this.methods.childRecord(response, 'credentials');
-		const appId = this.methods.stringProperty(response, 'app_id');
-		const clientId = this.methods.stringProperty(credentials, 'client_id');
-		const clientSecret = this.methods.stringProperty(credentials, 'client_secret');
-		const signingSecret = this.methods.stringProperty(credentials, 'signing_secret');
-		const oauthAuthorizeUrl = this.methods.stringProperty(response, 'oauth_authorize_url');
+		const credentials = childRecord(response, 'credentials');
+		const appId = stringProperty(response, 'app_id');
+		const clientId = stringProperty(credentials, 'client_id');
+		const clientSecret = stringProperty(credentials, 'client_secret');
+		const signingSecret = stringProperty(credentials, 'signing_secret');
+		const oauthAuthorizeUrl = stringProperty(response, 'oauth_authorize_url');
 		if (!appId || !clientId || !clientSecret || !signingSecret || !oauthAuthorizeUrl) {
 			throw new BadRequestError('Slack returned an incomplete app setup response');
 		}
@@ -110,11 +100,7 @@ export class SlackManualSetupService {
 			signingSecret,
 			redirectUrl,
 		} satisfies SlackAppSetupSession;
-		await this.cacheService.set(
-			this.cacheKey(state),
-			await this.cipher.encryptV2(JSON.stringify(setupSession)),
-			SLACK_APP_SETUP_TTL_MS,
-		);
+		await this.methods.storeSession(state, setupSession);
 
 		return {
 			appId,
@@ -140,6 +126,13 @@ export class SlackManualSetupService {
 			relations: ['role'],
 		});
 		if (!user) throw new NotFoundError(`User "${session.userId}" not found`);
+		const project = await this.projectService.getProjectWithScope(user, session.projectId, [
+			'agent:update',
+			'credential:create',
+		]);
+		if (!project) {
+			throw new ForbiddenError('You do not have permission to complete Slack app setup');
+		}
 
 		const agent = await this.methods.getAgent(session.agentId, session.projectId);
 		const tokenResponse = await this.methods.callSlackApi(
@@ -154,25 +147,25 @@ export class SlackManualSetupService {
 				)}`,
 			},
 		);
-		if (tokenResponse.ok !== true) {
+		if (!tokenResponse.ok) {
 			throw this.methods.slackError('finish Slack app installation', tokenResponse);
 		}
 
-		const accessToken = this.methods.stringProperty(tokenResponse, 'access_token');
+		const accessToken = stringProperty(tokenResponse, 'access_token');
 		if (!accessToken?.startsWith('xoxb-')) {
 			throw new BadRequestError('Slack did not return a Bot User OAuth Token');
 		}
 
-		await this.methods.createAndConnectBotCredential({
-			agent,
-			user,
-			accessToken,
-			signingSecret: session.signingSecret,
+		const team = childRecord(tokenResponse, 'team');
+		const teamName = stringProperty(team, 'name');
+		await this.methods.connectBotCredential(agent, user, accessToken, {
+			...session,
+			...(teamName ? { teamName } : {}),
 		});
 	}
 
 	private async consumeSession(state: string): Promise<SlackAppSetupSession> {
-		const cached = await this.cacheService.take<unknown>(this.cacheKey(state));
+		const cached = await this.cacheService.take<unknown>(slackSetupCacheKey(state));
 		if (typeof cached !== 'string') {
 			throw new BadRequestError('Slack app setup state has expired or is invalid');
 		}
@@ -186,9 +179,5 @@ export class SlackManualSetupService {
 		}
 
 		throw new BadRequestError('Slack app setup state has expired or is invalid');
-	}
-
-	private cacheKey(state: string): string {
-		return `${SLACK_APP_SETUP_CACHE_PREFIX}${state}`;
 	}
 }

@@ -1,6 +1,4 @@
 import type { Tool } from '@langchain/core/tools';
-import { McpServerConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
@@ -9,12 +7,14 @@ import type {
 	JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
+import { McpServerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
 import type { CredentialCheckResult, Logger } from 'n8n-workflow';
 import { jsonParse, OperationalError } from 'n8n-workflow';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ExecutionCoordinator } from './execution/ExecutionCoordinator';
 import type { ExecutionStrategy } from './execution/ExecutionStrategy';
@@ -42,6 +42,14 @@ import { TransportFactory } from './transport/TransportFactory';
  * flow, so this is generous relative to the SDK's default request timeout.
  */
 const ELICITATION_TIMEOUT_MS = 300_000;
+
+function toolDescriptors(tools: Tool[]) {
+	return tools.map((tool) => ({
+		name: tool.name,
+		description: tool.description,
+		inputSchema: zodToDraft202012(tool.schema, { removeAdditionalStrategy: 'strict' }),
+	}));
+}
 
 export interface HandlePostResult {
 	wasToolCall: boolean;
@@ -107,8 +115,9 @@ export class McpServer {
 		serverName: string,
 		postUrl: string,
 		tools: Tool[],
+		instructions?: string,
 	): Promise<void> {
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.createSSE(postUrl, resp);
 
 		await this.setupSession(server, transport, tools, resp);
@@ -119,8 +128,9 @@ export class McpServer {
 		resp: CompressionResponse,
 		serverName: string,
 		tools: Tool[],
+		instructions?: string,
 	): Promise<void> {
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.createStreamableHttp(
 			{
 				sessionIdGenerator: () => randomUUID(),
@@ -148,6 +158,7 @@ export class McpServer {
 		tools: Tool[],
 		serverName?: string,
 		gateResult?: CredentialCheckResult,
+		instructions?: string,
 	): Promise<HandlePostResult> {
 		const sessionId = this.getSessionId(req);
 		// A request on a known session counts as activity (no-op for unknown ids).
@@ -173,6 +184,7 @@ export class McpServer {
 				serverName,
 				tools,
 				resp,
+				instructions,
 			);
 			if (!recreated) {
 				resp.status(404).send('Session not found');
@@ -328,18 +340,10 @@ export class McpServer {
 					`SSE queue mode: handling relayed list tools request for session ${sessionId}`,
 				);
 
-				const tools = this.sessionManager.getTools(sessionId) ?? [];
-				const toolsList = tools.map((tool) => ({
-					name: tool.name,
-					description: tool.description,
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-					inputSchema: zodToJsonSchema(tool.schema as any, { removeAdditionalStrategy: 'strict' }),
-				}));
-
 				const response: JSONRPCMessage = {
 					jsonrpc: '2.0',
 					id: messageId,
-					result: { tools: toolsList },
+					result: { tools: toolDescriptors(this.sessionManager.getTools(sessionId) ?? []) },
 				};
 				void transport.send(response);
 			}
@@ -462,8 +466,11 @@ export class McpServer {
 		return this.pendingCallsManager;
 	}
 
-	private createServer(serverName: string): Server {
-		return new Server({ name: serverName, version: '0.1.0' }, { capabilities: { tools: {} } });
+	private createServer(serverName: string, instructions?: string): Server {
+		return new Server(
+			{ name: serverName, version: '0.1.0' },
+			{ capabilities: { tools: {} }, instructions },
+		);
 	}
 
 	private async setupSession(
@@ -507,6 +514,7 @@ export class McpServer {
 		serverName: string,
 		tools: Tool[],
 		resp: CompressionResponse,
+		instructions?: string,
 	): Promise<boolean> {
 		const isValid = await this.sessionManager.isSessionValid(sessionId);
 		if (!isValid) {
@@ -514,7 +522,7 @@ export class McpServer {
 			return false;
 		}
 
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.recreateStreamableHttp(sessionId, resp);
 
 		await this.sessionManager.registerSession(sessionId, server, transport, tools);
@@ -600,17 +608,7 @@ export class McpServer {
 					throw new OperationalError('Require a sessionId for the listing of tools');
 				}
 
-				const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
-				return {
-					tools: tools.map((tool) => ({
-						name: tool.name,
-						description: tool.description,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-						inputSchema: zodToJsonSchema(tool.schema as any, {
-							removeAdditionalStrategy: 'strict',
-						}),
-					})),
-				};
+				return { tools: toolDescriptors(this.sessionManager.getTools(extra.sessionId) ?? []) };
 			},
 		);
 

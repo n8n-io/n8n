@@ -187,7 +187,8 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
 		!!node.statusMessage ||
 		!!node.result ||
 		!!node.error ||
-		!!node.tasks
+		!!node.tasks ||
+		!!node.setupItemsByWorkflowId
 	);
 }
 
@@ -477,6 +478,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					message: event.payload.message,
 					targetApproval: event.payload.targetApproval,
 					credentialRequests: event.payload.credentialRequests,
+					requireUserSelection: event.payload.requireUserSelection,
 					projectId: event.payload.projectId,
 					inputType: event.payload.inputType,
 					domainAccess: event.payload.domainAccess,
@@ -503,6 +505,20 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				if (event.payload.planItems) {
 					agent.planItems = event.payload.planItems;
 				}
+			}
+			break;
+		}
+
+		case 'setup-items': {
+			// Thread-level state, so it folds onto the ROOT node regardless of the
+			// emitting agent — history restore reads only the tree root. Full-snapshot
+			// semantics: last event wins per workflowId.
+			const root = ensureAgent(state, state.rootAgentId);
+			if (root && isSafeObjectKey(event.payload.workflowId)) {
+				root.setupItemsByWorkflowId = {
+					...root.setupItemsByWorkflowId,
+					[event.payload.workflowId]: event.payload.items,
+				};
 			}
 			break;
 		}

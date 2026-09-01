@@ -30,6 +30,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
+			gitConnection: {},
 			tag: {},
 			user: {},
 			variable: {},
@@ -129,6 +130,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
+			gitConnection: {},
 			tag: {
 				create: true,
 				list: true,

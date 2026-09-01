@@ -89,31 +89,7 @@
 				},
 				{
 					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Path to the file to edit"
-							},
-							"old_str": {
-								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
-							},
-							"new_str": {
-								"type": "string",
-								"description": "Replacement text to write in place of old_str."
-							}
-						},
-						"required": ["path", "old_str", "new_str"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -138,6 +114,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -398,30 +375,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdvpsLbiNCvjQ5t8uuoT8\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you with these tasks. Let me execute them step by step.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01PssxbtZdNs3YBHtifmF5hN\",\"name\":\"workspace_mkdir\",\"input\":{\"path\":\"/app\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01WPf5Fdv3L8D738QFTgZgnb\",\"name\":\"workspace_write_file\",\"input\":{\"path\":\"/app/config.ts\",\"content\":\"export default {}\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3031,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":133,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwbJSG8Qg3Xcr8Mdqs\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you with these tasks. Let me execute them step by step.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01Kdm2JzfcvU22C5apQxbmUz\",\"name\":\"workspace_mkdir\",\"input\":{\"path\":\"/app\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01KjtGG2kqE7oS3bpc8FEJF5\",\"name\":\"workspace_write_file\",\"input\":{\"path\":\"/app/config.ts\",\"content\":\"export default {}\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2864,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":133,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-11T10:45:43Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:58Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-11T10:45:43Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:58Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-11T10:45:42Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:57Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-11T10:45:43Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:58Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a296a6fe6e7725c0-VIE",
+			"cf-ray": "a2a55d75dc275ac3-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 11 Aug 2026 10:45:43 GMT",
-			"request-id": "req_011CdvpsLAAyvpGkp3LhU5JW",
+			"date": "Thu, 13 Aug 2026 05:36:58 GMT",
+			"request-id": "req_011CdzCwZvLdpPMTgGkq1o33",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-ea9a7c39ba842d38b3030987afc44193-44b95e84dd813e87-01",
+			"traceresponse": "00-0763083be5a01f7a6495059febeffb6e-074fdd45ff1c532e-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -459,7 +436,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01PssxbtZdNs3YBHtifmF5hN",
+							"id": "toolu_01Kdm2JzfcvU22C5apQxbmUz",
 							"name": "workspace_mkdir",
 							"input": {
 								"path": "/app"
@@ -470,7 +447,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01WPf5Fdv3L8D738QFTgZgnb",
+							"id": "toolu_01KjtGG2kqE7oS3bpc8FEJF5",
 							"name": "workspace_write_file",
 							"input": {
 								"path": "/app/config.ts",
@@ -487,12 +464,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01PssxbtZdNs3YBHtifmF5hN",
+							"tool_use_id": "toolu_01Kdm2JzfcvU22C5apQxbmUz",
 							"content": "{\"success\":true}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01WPf5Fdv3L8D738QFTgZgnb",
+							"tool_use_id": "toolu_01KjtGG2kqE7oS3bpc8FEJF5",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -564,31 +541,7 @@
 				},
 				{
 					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Path to the file to edit"
-							},
-							"old_str": {
-								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
-							},
-							"new_str": {
-								"type": "string",
-								"description": "Replacement text to write in place of old_str."
-							}
-						},
-						"required": ["path", "old_str", "new_str"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -613,6 +566,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -873,31 +827,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdvpsRTuotAB1J7wmHouH\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now let me list the files and read the contents:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01PDqhojRM2sUwN2BA12fD6k\",\"name\":\"workspace_list_files\",\"input\":{\"path\":\"/app\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01VsSW68Un1y5Z4WSKgC98TW\",\"name\":\"workspace_read_file\",\"input\":{\"path\":\"/app/config.ts\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3237,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":111,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwgEqyT69jXZMUZwr1\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now let me list the files and read the config file:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01UWmHmjeCfvtj9Pagmf8c8w\",\"name\":\"workspace_list_files\",\"input\":{\"path\":\"/app\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01EAhG6VHkDp4kKfHyx33nhf\",\"name\":\"workspace_read_file\",\"input\":{\"path\":\"/app/config.ts\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3070,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":112,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-11T10:45:44Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:59Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-11T10:45:44Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:59Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-11T10:45:44Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:58Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-11T10:45:44Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:59Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a296a70608e025c0-VIE",
+			"cf-ray": "a2a55d7e9a455ac3-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 11 Aug 2026 10:45:45 GMT",
-			"request-id": "req_011CdvpsRAoY9wE2wJUA47KM",
+			"date": "Thu, 13 Aug 2026 05:36:59 GMT",
+			"request-id": "req_011CdzCwfjLLqgJpEayNEzLi",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=890",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-a65659e5bffea15b715f4da3117c061a-40ee649bcd94476f-01",
+			"traceresponse": "00-811dd8d88f0f5228d247eba8645965d7-2dd4531cfa96b7e3-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -935,7 +888,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01PssxbtZdNs3YBHtifmF5hN",
+							"id": "toolu_01Kdm2JzfcvU22C5apQxbmUz",
 							"name": "workspace_mkdir",
 							"input": {
 								"path": "/app"
@@ -946,7 +899,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01WPf5Fdv3L8D738QFTgZgnb",
+							"id": "toolu_01KjtGG2kqE7oS3bpc8FEJF5",
 							"name": "workspace_write_file",
 							"input": {
 								"path": "/app/config.ts",
@@ -963,12 +916,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01PssxbtZdNs3YBHtifmF5hN",
+							"tool_use_id": "toolu_01Kdm2JzfcvU22C5apQxbmUz",
 							"content": "{\"success\":true}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01WPf5Fdv3L8D738QFTgZgnb",
+							"tool_use_id": "toolu_01KjtGG2kqE7oS3bpc8FEJF5",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -978,11 +931,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now let me list the files and read the contents:"
+							"text": "Now let me list the files and read the config file:"
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01PDqhojRM2sUwN2BA12fD6k",
+							"id": "toolu_01UWmHmjeCfvtj9Pagmf8c8w",
 							"name": "workspace_list_files",
 							"input": {
 								"path": "/app"
@@ -993,7 +946,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01VsSW68Un1y5Z4WSKgC98TW",
+							"id": "toolu_01EAhG6VHkDp4kKfHyx33nhf",
 							"name": "workspace_read_file",
 							"input": {
 								"path": "/app/config.ts"
@@ -1009,12 +962,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01PDqhojRM2sUwN2BA12fD6k",
+							"tool_use_id": "toolu_01UWmHmjeCfvtj9Pagmf8c8w",
 							"content": "{\"entries\":[{\"name\":\"config.ts\",\"type\":\"file\"}]}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01VsSW68Un1y5Z4WSKgC98TW",
+							"tool_use_id": "toolu_01EAhG6VHkDp4kKfHyx33nhf",
 							"content": "{\"content\":\"export default {}\"}"
 						}
 					]
@@ -1086,31 +1039,7 @@
 				},
 				{
 					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Path to the file to edit"
-							},
-							"old_str": {
-								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
-							},
-							"new_str": {
-								"type": "string",
-								"description": "Replacement text to write in place of old_str."
-							}
-						},
-						"required": ["path", "old_str", "new_str"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -1135,6 +1064,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -1395,30 +1325,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdvpsWL7BkYFfE8w2cjBn\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Perfect! Here's a summary of what was completed:\\n\\n1. ✅ Created directory `/app`\\n2. ✅ Wrote \\\"export default {}\\\" to `/app/config.ts`\\n3. ✅ Files in `/app`: `config.ts`\\n4. ✅ Contents of `/app/config.ts`: `export default {}`\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3438,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":86,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwmHTXw7Z6DXv5BHhW\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Perfect! All tasks completed:\\n\\n1. ✅ Created directory `/app`\\n2. ✅ Wrote `\\\"export default {}\\\"` to `/app/config.ts`\\n3. ✅ Files in `/app`: `config.ts`\\n4. ✅ Contents of `/app/config.ts`: `export default {}`\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3272,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":83,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9998000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-11T10:45:45Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:37:00Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-11T10:45:46Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:37:00Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-11T10:45:45Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:59Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11998000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-11T10:45:45Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:37:00Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a296a70c7edc25c0-VIE",
+			"cf-ray": "a2a55d853ec25ac3-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 11 Aug 2026 10:45:46 GMT",
-			"request-id": "req_011CdvpsVnNHyhKrGgWZbCtt",
+			"date": "Thu, 13 Aug 2026 05:37:00 GMT",
+			"request-id": "req_011CdzCwkV62qc7vwwpkCTQ6",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-629d998844f7d0fbb6f65d4d907a0f5a-50e23e19f926749d-01",
+			"traceresponse": "00-6ab9f6e7fd5b6818fe5aee49378c8b15-f12ec9900d19d681-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

@@ -266,6 +266,7 @@ erDiagram
   varchar clientId FK
   timestamp_3__with_time_zone createdAt
   bigint expiresAt
+  varchar resource
   json scope
   varchar_255_ token
   timestamp_3__with_time_zone updatedAt
@@ -339,7 +340,6 @@ erDiagram
   integer id
   varchar_64_ type
   integer typeVersion
-  varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK
 }
 "public.workflow_review_activity_comment" {

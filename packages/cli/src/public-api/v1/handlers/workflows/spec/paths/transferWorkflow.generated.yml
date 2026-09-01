@@ -1,0 +1,39 @@
+operationId: transferWorkflow
+tags:
+  - Workflow
+summary: Transfer a workflow to another project
+description: Transfer a workflow to another project.
+x-required-scope: workflow:move
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: workflowId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          destinationProjectId:
+            type: string
+        required:
+          - destinationProjectId
+responses:
+  '204':
+    description: Operation successful.
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

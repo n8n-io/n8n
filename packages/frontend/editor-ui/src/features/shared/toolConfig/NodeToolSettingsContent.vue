@@ -25,7 +25,13 @@ import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.ut
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { Workflow, NodeHelpers, deepCopy, type INode, type INodeParameters } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	deepCopy,
+	type INode,
+	type INodeParameters,
+	type Workflow,
+} from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import {
 	ChatHubToolContextKey,
@@ -50,6 +56,10 @@ const props = defineProps<{
 	projectId?: string;
 	/** Operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
 	hiddenOperations?: readonly string[];
+	parameterIssues?: Record<string, string[]>;
+	fromAiDisabledParameters?: string[];
+	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
+	syncNodeToNdv?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -159,6 +169,7 @@ const hasCredentialIssues = computed(() => {
 
 const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
 const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
+const toolNdvStore = useNDVStore(toolWorkflowDocumentId);
 const workflowDocumentStore = computed(() => toolWorkflowStore);
 
 watch(
@@ -166,6 +177,9 @@ watch(
 	(currentNode) => {
 		if (currentNode) {
 			toolWorkflowStore.setNodes([currentNode]);
+			if (props.syncNodeToNdv) {
+				toolNdvStore.setActiveNodeName(currentNode.name, 'other');
+			}
 		}
 	},
 	{ immediate: true },
@@ -387,7 +401,7 @@ onMounted(async () => {
 	if (projectId) {
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),
+			credentialsStore.fetchUsableCredentials({ projectId }),
 		]);
 	}
 });
@@ -400,7 +414,7 @@ onBeforeUnmount(() => {
 	// materialize — Pinia stores are not freed on unmount. The doc id is a
 	// constant and only one tool-config host is mounted at a time.
 	const documentStore = workflowDocumentStore.value;
-	disposeNDVStore(useNDVStore(documentStore.documentId));
+	disposeNDVStore(toolNdvStore);
 	disposeWorkflowDocumentStore(documentStore);
 });
 
@@ -427,6 +441,8 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:node-values="node.parameters"
 					:is-read-only="false"
 					:node="node"
+					:parameter-issues="props.parameterIssues"
+					:from-ai-disabled-parameters="props.fromAiDisabledParameters"
 					@value-changed="handleChangeParameter"
 				>
 					<NodeCredentials

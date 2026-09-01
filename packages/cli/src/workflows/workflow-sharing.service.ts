@@ -146,4 +146,27 @@ export class WorkflowSharingService {
 		});
 		return sharedWorkflows.map(({ workflowId }) => workflowId);
 	}
+
+	/**
+	 * Resolve the roles granting `scope`. Returns `undefined` when the user's
+	 * global role already grants the scope, meaning no filtering is needed.
+	 */
+	async rolesGrantingScope(
+		user: User,
+		scope: Scope,
+	): Promise<{ projectRoles: string[]; workflowRoles: string[] } | undefined> {
+		if (hasGlobalScope(user, scope)) {
+			return undefined;
+		}
+
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', [scope]),
+			this.roleService.rolesWithScope('workflow', [scope]),
+		]);
+
+		return {
+			projectRoles,
+			workflowRoles,
+		};
+	}
 }

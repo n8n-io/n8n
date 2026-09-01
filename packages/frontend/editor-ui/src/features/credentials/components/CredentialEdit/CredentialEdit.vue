@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
@@ -186,6 +186,15 @@ const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>(
 const workflowDocumentStore = provideWorkflowDocumentStore();
 const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
+// Telemetry workflow attribution: prefer the workflow passed by the surface that
+// opened the modal (NDV, Instance AI setup card) — the resolved document store is
+// empty when the modal opens outside a loaded workflow document.
+const telemetryWorkflowId = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const fromModal = isCredentialModalState(modalState) ? modalState.workflowId : undefined;
+	return fromModal ?? workflowDocumentStore.value.workflowId;
+});
+
 const contextNode = computed<INode | null>(() => {
 	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
@@ -274,6 +283,11 @@ const instanceAiCredentialHelp = computed(() => {
 const closeOnSave = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
+});
+
+const onCredentialCreated = computed<NewCredentialsModal['onCredentialCreated']>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.onCredentialCreated : undefined;
 });
 
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
@@ -439,6 +453,15 @@ onMounted(async () => {
 	}
 });
 
+// The missing-required-fields warning latches on open/save/close attempts;
+// release it as soon as the form satisfies the requirements so the OAuth
+// connect banner reappears without needing a save first.
+watch(requiredPropertiesFilled, (filled) => {
+	if (filled) {
+		showValidationWarning.value = false;
+	}
+});
+
 async function beforeClose() {
 	let keepEditing = false;
 
@@ -503,7 +526,7 @@ function onTabSelect(tab: string) {
 		credential_type: credType,
 		node_type: activeNode ? activeNode.type : null,
 		tab,
-		workflow_id: workflowDocumentStore.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 		credential_id: credentialId.value,
 		sharing_enabled: EnterpriseEditionFeature.Sharing,
 	});
@@ -699,6 +722,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			credentialDetails.usageScope = presetUsageScope.value;
 		}
 		credential = await createCredential(credentialDetails, homeProject.value);
+		if (credential) onCredentialCreated.value?.(credential);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -762,7 +786,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialDetails.type,
-			workflow_id: workflowDocumentStore.value.workflowId,
+			workflow_id: telemetryWorkflowId.value,
 			credential_id: credential.id,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: isNewCredential,
@@ -896,7 +920,7 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id: workflowDocumentStore.value.workflowId,
+		workflow_id: telemetryWorkflowId.value,
 	});
 
 	return credential;
@@ -1137,7 +1161,7 @@ async function oAuthCredentialAuthorize() {
 	const handleOAuthResult = (successfullyConnected: boolean) => {
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id: workflowDocumentStore.value.workflowId || null,
+			workflow_id: telemetryWorkflowId.value || null,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,
@@ -1448,6 +1472,7 @@ const { width } = useElementSize(credNameRef);
 							:connected-by-me="connectedByMe"
 							:connected-account-identifier="connectedAccountIdentifier"
 							:is-new-credential="isNewCredential"
+							:new-credential-project-type="homeProject?.type"
 							:managed-oauth-available="managedOAuthAvailable"
 							:use-custom-oauth="useCustomOAuth"
 							:is-quick-connect-mode="isQuickConnectMode"

@@ -57,7 +57,7 @@ describe('searchMcpRegistryServers', () => {
 		});
 		const [result] = searchMcpRegistryServers([sseOnly], ['sse-srv']);
 		expect(result.transport).toBe('sse');
-		expect(result.url).toBe('https://sse.example');
+		expect(result.url).toBe('https://sse.example/');
 	});
 
 	it('keeps the raw slug alongside the camelCased node name', () => {

@@ -20,6 +20,7 @@ import type { INode, INodeTypeData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
@@ -43,6 +44,8 @@ mockInstance(OwnershipService);
 mockInstance(ExternalHooks);
 
 let reconciler: WorkflowPublicationReconciler;
+const abortSignal = new AbortController().signal;
+
 let consumer: WorkflowPublicationOutboxConsumer;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
 let outboxRepository: WorkflowPublicationOutboxRepository;
@@ -123,7 +126,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		// the reporter persists the `activated` trigger-status rows with kinds.
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
 
 		// The leader-transition race: a demoted main consumed the outbox record
@@ -154,7 +157,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// A fresh boot: the registry is empty, the published state is intact.
 		await activeWorkflowTriggers.remove(workflow.id);
@@ -197,7 +200,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		// `activated` trigger-status rows.
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// An unpublish interrupted after removing the published-version mapping
 		// but before the reporter cleared the trigger-status rows, with its outbox
@@ -227,7 +230,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
 
 		// A demoted main consumed the unpublish record: workflow deactivated,
@@ -254,7 +257,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// A re-leased unpublish torn between two mains: mapping removed and the
 		// record completed elsewhere, but this leader's registry AND the
@@ -280,7 +283,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 
 		// Mid-unpublish: activeVersionId already cleared, pending record owns the
 		// teardown. Reconciliation must not race it.
@@ -300,7 +303,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await setActiveVersion(workflow.id, workflow.versionId);
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 
 		// A parameter-only newer version is published: the trigger node set is
 		// identical, so no node-id diff can distinguish the two versions.
@@ -311,7 +314,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		});
 		await setActiveVersion(workflow.id, newVersionId);
 		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(newVersionId);
 
 		// A stalled processor (zombie writer) rolls the mapping back to the old
@@ -328,6 +331,81 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
+	// A publication failing before the mapping advances (e.g. a policy block) leaves
+	// the skew permanently, so re-enqueueing would loop on every pass.
+	test('leaves a workflow skewed by a terminally failed publication alone', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('skew-failed');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
+
+		// A newer version is made active, but its publication fails before the
+		// mapping advances — so activeVersionId and publishedVersionId diverge.
+		const newVersionId = 'version-2-failed-publish';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [trigger],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
+		const failing = (await outboxRepository.claimNextPendingRecord())!;
+		await outboxRepository.markFailed(failing.id, 'Blocked by policy');
+
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(
+			workflow.versionId,
+		);
+
+		await reconciler.reconcile('reconcile');
+
+		// No third record: the skew is real but permanent, so the reconciler must
+		// not keep retrying it.
+		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(2);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	// The failed-record exclusion above is scoped to the active version so it never
+	// reaches an unpublish, where the mapping is all that is left to heal.
+	test('removes a mapping left behind by a failed unpublish, despite the failed record', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('unpublish-failed');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
+
+		// An unpublish another main tore down and reported (triggers gone, status
+		// rows cleared) whose mapping removal never landed, so its record is
+		// terminal `failed`. With no in-memory trigger and no status rows, the
+		// registry detections are blind — only the version comparison can see it.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await activeWorkflowTriggers.remove(workflow.id);
+		await triggerStatusRepository.delete({ workflowId: workflow.id });
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const failing = (await outboxRepository.claimNextPendingRecord())!;
+		await outboxRepository.markFailed(failing.id, 'Removing the published version failed');
+
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).toContain(workflow.id);
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		await reconciler.reconcile('reconcile');
+
+		// Attribution: the skew detector drove the repair, not another pass.
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-publication-reconciliation',
+			expect.objectContaining({ versionSkewCount: 1, deficientCount: 0, surplusCount: 0 }),
+		);
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBeNull();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+
+		emitSpy.mockRestore();
+	});
+
 	test('removes a published-version mapping left behind by a missed unpublish', async () => {
 		const owner = await createOwner();
 
@@ -336,7 +414,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await setActiveVersion(workflow.id, workflow.versionId);
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 
 		// An unpublish fully applied elsewhere (triggers down, status rows
 		// cleared, record terminal), after which a zombie writer restored the
@@ -363,7 +441,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await setActiveVersion(workflow.id, workflow.versionId);
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 
 		// Mid-flight publish of a parameter-only new version: `activeVersionId`
 		// commits together with the pending record, and the mapping still points
@@ -400,7 +478,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await setActiveVersion(workflow.id, workflow.versionId);
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 
 		const newVersionId = 'version-2-status-drift';
 		await createWorkflowHistory(workflow, owner, undefined, {
@@ -409,7 +487,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		});
 		await setActiveVersion(workflow.id, newVersionId);
 		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 
 		// A zombie writer rewrites the status rows for the old version after its
 		// record already resolved. The mapping still agrees with `activeVersionId`,
@@ -478,7 +556,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await setActiveVersion(workflow.id, workflow.versionId);
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 
 		// A v2 publish that crashed after advancing the mapping but before the
 		// reporter rewrote the rows: mapping equals `activeVersionId`, the record
@@ -511,7 +589,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		const drifted = await createWorkflowWithHistory({ active: true, nodes: [driftTrigger] }, owner);
 		await setActiveVersion(drifted.id, drifted.versionId);
 		await outboxRepository.enqueue(drifted.id, drifted.versionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 		const newVersionId = 'version-2-drift-in-flight';
 		await createWorkflowHistory(drifted, owner, undefined, {
 			versionId: newVersionId,
@@ -552,7 +630,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await setActiveVersion(workflow.id, workflow.versionId);
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
-		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
 
 		// Activation is untouched: a genuine publish still registers the no-op
 		// trigger's registry slot, and the status row (whose presence drives the
@@ -584,7 +662,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
-		await consumer.processRecord(record!);
+		await consumer.processRecord(record!, abortSignal);
 		const registeredBefore = activeWorkflowTriggers.get(workflow.id)?.get(trigger.id);
 		expect(registeredBefore).toBeDefined();
 

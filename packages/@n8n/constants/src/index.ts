@@ -1,11 +1,13 @@
 export * from './api';
 export * from './browser';
 export * from './community-nodes';
+export * from './csp';
 export * from './instance';
 export * from './execution';
 export * from './logstreaming';
 export * from './nodes';
 export * from './scheduler';
+export * from './uuid';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
@@ -17,6 +19,7 @@ export const LICENSE_FEATURES = {
 	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
 	VARIABLES: 'feat:variables',
 	SOURCE_CONTROL: 'feat:sourceControl',
+	GIT_CONNECTIONS: 'feat:gitConnections',
 	API_DISABLED: 'feat:apiDisabled',
 	EXTERNAL_SECRETS: 'feat:externalSecrets',
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',

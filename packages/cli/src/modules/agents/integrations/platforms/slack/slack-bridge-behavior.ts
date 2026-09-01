@@ -30,6 +30,7 @@ interface SlackThreadContext {
 	channelId: string;
 	threadTs: string;
 	hasRealThreadTs: boolean;
+	canUseThreadTs: boolean;
 }
 
 interface SlackAssistantStatusAdapter {
@@ -82,7 +83,11 @@ export async function createSlackBridgeExecutionContext(
 	params: BridgeMessageContextParams,
 ): Promise<BridgeExecutionContext> {
 	const platformAgentContext = getSlackPlatformAgentContext(params.chat);
-	const slackThreadContext = getSlackThreadContext(params.message);
+	const slackThreadContext = getSlackThreadContext(
+		params.message,
+		params.integration.type === 'slack' &&
+			params.integration.settings?.messagingExperience === 'agent',
+	);
 	const shouldFetchHistory = params.isNewMention && slackThreadContext?.hasRealThreadTs === true;
 
 	const [statusHandle, historyContext] = await Promise.all([
@@ -110,7 +115,7 @@ export async function createSlackBridgeExecutionContext(
 
 	return {
 		platformAgentContext,
-		forceBuffered: slackThreadContext?.hasRealThreadTs !== true,
+		forceBuffered: slackThreadContext?.canUseThreadTs !== true,
 		statusHandle,
 		...(historyContext ? { historyContext } : {}),
 	};
@@ -147,7 +152,7 @@ async function startSlackThinkingStatus(
 ): Promise<BridgeStatusHandle | undefined> {
 	const { slackThreadContext, statusRetry } = options;
 
-	if (slackThreadContext && !slackThreadContext.hasRealThreadTs) {
+	if (slackThreadContext && !slackThreadContext.canUseThreadTs) {
 		const setStatus = setSlackAssistantStatus(slackThreadContext, options);
 		return {
 			clearBeforeResponse: async () => {
@@ -378,6 +383,7 @@ function sanitizeSlackHistoryText(text: string): string {
 
 function getSlackThreadContext(
 	message: BridgeMessageContextParams['message'],
+	usesAgentMessagingExperience: boolean,
 ): SlackThreadContext | undefined {
 	const raw = message.raw;
 	if (!isRecord(raw)) return undefined;
@@ -386,11 +392,14 @@ function getSlackThreadContext(
 	const realThreadTs = stringValue(raw.thread_ts);
 	const threadTs = realThreadTs ?? stringValue(raw.ts);
 	if (!channelId || !threadTs) return undefined;
+	const channelType = stringValue(raw.channel_type);
+	const isDm = channelType === 'im' || channelId.startsWith('D');
 
 	return {
 		channelId,
 		threadTs,
 		hasRealThreadTs: realThreadTs !== undefined,
+		canUseThreadTs: realThreadTs !== undefined || (usesAgentMessagingExperience && isDm),
 	};
 }
 

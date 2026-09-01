@@ -9,6 +9,7 @@ import { ProjectSerializer } from './project.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
@@ -22,6 +23,7 @@ export interface ProjectExportRequest {
 	projectIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
 }
 
 interface ProjectExportResult {
@@ -73,7 +75,7 @@ export class ProjectExporter {
 		target: string,
 		request: ProjectExportRequest,
 	): Promise<ProjectExportResult> {
-		this.exportProjectShell(project, target, request.writer);
+		await this.exportProjectShell(project, target, request.writer);
 		const folders = await this.exportProjectFolders(project.id, target, request);
 		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, target, request);
 
@@ -86,10 +88,14 @@ export class ProjectExporter {
 		};
 	}
 
-	private exportProjectShell(project: Project, target: string, writer: PackageWriter): void {
+	private async exportProjectShell(
+		project: Project,
+		target: string,
+		writer: PackageWriter,
+	): Promise<void> {
 		const serialized = this.projectSerializer.serialize(project);
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
+		await writer.writeDirectory(target);
+		await writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
 	}
 
 	private async exportProjectFolders(
@@ -111,6 +117,7 @@ export class ProjectExporter {
 			folderIds,
 			writer: request.writer,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix: target,
 		});
 	}
@@ -130,6 +137,7 @@ export class ProjectExporter {
 			workflowIds: rootWorkflowIds,
 			writer: request.writer,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix: target,
 		});
 	}

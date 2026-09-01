@@ -272,6 +272,7 @@ erDiagram
   varchar clientId FK
   datetime_3_ createdAt
   bigint expiresAt
+  varchar resource
   TEXT scope
   varchar_255_ token PK
   datetime_3_ updatedAt
@@ -345,7 +346,6 @@ erDiagram
   INTEGER id
   varchar_64_ type
   INTEGER typeVersion
-  varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK
 }
 "workflow_review_activity_comment" {

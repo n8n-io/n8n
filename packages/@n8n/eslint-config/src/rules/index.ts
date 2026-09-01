@@ -24,11 +24,14 @@ import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
 import { NoDynamicRegExpRule } from './no-dynamic-regexp.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
+import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
 import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
 import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
 import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
+import { NoLegacyCipherMethodsRule } from './no-legacy-cipher-methods.js';
+import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -56,9 +59,12 @@ export const rules = {
 	'no-application-error': NoApplicationErrorRule,
 	'no-dynamic-regexp': NoDynamicRegExpRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
+	'no-reka-ui-pagination': NoRekaUiPaginationRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
 	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
 	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
 	'require-public-api-controller': RequirePublicApiControllerRule,
 	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
+	'no-legacy-cipher-methods': NoLegacyCipherMethodsRule,
+	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
 } satisfies Record<string, AnyRuleModule>;

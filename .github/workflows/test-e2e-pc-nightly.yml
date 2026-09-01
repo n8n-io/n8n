@@ -1,0 +1,116 @@
+name: 'Test: E2E on -pc image'
+
+# The e2e suite needs the test-only e2e controller, which published images
+# exclude. So: assert the published -pc image boots pointer-compressed, then
+# run the full suite against a test-enabled twin (build-variant: pc).
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # after the nightly Docker build at midnight
+  workflow_dispatch:
+    inputs:
+      published-image:
+        description: 'Published -pc image to health-check'
+        required: false
+        default: 'n8nio/n8n:nightly-pc'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  assert-published:
+    name: Published -pc image health check
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 10
+    steps:
+      - name: Assert pointer compression and boot to healthz
+        env:
+          PUBLISHED_IMAGE: ${{ inputs.published-image || 'n8nio/n8n:nightly-pc' }}
+        run: |
+          docker pull --quiet "$PUBLISHED_IMAGE"
+          docker run --rm --entrypoint node "$PUBLISHED_IMAGE" -e "
+            if (!process.config.variables.v8_enable_pointer_compression) {
+              throw new Error('image is not pointer-compressed');
+            }
+            console.log(process.version, 'pointer compression: on');
+          "
+          docker run -d --name published-pc -p 5678:5678 "$PUBLISHED_IMAGE"
+          for i in $(seq 1 24); do
+            if curl -sf http://localhost:5678/healthz > /dev/null; then
+              echo "healthz reachable after ~$((i * 5))s"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo '::error::published image did not reach /healthz within 120s'
+          docker logs published-pc 2>&1 | tail -50
+          exit 1
+
+  prepare-docker:
+    name: Prepare Docker (pc)
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      build-variant: pc
+      runner: blacksmith-8vcpu-ubuntu-2204
+    secrets: inherit
+
+  generate-matrix:
+    name: Generate shard matrix
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
+
+      - name: Generate matrix (16 shards, duration-weighted)
+        id: gen
+        run: |
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  e2e:
+    name: E2E on the pc twin
+    needs: [prepare-docker, generate-matrix]
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e
+      workers: '1'
+      runner: blacksmith-4vcpu-ubuntu-2204
+      timeout-minutes: 55
+      pre-generated-matrix: ${{ needs.generate-matrix.outputs.matrix }}
+      artifact-prefix: pc
+      build-variant: pc
+      currents-project-id: 'LRxcNt'
+    secrets: inherit
+
+  notify-on-failure:
+    name: Notify Cats on -pc e2e failure
+    runs-on: ubuntu-latest
+    needs: [assert-published, prepare-docker, generate-matrix, e2e]
+    if: always() && contains(needs.*.result, 'failure') && github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#team-catalysts' \
+            --text 'Nightly e2e on the -pc image failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

@@ -116,6 +116,18 @@ describe('ParameterInputFull.vue', () => {
 		expect(getByTestId('from-ai-override-button')).toBeInTheDocument();
 	});
 
+	it('does not offer a model override when disabled', () => {
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: ['Tools'] },
+			},
+		});
+		const { queryByTestId } = renderComponent({ props: { disableFromAi: true } });
+
+		expect(queryByTestId('from-ai-override-button')).not.toBeInTheDocument();
+	});
+
 	it('should render parameter with override button in options', async () => {
 		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			codex: {
@@ -146,10 +158,30 @@ describe('ParameterInputFull.vue', () => {
 		const { queryByTestId, getByTestId } = renderComponent({
 			props: {
 				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('myParam') }}`,
+				disableFromAi: true,
 			},
 		});
 		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
 		expect(queryByTestId('override-button')).not.toBeInTheDocument();
+	});
+
+	it('shows external validation issues in the parameter row', () => {
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: ['Tools'] },
+			},
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('myParam') }}`,
+				disableFromAi: true,
+				externalIssues: ["The model can't set the URL. Enter a fixed URL."],
+			},
+		});
+
+		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
+		expect(getByTestId('parameter-issues')).toBeInTheDocument();
 	});
 
 	it('should render an existing fromAI override for static options parameters', async () => {

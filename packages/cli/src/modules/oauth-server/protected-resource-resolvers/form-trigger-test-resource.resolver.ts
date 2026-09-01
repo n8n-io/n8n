@@ -3,7 +3,6 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
@@ -11,6 +10,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
 	resourceUrlToWebhookPath,
 	trimSlashes,
@@ -40,10 +40,6 @@ export class FormTriggerTestResourceResolver implements ProtectedResourceResolve
 	}
 
 	async resolveByPath(pathname: string) {
-		if (!isFormOAuth2Enabled()) {
-			return undefined;
-		}
-
 		if (!pathname.startsWith(`/${this.config.endpoints.formTest}/`)) {
 			return undefined;
 		}
@@ -93,6 +89,7 @@ export class FormTriggerTestResourceResolver implements ProtectedResourceResolve
 				getAllowedRedirectUris: async () => [resourceUrl],
 				scopes: FORM_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
+				uiHints: FORM_TRIGGER_CONSENT_HINTS,
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,

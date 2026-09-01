@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.18.1
+        default: 26.5.1
       collectCoverage:
         required: false
         default: false
@@ -53,6 +53,13 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: ${{ inputs.nodeVersion }}
+
+      # Confluent publishes prebuilds up to Node 24 only.
+      - name: Verify Kafka native binding installed
+        if: startsWith(inputs.nodeVersion, '24.')
+        env:
+          NODES_BASE_PACKAGE_JSON: packages/nodes-base/package.json
+        run: node .github/scripts/docker/kafka-native-smoke-check.mjs
 
       # cli is the only backend package wired into janitor scoping today, so
       # the workspace bulk run excludes it and a dedicated step invokes the

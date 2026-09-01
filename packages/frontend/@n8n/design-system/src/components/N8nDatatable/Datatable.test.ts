@@ -84,7 +84,7 @@ describe('components', () => {
 			});
 
 			const pagination = wrapper.container.querySelector('.pagination');
-			expect(pagination?.querySelector('.el-pager')).toBeNull();
+			expect(pagination?.querySelector('[data-test-id="pagination-list"]')).toBeNull();
 
 			const pageSizeSelector = wrapper.container.querySelector('.pageSizeSelector');
 			expect(pageSizeSelector?.textContent).toContain('Page size');

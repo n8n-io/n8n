@@ -313,6 +313,91 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(activeRuntime(registry).activeRunId).toBe('run-1');
 	});
 
+	test('setup-items SSE events fold last-wins per workflowId', () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					workflowId: 'wf-1',
+					items: [
+						{
+							id: 'wf-1:credential:slackApi',
+							kind: 'credential',
+							credentialType: 'slackApi',
+						},
+					],
+				},
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					workflowId: 'wf-1',
+					items: [
+						{
+							id: 'wf-1:credential:notionApi',
+							kind: 'credential',
+							credentialType: 'notionApi',
+						},
+					],
+				},
+			}),
+		);
+
+		const items = activeRuntime(registry).setupItemsByWorkflowId['wf-1'];
+		expect(items).toHaveLength(1);
+		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
+	});
+
+	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-restore',
+			messages: [
+				{
+					id: 'msg-1',
+					runId: 'run-1',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [],
+						children: [],
+						timeline: [],
+						setupItemsByWorkflowId: {
+							'wf-1': [
+								{
+									id: 'wf-1:credential:slackApi',
+									kind: 'credential',
+									credentialType: 'slackApi',
+								},
+							],
+						},
+					},
+				},
+			],
+			nextEventId: 10,
+		});
+
+		const runtime = registry.getOrCreateRuntime('thread-restore');
+		await runtime.loadHistoricalMessages();
+
+		expect(runtime.setupItemsByWorkflowId['wf-1']).toHaveLength(1);
+		expect(runtime.setupItemsByWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'slackApi' });
+	});
+
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
 		// First, create two assistant messages via normal events
 		capturedOnMessage!(
@@ -1105,7 +1190,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		const context = {
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				documentationUrl:
 					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',

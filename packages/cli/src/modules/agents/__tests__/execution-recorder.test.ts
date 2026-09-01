@@ -1,6 +1,6 @@
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
-import { ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
+import { buildToolCallDetails, ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
@@ -12,6 +12,44 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 }
 
 describe('ExecutionRecorder', () => {
+	it('builds full node tool details when the model input is empty', () => {
+		const registry = buildToolRegistry([
+			{
+				name: 'check_ledger',
+				description: 'Read rows from the configured ledger table',
+				metadata: {
+					kind: 'node',
+					nodeType: 'n8n-nodes-base.dataTableTool',
+					nodeTypeVersion: 1.1,
+					displayName: 'Check ledger',
+					nodeParameters: {
+						resource: 'row',
+						operation: 'get',
+						dataTableId: { mode: 'id', value: 'table-1' },
+						returnAll: true,
+					},
+				},
+			} satisfies BuiltTool,
+		]);
+
+		expect(buildToolCallDetails(registry, 'check_ledger', {})).toEqual({
+			toolName: 'check_ledger',
+			displayName: 'Check ledger',
+			kind: 'node',
+			input: {},
+			node: {
+				type: 'n8n-nodes-base.dataTableTool',
+				typeVersion: 1.1,
+				parameters: {
+					resource: 'row',
+					operation: 'get',
+					dataTableId: { mode: 'id', value: 'table-1' },
+					returnAll: true,
+				},
+			},
+		});
+	});
+
 	describe('per-tool execution timing', () => {
 		afterEach(() => {
 			vi.useRealTimers();
@@ -216,7 +254,7 @@ describe('ExecutionRecorder', () => {
 	});
 
 	describe('suspension', () => {
-		it('records suspension as a timeline event', () => {
+		it('records sanitized HITL request details on the suspension event', () => {
 			const recorder = new ExecutionRecorder();
 
 			recorder.record({ type: 'text-delta', id: 't1', delta: 'Choose an option' });
@@ -224,12 +262,48 @@ describe('ExecutionRecorder', () => {
 				type: 'tool-call-suspended',
 				toolName: 'slack_action',
 				toolCallId: 'tc1',
+				input: { channel: 'approvals', apiKey: 'secret-key' },
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'slack_action',
+					args: { channel: 'approvals', password: 'secret-password' },
+				},
 			} as StreamChunk);
 
 			const record = recorder.getMessageRecord();
 
 			expect(recorder.suspended).toBe(true);
-			expect(record.timeline.some((e) => e.type === 'suspension')).toBe(true);
+			expect(record.timeline.find((event) => event.type === 'suspension')).toMatchObject({
+				type: 'suspension',
+				toolName: 'slack_action',
+				toolCallId: 'tc1',
+				input: { channel: 'approvals', apiKey: '[REDACTED]' },
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'slack_action',
+					args: { channel: 'approvals', password: '[REDACTED]' },
+				},
+			});
+		});
+
+		it('records a sanitized HITL response as a distinct event', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.recordHitlResponse('tc1', {
+				approved: true,
+				credentials: { apiKey: 'secret-key' },
+			});
+
+			expect(recorder.getMessageRecord().timeline).toEqual([
+				expect.objectContaining({
+					type: 'hitl-response',
+					toolCallId: 'tc1',
+					response: {
+						approved: true,
+						credentials: '[REDACTED]',
+					},
+				}),
+			]);
 		});
 	});
 

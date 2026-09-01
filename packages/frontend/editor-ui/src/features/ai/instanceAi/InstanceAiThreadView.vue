@@ -32,6 +32,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
@@ -86,6 +88,8 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
@@ -169,8 +173,8 @@ watch(
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
-// slot (generic approvals + domain/web-search access). Drives the swap
-// between the input and the floating confirmation panel.
+// slot (questions, generic approvals, or domain/web-search access). Drives
+// the swap between the input and the floating confirmation panel.
 const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
@@ -395,8 +399,6 @@ function suppressPanelTransitionsUntilStableRender() {
 }
 
 // --- Preview panel resize (when canvas is visible) ---
-// Cap the preview at 50% of the available thread area so the chat retains at
-// least the other half when side panels or app layout chrome are visible.
 const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const mainSidebarOccupiedWidth = computed(() =>
@@ -439,7 +441,7 @@ const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
 const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-const previewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
+const preferredPreviewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
@@ -450,23 +452,32 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	}
 });
 
-const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-// Keep the artifact at its current width and split the remaining space evenly
-// between the Instance AI chat and the agent preview chat.
-const agentPreviewChatColumnWidth = computed(() =>
-	Math.max(0, (threadAreaWidth.value - previewPanelWidth.value) / 2),
+const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value * 0.7));
+// Preserve the default or manually selected width while temporarily
+// constraining it to the available space.
+const previewPanelWidth = computed(() =>
+	Math.min(preferredPreviewPanelWidth.value, previewMaxWidth.value),
 );
+const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
+const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
+const AGENT_PREVIEW_CHAT_MAX_RATIO = 0.5;
+
+/** Keep the agent chat readable without using more than half of its preview panel. */
+const agentPreviewChatColumnWidth = computed(() => {
+	const containerWidth = isPreviewExpanded.value ? threadAreaWidth.value : previewPanelWidth.value;
+	const maximumWidth = containerWidth * AGENT_PREVIEW_CHAT_MAX_RATIO;
+	const minimumWidth = Math.min(AGENT_PREVIEW_CHAT_MIN_WIDTH, maximumWidth);
+
+	return Math.round(
+		Math.max(minimumWidth, Math.min(AGENT_PREVIEW_CHAT_PREFERRED_WIDTH, maximumWidth)),
+	);
+});
+
+/** Add custom width to Agent Preview chat when canvas area is full expanded. */
 const agentPreviewPanelStyle = computed(() => {
 	const chatColumnWidth = {
 		'--agent-preview-chat-column-width': `${agentPreviewChatColumnWidth.value}px`,
 	};
-
-	if (isAgentPreviewDockOpen.value) {
-		return {
-			...chatColumnWidth,
-			width: `${previewPanelWidth.value + agentPreviewChatColumnWidth.value}px`,
-		};
-	}
 
 	return isPreviewExpanded.value
 		? chatColumnWidth
@@ -474,28 +485,15 @@ const agentPreviewPanelStyle = computed(() => {
 });
 
 function togglePreviewExpanded() {
-	if (isAgentPreviewDockOpen.value) return;
-
 	isPreviewExpanded.value = !isPreviewExpanded.value;
 }
 
 function handleAgentPreviewDockOpenChange(open: boolean) {
 	isAgentPreviewDockOpen.value = open;
-	if (open) {
-		isPreviewExpanded.value = false;
-	}
 }
 
-// Clamp preview width when the available area shrinks (sidebar open, window
-// resize, etc.)
-watch(previewMaxWidth, (max) => {
-	if (previewPanelWidth.value > max) {
-		previewPanelWidth.value = max;
-	}
-});
-
 function handlePreviewResize({ width }: { width: number }) {
-	previewPanelWidth.value = width;
+	preferredPreviewPanelWidth.value = width;
 }
 
 function handlePreviewPanelAfterEnter() {
@@ -520,7 +518,7 @@ watch(
 
 		if (visible) {
 			isArtifactsPanelRevealed.value = false;
-			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
+			preferredPreviewPanelWidth.value = previewMaxWidth.value;
 		} else {
 			isAgentPreviewDockOpen.value = false;
 		}
@@ -531,8 +529,8 @@ watch(
 // Late-initialize if the panel became visible before the ResizeObserver
 // reported the container size (otherwise the panel would render at 0px).
 watch(threadAreaWidth, (width) => {
-	if (width > 0 && previewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
-		previewPanelWidth.value = Math.round(width / 2);
+	if (width > 0 && preferredPreviewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
+		preferredPreviewPanelWidth.value = previewMaxWidth.value;
 	}
 });
 
@@ -685,7 +683,7 @@ function isCurrentThreadRuntime(): boolean {
 
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
-	if (pendingAgentAttachment.value?.pending && agentAttachment) {
+	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
 		return {
 			key: `pending-agent:${agentAttachment.id}`,
 			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
@@ -750,6 +748,8 @@ function reconnectThreadAfterHydration(): void {
 				rootStore.pushRef,
 				pending.context,
 			);
+			// Experiment cleanup: remove with openWorkflowInAssistant.
+			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
 		}
 	});
 }
@@ -1017,7 +1017,7 @@ function dismissPendingComposerContext(key: string): boolean {
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
-	if (pendingAgentAttachment.value?.pending) {
+	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(props.threadId);
 		pendingAgentAttachment.value = null;
 		return;
@@ -1171,8 +1171,8 @@ async function dismissComposerContextChip() {
 										:agent-node="builder"
 									/>
 								</div>
-								<!-- Inline confirmations (questions, plan review, text, setup,
-									 credential, gateway resource-decision, continue) render in
+								<!-- Inline confirmations (plan review, text, setup, credential,
+									 gateway resource-decision, continue) render in
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
@@ -1203,7 +1203,7 @@ async function dismissComposerContextChip() {
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. The credit banner stays
+								 floating interaction is pending. The credit banner stays
 								 anchored above the slot in both states. The leaving child is
 								 positioned absolutely during the cross-fade so the in-flow child
 								 can size the slot to its natural height. -->
@@ -1233,7 +1233,6 @@ async function dismissComposerContextChip() {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
-											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											:amounts-hidden="quotaLocked"
@@ -1329,9 +1328,8 @@ async function dismissComposerContextChip() {
 					:min-width="400"
 					:max-width="previewMaxWidth"
 					:supported-directions="['left']"
-					:is-resizing-enabled="!isPreviewExpanded && !isAgentPreviewDockOpen"
+					:is-resizing-enabled="!isPreviewExpanded"
 					:grid-size="8"
-					:outset="true"
 					@resize="handlePreviewResize"
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
@@ -1345,7 +1343,6 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
-							:is-expand-disabled="isAgentPreviewDockOpen"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
@@ -1390,6 +1387,8 @@ async function dismissComposerContextChip() {
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
 </template>
 
@@ -1438,31 +1437,6 @@ async function dismissComposerContextChip() {
 	flex-shrink: 0;
 	min-width: 0;
 	border-left: var(--border);
-
-	// Widen the resize handle hit area for easier grabbing
-	:global([data-test-id='resize-handle']) {
-		width: 12px !important;
-		left: -6px !important;
-
-		// Visible drag indicator line
-		&::after {
-			content: '';
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			width: 2px;
-			height: 32px;
-			border-radius: 1px;
-			background: var(--color--foreground);
-			opacity: 0;
-			transition: opacity 0.15s ease;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-	}
 }
 
 .canvasAreaExpanded {

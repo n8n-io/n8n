@@ -71,6 +71,19 @@ A turn stops after about 25 minutes (`TURN_TIMEOUT_MS`). This limit is below the
 n8n Wait limit. So the worker reports a clear message before n8n reports a
 generic timeout. Keep the worker limit below the n8n limit if you change either.
 
+**A turn is atomic, and the worker tells the session so.** The turn ends on the
+session's final message, and its children end with it: a background `Bash` task
+is killed, `Monitor` events never arrive, `PushNotification` has nowhere to go,
+and `ScheduleWakeup` never fires. The session also gets no turn of its own to
+report back in — the turn's resume URL continues one waiting n8n execution and is
+then spent, so nothing on the box can post to the thread unprompted. A session
+that backgrounds a build and signs off with "I'll verify once it finishes" is
+therefore describing something that cannot happen. The worker states this in
+`--append-system-prompt` on every turn (`turnContract`), together with a pointer
+to this file for the box-specific parts. This is only the n8n/Slack path: an
+interactive session (`pnpm session`, tmux) is long-lived, so background work,
+monitors and notifications behave normally there.
+
 ### Build and run the app in a session
 
 The prebuild already installed the dependencies and warmed the build. So a
@@ -80,10 +93,15 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
 - **Bring the app up with one command: `pnpm dev:up`.** It installs missing
   dependencies, starts the backend, waits for health, and prints the URL. Add
   `--build` only when a frontend change must appear (see below).
-- **Open the app** at `https://<codespace-name>-5678.app.github.dev`. The port
-  is private. It opens for you in a browser that is signed in to GitHub. You do
-  not need a tunnel. An anonymous or server caller gets a 302. That is why the
-  worker polls outward instead.
+- **Open the app** at `https://<codespace-name>-5678.app.github.dev`. `dev:up`
+  makes that port visible to the org, thus any n8n member who is signed into
+  GitHub can open it. You do not need a tunnel. GitHub makes every forwarded port
+  private again at each container start, so `dev:up` shares it again on each run.
+  To see the current state, run `gh codespace ports`. The share command needs `gh`
+  with the codespace scope (see the one-time setup above). If it fails, `dev:up`
+  starts the app, prints the reason, and gives you the command to try again. A
+  private port opens for you only, in a browser that is signed in to GitHub. An
+  anonymous or server caller gets a 302. That is why the worker polls outward.
 - **`pnpm dev` no longer exists.** Use `pnpm dev:be` for the backend (on 5678).
   Use `pnpm dev:fe:editor` for the editor UI with hot reload (on 8080).
 - **`dev:be` serves the editor from the `dist` build.** So a frontend edit does
@@ -95,8 +113,10 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
   turbo cache and is fast when warm.
 - To clear stale build outputs after a branch switch, run `pnpm reset`. Add
   `--full` if that does not clear it.
-- Give a long build its own turn. Do not chain an install and a full build
-  behind other work in one turn.
+- Run a long build in the foreground and give it its own turn. Backgrounding it
+  does not help: it is killed when the turn ends (see above). Do not chain an
+  install and a full build behind other work in one turn either — that is what
+  runs into the 25-minute limit.
 
 ## Flaky tools (MCP)
 
@@ -107,16 +127,26 @@ and repo investigation. Login registers it from the repo-level
 it. Tell the agent to call `get_flaky_context` first — it returns the rules
 the tools assume.
 
-## Quality skills (Claude plugin)
+## Quality and security skills (Claude plugins)
 
-Claude sessions can also load the private quality skills from the
-`n8n-io/n8n-claude-skills` plugin marketplace (bug insights, defect attribution,
-mutation testing, and more). `post-start.mjs` installs the `quality` plugin on
-each container start, so every session gets the skills with no per-session step.
+Claude sessions can also load the private skills from the
+`n8n-io/n8n-agent-skills` repository. `post-start.mjs` installs both plugins on
+each container start, so every session gets the skills with no per-session step:
+
+- `quality` — bug insights, defect attribution, flaky test investigation,
+  mutation and property testing, PR council, and more.
+- `security` — security code review, adversarial review of security-fix PRs,
+  regression test generation, and Security Hub report triage.
+
+Together they add roughly 5k always-on tokens to every session. Drop a plugin
+from `PLUGINS` in `plugins.mjs` if that budget matters more than the skills.
+`post-start.mjs` and the `pnpm session` prelude in `scripts/cloud-session.mjs`
+both read that list, so a session that races the container start still gets
+every plugin.
 
 The private marketplace uses the codespace's own GitHub auth — no extra token.
 `devcontainer.json` grants the codespace read access to
-`n8n-io/n8n-claude-skills` via `customizations.codespaces.repositories`, and
+`n8n-io/n8n-agent-skills` via `customizations.codespaces.repositories`, and
 **each user authorizes that access once when they create the codespace** (GitHub
 prompts for it, then remembers). Both repos are in the same org, which is what
 lets this work.
@@ -127,9 +157,34 @@ clones `owner/repo` shorthand over SSH and the private clone fails.
 
 If a user does not authorize the grant, the clone fails and the skills step is
 skipped (the worker still starts). Existing codespaces created before this change
-need a recreate to get the prompt. The log is at `/tmp/post-start.log`: a failed
-`skills repo reachable` line means the grant was not authorized; a failed
-`marketplace add` after a reachable repo means a loader-auth problem.
+need a recreate to get the prompt.
+
+### When the skills are missing
+
+`/tmp/post-start-status.json` lists what installed and what did not, and
+`/tmp/post-start.log` has the detail. Reading the log:
+
+- A failed `skills repo reachable` line means the grant was not authorized.
+- A `marketplace add` failure mentioning `File exists` is a clone that died
+  partway through `~/.claude/plugins/marketplaces/n8n-io-n8n-agent-skills`, the
+  path the loader stages into before renaming it to the cache. This has been
+  seen once as a transient failure, so the script removes that path and retries
+  the add once.
+- Any other `marketplace add` failure after a reachable repo means a
+  loader-auth problem.
+
+A failure that survives the retry needs a human — the container still starts and
+the worker still runs, only the skills are missing.
+
+Both `marketplace add` and `plugin install` are idempotent, so re-running the
+script by hand is safe:
+
+```bash
+node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs
+```
+
+Verify with `claude plugin list`, then restart the session (or `/reload-plugins`)
+to pull the skills into context.
 
 ## Viewing the dev UI locally
 
@@ -187,6 +242,14 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   Code shows `Missing environment variables: FLAKY_MCP_TOKEN`, the shell that
   started Claude did not source the file. Run
   `. /usr/local/lib/codespaces-env.sh` and start Claude again.
+- **Do not read `CODESPACE_NAME` or `GITHUB_USER` from the process env** — use
+  `scripts/codespace-env.mjs`. Codespaces gives these variables to VS Code
+  sessions only. Other processes read them from `codespaces-env.sh`, and a
+  process that tmux starts can get an empty copy: tmux keeps the environment of
+  its own start, and `update-environment` does not refresh these keys. A worker
+  polled correctly as its owner while `dev:up` in the same session saw an empty
+  box name, printed the localhost URL, and did not share the port. The helper
+  reads `/workspaces/.codespaces/shared`, which is always correct.
 - **You cannot paste images into a remote Claude session.** Image paste reads
   the clipboard of the machine where `claude` runs — the codespace, not your
   laptop. Drag the file into the VS Code explorer (or

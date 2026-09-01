@@ -878,6 +878,63 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
+	it('blocks an HTTP Request URL using $fromAI for publishing but not runtime validation', async () => {
+		const { service, agentRepository, nodeTypes } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { properties: [] },
+		} as never);
+		const config: AgentJsonConfig = {
+			...runnableConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Fetch page',
+					node: {
+						nodeType: 'n8n-nodes-base.httpRequestTool',
+						nodeTypeVersion: 4.5,
+						nodeParameters: { url: "={{ $fromAI('url') }}" },
+					},
+				},
+			],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
+		const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		const publishResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials,
+			'publish',
+		);
+		const runtimeResult = await service.validateAgentIsRunnable(agentId, projectId, credentials);
+		const historyResult = await service.validateAgentHistoryConfiguration(
+			agentId,
+			projectId,
+			{
+				versionId: 'version-1',
+				schema: config,
+				skills: null,
+				tools: null,
+			} as never,
+			[],
+			credentials,
+		);
+
+		const expectedResult = {
+			status: 'invalid',
+			issues: [
+				{
+					code: 'invalid_value',
+					path: 'tools.0.node.nodeParameters.url',
+					capability: { kind: 'tool', id: 'Fetch page', index: 0, toolType: 'node' },
+				},
+			],
+		} as const;
+		expect(publishResult).toEqual(expectedResult);
+		expect(historyResult).toEqual(expectedResult);
+		expect(runtimeResult).toEqual({ missing: [] });
+	});
+
 	it('runtime validation ignores channel and task issues but still reports execution-relevant tool and sub-agent issues', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -937,7 +994,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('flags duplicate, missing, and incompatible sub-agent and workflow-tool references in one pass', async () => {
+	it('flags missing and self sub-agent references plus invalid workflow-tool references', async () => {
 		const { service, agentRepository, workflowRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -957,6 +1014,7 @@ describe('AgentValidationService — structured issues', () => {
 					{ type: 'workflow', workflow: 'Workflow B' },
 					{ type: 'workflow', workflow: 'Workflow C' },
 					{ type: 'workflow', workflowId: 'wf-missing', workflow: 'Workflow A' },
+					{ type: 'workflow', workflowId: 'wf-form', workflow: 'Workflow With Form' },
 				],
 			}),
 		);
@@ -980,6 +1038,30 @@ describe('AgentValidationService — structured issues', () => {
 				],
 			},
 			{ id: 'wf-c', name: 'Workflow C', nodes: [] },
+			{
+				id: 'wf-form',
+				name: 'Workflow With Form',
+				nodes: [
+					{
+						id: 'trigger-2',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'form-1',
+						name: 'Form',
+						type: 'n8n-nodes-base.form',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				// Form is reachable from the trigger, so it actually runs and is flagged.
+				connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+			},
 		] as never);
 
 		const result = await service.validateAgentConfiguration(
@@ -1000,11 +1082,6 @@ describe('AgentValidationService — structured issues', () => {
 				capability: { kind: 'subAgent', id: agentId, index: 3 },
 			},
 			{
-				code: 'incompatible_reference',
-				path: 'subAgents.agents.4.agentId',
-				capability: { kind: 'subAgent', id: 'sub-3', index: 4 },
-			},
-			{
 				code: 'missing_reference',
 				path: 'tools.2.workflow',
 				capability: { kind: 'tool', id: 'Workflow B', index: 2, toolType: 'workflow' },
@@ -1013,11 +1090,18 @@ describe('AgentValidationService — structured issues', () => {
 				code: 'incompatible_reference',
 				path: 'tools.3.workflow',
 				capability: { kind: 'tool', id: 'Workflow C', index: 3, toolType: 'workflow' },
+				reason: 'no_supported_trigger',
 			},
 			{
 				code: 'missing_reference',
 				path: 'tools.4.workflowId',
 				capability: { kind: 'tool', id: 'Workflow A', index: 4, toolType: 'workflow' },
+			},
+			{
+				code: 'incompatible_reference',
+				path: 'tools.5.workflowId',
+				capability: { kind: 'tool', id: 'Workflow With Form', index: 5, toolType: 'workflow' },
+				reason: 'incompatible_nodes',
 			},
 		]);
 	});

@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 import {
+	REDACTED,
+	redactedHeaders,
 	UnexpectedError,
 	type IWebhookFunctions,
 	type INodeExecutionData,
@@ -771,6 +773,139 @@ describe('Webhook Utils', () => {
 				authPropertyName,
 			);
 			expect(result).toEqual(decodedPayload);
+		});
+
+		describe('records the headers it authenticated with', () => {
+			const setup = (
+				authentication: string,
+				headers: Record<string, string | undefined>,
+				credentials: IDataObject,
+				node?: INode,
+			) => {
+				const request = { headers };
+				const ctx: Partial<IWebhookFunctions> = {
+					getNode: vi.fn().mockReturnValue(node ?? ({} as INode)),
+					getNodeParameter: vi.fn().mockReturnValue(authentication),
+					getCredentials: vi.fn().mockResolvedValue(credentials),
+					getRequestObject: vi.fn().mockReturnValue(request),
+					getHeaderData: vi.fn().mockReturnValue(headers),
+				};
+				return { ctx: ctx as IWebhookFunctions, request };
+			};
+
+			it('leaves the request alone', async () => {
+				const authorization = `Basic ${Buffer.from('admin:password').toString('base64')}`;
+				const { ctx, request } = setup(
+					'basicAuth',
+					{ authorization, 'x-tenant-id': 'acme' },
+					{ user: 'admin', password: 'password' },
+				);
+
+				await validateWebhookAuthentication(ctx, 'authentication');
+
+				expect(request.headers).toEqual({ authorization, 'x-tenant-id': 'acme' });
+			});
+
+			it('records the basic auth header, keeping the rest', async () => {
+				const { ctx, request } = setup(
+					'basicAuth',
+					{
+						authorization: `Basic ${Buffer.from('admin:password').toString('base64')}`,
+						'x-tenant-id': 'acme',
+					},
+					{ user: 'admin', password: 'password' },
+				);
+
+				await validateWebhookAuthentication(ctx, 'authentication');
+
+				expect(redactedHeaders(request)).toEqual({
+					authorization: REDACTED,
+					'x-tenant-id': 'acme',
+				});
+			});
+
+			it('records only the carrier that authenticated', async () => {
+				const { ctx, request } = setup(
+					'basicAuth',
+					{
+						authorization: `Basic ${Buffer.from('admin:password').toString('base64')}`,
+						'x-auth-token': 'callers-own-token',
+					},
+					{ user: 'admin', password: 'password' },
+				);
+
+				await validateWebhookAuthentication(ctx, 'authentication');
+
+				expect(redactedHeaders(request)).toEqual({
+					authorization: REDACTED,
+					'x-auth-token': 'callers-own-token',
+				});
+			});
+
+			it('records the form auth token accepted in place of basic auth', async () => {
+				const node = { id: 'node-789', webhookId: 'webhook-456' } as INode;
+				const credentials = { user: 'admin', password: 'password' };
+				const { ctx, request } = setup(
+					'basicAuth',
+					{ 'x-auth-token': generateBasicAuthToken(node, credentials) },
+					credentials,
+					node,
+				);
+
+				await validateWebhookAuthentication(ctx, 'authentication');
+
+				expect(redactedHeaders(request)).toEqual({ 'x-auth-token': REDACTED });
+			});
+
+			it('records the bearer token header', async () => {
+				const { ctx, request } = setup(
+					'bearerAuth',
+					{ authorization: 'Bearer secret-token', accept: 'application/json' },
+					{ token: 'secret-token' },
+				);
+
+				await validateWebhookAuthentication(ctx, 'authentication');
+
+				expect(redactedHeaders(request)).toEqual({
+					authorization: REDACTED,
+					accept: 'application/json',
+				});
+			});
+
+			it('records the custom header the credential names', async () => {
+				const { ctx, request } = setup(
+					'headerAuth',
+					{ test: 'secret-value', 'x-tenant-id': 'acme' },
+					{ name: 'test', value: 'secret-value' },
+				);
+
+				await validateWebhookAuthentication(ctx, 'authentication');
+
+				expect(redactedHeaders(request)).toEqual({ test: REDACTED, 'x-tenant-id': 'acme' });
+			});
+
+			it('records the JWT header while still returning its payload', async () => {
+				const decodedPayload = { sub: '1234567890' };
+				(jwt.verify as Mock).mockReturnValue(decodedPayload);
+				const { ctx, request } = setup(
+					'jwtAuth',
+					{ authorization: 'Bearer some.jwt.token' },
+					{ keyType: 'passphrase', publicKey: '', secret: 'secret', algorithm: 'HS256' },
+				);
+
+				const result = await validateWebhookAuthentication(ctx, 'authentication');
+
+				expect(result).toEqual(decodedPayload);
+				expect(redactedHeaders(request)).toEqual({ authorization: REDACTED });
+			});
+
+			it('records nothing when authentication is "none"', async () => {
+				const { ctx, request } = setup('none', { authorization: 'Bearer caller-token' }, {});
+
+				await validateWebhookAuthentication(ctx, 'authentication');
+
+				expect(redactedHeaders(request)).toEqual({ authorization: 'Bearer caller-token' });
+			});
 		});
 	});
 

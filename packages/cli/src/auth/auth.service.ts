@@ -209,6 +209,11 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
+		// The form page auth cookies (`n8n-form-auth-*`) are NOT cleared here: their
+		// names embed the workflow/execution they were minted for, and this response
+		// can neither read them (they're scoped to the form-waiting path) nor clear a
+		// cookie without naming it exactly. They are httpOnly, expire within an hour,
+		// and a session for a different user overrides them on the form pages.
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {

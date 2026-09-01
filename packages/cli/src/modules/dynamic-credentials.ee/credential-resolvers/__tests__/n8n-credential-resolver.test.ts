@@ -126,7 +126,7 @@ describe('N8NCredentialResolver', () => {
 				await resolver.getSecret(credentialId, context, handle);
 
 				// Verify N8NIdentifier was called with correct context
-				expect(mockIdentifier.resolve).toHaveBeenCalledWith(context, {});
+				expect(mockIdentifier.resolve).toHaveBeenCalledWith(context, {}, undefined);
 				// Verify storage was queried with resolved user ID
 				expect(mockStorage.getCredentialData).toHaveBeenCalledWith(
 					credentialId,
@@ -188,7 +188,7 @@ describe('N8NCredentialResolver', () => {
 				await resolver.setSecret(credentialId, context, data, handle);
 
 				// Verify user ID was resolved first
-				expect(mockIdentifier.resolve).toHaveBeenCalledWith(context, {});
+				expect(mockIdentifier.resolve).toHaveBeenCalledWith(context, {}, undefined);
 				// Verify storage uses resolved user ID
 				expect(mockStorage.setCredentialData).toHaveBeenCalledWith(
 					credentialId,
@@ -210,7 +210,7 @@ describe('N8NCredentialResolver', () => {
 
 				await resolver.deleteSecret(credentialId, context, handle);
 
-				expect(mockIdentifier.resolve).toHaveBeenCalledWith(context, {});
+				expect(mockIdentifier.resolve).toHaveBeenCalledWith(context, {}, undefined);
 				expect(mockStorage.deleteCredentialData).toHaveBeenCalledWith(
 					credentialId,
 					'user-to-delete-456',

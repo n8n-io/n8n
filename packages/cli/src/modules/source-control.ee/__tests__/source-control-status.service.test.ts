@@ -48,6 +48,7 @@ describe('getStatus', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 	const sourceControlContextFactory = mock<SourceControlContextFactory>();
 	const sourceControlStatusService = new SourceControlStatusService(
@@ -1039,6 +1040,64 @@ describe('getStatus', () => {
 				expect(workflow?.status).toBe('modified');
 				expect(workflow?.parentFolderId).toBe('local-child');
 				expect(workflow?.folderPath).toEqual(['Local Parent', 'Local Child']);
+			});
+
+			it('exposes the remote folder path for a moved workflow so it stays visible under the source folder', async () => {
+				const local = createWorkflow({
+					id: 'wf-moved-foldered',
+					versionId: 'local-v1',
+					parentFolderId: 'local-child',
+				});
+				const remote = createWorkflow({
+					id: 'wf-moved-foldered',
+					versionId: 'remote-v2',
+					parentFolderId: 'remote-child',
+				});
+
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([local]);
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remote]);
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [],
+				});
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [
+						{
+							id: 'remote-child',
+							name: 'Remote Child',
+							parentFolderId: null,
+							homeProjectId: 'project1',
+							createdAt: '2023-01-01T00:00:00.000Z',
+							updatedAt: '2023-01-01T00:00:00.000Z',
+						},
+					],
+				});
+
+				const folderData = new Map([
+					[
+						'local-child',
+						{ id: 'local-child', name: 'Local Child', parentFolder: { id: 'local-parent' } },
+					],
+					['local-parent', { id: 'local-parent', name: 'Local Parent', parentFolder: null }],
+				]);
+				folderRepository.find.mockImplementation(async (options: any) => {
+					if (options?.where?.id?._value) {
+						const ids = options.where.id._value as string[];
+						return ids.map((id: string) => folderData.get(id)).filter(Boolean) as any;
+					}
+					return [];
+				});
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: false,
+					preferLocalVersion: true,
+				});
+
+				const workflow = result.find((f) => f.id === 'wf-moved-foldered');
+				expect(workflow).toBeDefined();
+				expect(workflow?.status).toBe('modified');
+				expect(workflow?.folderPath).toEqual(['Local Parent', 'Local Child']);
+				expect(workflow?.remoteFolderPath).toEqual(['Remote Child']);
 			});
 		});
 

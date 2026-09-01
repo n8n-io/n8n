@@ -51,8 +51,7 @@ import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/tr
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
 	BaseFilters,

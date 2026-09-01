@@ -1,5 +1,7 @@
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -79,6 +81,7 @@ export class TriggerExecutionContextFactory {
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly pollCursorService: PollCursorService,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -275,8 +278,21 @@ export class TriggerExecutionContextFactory {
 		// service (flag on). Once the feature flag is removed, we'll call the
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
+		fence?: PollLeaseFence,
+		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
+			// A poll must finish inside both the handler's abandon deadline and the task
+			// lease; past either, its commits are fenced out or discarded. The margin —
+			// 20%, at least 5s, at most half the ceiling — leaves room for the trailing
+			// hand-off and cursor commit.
+			const ceilingMs =
+				Math.min(
+					this.globalConfig.scheduler.pollTimeoutSeconds,
+					this.globalConfig.scheduler.leaseDurationSeconds,
+				) * Time.seconds.toMilliseconds;
+			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
+			const pollBudgetMs = ceilingMs - marginMs;
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
 			// than in a variable per node: only the poll that staged it can commit it, and
 			// two overlapping polls of the same node never share a slot. An unmigrated
@@ -291,6 +307,7 @@ export class TriggerExecutionContextFactory {
 					workflowData.id,
 					node.id,
 					workflow.getStaticData('node', node),
+					prefetchedCursor,
 				);
 				const store = resolved.migrated
 					? { migrated: true as const, snapshot: cloneDeep(resolved.cursor), seed: resolved.cursor }
@@ -348,6 +365,7 @@ export class TriggerExecutionContextFactory {
 								mode,
 								cursor,
 								responsePromise,
+								fence,
 							),
 				);
 
@@ -367,11 +385,18 @@ export class TriggerExecutionContextFactory {
 			const __commitCursor = async () => {
 				const cursor = takeStagedCursor();
 				if (cursor === null) return;
-				await this.pollCursorService.commitCursorOnly({
+				const committed = await this.pollCursorService.commitCursorOnly({
 					workflowId: workflowData.id,
 					nodeId: node.id,
 					cursor,
+					fence,
 				});
+				if (!committed) {
+					this.logger.debug(
+						`Poll node "${node.name}" cursor-only commit skipped: the poll no longer holds its lease`,
+						{ workflowId: workflowData.id, nodeId: node.id, nodeName: node.name },
+					);
+				}
 			};
 
 			// Hands a migrated node its per-poll snapshot in place of the real
@@ -399,6 +424,9 @@ export class TriggerExecutionContextFactory {
 				__commitCursor,
 				__runPoll,
 				resolveNodeStaticData,
+				// Only a leased (durable) poll is bounded by the timeout and lease; a
+				// legacy in-memory poll keeps PollContext's generous default.
+				fence ? () => pollBudgetMs : undefined,
 			);
 		};
 	}
@@ -411,6 +439,8 @@ export class TriggerExecutionContextFactory {
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
 		node: INode,
+		fence?: PollLeaseFence,
+		prefetchedCursor?: PollerCursor,
 	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
 		const workflow = new Workflow({
 			id: workflowData.id,
@@ -437,6 +467,8 @@ export class TriggerExecutionContextFactory {
 			'trigger',
 			'update',
 			resolveWorkflowData,
+			fence,
+			prefetchedCursor,
 		);
 		// getPollFunctions already closed over these; its signature still requires them.
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');

@@ -429,21 +429,32 @@ export class TypeORMAgentMemory
 		threadId: string;
 		limit?: number;
 		page?: number;
-	}): Promise<{ messages: AgentDbMessage[] }> {
+		/** Also resolve `newerBoundaryAt`: the createdAt of the row immediately
+		 *  newer than the page, i.e. where the next page starts. Read in the same
+		 *  scan as the page itself (one extra row), not a second query. */
+		withNewerBoundary?: boolean;
+	}): Promise<{ messages: AgentDbMessage[]; newerBoundaryAt?: Date }> {
 		const limit = args.limit ?? 50;
 		const page = args.page ?? 0;
+		const offset = page * limit;
+		// The newest page has no newer neighbour — its span is open-ended.
+		const withBoundary = args.withNewerBoundary === true && offset > 0;
 		const entities = await this.messageRepo.find({
 			where: { threadId: args.threadId },
 			order: { createdAt: 'DESC', id: 'DESC' },
-			take: limit,
-			skip: page * limit,
+			take: withBoundary ? limit + 1 : limit,
+			skip: withBoundary ? offset - 1 : offset,
 		});
+		// Rows are newest-first, so the extra row is the neighbour, not part of
+		// the page.
+		const boundary = withBoundary ? entities.shift() : undefined;
 
 		return {
 			messages: entities.reverse().flatMap((entity) => {
 				const message = this.toAgentMessage(entity);
 				return message ? [message] : [];
 			}),
+			newerBoundaryAt: boundary?.createdAt,
 		};
 	}
 

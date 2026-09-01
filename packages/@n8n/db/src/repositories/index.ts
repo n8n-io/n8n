@@ -10,7 +10,7 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
-export { CredentialsRepository } from './credentials.repository';
+export { CredentialsRepository, type CredentialSharingRelation } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,
@@ -54,12 +54,18 @@ export type {
 	DeleteFinishedTasksOptions,
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
-export { PollerStateRepository, type PollerCursor } from './poller-state.repository';
+export {
+	PollerStateRepository,
+	type PollerCursor,
+	type PollLeaseFence,
+	type PollerFailureState,
+	type PollerFullState,
+} from './poller-state.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
-export { TestRunRepository } from './test-run.repository.ee';
+export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
 export { VariablesRepository } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
@@ -79,9 +85,14 @@ export {
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
-	type InboxCursor,
 	type WorkflowReviewRequestForWorkflowRow,
 } from './workflow-review-request.repository';
+export { WorkflowReviewLifecycleRepository } from './workflow-review-lifecycle.repository';
+export {
+	WorkflowReviewInboxRepository,
+	type InboxCursor,
+	type InboxVisibility,
+} from './workflow-review-inbox.repository';
 export {
 	WorkflowReviewRequestWorkflowRepository,
 	type WorkflowReviewRequestLinkedWorkflow,

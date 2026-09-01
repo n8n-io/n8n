@@ -34,10 +34,10 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -70,6 +70,7 @@ import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -166,6 +167,29 @@ const updateSkillInputSchema = z
 	.strict();
 
 type UpdateSkillInput = z.infer<typeof updateSkillInputSchema>;
+
+const updateTaskFieldsSchema = z
+	.object({
+		name: agentTaskSchema.shape.name.optional(),
+		objective: agentTaskSchema.shape.objective.optional().describe(TASK_OBJECTIVE_GUIDANCE),
+		cronExpression: agentTaskSchema.shape.cronExpression.optional(),
+		timezone: agentTaskSchema.shape.timezone.describe(
+			'IANA zone the cron runs in. Pass null to move the task back to the instance timezone.',
+		),
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one task field must be supplied.',
+	});
+
+const updateTaskInputSchema = z
+	.object({
+		taskId: z.string().min(1).describe('Persisted target-agent task id to update.'),
+		updates: updateTaskFieldsSchema.describe('Only the task fields to change.'),
+	})
+	.strict();
+
+type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 
 interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
@@ -269,8 +293,6 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
 	) {}
@@ -305,11 +327,19 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider, user, telemetryContext),
+			json: this.getJsonTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				credentialService,
+				user,
+				telemetryContext,
+			),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
@@ -318,6 +348,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
 	): BuiltTool[] {
@@ -578,9 +609,9 @@ export class AgentsBuilderToolsService {
 
 		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
 			.description(
-				'List published agents in the same project that can be added to the target agent as subagents. ' +
-					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
-					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
+				'List agents in the same project that can be added to the target agent as subagents. ' +
+					'Excludes the target agent itself. Use before asking the user which subagents to add. ' +
+					'Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
 					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
 			)
 			.input(z.object({}))
@@ -588,7 +619,7 @@ export class AgentsBuilderToolsService {
 				const agents = await this.agentsService.findByProjectId(projectId);
 				return {
 					agents: agents
-						.filter((agent) => agent.id !== agentId && agent.activeVersionId !== null)
+						.filter((agent) => agent.id !== agentId)
 						.map((agent) => ({
 							agentId: agent.id,
 							name: agent.name,
@@ -795,11 +826,10 @@ export class AgentsBuilderToolsService {
 								message: error.message,
 							};
 						}
-						return {
-							status: 'error',
-							code: 'execution_failed',
-							message: error instanceof Error ? error.message : 'Agent test run failed.',
-						};
+						const { code, message } = describeCallAgentFailure(
+							error instanceof Error ? error.message : 'Agent test run failed.',
+						);
+						return { status: 'error', code, message };
 					}
 				},
 			)
@@ -852,7 +882,8 @@ export class AgentsBuilderToolsService {
 				},
 			}),
 			buildAskCredentialTool({
-				credentialProvider,
+				credentialService,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				listIntegrationCredentialIds: async () => {
 					const agent = await this.agentsService.findById(agentId, projectId);
@@ -863,7 +894,8 @@ export class AgentsBuilderToolsService {
 				track,
 			}),
 			buildAskEmbeddingCredentialTool({
-				credentialProvider,
+				credentialService,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 				track,
@@ -883,7 +915,7 @@ export class AgentsBuilderToolsService {
 			),
 			this.withConfigMutationMarker(
 				buildFinishSetupTool({
-					credentialProvider,
+					credentialService,
 					agentId,
 					projectId,
 					track,
@@ -911,11 +943,9 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: createAiMcpFetch(
-					this.outboundHttp,
-					this.ssrfConfig,
-					this.ssrfProtectionService,
-				),
+				proxyFetch: createAiMcpFetch(this.outboundHttp),
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 				applyCredentialToMcpServer: async (serverName, credentialId) =>
 					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 			}),
@@ -1145,6 +1175,67 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const listTasksTool = new Tool(BUILDER_TOOLS.LIST_TASKS)
+			.description(
+				'List the target agent scheduled tasks, including each persisted body and whether its ' +
+					'current config reference is enabled. Use this to identify a task before updating it. Returns ' +
+					'{ ok: true, tasks: [{ id, name, objective, cronExpression, timezone, enabled }] } or ' +
+					'{ ok: false, errors }.',
+			)
+			.input(z.object({}).strict())
+			.handler(async () => {
+				try {
+					const agent = await this.agentsService.findById(agentId, projectId);
+					if (!agent) throw new Error('Agent not found');
+
+					const tasks = await this.agentTaskService.list(agentId);
+					const enabledByTaskId = new Map(
+						(composeJsonConfig(agent)?.tasks ?? []).map((task) => [task.id, task.enabled]),
+					);
+					return {
+						ok: true,
+						tasks: tasks.map(({ id, name, objective, cronExpression, timezone }) => ({
+							id,
+							name,
+							objective,
+							cronExpression,
+							// Null means the task runs on the instance timezone.
+							timezone,
+							enabled: enabledByTaskId.get(id) ?? false,
+						})),
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const updateTaskTool = new Tool(BUILDER_TOOLS.UPDATE_TASK)
+			.description(
+				'Update selected body fields of an existing target-agent scheduled task in place, preserving ' +
+					'its id and config reference. Returns { ok: true, id, name, configMutated: true, agentId } ' +
+					'or { ok: false, errors }.',
+			)
+			.input(updateTaskInputSchema)
+			.handler(async ({ taskId, updates }: UpdateTaskInput) => {
+				try {
+					const updated = await this.agentTaskService.update(agentId, projectId, taskId, updates, {
+						user,
+						modifiedBy: 'builder',
+					});
+					return { ok: true, id: updated.id, name: updated.name };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
 		const createTasksTool = new Tool(BUILDER_TOOLS.CREATE_TASKS)
 			.description(
 				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
@@ -1160,8 +1251,9 @@ export class AgentsBuilderToolsService {
 				'Never create a task with a vague, broad, or placeholder objective, an objective missing any ' +
 					'required section, or an unclear schedule. Each objective must follow the required structured ' +
 					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria) with every ' +
-					'section filled in with concrete content — it is the exact, self-contained message the agent ' +
-					"receives on each unattended run. If anything is ambiguous, derive it from the user's goal as " +
+					'section filled in with concrete, run-specific content. Agent Instructions still apply and ' +
+					'configured Skills remain available during scheduled runs, so never repeat universal rules or ' +
+					"copy reusable procedures into an objective. If anything is ambiguous, derive it from the user's goal as " +
 					'stated assumptions listed in your summary; ask the user clarifying questions with ask_questions ' +
 					'only when even a reasonable assumption is impossible, before calling ' +
 					'create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
@@ -1179,6 +1271,9 @@ export class AgentsBuilderToolsService {
 								cronExpression: agentTaskSchema.shape.cronExpression.describe(
 									'A 5-field cron expression for when the task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
 								),
+								timezone: agentTaskSchema.shape.timezone.describe(
+									'IANA timezone the cron runs in, e.g. "Europe/London". Set it when the user names a timezone or a location; omit it to use the instance timezone.',
+								),
 							}),
 						)
 						.min(1)
@@ -1190,7 +1285,12 @@ export class AgentsBuilderToolsService {
 				async ({
 					tasks,
 				}: {
-					tasks: Array<{ name: string; objective: string; cronExpression: string }>;
+					tasks: Array<{
+						name: string;
+						objective: string;
+						cronExpression: string;
+						timezone?: string | null;
+					}>;
 				}) => {
 					// Each task is already validated against `.input()` (agentTaskSchema
 					// shapes) by the tool runtime before the handler runs.
@@ -1248,6 +1348,8 @@ export class AgentsBuilderToolsService {
 			readSkillTool,
 			this.withConfigMutationMarker(updateSkillTool, agentId),
 			this.withConfigMutationMarker(createTasksTool, agentId),
+			listTasksTool,
+			this.withConfigMutationMarker(updateTaskTool, agentId),
 			listWorkflowsTool,
 			buildGetResourceLocatorOptionsTool({
 				dynamicNodeParametersService: this.dynamicNodeParametersService,

@@ -579,10 +579,34 @@ export class SourceControlService {
 			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
 		);
 
-		for (const { id, publishingError, publishingErrorDetails } of workflowImportResults) {
+		for (const {
+			id,
+			publishingError,
+			publishingErrorDetails,
+			contentImportPolicy,
+		} of workflowImportResults) {
+			const statusItem = statusByWorkflowId.get(id);
+
+			if (contentImportPolicy?.violations.length) {
+				this.logger.warn(
+					`Workflow ${id} has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
+				);
+			}
+
+			if (contentImportPolicy?.checkErrors.length) {
+				this.logger.warn(
+					`Workflow ${id} has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
+					{ checkErrors: contentImportPolicy.checkErrors },
+				);
+			}
+
+			if (contentImportPolicy && statusItem) {
+				statusItem.contentImportPolicy = contentImportPolicy;
+			}
+
 			if (!publishingError && !publishingErrorDetails) continue;
 
-			const statusItem = statusByWorkflowId.get(id);
 			if (statusItem) {
 				statusItem.publishingError = publishingError;
 				if (publishingErrorDetails) {

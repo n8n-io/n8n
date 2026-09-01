@@ -1,5 +1,13 @@
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import {
+	base64EncodedSize,
+	exceedsAttachmentSizeLimit,
+	formatAttachmentSizeLimit,
+	formatTotalAttachmentSizeLimit,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+} from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
@@ -13,7 +21,18 @@ const props = withDefaults(
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
+		showAttachButton?: boolean;
 		acceptedMimeTypes?: string;
+		/**
+		 * Base64-encoded size of the files already staged in the composer. Needed
+		 * because the combined budget spans the whole message, not just the batch being
+		 * added, and this component does not own the attachment list.
+		 *
+		 * Encoded rather than raw: base64 pads each file up to a multiple of 4, so
+		 * encoding a raw total undercounts the real payload and would let through a
+		 * batch the backend then rejects.
+		 */
+		attachedEncodedBytes?: number;
 		autosize?: boolean | { minRows: number; maxRows: number };
 		buttonLabel?: string;
 		// Send button turns active only while focused with text (default: follows canSubmit).
@@ -23,10 +42,12 @@ const props = withDefaults(
 	{
 		placeholder: undefined,
 		acceptedMimeTypes: undefined,
+		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
 		buttonLabel: undefined,
 		activeRequiresFocus: false,
 		maxLength: undefined,
+		showAttachButton: true,
 	},
 );
 
@@ -39,6 +60,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const isFocused = ref(false);
@@ -86,15 +108,71 @@ function handleAttach() {
 	fileInputRef.value?.click();
 }
 
-function focusInput() {
-	inputRef.value?.focusInput();
+function focusInput(options?: FocusOptions) {
+	inputRef.value?.focusInput(options);
+}
+
+/**
+ * Keep the files the backend will accept and warn about the rest.
+ *
+ * Checked here only so the user finds out before uploading megabytes — the backend
+ * enforces the same limits authoritatively. Both checks convert to the encoded size
+ * first: the limits are denominated in base64 bytes, so comparing `File.size` against
+ * them directly would admit files ~4/3 too large.
+ */
+function withinSizeLimit(files: File[]): File[] {
+	const oversized = files.filter((file) => exceedsAttachmentSizeLimit(file.size));
+	if (oversized.length > 0) {
+		toast.showError(
+			new Error(
+				i18n.baseText('chat.attachment.tooLarge.message', {
+					interpolate: {
+						fileNames: oversized.map((file) => file.name).join(', '),
+						limit: formatAttachmentSizeLimit(),
+					},
+				}),
+			),
+			i18n.baseText('chat.attachment.tooLarge.title'),
+		);
+	}
+
+	// Take files in order while they still fit the message-wide budget, so a partial
+	// selection still goes through rather than failing the batch wholesale.
+	let usedBytes = props.attachedEncodedBytes;
+	const accepted: File[] = [];
+	let droppedForBudget = false;
+
+	for (const file of files) {
+		if (exceedsAttachmentSizeLimit(file.size)) continue;
+		const encoded = base64EncodedSize(file.size);
+		if (usedBytes + encoded > MAX_TOTAL_ATTACHMENT_BASE64_BYTES) {
+			droppedForBudget = true;
+			continue;
+		}
+		usedBytes += encoded;
+		accepted.push(file);
+	}
+
+	if (droppedForBudget) {
+		toast.showError(
+			new Error(
+				i18n.baseText('chat.attachment.totalTooLarge.message', {
+					interpolate: { limit: formatTotalAttachmentSizeLimit() },
+				}),
+			),
+			i18n.baseText('chat.attachment.totalTooLarge.title'),
+		);
+	}
+
+	return accepted;
 }
 
 function handleFileSelect(e: Event) {
 	const target = e.target as HTMLInputElement;
 	const files = target.files;
 	if (!files || files.length === 0) return;
-	emit('files-selected', Array.from(files));
+	const accepted = withinSizeLimit(Array.from(files));
+	if (accepted.length > 0) emit('files-selected', accepted);
 	target.value = '';
 	focusInput();
 }
@@ -105,7 +183,8 @@ function handlePaste(e: ClipboardEvent) {
 	const files = Array.from(e.clipboardData.files);
 	if (files.length > 0) {
 		e.preventDefault();
-		emit('files-selected', files);
+		const accepted = withinSizeLimit(files);
+		if (accepted.length > 0) emit('files-selected', accepted);
 	}
 }
 
@@ -127,6 +206,7 @@ function handleSubmit() {
 
 defineExpose({
 	focus: focusInput,
+	openFilePicker: handleAttach,
 });
 </script>
 
@@ -176,7 +256,7 @@ defineExpose({
 			</template>
 			<template #right-actions>
 				<N8nTooltip
-					v-if="showAttach"
+					v-if="showAttach && showAttachButton"
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>

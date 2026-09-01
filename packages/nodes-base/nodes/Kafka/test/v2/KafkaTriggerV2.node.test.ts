@@ -16,8 +16,12 @@ import {
 } from '../../v2/TriggerSettings';
 import {
 	confluentKafkaModuleMock,
+	failNextTopicMetadata,
+	getFakeAdmins,
 	getFakeConsumers,
 	resetConfluentKafkaRecordings,
+	setFakeConsumerAssignment,
+	unknownTopicError,
 	type FakeConsumer,
 } from '../mocks/confluent-kafka';
 
@@ -33,8 +37,8 @@ vi.mock('../../v2/consumer', async (importOriginal) => {
 	return {
 		...actual,
 		consumeTopic: vi.fn(async (...args: Parameters<typeof actual.consumeTopic>) => {
-			consumeTopicSpy(...args);
-			return await actual.consumeTopic(...args);
+			consumeTopicSpy.apply(undefined, args);
+			return await actual.consumeTopic.apply(actual, args);
 		}),
 	};
 });
@@ -507,6 +511,66 @@ describe('KafkaTriggerV2 Node', () => {
 		expect(consumer.disconnect).toHaveBeenCalled();
 	});
 
+	describe('a topic that does not exist', () => {
+		it('fails activation instead of publishing a workflow that consumes nothing', async () => {
+			failNextTopicMetadata(unknownTopicError());
+			failNextTopicMetadata(unknownTopicError());
+
+			await expect(startTrigger('v2-missing-topic')).rejects.toThrow(
+				'Kafka topic "test-topic" does not exist',
+			);
+		});
+
+		it('never starts a consumer, so nothing is left connected', async () => {
+			failNextTopicMetadata(unknownTopicError());
+			failNextTopicMetadata(unknownTopicError());
+
+			await expect(startTrigger('v2-missing-topic-no-consumer')).rejects.toThrow();
+
+			expect(getFakeConsumers()).toHaveLength(0);
+			expect(consumeTopicSpy).not.toHaveBeenCalled();
+		});
+
+		it('fails a manual test run too, rather than listening forever', async () => {
+			// A manual run starts the consumer from `manualTriggerFunction`, so the
+			// check runs there rather than during trigger() itself.
+			const { manualTriggerFunction } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+				mode: 'manual',
+				node: {
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'v2-missing-topic-manual',
+						useSchemaRegistry: false,
+					},
+				},
+				credential,
+			});
+
+			failNextTopicMetadata(unknownTopicError());
+			failNextTopicMetadata(unknownTopicError());
+
+			await expect(manualTriggerFunction?.()).rejects.toThrow(
+				'Kafka topic "test-topic" does not exist',
+			);
+			expect(getFakeConsumers()).toHaveLength(0);
+		});
+
+		it('starts normally when the broker confirms the topic', async () => {
+			const { close } = await startTrigger('v2-topic-exists');
+
+			const admin = getFakeAdmins().at(-1);
+			expect(admin?.fetchTopicMetadata).toHaveBeenCalledWith({
+				topics: ['test-topic'],
+				timeout: 3_000,
+			});
+			// Checked with a throwaway client that does not outlive the check.
+			expect(admin?.disconnect).toHaveBeenCalledTimes(1);
+			expect(getFakeConsumers()).toHaveLength(1);
+
+			await close();
+		});
+	});
+
 	describe('Batch Size', () => {
 		it('starts one execution per message by default, as v1 does', async () => {
 			const { emit } = await startTrigger('v2-batch-default');
@@ -636,6 +700,81 @@ describe('KafkaTriggerV2 Node', () => {
 			libraryLogger(consumer).error('Broker: Group authorization failed');
 
 			expect(emitError).not.toHaveBeenCalled();
+		});
+
+		describe('while startup is still waiting on the group join', () => {
+			// A fatal here must fail activation instead of reaching emitError, which
+			// would flap deactivate-reactivate with no backoff (ENT-340).
+			beforeEach(() => {
+				vi.useFakeTimers();
+				setFakeConsumerAssignment(() => []);
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('fails activation instead of reporting a successful start', async () => {
+				const starting = startTrigger('v2-unjoinable');
+				await vi.advanceTimersByTimeAsync(0);
+				const consumer = await lastFakeConsumer();
+
+				libraryLogger(consumer).error('Broker: Group authorization failed');
+
+				await expect(starting).rejects.toThrow(/authorization failed/i);
+				expect(consumer.disconnect).toHaveBeenCalledTimes(1);
+			});
+
+			it('keeps the manual-run ACL explanation when the denial fails the join wait', async () => {
+				// The rewritten ACL hint must survive the startup-failure path; the raw
+				// broker message names neither the throwaway group nor the fix.
+				const started = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+					mode: 'manual',
+					node: {
+						parameters: {
+							topic: 'test-topic',
+							groupId: 'orders-consumer',
+							useSchemaRegistry: false,
+						},
+					},
+					credential,
+				});
+
+				const starting = started.manualTriggerFunction?.();
+				await vi.advanceTimersByTimeAsync(0);
+				const consumer = await lastFakeConsumer();
+
+				libraryLogger(consumer).error('Broker: Group authorization failed');
+
+				await expect(starting).rejects.toMatchObject({
+					message: expect.stringContaining(
+						'Kafka refused the consumer group used for a test run',
+					) as string,
+					description: expect.stringContaining('orders-consumer-n8n-manual-') as string,
+				});
+				expect(started.emitError).not.toHaveBeenCalled();
+			});
+
+			it('closes the consumer when a manual run is cancelled during the join wait', async () => {
+				const started = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+					mode: 'manual',
+					node: {
+						parameters: { topic: 'test-topic', groupId: 'v2-join-wait', useSchemaRegistry: false },
+					},
+					credential,
+				});
+
+				// Cancel while the start is held open by the join wait.
+				const starting = started.manualTriggerFunction?.();
+				await vi.advanceTimersByTimeAsync(0);
+				const closing = started.close?.();
+				await vi.advanceTimersByTimeAsync(3000);
+				await Promise.all([starting, closing]);
+
+				const consumer = await lastFakeConsumer();
+				expect(consumer.disconnect).toHaveBeenCalled();
+				expect(started.emitError).not.toHaveBeenCalled();
+			});
 		});
 	});
 

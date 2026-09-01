@@ -135,6 +135,8 @@ const executionHandlers: ExecutionHandlers = {
 				ignoreDataSizeLimit = false,
 				workflowId = undefined,
 				projectId,
+				startedAfter,
+				startedBefore,
 			} = req.query;
 
 			const sharedWorkflowsIds = await Container.get(
@@ -152,6 +154,8 @@ const executionHandlers: ExecutionHandlers = {
 					limit,
 					lastId,
 					includeData,
+					startedAfter,
+					startedBefore,
 					// for backward compatibility `running` executions are always excluded
 					// unless the user explicitly filters by `running` status
 					excludeRunning: status !== 'running',

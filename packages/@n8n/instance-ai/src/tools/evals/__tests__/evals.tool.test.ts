@@ -954,7 +954,6 @@ describe('evals tool — propose with tool-ref pinData', () => {
 					'Telegram Trigger': [{ json: { chat_id: '42' } }],
 				},
 			}),
-			{},
 		);
 	});
 

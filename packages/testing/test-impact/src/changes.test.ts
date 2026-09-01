@@ -6,6 +6,8 @@ import {
 	forcesBroad,
 	isTsconfig,
 	tsconfigForcesBroad,
+	isBackendConfig,
+	configForcesBroad,
 	classifyManifestChange,
 	dropDevDepOnlyDeps,
 	overrideTargetName,
@@ -88,6 +90,10 @@ describe('forcesBroad', () => {
 		'Dockerfile.dev',
 		'packages/cli/worker.Dockerfile',
 		'packages/nodes-base/credentials/MicrosoftOAuth2Api.credentials.ts',
+		// Module registry: decides which modules load at boot, so a default flip
+		// changes behaviour in specs that never execute this file.
+		'packages/@n8n/backend-common/src/modules/module-registry.ts',
+		'packages/@n8n/backend-common/src/modules/modules.config.ts',
 	])('treats %s as runtime-defining (force broad)', (file) => {
 		expect(forcesBroad(file)).toBe(true);
 	});
@@ -96,6 +102,11 @@ describe('forcesBroad', () => {
 		'packages/cli/src/server.ts',
 		'packages/testing/playwright/tests/e2e/x.spec.ts',
 		'packages/nodes-base/nodes/If/If.node.ts',
+		// A unit test beside the registry can't change the runtime — stays scoped.
+		'packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts',
+		// Per-module descriptors are NOT the registry: high churn, and they can't
+		// change which modules are enabled by default.
+		'packages/cli/src/modules/instance-ai/instance-ai.module.ts',
 	])('does not force broad for %s', (file) => {
 		expect(forcesBroad(file)).toBe(false);
 	});
@@ -348,5 +359,65 @@ describe('dropDevDepOnlyDeps — overrides (safety-critical)', () => {
 			'package.json': { before: ovr({}), after: ovr({ '>=2.0.0': '2.0.0' }) },
 		};
 		expect(dropDevDepOnlyDeps(files, manifests, closure)).toEqual(files);
+	});
+});
+
+describe('isBackendConfig', () => {
+	it.each([
+		'packages/@n8n/config/src/configs/ai.config.ts',
+		'packages/@n8n/config/src/configs/logging.config.ts',
+	])('matches %s', (file) => {
+		expect(isBackendConfig(file)).toBe(true);
+	});
+
+	it.each([
+		'packages/@n8n/config/src/configs/__tests__/ai.config.test.ts',
+		'packages/@n8n/config/src/decorators.ts',
+		'packages/cli/src/config/index.ts',
+	])('does not match %s', (file) => {
+		expect(isBackendConfig(file)).toBe(false);
+	});
+});
+
+describe('configForcesBroad', () => {
+	const cfg = (body: string) =>
+		`import { Config, Env } from '../decorators';\n@Config\nexport class C {\n${body}\n}`;
+	const enabled = "\t@Env('N8N_AI_ENABLED')\n\tenabled: boolean = false;";
+
+	it('forces broad when a default value changes', () => {
+		const after = cfg(enabled.replace('= false', '= true'));
+		expect(configForcesBroad(cfg(enabled), after)).toBe(true);
+	});
+
+	it('forces broad when an env var is renamed', () => {
+		const after = cfg(enabled.replace('N8N_AI_ENABLED', 'N8N_AI_ON'));
+		expect(configForcesBroad(cfg(enabled), after)).toBe(true);
+	});
+
+	it('forces broad when a field is removed', () => {
+		expect(configForcesBroad(cfg(enabled), cfg(''))).toBe(true);
+	});
+
+	it('forces broad when an optional field gains a default', () => {
+		const before = cfg('\tthreshold?: number;');
+		const after = cfg('\tthreshold?: number = 5;');
+		expect(configForcesBroad(before, after)).toBe(true);
+	});
+
+	it('does NOT force broad for a new field (additive)', () => {
+		const after = cfg(`${enabled}\n\n\t@Env('N8N_AI_TIMEOUT')\n\ttimeout: number = 60;`);
+		expect(configForcesBroad(cfg(enabled), after)).toBe(false);
+	});
+
+	it('does NOT force broad for a comment-only edit', () => {
+		const before = cfg(`\t/** Old wording. */\n${enabled}`);
+		const after = cfg(`\t/** New wording, same default. */\n${enabled}`);
+		expect(configForcesBroad(before, after)).toBe(false);
+	});
+
+	it('does NOT force broad for reformatted whitespace', () => {
+		const before = cfg('\tmaxSize: number = 50 * 1024 * 1024;');
+		const after = cfg('\tmaxSize: number =\t50 *  1024 * 1024;');
+		expect(configForcesBroad(before, after)).toBe(false);
 	});
 });

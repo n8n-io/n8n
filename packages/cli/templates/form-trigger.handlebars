@@ -261,6 +261,12 @@
 				cursor: not-allowed;
 			}
 
+			#submit-hint {
+				margin-top: 8px;
+				font-size: var(--font-size-link);
+				color: var(--color-link);
+			}
+
 			#submit-btn:disabled:hover {
 				opacity: 1;
 			}
@@ -280,6 +286,23 @@
 			.error-show {
 				visibility: visible;
 			}
+
+			{{#if hasAuthenticatedSubmitter}}
+				/* Form-level error above Submit. Unlike .error-hidden it must not reserve
+				   space while empty, or every form gets a permanent gap above Submit. */
+				#submit-error {
+					display: none;
+					color: var(--color-error);
+					text-align: left;
+					font-size: var(--font-size-error);
+					padding-top: 6px;
+					padding-bottom: 9px;
+				}
+
+				#submit-error.error-show {
+					display: block;
+				}
+			{{/if}}
 
 			/* multiselect ----------------------------------- */
 			.multiselect {
@@ -631,7 +654,9 @@
 						{{/each}}
 					</div>
 
-					<button id='submit-btn' type='submit' {{#if shellInner}}disabled title='Connect the required credentials first'{{/if}}>
+					{{#if hasAuthenticatedSubmitter}}<p id='submit-error'></p>{{/if}}
+
+					<button id='submit-btn' type='submit' {{#if shellInner}}disabled title='Connect the required accounts first'{{/if}}>
 						<span><svg
 								xmlns='http://www.w3.org/2000/svg'
 								height='18px'
@@ -643,6 +668,11 @@
 							</svg></span>
 						{{ buttonLabel }}
 					</button>
+
+					{{#if shellInner}}
+						{{!-- Only inside the hosting shell, where the connect panel above supplies the accounts. --}}
+						<p id='submit-hint'>This form will run using your connected accounts.</p>
+					{{/if}}
 				</form>
 
 				<div class='card' id='submitted-form' style='display: none;'>
@@ -706,6 +736,8 @@
 			const url = new URL(window.location.href);
 			let formSignature = url.searchParams.get('signature');
 
+			{{> formHostNavigation path=hostNavigationPath withRedirect=true}}
+
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {
 					errorElement.textContent = message;
@@ -714,6 +746,47 @@
 					errorElement.classList.remove('error-show');
 				}
 			}
+
+			{{#if hasAuthenticatedSubmitter}}
+				// True when this form is the inner frame of the hosting shell, which owns the
+				// connect panel and the submit button's enabled state.
+				const isShellInner = {{#if shellInner}}true{{else}}false{{/if}};
+
+				// The submit-time credential gate refused this submission. Explain it and hand the
+				// form back with the answers intact. The panel names the accounts, so the banner
+				// only has to say what to do next.
+				function handleCredentialGate(credentials) {
+					updateError(
+						document.querySelector('#submit-error'),
+						'add',
+						'Not all required accounts are connected. ' +
+							(isShellInner
+								? 'Connect them above, then submit again.'
+								: 'Open this form in a new tab to connect them, then come back here and submit again.'),
+					);
+
+					const btn = document.querySelector('#submit-btn');
+					btn.style.cursor = '';
+					btn.querySelector('span').style.display = '';
+
+					if (isShellInner) {
+						// The shell owns the disabled state, so hand it the rows it still shows as
+						// connected and let its readiness signal re-disable Submit. Ids only: it must
+						// not have to trust a name or a URL from this frame. targetOrigin '*' because
+						// the frame is sandboxed without allow-same-origin and can't know the parent's.
+						window.parent.postMessage(
+							{
+								type: 'n8n-form-credentials-rejected',
+								// The body lists every required credential, connected ones included.
+								ids: credentials.filter((c) => c.credentialStatus !== 'configured').map((c) => c.credentialId),
+							},
+							'*',
+						);
+					} else {
+						btn.disabled = false;
+					}
+				}
+			{{/if}}
 
 			function validateInput(input, errorElement) {
 				const value = input.value.trim();
@@ -928,7 +1001,7 @@
 						if (formSignature) {
 							redirectUrl.searchParams.set('signature', formSignature);
 						}
-						window.location.replace(redirectUrl.toString());
+						navigateTo(redirectUrl.toString());
 						return;
 					}
 
@@ -1010,6 +1083,7 @@
  						const selectedValues = getSelectedValues(multiselect);
  						formData.append(multiselect.id, JSON.stringify(selectedValues));
  					});
+					{{#if hasAuthenticatedSubmitter}}updateError(document.querySelector('#submit-error'), 'remove');{{/if}}
 					document.querySelector('#submit-btn').disabled = true;
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
@@ -1034,6 +1108,22 @@
 						headers,
 					})
 						.then(async function (response) {
+							{{#if hasAuthenticatedSubmitter}}
+								// A credential-gate rejection keeps the submitter on the page with their
+								// answers, so handle it before the useResponseData branch below paints the
+								// response body over the whole document.
+								if (response.status === 428) {
+									// Clone: that branch reads the body too, and a body can only be read once.
+									// Any other 428 — the webhook trigger's gate has no `status` — falls
+									// through untouched.
+									const gate = await response.clone().json().catch(() => null);
+									if (gate && gate.status === 'credential_connections_required') {
+										handleCredentialGate(gate.credentials);
+										return;
+									}
+								}
+							{{/if}}
+
 							const useResponseData = document.getElementById("useResponseData").value;
 
 							if (useResponseData === "true") {
@@ -1055,7 +1145,9 @@
 								}
 
 								if (json?.redirectURL) {
-									window.location.replace(json.redirectURL);
+									// The author's end-of-form redirect leaves the form, so inside the
+									// hosting shell it must take the whole tab, not the sandboxed frame.
+									redirectTo(json.redirectURL);
 									return;
 								}
 
@@ -1081,12 +1173,15 @@
 
 							if (response.status === 200) {
 								if(response.redirected) {
-									window.location.replace(response.url);
+									// Another page of this form moves the frame; anything else is a
+									// redirect out of the form and takes the tab.
+									if (isHostNavigable(response.url)) navigateTo(response.url);
+									else redirectTo(response.url);
 									return;
 								}
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {
-									window.location.replace(redirectUrl.href);
+									redirectTo(redirectUrl.href);
 								} else {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
@@ -1132,9 +1227,16 @@
 				if (event.data.type === 'n8n-shell-credentials-ready') {
 					btn.disabled = false;
 					btn.removeAttribute('title');
+					{{#if hasAuthenticatedSubmitter}}
+						// A rejection banner asking for the credentials is stale once the panel
+						// reports them connected. Guarded because shellInner comes from a query
+						// param, so a form with no submitter identity — and so no banner in the
+						// markup — can still render this listener.
+						updateError(document.querySelector('#submit-error'), 'remove');
+					{{/if}}
 				} else if (event.data.type === 'n8n-shell-credentials-not-ready') {
 					btn.disabled = true;
-					btn.setAttribute('title', 'Connect the required credentials first');
+					btn.setAttribute('title', 'Connect the required accounts first');
 				}
 			});
 		</script>

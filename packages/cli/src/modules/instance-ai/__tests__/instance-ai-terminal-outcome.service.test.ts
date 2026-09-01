@@ -130,6 +130,7 @@ type Deps = {
 		updateLast: Mock;
 	};
 	telemetry: { track: Mock };
+	errorReporter: { report: Mock };
 	logger: { warn: Mock; debug: Mock; error: Mock };
 	runState: { getRunIdsForMessageGroup: Mock; cancelThread: Mock };
 	suspendedThreads: { dropPendingConfirmationsForThread: Mock };
@@ -192,6 +193,7 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 			updateLast: vi.fn(async () => {}),
 		},
 		telemetry: { track: vi.fn() },
+		errorReporter: { report: vi.fn() },
 		logger: { warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 		runState: {
 			getRunIdsForMessageGroup: vi.fn(() => ['run-1']),
@@ -216,11 +218,11 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 	};
 
 	const options = {
-		durableLog: false,
 		eventBus: deps.eventBus,
 		dbSnapshotStorage: deps.dbSnapshotStorage,
 		agentMemory: {},
 		telemetry: deps.telemetry,
+		errorReporter: deps.errorReporter,
 		logger: deps.logger,
 		runState: deps.runState,
 		suspendedThreads: deps.suspendedThreads,
@@ -272,7 +274,7 @@ describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
 
 		expect(deps.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
 		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
+			type: 'text-block',
 			runId: outcome.runId,
 			agentId: 'orchestrator-run-1',
 			responseId: `background-outcome:${outcome.id}`,
@@ -339,7 +341,7 @@ describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
 		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
 
 		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
+			type: 'text-block',
 			runId: outcome.runId,
 			agentId: 'orchestrator-run-1',
 			responseId: `background-outcome:${outcome.id}`,
@@ -386,7 +388,7 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 		expect(deps.eventBus.publish).toHaveBeenCalledWith(
 			'thread-a',
 			expect.objectContaining({
-				type: 'text-delta',
+				type: 'text-block',
 				payload: { text: 'The background workflow-builder task finished.' },
 			}),
 		);
@@ -413,12 +415,11 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 });
 
 describe('InstanceAiTerminalOutcomeService — durable-log outcome lines', () => {
-	it('publishes the outcome line as a text-block when the durable log is on', async () => {
+	it('publishes the outcome line as a persisted text-block, not a trailing delta', async () => {
 		// A trailing delta would race the coalescer's idle flush on an immediate
 		// page reload; a text-block is persisted before it is emitted live.
 		const { deps } = createService(makeAgentTree());
 		const service = new InstanceAiTerminalOutcomeService({
-			durableLog: true,
 			eventBus: deps.eventBus,
 			dbSnapshotStorage: deps.dbSnapshotStorage,
 			agentMemory: {},
@@ -462,6 +463,35 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		deps.publishRunFinish('thread-a', 'run-1', 'completed');
 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['text-delta', 'run-finish']);
+	});
+
+	it('reports a silent completed run so the stall is not lost', async () => {
+		const { service, deps } = createService();
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+		});
+
+		expect(deps.errorReporter.report).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				component: 'instance-ai-terminal-guard',
+				severity: 'warning',
+				threadId: 'thread-a',
+				runId: 'run-1',
+			}),
+		);
+	});
+
+	it('does not report a completed run when silence is expected', async () => {
+		const { service, deps } = createService();
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+			suppressCompletedFallback: true,
+		});
+
+		expect(deps.errorReporter.report).not.toHaveBeenCalled();
 	});
 
 	it('does not publish completed fallback output when silence is expected', async () => {

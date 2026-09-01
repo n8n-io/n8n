@@ -1,6 +1,7 @@
-import type { IDataObject, JsonObject, JsonValue } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { jsonValueSchema } from './json-value.schema';
 import { datasetRefSchema, type DatasetRef } from '../dto/evaluations/evaluation-config.dto';
 import {
 	MAX_ITEMS_PER_PAGE,
@@ -8,21 +9,6 @@ import {
 	paginationSchema,
 } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
-
-// A JSON blob that flows from a request into persistence must infer to the
-// repository's `JsonObject`, not `Record<string, unknown>` — the latter permits
-// non-JSON leaves and isn't assignable to `JsonObject` without a cast. Recursive
-// so nested values are validated too.
-const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-	z.union([
-		z.string(),
-		z.number(),
-		z.boolean(),
-		z.null(),
-		z.record(z.string(), jsonValueSchema),
-		z.array(jsonValueSchema),
-	]),
-);
 
 // PostHog rollout flag id gating the agent-evals feature surface. Every new
 // agent-eval endpoint + frontend entry point consults this; the flag-off

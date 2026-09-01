@@ -1,7 +1,12 @@
+import { proxyFetch } from '@n8n/ai-utilities';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { searchModels } from '../searchModels';
+
+vi.mock('@n8n/ai-utilities', () => ({
+	proxyFetch: vi.fn(),
+}));
 
 const mockModels = [
 	{
@@ -51,11 +56,12 @@ describe('searchModels', () => {
 			json: async () => ({ data: mockModels }),
 			text: async () => '',
 		});
-		vi.stubGlobal('fetch', fetchSpy);
+		vi.mocked(proxyFetch).mockImplementation(
+			fetchSpy as unknown as typeof import('@n8n/ai-utilities')['proxyFetch'],
+		);
 	});
 
 	afterEach(() => {
-		vi.unstubAllGlobals();
 		vi.clearAllMocks();
 	});
 

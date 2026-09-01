@@ -2,13 +2,15 @@ import {
 	InvalidGrantError,
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import { Logger, type ModuleRegistry } from '@n8n/backend-common';
+import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
@@ -22,6 +24,7 @@ import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
+import { OAuthConsentService } from '../oauth-consent.service';
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
@@ -39,6 +42,8 @@ let userConsentRepository: Mocked<UserConsentRepository>;
 let mailer: Mocked<UserManagementMailer>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
 let eventService: Mocked<EventService>;
+let authService: Mocked<AuthService>;
+let oauthConsentService: Mocked<OAuthConsentService>;
 
 // Shared, immutable across tests: the base URLs gate the first-party client_id guard.
 const urlServiceMock = mock<UrlService>();
@@ -56,6 +61,8 @@ describe('OAuthServerService', () => {
 		urlServiceMock.getTestWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
 		eventService = mock<EventService>();
+		authService = mockInstance(AuthService);
+		oauthConsentService = mockInstance(OAuthConsentService);
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
@@ -80,6 +87,8 @@ describe('OAuthServerService', () => {
 			mailer,
 			urlServiceMock,
 			eventService,
+			authService,
+			oauthConsentService,
 		);
 	});
 
@@ -150,6 +159,8 @@ describe('OAuthServerService', () => {
 
 		describe('getClient — virtual first-party client', () => {
 			const FIRST_PARTY_URL = 'https://n8n.example.com/form/abc';
+			const CHAT_FIRST_PARTY_URL =
+				'https://n8n.example.com/webhook/f0a1b2c3-d4e5-4678-9abc-def012345678/chat';
 			const NON_FIRST_PARTY_URL = 'https://n8n.example.com/mcp-server/http';
 			let firstPartyService: OAuthServerService;
 
@@ -162,6 +173,18 @@ describe('OAuthServerService', () => {
 					getResourceUrl: () => FIRST_PARTY_URL,
 					getAudiences: () => [FIRST_PARTY_URL],
 					getAllowedRedirectUris: async () => [FIRST_PARTY_URL],
+					scopes: [],
+					authorize: async () => true,
+				});
+				// A chat trigger's resource: served under the generic webhook base URL rather
+				// than a dedicated endpoint, so it covers the client-id guard's prefix check.
+				registry.register({
+					id: 'chat-abc',
+					isFirstParty: true,
+					displayName: 'My Chat',
+					getResourceUrl: () => CHAT_FIRST_PARTY_URL,
+					getAudiences: () => [CHAT_FIRST_PARTY_URL],
+					getAllowedRedirectUris: async () => [CHAT_FIRST_PARTY_URL],
 					scopes: [],
 					authorize: async () => true,
 				});
@@ -185,6 +208,8 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
 				);
 			});
 
@@ -215,6 +240,31 @@ describe('OAuthServerService', () => {
 					response_types: ['code'],
 					logo_uri: undefined,
 					tos_uri: undefined,
+				});
+			});
+
+			it('lazily upserts and returns a virtual client for a chat trigger resource URL', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(CHAT_FIRST_PARTY_URL);
+
+				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+					{
+						id: CHAT_FIRST_PARTY_URL,
+						name: 'My Chat',
+						redirectUris: [CHAT_FIRST_PARTY_URL],
+						grantTypes: ['authorization_code'],
+						tokenEndpointAuthMethod: 'none',
+						clientSecret: null,
+						clientSecretExpiresAt: null,
+						isFirstParty: true,
+					},
+					['id'],
+				);
+				expect(result).toMatchObject({
+					client_id: CHAT_FIRST_PARTY_URL,
+					client_name: 'My Chat',
+					redirect_uris: [CHAT_FIRST_PARTY_URL],
 				});
 			});
 
@@ -254,6 +304,8 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
 				);
 
 				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
@@ -402,6 +454,57 @@ describe('OAuthServerService', () => {
 				resource: 'https://n8n.example.com/mcp-server/http',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
+
+		describe('reusing a prior consent (auto-approval)', () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read write',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+				resource: new URL('https://n8n.example.com/mcp-server/http'),
+			};
+
+			beforeEach(() => {
+				getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+				authService.getCookieToken.mockReturnValue('valid-cookie');
+				authService.authenticateUserByCookie.mockResolvedValue(mock<User>({ id: 'user-1' }));
+			});
+
+			it('mints a code and skips the consent screen when a grant is reused', async () => {
+				const res = mock<Response>();
+				oauthConsentService.tryReuseConsent.mockResolvedValue({
+					redirectUrl: 'https://example.com/callback?code=reused&state=state-xyz',
+				});
+
+				await service.authorize(client, params, res);
+
+				expect(oauthConsentService.tryReuseConsent).toHaveBeenCalled();
+				expect(res.redirect).toHaveBeenCalledWith(
+					'https://example.com/callback?code=reused&state=state-xyz',
+				);
+				expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+			});
+
+			it('falls back to the consent screen when there is no reusable grant', async () => {
+				const res = mock<Response>();
+				oauthConsentService.tryReuseConsent.mockResolvedValue(null);
+
+				await service.authorize(client, params, res);
+
+				expect(oauthSessionService.createSession).toHaveBeenCalled();
+				expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			});
 		});
 
 		it('should handle null state parameter', async () => {
@@ -770,6 +873,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: TEST_RESOURCE_URL,
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
 			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
@@ -801,6 +905,7 @@ describe('OAuthServerService', () => {
 				'client-123',
 				'user-456',
 				['workflow:read'],
+				TEST_RESOURCE_URL,
 			);
 			expect(result).toEqual({
 				access_token: 'access-token-123',
@@ -849,6 +954,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				eventService,
+				mock<AuthService>(),
+				mock<OAuthConsentService>(),
 			);
 
 			const client = {
@@ -873,6 +980,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: formResourceUrl,
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
 			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
@@ -911,6 +1019,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: TEST_RESOURCE_URL,
 			});
 
 			await service.exchangeAuthorizationCode(client, 'auth-code-123', 'verifier-123');
@@ -923,12 +1032,131 @@ describe('OAuthServerService', () => {
 			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
 				'auth-code-123',
 			);
+			// A code carrying no resource was approved against the default resource,
+			// so that is what the token is minted for.
 			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
 				'user-456',
 				'client-123',
-				undefined,
+				TEST_RESOURCE_URL,
 				['workflow:read'],
 			);
+		});
+
+		describe('resource binding', () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			// A second registered resource the code was never approved for.
+			const otherResourceUrl = 'https://n8n.example.com/mcp/other';
+			let boundService: OAuthServerService;
+
+			beforeEach(() => {
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				registry.register({
+					id: 'instance-mcp',
+					getResourceUrl: () => TEST_RESOURCE_URL,
+					getAudiences: () => [TEST_RESOURCE_URL],
+					scopes: SUPPORTED_SCOPES,
+					isDefault: true,
+					authorize: async () => true,
+				});
+				registry.register({
+					id: 'other-resource',
+					getResourceUrl: () => otherResourceUrl,
+					getAudiences: () => [otherResourceUrl],
+					scopes: [],
+					authorize: async () => true,
+				});
+
+				boundService = new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+					eventService,
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
+				);
+
+				tokenService.generateTokenPair.mockReturnValue({
+					accessToken: 'access-token-123',
+					refreshToken: 'refresh-token-456',
+					audience: TEST_RESOURCE_URL,
+				});
+				tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
+			});
+
+			const mockCode = (resource: string | null) =>
+				authorizationCodeService.findAuthorizationCode.mockResolvedValue({
+					userId: 'user-456',
+					clientId: 'client-123',
+					resource,
+					scope: [] as string[],
+				} as AuthorizationCode);
+
+			it('should reject a token request naming a resource the code was not approved for', async () => {
+				mockCode(TEST_RESOURCE_URL);
+
+				await expect(
+					boundService.exchangeAuthorizationCode(
+						client,
+						'auth-code-123',
+						'verifier-123',
+						'https://example.com/callback',
+						new URL(otherResourceUrl),
+					),
+				).rejects.toThrow(InvalidTargetError);
+
+				expect(authorizationCodeService.markAuthorizationCodeAsUsed).not.toHaveBeenCalled();
+			});
+
+			it('should reject a resource introduced at token time when the code carries none', async () => {
+				mockCode(null);
+
+				await expect(
+					boundService.exchangeAuthorizationCode(
+						client,
+						'auth-code-123',
+						'verifier-123',
+						'https://example.com/callback',
+						new URL(otherResourceUrl),
+					),
+				).rejects.toThrow(InvalidTargetError);
+			});
+
+			it('should accept the default resource at token time when the code carries none', async () => {
+				mockCode(null);
+
+				await boundService.exchangeAuthorizationCode(
+					client,
+					'auth-code-123',
+					'verifier-123',
+					'https://example.com/callback',
+					new URL(TEST_RESOURCE_URL),
+				);
+
+				expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+					'user-456',
+					'client-123',
+					TEST_RESOURCE_URL,
+					[],
+				);
+			});
 		});
 
 		it('should propagate InvalidGrantError when markAuthorizationCodeAsUsed detects concurrent consumption', async () => {
@@ -1402,6 +1630,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				mock<EventService>(),
+				mock<AuthService>(),
+				mock<OAuthConsentService>(),
 			);
 
 			expect(
@@ -1432,6 +1662,7 @@ describe('OAuthServerService', () => {
 				mcpConfig,
 				mock<GlobalConfig>(),
 				mock<ModuleRegistry>(),
+				mock<LicenseState>(),
 			);
 			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
 
@@ -1450,6 +1681,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlService,
 				mock<EventService>(),
+				mock<AuthService>(),
+				mock<OAuthConsentService>(),
 			);
 		};
 

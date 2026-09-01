@@ -22,9 +22,10 @@ const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 const { hasPermissionMock } = vi.hoisted(() => ({
 	hasPermissionMock: vi.fn().mockReturnValue(true),
 }));
-const { trackSpy, trackAutoExposeToggledSpy } = vi.hoisted(() => ({
+const { trackSpy, trackAutoExposeToggledSpy, trackConnectClientClickedSpy } = vi.hoisted(() => ({
 	trackSpy: vi.fn(),
 	trackAutoExposeToggledSpy: vi.fn(),
+	trackConnectClientClickedSpy: vi.fn(),
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
@@ -64,6 +65,7 @@ vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
 	useMcp: () => ({
 		trackUserToggledMcpAccess: vi.fn(),
 		trackAutoExposeToggled: trackAutoExposeToggledSpy,
+		trackConnectClientClicked: trackConnectClientClickedSpy,
 	}),
 }));
 
@@ -221,6 +223,7 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('mcp-connect-client-button'));
 
 			expect(mcpStore.openConnectPopover).toHaveBeenCalled();
+			expect(trackConnectClientClickedSpy).toHaveBeenCalledWith('settings');
 		});
 	});
 

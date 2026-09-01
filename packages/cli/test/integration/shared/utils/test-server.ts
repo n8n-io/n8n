@@ -19,6 +19,7 @@ import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { LicenseMocker } from '@test-integration/license';
@@ -93,6 +94,19 @@ const publicApiAgent = (
 	return agent;
 };
 
+const publicApiAgentWithCookie = (app: express.Application, user: User, version = 1) => {
+	const agent = request.agent(app);
+	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
+	// browser-id is needed for session cookie auth
+	void agent.use(async (req: superagent.SuperAgentRequest) => {
+		req.set('browser-id', browserId);
+		return await req;
+	});
+	const token = Container.get(AuthService).issueJWT(user, user.mfaEnabled, browserId);
+	agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
+	return agent;
+};
+
 export const setupTestServer = ({
 	endpointGroups,
 	enabledFeatures,
@@ -124,6 +138,7 @@ export const setupTestServer = ({
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
 		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
 		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
+		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(app, user),
 		license: new LicenseMocker(),
 	};
 
@@ -153,10 +168,14 @@ export const setupTestServer = ({
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
 		// API key auth is registered first so existing behavior is preserved.
+		// Session cookie auth is registered last: an explicit but wrong API
+		// key/bearer token fails fast rather than silently falling back to an
+		// ambient browser session cookie.
 		// Additional strategies (e.g. scoped JWT from the token-exchange module)
 		// can be appended later during their own module initialization.
 		const registry = Container.get(AuthStrategyRegistry);
 		registry.register(Container.get(ApiKeyAuthStrategy));
+		registry.register(Container.get(SessionCookieAuthStrategy));
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
@@ -179,6 +198,10 @@ export const setupTestServer = ({
 		if (endpointGroups.length) {
 			for (const group of endpointGroups) {
 				switch (group) {
+					case 'activeWorkflows':
+						await import('@/controllers/active-workflows.controller.js');
+						break;
+
 					case 'annotationTags':
 						await import('@/controllers/annotation-tags.controller.ee.js');
 						break;

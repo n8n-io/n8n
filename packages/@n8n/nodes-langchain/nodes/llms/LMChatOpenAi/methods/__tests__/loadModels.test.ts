@@ -1,7 +1,12 @@
+import { proxyFetch } from '@n8n/ai-utilities';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { searchModels } from '../loadModels';
+
+vi.mock('@n8n/ai-utilities', () => ({
+	proxyFetch: vi.fn(),
+}));
 
 const MODEL_IDS = [
 	'gpt-4',
@@ -43,7 +48,9 @@ describe('searchModels', () => {
 			json: async () => ({ data: MODEL_IDS.map((id) => ({ id })) }),
 			text: async () => '',
 		});
-		vi.stubGlobal('fetch', fetchSpy);
+		vi.mocked(proxyFetch).mockImplementation(
+			fetchSpy as unknown as typeof import('@n8n/ai-utilities')['proxyFetch'],
+		);
 	});
 
 	afterEach(() => {

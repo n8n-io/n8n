@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
@@ -97,7 +98,7 @@ describe('PublicationStatusReporter', () => {
 			],
 			entityManager,
 		);
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({
@@ -113,6 +114,111 @@ describe('PublicationStatusReporter', () => {
 		});
 	});
 
+	describe('external teardown failures', () => {
+		const failure = { nodeName: 'Trello Trigger', error: new Error('remote unreachable') };
+
+		test('unpublished still completes the record, recording the failures as a warning', async () => {
+			await reporter.report(makeRecord(), { type: 'unpublished', teardownFailures: [failure] });
+
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
+				1,
+				entityManager,
+				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+			);
+			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+			expect(push.broadcast).toHaveBeenCalledWith({
+				type: 'workflowDeactivated',
+				data: { workflowId: 'wf-1' },
+			});
+		});
+
+		test('unpublished reports the abandoned deregistrations once, at error level', async () => {
+			await reporter.report(makeRecord(), { type: 'unpublished', teardownFailures: [failure] });
+
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+					level: 'error',
+					cause: failure.error,
+				}),
+				{ shouldBeLogged: true },
+			);
+		});
+
+		test('partial reports the abandoned deregistrations alongside the activation failures', async () => {
+			await reporter.report(makeRecord(), {
+				type: 'partial',
+				triggerStatuses: [
+					{ nodeId: 'a', nodeName: 'Schedule', status: 'activated', triggerKind: 'in-memory' },
+					{
+						nodeId: 'b',
+						nodeName: 'Broken',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'boom',
+					},
+				],
+				teardownFailures: [failure],
+			});
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+				}),
+				{ shouldBeLogged: true },
+			);
+			expect(outboxRepository.markPartialSuccess).toHaveBeenCalled();
+		});
+
+		test('failed reports the abandoned deregistrations alongside the activation error', async () => {
+			const activationError = new Error('registration failed');
+			await reporter.report(makeRecord(), {
+				type: 'failed',
+				error: activationError,
+				teardownFailures: [failure],
+			});
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+				}),
+				{ shouldBeLogged: true },
+			);
+			// The activation error stays the record's failure and its own report.
+			expect(errorReporter.error).toHaveBeenCalledWith(activationError, { shouldBeLogged: true });
+			expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+				1,
+				'registration failed',
+				entityManager,
+			);
+		});
+
+		test('completed still completes the record and reports, keeping the activation push', async () => {
+			await reporter.report(makeRecord(), {
+				type: 'completed',
+				triggerStatuses: [
+					{ nodeId: 'a', nodeName: 'Schedule', status: 'activated', triggerKind: 'in-memory' },
+				],
+				teardownFailures: [failure],
+			});
+
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
+				1,
+				entityManager,
+				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+			);
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(push.broadcast).toHaveBeenCalledWith({
+				type: 'workflowActivated',
+				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+			});
+		});
+	});
+
 	test('unpublished clears trigger rows, marks the record completed, clears errors, and pushes deactivation', async () => {
 		await reporter.report(makeRecord(), { type: 'unpublished' });
 
@@ -121,7 +227,7 @@ describe('PublicationStatusReporter', () => {
 			[],
 			entityManager,
 		);
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 		expect(push.broadcast).toHaveBeenCalledWith({
@@ -134,15 +240,26 @@ describe('PublicationStatusReporter', () => {
 		});
 	});
 
-	test('skipped (workflow-not-found) marks the record completed and clears activation errors', async () => {
-		await reporter.report(makeRecord(), { type: 'skipped', reason: 'workflow-not-found' });
+	test.each([
+		{ reason: 'workflow-not-found' as const, message: 'Workflow not found' },
+		{ reason: 'node-ids-healed' as const, message: 'healed' },
+		{ reason: 'superseded' as const, message: 'superseded' },
+	])(
+		'skipped ($reason) completes the record, clears activation errors, and logs its own reason',
+		async ({ reason, message }) => {
+			await reporter.report(makeRecord(), { type: 'skipped', reason });
 
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
-		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
-		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-		expect(push.broadcast).not.toHaveBeenCalled();
-		expect(publisher.publishCommand).not.toHaveBeenCalled();
-	});
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
+			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+			expect(push.broadcast).not.toHaveBeenCalled();
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining(message),
+				expect.objectContaining({ workflowId: 'wf-1' }),
+			);
+		},
+	);
 
 	test('version-missing marks the record failed without reporting an error', async () => {
 		await reporter.report(makeRecord(), { type: 'version-missing' });
@@ -186,6 +303,23 @@ describe('PublicationStatusReporter', () => {
 				type: 'workflowFailedToActivate',
 				data: { workflowId: 'wf-1', errorMessage: 'registration failed' },
 			},
+		});
+	});
+
+	// An expected denial: the record must still fail and the UI must still be told,
+	// but it is not a fault to report.
+	test('failed by policy marks the record failed without reporting a fault', async () => {
+		const error = new PolicyViolationError([
+			{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+		]);
+
+		await reporter.report(makeRecord(), { type: 'failed', error });
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, entityManager);
+		expect(push.broadcast).toHaveBeenCalledWith({
+			type: 'workflowFailedToActivate',
+			data: { workflowId: 'wf-1', errorMessage: error.message },
 		});
 	});
 
@@ -324,7 +458,7 @@ describe('PublicationStatusReporter', () => {
 			type: 'workflowDeactivated',
 			data: { workflowId: 'wf-1' },
 		});
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
 		// The rejection is handled asynchronously; flush the microtask queue.
 		await new Promise(process.nextTick);
 		expect(errorReporter.error).toHaveBeenCalledWith(publishError, { shouldBeLogged: true });

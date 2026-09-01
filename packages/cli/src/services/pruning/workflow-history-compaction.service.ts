@@ -290,6 +290,8 @@ export class WorkflowHistoryCompactionService {
 			windowEndIso: endIso,
 		} satisfies RelayEventMap['history-compacted'];
 		this.logger.debug('Workflow history compaction complete', payload);
-		this.eventService.emit('history-compacted', payload);
+
+		// Runs are frequent and often find no work; only report runs that did something
+		if (workflowIds.length > 0) this.eventService.emit('history-compacted', payload);
 	}
 }

@@ -6,7 +6,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIconButton, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -15,9 +15,11 @@ import { useToast } from '@n8n/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@n8n/stores/users.store';
 import shared from '../styles/agent-panel.module.scss';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
+	AGENT_MODEL_PROVIDERS,
 	type AgentModelOption,
 	type AgentModelProvider,
 	type AgentModelSelection,
@@ -43,7 +45,6 @@ const props = withDefaults(
 		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
-		showInstructionsToolbar?: boolean;
 		/**
 		 * Emit instructions edits per keystroke instead of debounced. For hosts
 		 * whose updates are cheap local writes (inline agent → node parameter);
@@ -66,7 +67,8 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const { showError } = useToast();
-const { catalog, ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const { catalog, ensureLoaded, getModelsForPicker, getDefaultModelForPicker, isLoading } =
+	useModelCatalog();
 
 const projectId = useAgentProjectId(() => props.projectId);
 
@@ -100,6 +102,11 @@ const effectiveCredentials = computed(() => {
 	if (!provider || !credential) return base;
 	return { ...base, [provider]: credential };
 });
+
+const pendingDefaultProvider = ref<AgentModelProvider | null>(null);
+// True while the current model was auto-applied by the resolver (not yet
+// touched by the user). Drives the “you can change it” hint under the picker.
+const defaultModelHint = ref(false);
 
 const filteredAgents = computed<AgentModelsByProvider>(() =>
 	getModelsForPicker(effectiveCredentials.value),
@@ -135,11 +142,7 @@ const panelTestId = computed(() => {
 	return 'agent-info-panel';
 });
 
-const instructionsToolbarMode = computed(() =>
-	props.showInstructionsToolbar ? 'always' : 'never',
-);
-
-function onModelChange(selection: AgentModelSelection) {
+function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
 	const credentialId = effectiveCredentials.value?.[selection.provider];
 	if (!credentialId) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
@@ -164,6 +167,9 @@ function onModelChange(selection: AgentModelSelection) {
 		normalizedConfig,
 		catalog.value[selection.provider]?.models[modelName]?.reasoning,
 	);
+	// A default applied by the resolver surfaces a hint so the user knows they
+	// can change it; any explicit user pick clears the hint.
+	defaultModelHint.value = source === 'auto';
 	emit('update:config', {
 		model,
 		credential: credentialId,
@@ -172,6 +178,53 @@ function onModelChange(selection: AgentModelSelection) {
 		...reasoningChanges,
 	});
 }
+
+watch(
+	() =>
+		pendingDefaultProvider.value
+			? getDefaultModelForPicker(effectiveCredentials.value, pendingDefaultProvider.value)
+			: null,
+	(defaultModel) => {
+		const currentModel = parseModelString(modelToString(props.config?.model));
+		if (
+			!defaultModel ||
+			props.disabled ||
+			(currentModel?.provider === defaultModel.provider && currentModel.name === defaultModel.model)
+		) {
+			pendingDefaultProvider.value = null;
+			return;
+		}
+
+		pendingDefaultProvider.value = null;
+		onModelChange(defaultModel, 'auto');
+	},
+);
+
+// An empty draft can mount with a credential already available (localStorage
+// pick, managed n8n credits, or an existing credential), where no picker event
+// ever fires — seed default resolution from that initial state once, so the
+// agent starts with a working model instead of a blank choice. Mirrors the
+// backend creation resolver: personal credentials win, and with none the
+// managed fallback is OpenAI only (n8n credits serves other providers too,
+// but the agreed no-credential default is openai/gpt-5-mini).
+const initialDefaultSeeded = ref(false);
+watch(
+	[effectiveCredentials, () => props.config],
+	([credentials, config]) => {
+		if (initialDefaultSeeded.value || props.disabled) return;
+		if (!credentials || !config || modelToString(config.model)) return;
+
+		const provider =
+			AGENT_MODEL_PROVIDERS.find(
+				(candidate) => credentials[candidate] && credentials[candidate] !== AI_GATEWAY_MANAGED_TAG,
+			) ?? (credentials.openai === AI_GATEWAY_MANAGED_TAG ? 'openai' : undefined);
+		if (!provider) return;
+
+		initialDefaultSeeded.value = true;
+		pendingDefaultProvider.value = provider;
+	},
+	{ immediate: true },
+);
 
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
@@ -232,6 +285,28 @@ function onInstructionsInput(value: string) {
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
 			/>
+			<N8nCallout
+				v-if="defaultModelHint && !props.disabled"
+				theme="info"
+				slim
+				:class="$style.defaultHint"
+				data-testid="agent-default-model-hint"
+			>
+				<div :class="$style.defaultHintBody">
+					<span :class="$style.defaultHintText">
+						<strong>{{ i18n.baseText('agents.builder.agent.model.defaultSelected.title') }}</strong>
+						{{ i18n.baseText('agents.builder.agent.model.defaultSelected.description') }}
+					</span>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="small"
+						:title="i18n.baseText('agents.builder.agent.model.defaultSelected.dismiss')"
+						data-testid="agent-default-model-hint-dismiss"
+						@click="defaultModelHint = false"
+					/>
+				</div>
+			</N8nCallout>
 		</div>
 
 		<div v-if="props.showInstructions" :class="[$style.field]">
@@ -244,8 +319,8 @@ function onInstructionsInput(value: string) {
 				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:disabled="props.disabled"
-				:show-toolbar="instructionsToolbarMode"
 				:max-height="props.instructionsMaxHeight"
+				show-toolbar="floating"
 				variant="contained"
 				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"
@@ -288,5 +363,21 @@ function onInstructionsInput(value: string) {
 
 .label {
 	display: block;
+}
+
+.defaultHint {
+	margin-top: var(--spacing--3xs);
+}
+
+.defaultHintBody {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+}
+
+.defaultHintText {
+	flex: 1;
+	min-width: 0;
 }
 </style>

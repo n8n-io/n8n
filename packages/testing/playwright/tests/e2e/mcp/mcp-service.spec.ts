@@ -336,13 +336,18 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production', {
-					type: 'webhook',
-					webhookData: {
-						method: 'POST',
-						body: { message: 'Hello from MCP test' },
+				const result = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					workflowId,
+					'production',
+					{
+						webhookData: {
+							method: 'POST',
+							body: { message: 'Hello from MCP test' },
+						},
 					},
-				});
+					'Webhook',
+				);
 
 				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();

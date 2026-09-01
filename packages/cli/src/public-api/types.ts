@@ -16,7 +16,7 @@ import type {
 	UpdateLdapConfigurationDto,
 	LdapSyncDto,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
+import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { AuthlessRequest } from '@/requests';
@@ -49,6 +49,8 @@ export declare namespace ExecutionRequest {
 			workflowId?: string;
 			lastId?: string;
 			projectId?: string;
+			startedAfter?: string;
+			startedBefore?: string;
 		}
 	>;
 
@@ -118,45 +120,12 @@ export declare namespace CredentialTypeRequest {
 }
 
 export declare namespace WorkflowRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			tags?: string;
-			status?: ExecutionStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			workflowId?: number;
-			active: boolean;
-			name?: string;
-			projectId?: string;
-			excludePinnedData?: boolean;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<
-		{},
-		{},
-		WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
-		{}
-	>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
-	type Delete = Get;
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		WorkflowEntity & { parentFolderId?: string | null },
-		{ publishIfActive?: boolean }
-	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
 		{},
 		{ versionId?: string; name?: string; description?: string },
 		{}
 	>;
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 
