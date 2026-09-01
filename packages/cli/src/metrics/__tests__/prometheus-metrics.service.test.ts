@@ -14,6 +14,7 @@ import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-m
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
 import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
+import type { PrometheusMcpPostSaveMetricsService } from '../prometheus/mcp-post-save-metrics.service';
 import type { PrometheusPollTriggerMetricsService } from '../prometheus/poll-trigger-metrics.service';
 import { PrometheusMetricsService } from '../prometheus/prometheus.service';
 import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
@@ -53,6 +54,7 @@ describe('PrometheusMetricsService', () => {
 	let webhook: Mocked<PrometheusWebhookAndFormMetricsService>;
 	let workflowInfo: Mocked<PrometheusWorkflowInfoMetricsService>;
 	let instanceAi: Mocked<PrometheusInstanceAiMetricsService>;
+	let mcpPostSave: Mocked<PrometheusMcpPostSaveMetricsService>;
 	let dbPool: Mocked<PrometheusDbPoolMetricsService>;
 	let workflowPublication: Mocked<PrometheusWorkflowPublicationMetricsService>;
 	let scheduler: Mocked<PrometheusSchedulerMetricsService>;
@@ -81,6 +83,7 @@ describe('PrometheusMetricsService', () => {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			mcpPostSave,
 			dbPool,
 			workflowPublication,
 			scheduler,
@@ -116,6 +119,7 @@ describe('PrometheusMetricsService', () => {
 		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
 		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
 		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
+		mcpPostSave = mock<PrometheusMcpPostSaveMetricsService>({ enabled: true });
 		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
 		workflowPublication = mock<PrometheusWorkflowPublicationMetricsService>({ enabled: true });
 		scheduler = mock<PrometheusSchedulerMetricsService>({ enabled: true });
@@ -150,6 +154,7 @@ describe('PrometheusMetricsService', () => {
 			expect(webhook.init).toHaveBeenCalledWith(app);
 			expect(workflowInfo.init).toHaveBeenCalledWith(app);
 			expect(instanceAi.init).toHaveBeenCalledWith(app);
+			expect(mcpPostSave.init).toHaveBeenCalledWith(app);
 			expect(dbPool.init).toHaveBeenCalledWith(app);
 			expect(workflowPublication.init).toHaveBeenCalledWith(app);
 			expect(scheduler.init).toHaveBeenCalledWith(app);

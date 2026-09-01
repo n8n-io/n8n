@@ -1474,39 +1474,6 @@ describe('update-workflow MCP tool', () => {
 			);
 		});
 
-		test('returns recovered workflow when post-save failure metric throws', async () => {
-			const postSaveError = new Error('workflow.afterUpdate hook failed');
-			const expectedWf = buildExistingWorkflow();
-			expectedWf.nodes.find((n) => n.name === 'B')!.parameters = {
-				url: 'https://new',
-				method: 'GET',
-			};
-			(postSaveMetrics.incrementPostSaveFailure as Mock).mockImplementationOnce(() => {
-				throw new Error('Metrics registration failed');
-			});
-
-			updateMock.mockRejectedValue(postSaveError);
-			findWorkflowMock
-				.mockResolvedValueOnce(buildExistingWorkflow())
-				.mockResolvedValueOnce(expectedWf);
-
-			const result = await callHandler({
-				workflowId: 'wf-1',
-				operations: [
-					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
-				],
-			});
-
-			const response = parseResult(result);
-			expect(result.isError).toBeUndefined();
-			expect(response.workflowId).toBe('wf-1');
-			expect(response.note).toContain('post-save operation failed');
-			expect(logger.error).toHaveBeenCalledWith(
-				'Post-save metrics failed for update_workflow (recovery path)',
-				expect.objectContaining({ workflowId: 'wf-1', error: expect.any(Error) }),
-			);
-		});
-
 		test('does not recover graph update when persisted graph differs', async () => {
 			const older = new Date('2024-01-01T00:00:00.000Z');
 			const recent = new Date('2024-01-02T00:00:00.000Z');
@@ -1535,6 +1502,94 @@ describe('update-workflow MCP tool', () => {
 			expect(result.isError).toBe(true);
 			expect(response.error).toBe('workflow.afterUpdate hook failed');
 			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+		});
+
+		test('reports a genuine failure for a no-op graph operation that throws before commit', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('Update failed before commit'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://old' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Update failed before commit');
+			expect(response.errorCode).toBe('UNKNOWN_ERROR');
+			expect(postSaveMetrics.incrementPostSaveFailure).not.toHaveBeenCalledWith(
+				'update',
+				expect.any(Error),
+			);
+		});
+
+		test('recovers graph update when content changed but updatedAt has the same millisecond timestamp', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+			recovered.nodes.find((n) => n.name === 'B')!.parameters = {
+				url: 'https://new',
+				method: 'GET',
+			};
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+		});
+
+		test('recovers graph update when node parameter undefined is omitted after persistence', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+			recovered.nodes.find((n) => n.name === 'B')!.parameters = {
+				url: 'https://new',
+				method: 'GET',
+			};
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{
+						type: 'updateNodeParameters',
+						nodeName: 'B',
+						parameters: { url: 'https://new', optional: undefined },
+					},
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
 		});
 
 		test.each([

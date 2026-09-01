@@ -21,7 +21,6 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-
 // Mocks referenced inside vi.mock factories must come from vi.hoisted, otherwise the
 // factory (hoisted above these declarations) silently loads the real module.
 const {
@@ -465,9 +464,10 @@ describe('create-workflow-from-code MCP tool', () => {
 		});
 
 		test('includes targetProject in recovery output when post-save errors but workflow persists', async () => {
+			const postSaveError = new Error('Post-save hook failed');
 			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
 				workflow.id = 'wf-recovery-1';
-				throw new Error('Post-save hook failed');
+				throw postSaveError;
 			});
 			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce({
 				id: 'wf-recovery-1',
@@ -488,6 +488,10 @@ describe('create-workflow-from-code MCP tool', () => {
 				type: 'team',
 			});
 			expect(response.note).toContain('post-save operation failed');
+			expect(postSaveMetrics.incrementPostSaveFailure).toHaveBeenCalledWith(
+				'create',
+				postSaveError,
+			);
 		});
 
 		test('logs a warning when post-create verification lookup throws and still reports the original error', async () => {

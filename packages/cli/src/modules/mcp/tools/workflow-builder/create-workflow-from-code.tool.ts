@@ -204,6 +204,104 @@ const outputSchema = {
 		.describe('Machine-readable error code. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
+type RecoverPersistedCreateArgs = {
+	newWorkflow: WorkflowEntity | undefined;
+	landingProject: Project | null;
+	user: User;
+	workflowFinderService: WorkflowFinderService;
+	urlService: UrlService;
+	telemetry: Telemetry;
+	telemetryPayload: UserCalledMCPToolEventPayload;
+	error: unknown;
+	logger: Logger;
+	postSaveMetrics: McpPostSaveMetricsService;
+};
+
+async function recoverPersistedCreate({
+	newWorkflow,
+	landingProject,
+	user,
+	workflowFinderService,
+	urlService,
+	telemetry,
+	telemetryPayload,
+	error,
+	logger,
+	postSaveMetrics,
+}: RecoverPersistedCreateArgs) {
+	const errorMessage = error instanceof Error ? error.message : String(error);
+
+	// TypeORM sets the entity id during save(), even inside a transaction that
+	// may later roll back. A DB lookup confirms that the row exists.
+	if (!newWorkflow?.id) return undefined;
+
+	let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null = null;
+	try {
+		persisted = await workflowFinderService.findWorkflowForUser(
+			newWorkflow.id,
+			user,
+			['workflow:read'],
+			// landingFolder is only assigned after createWorkflow returns, so a
+			// post-save failure inside it leaves the variable unset. Load the
+			// relation here so targetFolder still reflects where the row landed.
+			{ includeParentFolder: true },
+		);
+	} catch (lookupError) {
+		logger.warn('Post-create verification lookup failed', {
+			workflowId: newWorkflow.id,
+			error: lookupError,
+		});
+		// Verification lookup failed. Fall through and report the original error.
+	}
+
+	if (!persisted || !landingProject) return undefined;
+
+	const baseUrl = urlService.getInstanceBaseUrl();
+	const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+	postSaveMetrics.incrementPostSaveFailure('create', error);
+
+	try {
+		telemetryPayload.results = {
+			success: true,
+			data: {
+				workflowId: persisted.id,
+				nodeCount: persisted.nodes.length,
+				postSaveError: errorMessage,
+			},
+		};
+		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+	} catch (telemetryError) {
+		logger.error('Post-save telemetry failed for create_workflow_from_code (recovery path)', {
+			workflowId: persisted.id,
+			error: telemetryError,
+		});
+		postSaveMetrics.incrementPostSaveFailure('create', telemetryError);
+	}
+
+	const output = {
+		workflowId: persisted.id,
+		name: persisted.name,
+		nodeCount: persisted.nodes.length,
+		url: workflowUrl,
+		autoAssignedCredentials: [],
+		targetProject: {
+			id: landingProject.id,
+			name: landingProject.name,
+			type: landingProject.type,
+		},
+		targetFolder: persisted.parentFolder
+			? { id: persisted.parentFolder.id, name: persisted.parentFolder.name }
+			: undefined,
+		note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
+	};
+
+	return {
+		content: [{ type: 'text' as const, text: JSON.stringify(output, null, 2) }],
+		structuredContent: output,
+	};
+}
+
 /**
  * MCP tool that creates a workflow in n8n from validated SDK code.
  * Parses the code, validates it, and saves the resulting workflow.
@@ -237,7 +335,6 @@ export const createCreateWorkflowFromCodeTool = (
 		},
 	},
 
-	// eslint-disable-next-line complexity
 	handler: async ({
 		code,
 		skillsUsed,
@@ -479,79 +576,19 @@ export const createCreateWorkflowFromCodeTool = (
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			const errorCode = getErrorCode(error);
 
-			// Check whether the workflow was actually persisted despite the error.
-			// TypeORM sets the entity id during save(), even inside a transaction that
-			// may later roll back, so newWorkflow.id alone is not a reliable signal.
-			// A DB lookup confirms the row truly exists before we report success.
-			if (newWorkflow?.id) {
-				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
-					null;
-				try {
-					persisted = await workflowFinderService.findWorkflowForUser(
-						newWorkflow.id,
-						user,
-						['workflow:read'],
-						// landingFolder is only assigned after createWorkflow returns, so a
-						// post-save failure inside it leaves the variable unset - load the
-						// relation here so targetFolder still reflects where the row landed.
-						{ includeParentFolder: true },
-					);
-				} catch (lookupError) {
-					logger.warn('Post-create verification lookup failed', {
-						workflowId: newWorkflow.id,
-						error: lookupError,
-					});
-					// Verification lookup failed - fall through and report the original error.
-				}
-
-				if (persisted && landingProject) {
-					const baseUrl = urlService.getInstanceBaseUrl();
-					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
-
-					try {
-						telemetryPayload.results = {
-							success: true,
-							data: {
-								workflowId: persisted.id,
-								nodeCount: persisted.nodes.length,
-								postSaveError: errorMessage,
-							},
-						};
-						telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-					} catch (telemetryError) {
-						logger.error(
-							'Post-save telemetry failed for create_workflow_from_code (recovery path)',
-							{
-								workflowId: persisted.id,
-								error: telemetryError,
-							},
-						);
-						postSaveMetrics.incrementPostSaveFailure('create', telemetryError);
-					}
-
-					const output = {
-						workflowId: persisted.id,
-						name: persisted.name,
-						nodeCount: persisted.nodes.length,
-						url: workflowUrl,
-						autoAssignedCredentials: [],
-						targetProject: {
-							id: landingProject.id,
-							name: landingProject.name,
-							type: landingProject.type,
-						},
-						targetFolder: persisted.parentFolder
-							? { id: persisted.parentFolder.id, name: persisted.parentFolder.name }
-							: undefined,
-						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
-					};
-
-					return {
-						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-						structuredContent: output,
-					};
-				}
-			}
+			const recoveredCreate = await recoverPersistedCreate({
+				newWorkflow,
+				landingProject,
+				user,
+				workflowFinderService,
+				urlService,
+				telemetry,
+				telemetryPayload,
+				error,
+				logger,
+				postSaveMetrics,
+			});
+			if (recoveredCreate) return recoveredCreate;
 
 			try {
 				telemetryPayload.results = {

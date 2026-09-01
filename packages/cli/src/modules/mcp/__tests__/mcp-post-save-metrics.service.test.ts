@@ -1,129 +1,66 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { Counter } from 'prom-client';
-import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { EventService } from '@/events/event.service';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 
-vi.mock('prom-client');
-
 describe('McpPostSaveMetricsService', () => {
 	let config: PrometheusMetricsConfig;
+	let eventService: EventService;
+	let logger: Logger;
 	let service: McpPostSaveMetricsService;
-	let mockCounterInc: Mock;
 
 	beforeEach(() => {
 		config = mockInstance(PrometheusMetricsConfig, {
 			enable: true,
 			prefix: 'n8n_',
 		});
-		service = new McpPostSaveMetricsService(config);
-		mockCounterInc = vi.fn();
-		Counter.prototype.inc = mockCounterInc;
+		eventService = mock<EventService>();
+		logger = mock<Logger>();
+		service = new McpPostSaveMetricsService(config, eventService, logger);
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('should not construct Counter on service instantiation', () => {
-		expect(Counter).not.toHaveBeenCalled();
-	});
-
-	it('should not construct or increment Counter when metrics are disabled', () => {
+	it('does not emit when metrics are disabled', () => {
 		config.enable = false;
 
 		service.incrementPostSaveFailure('create', new Error('Test error'));
 
-		expect(Counter).not.toHaveBeenCalled();
-		expect(mockCounterInc).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
-	it('should lazily initialize Counter on first incrementPostSaveFailure call', () => {
-		const error = new Error('Test error');
-		service.incrementPostSaveFailure('create', error);
+	it('emits a post-save failure event for Error instances', () => {
+		service.incrementPostSaveFailure('create', new TypeError('Test error'));
 
-		expect(Counter).toHaveBeenCalledTimes(1);
-		expect(Counter).toHaveBeenCalledWith({
-			name: 'n8n_mcp_post_save_failures_total',
-			help: 'MCP workflow-builder tool failures that occurred after a successful database write (hooks, telemetry, auto-assign). The client still receives success — these are observability-only.',
-			labelNames: ['tool', 'error_type'],
+		expect(eventService.emit).toHaveBeenCalledWith('mcp-post-save-failure', {
+			tool: 'create',
+			errorType: 'TypeError',
 		});
 	});
 
-	it('should reuse Counter instance on subsequent calls', () => {
-		service.incrementPostSaveFailure('create', new Error('First error'));
-		service.incrementPostSaveFailure('update', new Error('Second error'));
+	it('uses Unknown for non-Error throws', () => {
+		service.incrementPostSaveFailure('update', 'Hook execution timed out');
 
-		expect(Counter).toHaveBeenCalledTimes(1);
-		expect(mockCounterInc).toHaveBeenCalledTimes(2);
-	});
-
-	it('should support custom metric prefix from config', () => {
-		config.prefix = 'custom_prefix_';
-		service.incrementPostSaveFailure('create', new Error('Error'));
-
-		expect(Counter).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: 'custom_prefix_mcp_post_save_failures_total',
-			}),
-		);
-	});
-
-	describe('tool label parameter', () => {
-		it('should pass tool=create to metric increment', () => {
-			service.incrementPostSaveFailure('create', new Error('Fail'));
-
-			expect(mockCounterInc).toHaveBeenCalledWith({ tool: 'create', error_type: 'Error' }, 1);
-		});
-
-		it('should pass tool=update to metric increment', () => {
-			service.incrementPostSaveFailure('update', new Error('Fail'));
-
-			expect(mockCounterInc).toHaveBeenCalledWith({ tool: 'update', error_type: 'Error' }, 1);
+		expect(eventService.emit).toHaveBeenCalledWith('mcp-post-save-failure', {
+			tool: 'update',
+			errorType: 'Unknown',
 		});
 	});
 
-	describe('error type resolution', () => {
-		it('should extract constructor name for Error instance', () => {
-			service.incrementPostSaveFailure('create', new Error('Something went wrong'));
-
-			expect(mockCounterInc).toHaveBeenCalledWith({ tool: 'create', error_type: 'Error' }, 1);
+	it('does not throw when event emission fails', () => {
+		vi.mocked(eventService.emit).mockImplementationOnce(() => {
+			throw new Error('Emitter failed');
 		});
 
-		it('should extract constructor name for TypeError instance', () => {
-			service.incrementPostSaveFailure('create', new TypeError('Type mismatch'));
-
-			expect(mockCounterInc).toHaveBeenCalledWith({ tool: 'create', error_type: 'TypeError' }, 1);
-		});
-
-		it('should extract constructor name for custom Error subclass', () => {
-			class CustomPostSaveError extends Error {}
-			service.incrementPostSaveFailure('create', new CustomPostSaveError('Custom error'));
-
-			expect(mockCounterInc).toHaveBeenCalledWith(
-				{ tool: 'create', error_type: 'CustomPostSaveError' },
-				1,
-			);
-		});
-
-		it('should fallback to "Unknown" when error is a string', () => {
-			service.incrementPostSaveFailure('update', 'Hook execution timed out');
-
-			expect(mockCounterInc).toHaveBeenCalledWith({ tool: 'update', error_type: 'Unknown' }, 1);
-		});
-
-		it.each([
-			['null', null],
-			['undefined', undefined],
-			['number', 500],
-			['boolean', false],
-			['plain object', { message: 'Failed' }],
-			['array', ['an', 'error']],
-		])('should fallback to "Unknown" when error is %s', (_, errorValue) => {
-			service.incrementPostSaveFailure('create', errorValue);
-
-			expect(mockCounterInc).toHaveBeenCalledWith({ tool: 'create', error_type: 'Unknown' }, 1);
+		expect(() => service.incrementPostSaveFailure('create', new Error('Test error'))).not.toThrow();
+		expect(logger.debug).toHaveBeenCalledWith('Failed to record post-save failure metric', {
+			error: expect.any(Error),
 		});
 	});
 });

@@ -62,6 +62,7 @@ import type { WorkflowPublishedDataService } from '@/workflows/workflow-publishe
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 const MAX_OPERATIONS_PER_CALL = 100;
+const normalize = (value: unknown) => JSON.parse(JSON.stringify(value ?? null));
 const baseOperationTypes = [
 	'updateNodeParameters',
 	'setNodeParameter',
@@ -1463,10 +1464,16 @@ export const createUpdateWorkflowTool = (
 					const matchesExpected =
 						persisted &&
 						expectedWorkflow &&
-						isEqual(persisted.nodes, expectedWorkflow.nodes) &&
-						isEqual(persisted.connections, expectedWorkflow.connections) &&
+						isEqual(normalize(persisted.nodes), normalize(expectedWorkflow.nodes)) &&
+						isEqual(normalize(persisted.connections), normalize(expectedWorkflow.connections)) &&
 						(expectedWorkflow.nodeGroups === undefined ||
-							isEqual(persisted.nodeGroups, expectedWorkflow.nodeGroups));
+							isEqual(normalize(persisted.nodeGroups), normalize(expectedWorkflow.nodeGroups)));
+					const contentChanged =
+						!isEqual(normalize(existingWorkflow.nodes), normalize(expectedWorkflow?.nodes)) ||
+						!isEqual(
+							normalize(existingWorkflow.connections),
+							normalize(expectedWorkflow?.connections),
+						);
 
 					const existingUpdatedAt = existingWorkflow.updatedAt
 						? new Date(existingWorkflow.updatedAt).getTime()
@@ -1481,14 +1488,17 @@ export const createUpdateWorkflowTool = (
 					const hasPersistedExpectedSettings =
 						expectedSettings !== undefined &&
 						persisted &&
-						isEqual(persisted.settings, expectedSettings) &&
-						!isEqual(existingWorkflow.settings, expectedSettings);
+						isEqual(normalize(persisted.settings), normalize(expectedSettings)) &&
+						!isEqual(normalize(existingWorkflow.settings), normalize(expectedSettings));
 					const wasTouched = Boolean(hasNewerTimestamp || hasPersistedExpectedSettings);
 					const tagsMatchExpected =
 						!hasTagOperations || haveSameTagNames(persisted?.tags, expectedTagNames);
 
 					const recovered =
-						tagsMatchExpected && (hasGraphOps ? Boolean(matchesExpected) : wasTouched);
+						tagsMatchExpected &&
+						(hasGraphOps
+							? Boolean(matchesExpected) && (contentChanged || hasNewerTimestamp)
+							: wasTouched);
 					if (persisted && recovered) {
 						const baseUrl = urlService.getInstanceBaseUrl();
 						const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
@@ -1508,14 +1518,7 @@ export const createUpdateWorkflowTool = (
 								workflowId: persisted.id,
 								error: telemetryError,
 							});
-							try {
-								postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
-							} catch (metricsError) {
-								logger.error('Post-save metrics failed for update_workflow (recovery path)', {
-									workflowId: persisted.id,
-									error: metricsError,
-								});
-							}
+							postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
 						}
 
 						const output: UpdateWorkflowOutput = {
@@ -1526,14 +1529,7 @@ export const createUpdateWorkflowTool = (
 							note: `Workflow was updated successfully, but a post-save operation failed: ${errorMessage}`,
 						};
 
-						try {
-							postSaveMetrics.incrementPostSaveFailure('update', error);
-						} catch (metricsError) {
-							logger.error('Post-save metrics failed for update_workflow (recovery path)', {
-								workflowId: persisted.id,
-								error: metricsError,
-							});
-						}
+						postSaveMetrics.incrementPostSaveFailure('update', error);
 
 						return {
 							content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
