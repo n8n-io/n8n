@@ -62,6 +62,9 @@ export const Variants: Story = {
 			</div>
 		`,
 	}),
+	args: {
+		theme: 'info',
+	},
 };
 
 export const Custom: Story = {
