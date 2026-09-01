@@ -369,7 +369,14 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 			tokenEndpointAuthMethod: 'none',
 		});
 		const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
-		await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+		await tokenService.saveTokenPair(
+			pair.accessToken,
+			pair.refreshToken,
+			clientId,
+			userId,
+			[],
+			pair.audience,
+		);
 		return pair.accessToken;
 	};
 

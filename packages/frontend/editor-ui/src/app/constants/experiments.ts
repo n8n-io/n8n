@@ -139,6 +139,10 @@ export const INSTANCE_AI_FREE_NUDGE_EXPERIMENT = createExperiment('105_instance_
 	variant2: 'variant-2',
 });
 
+export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
+	'108_open_workflow_in_assistant',
+);
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -176,4 +180,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
 	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
+	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
 ];

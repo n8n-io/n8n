@@ -873,6 +873,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: TEST_RESOURCE_URL,
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
 			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
@@ -904,6 +905,7 @@ describe('OAuthServerService', () => {
 				'client-123',
 				'user-456',
 				['workflow:read'],
+				TEST_RESOURCE_URL,
 			);
 			expect(result).toEqual({
 				access_token: 'access-token-123',
@@ -978,6 +980,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: formResourceUrl,
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
 			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
@@ -1016,6 +1019,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				audience: TEST_RESOURCE_URL,
 			});
 
 			await service.exchangeAuthorizationCode(client, 'auth-code-123', 'verifier-123');
@@ -1028,12 +1032,131 @@ describe('OAuthServerService', () => {
 			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
 				'auth-code-123',
 			);
+			// A code carrying no resource was approved against the default resource,
+			// so that is what the token is minted for.
 			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
 				'user-456',
 				'client-123',
-				undefined,
+				TEST_RESOURCE_URL,
 				['workflow:read'],
 			);
+		});
+
+		describe('resource binding', () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			// A second registered resource the code was never approved for.
+			const otherResourceUrl = 'https://n8n.example.com/mcp/other';
+			let boundService: OAuthServerService;
+
+			beforeEach(() => {
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				registry.register({
+					id: 'instance-mcp',
+					getResourceUrl: () => TEST_RESOURCE_URL,
+					getAudiences: () => [TEST_RESOURCE_URL],
+					scopes: SUPPORTED_SCOPES,
+					isDefault: true,
+					authorize: async () => true,
+				});
+				registry.register({
+					id: 'other-resource',
+					getResourceUrl: () => otherResourceUrl,
+					getAudiences: () => [otherResourceUrl],
+					scopes: [],
+					authorize: async () => true,
+				});
+
+				boundService = new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+					eventService,
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
+				);
+
+				tokenService.generateTokenPair.mockReturnValue({
+					accessToken: 'access-token-123',
+					refreshToken: 'refresh-token-456',
+					audience: TEST_RESOURCE_URL,
+				});
+				tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
+			});
+
+			const mockCode = (resource: string | null) =>
+				authorizationCodeService.findAuthorizationCode.mockResolvedValue({
+					userId: 'user-456',
+					clientId: 'client-123',
+					resource,
+					scope: [] as string[],
+				} as AuthorizationCode);
+
+			it('should reject a token request naming a resource the code was not approved for', async () => {
+				mockCode(TEST_RESOURCE_URL);
+
+				await expect(
+					boundService.exchangeAuthorizationCode(
+						client,
+						'auth-code-123',
+						'verifier-123',
+						'https://example.com/callback',
+						new URL(otherResourceUrl),
+					),
+				).rejects.toThrow(InvalidTargetError);
+
+				expect(authorizationCodeService.markAuthorizationCodeAsUsed).not.toHaveBeenCalled();
+			});
+
+			it('should reject a resource introduced at token time when the code carries none', async () => {
+				mockCode(null);
+
+				await expect(
+					boundService.exchangeAuthorizationCode(
+						client,
+						'auth-code-123',
+						'verifier-123',
+						'https://example.com/callback',
+						new URL(otherResourceUrl),
+					),
+				).rejects.toThrow(InvalidTargetError);
+			});
+
+			it('should accept the default resource at token time when the code carries none', async () => {
+				mockCode(null);
+
+				await boundService.exchangeAuthorizationCode(
+					client,
+					'auth-code-123',
+					'verifier-123',
+					'https://example.com/callback',
+					new URL(TEST_RESOURCE_URL),
+				);
+
+				expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+					'user-456',
+					'client-123',
+					TEST_RESOURCE_URL,
+					[],
+				);
+			});
 		});
 
 		it('should propagate InvalidGrantError when markAuthorizationCodeAsUsed detects concurrent consumption', async () => {
