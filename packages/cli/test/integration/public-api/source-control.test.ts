@@ -187,6 +187,19 @@ describe('Source Control (Public API)', () => {
 			expect(response.body).toEqual({ message: 'Forbidden' });
 		});
 
+		it('should return 403 when API key has sourceControl:pull but not sourceControl:read', async () => {
+			testServer.license.enable('feat:sourceControl');
+			const member = await createMemberWithApiKey({ scopes: ['sourceControl:pull'] });
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get(statusUrl)
+				.query({ direction: 'push' });
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
 		it('should return 403 when Source Control is not licensed', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
