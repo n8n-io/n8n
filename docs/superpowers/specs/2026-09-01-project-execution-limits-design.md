@@ -25,9 +25,10 @@ as-is).
    the active period.
 3. Executions are hard-rejected once a project's quota for the current period
    is exceeded (no queueing, no overage grace buffer).
-4. The quota's notion of "an execution" is identical to what the existing
-   Insights module already counts, so the two numbers never disagree for the
-   same project/period.
+4. The quota's notion of "an execution" uses the same mode-based inclusion
+   rules as the existing Insights module, so the two numbers agree for the
+   same project/period except for one documented edge case (canceled runs,
+   see "Consistency with Insights").
 5. A workflow whose execution volume spikes far beyond its own historical
    norm is flagged (not blocked) so an admin can act on it manually.
 
@@ -121,21 +122,32 @@ asks use.
 
 ### Consistency with Insights
 
-`insights-collection.service.ts` already decides what counts as a countable
-execution via `shouldSkipStatus()` and `shouldSkipMode()` (manual and
-agent-mode executions are excluded today; evaluation-mode is included). The
-`execution_counter` increment in step 5 above applies the **same two
-functions** before incrementing — so the quota counts exactly the executions
-Insights would eventually count for the same project/period, no more, no
-less. This makes the live counter and Insights two representations of one
-metric (real-time vs. eventually-compacted), not two competing definitions.
+`insights-collection.service.ts` decides what counts as a countable execution
+using two filters: `shouldSkipMode()` (manual and agent-mode executions are
+excluded; evaluation-mode is included) and `shouldSkipStatus()` (only
+`success`/`crashed`/`error` are countable; `canceled`/`new`/`running`/
+`unknown`/`waiting` are not). Insights applies both because it only writes a
+row once an execution has *finished* (`workflowExecuteAfter`).
+
+The quota gate fires *before* an execution starts (`ActiveExecutions.add()`),
+so it can only know the mode at that point, not the eventual status. The
+`execution_counter` increment therefore applies `shouldSkipMode()` only.
+
+**Known gap, documented rather than hidden:** an execution that starts,
+increments the counter, and then ends in a status Insights would skip (most
+notably `canceled`) will count against the project's quota without ever
+appearing in Insights. This is the one case where the two numbers can
+diverge. A production version of this feature would need to decrement the
+counter on cancellation to close the gap; the PoC documents it instead of
+solving it.
 
 **Reconciliation check (part of the test plan, not a runtime assertion):**
-once Insights' hour→day→week compaction has caught up for a completed
-period, `SUM(execution_counter.count)` for a project+period must equal what
-`insights.service.ts:getInsightsSummary({projectId, startDate, endDate})`
-reports for the same window. A PoC test seeds executions, waits for
-compaction, and asserts the two numbers match exactly.
+for executions that reach a countable terminal status (success/crashed/
+error), once Insights' compaction has caught up, `SUM(execution_counter.count)`
+for a project+period must equal what
+`insights.service.ts:getInsightsSummary({user, projectId, startDate, endDate})`
+reports for the same window. The PoC test seeds only clean-completing
+executions (no cancellations) so the comparison is exact for that scenario.
 
 ### Spike-Guard (flag only)
 
@@ -143,8 +155,14 @@ Computed on demand (no new scheduled job for the PoC) when a project's
 consumption view is queried:
 
 1. For each workflow in the project, take today's `execution_counter.count`.
-2. Compute the trailing 7-day daily average for that workflow from the
-   existing `InsightsByPeriod` day-rollups (excluding today).
+2. Compute the trailing 7-day daily average for that workflow from
+   `InsightsByPeriod` **hour-unit** rows (joined through `InsightsMetadata`
+   on `workflowId`), summed per calendar day and averaged over the trailing
+   7 days, excluding today. Day-unit rows are not usable here: hour→day
+   compaction only runs for data older than `compactionHourlyToDailyThresholdDays`
+   (default 90 days), so day rollups don't exist yet for recent activity in
+   any realistic PoC timeframe. Hour rollups compact on every cycle with no
+   age threshold, so they're always available.
 3. Flag the workflow if today's count > 5x that average.
 
 Flags are informational only — returned alongside the consumption data, never
