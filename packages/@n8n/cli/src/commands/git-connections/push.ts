@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class GitConnectionsPush extends BaseCommand {
 	static override description =
-		'Export linked projects to a Git connection working copy (work in progress; does not commit or push)';
+		'Export all team projects to a Git connection working copy (work in progress; does not commit or push)';
 	static override args = {
 		id: Args.string({ description: 'ID of the Git connection', required: true }),
 	};

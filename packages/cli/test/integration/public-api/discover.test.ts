@@ -1,5 +1,7 @@
 import type { User } from '@n8n/db';
 
+import { AUTH_COOKIE_NAME } from '@/constants';
+
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -37,6 +39,25 @@ describe('GET /discover', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/discover', null));
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/discover', 'abcXYZ'));
+
+	test('should return discover data via session cookie, without an API key', async () => {
+		const response = await testServer.publicApiAgentWithCookie(owner).get('/discover');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toBeDefined();
+		expect(response.body.data.scopes).toBeInstanceOf(Array);
+		expect(response.body.data.scopes.length).toBeGreaterThan(0);
+		expect(response.body.data.resources).toBeDefined();
+		expect(response.body.data.specUrl).toBe('/api/v1/openapi.yml');
+	});
+
+	test('should fail with an invalid session cookie', async () => {
+		const agent = testServer.publicApiAgentWithoutApiKey();
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
+
+		const response = await agent.get('/discover');
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return discover data for owner', async () => {
 		const response = await authOwnerAgent.get('/discover');

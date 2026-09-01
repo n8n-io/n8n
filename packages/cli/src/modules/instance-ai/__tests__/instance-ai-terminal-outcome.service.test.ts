@@ -218,7 +218,6 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 	};
 
 	const options = {
-		durableLog: false,
 		eventBus: deps.eventBus,
 		dbSnapshotStorage: deps.dbSnapshotStorage,
 		agentMemory: {},
@@ -275,7 +274,7 @@ describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
 
 		expect(deps.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
 		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
+			type: 'text-block',
 			runId: outcome.runId,
 			agentId: 'orchestrator-run-1',
 			responseId: `background-outcome:${outcome.id}`,
@@ -342,7 +341,7 @@ describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
 		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
 
 		expect(deps.eventBus.publish).toHaveBeenCalledWith('thread-a', {
-			type: 'text-delta',
+			type: 'text-block',
 			runId: outcome.runId,
 			agentId: 'orchestrator-run-1',
 			responseId: `background-outcome:${outcome.id}`,
@@ -389,7 +388,7 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 		expect(deps.eventBus.publish).toHaveBeenCalledWith(
 			'thread-a',
 			expect.objectContaining({
-				type: 'text-delta',
+				type: 'text-block',
 				payload: { text: 'The background workflow-builder task finished.' },
 			}),
 		);
@@ -416,12 +415,11 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 });
 
 describe('InstanceAiTerminalOutcomeService — durable-log outcome lines', () => {
-	it('publishes the outcome line as a text-block when the durable log is on', async () => {
+	it('publishes the outcome line as a persisted text-block, not a trailing delta', async () => {
 		// A trailing delta would race the coalescer's idle flush on an immediate
 		// page reload; a text-block is persisted before it is emitted live.
 		const { deps } = createService(makeAgentTree());
 		const service = new InstanceAiTerminalOutcomeService({
-			durableLog: true,
 			eventBus: deps.eventBus,
 			dbSnapshotStorage: deps.dbSnapshotStorage,
 			agentMemory: {},
