@@ -189,8 +189,16 @@ export class NonWebhookTriggerRegistrar {
 				]);
 
 				// A durable failure wins: it must reach the caller for retry, while an
-				// in-memory failure may be abandoned as permanent.
+				// in-memory failure may be abandoned as permanent. Log the in-memory
+				// failure the throw would otherwise swallow.
 				if (durable.status === 'rejected') {
+					if (inMemory.status === 'rejected') {
+						this.logger.error('Failed to deregister a trigger node from memory', {
+							workflowId,
+							nodeId,
+							error: ensureError(inMemory.reason),
+						});
+					}
 					throw ensureError(durable.reason);
 				}
 				if (inMemory.status === 'rejected') {

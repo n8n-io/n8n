@@ -256,6 +256,15 @@ describe('NonWebhookTriggerRegistrar', () => {
 			scheduleTriggerJobRegistrar.remove.mockRejectedValue(new Error('db down'));
 
 			await expect(registrar.deregister('wf-1', 'trigger-a')).rejects.toThrow('db down');
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to deregister a trigger node from memory',
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					nodeId: 'trigger-a',
+					error: expect.any(WorkflowDeactivationError),
+				}),
+			);
 		});
 	});
 });
