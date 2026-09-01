@@ -35,12 +35,6 @@ export type CanvasLayoutSource =
 	| 'command-bar'
 	| 'import-workflow-data'
 	| 'builder-update';
-export type CanvasLayoutTargetData = {
-	nodes: CanvasLayoutNode[];
-	edges: LayoutConnection[];
-	groupUnits: CanvasLayoutGroupUnit[];
-};
-
 export type NodeLayoutResult = {
 	id: string;
 	x: number;
@@ -60,6 +54,12 @@ type CanvasLayoutNode = GraphNode<CanvasNodeData> | CanvasGroupNode;
 type CanvasLayoutNodeData = CanvasNodeData | CanvasGroupNodeData;
 type CanvasLayoutNodeDictionary = Record<string, CanvasLayoutNode>;
 type LayoutConnection = CanvasConnection & Partial<Pick<GraphEdge, 'targetX' | 'targetY'>>;
+
+type CanvasLayoutTargetData = {
+	nodes: CanvasLayoutNode[];
+	edges: LayoutConnection[];
+	groupUnits: CanvasLayoutGroupUnit[];
+};
 
 interface CanvasLayoutGroupUnit {
 	node: CanvasGroupNode;
@@ -178,7 +178,12 @@ export function useCanvasLayout(
 			if (emittedConnectionKeys.has(key)) continue;
 
 			emittedConnectionKeys.add(key);
-			result.push({ ...connection, source, target });
+			const remappedConnection = { ...connection, source, target };
+			if (targetUnitId) {
+				delete remappedConnection.targetX;
+				delete remappedConnection.targetY;
+			}
+			result.push(remappedConnection);
 		}
 
 		return result;
@@ -192,10 +197,10 @@ export function useCanvasLayout(
 	function sortNodesByPosition(
 		nodeA: CanvasLayoutNode,
 		nodeB: CanvasLayoutNode,
-		edges: LayoutConnection[],
+		edgeTargets: Set<string>,
 	): number {
-		const hasEdgesA = edges.some((edge) => edge.target === nodeA.id);
-		const hasEdgesB = edges.some((edge) => edge.target === nodeB.id);
+		const hasEdgesA = edgeTargets.has(nodeA.id);
+		const hasEdgesB = edgeTargets.has(nodeB.id);
 
 		if (!hasEdgesA && hasEdgesB) return -1;
 		if (hasEdgesA && !hasEdgesB) return 1;
@@ -288,7 +293,10 @@ export function useCanvasLayout(
 			groupUnits.map(({ node, boundingBox }) => [node.id, boundingBox]),
 		);
 
-		const graphNodes = [...nodes].sort((nodeA, nodeB) => sortNodesByPosition(nodeA, nodeB, edges));
+		const edgeTargets = new Set(edges.map(({ target }) => target));
+		const graphNodes = [...nodes].sort((nodeA, nodeB) =>
+			sortNodesByPosition(nodeA, nodeB, edgeTargets),
+		);
 
 		const nodeIdSet = new Set(nodes.map((node) => node.id));
 
@@ -545,7 +553,7 @@ export function useCanvasLayout(
 			groupUnits.map(({ node, boundingBox }) => [node.id, boundingBox]),
 		);
 
-		const nonStickyNodes = nodes.filter((node) => !isStickyCanvasNode(node)).map((node) => node);
+		const nonStickyNodes = nodes.filter((node) => !isStickyCanvasNode(node));
 		const boundingBoxBefore = boundingBoxFromCanvasNodes(nonStickyNodes, groupUnitBoundingBoxes);
 
 		const parentGraph = createDagreGraph({ nodes: nonStickyNodes, edges, groupUnits });
