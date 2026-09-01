@@ -3,10 +3,11 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as create from './create.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
+import * as getAllReplies from './getAllReplies.operation';
 import * as reply from './reply.operation';
 import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
 
-export { create, get, getAll, reply };
+export { create, get, getAll, getAllReplies, reply };
 
 export const description: INodeProperties[] = [
 	{
@@ -37,6 +38,12 @@ export const description: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Get many messages from a channel',
 				action: 'Get many messages',
+			},
+			{
+				name: 'Get Many Replies',
+				value: 'getAllReplies',
+				description: 'Get many replies to a message in a channel',
+				action: 'Get many replies',
 			},
 			{
 				name: 'Reply',
@@ -70,7 +77,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['channelMessage'],
-				operation: ['get', 'getAll'],
+				operation: ['get', 'getAll', 'getAllReplies'],
 				authentication: [SERVICE_PRINCIPAL_AUTH],
 			},
 		},
@@ -79,5 +86,6 @@ export const description: INodeProperties[] = [
 	...create.description,
 	...get.description,
 	...getAll.description,
+	...getAllReplies.description,
 	...reply.description,
 ];

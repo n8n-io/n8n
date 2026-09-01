@@ -120,7 +120,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			}
 		});
 
-		it.each(['get', 'getAll'])('%s fields are shown under SP', (operation) => {
+		it.each(['get', 'getAll', 'getAllReplies'])('%s fields are shown under SP', (operation) => {
 			const fields = fieldsFor(operation);
 			expect(fields.length).toBeGreaterThan(0);
 			for (const field of fields) {
@@ -136,7 +136,9 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
 			);
 			const operations = notices.flatMap((n) => n.displayOptions?.show?.operation ?? []);
-			expect(operations).toEqual(expect.arrayContaining(['create', 'reply', 'get', 'getAll']));
+			expect(operations).toEqual(
+				expect.arrayContaining(['create', 'reply', 'get', 'getAll', 'getAllReplies']),
+			);
 		});
 	});
 
