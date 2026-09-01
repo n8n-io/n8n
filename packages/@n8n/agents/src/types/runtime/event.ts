@@ -19,7 +19,7 @@ export interface SubAgentStartedPayload extends SubAgentLifecycleBase {
 }
 
 export interface SubAgentCompletedPayload extends SubAgentLifecycleBase {
-	status: 'completed' | 'failed' | 'suspended';
+	status: 'completed' | 'failed' | 'suspended' | 'cancelled';
 	startedAt: number;
 	finishedAt: number;
 	durationMs: number;
@@ -33,6 +33,35 @@ export interface SubAgentCompletedPayload extends SubAgentLifecycleBase {
 	error?: string;
 }
 
+/**
+ * Child stream chunks that may be forwarded live to the parent chat while a
+ * delegation runs. Args/results and nested sub-agent lifecycle are excluded
+ * so fan-out stays bounded.
+ */
+export type ForwardedChildChunk =
+	| { type: 'text-delta'; id: string; delta: string }
+	| { type: 'reasoning-start'; id: string }
+	| { type: 'reasoning-delta'; id: string; delta: string }
+	| { type: 'reasoning-end'; id: string }
+	| { type: 'tool-input-start'; toolCallId: string; toolName: string }
+	| {
+			type: 'tool-execution-start';
+			toolCallId: string;
+			toolName: string;
+			startTime: number;
+	  }
+	| {
+			type: 'tool-execution-end';
+			toolCallId: string;
+			toolName: string;
+			isError: boolean;
+			endTime: number;
+	  };
+
+export interface SubAgentChunkPayload extends SubAgentLifecycleBase {
+	chunk: ForwardedChildChunk;
+}
+
 export const enum AgentEvent {
 	AgentStart = 'agent_start',
 	AgentEnd = 'agent_end',
@@ -42,6 +71,7 @@ export const enum AgentEvent {
 	ToolExecutionEnd = 'tool_execution_end',
 	SubAgentStarted = 'subagent_started',
 	SubAgentCompleted = 'subagent_completed',
+	SubAgentChunk = 'subagent_chunk',
 	Error = 'error',
 }
 
@@ -60,11 +90,17 @@ export type AgentEventData =
 	  }
 	| ({ type: AgentEvent.SubAgentStarted } & SubAgentStartedPayload)
 	| ({ type: AgentEvent.SubAgentCompleted } & SubAgentCompletedPayload)
+	| ({ type: AgentEvent.SubAgentChunk } & SubAgentChunkPayload)
 	| {
 			type: AgentEvent.Error;
 			message: string;
 			error: unknown;
-			source?: 'observer' | 'reflector' | 'episodic-memory';
+			source?:
+				| 'observer'
+				| 'reflector'
+				| 'episodic-memory'
+				| 'input-persistence'
+				| 'turn-delta-persistence';
 	  };
 
 export type AgentEventHandler = (data: AgentEventData) => void;

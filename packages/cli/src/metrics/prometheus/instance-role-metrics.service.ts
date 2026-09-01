@@ -12,7 +12,7 @@ import type { PrometheusMetricsCollector } from './base';
  */
 @Service()
 export class PrometheusInstanceRoleMetricsService implements PrometheusMetricsCollector {
-	private gauge: Gauge | undefined;
+	private gauge!: Gauge;
 
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
@@ -34,11 +34,11 @@ export class PrometheusInstanceRoleMetricsService implements PrometheusMetricsCo
 
 	@OnLeaderTakeover()
 	updateOnLeaderTakeover() {
-		this.gauge?.set(1);
+		this.gauge.set(1);
 	}
 
 	@OnLeaderStepdown()
 	updateOnLeaderStepdown() {
-		this.gauge?.set(0);
+		this.gauge.set(0);
 	}
 }

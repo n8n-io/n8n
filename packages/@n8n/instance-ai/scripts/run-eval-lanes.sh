@@ -6,12 +6,15 @@
 #   ./scripts/run-eval-lanes.sh --instance-count 5
 #   ./scripts/run-eval-lanes.sh 5 --tier pr --verbose
 #   ./scripts/run-eval-lanes.sh --instance-count 3 --build -- --filter contact-form
+#   ./scripts/run-eval-lanes.sh --inherit-env --instance-count 1 --build -- --filter contact-form
 #
 # Requires:
 #   - docker
-#   - dotenvx (pnpm exec dotenvx works)
+#   - dotenvx for env-file mode (pnpm exec dotenvx works)
 #   - n8nio/n8n:local image (build with: INCLUDE_TEST_CONTROLLER=true pnpm build:docker)
-#   - .env.local at repo root with N8N_INSTANCE_AI_MODEL_API_KEY (+ optional N8N_EVAL_*)
+#   - Either an env file with N8N_INSTANCE_AI_MODEL_API_KEY (+ optional N8N_EVAL_*),
+#     or --inherit-env with ANTHROPIC_API_KEY exported. Env-file entries are passed
+#     into each lane via docker --env-file; inherited mode passes an allowlist only.
 #
 set -euo pipefail
 
@@ -28,9 +31,17 @@ EVAL_CONCURRENCY="" # auto = instance-count * 4
 EVAL_ITERATIONS=1
 EVAL_TIER=""
 ENV_FILE=".env.local"
+ENV_FILE_EXPLICIT=false
+INHERIT_ENV=false
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 EVAL_ARGS=()
 CONTAINER_NAMES=()
+DOCKER_RUN_ARGS=()
+SANDBOX_PROJECT_NAME="n8n-eval-sandbox-$$"
+SANDBOX_NETWORK_NAME="n8n-eval-sandbox-$$"
+SANDBOX_ENV_FILE=""
+SANDBOX_ENV_BACKUP=""
+SANDBOX_TEMP_DIR=""
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -45,6 +56,7 @@ Options:
   --image NAME        Docker image (default: n8nio/n8n:local)
   --build             Build docker image before starting lanes
   --env-file PATH     Env file relative to repo root (default: .env.local)
+  --inherit-env       Use ANTHROPIC_API_KEY from the shell and a local Docker sandbox
   --concurrency N     Eval scenario concurrency (default: instance-count * 4)
   --iterations N      Eval iterations per case (default: 3)
   --tier NAME         Eval tier filter (default: none; use "pr" for PR suite)
@@ -59,6 +71,7 @@ Examples:
   ./scripts/run-eval-lanes.sh --instance-count 5
   ./scripts/run-eval-lanes.sh 5 --build --tier pr --verbose
   ./scripts/run-eval-lanes.sh --instance-count 3 -- --filter contact-form --keep-workflows
+  ./scripts/run-eval-lanes.sh --inherit-env --instance-count 1 --build -- --filter contact-form
 EOF
 }
 
@@ -93,6 +106,39 @@ is_node_fetch_blocked_port() {
 	esac
 }
 
+# Force-remove any docker container holding the given host port (e.g. a lane
+# left over from a previous --keep-containers run). Returns non-zero when the
+# port is held by something that isn't a docker container.
+remove_container_on_port() {
+	local port="$1"
+	local expected_name="n8n-eval-${port}"
+	local ids
+	ids="$(docker ps -q --filter "publish=${port}")"
+	if [[ -z "$ids" ]]; then
+		return 1
+	fi
+	local id
+	for id in $ids; do
+		local name
+		name="$(docker inspect --format '{{.Name}}' "$id")"
+		name="${name#/}"
+		if [[ "$name" != "$expected_name" ]]; then
+			local names
+			names="$(docker ps --filter "publish=${port}" --format '{{.Names}}' | tr '\n' ' ')"
+			die "port ${port} is held by non-eval container(s): ${names}"
+		fi
+	done
+	log "removing existing eval container on port ${port}: ${expected_name}"
+	# shellcheck disable=SC2086 # ids is a newline-separated list of container IDs
+	docker rm -f $ids >/dev/null 2>&1 || true
+	# Wait for the kernel to release the port after the container dies.
+	for _ in $(seq 1 20); do
+		port_in_use "$port" || return 0
+		sleep 0.5
+	done
+	return 1
+}
+
 allocate_lane_ports() {
 	local count="$1"
 	local start="$2"
@@ -107,7 +153,11 @@ allocate_lane_ports() {
 		if is_node_fetch_blocked_port "$port"; then
 			log "skipping port ${port} (blocked by Node fetch)"
 		elif port_in_use "$port"; then
-			die "port ${port} is already in use — stop the existing process or pick --start-port"
+			if remove_container_on_port "$port"; then
+				PORTS+=("$port")
+			else
+				die "port ${port} is in use by a non-docker process — stop it or pick --start-port"
+			fi
 		else
 			PORTS+=("$port")
 		fi
@@ -146,16 +196,55 @@ dotenvx_run() {
 	fi
 }
 
+prepare_sandbox_env_file() {
+	SANDBOX_ENV_FILE="${REPO_ROOT}/packages/cli/bin/.env"
+	if [[ -e "$SANDBOX_ENV_FILE" ]]; then
+		SANDBOX_ENV_BACKUP="$(mktemp "${TMPDIR:-/tmp}/n8n-eval-sandbox-env.XXXXXX")"
+		chmod 600 "$SANDBOX_ENV_BACKUP"
+		cp -p "$SANDBOX_ENV_FILE" "$SANDBOX_ENV_BACKUP"
+	fi
+}
+
+restore_sandbox_env_file() {
+	[[ -n "$SANDBOX_ENV_FILE" ]] || return 0
+	if [[ -n "$SANDBOX_ENV_BACKUP" && -f "$SANDBOX_ENV_BACKUP" ]]; then
+		mv -f "$SANDBOX_ENV_BACKUP" "$SANDBOX_ENV_FILE"
+	else
+		rm -f "$SANDBOX_ENV_FILE"
+	fi
+}
+
+cleanup_local_sandbox() {
+	local ids
+	ids="$(docker ps -aq --filter "label=com.docker.compose.project=${SANDBOX_PROJECT_NAME}" 2>/dev/null || true)"
+	if [[ -n "$ids" ]]; then
+		log "removing local sandbox containers..."
+		# shellcheck disable=SC2086 # ids is a newline-separated list of container IDs
+		docker rm -f $ids >/dev/null 2>&1 || true
+	fi
+	if [[ -n "$SANDBOX_TEMP_DIR" ]]; then
+		rm -rf -- "$SANDBOX_TEMP_DIR"
+	fi
+	docker network rm "$SANDBOX_NETWORK_NAME" >/dev/null 2>&1 || true
+}
+
 cleanup() {
 	local status=$?
+	restore_sandbox_env_file
 	if [[ "$KEEP_CONTAINERS" == true ]]; then
 		log "keeping containers: ${CONTAINER_NAMES[*]:-none}"
+		if [[ "$INHERIT_ENV" == true ]]; then
+			log "keeping local sandbox project: ${SANDBOX_PROJECT_NAME}"
+		fi
 		exit "$status"
 	fi
 
 	if [[ ${#CONTAINER_NAMES[@]:-0} -gt 0 ]]; then
 		log "removing containers..."
 		docker rm -f "${CONTAINER_NAMES[@]}" >/dev/null 2>&1 || true
+	fi
+	if [[ "$INHERIT_ENV" == true ]]; then
+		cleanup_local_sandbox
 	fi
 	exit "$status"
 }
@@ -183,7 +272,12 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--env-file)
 			ENV_FILE="${2:-}"
+			ENV_FILE_EXPLICIT=true
 			shift 2
+			;;
+		--inherit-env)
+			INHERIT_ENV=true
+			shift
 			;;
 		--concurrency)
 			EVAL_CONCURRENCY="${2:-}"
@@ -233,6 +327,9 @@ done
 ((INSTANCE_COUNT >= 1)) || die "--instance-count must be >= 1"
 [[ "$START_PORT" =~ ^[0-9]+$ ]] || die "--start-port must be a number"
 ((START_PORT >= 1 && START_PORT <= 65535)) || die "invalid --start-port"
+if [[ "$INHERIT_ENV" == true && "$ENV_FILE_EXPLICIT" == true ]]; then
+	die "--inherit-env and --env-file cannot be used together"
+fi
 
 if [[ -z "$EVAL_CONCURRENCY" ]]; then
 	EVAL_CONCURRENCY=$((INSTANCE_COUNT * 4))
@@ -241,17 +338,6 @@ fi
 ENV_FILE_PATH="${REPO_ROOT}/${ENV_FILE}"
 EVAL_PKG_DIR="${REPO_ROOT}/packages/@n8n/instance-ai"
 RESET_PAYLOAD='{"owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Eval","lastName":"Owner"},"admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},"members":[],"chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}}'
-
-PORTS=()
-BASE_URLS=()
-
-allocate_lane_ports "$INSTANCE_COUNT" "$START_PORT"
-
-for port in "${PORTS[@]}"; do
-	BASE_URLS+=("http://localhost:${port}")
-done
-
-BASE_URL_CSV="$(IFS=,; printf '%s' "${BASE_URLS[*]}")"
 
 # ---------------------------------------------------------------------------
 # Preflight
@@ -263,8 +349,48 @@ require_cmd pnpm
 
 cd "$REPO_ROOT"
 
-API_KEY="$(load_env_var N8N_INSTANCE_AI_MODEL_API_KEY "$ENV_FILE_PATH")"
-[[ -n "$API_KEY" ]] || die "N8N_INSTANCE_AI_MODEL_API_KEY is empty"
+# Port allocation may docker-rm stale lane containers, so it must run after
+# the docker preflight check.
+PORTS=()
+BASE_URLS=()
+
+allocate_lane_ports "$INSTANCE_COUNT" "$START_PORT"
+
+for port in "${PORTS[@]}"; do
+	BASE_URLS+=("http://localhost:${port}")
+done
+
+BASE_URL_CSV="$(IFS=,; printf '%s' "${BASE_URLS[*]}")"
+
+if [[ "$INHERIT_ENV" == true ]]; then
+	[[ -n "${ANTHROPIC_API_KEY:-}" ]] || die "ANTHROPIC_API_KEY is empty"
+
+	export N8N_INSTANCE_AI_MODEL_API_KEY="$ANTHROPIC_API_KEY"
+	export N8N_AI_ENABLED="${N8N_AI_ENABLED:-true}"
+	export N8N_ENABLED_MODULES="${N8N_ENABLED_MODULES:-instance-ai}"
+	export N8N_INSTANCE_AI_SANDBOX_ENABLED=true
+	export N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
+	export N8N_SANDBOX_SERVICE_URL=http://sandbox-api:8080
+	export N8N_SANDBOX_SERVICE_API_KEY=n8n-sandbox-ci-key
+
+	for name in \
+		ANTHROPIC_API_KEY \
+		N8N_INSTANCE_AI_MODEL_API_KEY \
+		N8N_AI_ENABLED \
+		N8N_ENABLED_MODULES \
+		N8N_INSTANCE_AI_SANDBOX_ENABLED \
+		N8N_INSTANCE_AI_SANDBOX_PROVIDER \
+		N8N_SANDBOX_SERVICE_URL \
+		N8N_SANDBOX_SERVICE_API_KEY; do
+		DOCKER_RUN_ARGS+=(-e "$name")
+	done
+	DOCKER_RUN_ARGS+=(--network "$SANDBOX_NETWORK_NAME")
+else
+	[[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH"
+	API_KEY="$(load_env_var N8N_INSTANCE_AI_MODEL_API_KEY "$ENV_FILE_PATH")"
+	[[ -n "$API_KEY" ]] || die "N8N_INSTANCE_AI_MODEL_API_KEY is empty"
+	DOCKER_RUN_ARGS+=(--env-file "$ENV_FILE_PATH")
+fi
 
 if [[ "$BUILD_IMAGE" == true ]]; then
 	log "building docker image ${IMAGE}..."
@@ -276,20 +402,51 @@ fi
 trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
+# Start local sandbox
+# ---------------------------------------------------------------------------
+if [[ "$INHERIT_ENV" == true ]]; then
+	prepare_sandbox_env_file
+	SANDBOX_TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/${SANDBOX_PROJECT_NAME}.XXXXXX")"
+	log "starting local Docker sandbox on network ${SANDBOX_NETWORK_NAME}"
+	TMPDIR="$SANDBOX_TEMP_DIR" pnpm --filter n8n-containers services \
+		--services sandbox \
+		--network "$SANDBOX_NETWORK_NAME" \
+		--name "$SANDBOX_PROJECT_NAME"
+fi
+
+# ---------------------------------------------------------------------------
 # Start lanes
 # ---------------------------------------------------------------------------
 log "starting ${INSTANCE_COUNT} lane(s) on ports: ${PORTS[*]}"
+if [[ "$INHERIT_ENV" == true ]]; then
+	log "lane environment: inherited allowlist"
+else
+	log "lane env file: ${ENV_FILE_PATH}"
+fi
 
 for port in "${PORTS[@]}"; do
 	name="n8n-eval-${port}"
 	CONTAINER_NAMES+=("$name")
 
+	# A stopped leftover container doesn't hold the port (so allocation passes)
+	# but would still collide on the name.
+	if docker container inspect "$name" >/dev/null 2>&1; then
+		log "removing stale container ${name}"
+		docker rm -f "$name" >/dev/null 2>&1 || true
+	fi
+
+	# Same bounds as CI (test-evals-instance-ai.yml): capped + restartable
+	# lanes, pruned executions.
 	docker run -d --name "$name" \
+		"${DOCKER_RUN_ARGS[@]}" \
+		--memory 2.5g --memory-swap 2.5g \
+		--restart on-failure \
+		--log-opt max-size=50m --log-opt max-file=2 \
+		-e NODE_OPTIONS=--max-old-space-size=2048 \
+		-e EXECUTIONS_DATA_PRUNE=true \
+		-e EXECUTIONS_DATA_MAX_AGE=1 \
 		-e E2E_TESTS=true \
-		-e N8N_ENABLED_MODULES=instance-ai \
-		-e N8N_AI_ENABLED=true \
-		-e N8N_INSTANCE_AI_MODEL_API_KEY="$API_KEY" \
-		-e N8N_AI_ASSISTANT_BASE_URL="" \
+		-e N8N_USER_FOLDER=/home/node/.n8n \
 		-p "${port}:5678" \
 		"$IMAGE" >/dev/null
 
@@ -348,4 +505,8 @@ if [[ ${#EVAL_ARGS[@]} -gt 0 ]]; then
 	ARGS+=("${EVAL_ARGS[@]}")
 fi
 
-dotenvx_run "${ARGS[@]}"
+if [[ "$INHERIT_ENV" == true ]]; then
+	"${ARGS[@]}"
+else
+	dotenvx_run "${ARGS[@]}"
+fi

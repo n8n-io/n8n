@@ -54,6 +54,172 @@ oneOf:
       name:
         type: string
   - type: object
+    description: >
+      A workflow whose source id already matches one in the target project but
+      lives outside the requested import folder. Folder-targeted imports cannot
+      update workflows in place at a different location.
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - existingParentFolderId
+      - targetFolderId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-folder-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      existingParentFolderId:
+        type: string
+        nullable: true
+        description: >
+          Folder that currently contains the matched workflow, or null when it
+          lives at the project root.
+      targetFolderId:
+        type: string
+        description: Folder the import was requested to land in.
+      name:
+        type: string
+  - type: object
+    description: >
+      A project defined by the package that already exists on this instance, under
+      `projectConflictPolicy=fail`.
+    required:
+      - type
+      - kind
+      - sourceProjectId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - project-conflict
+      kind:
+        type: string
+        enum:
+          - fail-policy
+      sourceProjectId:
+        type: string
+      name:
+        type: string
+        description: The project's name as it appears in the package.
+  - type: object
+    description: >
+      A package folder that cannot be imported as-is. `kind` distinguishes the cause:
+      `parent-mismatch` (a folder matched by id sits under a different parent than the
+      package places it), `id-in-other-project` (the folder id already exists in a
+      different project — ids are globally unique), or `fail-policy` (the folder already
+      exists and `folderConflictPolicy` is `fail`).
+    required:
+      - type
+      - kind
+      - sourceFolderId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - folder-conflict
+      kind:
+        type: string
+        enum:
+          - parent-mismatch
+          - id-in-other-project
+          - fail-policy
+      sourceFolderId:
+        type: string
+      name:
+        type: string
+      existingParentFolderId:
+        type: string
+        nullable: true
+        description: "For `parent-mismatch`: the matched folder's current parent in the target."
+      expectedParentFolderId:
+        type: string
+        nullable: true
+        description: 'For `parent-mismatch`: the parent the package would place the folder under.'
+      existingProjectId:
+        type: string
+        nullable: true
+        description: 'For `id-in-other-project`: the project that already owns the id.'
+  - type: object
+    description: >
+      A workflow that `folderConflictPolicy=overwrite` would remove, because the package
+      does not contain it, but the caller lacks `workflow:delete` on. Reported instead of
+      removing a subset, which would leave the project matching neither the package nor
+      its previous state.
+    required:
+      - type
+      - workflowId
+      - name
+      - projectId
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-removal-forbidden
+      workflowId:
+        type: string
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project the workflow was being reconciled against.
+  - type: object
+    description: >
+      A folder that `folderConflictPolicy=overwrite` would delete — the package does not
+      define it and reconciliation leaves it empty — but the caller lacks `folder:delete`
+      on the target project. Reported instead of removing a subset, which would leave the
+      project matching neither the package nor its previous state.
+    required:
+      - type
+      - folderId
+      - name
+      - projectId
+    properties:
+      type:
+        type: string
+        enum:
+          - folder-removal-forbidden
+      folderId:
+        type: string
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project the folder was being reconciled against.
+  - type: object
+    description: >
+      A node type — or a version of a node type — used by a package workflow that
+      this instance does not have, under `missingNodeTypeMode=fail`. One issue is
+      reported per missing `(nodeType, typeVersion)` pair.
+    required:
+      - type
+      - nodeType
+      - typeVersion
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - missing-node-type
+      nodeType:
+        type: string
+        description: Full node type name as used by the package's workflows.
+      typeVersion:
+        type: number
+        description: Node type version the package's workflows use.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that use this node type and version.
+  - type: object
     description: A credential reference that could not be resolved in the target project.
     required:
       - type
@@ -71,12 +237,168 @@ oneOf:
           - not_found
           - unknown_type
           - source_not_found
+          - type_mismatch
       sourceId:
         type: string
       targetId:
         type: string
         description: Target credential id for an explicit credential binding.
+      expectedType:
+        type: string
+        description: >
+          For `type_mismatch`: the credential type the package's workflow node
+          requires.
+      actualType:
+        type: string
+        description: >
+          For `type_mismatch`: the actual type of the resolved target credential.
       usedByWorkflows:
         type: array
         items:
           type: string
+  - type: object
+    description: >
+      A tag referenced by the package's workflows that could not be resolved on
+      the target instance. `kind` distinguishes the cause: `rename-drift` (the
+      same-id target tag carries a different name — under `tagConflictPolicy=fail`,
+      or `rename` when the package name is held by another tag), `name-collision`
+      (the id is free but the name belongs to a different tag under
+      `tagMissingMode=create` with `tagConflictPolicy=fail`; also raised when two
+      package tags collide with each other, or when the target tag a reconcile
+      would re-key is claimed by another package tag), `invalid-name` /
+      `invalid-id` (the package tag's name or id cannot be written on this
+      instance), or `permission-denied` (the importing user lacks the global
+      `tag:create` / `tag:update` scope the plan needs).
+    required:
+      - type
+      - kind
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - tag-unresolved
+      kind:
+        type: string
+        enum:
+          - rename-drift
+          - name-collision
+          - invalid-name
+          - invalid-id
+          - permission-denied
+      sourceId:
+        type: string
+        description: Tag id as it appears in the package. Absent for `permission-denied`.
+      name:
+        type: string
+        description: The (trimmed) package tag name. Absent for `permission-denied`.
+      missingScope:
+        type: string
+        enum:
+          - 'tag:create'
+          - 'tag:update'
+        description: 'For `permission-denied`: the global scope the importing user lacks.'
+      existingTagId:
+        type: string
+        description: >
+          Id of the contested target tag — the different tag currently holding
+          the wanted name, or the target tag a blocked reconcile would re-key.
+          Absent when two package tags collide with each other rather than over
+          a target tag.
+      existingName:
+        type: string
+        description: 'For `rename-drift`: the current name of the same-id target tag.'
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: >
+          Package workflow ids (non-skipped) that reference the source tag — not
+          workflows attached to the contested target tag.
+  - type: object
+    description: >
+      A variable reference that could not be resolved in the target project or the
+      global scope, under `variableMissingMode=must-preexist`.
+    required:
+      - type
+      - name
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-unresolved
+      name:
+        type: string
+        description: Requirement name with no match in the target project or global scope.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+  - type: object
+    description: >
+      A variable that resolved in the target project or the global scope, but
+      whose value differs from the one the package bundles for it, under
+      `variableConflictPolicy=fail`. Also reported under `overwrite`, once per
+      scope, when the projects of a package resolve one row and disagree about
+      the value it should hold. Values are never reported — only the name and
+      the scope the variable was found in.
+    required:
+      - type
+      - name
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-conflict
+      name:
+        type: string
+        description: Name of the variable whose value differs.
+      projectId:
+        type: string
+        description: >
+          Project owning the resolved variable. Absent when it resolved at the
+          global scope.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+  - type: object
+    description: >
+      Creating the package's variables under `create-stub` or `create-with-value`
+      would exceed the instance variable quota (`quota:maxVariables`). Reported once
+      for the whole import; nothing is created.
+    required:
+      - type
+      - limit
+      - remaining
+      - requested
+      - names
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-limit-exceeded
+      limit:
+        type: integer
+        description: The instance variable quota.
+      remaining:
+        type: integer
+        description: >-
+          Variable rows still available under the quota. The import is blocked because `requested`
+          exceeds this, not because it exceeds `limit`.
+      requested:
+        type: integer
+        description: Number of new variable rows the import would create (destination-deduplicated).
+      names:
+        type: array
+        items:
+          type: string
+        description: The unique variable names the import would create.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that reference any of the listed variables.

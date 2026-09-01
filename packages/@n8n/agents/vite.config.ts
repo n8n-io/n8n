@@ -16,9 +16,8 @@ import { configDefaults } from 'vitest/config';
  * because those tests deliberately exercise the real provider packages.
  */
 const REWRITE_REQUIRE_TARGETS = [
-	'/src/runtime/lazy-ai.ts',
-	'/src/runtime/model-factory.ts',
-	'/src/utils/parse.ts',
+	'/src/runtime/model/lazy-ai.ts',
+	'/src/runtime/model/model-factory.ts',
 ];
 
 function rewriteSourceRequire(): Plugin {
@@ -52,9 +51,6 @@ function rewriteSourceRequire(): Plugin {
 
 export default mergeConfig(
 	createVitestConfig({
-		// The n8n root jest.config sets `restoreMocks: true`, and test files silently rely on
-		// it — omit this and mocks bleed between tests.
-		restoreMocks: true,
 		// Integration tests run via vitest.integration.config.mjs (real providers, long timeouts).
 		exclude: [...configDefaults.exclude, '**/__tests__/integration/**'],
 	}),

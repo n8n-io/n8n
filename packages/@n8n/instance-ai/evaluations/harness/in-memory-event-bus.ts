@@ -9,6 +9,7 @@ export function createInMemoryEventBus(): InstanceAiEventBus {
 	return {
 		publish(threadId, event) {
 			const list = storeByThread.get(threadId) ?? [];
+			if (event.ts === undefined) event = { ...event, ts: Date.now() };
 			const stored: StoredEvent = { id: list.length + 1, event };
 			list.push(stored);
 			storeByThread.set(threadId, list);
@@ -26,23 +27,6 @@ export function createInMemoryEventBus(): InstanceAiEventBus {
 					current.filter((subscriber) => subscriber !== handler),
 				);
 			};
-		},
-		getEventsAfter(threadId, afterId) {
-			return (storeByThread.get(threadId) ?? []).filter((event) => event.id > afterId);
-		},
-		getEventsForRun(threadId, runId) {
-			return (storeByThread.get(threadId) ?? [])
-				.map((event) => event.event)
-				.filter((event) => 'runId' in event && event.runId === runId);
-		},
-		getEventsForRuns(threadId, runIds) {
-			const runIdSet = new Set(runIds);
-			return (storeByThread.get(threadId) ?? [])
-				.map((event) => event.event)
-				.filter((event) => 'runId' in event && runIdSet.has(event.runId));
-		},
-		getNextEventId(threadId) {
-			return (storeByThread.get(threadId) ?? []).length + 1;
 		},
 	};
 }

@@ -5,7 +5,9 @@ import { response as Response } from 'express';
 import nock from 'nock';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import { OauthService } from '@/oauth/oauth.service';
+import { OauthService, type OauthFlowState } from '@/oauth/oauth.service';
+import { MAX_CSRF_AGE } from '@/oauth/types';
+import { CacheService } from '@/services/cache/cache.service';
 import {
 	decryptCredentialData,
 	getCredentialById,
@@ -51,7 +53,7 @@ describe('OAuth1 API', () => {
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 		nock.cleanAll();
 	});
 
@@ -60,7 +62,7 @@ describe('OAuth1 API', () => {
 		// an n8n session (so external/dynamic-credential OAuth flows complete) while the handler
 		// still enforces session-bound validation for static credentials.
 		it('should reach the handler when called without authentication', async () => {
-			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
@@ -84,8 +86,8 @@ describe('OAuth1 API', () => {
 
 		it('should reject an unauthenticated callback for a static credential', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
@@ -190,17 +192,16 @@ describe('OAuth1 API', () => {
 			await shareCredentialWithUsers(credential, [sharee]);
 
 			const oauthService = Container.get(OauthService);
-			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
 
-			// Build a callback state whose decrypted userId equals the requesting member,
-			// so the userId equality check inside decodeCsrfState passes and the credential
-			// scope check is the only remaining gate. The owner-initiated /auth call below
-			// produces a valid encrypted state; we then re-encrypt its contents with the
-			// member's userId before driving the callback as the member.
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			// Make the flow's stored userId equal the requesting member, so the userId
+			// equality check inside decodeCsrfState passes and the credential scope check
+			// is the only remaining gate. The CSRF payload lives server-side in the
+			// per-flow cache now, so we rewrite the cached stateData (rather than the URL).
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			mockRequestTokenEndpoint();
 
 			await testServer
@@ -212,13 +213,12 @@ describe('OAuth1 API', () => {
 			const [, ownerState] = await csrfSpy.mock.results[0].value;
 
 			const decoded = JSON.parse(Buffer.from(ownerState, 'base64').toString());
-			const decryptedData = JSON.parse(oauthService['cipher'].decrypt(decoded.data)) as Record<
-				string,
-				unknown
-			>;
-			decryptedData.userId = sharee.id;
-			decoded.data = oauthService['cipher'].encrypt(JSON.stringify(decryptedData));
-			const reencodedState = Buffer.from(JSON.stringify(decoded)).toString('base64');
+			const cacheService = Container.get(CacheService);
+			const cacheKey = `oauth:flow:${decoded.token}`;
+			const flowState = await cacheService.get<OauthFlowState>(cacheKey);
+			flowState!.stateData!.userId = sharee.id;
+			await cacheService.set(cacheKey, flowState, MAX_CSRF_AGE);
+			const reencodedState = ownerState;
 
 			nock('https://test.domain')
 				.post('/oauth1/access_token')
@@ -249,7 +249,7 @@ describe('OAuth1 API', () => {
 
 	describe('per-flow state isolation', () => {
 		const renderCallback = () =>
-			jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
@@ -276,7 +276,7 @@ describe('OAuth1 API', () => {
 			const editorBAgent = testServer.authAgentFor(editorB);
 
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			renderCallback();
 
 			mockRequestTokenEndpoint();
@@ -323,7 +323,7 @@ describe('OAuth1 API', () => {
 		it('rejects a replayed OAuth1 callback (state token already consumed)', async () => {
 			const ownerAgent = testServer.authAgentFor(owner);
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			const renderSpy = renderCallback();
 
 			mockRequestTokenEndpoint();

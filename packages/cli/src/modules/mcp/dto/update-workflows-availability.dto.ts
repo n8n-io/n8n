@@ -6,4 +6,5 @@ export class UpdateWorkflowsAvailabilityDto extends Z.class({
 	workflowIds: z.array(z.string().min(1)).min(1).max(100).optional(),
 	projectId: z.string().min(1).optional(),
 	folderId: z.string().min(1).optional(),
+	allWorkflows: z.literal(true).optional(),
 }) {}

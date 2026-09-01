@@ -2,8 +2,9 @@ import {
 	Tool,
 	type AgentMessage,
 	type BuiltTool,
-	type ContentFile,
-	type ContentText,
+	hasMcpMediaContent,
+	mcpContentToMessageParts,
+	mcpContentToModelParts,
 } from '@n8n/agents';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
@@ -13,6 +14,7 @@ import {
 	type McpToolCallResult,
 } from '@n8n/api-types';
 import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
+import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
@@ -34,6 +36,7 @@ import {
 	McpToolNameValidationError,
 	validateMcpToolName,
 } from '../../agent/mcp-tool-name-validation';
+import type { McpDescriptionTruncation } from '../../agent/sanitize-mcp-descriptions';
 import {
 	assertMcpJsonSchemaWithinLimits,
 	McpSchemaSanitizationError,
@@ -44,10 +47,6 @@ import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
 
 type McpContentBlock = McpToolCallResult['content'][number];
-type ModelContentPart =
-	| { type: 'text'; text: string }
-	| { type: 'image-data'; data: string; mediaType: string }
-	| { type: 'file-data'; data: string; mediaType: string };
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools
@@ -68,7 +67,7 @@ const gatewayConfirmationRequiredWirePayloadSchema =
 		options: z.array(z.string()),
 	});
 
-const gatewayConfirmationResumeSchema = z.object({
+export const gatewayConfirmationResumeSchema = z.object({
 	approved: z.boolean(),
 	resourceDecision: gatewayResourceDecisionSchema.optional(),
 });
@@ -81,10 +80,6 @@ function isGatewayResourceDecision(
 	option: string,
 ): option is z.infer<typeof gatewayResourceDecisionSchema> {
 	return gatewayResourceDecisionSchema.safeParse(option).success;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isMcpContentBlock(value: unknown): value is McpContentBlock {
@@ -154,65 +149,34 @@ function tryParseGatewayConfirmationRequired(
 	}
 }
 
-function mcpBlockToMessagePart(block: McpContentBlock): ContentText | ContentFile | undefined {
-	if (block.type === 'text' && block.text) {
-		return { type: 'text', text: block.text };
+export type BrowserCredentialCreateOutcome = { ok: true } | { ok: false; errorCode: string };
+
+/**
+ * Map a failed `browser_create_credential` result to a stable, non-sensitive
+ * error code. The matched substrings are the error messages thrown by
+ * `@n8n/mcp-browser`'s credential tool before it reaches credential
+ * persistence; anything else means the host's create-credential call failed.
+ */
+function classifyCredentialCreateError(result: McpToolCallResult): string {
+	const text = result.content
+		.filter((block) => block.type === 'text')
+		.map((block) => block.text ?? '')
+		.join(' ');
+	if (text.includes('No captured fields found')) return 'missing_captured_fields';
+	if (text.includes('resolveData')) return 'unresolved_field';
+	if (text.includes('was not found') || text.includes('Secret capturing failed')) {
+		return 'missing_captured_fields';
 	}
-
-	if (block.type === 'image' && block.data) {
-		return {
-			type: 'file',
-			data: block.data,
-			mediaType: block.mimeType || 'image/png',
-		};
-	}
-
-	if (block.type === 'resource' && block.resource.blob) {
-		return {
-			type: 'file',
-			data: block.resource.blob,
-			mediaType: block.resource.mimeType ?? 'application/octet-stream',
-		};
-	}
-
-	return undefined;
-}
-
-function mcpBlockToModelContentPart(block: McpContentBlock): ModelContentPart | undefined {
-	if (block.type === 'text' && block.text) {
-		return { type: 'text', text: block.text };
-	}
-
-	if (block.type === 'image' && block.data) {
-		return {
-			type: 'image-data',
-			data: block.data,
-			mediaType: block.mimeType || 'image/png',
-		};
-	}
-
-	if (block.type === 'resource' && block.resource.blob) {
-		return {
-			type: 'file-data',
-			data: block.resource.blob,
-			mediaType: block.resource.mimeType ?? 'application/octet-stream',
-		};
-	}
-
-	return undefined;
-}
-
-function isMcpMediaBlock(block: McpContentBlock): boolean {
-	return block.type === 'image' || block.type === 'resource';
+	if (text.includes('gateway context')) return 'gateway_context_missing';
+	if (text.includes('Access denied by user')) return 'user_denied';
+	return 'credential_create_failed';
 }
 
 function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 	const raw = unwrapMcpToolResult(result);
-	if (!raw?.content.some(isMcpMediaBlock)) return undefined;
+	if (!raw || !hasMcpMediaContent(raw.content)) return undefined;
 
-	const content = raw.content
-		.map(mcpBlockToMessagePart)
-		.filter((part): part is ContentText | ContentFile => part !== undefined);
+	const content = mcpContentToMessageParts(raw.content);
 	if (content.length === 0) return undefined;
 
 	return { role: 'assistant', content };
@@ -224,9 +188,21 @@ function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 
 const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
 
-function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
+function warnTruncatedLocalMcpDescription(logger: Logger) {
+	return (truncation: McpDescriptionTruncation) => {
+		logger.warn('Truncated overlong local gateway MCP description', {
+			toolName: truncation.toolName,
+			source: LOCAL_GATEWAY_MCP_SOURCE,
+			path: truncation.path,
+			originalLength: truncation.originalLength,
+			limit: truncation.limit,
+		});
+	};
+}
+
+function warnSkippedLocalMcpSchema(logger: Logger) {
 	return (error: McpSchemaSanitizationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsupported schema', {
+		logger.warn('Skipped local gateway MCP tool with unsupported schema', {
 			toolName: error.details.toolName,
 			source: LOCAL_GATEWAY_MCP_SOURCE,
 			path: error.details.path,
@@ -239,9 +215,9 @@ function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
 	};
 }
 
-function warnSkippedLocalMcpTool(logger: Logger | undefined) {
+function warnSkippedLocalMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
-		logger?.warn('Skipped local gateway MCP tool with unsafe name', {
+		logger.warn('Skipped local gateway MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -266,10 +242,18 @@ function warnSkippedLocalMcpTool(logger: Logger | undefined) {
  * The `toModelOutput` callback converts MCP image blocks into AI SDK content
  * output parts so the LLM receives gateway screenshots as real multimodal input.
  */
-export function createToolsFromLocalMcpServer(
-	server: LocalMcpServer,
-	logger?: Logger,
-): InstanceAiToolRegistry {
+export function createToolsFromLocalMcpServer({
+	server,
+	logger,
+	onCredentialCreateResult,
+}: {
+	server: LocalMcpServer;
+	logger: Logger;
+	onCredentialCreateResult?: (
+		credentialType: string,
+		outcome: BrowserCredentialCreateOutcome,
+	) => void;
+}): InstanceAiToolRegistry {
 	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);
 	const warnTool = warnSkippedLocalMcpTool(logger);
@@ -307,10 +291,9 @@ export function createToolsFromLocalMcpServer(
 		try {
 			if (toolName === 'browser_create_credential') {
 				// when converting json schema the `inputSchema` has the correct shape and parsed to correct output
-				// but during execution all unspecified key from `data` and `resolveData` are stripped.
-				// somewhere in mastra core the inputSchema is converted multiple times back and forth and
-				// gets transformed to jsonSchema with `additionalProperties=false`
-				// this does not happen when passing the schema directly
+				// but during execution all unspecified keys from `data` and `resolveData` are stripped,
+				// because the schema is converted back and forth and transformed to jsonSchema with
+				// `additionalProperties=false`. Passing the schema directly avoids this.
 				inputSchema = loadMcpBrowserCredential().browserCreateCredentialSchema;
 			} else {
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
@@ -331,27 +314,58 @@ export function createToolsFromLocalMcpServer(
 			.resume(gatewayConfirmationResumeSchema)
 			.handler(async (args: Record<string, unknown>, ctx) => {
 				const resumeData = ctx.resumeData;
+				const observeResult = (result: McpToolCallResult): McpToolCallResult => {
+					if (toolName === 'browser_create_credential' && typeof args.type === 'string') {
+						onCredentialCreateResult?.(
+							args.type,
+							result.isError
+								? { ok: false, errorCode: classifyCredentialCreateError(result) }
+								: { ok: true },
+						);
+					}
+					return result;
+				};
+				// A rejected call must reach the observer too — otherwise a thrown
+				// credential-create leaves no failure outcome. Skip on abort: the run's
+				// terminal status reports user cancellation more accurately.
+				const callServer = async (callArgs: Record<string, unknown>) => {
+					try {
+						return await server.callTool(
+							{ name: toolName, arguments: callArgs },
+							{ abortSignal: ctx.abortSignal },
+						);
+					} catch (error) {
+						if (!ctx.abortSignal?.aborted) {
+							observeResult({
+								content: [
+									{ type: 'text', text: error instanceof Error ? error.message : String(error) },
+								],
+								isError: true,
+							});
+						}
+						throw error;
+					}
+				};
 
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {
 					if (!resumeData.resourceDecision) {
 						// User denied — no decision provided
-						return {
+						return observeResult({
 							content: [{ type: 'text', text: JSON.stringify({ error: 'Access denied by user' }) }],
 							isError: true,
-						};
+						});
 					}
 					// Re-call the daemon with the user's decision
-					return await server.callTool({
-						name: toolName,
-						arguments: { ...args, _confirmation: resumeData.resourceDecision },
-					});
+					return observeResult(
+						await callServer({ ...args, _confirmation: resumeData.resourceDecision }),
+					);
 				}
 
 				// First-call path: strip any LLM-provided _confirmation key so the agent
 				// cannot bypass the human confirmation flow by supplying its own token.
 				const { _confirmation: _stripped, ...safeArgs } = args;
-				const result = await server.callTool({ name: toolName, arguments: safeArgs });
+				const result = await callServer(safeArgs);
 
 				// If the daemon requires a resource-access confirmation, suspend the agent
 				if (result.isError) {
@@ -367,7 +381,7 @@ export function createToolsFromLocalMcpServer(
 					}
 				}
 
-				return result;
+				return observeResult(result);
 			})
 			.toModelOutput((result: unknown) => {
 				const raw = unwrapMcpToolResult(result);
@@ -376,7 +390,7 @@ export function createToolsFromLocalMcpServer(
 					return { type: 'text', value: JSON.stringify(result) };
 				}
 
-				const hasMedia = raw.content.some((item) => item.type === 'image');
+				const hasMedia = hasMcpMediaContent(raw.content);
 
 				// When we have structuredContent and no media, prefer it as compact text
 				if (raw.structuredContent && !hasMedia) {
@@ -386,9 +400,7 @@ export function createToolsFromLocalMcpServer(
 					};
 				}
 
-				const value = raw.content
-					.map(mcpBlockToModelContentPart)
-					.filter((part): part is ModelContentPart => part !== undefined);
+				const value = mcpContentToModelParts(raw.content);
 				return { type: 'content', value };
 			})
 			.build();
@@ -402,6 +414,7 @@ export function createToolsFromLocalMcpServer(
 
 	const sanitizedTools = sanitizeMcpToolSchemas(tools, {
 		onError: warnSkippedLocalMcpSchema(logger),
+		onDescriptionTruncated: warnTruncatedLocalMcpDescription(logger),
 	});
 	const safeTools = createToolRegistry();
 	addSafeMcpTools(safeTools, sanitizedTools, {

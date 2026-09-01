@@ -4,8 +4,12 @@
  * Core types for building n8n workflows programmatically.
  */
 
+import type { IWorkflowGroup } from 'n8n-workflow';
+
 import type { ValidationOptions, ValidationResult } from '../validation/index';
 import type { PluginRegistry } from '../workflow-builder/plugins/registry';
+
+export type { IWorkflowGroup };
 
 // =============================================================================
 // Data Types
@@ -292,6 +296,11 @@ export function generateUniqueName(baseName: string, exists: (name: string) => b
 // Internal: Serialization types
 // =============================================================================
 
+/** Persisted managed references use a null ID with the managed marker. */
+type NodeJSONCredential =
+	| { id?: string; name: string; __aiGatewayManaged?: boolean }
+	| { id: null; name: string; __aiGatewayManaged?: boolean };
+
 /**
  * Node JSON representation (for serialization)
  */
@@ -302,7 +311,7 @@ export interface NodeJSON {
 	typeVersion: number;
 	position: [number, number];
 	parameters?: IDataObject;
-	credentials?: Record<string, { id?: string; name: string }>;
+	credentials?: Record<string, NodeJSONCredential>;
 	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
@@ -330,6 +339,13 @@ export interface WorkflowJSON {
 		templateId?: string;
 		instanceId?: string;
 	};
+	/**
+	 * Node groups, referencing their members by node ID. Internally the SDK carries
+	 * group members by node *handle* (the value from `node(...)`) and resolves them to
+	 * the emitted node IDs here at the JSON boundary, so groups survive
+	 * `regenerateNodeIds()` like connections do.
+	 */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 // =============================================================================
@@ -422,6 +438,12 @@ export interface WorkflowContext {
  * Configuration options for creating a node
  */
 export interface NodeConfig<TParams = IDataObject> {
+	/**
+	 * Stable n8n node id. Keep it verbatim when editing an existing node — execution
+	 * logs, poll cursors, dedupe state and the version diff are all keyed on it, and a
+	 * rename does not change it. Omit it for a node you are adding; one is assigned on save.
+	 */
+	id?: string;
 	parameters?: TParams;
 	credentials?: Record<
 		string,
@@ -454,6 +476,8 @@ export interface NodeConfig<TParams = IDataObject> {
  * Configuration for sticky notes
  */
 export interface StickyNoteConfig {
+	/** Stable n8n node id — see {@link NodeConfig.id}. */
+	id?: string;
 	color?: number;
 	position?: [number, number];
 	width?: number;
@@ -648,6 +672,27 @@ export function isNodeInstance(value: unknown): value is NodeInstance<string, st
 	// After 'in' checks, safely access the to property
 	const toProp = (value as Record<string, unknown>).to;
 	return typeof toProp === 'function';
+}
+
+/**
+ * A sticky note that was asked to wrap a set of nodes.
+ *
+ * Only the anchor node IDs are recorded at construction time: node positions do not
+ * exist yet when `sticky()` runs, so the box is resolved during serialization from
+ * wherever the anchors ended up. IDs rather than names, because a node can be
+ * auto-renamed on its way into the workflow.
+ */
+export interface AnchoredStickyNote {
+	readonly stickyAnchorIds: readonly string[];
+}
+
+/** Type guard for {@link AnchoredStickyNote}. */
+export function isAnchoredStickyNote(value: object): value is AnchoredStickyNote {
+	return (
+		'stickyAnchorIds' in value &&
+		Array.isArray(value.stickyAnchorIds) &&
+		value.stickyAnchorIds.every((id) => typeof id === 'string')
+	);
 }
 
 // =============================================================================
@@ -996,11 +1041,43 @@ export interface GeneratePinDataOptions {
 export interface ToJSONOptions {
 	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
 	tidyUp?: boolean;
+	/**
+	 * Reuse existing group IDs (keyed by group name) instead of deriving deterministic ones.
+	 * Lets an edit of an existing workflow keep its (UI-assigned, random) group IDs so the diff
+	 * isn't skewed; groups without a match fall back to a deterministic ID.
+	 */
+	existingGroupIdsByName?: Map<string, string>;
 }
 
 /**
  * Workflow builder for constructing workflows with a fluent API
  */
+/**
+ * A reference to a node when defining a group: a node handle — the value
+ * returned by `node(...)`. Trigger nodes cannot be grouped.
+ */
+export type GroupMember = NodeInstance<string, string, unknown>;
+
+/** Optional group settings passed as `.group()`'s third argument. */
+export type GroupOptions = {
+	/**
+	 * Description shown when the group is collapsed on the canvas. Capped to
+	 * `GROUP_DESCRIPTION_MAX_LENGTH` characters on serialization; blank is
+	 * treated as no description.
+	 */
+	description?: string;
+};
+
+/**
+ * A node group as authored: members are node handles, resolved to the emitted node
+ * IDs only at serialization. `id` is present for a group carried in from JSON.
+ */
+export type AuthoredNodeGroup = GroupOptions & {
+	id?: string;
+	name: string;
+	members: GroupMember[];
+};
+
 export interface WorkflowBuilder {
 	readonly id: string;
 	readonly name: string;
@@ -1074,6 +1151,29 @@ export interface WorkflowBuilder {
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined;
 
 	/**
+	 * Define a node group — a named, semantic grouping of nodes shown as a frame on
+	 * the canvas. Members are referenced the same way connections reference nodes: by
+	 * node handle (the `const` from `node(...)`). Trigger nodes cannot be grouped.
+	 * Members resolve to the emitted node IDs in `toJSON()`, so groups survive
+	 * `regenerateNodeIds()` like connections do. Chainable.
+	 *
+	 * Pass `{ description }` to add the text shown when the group is collapsed.
+	 *
+	 * @example
+	 * ```typescript
+	 * const fetch = node({ ... });
+	 * const transform = node({ ... });
+	 * workflow('id', 'Name')
+	 *   .add(fetch)
+	 *   .to(transform)
+	 *   .group('Data ingestion', [fetch, transform], {
+	 *     description: 'Pulls the CRM contacts and normalizes them',
+	 *   });
+	 * ```
+	 */
+	group(name: string, members: GroupMember[], options?: GroupOptions): WorkflowBuilder;
+
+	/**
 	 * Validate the workflow graph structure.
 	 * Returns errors and warnings without converting to JSON.
 	 */
@@ -1108,8 +1208,10 @@ export interface WorkflowBuilder {
 	 *
 	 * Node IDs are generated using SHA-256 hash of `${workflowId}:${nodeType}:${nodeName}`,
 	 * formatted as a valid UUID v4 structure.
+	 *
+	 * @param existingIdsByName - reuse these IDs (keyed by node name) instead of regenerating.
 	 */
-	regenerateNodeIds(): void;
+	regenerateNodeIds(existingIdsByName?: Map<string, string>): void;
 }
 
 /**

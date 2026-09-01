@@ -1,0 +1,102 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,15000}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,100000}\\\\\"success\\\\\"\\s*:\\s*true[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-686365930b9f86c9741858347fe631f7-e275ad99110e93a7-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011Ccm3HeUJg2CBXnuYiepnv"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-07-06T15:28:10Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17989000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-07-06T15:28:10Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-07-06T15:28:10Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-07-06T15:28:10Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14989000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Mon, 06 Jul 2026 15:28:11 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a16fa340e8526031-BCN"
+      ]
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_013UPcsW7u4zb6sJuekbBj86\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":4222,\"cache_read_input_tokens\":26864,\"cache_creation\":{\"ephemeral_5m_input_tokens\":4222,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":20,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}       }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"\"}}\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"The build was successful. The post-build flow says `ver\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"ificationReadiness.status === \\\"ready\\\"`, but the\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" user explicitly said \\\"Save it only; do\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" not run it after editing.\\\" So I should skip verification\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" and just report the successful save.\\n\\nThe instructions also say:\\n- \\\"Planned build\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" follow-ups that explicitly say to stop after save\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\": stop after a successful build-workflow.\\\"\\n\\nActually the user\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" said \\\"do not run it after editing\\\" - this is an explicit instruction to not run/verify. I should honor this and\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" just report success.\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"EtUFCmUIDxgCKkDF57mYhqKuG6zGjR6bj58UEcSj77RMyWRsIzmC7qE+WhHUzKbTfmkC2hhia5Yq00b7uiMKQrfZwo9nyGUg4MbPMhFjbGF1ZGUtc29ubmV0LTQtNjgAQgh0aGlua2luZxIMZEahYXbTGOac/0NTGgxmhcE4XP6Z1bFhBXEiMCXCXh4X+qLg3MIpRbuq6srmqOiRTZF2hnW2gR0efFon35o2uJL/a+O27/ofMlwbLiqdBEPLnIc5nk5iWBBgTYh0fOK2HPQRuGmwrEaraqYZC1Jgn3ItWmka6UBYpqMwW2dgsM9JnZYcfxksNUfcxZEkKkzKz555wBkY7NEBhxBHkW9665JMh+Old4f54CaF/PCO4UO93r5yj86uOctq8Kh0O0Lfh5D2dXMPluSMR2hSfocsYFQDE2z1sP5ID/ZIM9dNZRO/9RMPjcr3WzjGeIbem8Mj8V5BvOL+jBFThbEsRcuoEmqlokOqUvCANVD37P9uV5AXwhOWEHolw3Q0RqkbMGzy3ywgw1otpaBYfyPTARKBsDxHuiQqgfcenJqPMCxuMz0MUgUn0AQvzJsHwpSjdecxcb2xmkfDWOuTnGFSR8KwvnmbMxNrhRd5NgnZo/40tRQIrKPLCxUcKQ83s01xVwxb/Td2h57dOIOOlxrnF1+1u4mlNZBjlGvK6526u8rGZB+gZOT7Sw9ojxLTmXOkynxAxKlN4hNHE3rFS9zLO8TgnsF9RNh4gx8+CAETZucTVYoX3N6+KGwT3YEun+2cTvA8YhoDSYoR/SHvwbtLXyJJW2H2PH/0HyLCbgaRgd14LmSQGqJr/+jnfY7LlgKcyhhI/iZyoq8q0hMbTTFxetD4tS59kApcpBCSIr9msBMVFOWhEpH4k3ywsMLJkQ8Rh+/2LgJTIOXYTqry4i3dcXw/MiRgGlrKw/V/2rI2pJmelt83b26EilwpaZmKI+sYAQ==\"}  }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0   }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"The workflow \\\"Re-run Execution Workflow\\\" (\"}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"ID: `HFSxClato7J\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"hQkF0`) has been saved —\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\" the `status` field value in the \\\"re\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"-run test\\\" Set node is now `\\\"ready\\\"`. No run\"}       }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\" was performed, as requested.\"}               }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1             }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":4222,\"cache_read_input_tokens\":26864,\"output_tokens\":199,\"output_tokens_details\":{\"thinking_tokens\":129}}         }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"      }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxM1VQY3NXN3U0emI2c0p1ZWtiQmo4NiIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NDIyMiwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjI2ODY0LCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjo0MjIyLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MjAsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRoaW5raW5nIiwidGhpbmtpbmciOiIiLCJzaWduYXR1cmUiOiIifX0KCmV2ZW50OiBwaW5nCmRhdGE6IHsidHlwZSI6ICJwaW5nIn0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRoaW5raW5nX2RlbHRhIiwidGhpbmtpbmciOiJUaGUgYnVpbGQgd2FzIHN1Y2Nlc3NmdWwuIFRoZSBwb3N0LWJ1aWxkIGZsb3cgc2F5cyBgdmVyIn0gICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRoaW5raW5nX2RlbHRhIiwidGhpbmtpbmciOiJpZmljYXRpb25SZWFkaW5lc3Muc3RhdHVzID09PSBcInJlYWR5XCJgLCBidXQgdGhlIn0gICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiIHVzZXIgZXhwbGljaXRseSBzYWlkIFwiU2F2ZSBpdCBvbmx5OyBkbyJ9ICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IiBub3QgcnVuIGl0IGFmdGVyIGVkaXRpbmcuXCIgU28gSSBzaG91bGQgc2tpcCB2ZXJpZmljYXRpb24ifSAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IiBhbmQganVzdCByZXBvcnQgdGhlIHN1Y2Nlc3NmdWwgc2F2ZS5cblxuVGhlIGluc3RydWN0aW9ucyBhbHNvIHNheTpcbi0gXCJQbGFubmVkIGJ1aWxkIn0gICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRoaW5raW5nX2RlbHRhIiwidGhpbmtpbmciOiIgZm9sbG93LXVwcyB0aGF0IGV4cGxpY2l0bHkgc2F5IHRvIHN0b3AgYWZ0ZXIgc2F2ZSJ9ICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiOiBzdG9wIGFmdGVyIGEgc3VjY2Vzc2Z1bCBidWlsZC13b3JrZmxvdy5cIlxuXG5BY3R1YWxseSB0aGUgdXNlciJ9ICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiIHNhaWQgXCJkbyBub3QgcnVuIGl0IGFmdGVyIGVkaXRpbmdcIiAtIHRoaXMgaXMgYW4gZXhwbGljaXQgaW5zdHJ1Y3Rpb24gdG8gbm90IHJ1bi92ZXJpZnkuIEkgc2hvdWxkIGhvbm9yIHRoaXMgYW5kIn0gICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IiBqdXN0IHJlcG9ydCBzdWNjZXNzLiJ9ICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InNpZ25hdHVyZV9kZWx0YSIsInNpZ25hdHVyZSI6IkV0VUZDbVVJRHhnQ0trREY1N21ZaHFLdUc2ekdqUjZiajU4VUVjU2o3N1JNeVdSc0l6bUM3cUUrV2hIVXpLYlRmbWtDMmhoaWE1WXEwMGI3dWlNS1FyZlp3bzlueUdVZzRNYlBNaEZqYkdGMVpHVXRjMjl1Ym1WMExUUXROamdBUWdoMGFHbHVhMmx1WnhJTVpFYWhZWGJUR09hYy8wTlRHZ3htaGNFNFhQNloxYkZoQlhFaU1DWENYaDRYK3FMZzNNSXBSYnVxNnNybXFPaVJUWkYyaG5XMmdSMGVmRm9uMzVvMnVKTC9hK08yNy9vZk1sd2JMaXFkQkVQTG5JYzVuazVpV0JCZ1RZaDBmT0sySFBRUnVHbXdyRWFyYXFZWkMxSmduM0l0V21rYTZVQllwcU13VzJkZ3NNOUpuWlljZnhrc05VZmN4WkVrS2t6S3o1NTV3QmtZN05FQmh4QkhrVzk2NjVKTWgrT2xkNGY1NENhRi9QQ080VU85M3I1eWo4NnVPY3RxOEtoME8wTGZoNUQyZFhNUGx1U01SMmhTZm9jc1lGUURFMnoxc1A1SUQvWklNOWROWlJPLzlSTVBqY3IzV3pqR2VJYmVtOE1qOFY1QnZPTCtqQkZUaGJFc1JjdW9FbXFsb2tPcVV2Q0FOVkQzN1A5dVY1QVh3aE9XRUhvbHczUTBScWtiTUd6eTN5d2d3MW90cGFCWWZ5UFRBUktCc0R4SHVpUXFnZmNlbkpxUE1DeHVNejBNVWdVbjBBUXZ6SnNId3BTamRlY3hjYjJ4bWtmRFdPdVRuR0ZTUjhLd3ZubWJNeE5yaFJkNU5nblpvLzQwdFJRSXJLUExDeFVjS1E4M3MwMXhWd3hiL1RkMmg1N2RPSU9PbHhybkYxKzF1NG1sTlpCamxHdks2NTI2dThyR1pCK2daT1Q3U3c5b2p4TFRtWE9reW54QXhLbE40aE5IRTNyRlM5ekxPOFRnbnNGOVJOaDRneDgrQ0FFVFp1Y1RWWW9YM042K0tHd1QzWUV1bisyY1R2QThZaG9EU1lvUi9TSHZ3YnRMWHlKSlcySDJQSC8wSHlMQ2JnYVJnZDE0TG1TUUdxSnIvK2puZlk3TGxnS2N5aGhJL2laeW9xOHEwaE1iVFRGeGV0RDR0UzU5a0FwY3BCQ1NJcjltc0JNVkZPV2hFcEg0azN5d3NNTEprUThSaCsvMkxnSlRJT1hZVHFyeTRpM2RjWHcvTWlSZ0dsckt3L1YvMnJJMnBKbWVsdDgzYjI2RWlsd3BhWm1LSStzWUFRPT0ifSAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MCAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MSwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidGV4dCIsInRleHQiOiIifSAgICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiVGhlIHdvcmtmbG93IFwiUmUtcnVuIEV4ZWN1dGlvbiBXb3JrZmxvd1wiICgifSAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IklEOiBgSEZTeENsYXRvN0oifSAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoxLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiJoUWtGMGApIGhhcyBiZWVuIHNhdmVkIOKAlCJ9ICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiB0aGUgYHN0YXR1c2AgZmllbGQgdmFsdWUgaW4gdGhlIFwicmUifSAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiLXJ1biB0ZXN0XCIgU2V0IG5vZGUgaXMgbm93IGBcInJlYWR5XCJgLiBObyBydW4ifSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiB3YXMgcGVyZm9ybWVkLCBhcyByZXF1ZXN0ZWQuIn0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjoxICAgICAgICAgICAgIH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjQyMjIsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoyNjg2NCwib3V0cHV0X3Rva2VucyI6MTk5LCJvdXRwdXRfdG9rZW5zX2RldGFpbHMiOnsidGhpbmtpbmdfdG9rZW5zIjoxMjl9fSAgICAgICAgIH0KCmV2ZW50OiBtZXNzYWdlX3N0b3AKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdG9wIiAgICAgIH0KCg==",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0003-1783351699675-unknown-host-POST-_v1_messages-f808330f.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

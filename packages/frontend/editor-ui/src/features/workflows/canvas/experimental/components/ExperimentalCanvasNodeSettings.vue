@@ -83,7 +83,6 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		:sub-title="subTitle"
 		extra-tabs-class-name="nodrag"
 		extra-parameter-wrapper-class-name="nodrag"
-		is-ndv-v2
 		hide-execute
 		:hide-docs="false"
 		hide-sub-connections

@@ -1,17 +1,27 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import type { TaskItem } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system';
-import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { N8nHeading, N8nIcon } from '@n8n/design-system';
+import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
+import {
+	isIconOrEmoji,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, inject, ref } from 'vue';
-import { useThread } from '../instanceAi.store';
+import { computed, inject, type Ref } from 'vue';
+import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
-import ConnectionsCard from './ConnectionsCard.vue';
+import {
+	agentPreviewContextIcon,
+	formatAgentPreviewContextLabel,
+	getDismissedContextKeys,
+	handoffContextKey,
+} from '../instanceAi.handoffContext';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const projectsStore = useProjectsStore();
+const store = useInstanceAiStore();
 
 const i18n = useI18n();
 const thread = useThread();
@@ -31,14 +41,33 @@ const project = computed(() => {
 		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
 	};
 });
-const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
 	undefined,
 );
+const openAgentPreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openAgentPreview',
+	undefined,
+);
+const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
+	'pendingComposerContext',
+	undefined,
+);
+const dismissPendingComposerContext = inject<((key: string) => boolean) | undefined>(
+	'dismissPendingComposerContext',
+	undefined,
+);
+
+interface ContextEntry {
+	key: string;
+	icon: string;
+	name: string;
+	subtitle: string;
+}
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+	if (artifact.type === 'agent' && artifact.pending) e.preventDefault();
 	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
 	if (artifact.type === 'workflow' && artifact.id) {
@@ -49,6 +78,10 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!artifact.projectId || !openDataTablePreview) return;
 		e.preventDefault();
 		openDataTablePreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'agent' && artifact.id) {
+		if (!artifact.projectId || !openAgentPreview) return;
+		e.preventDefault();
+		openAgentPreview(artifact.id, artifact.projectId);
 	}
 }
 
@@ -72,7 +105,7 @@ const statusIconMap: Record<
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table') {
+		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
 			result.push(entry);
 		}
 	}
@@ -82,6 +115,7 @@ const artifacts = computed((): ResourceEntry[] => {
 const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
+	agent: 'robot',
 };
 
 function artifactHref(artifact: ResourceEntry) {
@@ -91,16 +125,85 @@ function artifactHref(artifact: ResourceEntry) {
 			? `/projects/${artifact.projectId}/datatables/${artifact.id}`
 			: '/data-tables';
 	}
+	if (artifact.type === 'agent') {
+		if (artifact.pending) return '#';
+		return artifact.projectId
+			? `/projects/${artifact.projectId}/agents/${artifact.id}`
+			: '/home/agents';
+	}
 	return '#';
 }
 
 function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
+
+function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry {
+	const key = handoffContextKey(context);
+
+	if (context.source === 'agent-preview') {
+		return {
+			key,
+			icon: agentPreviewContextIcon(context.agentIcon),
+			name: formatAgentPreviewContextLabel(
+				context,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(context.agentId)?.name,
+			),
+			subtitle: i18n.baseText('instanceAi.artifactsPanel.context.addedToContext'),
+		};
+	}
+
+	return {
+		key,
+		icon: 'key-round',
+		name: context.credential.displayName,
+		subtitle: i18n.baseText('instanceAi.artifactsPanel.context.credentialModal'),
+	};
+}
+
+const contextEntries = computed<ContextEntry[]>(() => {
+	const entries: ContextEntry[] = [];
+	const seen = new Set<string>();
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+
+	// Pending handoff (preview "Send to Assistant") lives on the composer until
+	// the first send — include it so the sidebar matches the input chip.
+	const pending = pendingComposerContext?.value;
+	if (pending) {
+		const key = handoffContextKey(pending);
+		seen.add(key);
+		entries.push(contextEntryFor(pending));
+	}
+
+	for (const message of [...thread.messages].reverse()) {
+		if (message.role !== 'user' || !message.context) continue;
+
+		const key = handoffContextKey(message.context);
+		if (seen.has(key) || dismissedKeys.has(key)) continue;
+		seen.add(key);
+		entries.push(contextEntryFor(message.context));
+	}
+
+	return entries;
+});
+
+async function dismissContext(key: string) {
+	const pending = pendingComposerContext?.value;
+	if (pending && handoffContextKey(pending) === key) {
+		dismissPendingComposerContext?.(key);
+		return;
+	}
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(key);
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
+}
 </script>
 
 <template>
-	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
+	<aside :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
 			<!-- Project section -->
 			<div :class="$style.section">
@@ -116,6 +219,42 @@ function openArtifactLabel(name: string) {
 							<ProjectIcon :icon="project.icon" size="small" border-less />
 						</span>
 						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Context section -->
+			<div v-if="contextEntries.length > 0" :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.context.title') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.contextList">
+					<div
+						v-for="entry in contextEntries"
+						:key="entry.key"
+						:class="$style.contextRow"
+						data-test-id="instance-ai-context-row"
+					>
+						<span :class="$style.artifactIconWrap">
+							<N8nIcon :icon="entry.icon" size="large" :class="$style.artifactIcon" />
+						</span>
+						<span :class="$style.contextText">
+							<span :class="$style.contextName">{{ entry.name }}</span>
+							<span :class="$style.contextSubtitle">{{ entry.subtitle }}</span>
+						</span>
+						<N8nIconButton
+							icon="x"
+							variant="ghost"
+							size="xsmall"
+							:class="$style.contextDismiss"
+							:aria-label="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
+							:title="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
+							data-test-id="instance-ai-context-dismiss"
+							@click="dismissContext(entry.key)"
+						/>
 					</div>
 				</div>
 			</div>
@@ -188,9 +327,6 @@ function openArtifactLabel(name: string) {
 					</div>
 				</div>
 			</div>
-
-			<!-- Connections section -->
-			<ConnectionsCard :dropdown-portal-target="panelRef" />
 		</div>
 	</aside>
 </template>
@@ -255,6 +391,48 @@ function openArtifactLabel(name: string) {
 .artifactList {
 	display: flex;
 	flex-direction: column;
+}
+
+.contextList {
+	display: flex;
+	flex-direction: column;
+}
+
+.contextRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+}
+
+.contextText {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.contextName {
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	color: var(--color--text--shade-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextSubtitle {
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	color: var(--color--text--tint-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextDismiss {
+	flex-shrink: 0;
+	margin-top: calc(var(--spacing--5xs) * -1);
 }
 
 .artifactRow {

@@ -5,12 +5,13 @@ import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 const MIN_ITEMS_FOR_SEARCH = 6;
@@ -63,6 +64,10 @@ const typeConfig: Record<DependencyType, { icon: IconName; labelKey: BaseTextKey
 		icon: 'table',
 		labelKey: 'workflows.dependencies.type.dataTables' as BaseTextKey,
 	},
+	agentUsage: {
+		icon: 'bot',
+		labelKey: 'workflows.dependencies.type.agents' as BaseTextKey,
+	},
 	errorWorkflow: {
 		icon: 'bug',
 		labelKey: 'workflows.dependencies.type.errorWorkflow' as BaseTextKey,
@@ -86,6 +91,7 @@ const displayOrder: DependencyType[] = [
 	'dataTableId',
 	'workflowCall',
 	'workflowParent',
+	'agentUsage',
 	'errorWorkflow',
 	'errorWorkflowParent',
 ];
@@ -100,6 +106,7 @@ const menuItems = computed(() => {
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
 		credentialId: [],
 		dataTableId: [],
+		agentUsage: [],
 		errorWorkflow: [],
 		errorWorkflowParent: [],
 		workflowCall: [],
@@ -171,6 +178,15 @@ function onSelect(value: string) {
 				window.open(href, '_blank');
 			}
 			break;
+		case 'agentUsage':
+			if (dep.projectId) {
+				const href = router.resolve({
+					name: AGENT_BUILDER_VIEW,
+					params: { projectId: dep.projectId, agentId: dep.id },
+				}).href;
+				window.open(href, '_blank');
+			}
+			break;
 	}
 }
 
@@ -201,7 +217,7 @@ async function onDropdownToggle(open: boolean) {
 </script>
 
 <template>
-	<N8nTooltip :content="tooltipText" placement="bottom" :show-after="300">
+	<N8nTooltip :content="tooltipText" placement="top" :show-after="300">
 		<N8nDropdownMenu
 			:items="menuItems"
 			placement="bottom-end"

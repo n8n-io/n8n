@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { readFileSync } from 'node:fs';
@@ -5,9 +6,10 @@ import promClient from 'prom-client';
 
 import { PrometheusPssMetricsService } from '../pss-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
+vi.mock('node:fs');
 
-const mockedReadFileSync = jest.mocked(readFileSync);
+const mockedReadFileSync = vi.mocked(readFileSync);
 
 describe('PrometheusPssMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -26,8 +28,8 @@ describe('PrometheusPssMetricsService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
-		jest.restoreAllMocks();
+		vi.clearAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -77,8 +79,8 @@ describe('PrometheusPssMetricsService', () => {
 	describe('collect callback', () => {
 		const extractCollectFn = () => {
 			service.init();
-			return jest.mocked(promClient.Gauge).mock.calls[0][0].collect! as unknown as (this: {
-				set: jest.Mock;
+			return vi.mocked(promClient.Gauge).mock.calls[0][0].collect! as unknown as (this: {
+				set: Mock;
 			}) => void;
 		};
 
@@ -87,7 +89,7 @@ describe('PrometheusPssMetricsService', () => {
 				'Rss:   100000 kB\nPss:    12345 kB\nShared_Clean:  5000 kB' as never,
 			);
 			const collectFn = extractCollectFn();
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 
 			collectFn.call(mockGauge);
 
@@ -97,7 +99,7 @@ describe('PrometheusPssMetricsService', () => {
 		it('should not call set when Pss line is not found', () => {
 			mockedReadFileSync.mockReturnValue('some content without pss' as never);
 			const collectFn = extractCollectFn();
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 
 			collectFn.call(mockGauge);
 
@@ -114,7 +116,7 @@ describe('PrometheusPssMetricsService', () => {
 				throw new Error('EACCES: permission denied');
 			});
 
-			const mockGauge = { set: jest.fn() };
+			const mockGauge = { set: vi.fn() };
 			expect(() => collectFn.call(mockGauge)).not.toThrow();
 			expect(mockGauge.set).not.toHaveBeenCalled();
 		});

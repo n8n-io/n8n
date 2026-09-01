@@ -15,21 +15,21 @@ CREATE TABLE "instance_ai_workflow_snapshots" ("runId" varchar(36) NOT NULL, "wo
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| runId | varchar(36) |  | false |  |  |  |
-| workflowName | varchar(255) |  | false |  |  |  |
-| resourceId | varchar(255) |  | true |  |  |  |
-| status | varchar |  | true |  |  |  |
-| snapshot | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| resourceId | varchar(255) |  | true |  |  |  |
+| runId | varchar(36) |  | false |  |  |  |
+| snapshot | TEXT |  | false |  |  |  |
+| status | varchar |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| workflowName | varchar(255) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | runId | PRIMARY KEY | PRIMARY KEY (runId) |
-| workflowName | PRIMARY KEY | PRIMARY KEY (workflowName) |
 | sqlite_autoindex_instance_ai_workflow_snapshots_1 | PRIMARY KEY | PRIMARY KEY (runId, workflowName) |
+| workflowName | PRIMARY KEY | PRIMARY KEY (workflowName) |
 
 ## Indexes
 
@@ -45,13 +45,13 @@ erDiagram
 
 
 "instance_ai_workflow_snapshots" {
-  varchar_36_ runId PK
-  varchar_255_ workflowName PK
-  varchar_255_ resourceId
-  varchar status
-  TEXT snapshot
   datetime_3_ createdAt
+  varchar_255_ resourceId
+  varchar_36_ runId PK
+  TEXT snapshot
+  varchar status
   datetime_3_ updatedAt
+  varchar_255_ workflowName PK
 }
 ```
 

@@ -47,6 +47,21 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	private bridgesByCaller = new WeakMap<object, RuntimeBridge>();
 
+	/**
+	 * Depth of the evaluation chain currently in progress, and when it started.
+	 * An expression can evaluate another one (`$evaluateExpression`), which
+	 * re-enters `evaluate()` through a synchronous host callback; the whole
+	 * chain runs on the time budget the outermost call started with.
+	 *
+	 * This is correct only while the whole path stays synchronous. Both fields
+	 * belong to the instance, so two chains that overlap would corrupt them. If
+	 * a host callback or `bridge.execute()` becomes async, pass the budget in
+	 * the call arguments instead.
+	 */
+	private chainDepth = 0;
+
+	private chainStart = 0;
+
 	private readonly createBridge: () => Promise<RuntimeBridge>;
 
 	constructor(config: EvaluatorConfig) {
@@ -83,8 +98,14 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		await this.pool.initialize();
 	}
 
-	async acquire(caller: object): Promise<void> {
-		if (this.bridgesByCaller.has(caller)) return;
+	/**
+	 * Acquire a bridge for the caller. Returns whether a bridge was newly
+	 * acquired: `false` means the caller already held one, so the current
+	 * scope must not release it (release is not reference-counted and would
+	 * return the caller's bridge to the pool mid-use).
+	 */
+	async acquire(caller: object): Promise<boolean> {
+		if (this.bridgesByCaller.has(caller)) return false;
 		let bridge: RuntimeBridge;
 		try {
 			bridge = this.pool.acquire();
@@ -95,6 +116,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		}
 		this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
 		this.bridgesByCaller.set(caller, bridge);
+		return true;
 	}
 
 	evaluate(
@@ -107,21 +129,34 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const bridge = this.getBridge(caller);
 
-		// Transform template expression → sanitized JavaScript (cached)
-		const transformedCode = this.getTransformedCode(expression);
-
-		const { observability } = this.config;
-		const start = performance.now();
+		// Anchor the chain's clock before transformation, so that parsing an
+		// uncached expression counts against the shared budget instead of
+		// escaping it. Transformation runs inside the try to keep the depth
+		// counter balanced if it throws.
+		const nested = this.chainDepth > 0;
+		if (!nested) this.chainStart = performance.now();
+		this.chainDepth++;
 
 		try {
-			const result = bridge.execute(transformedCode, data, {
-				timezone: options?.timezone,
-			});
-			recordOutcome(observability, start, 'success');
-			return result;
-		} catch (error) {
-			recordOutcome(observability, start, 'error', error);
-			throw error;
+			// Transform template expression → sanitized JavaScript (cached)
+			const transformedCode = this.getTransformedCode(expression);
+
+			const { observability } = this.config;
+			const start = performance.now();
+
+			try {
+				const result = bridge.execute(transformedCode, data, {
+					timezone: options?.timezone,
+					elapsedMs: nested ? start - this.chainStart : undefined,
+				});
+				recordOutcome(observability, start, 'success');
+				return result;
+			} catch (error) {
+				recordOutcome(observability, start, 'error', error);
+				throw error;
+			}
+		} finally {
+			this.chainDepth--;
 		}
 	}
 

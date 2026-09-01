@@ -1,6 +1,6 @@
 import { CredentialsHelper } from '@nodes-testing/credentials-helper';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { convertN8nRequestToAxios } from '@n8n/backend-network';
+import { convertN8nRequestToAxios } from '@n8n/backend-network/testing';
 import type {
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
@@ -9,11 +9,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
+import type { MockInstance } from 'vitest';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 import { ignoreHttpStatusErrorsConfig } from '../descriptions/common';
-import { handleErrorPostReceive } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	validateGroupPreSend,
+	validateUserPreSend,
+} from '../GenericFunctions';
 
 describe('Microsoft Entra Node', () => {
 	const testHarness = new NodeTestHarness();
@@ -110,6 +115,83 @@ describe('Microsoft Entra Node', () => {
 		}
 	});
 
+	describe('Path ID wiring', () => {
+		const { properties } = new MicrosoftEntra().description;
+		const resourceLocators = properties.filter((property) => property.type === 'resourceLocator');
+
+		const routingUrls = properties
+			.flatMap((property) => property.options ?? [])
+			.flatMap((option) =>
+				'routing' in option && typeof option.routing?.request?.url === 'string'
+					? [option.routing.request.url]
+					: [],
+			);
+
+		// Derived from the sinks rather than hardcoded, so a new ID in a URL template fails here
+		// until it is guarded too.
+		const interpolatedIds = new Set(
+			routingUrls.flatMap((url) =>
+				[...url.matchAll(/\$parameter\["([^"]+)"\]/g)].map(([, name]) => name),
+			),
+		);
+
+		it('interpolates only the user and group IDs into request URLs', () => {
+			expect([...interpolatedIds].sort()).toEqual(['group', 'user']);
+		});
+
+		it('has a resource locator for every parameter interpolated into a request URL', () => {
+			for (const name of interpolatedIds) {
+				expect(
+					resourceLocators.filter((property) => property.name === name).length,
+					name,
+				).toBeGreaterThan(0);
+			}
+		});
+
+		it('guards every resource locator', () => {
+			for (const property of resourceLocators) {
+				expect(property.routing?.send?.preSend, property.displayName).toContain(
+					property.name === 'user' ? validateUserPreSend : validateGroupPreSend,
+				);
+			}
+		});
+
+		it('encodes every parameter interpolated into a request URL', () => {
+			for (const url of routingUrls) {
+				const unwrapped = url.replace(/encodeURIComponent\(\s*\$parameter\["[^"]+"\]\s*\)/g, '');
+				expect(unwrapped, url).not.toContain('$parameter[');
+			}
+		});
+
+		// The guard reads the ID with `extractValue`, while the URL template reads it through
+		// `$parameter`, which additionally applies a stored `__regex`. Declaring `extractValue` on a
+		// mode would split the two readings apart.
+		it('declares no extractValue on any resource locator mode', () => {
+			for (const property of resourceLocators) {
+				for (const mode of property.modes ?? []) {
+					expect(
+						mode.extractValue,
+						`${property.displayName} / ${mode.displayName}`,
+					).toBeUndefined();
+				}
+			}
+		});
+
+		it('still composes the @odata.id body when adding a user to a group', () => {
+			const addGroupUser = properties.find(
+				(property) =>
+					property.name === 'user' &&
+					property.displayOptions?.show?.operation?.includes('addGroup'),
+			);
+
+			expect(addGroupUser?.routing?.send?.property).toBe('@odata.id');
+			expect(addGroupUser?.routing?.send?.value).toContain(
+				'directoryObjects/{{ encodeURIComponent($value) }}',
+			);
+			expect(addGroupUser?.routing?.send?.preSend).toContain(validateUserPreSend);
+		});
+	});
+
 	describe('HTTP status handling', () => {
 		it('handles non-authentication errors in the node error handler', async () => {
 			const axiosRequest = convertN8nRequestToAxios({
@@ -128,8 +210,8 @@ describe('Microsoft Entra Node', () => {
 				},
 			};
 			const context = {
-				getNode: jest.fn().mockReturnValue({ name: 'Microsoft Entra ID' }),
-				getNodeParameter: jest.fn((parameterName: string) => {
+				getNode: vi.fn().mockReturnValue({ name: 'Microsoft Entra ID' }),
+				getNodeParameter: vi.fn((parameterName: string) => {
 					if (parameterName === 'resource') return 'user';
 					if (parameterName === 'operation') return 'delete';
 					return '';
@@ -147,12 +229,12 @@ describe('Microsoft Entra Node', () => {
 		it('should load group properties', async () => {
 			const mockContext = {
 				helpers: {
-					requestWithAuthentication: jest
+					requestWithAuthentication: vi
 						.fn()
 						.mockReturnValue(microsoftEntraApiResponse.metadata.groups),
 				},
-				getCurrentNodeParameter: jest.fn(),
-				getCredentials: jest.fn().mockResolvedValue({
+				getCurrentNodeParameter: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -168,12 +250,12 @@ describe('Microsoft Entra Node', () => {
 		it('should load user properties', async () => {
 			const mockContext = {
 				helpers: {
-					requestWithAuthentication: jest
+					requestWithAuthentication: vi
 						.fn()
 						.mockReturnValue(microsoftEntraApiResponse.metadata.users),
 				},
-				getCurrentNodeParameter: jest.fn(),
-				getCredentials: jest.fn().mockResolvedValue({
+				getCurrentNodeParameter: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -196,12 +278,12 @@ describe('Microsoft Entra Node', () => {
 				})),
 				'@odata.nextLink': '',
 			};
-			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(mockResponse);
 			const mockContext = {
 				helpers: {
 					requestWithAuthentication: mockRequestWithAuthentication,
 				},
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -235,12 +317,12 @@ describe('Microsoft Entra Node', () => {
 				})),
 				'@odata.nextLink': '',
 			};
-			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(mockResponse);
 			const mockContext = {
 				helpers: {
 					requestWithAuthentication: mockRequestWithAuthentication,
 				},
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -289,12 +371,12 @@ describe('Microsoft Entra Node', () => {
 			},
 		};
 
-		let updateCredentialsSpy: jest.SpyInstance;
+		let updateCredentialsSpy: MockInstance;
 
 		beforeEach(() => {
-			jest.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
+			vi.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
 
-			updateCredentialsSpy = jest
+			updateCredentialsSpy = vi
 				.spyOn(CredentialsHelper.prototype, 'updateCredentialsOauthTokenData')
 				.mockResolvedValue();
 
@@ -341,7 +423,7 @@ describe('Microsoft Entra Node', () => {
 		});
 
 		afterAll(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		testHarness.setupTest(

@@ -1,5 +1,5 @@
-import type { Daytona, DaytonaConfig } from '@daytonaio/sdk';
-import { getJwtExpiry } from '@n8n/utils';
+import type { Daytona, DaytonaConfig } from '@daytona/sdk';
+import { getJwtExpiry } from '@n8n/utils/get-jwt-expiry';
 
 import { loadDaytona } from './lazy-daytona';
 import type { Logger } from './logger';

@@ -20,7 +20,7 @@ import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
 import { bigintStringToNumber, idStringifier } from '../utils/transformers';
 
-export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3';
+export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -31,6 +31,11 @@ export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3';
 // Partial index (Postgres only) — supports paginated list queries filtered by
 // workflowId + status without full sequential scans. See migration 1784000000029.
 @Index(['workflowId', 'status', 'id'], { where: '"deletedAt" IS NULL' })
+// Partial unique index, critical for the durable scheduler: this index, not
+// the scheduler's claim, lease, or epoch fencing, is what suppresses a duplicate
+// effect per deduplicationKey when the at-least-once scheduler redelivers an
+// occurrence. Dropping it silently removes that protection.
+@Index(['deduplicationKey'], { unique: true, where: '"deduplicationKey" IS NOT NULL' })
 export class ExecutionEntity {
 	@Generated()
 	@PrimaryColumn({ transformer: idStringifier })
@@ -71,12 +76,12 @@ export class ExecutionEntity {
 
 	@Index()
 	@DateTimeColumn({ nullable: true })
-	stoppedAt: Date;
+	stoppedAt: Date | null;
 
 	@DeleteDateColumn({ type: datetimeColumnType as SimpleColumnType, nullable: true })
-	deletedAt: Date;
+	deletedAt: Date | null;
 
-	@Column({ nullable: true })
+	@Column()
 	workflowId: string;
 
 	@DateTimeColumn({ nullable: true })
@@ -111,12 +116,24 @@ export class ExecutionEntity {
 	jsonSizeBytes: number;
 
 	/**
+	 * Size in bytes of the binary data offloaded to separate storage (db/fs/S3),
+	 * deduplicated by stored blob. Excludes inline binary from legacy in-memory
+	 * executions, which lives in the bundle counted by {@link jsonSizeBytes}, so the
+	 * two are additive. `0` means unknown.
+	 */
+	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
+	binaryDataSizeBytes: number;
+
+	/**
 	 * Version id of the workflow this execution ran, denormalized from the data
 	 * bundle so it can be queried without loading the bundle. `null` when the
 	 * workflow had no version (e.g. unsaved manual executions).
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowVersionId: string | null;
+
+	@Column({ default: false })
+	usedPrivateCredentials: boolean;
 
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];

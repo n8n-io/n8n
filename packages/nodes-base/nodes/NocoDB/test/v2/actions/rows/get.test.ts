@@ -2,13 +2,17 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/get.operation';
 import { apiRequest, downloadRecordAttachments } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport/index';
 
-jest.mock('../../../../v2/transport/index', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport/index');
+vi.mock('../../../../v2/transport/index', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>(
+		'../../../../v2/transport/index',
+	);
 	return {
 		...originalModule,
-		apiRequest: { call: jest.fn() },
-		downloadRecordAttachments: { call: jest.fn() },
+		apiRequest: { call: vi.fn() },
+		downloadRecordAttachments: { call: vi.fn() },
 	};
 });
 
@@ -17,29 +21,29 @@ describe('NocoDB Rows Get Action', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn(() => [{ json: {} }]),
-			continueOnFail: jest.fn(() => false),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn(() => [{ json: {} }]),
+			continueOnFail: vi.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((items) => items),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((items) => items),
 			},
-			getNode: jest.fn(() => {}),
+			getNode: vi.fn(() => {}),
 		} as unknown as IExecuteFunctions;
-		(apiRequest.call as jest.Mock).mockClear();
-		(downloadRecordAttachments.call as jest.Mock).mockClear();
+		(apiRequest.call as Mock).mockClear();
+		(downloadRecordAttachments.call as Mock).mockClear();
 	});
 
 	describe('execute', () => {
 		it('should return data for a single row without attachments', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'base1';
 				if (name === 'table') return 'table1';
 				if (name === 'id') return 'row1';
 				if (name === 'downloadAttachments') return false;
 				return undefined;
 			});
-			(apiRequest.call as jest.Mock).mockResolvedValue({ id: 'row1', name: 'Test Row' });
+			(apiRequest.call as Mock).mockResolvedValue({ id: 'row1', name: 'Test Row' });
 
 			const result = await execute.call(mockExecuteFunctions);
 
@@ -54,7 +58,7 @@ describe('NocoDB Rows Get Action', () => {
 		});
 
 		it('should return data for a single row with attachments', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'base1';
 				if (name === 'table') return 'table1';
 				if (name === 'id') return 'row1';
@@ -62,12 +66,12 @@ describe('NocoDB Rows Get Action', () => {
 				if (name === 'downloadFieldNames') return ['attachmentField'];
 				return undefined;
 			});
-			(apiRequest.call as jest.Mock).mockResolvedValue({
+			(apiRequest.call as Mock).mockResolvedValue({
 				id: 'row1',
 				name: 'Test Row',
 				attachmentField: 'url',
 			});
-			(downloadRecordAttachments.call as jest.Mock).mockResolvedValue([
+			(downloadRecordAttachments.call as Mock).mockResolvedValue([
 				{ binary: { attachmentField: { data: 'binaryData' } } },
 			]);
 
@@ -92,15 +96,15 @@ describe('NocoDB Rows Get Action', () => {
 		});
 
 		it('should handle errors and continue on fail', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'base1';
 				if (name === 'table') return 'table1';
 				if (name === 'id') return 'row1';
 				if (name === 'downloadAttachments') return false;
 				return undefined;
 			});
-			(apiRequest.call as jest.Mock).mockRejectedValue(new Error('API Error'));
-			(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+			(apiRequest.call as Mock).mockRejectedValue(new Error('API Error'));
+			(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 			const result = await execute.call(mockExecuteFunctions);
 
@@ -108,15 +112,15 @@ describe('NocoDB Rows Get Action', () => {
 		});
 
 		it('should throw NodeApiError when continueOnFail is false', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'projectId') return 'base1';
 				if (name === 'table') return 'table1';
 				if (name === 'id') return 'row1';
 				if (name === 'downloadAttachments') return false;
 				return undefined;
 			});
-			(apiRequest.call as jest.Mock).mockRejectedValue(new Error('API Error'));
-			(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(false);
+			(apiRequest.call as Mock).mockRejectedValue(new Error('API Error'));
+			(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(false);
 
 			await expect(execute.call(mockExecuteFunctions)).rejects.toThrow('API Error');
 		});

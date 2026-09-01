@@ -1,17 +1,18 @@
-import { ALL_ROLES } from '@n8n/permissions';
-import type { Role, Scope } from '@n8n/permissions';
-
-import { createMember } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
-import { Container } from '@n8n/di';
 import { AuthRolesService, SettingsRepository } from '@n8n/db';
-import { SecuritySettingsService } from '@/services/security-settings.service';
+import { Container } from '@n8n/di';
+import type { Role, Scope } from '@n8n/permissions';
 import {
+	ALL_ROLES,
 	PROJECT_SCOPE_MAP,
 	PERSONAL_SPACE_SHARING_SETTING,
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 } from '@n8n/permissions';
+
+import { SecuritySettingsService } from '@/services/security-settings.service';
+
+import { createMember } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],

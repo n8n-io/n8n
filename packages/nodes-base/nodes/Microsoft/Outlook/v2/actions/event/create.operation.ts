@@ -286,7 +286,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		...additionalFields,
 	};
 
-	const responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
+	const responseData = await microsoftApiRequest.call(this, 'POST', endpoint, index, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject),

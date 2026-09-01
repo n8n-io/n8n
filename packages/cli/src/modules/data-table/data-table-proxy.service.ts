@@ -22,15 +22,17 @@ import {
 	UpdateDataTableRowOptions,
 	UpsertDataTableRowOptions,
 	Workflow,
+	NodeOperationError,
 } from 'n8n-workflow';
-
-import { DataTableAggregateService } from './data-table-aggregate.service';
-import { DataTableService } from './data-table.service';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
+
+import { DataTableAggregateService } from './data-table-aggregate.service';
+import { DataTableService } from './data-table.service';
+import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 
 const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTable',
@@ -52,14 +54,13 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		private readonly dataTableAggregateService: DataTableAggregateService,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
 
 	private checkInstanceWriteAccess(): void {
-		const preferences = this.sourceControlPreferencesService.getPreferences();
-		if (preferences.branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new ForbiddenError(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);
@@ -96,6 +97,22 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	): Promise<IDataTableProjectService> {
 		this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
+
+		try {
+			await this.dataTableService.validateDataTableExists(dataTableId, projectId);
+		} catch (error) {
+			if (error instanceof DataTableNotFoundError) {
+				throw new NodeOperationError(
+					node,
+					`Data table with ID '${dataTableId}' could not be found in this project`,
+					{
+						description:
+							'It may have been deleted, or skipped when the workflow was imported. Choose an existing data table in the node.',
+					},
+				);
+			}
+			throw error;
+		}
 
 		return this.makeDataTableOperations(projectId, dataTableId);
 	}
@@ -199,6 +216,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			async updateRows(dataTableId: string, projectId: string, options: UpdateDataTableRowOptions) {
 				checkInstanceWriteAccess();
 				await requireScope('dataTable:writeRow', projectId);
+				// unconditional because this proxy always returns the affected rows
+				await requireScope('dataTable:readRow', projectId);
 				return await dataTableService.updateRows(
 					dataTableId,
 					projectId,
@@ -215,6 +234,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			) {
 				checkInstanceWriteAccess();
 				await requireScope('dataTable:writeRow', projectId);
+				// unconditional because this proxy always returns the affected rows
+				await requireScope('dataTable:readRow', projectId);
 				return await dataTableService.deleteRows(
 					dataTableId,
 					projectId,
@@ -222,6 +243,12 @@ export class DataTableProxyService implements DataTableProxyProvider {
 					true,
 					options.dryRun,
 				);
+			},
+
+			async clearRows(dataTableId: string, projectId: string) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:writeRow', projectId);
+				return await dataTableService.clearRows(dataTableId, projectId);
 			},
 		};
 	}
@@ -324,6 +351,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 					true,
 					options.dryRun,
 				);
+			},
+
+			async clearRows() {
+				return await dataTableService.clearRows(dataTableId, projectId);
 			},
 		};
 	}

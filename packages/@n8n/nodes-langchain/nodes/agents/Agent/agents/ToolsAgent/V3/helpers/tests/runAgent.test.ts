@@ -5,7 +5,7 @@ import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { RequestResponseMetadata } from '@utils/agent-execution';
+import type { RequestResponseMetadata, ToolCallData } from '@utils/agent-execution';
 import * as agentExecution from '@utils/agent-execution';
 import * as tracing from '@utils/tracing';
 
@@ -430,5 +430,161 @@ describe('runAgent - tracing configuration', () => {
 		});
 		expect(mockWithConfig).toHaveBeenCalledWith(mockTracingConfig);
 		expect(mockStreamEvents).toHaveBeenCalled();
+	});
+});
+
+describe('runAgent - intermediate steps', () => {
+	const buildStep = (): ToolCallData => ({
+		action: {
+			tool: 'TestTool',
+			toolInput: { input: 'test' },
+			log: 'Calling TestTool',
+			messageLog: [],
+			toolCallId: 'call_123',
+			type: 'tool_call',
+		},
+		observation: 'tool result',
+	});
+
+	it('should include an empty intermediateSteps array when no tools were used (non-streaming)', async () => {
+		const mockInvoke = vi.fn().mockResolvedValue({
+			returnValues: { output: 'Final answer' },
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: true,
+			},
+			outputParser: undefined,
+		};
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		const result = await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
+
+		expect(result).toHaveProperty('intermediateSteps');
+		expect((result as any).intermediateSteps).toEqual([]);
+	});
+
+	it('should include populated intermediateSteps when tools were used (non-streaming)', async () => {
+		const mockInvoke = vi.fn().mockResolvedValue({
+			returnValues: { output: 'Final answer' },
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const steps = [buildStep()];
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps,
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: true,
+			},
+			outputParser: undefined,
+		};
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		const result = await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
+
+		expect((result as any).intermediateSteps).toEqual(steps);
+	});
+
+	it('should not include intermediateSteps when the option is disabled (non-streaming)', async () => {
+		const mockInvoke = vi.fn().mockResolvedValue({
+			returnValues: { output: 'Final answer' },
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [buildStep()],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: false,
+			},
+			outputParser: undefined,
+		};
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		const result = await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
+
+		expect(result).not.toHaveProperty('intermediateSteps');
+	});
+
+	it('should include an empty intermediateSteps array when no tools were used (streaming)', async () => {
+		const mockEventStream = (async function* () {})();
+		const mockStreamEvents = vi.fn().mockReturnValue(mockEventStream);
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
+		});
+		const mockModel = mock<BaseChatModel>();
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: true,
+				enableStreaming: true,
+			},
+			outputParser: undefined,
+		};
+
+		const streamingContext = mock<IExecuteFunctions>({
+			getNode: vi.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: vi.fn().mockReturnValue(true),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
+		});
+		streamingContext.getExecuteData = vi.fn() as any;
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+			output: 'Streamed answer',
+		});
+
+		const result = await runAgent(
+			streamingContext,
+			mockExecutor,
+			itemContext,
+			mockModel,
+			undefined,
+		);
+
+		expect(result).toHaveProperty('intermediateSteps');
+		expect((result as any).intermediateSteps).toEqual([]);
 	});
 });

@@ -15,26 +15,26 @@ CREATE TABLE "instance_ai_run_snapshots" ("threadId" varchar NOT NULL, "runId" v
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| threadId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
-| runId | varchar(36) |  | false |  |  |  |
-| messageGroupId | varchar(36) |  | true |  |  |  |
-| runIds | TEXT |  | true |  |  |  |
-| tree | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | langsmithRunId | varchar(36) |  | true |  |  |  |
 | langsmithTraceId | varchar(36) |  | true |  |  |  |
-| traceId | varchar(64) |  | true |  |  |  |
+| messageGroupId | varchar(36) |  | true |  |  |  |
+| runId | varchar(36) |  | false |  |  |  |
+| runIds | TEXT |  | true |  |  |  |
 | spanId | varchar(64) |  | true |  |  |  |
+| threadId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
+| traceId | varchar(64) |  | true |  |  |  |
+| tree | TEXT |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| threadId | PRIMARY KEY | PRIMARY KEY (threadId) |
-| runId | PRIMARY KEY | PRIMARY KEY (runId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| runId | PRIMARY KEY | PRIMARY KEY (runId) |
 | sqlite_autoindex_instance_ai_run_snapshots_1 | PRIMARY KEY | PRIMARY KEY (threadId, runId) |
+| threadId | PRIMARY KEY | PRIMARY KEY (threadId) |
 
 ## Indexes
 
@@ -52,25 +52,25 @@ erDiagram
 "instance_ai_run_snapshots" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_run_snapshots" {
-  varchar threadId PK
-  varchar_36_ runId PK
-  varchar_36_ messageGroupId
-  TEXT runIds
-  TEXT tree
   datetime_3_ createdAt
-  datetime_3_ updatedAt
   varchar_36_ langsmithRunId
   varchar_36_ langsmithTraceId
-  varchar_64_ traceId
+  varchar_36_ messageGroupId
+  varchar_36_ runId PK
+  TEXT runIds
   varchar_64_ spanId
+  varchar threadId PK
+  varchar_64_ traceId
+  TEXT tree
+  datetime_3_ updatedAt
 }
 "instance_ai_threads" {
-  varchar id PK
-  varchar_255_ resourceId
-  varchar_36_ projectId FK
-  TEXT title
-  TEXT metadata
   datetime_3_ createdAt
+  varchar id PK
+  TEXT metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  TEXT title
   datetime_3_ updatedAt
 }
 ```

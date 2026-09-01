@@ -4,37 +4,66 @@ import {
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
 	type INodeListSearchResult,
-	sleep,
 } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import { filterSortSearchListItems } from '../helpers/utils';
-import { microsoftApiRequest } from '../transport';
+import {
+	buildTeamsPath,
+	getTeamsCredentialType,
+	joinedTeamsEndpoint,
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+	SERVICE_PRINCIPAL_AUTH,
+} from '../transport';
 
 export async function getChats(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
+	// App-only Microsoft Graph has no signed-in user, so `/v1.0/chats` (which is
+	// `/me`-scoped) cannot be listed. Fail fast with a static message before any
+	// request — chat resources are hidden under the Service Principal credential.
+	if (getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Chats are not available with the Service Principal credential',
+			{
+				description:
+					'App-only Microsoft Graph has no signed-in user to read chats for. Use an OAuth2 credential for chat actions.',
+			},
+		);
+	}
+
 	const returnData: INodeListSearchItems[] = [];
 	const qs: IDataObject = {
 		$expand: 'members',
 	};
 
+	// `/v1.0/chats` occasionally 5xxs transiently; retry up to `maxAttempts` times,
+	// sleeping 1s between attempts (not after the last one), and surface the final
+	// failure instead of swallowing it as an empty result.
+	const maxAttempts = 5;
 	let value: IDataObject[] = [];
-	let attempts = 5;
-	do {
+	let lastError: Error | undefined;
+
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
 		try {
 			value = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs)) as IDataObject)
 				.value as IDataObject[];
+			lastError = undefined;
 			break;
 		} catch (error) {
-			if (attempts > 0) {
+			lastError = error;
+			if (attempt < maxAttempts - 1) {
 				await sleep(1000);
-				attempts--;
-			} else {
-				throw new NodeOperationError(this.getNode(), error);
 			}
 		}
-	} while (attempts > 0);
+	}
+
+	if (lastError) {
+		throw new NodeOperationError(this.getNode(), lastError);
+	}
 
 	for (const chat of value) {
 		if (!chat.topic) {
@@ -78,7 +107,15 @@ export async function getTeams(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
+	// `/v1.0/teams` (SP) and `/v1.0/me/joinedTeams` (OAuth2) are both Graph-paginated
+	// collections — page through `@odata.nextLink` so all org teams are returned, not
+	// just the first ~100. `microsoftApiRequestAllItems` returns the flattened `value`.
+	const value = await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		joinedTeamsEndpoint.call(this),
+	);
 
 	for (const team of value) {
 		const teamName = team.displayName;
@@ -128,7 +165,11 @@ export async function getChannels(
 
 	if (resource === 'channel') excludeGeneralChannel.push('update');
 
-	const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/teams/${teamId}/channels`);
+	const { value } = await microsoftApiRequest.call(
+		this,
+		'GET',
+		buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/channels']),
+	);
 
 	for (const channel of value) {
 		if (channel.displayName === 'General' && excludeGeneralChannel.includes(operation)) {
@@ -153,25 +194,17 @@ export async function getGroups(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	// const groupSource = this.getCurrentNodeParameter('groupSource') as string;
-	const requestUrl = '/v1.0/groups' as string;
+	const value = await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		joinedTeamsEndpoint.call(this),
+	);
 
-	// if (groupSource === 'mine') {
-	// 	requestUrl = '/v1.0/me/transitiveMemberOf';
-	// }
-
-	const { value } = await microsoftApiRequest.call(this, 'GET', requestUrl);
-
-	for (const group of value) {
-		if (group.displayName === 'All Company') continue;
-
-		const name = group.displayName || group.mail;
-
-		if (name === undefined) continue;
-
+	for (const team of value) {
 		returnData.push({
-			name,
-			value: group.id,
+			name: team.displayName,
+			value: team.id,
 		});
 	}
 
@@ -202,7 +235,7 @@ export async function getPlans(
 	const { value } = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/groups/${groupId}/planner/plans`,
+		buildTeamsPath.call(this, ['/v1.0/groups/', { id: groupId }, '/planner/plans']),
 	);
 	for (const plan of value) {
 		returnData.push({
@@ -236,7 +269,7 @@ export async function getBuckets(
 	const { value } = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/planner/plans/${planId}/buckets`,
+		buildTeamsPath.call(this, ['/v1.0/planner/plans/', { id: planId }, '/buckets']),
 	);
 	for (const bucket of value) {
 		returnData.push({
@@ -266,7 +299,11 @@ export async function getMembers(
 			extractValue: true,
 		}) as string;
 	}
-	const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/groups/${groupId}/members`);
+	const { value } = await microsoftApiRequest.call(
+		this,
+		'GET',
+		buildTeamsPath.call(this, ['/v1.0/groups/', { id: groupId }, '/members']),
+	);
 
 	for (const member of value) {
 		returnData.push({

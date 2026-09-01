@@ -22,19 +22,19 @@ CREATE TABLE "auth_identity" (
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| userId | VARCHAR(36) |  | true |  | [user](user.md) |  |
+| createdAt | timestamp | CURRENT_TIMESTAMP | false |  |  |  |
 | providerId | VARCHAR(64) |  | false |  |  |  |
 | providerType | VARCHAR(32) |  | false |  |  |  |
-| createdAt | timestamp | CURRENT_TIMESTAMP | false |  |  |  |
 | updatedAt | timestamp | CURRENT_TIMESTAMP | false |  |  |  |
+| userId | VARCHAR(36) |  | true |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
 | providerId | PRIMARY KEY | PRIMARY KEY (providerId) |
 | providerType | PRIMARY KEY | PRIMARY KEY (providerType) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
 | sqlite_autoindex_auth_identity_1 | PRIMARY KEY | PRIMARY KEY (providerId, providerType) |
 
 ## Indexes
@@ -51,28 +51,28 @@ erDiagram
 "auth_identity" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 
 "auth_identity" {
-  VARCHAR_36_ userId FK
+  timestamp createdAt
   VARCHAR_64_ providerId PK
   VARCHAR_32_ providerType PK
-  timestamp createdAt
   timestamp updatedAt
+  VARCHAR_36_ userId FK
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

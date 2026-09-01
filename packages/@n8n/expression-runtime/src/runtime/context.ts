@@ -52,30 +52,23 @@ type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
 // ============================================================================
 
 /**
- * The subset of `ivm.Reference` shape the in-isolate runtime relies on.
- * Declared locally rather than importing from `isolated-vm` because this
- * module is bundled into the isolate IIFE, where the native module is
- * unavailable. The host wires real `ivm.Reference` instances which
- * structurally satisfy this interface.
+ * A bridge callback as seen from inside the isolate: a plain function.
+ * The host wires these as `ivm.Callback` instances, which arrive in the
+ * isolate as ordinary functions whose arguments and return value are copied
+ * via the structured-clone algorithm.
  */
-interface BridgeCallback {
-	applySync(
-		thisArg: unknown,
-		args: unknown[],
-		options?: { arguments?: { copy?: boolean }; result?: { copy?: boolean } },
-	): unknown;
-}
+type BridgeCallback = (...args: unknown[]) => unknown;
 
 /**
- * Bridge callbacks the in-isolate runtime can invoke synchronously via
- * `ivm.Reference.applySync`.
+ * Bridge callbacks the in-isolate runtime invokes synchronously as plain
+ * functions (host-side `ivm.Callback` instances).
  *
  *   - `getValueAtPath`, `getArrayElement`: data-access primitives used by the
- *     lazy-proxy system. Hot path; one ivm.Reference each for minimum overhead.
+ *     lazy-proxy system. Hot path; one ivm.Callback each for minimum overhead.
  *   - `callHost`: typed-RPC dispatcher. The in-isolate runtime constructs
  *     an envelope (e.g. `{ type: 'getNodeFirst', nodeName, ... }`) and the
  *     host-side dispatcher validates it with zod before routing to a handler.
- *     A single ivm.Reference covers every typed operation; new operations
+ *     A single ivm.Callback covers every typed operation; new operations
  *     are new schemas in `bridge/bridge-messages.ts` + new cases in the
  *     dispatcher switch. The name reflects what this is: a synchronous
  *     host RPC, not a postMessage-style async send.
@@ -167,13 +160,11 @@ export function buildContext(
 	// Wire builtins so tournament's VariablePolyfill resolves them from ctx
 	initializeBuiltins(target);
 
-	// $item(itemIndex) returns a sub-proxy for the specified item (legacy syntax)
+	// $item(i) → single lazy proxy at ['$item', i]; the host bridge navigates
+	// data.$item(i).<rest> safely (see isolated-vm-bridge getValueAtPath),
+	// exposing the full accessor surface ($json, $binary, $node, $nodeId, ...).
 	target.$item = function (itemIndex: number) {
-		const indexStr = String(itemIndex);
-		return {
-			$json: createDeepLazyProxy(['$item', indexStr, '$json'], undefined, callbacks),
-			$binary: createDeepLazyProxy(['$item', indexStr, '$binary'], undefined, callbacks),
-		};
+		return createDeepLazyProxy(['$item', String(itemIndex)], undefined, callbacks);
 	};
 
 	// $() function for accessing other nodes.
@@ -200,11 +191,7 @@ export function buildContext(
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 		const sendNodeMethod = (type: NodeRpcType) => {
 			return (branchIndex?: number, runIndex?: number) => {
-				const result = callbacks.callHost.applySync(
-					null,
-					[{ type, nodeName, branchIndex, runIndex }],
-					{ arguments: { copy: true }, result: { copy: true } },
-				);
+				const result = callbacks.callHost({ type, nodeName, branchIndex, runIndex });
 				throwIfErrorSentinel(result);
 				return result;
 			};
@@ -219,18 +206,12 @@ export function buildContext(
 			type: 'getNodePairedItem' | 'getNodeItemMatching',
 			itemIndex?: number,
 		) => {
-			const result = callbacks.callHost.applySync(null, [{ type, nodeName, itemIndex }], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
+			const result = callbacks.callHost({ type, nodeName, itemIndex });
 			throwIfErrorSentinel(result);
 			return result;
 		};
 		const sendGetNodeItem = () => {
-			const result = callbacks.callHost.applySync(null, [{ type: 'getNodeItem', nodeName }], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
+			const result = callbacks.callHost({ type: 'getNodeItem', nodeName });
 			throwIfErrorSentinel(result);
 			return result;
 		};
@@ -273,10 +254,7 @@ export function buildContext(
 	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
 	const sendInputMethod = (type: InputRpcType) => {
 		return () => {
-			const result = callbacks.callHost.applySync(null, [{ type }], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
+			const result = callbacks.callHost({ type });
 			throwIfErrorSentinel(result);
 			return result;
 		};
@@ -297,11 +275,7 @@ export function buildContext(
 	// args, and the host's `WorkflowDataProxy.$items` applies its own
 	// defaults when fields are undefined.
 	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-		const result = callbacks.callHost.applySync(
-			null,
-			[{ type: 'getItems', nodeName, outputIndex, runIndex }],
-			{ arguments: { copy: true }, result: { copy: true } },
-		);
+		const result = callbacks.callHost({ type: 'getItems', nodeName, outputIndex, runIndex });
 		throwIfErrorSentinel(result);
 		return result;
 	};
@@ -318,11 +292,13 @@ export function buildContext(
 		valueType?: string,
 		defaultValue?: unknown,
 	) => {
-		const result = callbacks.callHost.applySync(
-			null,
-			[{ type: 'fromAi', name, description, valueType, defaultValue }],
-			{ arguments: { copy: true }, result: { copy: true } },
-		);
+		const result = callbacks.callHost({
+			type: 'fromAi',
+			name,
+			description,
+			valueType,
+			defaultValue,
+		});
 		throwIfErrorSentinel(result);
 		return result;
 	};
@@ -335,11 +311,7 @@ export function buildContext(
 	// Under the VM engine this re-enters the bridge on a fresh evaluation;
 	// the legacy engine handles it inline.
 	target.$evaluateExpression = (expression: string, itemIndex?: number) => {
-		const result = callbacks.callHost.applySync(
-			null,
-			[{ type: 'evaluateExpression', expression, itemIndex }],
-			{ arguments: { copy: true }, result: { copy: true } },
-		);
+		const result = callbacks.callHost({ type: 'evaluateExpression', expression, itemIndex });
 		throwIfErrorSentinel(result);
 		return result;
 	};
@@ -354,18 +326,12 @@ export function buildContext(
 		incomingSourceData: unknown,
 		initialPairedItem: unknown,
 	) => {
-		const result = callbacks.callHost.applySync(
-			null,
-			[
-				{
-					type: 'getPairedItem',
-					destinationNodeName,
-					incomingSourceData,
-					initialPairedItem,
-				},
-			],
-			{ arguments: { copy: true }, result: { copy: true } },
-		);
+		const result = callbacks.callHost({
+			type: 'getPairedItem',
+			destinationNodeName,
+			incomingSourceData,
+			initialPairedItem,
+		});
 		throwIfErrorSentinel(result);
 		return result;
 	};
@@ -376,7 +342,7 @@ export function buildContext(
 	// so each key is fetched at most once per evaluation.
 	// -------------------------------------------------------------------------
 
-	// Track keys we've already probed so we never call applySync twice
+	// Track keys we've already probed so we never call getValueAtPath twice
 	// for the same key — even if the host returned undefined.
 	const probedKeys = new Set<string>();
 
@@ -385,10 +351,7 @@ export function buildContext(
 
 		let value: unknown;
 		try {
-			value = callbacks.getValueAtPath.applySync(null, [[key]], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
+			value = callbacks.getValueAtPath([key]);
 		} catch {
 			// Don't mark as probed — the throw may be transient
 			// (e.g. host data not yet available) and a retry should be allowed.

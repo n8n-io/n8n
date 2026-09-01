@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';

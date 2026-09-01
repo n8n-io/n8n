@@ -8,13 +8,19 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
 import merge from 'lodash/merge';
-import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	establishExecutionContext,
+	ExecutionContextService,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
-	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
@@ -26,6 +32,8 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	WebhookResponseMode,
+	OAuth2FailureReason,
+	OAuthResourceGrant,
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -35,7 +43,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	createDeferredPromise,
 	createRunExecutionData,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
@@ -46,6 +53,7 @@ import {
 	tryToParseUrl,
 	UnexpectedError,
 	WAIT_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
@@ -53,14 +61,22 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
+import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import {
+	type AuthFailureReason,
+	OAuthTokenVerifierProxy,
+} from '@/services/oauth-token-verifier-proxy.service';
+import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
@@ -309,15 +325,36 @@ export function setupResponseNodePromise(
 ): void {
 	void responsePromise.promise
 		.then(async (response: IN8nHttpFullResponse) => {
+			if (response === EXECUTION_ENDED_WITHOUT_RESPONSE) {
+				// The execution ended without the Respond to Webhook node running. The
+				// post-execute handler answers instead, because only it knows whether the
+				// execution failed.
+				return;
+			}
+
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
+				if (response.statusCode) {
+					res.status(response.statusCode);
+				}
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				applySandboxCSP(res);
-				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-				stream.pipe(res, { end: false });
-				await finished(stream);
+				try {
+					const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
+					res.once('close', () => stream.destroy());
+					stream.pipe(res, { end: false });
+					await finished(stream);
+				} finally {
+					void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
+						workflowId: workflow.id,
+						executionId,
+					});
+				}
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
+				if (response.statusCode) {
+					res.status(response.statusCode);
+				}
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				applySandboxCSP(res);
 				res.end(response.body);
@@ -349,6 +386,55 @@ export function setupResponseNodePromise(
 		});
 }
 
+/**
+ * Predicate (not an action): checks whether the start node will establish a
+ * triggering-user identity from within its `webhook()` method (via
+ * `context.establishTriggerIdentity`). Such nodes need their `runExecutionData`
+ * created before the webhook runs, and the webhook output merged into the seeded
+ * execution stack afterwards.
+ *
+ * The Webhook node does this only when its opt-in "n8n User Auth (OAuth2)" mode
+ * (`n8nOAuth2`) is selected; the MCP / chat / Agent365 triggers always do.
+ */
+function shouldEstablishTriggerIdentity(workflowStartNode: INode): boolean {
+	return (
+		workflowStartNode.type === WEBHOOK_NODE_TYPE &&
+		workflowStartNode.parameters?.authentication === 'n8nOAuth2'
+	);
+}
+
+/**
+ * Reconciles a pre-seeded execution stack (identity/context trigger flows) with the
+ * webhook node's real output. No-op unless the start node seeded execution data.
+ *
+ * - MCP / chat / Agent365 (single-output triggers): index-merge the webhook output
+ *   into the seeded item so seeded input data is preserved.
+ * - n8n Identity webhook: the identity was already established from the seeded
+ *   placeholder during the node's `webhook()` call (credentials now live on
+ *   `executionData.runtimeData`, a sibling that survives the reassignment). Replace
+ *   the seeded stack with the real output instead of index-merging — a naive merge
+ *   keeps the empty placeholder in output slot 0 and would spuriously fire that
+ *   branch on multi-method webhooks.
+ */
+function reconcileSeededExecutionStack(
+	workflowStartNode: INode,
+	runExecutionData: IRunExecutionData | undefined,
+	nodeExecutionStack: IExecuteData[],
+): void {
+	const executionData = runExecutionData?.executionData;
+	if (!executionData?.nodeExecutionStack) return;
+
+	if (
+		[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(
+			workflowStartNode.type,
+		)
+	) {
+		merge(executionData.nodeExecutionStack, nodeExecutionStack);
+	} else if (shouldEstablishTriggerIdentity(workflowStartNode)) {
+		executionData.nodeExecutionStack = nodeExecutionStack;
+	}
+}
+
 export function prepareExecutionData(
 	executionMode: WorkflowExecuteMode,
 	workflowStartNode: INode,
@@ -371,14 +457,7 @@ export function prepareExecutionData(
 		},
 	];
 
-	if (
-		[MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(
-			workflowStartNode.type,
-		) &&
-		runExecutionData?.executionData?.nodeExecutionStack
-	) {
-		merge(runExecutionData.executionData.nodeExecutionStack, nodeExecutionStack);
-	}
+	reconcileSeededExecutionStack(workflowStartNode, runExecutionData, nodeExecutionStack);
 
 	runExecutionData ??= createRunExecutionData({
 		executionData: {
@@ -433,6 +512,15 @@ export async function executeWebhook(
 		data: IWebhookResponseCallbackData | WebhookResponse,
 	) => void,
 	destinationNode?: IDestinationNode,
+	options?: {
+		/**
+		 * Identity of the builder who registered this test webhook, for a manual run that
+		 * had to wait for a webhook and so never reached the point where a manual
+		 * execution normally picks its identity up from the auth cookie. Only a fallback:
+		 * a node that establishes its own carrier below still wins.
+		 */
+		encryptedRunnerIdentity?: string;
+	},
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -452,7 +540,7 @@ export async function executeWebhook(
 		additionalKeys,
 	);
 
-	let project: Project | undefined = undefined;
+	let project: Project;
 	try {
 		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
 	} catch (error) {
@@ -463,6 +551,11 @@ export async function executeWebhook(
 	const additionalData = await WorkflowExecuteAdditionalData.getBase({
 		projectId: project?.id,
 	});
+
+	// Guarded: an absent carrier must not clobber one set elsewhere.
+	if (options?.encryptedRunnerIdentity) {
+		additionalData.encryptedRunnerIdentity = options.encryptedRunnerIdentity;
+	}
 
 	if (executionId) {
 		additionalData.executionId = executionId;
@@ -476,14 +569,7 @@ export async function executeWebhook(
 		responsePropertyName,
 		responseContentType,
 		responseBinaryPropertyName,
-	} = evaluateResponseOptions(
-		workflowStartNode,
-		workflow,
-		req,
-		webhookData,
-		executionMode,
-		additionalKeys,
-	);
+	} = evaluateResponseOptions(context, req);
 
 	if (
 		!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming', 'hostedChat'].includes(
@@ -513,6 +599,111 @@ export async function executeWebhook(
 		};
 	};
 
+	const translateAuthFailureReason = (reason?: AuthFailureReason): OAuth2FailureReason => {
+		switch (reason) {
+			case 'verifier_not_registered':
+			case 'unknown_error':
+				return 'verifier_unavailable';
+			case 'insufficient_scope':
+				return 'insufficient_scope';
+			default:
+				return 'invalid_token';
+		}
+	};
+
+	additionalData.beginN8nOAuth2Flow = async (
+		resourceUrl: string,
+		metadata?: Record<string, string>,
+	) => await Container.get(OAuth2FlowProxy).begin(resourceUrl, metadata);
+
+	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
+		await Container.get(OAuth2FlowProxy).complete(code, state);
+
+	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
+	// request, instead of resolving the resource a second time.
+	let admittedBy: { resource: string; grant?: OAuthResourceGrant } | undefined;
+
+	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
+		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
+		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
+		if (result.user) {
+			admittedBy = { resource: resourceUrl, grant: result.grant };
+			return {
+				valid: true,
+				user: {
+					id: result.user.id,
+					email: result.user.email,
+					firstName: result.user.firstName,
+					lastName: result.user.lastName,
+				},
+			};
+		}
+
+		return {
+			valid: false,
+			reason: translateAuthFailureReason(result.context?.reason),
+		};
+	};
+
+	additionalData.establishTriggerIdentity = async (
+		token: string,
+		resource: string,
+		subject?: string,
+	) => {
+		// The run re-verifies this token after the trigger stops listening, so it carries
+		// the gate with it. Fall back to a lookup for callers that establish an identity
+		// without going through `validateN8nOAuth2Token`.
+		const grant =
+			admittedBy?.resource === resource
+				? admittedBy.grant
+				: (await Container.get(ProtectedResourceRegistry).getByResourceUrl(resource))?.getGrant?.();
+
+		if (!grant) {
+			// Not fatal now, but this is the state a queued or parked run later fails in.
+			Container.get(Logger).warn(
+				'Established a trigger identity without a resource grant; this run will depend on the protected resource still resolving',
+				{ workflowId: workflow.id, resource },
+			);
+		}
+
+		additionalData.encryptedRunnerIdentity = await Container.get(
+			ExecutionContextService,
+		).buildTriggerIdentityCredentials(token, resource, grant, subject);
+		if (runExecutionData) {
+			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
+		}
+	};
+
+	// Eager pre-execution credential-status gate. Uses the execution context that
+	// `establishTriggerIdentity` already established (the triggering user's identity),
+	// so the check runs on the request-handling main, before any enqueue. Returns
+	// `undefined` when the dynamic-credentials module is disabled or no identity was
+	// established, in which case the caller proceeds to execute normally.
+	additionalData.checkTriggerCredentialStatus = async () => {
+		const credentialCheckProxy = additionalData['dynamic-credentials']?.credentialCheckProxy;
+
+		if (!credentialCheckProxy || !workflow.id) {
+			return undefined;
+		}
+		const executionContext =
+			runExecutionData?.executionData?.runtimeData ??
+			(additionalData.encryptedRunnerIdentity
+				? {
+						credentials: additionalData.encryptedRunnerIdentity,
+					}
+				: undefined);
+
+		if (!executionContext) {
+			return undefined;
+		}
+
+		if (!executionContext.credentials) {
+			return undefined;
+		}
+
+		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
+	};
+
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
 	try {
@@ -528,7 +719,8 @@ export async function executeWebhook(
 				MCP_TRIGGER_NODE_TYPE,
 				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 				CHAT_TRIGGER_NODE_TYPE,
-			].includes(workflowStartNode.type)
+			].includes(workflowStartNode.type) ||
+			shouldEstablishTriggerIdentity(workflowStartNode)
 		) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
@@ -646,6 +838,25 @@ export async function executeWebhook(
 			return;
 		}
 
+		// Reactive credential-status gate. Runs only once we know the workflow will
+		// execute (workflowData is defined), so a falsy "Only Run If" short-circuits
+		// above without surfacing a misleading 428. Once the webhook node has established
+		// the triggering user's identity (n8nOAuth2 mode), block the run if any of that
+		// user's resolvable (private) credentials are still unconnected, responding
+		// 428 Precondition Required with the missing-credential list and a signed
+		// connect link for each.
+		if (!didSendResponse && !res.headersSent && shouldEstablishTriggerIdentity(workflowStartNode)) {
+			const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
+			if (credentialGate && !credentialGate.readyToExecute) {
+				responseCallback(null, {
+					data: credentialGate,
+					responseCode: 428,
+				});
+				didSendResponse = true;
+				return;
+			}
+		}
+
 		// For "onReceived" mode, we need to defer response sending until after the execution
 		// is created, so that `$execution.id` is available in response data expressions.
 		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !didSendResponse;
@@ -673,6 +884,7 @@ export async function executeWebhook(
 			projectId: project?.id,
 			projectName: project?.name,
 			userId: webhookData.userId,
+			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
@@ -708,11 +920,14 @@ export async function executeWebhook(
 				runData.mcpToolCall = mcpToolCallValue;
 			}
 
+			// The worker has no access to the request, so carry the node input the trigger built
+			runData.mcpToolInput = webhookResultData.toolInput;
+
 			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
 			const mcpListToolsRelayValue =
 				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 				const publisher = Container.get(Publisher);
 				await publisher.publishMcpRelay({
 					sessionId: mcpListToolsRelayValue.sessionId,
@@ -728,6 +943,17 @@ export async function executeWebhook(
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
 			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+			// Mark the request as answered as soon as the node produces a response, before
+			// `setupResponseNodePromise` starts writing it. Streaming offloaded binary data
+			// takes time, and a node failing during that wait must not answer a second time.
+			void responsePromise.promise.then(
+				(response) => {
+					if (response !== EXECUTION_ENDED_WITHOUT_RESPONSE) didSendResponse = true;
+				},
+				() => {
+					didSendResponse = true;
+				},
+			);
 			setupResponseNodePromise(
 				responsePromise,
 				res,
@@ -768,7 +994,8 @@ export async function executeWebhook(
 			runData,
 			true,
 			!didSendResponse && !shouldDeferOnReceivedResponse,
-			executionId,
+			// An execution id here means we are resuming one that is waiting on this webhook
+			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
 			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
 		);
 
@@ -805,6 +1032,8 @@ export async function executeWebhook(
 			workflowId: workflowData.id,
 			workflowName: workflowData.name,
 			executionId,
+			projectId: project.id,
+			projectName: project.name,
 			source: 'webhook',
 		});
 
@@ -868,6 +1097,14 @@ export async function executeWebhook(
 					const lastNodeTaskData = WorkflowHelpers.getLastExecutedNodeData(runData);
 					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
 						if (!didSendResponse) {
+							// The node that failed is not named in the response, so log it here:
+							// this is the only channel where naming it is safe.
+							Container.get(Logger).warn('Webhook execution failed before a response was sent', {
+								executionId,
+								workflowId: workflowData.id,
+								responseMode,
+								lastNodeExecuted: runData.data.resultData.lastNodeExecuted,
+							});
 							responseCallback(null, {
 								data: {
 									message: 'Error in workflow',
@@ -882,6 +1119,12 @@ export async function executeWebhook(
 					// in `responseNode` mode `responseCallback` is called by `responsePromise`
 					if (responseMode === 'responseNode' && responsePromise) {
 						await Promise.allSettled([responsePromise.promise]);
+						if (!didSendResponse) {
+							// The execution succeeded but never reached the Respond to Webhook node,
+							// so answer here rather than leaving the caller waiting.
+							responseCallback(null, { data: undefined, responseCode });
+							didSendResponse = true;
+						}
 						return undefined;
 					}
 
@@ -951,7 +1194,7 @@ export async function executeWebhook(
 		return executionId;
 	} catch (e) {
 		let error: Error;
-		if (e instanceof UnprocessableRequestError) {
+		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;
 		} else {
 			Container.get(ErrorReporter).error(e, { executionId });
@@ -966,71 +1209,44 @@ export async function executeWebhook(
 /**
  * Evaluates the response mode, code and data for a webhook node
  */
-function evaluateResponseOptions(
-	workflowStartNode: INode,
-	workflow: Workflow,
-	req: WebhookRequest,
-	webhookData: IWebhookData,
-	executionMode: WorkflowExecuteMode,
-	additionalKeys: IWorkflowDataProxyAdditionalKeys,
-) {
+function evaluateResponseOptions(context: WebhookExecutionContext, req: WebhookRequest) {
+	const { workflow, workflowStartNode } = context;
+
 	//check if response mode should be set automatically, e.g. multipage form
 	const responseMode =
 		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
-		(workflow.expression.getSimpleParameterValue(
-			workflowStartNode,
-			webhookData.webhookDescription.responseMode,
-			executionMode,
-			additionalKeys,
+		context.evaluateSimpleWebhookDescriptionExpression<WebhookResponseMode>(
+			'responseMode',
 			undefined,
 			'onReceived',
-		) as WebhookResponseMode);
+		)!;
 
-	const responseCode = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseCode as string,
-		executionMode,
-		additionalKeys,
+	const responseCode = context.evaluateSimpleWebhookDescriptionExpression<number>(
+		'responseCode',
 		undefined,
 		200,
-	) as number;
+	)!;
 
 	// This parameter is used for two different purposes:
 	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
 	// 2. as well as WebhookResponseData config in all the other modes
-	const responseData = workflow.expression.getComplexParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseData,
-		executionMode,
-		additionalKeys,
-		undefined,
-		'firstEntryJson',
-	) as WebhookResponseData | string | undefined;
+	const responseData = context.evaluateComplexWebhookDescriptionExpression<
+		WebhookResponseData | string
+	>('responseData', undefined, 'firstEntryJson');
 
 	// This is needed for backward compatibility, where only the first main output was checked for data.
 	// We want to keep existing behavior for webhooks, but change for chat triggers, where checking all main outputs makes more sense.
 	// We can unify the behavior in the next major release and get rid of this flag
 	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
 
-	const responsePropertyName = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responsePropertyName,
-		executionMode,
-		additionalKeys,
-	) as string | undefined;
+	const responsePropertyName =
+		context.evaluateSimpleWebhookDescriptionExpression<string>('responsePropertyName');
 
-	const responseContentType = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseContentType,
-		executionMode,
-		additionalKeys,
-	) as string | undefined;
+	const responseContentType =
+		context.evaluateSimpleWebhookDescriptionExpression<string>('responseContentType');
 
-	const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseBinaryPropertyName,
-		executionMode,
-		additionalKeys,
+	const responseBinaryPropertyName = context.evaluateSimpleWebhookDescriptionExpression<string>(
+		'responseBinaryPropertyName',
 		undefined,
 		'data',
 	);

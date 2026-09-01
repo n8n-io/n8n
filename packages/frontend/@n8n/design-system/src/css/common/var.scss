@@ -105,6 +105,7 @@ $font-color-disabled-base: var(--color--text--tint-1);
 $index-normal: 1;
 $index-top: 1000;
 $index-popper: 2000;
+$index-tooltip: 2001;
 
 /* Disable base
 -------------------------- */
@@ -456,7 +457,6 @@ $input-small-height: 30px !default;
 $input-mini-font-size: 12px;
 /// height||Other|4
 $input-mini-height: 26px !default;
-$input-number-control-border-radius: 3px;
 
 /* Cascader
 -------------------------- */
@@ -697,28 +697,6 @@ $table-row-striped-background-color: var(--table--row--color--background--even);
 /// color||Color|0
 $table-header-background-color: $color-white;
 $table-fixed-box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
-
-/* Pagination
--------------------------- */
-/// fontSize||Font|1
-$pagination-font-size: var(--font-size--2xs);
-/// color||Color|0
-$pagination-background-color: $color-white;
-/// color||Color|0
-$pagination-font-color: var(--color--text--shade-1);
-$pagination-border-radius: 3px;
-/// color||Color|0
-$pagination-button-color: var(--color--text--shade-1);
-/// height||Other|4
-$pagination-button-width: 35.5px;
-/// height||Other|4
-$pagination-button-height: 28px;
-/// color||Color|0
-$pagination-button-disabled-color: var(--color--text--tint-2);
-/// color||Color|0
-$pagination-button-disabled-background-color: $color-white;
-/// color||Color|0
-$pagination-hover-color: var(--color--primary);
 
 /* Popup
 -------------------------- */

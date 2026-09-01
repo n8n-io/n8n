@@ -1,5 +1,3 @@
-import { EventService } from '@/events/event.service';
-import { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -7,8 +5,13 @@ import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { DiffMetaData, DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
+import { DiffMetaData, DiffRule, RULES, SKIP_RULES } from 'n8n-workflow';
 import { strict } from 'node:assert';
+
+import { EventService } from '@/events/event.service';
+import { RelayEventMap } from '@/events/maps/relay.event-map';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
@@ -112,10 +115,12 @@ export class WorkflowHistoryCompactionService {
 
 		this.trimmingInterval = setInterval(trimOnceADay, 1 * Time.hours.toMilliseconds);
 
-		if (this.config.trimOnStartUp) {
-			void this.trimLongRunningHistories();
-		} else {
-			void trimOnceADay();
+		if (!this.config.skipOnStartUp) {
+			if (this.config.trimOnStartUp) {
+				void this.trimLongRunningHistories();
+			} else {
+				void trimOnceADay();
+			}
 		}
 
 		this.logger.debug('Trimming histories once a day at 3am server time');
@@ -133,7 +138,7 @@ export class WorkflowHistoryCompactionService {
 			`Optimizing histories every ${this.config.optimizingTimeWindowHours / 2.0} hour(s)`,
 		);
 
-		void this.optimizeHistories();
+		if (!this.config.skipOnStartUp) void this.optimizeHistories();
 	}
 
 	@OnShutdown()
@@ -285,6 +290,8 @@ export class WorkflowHistoryCompactionService {
 			windowEndIso: endIso,
 		} satisfies RelayEventMap['history-compacted'];
 		this.logger.debug('Workflow history compaction complete', payload);
-		this.eventService.emit('history-compacted', payload);
+
+		// Runs are frequent and often find no work; only report runs that did something
+		if (workflowIds.length > 0) this.eventService.emit('history-compacted', payload);
 	}
 }

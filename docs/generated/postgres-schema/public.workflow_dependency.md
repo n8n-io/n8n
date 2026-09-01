@@ -4,20 +4,22 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| dependencyInfo | json |  | true |  |  | Additional info about the dependency, interpreted based on type |
+| dependencyKey | varchar(255) |  | false |  |  | ID or name of the dependency |
+| dependencyType | varchar(32) |  | false |  |  | Type of dependency: "credential", "nodeType", "webhookPath", or "workflowCall" |
 | id | integer |  | false |  |  |  |
+| indexVersionId | smallint | 1 | false |  |  | Version of the index structure |
+| publishedVersionId | varchar(36) |  | true |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 | workflowVersionId | integer |  | false |  |  | Version of the workflow |
-| dependencyType | varchar(32) |  | false |  |  | Type of dependency: "credential", "nodeType", "webhookPath", or "workflowCall" |
-| dependencyKey | varchar(255) |  | false |  |  | ID or name of the dependency |
-| dependencyInfo | json |  | true |  |  | Additional info about the dependency, interpreted based on type |
-| indexVersionId | smallint | 1 | false |  |  | Version of the index structure |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| publishedVersionId | varchar(36) |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_a4ff2d9b9628ea988fa9e7d0bf8 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| PK_52325e34cd7a2f0f67b0f3cad65 | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_dependency_createdAt_not_null | n | NOT NULL "createdAt" |
 | workflow_dependency_dependencyKey_not_null | n | NOT NULL "dependencyKey" |
 | workflow_dependency_dependencyType_not_null | n | NOT NULL "dependencyType" |
@@ -25,18 +27,16 @@
 | workflow_dependency_indexVersionId_not_null | n | NOT NULL "indexVersionId" |
 | workflow_dependency_workflowId_not_null | n | NOT NULL "workflowId" |
 | workflow_dependency_workflowVersionId_not_null | n | NOT NULL "workflowVersionId" |
-| FK_a4ff2d9b9628ea988fa9e7d0bf8 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
-| PK_52325e34cd7a2f0f67b0f3cad65 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_52325e34cd7a2f0f67b0f3cad65 | CREATE UNIQUE INDEX "PK_52325e34cd7a2f0f67b0f3cad65" ON public.workflow_dependency USING btree (id) |
 | IDX_a4ff2d9b9628ea988fa9e7d0bf | CREATE INDEX "IDX_a4ff2d9b9628ea988fa9e7d0bf" ON public.workflow_dependency USING btree ("workflowId") |
-| IDX_e7fe1cfda990c14a445937d0b9 | CREATE INDEX "IDX_e7fe1cfda990c14a445937d0b9" ON public.workflow_dependency USING btree ("dependencyType") |
 | IDX_e48a201071ab85d9d09119d640 | CREATE INDEX "IDX_e48a201071ab85d9d09119d640" ON public.workflow_dependency USING btree ("dependencyKey") |
+| IDX_e7fe1cfda990c14a445937d0b9 | CREATE INDEX "IDX_e7fe1cfda990c14a445937d0b9" ON public.workflow_dependency USING btree ("dependencyType") |
 | IDX_workflow_dependency_publishedVersionId | CREATE INDEX "IDX_workflow_dependency_publishedVersionId" ON public.workflow_dependency USING btree ("publishedVersionId") |
+| PK_52325e34cd7a2f0f67b0f3cad65 | CREATE UNIQUE INDEX "PK_52325e34cd7a2f0f67b0f3cad65" ON public.workflow_dependency USING btree (id) |
 
 ## Relations
 
@@ -46,37 +46,37 @@ erDiagram
 "public.workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_dependency" {
+  timestamp_3__with_time_zone createdAt
+  json dependencyInfo
+  varchar_255_ dependencyKey
+  varchar_32_ dependencyType
   integer id
+  smallint indexVersionId
+  varchar_36_ publishedVersionId
   varchar_36_ workflowId FK
   integer workflowVersionId
-  varchar_32_ dependencyType
-  varchar_255_ dependencyKey
-  json dependencyInfo
-  smallint indexVersionId
-  timestamp_3__with_time_zone createdAt
-  varchar_36_ publishedVersionId
 }
 "public.workflow_entity" {
-  varchar_128_ name
   boolean active
-  json nodes
+  varchar_36_ activeVersionId FK
   json connections
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
   text description
-  varchar_36_ activeVersionId FK
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
   json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
   varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

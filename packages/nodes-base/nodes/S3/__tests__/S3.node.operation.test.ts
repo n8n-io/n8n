@@ -1,17 +1,18 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { S3 } from '../S3.node';
+import type { MockInstance } from 'vitest';
 
 describe('S3 Node - Bucket Delete', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	let s3ApiRequestSOAPSpy: jest.SpyInstance;
+	let s3ApiRequestSOAPSpy: MockInstance;
 	let node: S3;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		s3ApiRequestSOAPSpy = jest.spyOn(GenericFunctions, 's3ApiRequestSOAP');
+		vi.resetAllMocks();
+		s3ApiRequestSOAPSpy = vi.spyOn(GenericFunctions, 's3ApiRequestSOAP');
 		node = new S3();
 
 		executeFunctionsMock.getCredentials.mockResolvedValue({

@@ -15,9 +15,9 @@ CREATE TABLE "agents_resources" ("id" varchar(255) PRIMARY KEY NOT NULL, "metada
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar(255) |  | false | [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) |  |  |
 | metadata | TEXT |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -42,32 +42,32 @@ erDiagram
 "agents_memory_entry_locks" |o--|| "agents_resources" : "FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agents_resources" {
+  datetime_3_ createdAt
   varchar_255_ id PK
   TEXT metadata
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "agents_memory_entries" {
-  varchar_36_ id PK
   varchar_36_ agentId FK
-  varchar_255_ resourceId FK
   TEXT content
   varchar_64_ contentHash
+  datetime_3_ createdAt
+  TEXT embedding
+  varchar_128_ embeddingModel
+  varchar_36_ id PK
+  datetime_3_ lastSeenAt
+  TEXT metadata
+  varchar_255_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
-  varchar_128_ embeddingModel
-  TEXT embedding
-  TEXT metadata
-  datetime_3_ lastSeenAt
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "agents_memory_entry_locks" {
   varchar_36_ agentId PK
-  varchar_255_ resourceId PK
-  varchar_64_ holderId
-  datetime_3_ heldUntil
   datetime_3_ createdAt
+  datetime_3_ heldUntil
+  varchar_64_ holderId
+  varchar_255_ resourceId PK
   datetime_3_ updatedAt
 }
 ```

@@ -1,7 +1,12 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import type {
+	DeepPartial,
+	EntityManager,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
@@ -15,12 +20,46 @@ export class UserRepository extends Repository<User> {
 	async findManyByIds(
 		userIds: string[],
 		options?: {
-			includeRole: boolean;
+			includeRole?: boolean;
+			offset?: number;
+			limit?: number;
 		},
 	) {
 		return await this.find({
 			where: { id: In(userIds) },
+			skip: options?.offset,
+			take: options?.limit,
 			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findMany(options?: { includeRole?: boolean; offset?: number; limit?: number }) {
+		return await this.find({
+			skip: options?.offset,
+			take: options?.limit,
+			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findByIdWithRole(id: string): Promise<User | null> {
+		return await this.findOne({
+			where: { id },
+			relations: ['role'],
+		});
+	}
+
+	async findByEmailWithRole(email: string): Promise<User | null> {
+		return await this.findOne({
+			where: { email },
+			relations: ['role'],
+		});
+	}
+
+	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
+		return await this.findOneByOrFail({
+			projectRelations: { projectId },
 		});
 	}
 
@@ -148,6 +187,43 @@ export class UserRepository extends Repository<User> {
 		// TODO: use a transactions
 		// This is blocked by TypeORM having concurrency issues with transactions
 		return await createInner(this.manager);
+	}
+
+	/**
+	 * Find enabled users whose global/project is in the given slug sets. Role slugs
+	 * are passed in so this package stays scope-agnostic.
+	 *
+	 * Loads `role` and `authIdentities` because the `@AfterLoad` hook needs
+	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would
+	 * wrongly drop SSO/LDAP users).
+	 */
+	async findEligibleByProjectOrGlobalRoles({
+		projectId,
+		projectRoleSlugs,
+		globalRoleSlugs,
+	}: {
+		projectId: string;
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+	}): Promise<User[]> {
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectRoleSlugs.length > 0) {
+			where.push({
+				disabled: false,
+				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) {
+			return [];
+		}
+
+		return await this.find({
+			where,
+			relations: { role: true, authIdentities: true },
+		});
 	}
 
 	/**

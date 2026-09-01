@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -13,14 +13,17 @@ import {
 } from '../shared/constants';
 import { NotionTrigger } from '../NotionTrigger.node';
 import {
+	extractDatabaseMentionRLC,
 	extractPageId,
 	formatBlocks,
 	getPageId,
 	notionApiRequest,
 	notionApiRequestAllItems,
+	simplifyObjects,
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
+import type { Mock } from 'vitest';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
 	if (Array.isArray(value)) {
@@ -256,6 +259,43 @@ describe('Test Notion resource locator generated URLs', () => {
 	});
 });
 
+describe('Test Notion, extractDatabaseMentionRLC', () => {
+	it('extracts database IDs with resource-locator regex metadata', () => {
+		const blockValues: Array<{
+			richText: boolean;
+			text: {
+				text: Array<{
+					textType: string;
+					mentionType: string;
+					database: string | { __rl: boolean; mode: string; value: string; __regex: string };
+				}>;
+			};
+		}> = [
+			{
+				richText: true,
+				text: {
+					text: [
+						{
+							textType: 'mention',
+							mentionType: 'database',
+							database: {
+								__rl: true,
+								mode: 'url',
+								value: 'https://www.notion.com/workspace/database-3ab5bc794647496dac48feca926813fd',
+								__regex: '([0-9a-f]{32})$',
+							},
+						},
+					],
+				},
+			},
+		];
+
+		extractDatabaseMentionRLC(blockValues);
+
+		expect(blockValues[0].text.text[0].database).toBe('3ab5bc794647496dac48feca926813fd');
+	});
+});
+
 describe('Test Notion, getPageId', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 	const id = '3ab5bc794647496dac48feca926813fd';
@@ -265,7 +305,7 @@ describe('Test Notion, getPageId', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return page ID directly when mode is id', () => {
@@ -391,12 +431,12 @@ describe('Test Notion, notionApiRequest', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
 		mockExecuteFunctions.helpers = {
-			requestWithAuthentication: jest.fn().mockResolvedValue({}),
+			requestWithAuthentication: vi.fn().mockResolvedValue({}),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should use notionApi credential when authentication is apiKey', async () => {
@@ -440,12 +480,12 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
 		mockExecuteFunctions.helpers = {
-			requestWithAuthentication: jest.fn(),
+			requestWithAuthentication: vi.fn(),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should extract limit from query, remove it, and stop pagination early', async () => {
@@ -465,7 +505,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			has_more: false,
 		};
 
-		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock)
+		(mockExecuteFunctions.helpers.requestWithAuthentication as Mock)
 			.mockResolvedValueOnce(page1)
 			.mockResolvedValueOnce(page2);
 
@@ -502,7 +542,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			next_cursor: null,
 		};
 
-		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock)
+		(mockExecuteFunctions.helpers.requestWithAuthentication as Mock)
 			.mockResolvedValueOnce(page1)
 			.mockResolvedValueOnce(page2);
 
@@ -532,9 +572,7 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 			next_cursor: null,
 		};
 
-		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValueOnce(
-			page1,
-		);
+		(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValueOnce(page1);
 
 		const result = await notionApiRequestAllItems.call(
 			mockExecuteFunctions,
@@ -546,5 +584,84 @@ describe('Test Notion, notionApiRequestAllItems', () => {
 
 		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
 		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('Test Notion, simplifyObjects', () => {
+	const richText = (text: string) => ({
+		type: 'rich_text',
+		rich_text: [{ type: 'text', plain_text: text }],
+	});
+
+	const page = (properties: Record<string, unknown>) => ({
+		object: 'page',
+		id: 'page-id',
+		url: 'https://www.notion.so/page-id',
+		properties: {
+			Name: { type: 'title', title: [{ type: 'text', plain_text: 'Roadmap' }] },
+			...properties,
+		},
+	});
+
+	describe('v3 keeps change-case v5 Unicode-aware keys', () => {
+		it('preserves non-ASCII characters in simplified property keys', () => {
+			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 3);
+
+			expect(result[0]).toMatchObject({ property_prénom: 'Jean' });
+		});
+
+		it.each([
+			['naïve', 'property_naïve'],
+			['café', 'property_café'],
+			['Mädchen', 'property_mädchen'],
+			['Köln', 'property_köln'],
+			['Prüfung', 'property_prüfung'],
+			['Straße', 'property_straße'],
+		])('keeps %s as %s', (propertyName, expectedKey) => {
+			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 3);
+
+			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
+	});
+
+	describe('earlier versions fold to the pre-v5 ASCII shape', () => {
+		it('folds non-ASCII characters in simplified property keys', () => {
+			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({ property_pr_nom: 'Jean' });
+			expect(result[0]).not.toHaveProperty('property_prénom');
+		});
+
+		it('snake-cases ASCII property keys without folding', () => {
+			const result = simplifyObjects([page({ 'First Name': richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({
+				property_name: 'Roadmap',
+				property_first_name: 'Jean',
+			});
+		});
+
+		// Decomposed input (base letter + combining mark) must fold like change-case v4,
+		// which kept the ASCII base letter — i.e. no NFC normalization first.
+		it('folds decomposed accents without normalizing', () => {
+			const decomposedPrenom = 'Pre\u0301nom'; // e + combining acute, not the composed é
+			const result = simplifyObjects([page({ [decomposedPrenom]: richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({ property_pre_nom: 'Jean' });
+		});
+
+		it.each([
+			['naïve', 'property_na_ve'],
+			['café', 'property_caf'],
+			['Prix (€)', 'property_prix'],
+			['Mädchen', 'property_m_dchen'],
+			['Köln', 'property_k_ln'],
+			['Prüfung', 'property_pr_fung'],
+			['Straße', 'property_stra_e'],
+		])('folds %s to %s', (propertyName, expectedKey) => {
+			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 2);
+
+			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
 	});
 });

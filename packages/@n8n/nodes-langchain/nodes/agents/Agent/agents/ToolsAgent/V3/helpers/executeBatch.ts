@@ -80,7 +80,7 @@ export async function executeBatch(
 
 		checkMaxIterations(response, maxIterations, ctx.getNode());
 
-		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse);
+		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse, model);
 
 		const { tools, prompt, options, outputParser } = itemContext;
 
@@ -107,7 +107,9 @@ export async function executeBatch(
 	batchResults.forEach((result, index) => {
 		const itemIndex = startIndex + index;
 		if (result.status === 'rejected') {
-			const error = wrapLangChainParserError(result.reason, ctx.getNode(), itemIndex);
+			const error = wrapLangChainParserError(result.reason, ctx.getNode(), itemIndex, {
+				enrichNonParserErrors: true,
+			});
 			if (ctx.continueOnFail()) {
 				returnData.push({
 					json: { error: error.message },

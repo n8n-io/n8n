@@ -1,5 +1,6 @@
-jest.mock('@/generic-helpers', () => ({
-	validateEntity: jest.fn(),
+import type { MockInstance } from 'vitest';
+vi.mock('@/generic-helpers', () => ({
+	validateEntity: vi.fn(),
 }));
 
 import type { LicenseState } from '@n8n/backend-common';
@@ -14,7 +15,12 @@ import type {
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import * as checkAccess from '@/permissions.ee/check-access';
+import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
@@ -22,9 +28,6 @@ import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
-
-import * as checkAccess from '@/permissions.ee/check-access';
-import type { CredentialRequest } from '@/requests';
 
 const originalValidateExternalSecretsPermissions = validation.validateExternalSecretsPermissions;
 
@@ -34,6 +37,7 @@ describe('CredentialsController', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const licenseState = mock<LicenseState>();
+	const credentialsOverwrites = mock<ConstructorParameters<typeof CredentialsController>[12]>();
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -58,18 +62,25 @@ describe('CredentialsController', () => {
 		mock(), // externalSecretsConfig
 		mock(), // externalSecretsProviderAccessCheckService
 		mock(), // connectionStatusProxy
+		mock(), // instanceCredentialAssignmentRepository
+		mock(), // instanceCredentialUseRegistry
+		mock(), // dbLockService
+		mock(), // eventService
 	);
 
 	// Spy on methods that need to be mocked in tests
 	// This allows us to mock specific behavior while keeping real implementations
 	// for isChangingExternalSecretExpression and validateExternalSecretsPermissions
-	let decryptSpy: jest.SpyInstance;
-	let createEncryptedDataSpy: jest.SpyInstance;
-	let getCredentialScopesSpy: jest.SpyInstance;
-	let updateSpy: jest.SpyInstance;
-	let createUnmanagedCredentialSpy: jest.SpyInstance;
-	let findCredentialOwningProjectSpy: jest.SpyInstance;
-	let emitSpy: jest.SpyInstance;
+	let decryptSpy: MockInstance;
+	let createEncryptedDataSpy: MockInstance;
+	let prepareUpdateDataSpy: MockInstance;
+	let getCredentialScopesSpy: MockInstance;
+	let updateSpy: MockInstance;
+	let createUnmanagedCredentialSpy: MockInstance;
+	let ensureCanManageEndUserCredentialSpy: MockInstance;
+	let ensureEndUserCredentialAllowedInProjectSpy: MockInstance;
+	let findCredentialOwningProjectSpy: MockInstance;
+	let emitSpy: MockInstance;
 
 	const credentialsController = new CredentialsController(
 		mock(),
@@ -84,6 +95,7 @@ describe('CredentialsController', () => {
 		eventService,
 		credentialsFinderService,
 		mock(), // connectionStatusProxy
+		credentialsOverwrites,
 	);
 
 	let req: AuthenticatedRequest;
@@ -93,17 +105,25 @@ describe('CredentialsController', () => {
 	});
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		decryptSpy = jest.spyOn(credentialsService, 'decrypt');
-		createEncryptedDataSpy = jest.spyOn(credentialsService, 'createEncryptedData');
-		getCredentialScopesSpy = jest.spyOn(credentialsService, 'getCredentialScopes');
-		updateSpy = jest.spyOn(credentialsService, 'update');
-		createUnmanagedCredentialSpy = jest.spyOn(credentialsService, 'createUnmanagedCredential');
-		findCredentialOwningProjectSpy = jest.spyOn(
-			sharedCredentialsRepository,
-			'findCredentialOwningProject',
-		);
-		emitSpy = jest.spyOn(eventService, 'emit');
+		vi.resetAllMocks();
+		decryptSpy = vi.spyOn(credentialsService, 'decrypt');
+		createEncryptedDataSpy = vi.spyOn(credentialsService, 'createEncryptedData');
+		prepareUpdateDataSpy = vi.spyOn(credentialsService, 'prepareUpdateData');
+		getCredentialScopesSpy = vi.spyOn(credentialsService, 'getCredentialScopes');
+		updateSpy = vi.spyOn(credentialsService, 'update');
+		createUnmanagedCredentialSpy = vi.spyOn(credentialsService, 'createUnmanagedCredential');
+		// stubbed by default: the scope check needs real role/project data that unit tests don't wire up
+		ensureCanManageEndUserCredentialSpy = vi
+			.spyOn(credentialsService, 'ensureCanManageEndUserCredential')
+			.mockResolvedValue(undefined);
+		// stubbed by default: the project-type check needs real project data that unit tests don't wire up
+		ensureEndUserCredentialAllowedInProjectSpy = vi
+			.spyOn(credentialsService, 'ensureEndUserCredentialAllowedInProject')
+			.mockReturnValue(undefined);
+		// stubbed by default: backed by connectionStatusProxy, which unit tests don't wire up
+		vi.spyOn(credentialsService, 'populateConnectedByMe').mockResolvedValue(undefined);
+		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;
+		emitSpy = eventService.emit;
 		// Set up credentialsRepository.create to return the input data
 		credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
 	});
@@ -175,6 +195,30 @@ describe('CredentialsController', () => {
 			const [eventName, eventPayload] = emitSpy.mock.calls[0];
 			expect(eventName).toBe('credentials-created');
 			expect(eventPayload).toMatchObject({ jweEnabled: true });
+		});
+
+		it('should emit "credentials-created" with managed-auth flags derived from overwrites', async () => {
+			const newCredentialsPayload = createNewCredentialsPayload();
+			req.body = newCredentialsPayload;
+			const { data, ...payloadWithoutData } = newCredentialsPayload;
+			const createdCredentials = createdCredentialsWithScopes(payloadWithoutData);
+
+			createUnmanagedCredentialSpy.mockResolvedValue(createdCredentials);
+			findCredentialOwningProjectSpy.mockResolvedValue(mock<Project>());
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			await credentialsController.createCredentials(req, res, newCredentialsPayload);
+
+			expect(credentialsOverwrites.supportsManagedAuth).toHaveBeenCalledWith(
+				createdCredentials.type,
+			);
+			expect(credentialsOverwrites.usesManagedAuth).toHaveBeenCalledWith(
+				createdCredentials.type,
+				newCredentialsPayload.data,
+			);
+			const [, eventPayload] = emitSpy.mock.calls[0];
+			expect(eventPayload).toMatchObject({ supportsManagedAuth: true, usesManagedAuth: true });
 		});
 
 		it('should emit "private-credential-created" when credential is created as resolvable', async () => {
@@ -324,6 +368,139 @@ describe('CredentialsController', () => {
 			});
 		});
 
+		it('should accept unchanged false flags when editing an instance credential', async () => {
+			const instanceCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				usageScope: 'instance',
+				shared: [],
+			});
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isGlobal: false,
+					isResolvable: false,
+				},
+			} as unknown as CredentialRequest.Update;
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(instanceCredential);
+			prepareUpdateDataSpy.mockResolvedValue(ownerReq.body);
+			updateSpy.mockResolvedValue(instanceCredential);
+
+			await expect(credentialsController.updateCredentials(ownerReq)).resolves.toBeDefined();
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				credentialId,
+				ownerReq.user,
+				['credential:update'],
+				{ includeInstanceCredentials: true },
+			);
+		});
+
+		it.each([{ isGlobal: true }, { isResolvable: true }])(
+			'should reject converting an instance credential with %o',
+			async (flag) => {
+				const instanceCredential = mock<CredentialsEntity>({
+					...existingCredential,
+					usageScope: 'instance',
+					shared: [],
+				});
+				const ownerReq = {
+					user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+					params: { credentialId },
+					body: {
+						name: 'Updated Credential',
+						type: 'apiKey',
+						data: { apiKey: 'updated-key' },
+						isGlobal: false,
+						isResolvable: false,
+						...flag,
+					},
+				} as unknown as CredentialRequest.Update;
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(instanceCredential);
+
+				await expect(credentialsController.updateCredentials(ownerReq)).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(updateSpy).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should reject changing the type of an instance credential', async () => {
+			const instanceCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				type: 'apiKey',
+				usageScope: 'instance',
+				shared: [],
+			});
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'httpHeaderAuth',
+					data: { name: 'x-api-key', value: 'secret' },
+				},
+			} as unknown as CredentialRequest.Update;
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(instanceCredential);
+
+			await expect(credentialsController.updateCredentials(ownerReq)).rejects.toThrow(
+				'Provider connection type cannot be changed',
+			);
+			expect(prepareUpdateDataSpy).not.toHaveBeenCalled();
+		});
+
+		it('should clear the OAuth token when switching a credential to a different auth type', async () => {
+			// A previous OAuth connection on `existingCredential.type` must not carry over once
+			// the credential is switched to a different auth method (e.g. Service Account -> OAuth).
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'oAuth2Api',
+					data: { clientId: 'cid' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(prepareUpdateDataSpy).toHaveBeenCalledWith(
+				ownerReq.user,
+				ownerReq.body,
+				existingCredential,
+				{ clearOauthTokenData: true },
+			);
+		});
+
+		it('should not clear the OAuth token when the auth type is unchanged', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: existingCredential.type,
+					data: { apiKey: 'updated-key' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(prepareUpdateDataSpy).toHaveBeenCalledWith(
+				ownerReq.user,
+				ownerReq.body,
+				existingCredential,
+				{ clearOauthTokenData: false },
+			);
+		});
+
 		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {
 			// ARRANGE
 			const ownerReq = {
@@ -349,6 +526,33 @@ describe('CredentialsController', () => {
 			expect(emitSpy).toHaveBeenCalledWith(
 				'credentials-updated',
 				expect.objectContaining({ jweEnabled: true }),
+			);
+		});
+
+		it('should emit "credentials-updated" with managed-auth flags derived from overwrites', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'oAuth2Api',
+					data: { clientId: 'cid' },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(credentialsOverwrites.supportsManagedAuth).toHaveBeenCalledWith(
+				existingCredential.type,
+			);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'credentials-updated',
+				expect.objectContaining({ supportsManagedAuth: true, usesManagedAuth: true }),
 			);
 		});
 
@@ -512,6 +716,9 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			// ASSERT
+			expect(ensureCanManageEndUserCredentialSpy).toHaveBeenCalledTimes(1);
+			// switching to end-user must also clear the personal-project gate
+			expect(ensureEndUserCredentialAllowedInProjectSpy).toHaveBeenCalledTimes(1);
 			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({
@@ -520,6 +727,42 @@ describe('CredentialsController', () => {
 				expect.any(Object),
 				expect.any(Object),
 			);
+		});
+
+		it('should not apply the personal-project gate when switching back to fixed', async () => {
+			// ARRANGE
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isResolvable: false,
+				},
+			} as unknown as CredentialRequest.Update;
+
+			const existingCredentialWithResolvable = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				existingCredentialWithResolvable,
+			);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(false));
+			updateSpy.mockResolvedValue({
+				...existingCredentialWithResolvable,
+				name: 'Updated Credential',
+				isResolvable: false,
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			expect(ensureCanManageEndUserCredentialSpy).toHaveBeenCalledTimes(1);
+			expect(ensureEndUserCredentialAllowedInProjectSpy).not.toHaveBeenCalled();
 		});
 
 		it('should keep existing isResolvable value when not provided', async () => {
@@ -564,7 +807,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when editing external secret expression without permission', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -575,7 +818,7 @@ describe('CredentialsController', () => {
 			const existingCredentialWithSecret = mock<CredentialsEntity>({
 				...existingCredential,
 			});
-			const validateExternalSecretsPermissionsSpy = jest
+			const validateExternalSecretsPermissionsSpy = vi
 				.spyOn(validation, 'validateExternalSecretsPermissions')
 				.mockImplementation(originalValidateExternalSecretsPermissions);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
@@ -597,7 +840,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when adding new external secret expression without permission', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -605,7 +848,7 @@ describe('CredentialsController', () => {
 					data: { apiKey: '{{ $secrets.myVault.myKey }}' }, // Changed from regular key to external secret
 				},
 			} as unknown as CredentialRequest.Update;
-			const validateExternalSecretsPermissionsSpy = jest
+			const validateExternalSecretsPermissionsSpy = vi
 				.spyOn(validation, 'validateExternalSecretsPermissions')
 				.mockImplementation(originalValidateExternalSecretsPermissions);
 
@@ -679,6 +922,92 @@ describe('CredentialsController', () => {
 			expect(emittedEventNames).not.toContain('private-credential-toggled-to-private');
 		});
 
+		it('should delete user entries and emit "private-credential-connections-cleared" when a shared field changes on a private credential', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'new-client-id' }, isResolvable: true },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: true });
+			const getChangedSharedFieldsSpy = vi
+				.spyOn(credentialsService, 'getChangedSharedFields')
+				.mockResolvedValue(['clientId']);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(getChangedSharedFieldsSpy).toHaveBeenCalled();
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: true,
+				user: ownerReq.user,
+			});
+			expect(emitSpy).toHaveBeenCalledWith('private-credential-connections-cleared', {
+				user: ownerReq.user,
+				credentialType: privateCredential.type,
+				credentialId: privateCredential.id,
+			});
+		});
+
+		it('should not delete user entries when no shared field changed on a private credential', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'same' }, isResolvable: true },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: true });
+			vi.spyOn(credentialsService, 'getChangedSharedFields').mockResolvedValue([]);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: false,
+				user: ownerReq.user,
+			});
+			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-connections-cleared');
+		});
+
+		it('should not check shared fields when toggling private to static (entries deleted by toggle)', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'new-client-id' }, isResolvable: false },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(false));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: false });
+			const getChangedSharedFieldsSpy = vi.spyOn(credentialsService, 'getChangedSharedFields');
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(getChangedSharedFieldsSpy).not.toHaveBeenCalled();
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: true,
+				user: ownerReq.user,
+			});
+		});
+
 		it('should not emit toggle events when resolvable state is unchanged', async () => {
 			const ownerReq = {
 				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
@@ -706,14 +1035,14 @@ describe('CredentialsController', () => {
 	describe('deleteCredentials', () => {
 		const credentialId = 'cred-del-1';
 
-		it('should emit "private-credential-deleted" when deleting a resolvable credential', async () => {
+		it('should delete an accessible credential via CredentialsService', async () => {
 			const privateCredential = mock<CredentialsEntity>({
 				id: credentialId,
 				type: 'gmailOAuth2',
 				isResolvable: true,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
-			jest.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
 
 			const deleteReq = {
 				user: { id: 'u1' },
@@ -722,31 +1051,77 @@ describe('CredentialsController', () => {
 
 			await credentialsController.deleteCredentials(deleteReq);
 
-			expect(emitSpy).toHaveBeenCalledWith('private-credential-deleted', {
-				user: deleteReq.user,
-				credentialType: privateCredential.type,
-				credentialId: privateCredential.id,
+			expect(deleteSpy).toHaveBeenCalledWith(deleteReq.user, credentialId, {
+				includeInstanceCredentials: true,
 			});
 		});
+	});
 
-		it('should not emit "private-credential-deleted" when deleting a static credential', async () => {
-			const staticCredential = mock<CredentialsEntity>({
+	describe('disconnectOauthToken', () => {
+		const credentialId = 'cred-oauth-1';
+
+		it('clears the OAuth token for an accessible credential', async () => {
+			const credential = mock<CredentialsEntity>({
 				id: credentialId,
 				type: 'gmailOAuth2',
-				isResolvable: false,
+				isManaged: false,
 			});
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(staticCredential);
-			jest.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			vi.spyOn(credentialsService, 'isOAuthCredentialType').mockReturnValue(true);
+			const clearSpy = vi
+				.spyOn(credentialsService, 'clearOauthTokenData')
+				.mockResolvedValue(undefined);
 
-			const deleteReq = {
-				user: { id: 'u1' },
-				params: { credentialId },
-			} as unknown as CredentialRequest.Delete;
+			const result = await credentialsController.disconnectOauthToken(req, res, credentialId);
 
-			await credentialsController.deleteCredentials(deleteReq);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				credentialId,
+				req.user,
+				['credential:update'],
+			);
+			expect(clearSpy).toHaveBeenCalledWith(credential);
+			expect(result).toEqual({ success: true });
+		});
 
-			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
-			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		it('throws NotFoundError when the credential is not accessible', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			const clearSpy = vi.spyOn(credentialsService, 'clearOauthTokenData');
+
+			await expect(
+				credentialsController.disconnectOauthToken(req, res, credentialId),
+			).rejects.toThrowError(NotFoundError);
+			expect(clearSpy).not.toHaveBeenCalled();
+		});
+
+		it('throws BadRequestError for managed credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: credentialId,
+				type: 'gmailOAuth2',
+				isManaged: true,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			const clearSpy = vi.spyOn(credentialsService, 'clearOauthTokenData');
+
+			await expect(
+				credentialsController.disconnectOauthToken(req, res, credentialId),
+			).rejects.toThrowError(BadRequestError);
+			expect(clearSpy).not.toHaveBeenCalled();
+		});
+
+		it('throws BadRequestError for non-OAuth credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: credentialId,
+				type: 'httpBasicAuth',
+				isManaged: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			vi.spyOn(credentialsService, 'isOAuthCredentialType').mockReturnValue(false);
+			const clearSpy = vi.spyOn(credentialsService, 'clearOauthTokenData');
+
+			await expect(
+				credentialsController.disconnectOauthToken(req, res, credentialId),
+			).rejects.toThrowError(BadRequestError);
+			expect(clearSpy).not.toHaveBeenCalled();
 		});
 	});
 });

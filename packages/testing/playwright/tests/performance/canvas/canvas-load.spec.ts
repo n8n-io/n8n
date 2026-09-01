@@ -18,7 +18,7 @@ test.use({
 
 test.describe(
 	'Canvas Load Benchmark',
-	{ annotation: [{ type: 'owner', description: 'Canvas' }] },
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		for (const tier of TIERS) {
 			test(`loads ${tier}-tier workflow @tier:${tier}`, async ({
@@ -45,6 +45,7 @@ test.describe(
 					await expect(n8n.page).toHaveURL(/\/workflows$/);
 
 					const navigationStart = Date.now();
+					// janitor-disable-next-line no-raw-editor-navigation -- benchmark measures cold load time of the raw navigation
 					await n8n.page.goto(`/workflow/${workflowId}`);
 					await waitForCanvasReady(n8n.page, flowNodes, stickyNotes);
 					const coldLoadMs = Date.now() - navigationStart;

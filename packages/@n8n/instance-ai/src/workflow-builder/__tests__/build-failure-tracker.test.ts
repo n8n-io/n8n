@@ -49,6 +49,45 @@ describe('BuildFailureTracker', () => {
 		expect(escalation).not.toContain('Code node');
 	});
 
+	it('adds HTTP raw-body guidance for repeated specifyBody validation failures', () => {
+		const tracker = new BuildFailureTracker();
+		const validationError = [
+			'[INVALID_PARAMETER] (HTTP Request): Node "EWS FindItem": parameters.specifyBody: This field is only allowed when one of: (sendBody=true, contentType="json") or (sendBody=true, contentType="form-urlencoded")',
+		];
+		expect(tracker.record('wi_1', validationError)).toBeUndefined();
+		const escalation = tracker.record('wi_1', validationError);
+		expect(escalation).toContain('contentType="raw"');
+		expect(escalation).toContain('omit specifyBody');
+		expect(escalation).toContain('rawContentType');
+		expect(escalation).not.toContain('workflow-sdk-language.md');
+	});
+
+	it('adds HTTP raw-body guidance for repeated XML-in-jsonBody validation failures', () => {
+		const tracker = new BuildFailureTracker();
+		const validationError = [
+			"[INVALID_PARAMETER] (Get EWS Mail): 'Get EWS Mail' sends an XML/SOAP payload but is configured as JSON. For XML HTTP Request bodies, set contentType='raw'.",
+		];
+		expect(tracker.record('wi_1', validationError)).toBeUndefined();
+		const escalation = tracker.record('wi_1', validationError);
+		expect(escalation).toContain('contentType="raw"');
+		expect(escalation).toContain('omit specifyBody');
+		expect(escalation).toContain('rawContentType');
+		expect(escalation).not.toContain('workflow-sdk-language.md');
+	});
+
+	it('adds HTTP raw-body guidance for repeated raw XML body omissions', () => {
+		const tracker = new BuildFailureTracker();
+		const validationError = [
+			"[INVALID_PARAMETER] (Get EWS Mail): 'Get EWS Mail' is configured for a raw XML/SOAP body but the body field is empty.",
+		];
+		expect(tracker.record('wi_1', validationError)).toBeUndefined();
+		const escalation = tracker.record('wi_1', validationError);
+		expect(escalation).toContain('contentType="raw"');
+		expect(escalation).toContain('body');
+		expect(escalation).toContain('rawContentType');
+		expect(escalation).not.toContain('workflow-sdk-language.md');
+	});
+
 	it('does not loop: every repeat after the first keeps escalating', () => {
 		const tracker = new BuildFailureTracker();
 		tracker.record('wi_1', joinError, {

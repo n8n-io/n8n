@@ -13,7 +13,8 @@ Extra information, specific to the frontend codebase. Use this when doing any fr
 - Use centralized constants from `@/app/constants/durations` instead of hardcoding:
 
 ```typescript
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { DEBOUNCE_TIME } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 
 useDebounceFn(() => { ... }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 ```

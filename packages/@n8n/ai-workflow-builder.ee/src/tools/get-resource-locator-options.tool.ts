@@ -1,6 +1,14 @@
 import { tool } from '@langchain/core/tools';
+import {
+	findNodeParameterProperty,
+	formatResourceLocatorOptionsForLLM,
+	getDynamicNodeParameterLookup,
+	getRequiredNodeCredentialSlots,
+	hasNodeCredentials,
+	toDynamicParameterPath,
+} from '@n8n/ai-utilities/node-catalog';
 import type { Logger } from '@n8n/backend-common';
-import type { INodeTypeDescription, INodePropertyMode, INodeListSearchItems } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ValidationError, ToolExecutionError } from '../errors';
@@ -37,54 +45,6 @@ export const GET_RESOURCE_LOCATOR_OPTIONS_TOOL: BuilderToolBase = {
 	toolName: TOOL_NAME,
 	displayTitle: DISPLAY_TITLE,
 };
-
-/**
- * Extract the searchListMethod from a resourceLocator property's modes
- */
-function extractSearchMethod(nodeType: INodeTypeDescription, parameterPath: string): string | null {
-	// Find the property matching the parameter path
-	const property = nodeType.properties.find(
-		(p) => p.name === parameterPath && p.type === 'resourceLocator',
-	);
-
-	if (!property?.modes) {
-		return null;
-	}
-
-	// Find a mode with type='list' that has searchListMethod
-	const listMode = property.modes.find(
-		(mode: INodePropertyMode) => mode.type === 'list' && mode.typeOptions?.searchListMethod,
-	);
-
-	return listMode?.typeOptions?.searchListMethod ?? null;
-}
-
-/**
- * Format options for LLM consumption
- */
-function formatOptionsForLLM(options: INodeListSearchItems[], parameterPath: string): string {
-	if (options.length === 0) {
-		return `No options available for parameter "${parameterPath}". The resource may require credentials to be set up first or the external service returned no results.`;
-	}
-
-	const parts: string[] = [
-		`<resource_locator_options parameter="${parameterPath}">`,
-		`<total_count>${options.length}</total_count>`,
-		'<options>',
-	];
-
-	options.forEach((opt, index) => {
-		parts.push(`  <option index="${index}">`);
-		parts.push(`    <display_name>${opt.name}</display_name>`);
-		parts.push(`    <id>${String(opt.value)}</id>`);
-		parts.push('  </option>');
-	});
-
-	parts.push('</options>');
-	parts.push('</resource_locator_options>');
-
-	return parts.join('\n');
-}
 
 /**
  * Factory function to create the get resource locator options tool
@@ -135,11 +95,11 @@ export function createGetResourceLocatorOptionsTool(
 					return createErrorResponse(config, error);
 				}
 
-				// Extract search method from node type definition
-				const searchMethod = extractSearchMethod(nodeType, parameterPath);
-				if (!searchMethod) {
+				const property = findNodeParameterProperty(nodeType.properties, parameterPath);
+				const lookup = property ? getDynamicNodeParameterLookup(property) : null;
+				if (!lookup || lookup.kind === 'loadOptionsRouting') {
 					const error = new ValidationError(
-						`Parameter "${parameterPath}" on node "${node.name}" is not a resource locator with list search capability`,
+						`Parameter "${parameterPath}" on node "${node.name}" is not a resource locator or load-options parameter with list search capability`,
 						{ extra: { nodeId, parameterPath } },
 					);
 					reporter.error(error);
@@ -148,12 +108,14 @@ export function createGetResourceLocatorOptionsTool(
 
 				// Check if node has credentials configured (only if node type requires them)
 				// Internal nodes like DataTable don't require credentials
-				const nodeTypeRequiresCredentials =
-					Array.isArray(nodeType.credentials) && nodeType.credentials.length > 0;
 				const credentials = node.credentials;
-				const hasCredentials = credentials && Object.keys(credentials).length > 0;
+				const credentialSlots = getRequiredNodeCredentialSlots(nodeType);
 
-				if (nodeTypeRequiresCredentials && !hasCredentials) {
+				if (
+					credentialSlots.length > 0 &&
+					!lookup.skipCredentialsCheck &&
+					!hasNodeCredentials(credentials)
+				) {
 					const error = new ValidationError(
 						`Node "${node.name}" does not have credentials configured. Set up credentials before fetching resource options.`,
 					);
@@ -164,15 +126,15 @@ export function createGetResourceLocatorOptionsTool(
 				reportProgress(reporter, `Fetching options for "${parameterPath}" on node "${node.name}"`, {
 					nodeId,
 					parameterPath,
-					searchMethod,
+					searchMethod: lookup.methodName,
 				});
 
 				// Call the resource locator callback with timeout
 				try {
 					const result = await Promise.race([
 						resourceLocatorCallback(
-							searchMethod,
-							`parameters.${parameterPath}`,
+							lookup.methodName,
+							toDynamicParameterPath(parameterPath),
 							{ name: node.type, version: node.typeVersion },
 							node.parameters ?? {},
 							credentials,
@@ -183,7 +145,10 @@ export function createGetResourceLocatorOptionsTool(
 						),
 					]);
 
-					const formattedOptions = formatOptionsForLLM(result.results, parameterPath);
+					const formattedOptions = formatResourceLocatorOptionsForLLM(
+						result.results,
+						parameterPath,
+					);
 
 					reporter.complete({
 						parameterPath,
@@ -201,7 +166,7 @@ export function createGetResourceLocatorOptionsTool(
 					logger?.warn('Resource locator callback failed', {
 						nodeId,
 						parameterPath,
-						searchMethod,
+						searchMethod: lookup.methodName,
 						error: errorMessage,
 					});
 

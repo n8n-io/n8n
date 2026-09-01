@@ -4,65 +4,65 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 | tagId | varchar(36) |  | false |  | [public.tag_entity](public.tag_entity.md) |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| fk_workflows_tags_tag_id | FOREIGN KEY | FOREIGN KEY ("tagId") REFERENCES tag_entity(id) ON DELETE CASCADE |
+| fk_workflows_tags_workflow_id | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| pk_workflows_tags | PRIMARY KEY | PRIMARY KEY ("workflowId", "tagId") |
 | workflows_tags_tagId_not_null1 | n | NOT NULL "tagId" |
 | workflows_tags_workflowId_not_null1 | n | NOT NULL "workflowId" |
-| fk_workflows_tags_workflow_id | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
-| fk_workflows_tags_tag_id | FOREIGN KEY | FOREIGN KEY ("tagId") REFERENCES tag_entity(id) ON DELETE CASCADE |
-| pk_workflows_tags | PRIMARY KEY | PRIMARY KEY ("workflowId", "tagId") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| pk_workflows_tags | CREATE UNIQUE INDEX pk_workflows_tags ON public.workflows_tags USING btree ("workflowId", "tagId") |
 | idx_workflows_tags_workflow_id | CREATE INDEX idx_workflows_tags_workflow_id ON public.workflows_tags USING btree ("workflowId") |
+| pk_workflows_tags | CREATE UNIQUE INDEX pk_workflows_tags ON public.workflows_tags USING btree ("workflowId", "tagId") |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
+"public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflows_tags" {
-  varchar_36_ workflowId FK
   varchar_36_ tagId FK
-}
-"public.workflow_entity" {
-  varchar_128_ name
-  boolean active
-  json nodes
-  json connections
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
-  text description
-  varchar_36_ activeVersionId FK
-  json nodeGroups
-  varchar sourceWorkflowId
+  varchar_36_ workflowId FK
 }
 "public.tag_entity" {
-  varchar_24_ name
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
   varchar_36_ id
+  varchar_24_ name
+  timestamp_3__with_time_zone updatedAt
+}
+"public.workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
+  varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

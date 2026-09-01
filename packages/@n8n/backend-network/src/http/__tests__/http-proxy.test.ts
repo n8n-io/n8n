@@ -1,10 +1,13 @@
+import dns from 'dns';
 import http from 'http';
 import https from 'https';
-import type { AddressInfo } from 'net';
+import type { AddressInfo, LookupFunction } from 'net';
 import nock from 'nock';
 import { promisify } from 'util';
 
-import { installGlobalProxyAgent, resolveProxyUrl, uninstallGlobalProxyAgent } from '../http-proxy';
+import { EnvProxyHttpAgent } from '../env-proxy-http-agent';
+import { EnvProxyHttpsAgent } from '../env-proxy-https-agent';
+import { installGlobalProxyAgent, uninstallGlobalProxyAgent } from '../http-proxy';
 
 interface TestResponse {
 	message: string;
@@ -57,17 +60,17 @@ async function createMockProxyServer() {
 	};
 }
 
-async function makeRequest(url: string): Promise<TestResponse> {
+async function makeRequest(url: string, options: http.RequestOptions = {}): Promise<TestResponse> {
 	return await new Promise((resolve, reject) => {
 		const urlObj = new URL(url);
 		const httpModule = urlObj.protocol === 'https:' ? https : http;
 
-		const req = httpModule.get(url, { timeout: 5000 }, (res) => {
+		const req = httpModule.get(url, { timeout: 5000, ...options }, (res) => {
 			let data = '';
 			res.on('data', (chunk) => (data += chunk));
 			res.on('end', () => {
 				try {
-					resolve(JSON.parse(data));
+					resolve(JSON.parse(data) as TestResponse);
 				} catch (error) {
 					reject(error instanceof Error ? error : new Error(String(error)));
 				}
@@ -233,28 +236,64 @@ describe('HTTP Proxy Tests', () => {
 		}
 	});
 
-	describe('resolveProxyUrl', () => {
-		test('returns the configured proxy for a matching target', () => {
+	test('should honour a per-request lookup on the direct path', async () => {
+		const targetServer = http.createServer((_req, res) => {
+			res.setHeader('Content-Type', 'application/json');
+			res.end(JSON.stringify({ message: 'direct', timestamp: Date.now() }));
+		});
+		await new Promise<void>((resolve, reject) => {
+			targetServer.listen(0, '127.0.0.1', resolve);
+			targetServer.on('error', reject);
+		});
+		const { port } = targetServer.address() as AddressInfo;
+
+		process.env.HTTP_PROXY = proxyServer.url;
+		process.env.NO_PROXY = 'localhost';
+		installGlobalProxyAgent();
+
+		const lookedUp: string[] = [];
+		const lookup: LookupFunction = (hostname, options, onResult) => {
+			lookedUp.push(hostname);
+			dns.lookup(hostname, { ...options, family: 4 }, onResult);
+		};
+
+		try {
+			const response = await makeRequest(`http://localhost:${port}/test`, { lookup });
+
+			expect(response.message).toBe('direct');
+			expect(lookedUp).toEqual(['localhost']);
+			expect(proxyServer.capturedRequests).toHaveLength(0);
+		} finally {
+			await promisify(targetServer.close.bind(targetServer))();
+		}
+	});
+
+	describe('global agent lifecycle', () => {
+		test('installs env-proxy agents when a proxy env var is set', () => {
 			process.env.HTTP_PROXY = proxyServer.url;
 
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBe(proxyServer.url);
+			installGlobalProxyAgent();
+
+			expect(http.globalAgent).toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).toBeInstanceOf(EnvProxyHttpsAgent);
 		});
 
-		test('returns undefined when no proxy is configured', () => {
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBeUndefined();
+		test('is a no-op when no proxy env var is set', () => {
+			installGlobalProxyAgent();
+
+			expect(http.globalAgent).not.toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).not.toBeInstanceOf(EnvProxyHttpsAgent);
 		});
 
-		test('returns undefined when the target is excluded by NO_PROXY', () => {
+		test('uninstall restores plain agents', () => {
 			process.env.HTTP_PROXY = proxyServer.url;
-			process.env.NO_PROXY = 'api.example.com';
+			installGlobalProxyAgent();
 
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBeUndefined();
-		});
+			uninstallGlobalProxyAgent();
 
-		test('resolves ALL_PROXY when no scheme-specific proxy is set', () => {
-			process.env.ALL_PROXY = proxyServer.url;
-
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBe(proxyServer.url);
+			expect(http.globalAgent).toBeInstanceOf(http.Agent);
+			expect(http.globalAgent).not.toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).not.toBeInstanceOf(EnvProxyHttpsAgent);
 		});
 	});
 

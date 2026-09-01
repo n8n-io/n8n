@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiRunSnapshot } from '../../entities/instance-ai-run-snapshot.entity';
 import type { InstanceAiRunSnapshotRepository } from '../../repositories/instance-ai-run-snapshot.repository';
@@ -26,7 +26,7 @@ describe('DbSnapshotStorage', () => {
 	const storage = new DbSnapshotStorage(repo);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('findLangsmithAnchor', () => {
@@ -147,6 +147,34 @@ describe('DbSnapshotStorage', () => {
 					langsmithTraceId: 'ls-trace-existing',
 				}),
 			);
+		});
+	});
+
+	describe('getForWindow', () => {
+		it('passes the window through and hydrates the rows it gets back', async () => {
+			const since = new Date('2026-01-01T00:00:00.000Z');
+			repo.findInWindow.mockResolvedValueOnce([
+				makeRow({ runId: 'run-1', messageGroupId: 'mg-1', createdAt: since }),
+			]);
+
+			const snapshots = await storage.getForWindow('thread-1', { since });
+
+			expect(repo.findInWindow).toHaveBeenCalledWith('thread-1', { since });
+			expect(snapshots).toEqual([
+				expect.objectContaining({
+					runId: 'run-1',
+					messageGroupId: 'mg-1',
+					tree: { agentId: 'agent-root' },
+				}),
+			]);
+		});
+
+		it('defaults to the whole thread when no window is given', async () => {
+			repo.findInWindow.mockResolvedValueOnce([]);
+
+			await storage.getForWindow('thread-1');
+
+			expect(repo.findInWindow).toHaveBeenCalledWith('thread-1', {});
 		});
 	});
 });

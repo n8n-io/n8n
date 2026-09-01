@@ -1,8 +1,8 @@
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
-import type { EvaluationConfig, EvaluationConfigRepository } from '@n8n/db';
-import type { User, WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { EvaluationConfig, EvaluationConfigRepository, User, WorkflowEntity } from '@n8n/db';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { EvaluationConfigValidator } from '../evaluation-config-validator';
 import { EvaluationConfigService } from '../evaluation-config.service';
@@ -36,9 +36,9 @@ function makeWorkflow(): WorkflowEntity {
 
 describe('EvaluationConfigService', () => {
 	let service: EvaluationConfigService;
-	let repository: jest.Mocked<EvaluationConfigRepository>;
-	let validator: jest.Mocked<EvaluationConfigValidator>;
-	let licenseState: jest.Mocked<LicenseState>;
+	let repository: Mocked<EvaluationConfigRepository>;
+	let validator: Mocked<EvaluationConfigValidator>;
+	let licenseState: Mocked<LicenseState>;
 	let workflow: WorkflowEntity;
 
 	beforeEach(() => {

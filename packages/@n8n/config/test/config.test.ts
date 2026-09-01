@@ -1,9 +1,14 @@
 import { Container } from '@n8n/di';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
-import { ExecutionsConfig, GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
+import {
+	DEFAULT_CONTENT_SECURITY_POLICY,
+	GlobalConfig,
+	SSRF_DEFAULT_BLOCKED_IP_RANGES,
+} from '../src/index';
 
 const { readFileSyncMock } = vi.hoisted(() => ({
 	readFileSyncMock: vi.fn(),
@@ -13,7 +18,8 @@ vi.mock('node:fs', () => ({
 	readFileSync: readFileSyncMock,
 }));
 
-const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+// `restoreMocks` restores spies before each test, so this is re-established in beforeEach.
+let consoleWarnMock: MockInstance;
 
 // Ignore the sanitize function from the GlobalConfig nested types
 type ConfigShape<T> = T extends ReadonlyArray<infer U>
@@ -34,6 +40,7 @@ describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
 		vi.clearAllMocks();
+		consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
 	const originalEnv = process.env;
@@ -73,6 +80,7 @@ describe('GlobalConfig', () => {
 		ssl_cert: '',
 		canvasOnly: false,
 		editorBaseUrl: '',
+		webhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -94,6 +102,7 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				destroyTimeoutMs: 10_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
 				maxConnectionLifetimeMs: 60 * 60 * 1000,
@@ -117,6 +126,11 @@ describe('GlobalConfig', () => {
 			type: 'sqlite',
 			pingIntervalSeconds: 2,
 			pingTimeoutMs: 5_000,
+			pingMaxFailuresBeforeRecovery: 3,
+			minRecoveryBackoffMs: 1_000,
+			maxRecoveryBackoffMs: 30_000,
+			connectionAcquisitionTimeoutMs: 30_000,
+			startupConnectMaxRetries: 5,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -125,6 +139,7 @@ describe('GlobalConfig', () => {
 				endpoint: '',
 				endpointAuthToken: '',
 				persistence: false,
+				showScopes: [],
 				skipTypes: [],
 			},
 		},
@@ -160,6 +175,7 @@ describe('GlobalConfig', () => {
 					'workflow-shared': '',
 					'project-shared': '',
 					'api-key-revoked': '',
+					'mcp-client-revoked': '',
 				},
 			},
 		},
@@ -179,22 +195,24 @@ describe('GlobalConfig', () => {
 			separator: ':',
 			files: [],
 		},
+		featureFlags: {
+			override: {},
+		},
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			mergeSqlSandboxMemoryLimitMb: 64,
 		},
 		publicApi: {
 			disabled: false,
 			path: 'api',
 			swaggerUiDisabled: false,
-			packagesEnabled: false,
 		},
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
-			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -214,6 +232,13 @@ describe('GlobalConfig', () => {
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 			publicationOutboxPollIntervalMs: 15_000,
+			publicationOutboxLeaseSeconds: 120,
+			workflowPublicationConcurrency: 5,
+			publicationOutboxCompletedRetentionHours: 1,
+			publicationOutboxFailedRetentionHours: 168,
+			publicationOutboxCleanupIntervalSeconds: 1200,
+			publicationOutboxCleanupBatchSize: 1000,
+			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -234,12 +259,22 @@ describe('GlobalConfig', () => {
 				includeQueueMetrics: false,
 				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
+				includeSchedulerMetrics: false,
+				schedulerMetricsInterval: 20,
+				includePollTriggerMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
 				includeExecutionDataMetrics: false,
 				includeSsrfMetrics: false,
 				includeDnsCacheMetrics: false,
+				includeWebhookMetrics: false,
+				includeFormMetrics: false,
+				includeWorkflowInfoMetrics: false,
+				workflowInfoMetricInterval: 60,
+				includeDbPoolMetrics: false,
+				includeWorkflowPublicationMetrics: false,
+				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -250,6 +285,7 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
+			mcpCanvasGroupsEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
@@ -278,6 +314,14 @@ describe('GlobalConfig', () => {
 			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
 			maxZipEntries: 5000,
 		},
+		mcpClient: {
+			cacheTtl: 300000,
+			cacheMaxSize: 500,
+		},
+		mcpServer: {
+			sessionIdleTtl: 900000,
+			sessionSweepInterval: 300000,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
@@ -287,14 +331,18 @@ describe('GlobalConfig', () => {
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
+			vertexProjectId: '',
+			vertexLocation: '',
+			vertexServiceAccountJson: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
-			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxSnapshot: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
 			n8nSandboxServiceUrl: '',
@@ -303,21 +351,25 @@ describe('GlobalConfig', () => {
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
 			sandboxAutoStopMinutes: 15,
-			sandboxAutoArchiveMinutes: 10_080,
-			sandboxAutoDeleteMinutes: 43_200,
+			sandboxAutoArchiveMinutes: 60,
+			sandboxAutoDeleteMinutes: 10_080,
 			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
-			threadTtlDays: 90,
+			threadTtlDays: 30,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
+			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
-			outputRedactionEnabled: true,
-			outputRedactionSecrets: true,
-			outputRedactionPii: 'credit-card',
-			outputRedactionPlaceholder: '[REDACTED]',
+			runDebugEnabled: false,
+			thinkingEnabled: true,
+			mcpConnectionsEnabled: false,
+			canvasNodeContextEnabled: false,
+			instanceAiSetupPanelEnabled: false,
+			activationCapped: false,
+			activationLockMessageThreshold: 1,
 		},
 		queue: {
 			health: {
@@ -335,6 +387,10 @@ describe('GlobalConfig', () => {
 					username: '',
 					clusterNodes: '',
 					tls: false,
+					tlsConfig: {
+						serverName: '',
+						rejectUnauthorized: true,
+					},
 					dualStack: false,
 					slotsRefreshInterval: 5_000,
 					slotsRefreshTimeout: 1_000,
@@ -364,6 +420,7 @@ describe('GlobalConfig', () => {
 			maxConcurrency: 10,
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
+			taskAcceptTimeout: 2,
 			heartbeatInterval: 30,
 			grantTokenTtl: 30,
 			insecureMode: false,
@@ -375,6 +432,8 @@ describe('GlobalConfig', () => {
 			deploymentName: '',
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
+			tracesSlowSpanThresholdMs: 1000,
+			webhookTracesSampleRate: 0.05,
 			eventLoopBlockDetectionEnabled: false,
 			eventLoopBlockThreshold: 500,
 			eventLoopBlockMaxEventsPerHour: 5,
@@ -398,8 +457,39 @@ describe('GlobalConfig', () => {
 			ttl: 10,
 			interval: 3,
 		},
+		scheduler: {
+			enabled: false,
+			materializationWindowSeconds: 60,
+			materializationIntervalSeconds: 10,
+			materializationTimeoutSeconds: 60,
+			executorIntervalSeconds: 5,
+			executorTimeoutSeconds: 60,
+			claimBatchSize: 100,
+			reaperIntervalSeconds: 30,
+			reaperBatchSize: 100,
+			reaperTimeoutSeconds: 60,
+			leaseDurationSeconds: 60,
+			retentionSeconds: 86400,
+			failedRetentionSeconds: 604800,
+			retentionIntervalSeconds: 3600,
+			retentionTimeoutSeconds: 300,
+			jitterRatio: 0.1,
+			minIntervalSeconds: 0,
+			maxConcurrentPasses: 10,
+			triggerNodeMode: 'legacy',
+			enabledForPollTriggers: false,
+			pollTimeoutSeconds: 45,
+			allowSkipDurableScheduler: false,
+			maxAttempts: 5,
+			misfireGraceSeconds: 60,
+			durableCursorsEnabled: false,
+			enabledForSystemTasks: false,
+		},
 		evaluation: {
 			collectionsEnabled: false,
+			configEvalsEnabled: false,
+			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -419,15 +509,17 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
 			daysAbandonedWorkflow: 90,
-			contentSecurityPolicy: '{}',
-			contentSecurityPolicyReportOnly: false,
-			crossOriginOpenerPolicy: 'same-origin',
+			contentSecurityPolicy: undefined,
+			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			crossOriginOpenerPolicy: 'same-origin-allow-popups',
 			disableWebhookHtmlSandboxing: false,
 			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
+			awsSystemCredentialsSdkSources: 'all',
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
+			postMessageAllowedOrigins: '',
 		},
 		executions: {
 			mode: 'regular',
@@ -461,7 +553,9 @@ describe('GlobalConfig', () => {
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
-			scheduledExecutionDeduplicationEnabled: false,
+			maxDisplaySize: 100 * 1024 * 1024,
+			webhookResponseRelaySizeMaxMiB: 64,
+			webhookResponseRelayOffloadEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
@@ -475,8 +569,14 @@ describe('GlobalConfig', () => {
 		aiAssistant: {
 			baseUrl: '',
 		},
+		aiGateway: {
+			enabled: true,
+		},
 		aiBuilder: {
 			apiKey: '',
+		},
+		collaboration: {
+			crdt: 'off',
 		},
 		tags: {
 			disabled: false,
@@ -512,11 +612,16 @@ describe('GlobalConfig', () => {
 			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 			allowedIpRanges: [],
 			allowedHostnames: [],
+			blockedHostnames: [],
 			dnsCacheMaxSize: 1024 * 1024,
 		},
 		httpRequest: {
 			enforceGlobalUserAgent: false,
 			globalUserAgentValue: '',
+			responseBodyReadTimeout: 300000,
+		},
+		outboundProxy: {
+			mode: 'all',
 		},
 		redis: {
 			prefix: 'n8n',
@@ -527,6 +632,7 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			timeout: 3600000,
 			allowSendingParameterValues: true,
+			maxAgentPassthroughBinarySizeBytes: 50 * 1024 * 1024,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
@@ -536,9 +642,10 @@ describe('GlobalConfig', () => {
 			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
+			skipOnStartUp: false,
 		},
 		expressionEngine: {
-			engine: 'legacy',
+			engine: 'vm',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
@@ -547,6 +654,7 @@ describe('GlobalConfig', () => {
 			tracesEnabled: true,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
+			allowWebhookIsolateSkip: true,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -561,6 +669,8 @@ describe('GlobalConfig', () => {
 			oidcLoginEnabled: false,
 			oidcPrompt: 'select_account',
 			oidcAcrValues: '',
+			oidcAdditionalScopes: '',
+			oidcRpInitiatedLogoutEnabled: false,
 			ssoUserRoleProvisioning: 'disabled',
 			securityPolicyManagedByEnv: false,
 			mfaEnforcedEnabled: false,
@@ -578,15 +688,17 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
+			tracingEnabled: true,
+			tracingRecordInputs: true,
+			tracingRecordOutputs: true,
 			modules: [],
+			backgroundTasksEnabled: false,
 			sandboxEnabled: false,
-			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
-			sandboxNamePrefix: '',
-			daytonaVolumeId: '',
-			daytonaApiUrl: '',
-			daytonaApiKey: '',
+			sandboxEphemeral: false,
+			channelReconcileIntervalSeconds: 60,
 		},
 	} satisfies GlobalConfigShape;
 
@@ -598,6 +710,63 @@ describe('GlobalConfig', () => {
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
 		expect(readFileSyncMock).not.toHaveBeenCalled();
+	});
+
+	it('should parse N8N_AGENTS_TRACING_ENABLED from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_ENABLED: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingEnabled).toBe(false);
+	});
+
+	it('should parse N8N_POLLER_DURABLE_CURSORS_ENABLED from env variables', () => {
+		process.env = {
+			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.scheduler.durableCursorsEnabled).toBe(true);
+	});
+
+	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_RECORD_INPUTS: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingRecordInputs).toBe(false);
+	});
+
+	it('should parse N8N_AGENTS_TRACING_RECORD_OUTPUTS from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_RECORD_OUTPUTS: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingRecordOutputs).toBe(false);
+	});
+
+	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
+		process.env = {
+			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
+	});
+
+	it('should parse N8N_MANAGED_OAUTH_SHOW_SCOPES from env variables', () => {
+		process.env = {
+			N8N_MANAGED_OAUTH_SHOW_SCOPES: 'googleOAuth2Api,microsoftOAuth2Api',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.credentials.overwrite.showScopes).toEqual([
+			'googleOAuth2Api',
+			'microsoftOAuth2Api',
+		]);
 	});
 
 	it('should use values from env variables when defined', () => {
@@ -616,6 +785,8 @@ describe('GlobalConfig', () => {
 			N8N_PASSWORD_MIN_LENGTH: '12',
 			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
 			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
+			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
+			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -634,6 +805,11 @@ describe('GlobalConfig', () => {
 				type: 'sqlite',
 				pingIntervalSeconds: 2,
 				pingTimeoutMs: 5_000,
+				pingMaxFailuresBeforeRecovery: 3,
+				minRecoveryBackoffMs: 1_000,
+				maxRecoveryBackoffMs: 30_000,
+				connectionAcquisitionTimeoutMs: 30_000,
+				startupConnectMaxRetries: 5,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
@@ -663,6 +839,12 @@ describe('GlobalConfig', () => {
 			httpRequest: {
 				enforceGlobalUserAgent: true,
 				globalUserAgentValue: 'AcmeCorp/1.0',
+				responseBodyReadTimeout: 300000,
+			},
+			agents: {
+				...defaultConfig.agents,
+				sandboxEphemeral: true,
+				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
 			},
 		});
 		expect(readFileSyncMock).not.toHaveBeenCalled();
@@ -704,7 +886,7 @@ describe('GlobalConfig', () => {
 		expect(config.database.postgresdb.password).toBe('password-from-file');
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			expect.stringContaining(
-				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+				'DB_POSTGRESDB_PASSWORD_FILE contained leading or trailing whitespace',
 			),
 		);
 	});
@@ -718,6 +900,129 @@ describe('GlobalConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
 		);
+	});
+
+	describe('database recovery config validation', () => {
+		it('should reject DB_PING_MAX_FAILURES_BEFORE_RECOVERY below 1 and fall back to the default', () => {
+			process.env = { DB_PING_MAX_FAILURES_BEFORE_RECOVERY: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.pingMaxFailuresBeforeRecovery).toBe(3);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('DB_PING_MAX_FAILURES_BEFORE_RECOVERY'),
+			);
+		});
+
+		it('should reject an empty DB_PING_MAX_FAILURES_BEFORE_RECOVERY (coerces to 0, not NaN)', () => {
+			process.env = { DB_PING_MAX_FAILURES_BEFORE_RECOVERY: '' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.pingMaxFailuresBeforeRecovery).toBe(3);
+		});
+
+		it('should reject DB_RECOVERY_BACKOFF_MIN_MS of 0 and fall back to the default', () => {
+			process.env = { DB_RECOVERY_BACKOFF_MIN_MS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.minRecoveryBackoffMs).toBe(1000);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('DB_RECOVERY_BACKOFF_MIN_MS'),
+			);
+		});
+
+		it('should reject a negative DB_RECOVERY_BACKOFF_MAX_MS and fall back to the default', () => {
+			process.env = { DB_RECOVERY_BACKOFF_MAX_MS: '-5' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.maxRecoveryBackoffMs).toBe(30000);
+		});
+
+		it('should accept 0 for DB_CONNECTION_ACQUISITION_TIMEOUT_MS (wait indefinitely)', () => {
+			process.env = { DB_CONNECTION_ACQUISITION_TIMEOUT_MS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.connectionAcquisitionTimeoutMs).toBe(0);
+		});
+
+		it('should reject a negative DB_CONNECTION_ACQUISITION_TIMEOUT_MS and fall back to the default', () => {
+			process.env = { DB_CONNECTION_ACQUISITION_TIMEOUT_MS: '-1' };
+			const config = Container.get(GlobalConfig);
+			expect(config.database.connectionAcquisitionTimeoutMs).toBe(30000);
+		});
+
+		it('should accept valid recovery overrides', () => {
+			process.env = {
+				DB_PING_MAX_FAILURES_BEFORE_RECOVERY: '5',
+				DB_RECOVERY_BACKOFF_MIN_MS: '500',
+				DB_RECOVERY_BACKOFF_MAX_MS: '60000',
+				DB_CONNECTION_ACQUISITION_TIMEOUT_MS: '10000',
+			};
+			const config = Container.get(GlobalConfig);
+			expect(config.database.pingMaxFailuresBeforeRecovery).toBe(5);
+			expect(config.database.minRecoveryBackoffMs).toBe(500);
+			expect(config.database.maxRecoveryBackoffMs).toBe(60000);
+			expect(config.database.connectionAcquisitionTimeoutMs).toBe(10000);
+		});
+	});
+
+	describe('workflow publication outbox cleanup config validation', () => {
+		it('should reject a cleanup interval of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxCleanupIntervalSeconds).toBe(1200);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS'),
+			);
+		});
+
+		it('should accept a positive cleanup interval', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS: '60' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxCleanupIntervalSeconds).toBe(60);
+		});
+
+		it('should reject a cleanup batch size of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxCleanupBatchSize).toBe(1000);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE'),
+			);
+		});
+
+		it('should accept a positive cleanup batch size', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE: '50' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxCleanupBatchSize).toBe(50);
+		});
+
+		it('should reject a consumer concurrency of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_CONCURRENCY: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.workflowPublicationConcurrency).toBe(5);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_CONCURRENCY'),
+			);
+		});
+
+		it('should accept a positive consumer concurrency', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_CONCURRENCY: '3' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.workflowPublicationConcurrency).toBe(3);
+		});
+
+		it('should reject an outbox lease above one day and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS: `${100 * 24 * 60 * 60}` };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxLeaseSeconds).toBe(120);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS'),
+			);
+		});
+
+		it('should reject an outbox lease of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxLeaseSeconds).toBe(120);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS'),
+			);
+		});
 	});
 
 	it('should clamp password min length to valid range', () => {
@@ -752,11 +1057,11 @@ describe('GlobalConfig', () => {
 
 		it('should validate crossOriginOpenerPolicy enum values', () => {
 			process.env = {
-				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin-allow-popups',
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin',
 			};
 
 			const globalConfig = Container.get(GlobalConfig);
-			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
 		});
 
 		it('should warn and fall back to default for invalid crossOriginOpenerPolicy', () => {
@@ -765,7 +1070,7 @@ describe('GlobalConfig', () => {
 			};
 
 			const globalConfig = Container.get(GlobalConfig);
-			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
 		});
 	});
 
@@ -795,22 +1100,6 @@ describe('GlobalConfig', () => {
 
 			const config = Container.get(GlobalConfig);
 			expect(config.endpoints.health).toEqual('/api/v1/health');
-		});
-	});
-
-	describe('ExecutionsConfig', () => {
-		it('should default scheduledExecutionDeduplicationEnabled to false', () => {
-			process.env = {};
-			const config = Container.get(ExecutionsConfig);
-			expect(config.scheduledExecutionDeduplicationEnabled).toBe(false);
-		});
-
-		it('should enable scheduledExecutionDeduplicationEnabled when env var is set to true', () => {
-			process.env = {
-				N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED: 'true',
-			};
-			const config = Container.get(ExecutionsConfig);
-			expect(config.scheduledExecutionDeduplicationEnabled).toBe(true);
 		});
 	});
 });

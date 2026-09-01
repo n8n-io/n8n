@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	ErrorReporter,
@@ -13,10 +12,10 @@ import {
 	InstanceSettings,
 	StorageConfig,
 	WorkflowExecute,
+	WorkflowHasIssuesError,
 } from 'n8n-core';
 import type {
 	ExecutionError,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
@@ -36,6 +35,8 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+// `no-cycle` still reports a cycle here, but only through the dynamic import
+// in `execute-error-workflow`, which creates no evaluation-order edge.
 // eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
@@ -46,10 +47,12 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
+import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
+import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -91,6 +94,7 @@ export class WorkflowRunner {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
+		private readonly engineV2Dispatcher: EngineV2Dispatcher,
 	) {}
 
 	/** The process did error */
@@ -180,16 +184,13 @@ export class WorkflowRunner {
 		this.activeExecutions.finalizeExecution(executionId);
 	}
 
-	/** Run the workflow
-	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	/**
+	 * Returns the masking error, if any, having already emptied the trigger-item stack
+	 * either way.
 	 */
-	async run(
+	async establishContextForPersistence(
 		data: IWorkflowExecutionDataProcess,
-		loadStaticData?: boolean,
-		realtime?: boolean,
-		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
+	): Promise<(ExecutionError & { node?: INode }) | undefined> {
 		// Establish the execution context before persisting to the DB.
 		// activeExecutions.add() -> executionPersistence.create() writes
 		// data.executionData to the DB; any header masking or runtimeData
@@ -234,8 +235,29 @@ export class WorkflowRunner {
 			}
 		}
 
+		return establishContextError;
+	}
+
+	/** Run the workflow
+	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	 */
+	async run(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		existingExecution?: ResumableExecution,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		// The engine 2.0 path owns the whole run: it keeps no control-plane
+		// execution row, so everything below here does not apply to it.
+		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
+			return await this.engineV2Dispatcher.start(data);
+		}
+
+		const establishContextError = await this.establishContextForPersistence(data);
+
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, restartExecutionId);
+		const executionId = await this.activeExecutions.add(data, existingExecution);
 
 		if (establishContextError) {
 			await this.failExecution(data, executionId, establishContextError, responsePromise);
@@ -282,10 +304,10 @@ export class WorkflowRunner {
 				data,
 				loadStaticData,
 				realtime,
-				restartExecutionId,
+				existingExecution?.executionId,
 			);
 		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
+			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -378,6 +400,7 @@ export class WorkflowRunner {
 		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
+		additionalData.evaluationRunId = data.evaluationRunId;
 
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
@@ -480,6 +503,11 @@ export class WorkflowRunner {
 						),
 				);
 		} catch (error) {
+			if (error instanceof WorkflowHasIssuesError) {
+				await this.failExecution(data, executionId, error);
+				return;
+			}
+
 			await this.processError(
 				error,
 				new Date(),
@@ -509,16 +537,19 @@ export class WorkflowRunner {
 			restartExecutionId,
 			projectId: data.projectId,
 			projectName: data.projectName,
+			// Carry the manual-execution identity for private credential resolution on the worker.
+			encryptedRunnerIdentity: data.encryptedRunnerIdentity,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
 			mcpSessionId: data.mcpSessionId,
 			mcpMessageId: data.mcpMessageId,
 			mcpToolCall: data.mcpToolCall,
+			mcpToolInput: data.mcpToolInput,
 		};
 
 		if (!this.scalingService) {
-			const { ScalingService } = await import('@/scaling/scaling.service');
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			this.scalingService = Container.get(ScalingService);
 			await this.scalingService.setupQueue();
 		}

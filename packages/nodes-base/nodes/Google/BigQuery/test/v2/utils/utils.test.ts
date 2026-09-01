@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 

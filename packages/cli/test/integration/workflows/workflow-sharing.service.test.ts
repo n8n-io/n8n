@@ -2,7 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { createWorkflow, shareWorkflowWithUsers, testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -114,6 +114,28 @@ describe('WorkflowSharingService', () => {
 			//
 			expect(sharedWorkflowIds).toContain(workflow1.id);
 			expect(sharedWorkflowIds).not.toContain(workflow2.id);
+		});
+	});
+
+	describe('rolesGrantingScope', () => {
+		it('should return no options for users holding the scope globally', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(owner, 'workflow:read');
+
+			expect(options).toBeUndefined();
+		});
+
+		it('should return the roles granting the scope for other users', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(member, 'workflow:read');
+
+			expect(options?.projectRoles).toContain('project:viewer');
+			expect(options?.workflowRoles).toContain('workflow:owner');
+		});
+
+		it('should return only the roles granting the requested scope', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(member, 'workflow:update');
+
+			expect(options?.projectRoles).not.toContain('project:viewer');
+			expect(options?.projectRoles).toContain('project:admin');
 		});
 	});
 });

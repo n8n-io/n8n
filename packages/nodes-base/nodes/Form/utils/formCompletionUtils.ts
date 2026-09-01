@@ -12,40 +12,71 @@ import {
 
 import {
 	generateFormUserAuthToken,
+	getHostNavigationPath,
+	getNodeReference,
 	handleNewlines,
+	resolveRawData,
 	sanitizeCustomCss,
 	sanitizeHtml,
 	validateSafeRedirectUrl,
 } from './utils';
 
-const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
-	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
+type BinaryResponse = { data: string | Buffer; fileName: string; type: string };
+
+const getBinaryDataFromNode = (
+	context: IWebhookFunctions,
+	nodeName: string,
+): IDataObject | undefined => {
+	try {
+		return context.evaluateExpression(`{{ ${getNodeReference(nodeName)}.first().binary }}`) as
+			| IDataObject
+			| undefined;
+	} catch {
+		// Parent nodes without run data (e.g. branches of another Form Trigger,
+		// or nodes that ran before a resumed waiting form in queue mode) throw
+		// an ExpressionError — treat them as having no binary data.
+		return undefined;
+	}
 };
 
-export const binaryResponse = async (
-	context: IWebhookFunctions,
-): Promise<{ data: string | Buffer; fileName: string; type: string }> => {
-	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
-	const parentNodes = context.getParentNodes(context.getNode().name);
-	const binaryNode = parentNodes
-		.reverse()
-		.find((node) => getBinaryDataFromNode(context, node?.name)?.hasOwnProperty(inputDataFieldName));
-	if (!binaryNode) {
-		throw new OperationalError(`No binary data with field ${inputDataFieldName} found.`);
-	}
-	const binaryData = getBinaryDataFromNode(context, binaryNode?.name)[
-		inputDataFieldName
-	] as IBinaryData;
+const getInputDataFieldNames = (inputDataFieldName: string) => {
+	const fieldNames = inputDataFieldName
+		.split(',')
+		.map((fieldName) => fieldName.trim())
+		.filter(Boolean);
 
-	return {
-		// If a binaryData has an id, the following field is set:
-		// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
-		data: binaryData.id
-			? await context.helpers.binaryToBuffer(await context.helpers.getBinaryStream(binaryData.id))
-			: atob(binaryData.data),
-		fileName: binaryData.fileName ?? 'file',
-		type: binaryData.mimeType,
-	};
+	return fieldNames.length ? fieldNames : [inputDataFieldName];
+};
+
+export const binaryResponse = async (context: IWebhookFunctions): Promise<BinaryResponse[]> => {
+	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
+	const inputDataFieldNames = getInputDataFieldNames(inputDataFieldName);
+	const responses: BinaryResponse[] = [];
+	const parentNodesBinaries = context
+		.getParentNodes(context.getNode().name)
+		.reverse()
+		.map((node) => getBinaryDataFromNode(context, node.name) ?? {});
+
+	for (const fieldName of inputDataFieldNames) {
+		const nodeBinary = parentNodesBinaries.find((bin) => Object.hasOwn(bin, fieldName));
+		if (!nodeBinary) {
+			throw new OperationalError(`No binary data with field ${fieldName} found.`);
+		}
+
+		const binaryData = nodeBinary[fieldName] as IBinaryData;
+
+		responses.push({
+			// If a binaryData has an id, the following field is set:
+			// N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+			data: binaryData.id
+				? await context.helpers.binaryToBuffer(await context.helpers.getBinaryStream(binaryData.id))
+				: atob(binaryData.data),
+			fileName: binaryData.fileName ?? 'file',
+			type: binaryData.mimeType,
+		});
+	}
+
+	return responses;
 };
 
 export const renderFormCompletion = async (
@@ -63,20 +94,25 @@ export const renderFormCompletion = async (
 		formTitle: string;
 		customCss?: string;
 	};
-	const responseText = (context.getNodeParameter('responseText', '') as string) ?? '';
 	const respondWith = context.getNodeParameter('respondWith', '') as
 		| 'text'
 		| 'redirect'
 		| 'showText'
 		| 'returnBinary';
-	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : '';
+	const responseText =
+		respondWith === 'showText'
+			? ((context.getNodeParameter('responseText', '') as string) ?? '')
+			: '';
+	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : [];
+	const triggerRef = getNodeReference(trigger.name);
 
 	let title = options.formTitle;
 	if (!title) {
-		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
+		title = context.evaluateExpression(`{{ ${triggerRef}.params.formTitle }}`) as string;
+		title = resolveRawData(context, title);
 	}
 	const appendAttribution = context.evaluateExpression(
-		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
+		`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
 	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
@@ -87,7 +123,10 @@ export const renderFormCompletion = async (
 	// resumes the paused workflow) can re-authenticate the user — cookies
 	// aren't sent on fetch from the sandboxed completion page.
 	const authToken = authedUser
-		? generateFormUserAuthToken(context.getNode(), authedUser)
+		? generateFormUserAuthToken(context.getNode(), authedUser, {
+				workflowId: context.getWorkflow().id,
+				executionId: context.getExecutionId(),
+			})
 		: undefined;
 
 	res.render('form-trigger-completion', {
@@ -100,6 +139,10 @@ export const renderFormCompletion = async (
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
 		authToken,
+		// The completion page reloads itself while the run finishes, and that hop is
+		// subject to the same cookie semantics as every other page of the form, so it
+		// goes through the host when the host is the shell.
+		hostNavigationPath: getHostNavigationPath(context),
 	});
 
 	return { noWebhookResponse: true };

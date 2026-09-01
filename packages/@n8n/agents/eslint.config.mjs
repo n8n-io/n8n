@@ -5,7 +5,7 @@ const AI_SDK_LAZY_IMPORT_MESSAGE =
 	"Import runtime values from 'ai' through the lazy loader in src/runtime/lazy-ai.ts or a dynamic import at the call site, so @n8n/agents stays light at boot.";
 
 export default defineConfig(
-	{ ignores: ['examples/**', 'vitest.integration.config.*', 'src/__tests__/fixtures/**'] },
+	{ ignores: ['examples/**', 'vitest.integration.config.*', 'vitest.integration.setup.ts', 'src/__tests__/fixtures/**'] },
 	nodeConfig,
 	{
 		rules: {

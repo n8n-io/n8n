@@ -70,6 +70,7 @@ const {
 		confirm: vi.fn(),
 	},
 	mockWorkflowDocumentStore: {
+		workflowId: '123',
 		updateNodeProperties: vi.fn(),
 		getNodeByName: vi.fn(),
 		getStartNode: vi.fn(),
@@ -147,7 +148,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: vi.fn().mockReturnValue(mockMessage),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({
 		track: vi.fn(),
 		trackAiTransform: vi.fn(),
@@ -161,7 +162,7 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -862,6 +863,18 @@ describe('useNodeExecution', () => {
 			await stopExecution();
 
 			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
+		});
+
+		it('should stop webhook wait from a non-trigger node', async () => {
+			mockNodeTypesStore.isTriggerNode.mockReturnValue(false);
+			mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
+			const node = ref(createTestNode({ name: 'Edit Fields' }));
+
+			const { stopExecution } = useNodeExecution(node);
+			await stopExecution();
+
+			expect(mockWorkflowsStore.removeTestWebhook).toHaveBeenCalledWith('123');
+			expect(mockRunWorkflow.stopCurrentExecution).not.toHaveBeenCalled();
 		});
 
 		it('should stop current execution when listening for workflow events', async () => {

@@ -9,11 +9,105 @@ export interface ClientOptions {
 	debug?: (message: string) => void;
 }
 
+export interface ImportPackageFields {
+	projectId?: string;
+	folderId?: string;
+	credentialMatchingMode?: string;
+	credentialMissingMode?: string;
+	bindings?: string;
+	workflowConflictPolicy: string;
+	workflowPublishingPolicy?: string;
+	workflowIdPolicy?: string;
+	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
+	folderConflictPolicy?: string;
+	overwriteDeletionPolicy?: string;
+	dataTableMatchingMode?: string;
+	dataTableMissingMode?: string;
+	dataTableSchemaConflictPolicy?: string;
+	variableMissingMode?: string;
+	variableConflictPolicy?: string;
+	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
+}
+
+export interface ExportPackageFields {
+	workflowIds?: string[];
+	folderIds?: string[];
+	projectIds?: string[];
+	includeVariableValues?: boolean;
+	includeTags?: boolean;
+	missingWorkflowDependencyPolicy?: string;
+	workflowVersionPolicy?: string;
+	credentialExportPolicy?: string;
+}
+
+/** True per-entity counts of what ended up in an exported package. */
+export interface ExportPackageCounts {
+	workflows: number;
+	folders: number;
+	credentials: number;
+	dataTables: number;
+	variables: number;
+	/** Absent when the server predates tag export. */
+	tags?: number;
+}
+
+export interface ExportPackageResult {
+	archive: Buffer;
+	/** Undefined when talking to an older server that doesn't send the counts header. */
+	counts?: ExportPackageCounts;
+}
+
+/** Outcome of pushing a Git connection's projects to its working copy. */
+export type PushGitConnectionResult = {
+	connectionId: string;
+	counts: ExportPackageCounts;
+	commitSha: string;
+};
+
+export interface ImportPackageCounts {
+	projects: { created: number; updated: number; skipped: number; deleted: number };
+	folders: { created: number; skipped: number; removed: number };
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+		archived: number;
+		deleted: number;
+		publishing: {
+			published: number;
+			unpublished: number;
+			unchanged: number;
+			blocked: number;
+			failed: number;
+		};
+	};
+	credentials: { matched: number; stubbed: number };
+	dataTables: { matched: number; created: number };
+	variables: {
+		matched: number;
+		created: number;
+		updated: number;
+		stubbed: number;
+		missing: number;
+	};
+	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
+}
+
+export type PullGitConnectionResult = {
+	connectionId: string;
+	counts: ImportPackageCounts;
+	commitSha: string;
+};
+
 export class ApiError extends Error {
 	constructor(
 		readonly statusCode: number,
 		message: string,
 		readonly hint?: string,
+		readonly details?: unknown,
 	) {
 		super(message);
 		this.name = 'ApiError';
@@ -47,7 +141,13 @@ export class N8nClient {
 	private async request<T>(
 		method: string,
 		path: string,
-		options: { body?: unknown; query?: Record<string, string> } = {},
+		options: {
+			body?: unknown;
+			query?: Record<string, string>;
+			formData?: FormData;
+			responseType?: 'json' | 'binary';
+			onResponse?: (response: Response) => void;
+		} = {},
 	): Promise<T> {
 		const url = new URL(`${this.baseUrl}${path}`);
 		if (options.query) {
@@ -59,13 +159,18 @@ export class N8nClient {
 		this.debug?.(`→ ${method} ${url}`);
 		const start = Date.now();
 
+		const headers = new Headers(this.headers);
+		let body: BodyInit | undefined;
+		if (options.formData) {
+			headers.delete('Content-Type');
+			body = options.formData;
+		} else if (options.body !== undefined) {
+			body = JSON.stringify(options.body);
+		}
+
 		let response: Response;
 		try {
-			response = await fetch(url.toString(), {
-				method,
-				headers: this.headers,
-				body: options.body ? JSON.stringify(options.body) : undefined,
-			});
+			response = await fetch(url.toString(), { method, headers, body });
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
 			this.debug?.(`✗ Connection failed (${Date.now() - start}ms): ${msg}`);
@@ -78,18 +183,11 @@ export class N8nClient {
 
 		this.debug?.(`← ${response.status} ${response.statusText} (${Date.now() - start}ms)`);
 
-		if (response.status === 204) {
-			return undefined as T;
-		}
-
-		const contentType = response.headers.get('content-type') ?? '';
-		const isJson = contentType.includes('application/json');
-		const data: unknown = isJson ? await response.json() : await response.text();
-
 		if (!response.ok) {
+			const errorBody = await this.readBody(response);
 			const message =
-				typeof data === 'object' && data !== null && 'message' in data
-					? String((data as Record<string, unknown>).message)
+				typeof errorBody === 'object' && errorBody !== null && 'message' in errorBody
+					? String((errorBody as Record<string, unknown>).message)
 					: `Request failed (${response.status})`;
 			const hint =
 				response.status === 401
@@ -97,10 +195,25 @@ export class N8nClient {
 					: response.status === 404
 						? 'Resource not found. Verify the ID is correct.'
 						: undefined;
-			throw new ApiError(response.status, message, hint);
+			throw new ApiError(response.status, message, hint, errorBody);
 		}
 
-		return data as T;
+		options.onResponse?.(response);
+
+		if (response.status === 204) {
+			return undefined as T;
+		}
+
+		if (options.responseType === 'binary') {
+			return Buffer.from(await response.arrayBuffer()) as T;
+		}
+
+		return (await this.readBody(response)) as T;
+	}
+
+	private async readBody(response: Response): Promise<unknown> {
+		const contentType = response.headers.get('content-type') ?? '';
+		return contentType.includes('application/json') ? await response.json() : await response.text();
 	}
 
 	private async get<T>(path: string, query?: Record<string, string>): Promise<T> {
@@ -143,6 +256,58 @@ export class N8nClient {
 		} while (cursor && (limit === undefined || results.length < limit));
 
 		return limit !== undefined ? results.slice(0, limit) : results;
+	}
+
+	// ─── Git connections ───────────────────────────────────────────
+
+	async listGitConnections(limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/git-connections', {}, limit);
+	}
+
+	async getGitConnection(id: string) {
+		return await this.get<Record<string, unknown>>(`/git-connections/${id}`);
+	}
+
+	async createGitConnection(body: unknown) {
+		return await this.post<Record<string, unknown>>('/git-connections', body);
+	}
+
+	async updateGitConnection(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/git-connections/${id}`, body);
+	}
+
+	async cloneGitConnection(id: string, branchName?: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/clone`, {
+			...(branchName ? { branchName } : {}),
+		});
+	}
+
+	async disconnectGitConnection(id: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/disconnect`);
+	}
+
+	async deleteGitConnection(id: string) {
+		return await this.del<undefined>(`/git-connections/${id}`);
+	}
+
+	async pushGitConnectionProjects(id: string, body: { commitMessage: string; force?: boolean }) {
+		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`, body);
+	}
+
+	async listGitConnectionProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/git-connections/${id}/projects`);
+	}
+
+	async addProjectToGitConnection(id: string, projectId: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/projects/${projectId}`);
+	}
+
+	async removeProjectFromGitConnection(id: string, projectId: string) {
+		return await this.del<undefined>(`/git-connections/${id}/projects/${projectId}`);
+	}
+
+	async pullGitConnectionProjects(id: string) {
+		return await this.post<PullGitConnectionResult>(`/git-connections/${id}/pull`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────
@@ -390,6 +555,68 @@ export class N8nClient {
 	async sourceControlPull(options: { force?: boolean } = {}) {
 		return await this.post<Record<string, unknown>>('/source-control/pull', {
 			force: options.force ?? false,
+		});
+	}
+
+	// ─── Packages (beta) ───────────────────────────────────────────
+
+	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
+		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
+		const body: {
+			workflowIds?: string[];
+			folderIds?: string[];
+			projectIds?: string[];
+			includeVariableValues?: boolean;
+			includeTags?: boolean;
+			missingWorkflowDependencyPolicy?: string;
+			workflowVersionPolicy?: string;
+			credentialExportPolicy?: string;
+		} = {};
+		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
+		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
+		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
+		// `undefined` is dropped by JSON serialization, so the API's default applies.
+		body.includeVariableValues = fields.includeVariableValues;
+		body.includeTags = fields.includeTags;
+		if (fields.missingWorkflowDependencyPolicy)
+			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
+		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
+		// Only sent when set, so an older server without this field in its schema never sees it.
+		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
+
+		let counts: ExportPackageCounts | undefined;
+		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {
+			body,
+			responseType: 'binary',
+			// Older servers omit this header; counts then stays undefined.
+			onResponse: (response) => {
+				const header = response.headers.get('X-N8n-Export-Counts');
+				if (header) counts = this.parseExportCounts(header);
+			},
+		});
+
+		return { archive, counts };
+	}
+
+	private parseExportCounts(header: string): ExportPackageCounts | undefined {
+		try {
+			return JSON.parse(header) as ExportPackageCounts;
+		} catch {
+			return undefined;
+		}
+	}
+
+	async importPackage(
+		file: { buffer: Buffer; filename: string },
+		fields: ImportPackageFields,
+	): Promise<Record<string, unknown>> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		for (const [key, value] of Object.entries(fields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+			formData: form,
 		});
 	}
 

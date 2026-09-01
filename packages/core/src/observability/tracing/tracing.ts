@@ -19,6 +19,7 @@ export type SpanAttributes = SentrySpanAttributes;
  */
 export interface Tracer {
 	startSpan<T>(options: StartSpanOpts, spanCb: (span: Span) => Promise<T>): Promise<T>;
+	startNewTraceSpan<T>(options: StartSpanOpts, spanCb: (span: Span) => Promise<T>): Promise<T>;
 }
 
 const COMMON_TRACE_ATTRIBUTES = {
@@ -75,6 +76,18 @@ export class Tracing {
 	 */
 	async startSpan<T>(options: StartSpanOpts, spanCb: (span: Span) => Promise<T>): Promise<T> {
 		return await this.tracer.startSpan(options, spanCb);
+	}
+
+	/**
+	 * Start a span inside a brand-new root trace, detaching it from any trace
+	 * active on the current async context. Use for work that should be its own
+	 * transaction rather than a child of whatever trace it was scheduled from.
+	 */
+	async startNewTraceSpan<T>(
+		options: StartSpanOpts,
+		spanCb: (span: Span) => Promise<T>,
+	): Promise<T> {
+		return await this.tracer.startNewTraceSpan(options, spanCb);
 	}
 
 	/** Pick common attributes for a workflow */

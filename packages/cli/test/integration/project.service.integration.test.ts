@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import {
 	linkUserToProject,
 	createTeamProject,
@@ -7,13 +8,12 @@ import {
 } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { License } from '@/license';
-import { ProjectService } from '@/services/project.service.ee';
 import { LicenseMocker } from '@test-integration/license';
 
 import { createUser } from './shared/db/users';
-import { LicenseState } from '@n8n/backend-common';
+
+import { License } from '@/license';
+import { ProjectService } from '@/services/project.service.ee';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;
@@ -53,7 +53,7 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(project.id, [
+			await projectService.addUsersToProject(user, project.id, [
 				{ userId: user.id, role: 'project:admin' },
 			]);
 
@@ -74,7 +74,7 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(project.id, [
+			await projectService.addUsersToProject(user, project.id, [
 				{ userId: user.id, role: 'project:editor' },
 			]);
 

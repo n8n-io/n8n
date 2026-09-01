@@ -1,5 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { ActionToggle } from './ActionToggle';
+
 /**
  * AddResource component for creating workflows, credentials, folders, and data tables.
  * Represents the "add resource" functionality in the project header.
@@ -12,7 +14,11 @@ import type { Locator, Page } from '@playwright/test';
  * await n8n.workflows.addResource.dataTable();
  */
 export class AddResource {
-	constructor(private page: Page) {}
+	private readonly actionToggle: ActionToggle;
+
+	constructor(private page: Page) {
+		this.actionToggle = new ActionToggle(this.page);
+	}
 
 	getWorkflowButton(): Locator {
 		return this.page.getByTestId('add-resource-workflow');
@@ -28,7 +34,7 @@ export class AddResource {
 
 	async folder(): Promise<void> {
 		await this.page.getByTestId('add-resource').click();
-		await this.page.getByTestId('action-folder').click();
+		await this.actionToggle.getAction('folder').click();
 	}
 
 	async dataTable(fromDataTableTab: boolean = true): Promise<void> {
@@ -36,7 +42,7 @@ export class AddResource {
 			await this.page.getByTestId('add-resource-dataTable').click();
 		} else {
 			await this.page.getByTestId('add-resource').click();
-			await this.page.getByTestId('action-dataTable').click();
+			await this.actionToggle.getAction('dataTable').click();
 		}
 	}
 }

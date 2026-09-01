@@ -10,7 +10,7 @@ import N8nIconButton from '../N8nIconButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 export default {
-	title: 'Chat/ChatInput',
+	title: 'Areas/Assistant/ChatInput',
 	component: N8nChatInput,
 	argTypes: {
 		modelValue: {
@@ -18,7 +18,7 @@ export default {
 		},
 		layout: {
 			control: 'select',
-			options: ['single-line', 'multiline'],
+			options: ['single-line', 'multiline', 'adaptive'],
 		},
 		placeholder: {
 			control: 'text',
@@ -120,6 +120,21 @@ export const MultiLine = Template.bind({});
 MultiLine.args = {
 	placeholder: 'Type your message here...',
 	maxLength: 1000,
+};
+
+export const Adaptive = Template.bind({});
+Adaptive.args = {
+	placeholder: 'Starts as one line and grows with your text...',
+	maxLength: 1000,
+	layout: 'adaptive',
+};
+Adaptive.parameters = {
+	docs: {
+		description: {
+			story:
+				'Adaptive supports the default icon-only send/stop button. A custom button label or action slot falls back to the multiline layout.',
+		},
+	},
 };
 
 const workflowSuggestions: WorkflowSuggestion[] = [
@@ -386,7 +401,7 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 	},
 	template: `
 		<div>
-			<div style="width: 500px; max-width: 100%; margin-bottom: 20px;">
+			<div style="width: 500px; max-width: 100%; margin-bottom: var(--spacing--md);">
 				<n8n-chat-input
 					v-bind="args"
 					:modelValue="val"
@@ -398,11 +413,30 @@ const InteractiveTemplate: StoryFn = (args, { argTypes }) => ({
 					@blur="onBlur"
 				/>
 			</div>
-			<div style="padding: 10px; background: #f0f0f0; border-radius: 4px;">
+			<div
+				style="
+					padding: var(--spacing--xs);
+					background: var(--background--subtle);
+					color: var(--text-color);
+					border: var(--border);
+					border-radius: var(--radius);
+				"
+			>
 				<p><strong>Current value:</strong> {{ val }}</p>
 				<p><strong>Character count:</strong> {{ val.length }} / {{ args.maxLength }}</p>
 				<p><strong>Streaming:</strong> {{ streaming }}</p>
-				<button @click="streaming = !streaming" style="margin-top: 10px;">
+				<button
+					style="
+						margin-top: var(--spacing--xs);
+						padding: var(--spacing--3xs) var(--spacing--xs);
+						color: var(--text-color);
+						background: var(--background--surface);
+						border: var(--border);
+						border-radius: var(--radius);
+						cursor: pointer;
+					"
+					@click="streaming = !streaming"
+				>
 					Toggle Streaming (Current: {{ streaming ? 'ON' : 'OFF' }})
 				</button>
 			</div>
@@ -516,7 +550,7 @@ const SuggestionsTemplate: StoryFn = (args) => ({
 		N8nChatInput,
 	},
 	template: `
-		<div style="max-width: 710px; margin: 0 auto; padding: 20px;">
+		<div style="max-width: 710px; margin: 0 auto;">
 			<div
 				style="
 					display: flex;

@@ -77,6 +77,7 @@ my operation    20,000   0.04   0.20   0.05   0.10  ±0.5%   10000
 | Area | What it measures | Why it matters |
 |------|------------------|----------------|
 | Expression Engine | `={{ }}` evaluation speed | Runs for every node parameter |
+| Workflow graph traversal | `getChildNodes` / `getParentNodes` on branching graphs | Runs on every execution (`checkReadyForExecution`) and across the editor; must stay linear in graph size |
 
 
 ## Tips

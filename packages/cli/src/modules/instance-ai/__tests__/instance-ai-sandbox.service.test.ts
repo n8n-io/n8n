@@ -1,11 +1,14 @@
+import type { Mock } from 'vitest';
+import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 
-jest.mock('@n8n/instance-ai', () => ({
-	createSandbox: jest.fn(),
-	createWorkspace: jest.fn(),
-	setupSandboxWorkspace: jest.fn(),
+vi.mock('@n8n/instance-ai', () => ({
+	createSandbox: vi.fn(),
+	createWorkspace: vi.fn(),
+	setupSandboxWorkspace: vi.fn(),
 }));
 
 import {
@@ -36,25 +39,25 @@ type Overrides = {
 };
 
 function createSandboxService(overrides: Overrides = {}) {
-	const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
-	const errorReporter = { error: jest.fn() } as unknown as ErrorReporter;
+	const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+	const errorReporter = { error: vi.fn(), warn: vi.fn() } as unknown as ErrorReporter;
 	const runState: InstanceAiSandboxRunState = {
-		getActiveRunId: jest.fn(() => undefined),
-		hasSuspendedRun: jest.fn(() => false),
+		getActiveRunId: vi.fn(() => undefined),
+		hasSuspendedRun: vi.fn(() => false),
 		...overrides.runState,
 	};
 	const backgroundTasks: InstanceAiSandboxBackgroundTasks = {
-		getRunningTasks: jest.fn(() => [] as ManagedBackgroundTask[]),
+		getRunningTasks: vi.fn(() => [] as ManagedBackgroundTask[]),
 		...overrides.backgroundTasks,
 	};
 	const settingsService: InstanceAiSandboxSettings = {
-		resolveDaytonaConfig: jest.fn(async () => ({})),
-		resolveN8nSandboxConfig: jest.fn(async () => ({})),
+		resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
+		resolveN8nSandboxConfig: vi.fn(async () => ({})),
 		...overrides.settingsService,
 	};
 	const aiService: InstanceAiSandboxProxy = {
-		isProxyEnabled: jest.fn(() => false),
-		getClient: jest.fn(),
+		isProxyEnabled: vi.fn(() => false),
+		getClient: vi.fn(),
 		...overrides.aiService,
 	};
 	const options: InstanceAiSandboxServiceOptions = {
@@ -67,15 +70,15 @@ function createSandboxService(overrides: Overrides = {}) {
 		aiService,
 	};
 	const service = new InstanceAiSandboxService(options);
-	return { service, logger, runState, backgroundTasks, settingsService, aiService };
+	return { service, logger, errorReporter, runState, backgroundTasks, settingsService, aiService };
 }
 
 describe('InstanceAiSandboxService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
-		(createSandbox as jest.Mock).mockReset();
-		(createWorkspace as jest.Mock).mockReset();
-		(setupSandboxWorkspace as jest.Mock).mockReset();
+		vi.clearAllMocks();
+		(createSandbox as Mock).mockReset();
+		(createWorkspace as Mock).mockReset();
+		(setupSandboxWorkspace as Mock).mockReset();
 	});
 
 	describe('config resolution', () => {
@@ -90,19 +93,19 @@ describe('InstanceAiSandboxService', () => {
 		});
 
 		it('merges admin Daytona credentials in direct mode', async () => {
-			const resolveDaytonaConfig = jest.fn(async () => ({
+			const resolveDaytonaConfig = vi.fn(async () => ({
 				apiUrl: 'https://admin.daytona',
 				apiKey: 'admin-key',
 			}));
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
 				settingsService: { resolveDaytonaConfig },
-				aiService: { isProxyEnabled: jest.fn(() => false) },
+				aiService: { isProxyEnabled: vi.fn(() => false) },
 			});
 
 			const config = await service.resolveSandboxConfig(fakeUser);
 
-			expect(resolveDaytonaConfig).toHaveBeenCalledWith(fakeUser);
+			expect(resolveDaytonaConfig).toHaveBeenCalledWith();
 			expect(config).toMatchObject({
 				enabled: true,
 				provider: 'daytona',
@@ -111,18 +114,34 @@ describe('InstanceAiSandboxService', () => {
 			});
 		});
 
+		it('fails with a setup error in direct mode when no Daytona API key is configured', async () => {
+			const resolveDaytonaConfig = vi.fn(async () => ({}));
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				settingsService: { resolveDaytonaConfig },
+				aiService: { isProxyEnabled: vi.fn(() => false) },
+			});
+
+			const resolution = service.resolveSandboxConfig(fakeUser);
+			await expect(resolution).rejects.toBeInstanceOf(OperationalError);
+			await expect(resolution).rejects.toMatchObject({
+				message: expect.stringContaining('no API key is configured'),
+				shouldReport: false,
+			});
+		});
+
 		it('routes Daytona traffic through the assistant proxy when enabled', async () => {
-			const getBuilderApiProxyToken = jest.fn(async () => ({ accessToken: 'token-1' }));
+			const getInstanceAiApiProxyToken = vi.fn(async () => ({ accessToken: 'token-1' }));
 			const client = {
-				getSandboxProxyConfig: jest.fn(async () => ({ image: 'proxy-image' })),
-				getSandboxProxyBaseUrl: jest.fn(() => 'https://proxy.base'),
-				getBuilderApiProxyToken,
+				getSandboxProxyConfig: vi.fn(async () => ({ image: 'proxy-image' })),
+				getSandboxProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
+				getInstanceAiApiProxyToken,
 			};
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
 				aiService: {
-					isProxyEnabled: jest.fn(() => true),
-					getClient: jest.fn(async () => client),
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => client),
 				},
 			});
 
@@ -137,15 +156,40 @@ describe('InstanceAiSandboxService', () => {
 			if (config.enabled && config.provider === 'daytona') {
 				const token = await config.getAuthToken?.();
 				expect(token).toBe('token-1');
-				expect(getBuilderApiProxyToken).toHaveBeenCalledWith(
+				expect(getInstanceAiApiProxyToken).toHaveBeenCalledWith(
 					{ id: fakeUser.id },
 					expect.objectContaining({ userMessageId: expect.any(String) }),
 				);
 			}
 		});
 
+		it('keeps n8n Sandbox traffic direct when the assistant proxy is enabled', async () => {
+			const getClient = vi.fn();
+			const resolveN8nSandboxConfig = vi.fn(async () => ({
+				serviceUrl: 'https://admin.sandbox',
+				apiKey: 'admin-key',
+			}));
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+				settingsService: { resolveN8nSandboxConfig },
+				aiService: { isProxyEnabled: vi.fn(() => true), getClient },
+			});
+
+			await expect(service.resolveSandboxConfig(fakeUser)).resolves.toMatchObject({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				serviceUrl: 'https://admin.sandbox',
+				apiKey: 'admin-key',
+			});
+			expect(getClient).not.toHaveBeenCalled();
+		});
+
 		it('merges admin n8n-sandbox credentials', async () => {
-			const resolveN8nSandboxConfig = jest.fn(async () => ({
+			const resolveN8nSandboxConfig = vi.fn(async () => ({
 				serviceUrl: 'https://admin.sandbox',
 				apiKey: 'admin-key',
 			}));
@@ -166,6 +210,116 @@ describe('InstanceAiSandboxService', () => {
 				serviceUrl: 'https://admin.sandbox',
 				apiKey: 'admin-key',
 			});
+		});
+	});
+
+	describe('AI service transient failures', () => {
+		function createProxyService(client: {
+			getSandboxProxyConfig: Mock;
+			getInstanceAiApiProxyToken?: Mock;
+		}) {
+			return createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				aiService: {
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => ({
+						getSandboxProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
+						getInstanceAiApiProxyToken:
+							client.getInstanceAiApiProxyToken ?? vi.fn(async () => ({ accessToken: 'token-1' })),
+						getSandboxProxyConfig: client.getSandboxProxyConfig,
+					})),
+				},
+			});
+		}
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('retries the proxy config fetch on transient 5xx errors', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Service Unavailable'), { statusCode: 503 });
+			const getSandboxProxyConfig = vi
+				.fn()
+				.mockRejectedValueOnce(transient)
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue({ image: 'proxy-image' });
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toMatchObject({ image: 'proxy-image' });
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(3);
+		});
+
+		it('treats errors without a status code as transient', async () => {
+			vi.useFakeTimers();
+			const getSandboxProxyConfig = vi
+				.fn()
+				.mockRejectedValueOnce(new SyntaxError("Unexpected token '<'"))
+				.mockResolvedValue({ image: 'proxy-image' });
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toMatchObject({ image: 'proxy-image' });
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('surfaces an OperationalError after exhausting retries', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Bad Gateway'), { statusCode: 502 });
+			const getSandboxProxyConfig = vi.fn().mockRejectedValue(transient);
+			const { service, errorReporter } = createProxyService({ getSandboxProxyConfig });
+
+			const promise = service.resolveSandboxConfig(fakeUser);
+			const assertion = expect(promise).rejects.toThrow(
+				'The AI assistant service is temporarily unavailable',
+			);
+			await vi.runAllTimersAsync();
+
+			await assertion;
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(3);
+			expect(errorReporter.warn).toHaveBeenCalledTimes(1);
+			expect(errorReporter.warn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Sandbox proxy config fetch failed after 3 attempts',
+					cause: transient,
+				}),
+			);
+		});
+
+		it('does not retry definite client errors', async () => {
+			const unauthorized = Object.assign(new Error('Unauthorized'), { statusCode: 401 });
+			const getSandboxProxyConfig = vi.fn().mockRejectedValue(unauthorized);
+			const { service } = createProxyService({ getSandboxProxyConfig });
+
+			await expect(service.resolveSandboxConfig(fakeUser)).rejects.toBe(unauthorized);
+			expect(getSandboxProxyConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries transient failures when minting proxy auth tokens', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Service Unavailable'), { statusCode: 503 });
+			const getInstanceAiApiProxyToken = vi
+				.fn()
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue({ accessToken: 'token-2' });
+			const { service } = createProxyService({
+				getSandboxProxyConfig: vi.fn(async () => ({ image: 'proxy-image' })),
+				getInstanceAiApiProxyToken,
+			});
+
+			const config = await service.resolveSandboxConfig(fakeUser);
+			if (!config.enabled || config.provider !== 'daytona') throw new Error('unexpected config');
+
+			const tokenPromise = config.getAuthToken?.();
+			await vi.runAllTimersAsync();
+
+			await expect(tokenPromise).resolves.toBe('token-2');
+			expect(getInstanceAiApiProxyToken).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -241,9 +395,66 @@ describe('InstanceAiSandboxService', () => {
 			expect(config).toMatchObject({ provider: 'daytona', ephemeral: true });
 			expect((config as { autoDeleteInterval?: number }).autoDeleteInterval).toBeUndefined();
 		});
+
+		it('pins the full snapshot name when the override env var is set', () => {
+			const { service } = createSandboxService({
+				config: { ...daytonaEnvConfig, sandboxSnapshot: 'n8n/instance-ai:2.27.3' },
+			});
+
+			expect(service.getSandboxConfigFromEnv()).toMatchObject({
+				provider: 'daytona',
+				snapshot: 'n8n/instance-ai:2.27.3',
+			});
+		});
 	});
 
 	describe('workspace lifecycle', () => {
+		it('wraps sandbox acquisition failures in OperationalError after cleanup', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+
+			const acquisitionError = new SandboxAcquisitionError(
+				'Failed to acquire Daytona sandbox: Bad Gateway',
+				'DaytonaError:502',
+			);
+			const workspace = {
+				init: vi.fn(async () => {
+					throw acquisitionError;
+				}),
+				destroy: vi.fn(async () => {}),
+			};
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+
+			await expect(
+				service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+			).rejects.toSatisfy(
+				(error: unknown) => error instanceof OperationalError && error.cause === acquisitionError,
+			);
+			expect(workspace.destroy).toHaveBeenCalledTimes(1);
+		});
+
+		it('rethrows classified acquisition errors unwrapped so they stay reportable', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+
+			const notReady = new SandboxNotReadyError('sandbox did not become ready (state: restoring)');
+			const workspace = {
+				init: vi.fn(async () => {
+					throw notReady;
+				}),
+				destroy: vi.fn(async () => {}),
+			};
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+
+			await expect(
+				service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+			).rejects.toBe(notReady);
+		});
+
 		it('serializes workspace creation for concurrent calls on the same thread', async () => {
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
@@ -254,10 +465,10 @@ describe('InstanceAiSandboxService', () => {
 				resolveSandbox = resolve;
 			});
 			const sandbox = { id: 'sandbox-1' };
-			const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
-			(createSandbox as jest.Mock).mockReturnValue(sandboxPromise);
-			(createWorkspace as jest.Mock).mockReturnValue(workspace);
-			(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockReturnValue(sandboxPromise);
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
 
 			const first = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 			const second = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
@@ -283,6 +494,42 @@ describe('InstanceAiSandboxService', () => {
 			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		});
 
+		it('assigns a deterministic thread-scoped UUID for the n8n-sandbox provider', async () => {
+			const n8nSandboxConfig: Overrides['config'] = {
+				sandboxEnabled: true,
+				sandboxProvider: 'n8n-sandbox',
+				n8nSandboxServiceUrl: 'https://env.sandbox',
+			};
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const { service } = createSandboxService({ config: n8nSandboxConfig });
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+
+			const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+			expect(createSandbox).toHaveBeenCalledWith(
+				expect.objectContaining({
+					provider: 'n8n-sandbox',
+					id: expect.stringMatching(uuidPattern),
+				}),
+				expect.any(Object),
+			);
+
+			// A fresh service instance (e.g. after a restart or on another main)
+			// derives the same id for the same thread, and a different one for
+			// another thread.
+			const { service: restartedService } = createSandboxService({ config: n8nSandboxConfig });
+			await restartedService.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+			await restartedService.getOrCreateWorkspace('thread-2', fakeUser, {} as InstanceAiContext);
+
+			const ids = (createSandbox as Mock).mock.calls.map((call) => (call[0] as { id?: string }).id);
+			expect(ids).toHaveLength(3);
+			expect(ids[1]).toBe(ids[0]);
+			expect(ids[2]).not.toBe(ids[0]);
+		});
+
 		it('threads Daytona name prefixes and labels through sandbox creation', async () => {
 			const { service } = createSandboxService({
 				config: {
@@ -292,10 +539,10 @@ describe('InstanceAiSandboxService', () => {
 				},
 			});
 			const sandbox = { id: 'sandbox-1' };
-			const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
-			(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-			(createWorkspace as jest.Mock).mockReturnValue(workspace);
-			(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
 
 			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 
@@ -333,10 +580,10 @@ describe('InstanceAiSandboxService', () => {
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
 			});
 			const sandbox = { id: 'sandbox-1' };
-			const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
-			(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-			(createWorkspace as jest.Mock).mockReturnValue(workspace);
-			(setupSandboxWorkspace as jest.Mock)
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock)
 				.mockRejectedValueOnce(new Error('setup failed'))
 				.mockResolvedValueOnce(undefined);
 
@@ -357,19 +604,189 @@ describe('InstanceAiSandboxService', () => {
 			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(2);
 		});
 
+		it('rebuilds a cached workspace when direct credentials change', async () => {
+			let apiKey = 'old-key';
+			const resolveDaytonaConfig = vi.fn(async () => ({
+				apiUrl: 'https://daytona.example.com',
+				apiKey,
+			}));
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				settingsService: { resolveDaytonaConfig },
+			});
+			const firstWorkspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			const secondWorkspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock)
+				.mockResolvedValueOnce({ id: 'sandbox-1' })
+				.mockResolvedValueOnce({ id: 'sandbox-2' });
+			(createWorkspace as Mock)
+				.mockReturnValueOnce(firstWorkspace)
+				.mockReturnValueOnce(secondWorkspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const first = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+			apiKey = 'new-key';
+			const second = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+
+			expect(second).not.toBe(first);
+			expect(createSandbox).toHaveBeenCalledTimes(2);
+		});
+
+		it('reuses proxy workspaces without refetching proxy config', async () => {
+			const client = {
+				getSandboxProxyConfig: vi.fn(async () => ({ image: 'proxy-image' })),
+				getSandboxProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
+				getInstanceAiApiProxyToken: vi.fn(async () => ({ accessToken: 'token-1' })),
+			};
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				aiService: {
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => client),
+				},
+			});
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const first = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+			const second = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+
+			expect(second).toBe(first);
+			expect(client.getSandboxProxyConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('rebuilds a cached workspace after settings change', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+			const firstWorkspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			const secondWorkspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock)
+				.mockResolvedValueOnce({ id: 'sandbox-1' })
+				.mockResolvedValueOnce({ id: 'sandbox-2' });
+			(createWorkspace as Mock)
+				.mockReturnValueOnce(firstWorkspace)
+				.mockReturnValueOnce(secondWorkspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const first = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+			service.invalidateCachedWorkspaces();
+			const second = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+
+			expect(second).not.toBe(first);
+			expect(createSandbox).toHaveBeenCalledTimes(2);
+			expect(firstWorkspace.destroy).not.toHaveBeenCalled();
+		});
+
+		it('re-resolves config when settings change during config resolution', async () => {
+			let resolveFirstConfig!: (config: { apiKey: string }) => void;
+			const firstConfig = new Promise<{ apiKey: string }>((resolve) => {
+				resolveFirstConfig = resolve;
+			});
+			const resolveDaytonaConfig = vi
+				.fn()
+				.mockReturnValueOnce(firstConfig)
+				.mockResolvedValueOnce({ apiKey: 'new-key' });
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				settingsService: { resolveDaytonaConfig },
+			});
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const creation = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+			await vi.waitFor(() => expect(resolveDaytonaConfig).toHaveBeenCalledTimes(1));
+			service.invalidateCachedWorkspaces();
+			resolveFirstConfig({ apiKey: 'old-key' });
+			await creation;
+
+			expect(resolveDaytonaConfig).toHaveBeenCalledTimes(2);
+			expect(createSandbox).toHaveBeenCalledTimes(1);
+			expect(createSandbox).toHaveBeenCalledWith(
+				expect.objectContaining({ daytonaApiKey: 'new-key' }),
+				expect.any(Object),
+			);
+		});
+
+		it('does not cache a workspace created across a settings change', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+			let resolveFirst!: (sandbox: unknown) => void;
+			const firstSandbox = new Promise((resolve) => {
+				resolveFirst = resolve;
+			});
+			const firstWorkspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			const secondWorkspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock)
+				.mockReturnValueOnce(firstSandbox)
+				.mockResolvedValueOnce({ id: 'sandbox-2' });
+			(createWorkspace as Mock).mockImplementation((sandbox: { id: string }) =>
+				sandbox.id === 'sandbox-1' ? firstWorkspace : secondWorkspace,
+			);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const first = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+			await vi.waitFor(() => expect(createSandbox).toHaveBeenCalledTimes(1));
+			service.invalidateCachedWorkspaces();
+			const second = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+			resolveFirst({ id: 'sandbox-1' });
+			await first;
+
+			const reused = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+			expect(reused).toBe(second);
+			expect(createSandbox).toHaveBeenCalledTimes(2);
+		});
+
 		it('destroys the workspace when sandbox startup fails', async () => {
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
 			});
 			const sandbox = { id: 'sandbox-1' };
 			const workspace = {
-				init: jest.fn(async () => {
+				init: vi.fn(async () => {
 					throw new Error('init failed');
 				}),
-				destroy: jest.fn(async () => {}),
+				destroy: vi.fn(async () => {}),
 			};
-			(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-			(createWorkspace as jest.Mock).mockReturnValue(workspace);
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+			(createWorkspace as Mock).mockReturnValue(workspace);
 
 			await expect(
 				service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
@@ -382,16 +799,16 @@ describe('InstanceAiSandboxService', () => {
 
 	describe('expiry timers', () => {
 		it('evicts expired runtime sandbox entries without destroying the provider workspace', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
 				const { service } = createSandboxService({
 					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
 				});
 				const sandbox = { id: 'sandbox-1' };
-				const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
-				(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-				(createWorkspace as jest.Mock).mockReturnValue(workspace);
-				(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+				const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+				(createSandbox as Mock).mockResolvedValue(sandbox);
+				(createWorkspace as Mock).mockReturnValue(workspace);
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
 
 				const entry = await service.getOrCreateWorkspace(
 					'thread-1',
@@ -400,7 +817,7 @@ describe('InstanceAiSandboxService', () => {
 				);
 				expect(entry).toBeDefined();
 
-				jest.advanceTimersByTime(1000);
+				vi.advanceTimersByTime(1000);
 
 				// Eviction drops the cache entry but never destroys the remote workspace.
 				expect(workspace.destroy).not.toHaveBeenCalled();
@@ -408,27 +825,27 @@ describe('InstanceAiSandboxService', () => {
 				// Already evicted, so destroy has nothing to tear down.
 				expect(workspace.destroy).not.toHaveBeenCalled();
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 
 		it('keeps an in-use sandbox alive when the expiry timer fires', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
-				const getRunningTasks = jest.fn(() => [{ taskId: 'task-1' }] as ManagedBackgroundTask[]);
+				const getRunningTasks = vi.fn(() => [{ taskId: 'task-1' }] as ManagedBackgroundTask[]);
 				const { service } = createSandboxService({
 					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
 					backgroundTasks: { getRunningTasks },
 				});
 				const sandbox = { id: 'sandbox-1' };
-				const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
-				(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-				(createWorkspace as jest.Mock).mockReturnValue(workspace);
-				(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+				const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+				(createSandbox as Mock).mockResolvedValue(sandbox);
+				(createWorkspace as Mock).mockReturnValue(workspace);
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
 
 				await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 
-				jest.advanceTimersByTime(1000);
+				vi.advanceTimersByTime(1000);
 
 				// In-use sandboxes are touched (re-scheduled) rather than dropped.
 				const reused = await service.getOrCreateWorkspace(
@@ -439,22 +856,22 @@ describe('InstanceAiSandboxService', () => {
 				expect(reused).toBeDefined();
 				expect(createSandbox).toHaveBeenCalledTimes(1);
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 
 		it('clears scheduled expiry timers on stopSandboxExpiryTimers', async () => {
-			jest.useFakeTimers();
-			const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+			vi.useFakeTimers();
+			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 			try {
 				const { service } = createSandboxService({
 					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
 				});
 				const sandbox = { id: 'sandbox-1' };
-				const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
-				(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-				(createWorkspace as jest.Mock).mockReturnValue(workspace);
-				(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+				const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+				(createSandbox as Mock).mockResolvedValue(sandbox);
+				(createWorkspace as Mock).mockReturnValue(workspace);
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
 
 				await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 				clearTimeoutSpy.mockClear();
@@ -464,7 +881,7 @@ describe('InstanceAiSandboxService', () => {
 				expect(clearTimeoutSpy).toHaveBeenCalled();
 			} finally {
 				clearTimeoutSpy.mockRestore();
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 	});
@@ -475,10 +892,10 @@ describe('InstanceAiSandboxService', () => {
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
 			});
 			const sandbox = { id: 'sandbox-1' };
-			const workspace = { init: jest.fn(async () => {}), destroy: jest.fn(async () => {}) };
-			(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-			(createWorkspace as jest.Mock).mockReturnValue(workspace);
-			(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
 
 			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 			await service.destroySandbox('thread-1');
@@ -496,14 +913,14 @@ describe('InstanceAiSandboxService', () => {
 			});
 			const sandbox = { id: 'sandbox-1' };
 			const workspace = {
-				init: jest.fn(async () => {}),
-				destroy: jest.fn(async () => {
+				init: vi.fn(async () => {}),
+				destroy: vi.fn(async () => {
 					throw new Error('teardown failed');
 				}),
 			};
-			(createSandbox as jest.Mock).mockResolvedValue(sandbox);
-			(createWorkspace as jest.Mock).mockReturnValue(workspace);
-			(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
 
 			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 			await expect(service.destroySandbox('thread-1', 'custom_reason')).resolves.toBeUndefined();
@@ -524,6 +941,67 @@ describe('InstanceAiSandboxService', () => {
 			});
 
 			await expect(service.destroySandbox('missing-thread')).resolves.toBeUndefined();
+		});
+
+		it('deletes the uncached remote sandbox for the n8n-sandbox provider', async () => {
+			// No prior getOrCreateWorkspace call: simulates a thread deleted after
+			// a restart or idle eviction, when the in-process cache has no entry.
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+			});
+			const sandbox = { destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+
+			await service.destroySandbox('thread-1');
+
+			expect(createSandbox).toHaveBeenCalledWith(
+				expect.objectContaining({
+					provider: 'n8n-sandbox',
+					id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+				}),
+				expect.any(Object),
+			);
+			expect(sandbox.destroy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not attempt an uncached destroy for the daytona provider', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+
+			await service.destroySandbox('thread-1');
+
+			expect(createSandbox).not.toHaveBeenCalled();
+		});
+
+		it('swallows uncached destroy errors and logs a warning', async () => {
+			const { service, logger } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+			});
+			(createSandbox as Mock).mockResolvedValue({
+				destroy: vi.fn(async () => {
+					throw new Error('service unreachable');
+				}),
+			});
+
+			await expect(service.destroySandbox('thread-1', 'custom_reason')).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to destroy sandbox',
+				expect.objectContaining({
+					threadId: 'thread-1',
+					reason: 'custom_reason',
+					error: 'service unreachable',
+				}),
+			);
 		});
 	});
 });

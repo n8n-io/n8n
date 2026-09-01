@@ -1,9 +1,16 @@
 import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
-import { isMcpOAuth2Authentication } from 'n8n-workflow';
+import type { CustomFetch } from '@n8n/backend-network';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { getMcpAuthHeaders, isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
+import {
+	prepareMcpRegistryConnection,
+	toAgentMcpTransport,
+} from '@/modules/mcp-registry/mcp-registry-connection';
 import type { OauthService } from '@/oauth/oauth.service';
-import { createAuthFetch } from '@/utils/auth-fetch';
+import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
 
 /**
  * Convert the JSON-config `approval` shape into the SDK's `requireApproval`
@@ -21,14 +28,12 @@ export function mapApprovalToSdk(
 	return approval.tools;
 }
 
-function isTokenData(tokenData: unknown): tokenData is { access_token: string } {
-	return (
-		typeof tokenData === 'object' &&
-		tokenData !== null &&
-		'access_token' in tokenData &&
-		typeof tokenData.access_token === 'string'
-	);
-}
+type DerivedAuth = {
+	headers: Record<string, string>;
+	credentialData?: ICredentialDataDecryptedObject;
+	/** Set when the credential could not be resolved (e.g. unreachable secret store). */
+	credentialError?: Error;
+};
 
 /**
  * Derive static (non-OAuth2) auth headers from a credential resolved through
@@ -43,56 +48,25 @@ function isTokenData(tokenData: unknown): tokenData is { access_token: string } 
 async function deriveAuthHeaders(
 	server: AgentJsonMcpServerConfig,
 	credentialProvider: CredentialProvider,
-): Promise<Record<string, string>> {
-	if (server.authentication === 'none' || !server.credential) return {};
+): Promise<DerivedAuth> {
+	if (server.authentication === 'none' || !server.credential) return { headers: {} };
 
-	const resolved = await credentialProvider.resolve(server.credential).catch(() => null);
-	if (!resolved) return {};
-
-	if (isMcpOAuth2Authentication(server.authentication)) {
-		const tokenData = resolved.oauthTokenData as { access_token: string } | null | undefined;
-		if (!isTokenData(tokenData)) return {};
+	try {
+		const resolved = (await credentialProvider.resolve(
+			server.credential,
+		)) as ICredentialDataDecryptedObject;
 		return {
-			Authorization: `Bearer ${tokenData.access_token}`,
+			headers: getMcpAuthHeaders(server.authentication, resolved),
+			credentialData: resolved,
 		};
-	}
-
-	switch (server.authentication) {
-		case 'bearerAuth': {
-			const token = typeof resolved.token === 'string' ? resolved.token : '';
-			return token ? { Authorization: `Bearer ${token}` } : {};
-		}
-		case 'headerAuth': {
-			const name = typeof resolved.name === 'string' ? resolved.name : '';
-			const value = typeof resolved.value === 'string' ? resolved.value : '';
-			return name && value ? { [name]: value } : {};
-		}
-		case 'multipleHeadersAuth': {
-			const headers = resolved.headers;
-			if (
-				!headers ||
-				typeof headers !== 'object' ||
-				!('values' in headers) ||
-				!Array.isArray((headers as { values: unknown }).values)
-			) {
-				return {};
-			}
-			const values = (headers as { values: Array<{ name?: unknown; value?: unknown }> }).values;
-			const out: Record<string, string> = {};
-			for (const entry of values) {
-				if (typeof entry.name === 'string' && typeof entry.value === 'string') {
-					out[entry.name] = entry.value;
-				}
-			}
-			return out;
-		}
-		default:
-			return {};
+	} catch (error) {
+		return { headers: {}, credentialError: ensureError(error) };
 	}
 }
 
 export interface BuildMcpClientDeps {
 	credentialProvider: CredentialProvider;
+	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
 	/**
 	 * Used to refresh OAuth2 tokens on a 401 response without an
 	 * `IExecuteFunctions` workflow context. Only invoked when
@@ -100,6 +74,15 @@ export interface BuildMcpClientDeps {
 	 */
 	oauthService: OauthService;
 	projectId: string;
+	proxyFetch: CustomFetch;
+	/**
+	 * Optional observer invoked when this server fails to connect. The
+	 * server's tools are skipped for the run; the run continues with the
+	 * remaining servers' tools. Used for logging/telemetry — the user-facing
+	 * warning is emitted from the agent runtime as a `warning` stream chunk.
+	 */
+	onConnectionFailed?: (event: { server: string; error: string }) => void;
+	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
 }
 
 /**
@@ -114,10 +97,48 @@ export async function buildMcpClientForServer(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
 ): Promise<McpClient> {
-	const { credentialProvider, oauthService, projectId } = deps;
+	const {
+		credentialProvider,
+		oauthService,
+		projectId,
+		proxyFetch,
+		onConnectionFailed,
+		onToolCallSettled,
+	} = deps;
 	const { McpClient } = await import('@n8n/agents');
 
-	const initialHeaders = await deriveAuthHeaders(server, credentialProvider);
+	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
+	const { credentialData } = derivedAuth;
+	let { headers: initialHeaders, credentialError } = derivedAuth;
+	let runtimeUrl = server.url;
+	let runtimeTransport = server.transport;
+	let allowedDomains = credentialData ? resolveAllowedDomains(credentialData) : undefined;
+
+	const registryNodeName = server.metadata?.nodeTypeName;
+	if (!registryNodeName && server.authentication.endsWith('McpOAuth2Api')) {
+		credentialError = new OperationalError(
+			`Credential type "${server.authentication}" requires an MCP registry node`,
+		);
+	} else if (registryNodeName) {
+		try {
+			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
+			if (!connection || !credentialData || connection.credentialType !== server.authentication) {
+				throw new OperationalError('MCP registry connection could not be resolved');
+			}
+			const prepared = prepareMcpRegistryConnection({
+				connection,
+				credentialData,
+				headers: initialHeaders,
+			});
+			if (!prepared.ok) throw new OperationalError(prepared.error.message);
+			initialHeaders = prepared.value.headers;
+			runtimeUrl = prepared.value.endpointUrl;
+			runtimeTransport = toAgentMcpTransport(prepared.value.transport);
+			allowedDomains = { mode: 'domains', domains: prepared.value.allowedDomains };
+		} catch (error) {
+			credentialError = ensureError(error);
+		}
+	}
 
 	const onUnauthorized =
 		isMcpOAuth2Authentication(server.authentication) && server.credential
@@ -130,19 +151,61 @@ export async function buildMcpClientForServer(
 				}
 			: undefined;
 
-	const authFetch = createAuthFetch({ initialHeaders, onUnauthorized });
+	// An unresolved credential fails at connect time so the real reason travels
+	// the SDK's connection-failure channel (surfaced as a `warning` chunk);
+	// connecting unauthenticated returns an opaque 401/403 instead. Rejecting
+	// rather than throwing keeps both `promise-function-async` and
+	// `require-await` satisfied.
+	const authFetch: typeof fetch = credentialError
+		? async () =>
+				await Promise.reject(
+					new OperationalError(
+						`Could not resolve the credential for MCP server "${server.name}": ${credentialError.message}`,
+					),
+				)
+		: createAuthFetch({
+				baseFetch: proxyFetch,
+				initialHeaders,
+				onUnauthorized,
+				allowedDomains,
+			});
 
 	const sdkServerConfig: McpServerConfig = {
 		name: server.name,
-		url: server.url,
-		transport: server.transport,
+		url: runtimeUrl,
+		transport: runtimeTransport,
 		fetch: authFetch,
 		toolFilter: server.toolFilter,
 		requireApproval: mapApprovalToSdk(server.approval),
+		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,
 		}),
+		...(onConnectionFailed
+			? {
+					onConnectionFailed: (event: { server: string; error: string }) =>
+						onConnectionFailed(event),
+				}
+			: {}),
 	};
 
 	return new McpClient([sdkServerConfig]);
+}
+
+/**
+ * Connect to an MCP server, list its tools, and close the connection.
+ * Verification handshake for the instance MCP's verify-server tool.
+ */
+export async function listMcpServerTools(
+	server: AgentJsonMcpServerConfig,
+	deps: BuildMcpClientDeps,
+): Promise<Array<{ name: string; description: string }>> {
+	let client: McpClient | undefined;
+	try {
+		client = await buildMcpClientForServer(server, deps);
+		const tools = await client.listTools();
+		return tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' }));
+	} finally {
+		await client?.close().catch(() => {});
+	}
 }

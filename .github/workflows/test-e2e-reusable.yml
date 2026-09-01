@@ -43,7 +43,7 @@ on:
         default: '[{"shard":1,"images":""}]'
         type: string
       n8n-env:
-        description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"vm"}'
+        description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"legacy"}'
         required: false
         default: ''
         type: string
@@ -53,7 +53,7 @@ on:
         default: 'e2e'
         type: string
       build-variant:
-        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard or coverage).'
+        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard, coverage, or pc).'
         required: false
         default: 'standard'
         type: string
@@ -108,7 +108,7 @@ jobs:
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
-        run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
+        run: pnpm --filter n8n-containers exec tsx pull-test-images.ts ${{ matrix.images }} || true
 
       - name: Filter specs to previous-attempt failures
         if: github.run_attempt > 1 && matrix.specs != ''
@@ -121,7 +121,33 @@ jobs:
           FILTERED=$(echo "$CANDIDATES" | node packages/testing/janitor/dist/cli.js filter-shard | tr '\n' ' ' | sed 's/ *$//')
           echo "specs=$FILTERED" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve shard args
+        id: shard-args
+        env:
+          # On retry, prefer the filtered subset (failed specs from previous attempt)
+          RETRY_SPECS: ${{ steps.filter-shard.outputs.specs }}
+          MATRIX_SPECS: ${{ matrix.specs }}
+          # toJSON distinguishes an orchestrated-but-empty spec list ("") from a
+          # non-orchestrated matrix entry that never set `specs` (null). Only the
+          # latter may fall back to Playwright's own --shard splitting; an empty
+          # orchestrated list means "nothing to run", never "run everything".
+          MATRIX_SPECS_JSON: ${{ toJSON(matrix.specs) }}
+          SHARD: ${{ matrix.shard }}
+          JOB_TOTAL: ${{ strategy.job-total }}
+        run: |
+          if [ -n "$RETRY_SPECS" ]; then
+            echo "args=$RETRY_SPECS" >> "$GITHUB_OUTPUT"
+          elif [ "$MATRIX_SPECS_JSON" = "null" ]; then
+            echo "args=--shard=$SHARD/$JOB_TOTAL" >> "$GITHUB_OUTPUT"
+          elif [ -z "$MATRIX_SPECS" ]; then
+            echo "This shard's spec list is empty — nothing to run, skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=$MATRIX_SPECS" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run Tests
+        if: steps.shard-args.outputs.skip != 'true'
         run: |
           # --pass-with-no-tests makes Playwright exit 0 when the selected specs
           # resolve to zero runnable tests. Covers the impact-map vs current-suite
@@ -137,8 +163,7 @@ jobs:
           TEST_COMMAND: ${{ inputs.test-command }}
           # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
           WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
-          # On retry, prefer the filtered subset (failed specs from previous attempt)
-          SHARD_ARGS: ${{ steps.filter-shard.outputs.specs || matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+          SHARD_ARGS: ${{ steps.shard-args.outputs.args }}
           # Args for actual test command runner
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
@@ -147,6 +172,11 @@ jobs:
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+          # Hosted sandbox service for the instance-ai specs. When both are set the
+          # `sandbox` test service skips its local dind stack and points n8n here.
+          # Unset (fork PRs get no secrets) falls back to the local containers.
+          N8N_SANDBOX_SERVICE_URL: ${{ secrets.N8N_SANDBOX_SERVICE_URL }}
+          N8N_SANDBOX_SERVICE_API_KEY: ${{ secrets.N8N_SANDBOX_SERVICE_API_KEY }}
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
 
       - name: Upload Shard Artifacts

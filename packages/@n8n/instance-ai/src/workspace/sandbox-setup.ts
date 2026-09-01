@@ -36,8 +36,8 @@ import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import {
 	isLinkWorkspaceSdkEnabled,
-	packWorkspaceSdk,
-	type WorkspaceSdkTarball,
+	packSandboxLinkedWorkspacePackages,
+	type WorkspacePackageTarball,
 } from './pack-workspace-sdk';
 import {
 	runInSandbox,
@@ -46,15 +46,10 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
+import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 
 const hostRequire = createRequire(__filename);
-const NOOP_LOGGER: Logger = {
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-	debug: () => {},
-};
 
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'
@@ -142,35 +137,6 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 
-function assertSafeWorkspaceRelativePath(path: string): void {
-	const segments = path.split('/');
-	if (
-		path.length === 0 ||
-		path.startsWith('/') ||
-		path.includes('\\') ||
-		path.includes('\0') ||
-		segments.some((segment) => segment === '..')
-	) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-}
-
-function joinWorkspacePath(root: string, path: string): string {
-	assertSafeWorkspaceRelativePath(path);
-
-	const normalizedRoot = root.replace(/\/+$/, '') || '/';
-	const normalizedPath = path
-		.split('/')
-		.filter((segment) => segment.length > 0 && segment !== '.')
-		.join('/');
-
-	if (normalizedPath.length === 0) {
-		throw new Error(`Sandbox workspace path must stay within the workspace root: ${path}`);
-	}
-
-	return normalizedRoot === '/' ? `/${normalizedPath}` : `${normalizedRoot}/${normalizedPath}`;
-}
-
 function buildPackageJson(sdkSpecifier: string | null): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
@@ -207,50 +173,60 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
+let linkedPackagesPromise: Promise<WorkspacePackageTarball[] | null> | null = null;
 
 export async function linkWorkspaceSdkIfEnabled(
 	workspace: SandboxWorkspace,
 	root: string,
-	logger?: Logger,
+	logger: Logger,
 ): Promise<void> {
 	if (!isLinkWorkspaceSdkEnabled()) return;
 
-	sdkTarballPromise ??= packWorkspaceSdk(logger ?? NOOP_LOGGER).catch((error: unknown) => {
-		sdkTarballPromise = null;
+	linkedPackagesPromise ??= packSandboxLinkedWorkspacePackages(logger).catch((error: unknown) => {
+		linkedPackagesPromise = null;
 		throw error;
 	});
-	const packed = await sdkTarballPromise;
-	if (!packed) {
-		sdkTarballPromise = null;
+	const packedPackages = await linkedPackagesPromise;
+	if (!packedPackages?.length) {
+		linkedPackagesPromise = null;
 		throw new Error(
-			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
 		);
 	}
 
-	const remotePath = joinWorkspacePath(root, packed.filename);
-	if (workspace.filesystem) {
-		await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
-	} else {
-		await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+	const remotePaths: string[] = [];
+	for (const packed of packedPackages) {
+		const remotePath = joinWorkspacePath(root, packed.filename);
+		remotePaths.push(remotePath);
+		if (workspace.filesystem) {
+			await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
+		} else {
+			await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+		}
 	}
 
+	const tarballArgs = remotePaths
+		.map((remotePath) => `'${escapeSingleQuotes(remotePath)}'`)
+		.join(' ');
 	const install = await runInSandbox(
 		workspace,
-		`npm install '${escapeSingleQuotes(remotePath)}' --no-save --ignore-scripts --force`,
+		`npm install ${tarballArgs} --no-save --ignore-scripts --force`,
 		root,
 	);
 	if (install.exitCode !== 0) {
-		logger?.error('Failed to link workspace SDK into sandbox', {
+		logger.error('Failed to link workspace packages into sandbox', {
 			exitCode: install.exitCode,
 			stderr: install.stderr,
 		});
-		throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
+		throw new Error(`Failed to install workspace package tarballs: ${install.stderr}`);
 	}
 
-	logger?.info('Linked workspace SDK into sandbox', {
-		version: packed.version,
-		sdkPath: packed.sdkPath,
+	logger.info('Linked workspace packages into sandbox', {
+		packages: packedPackages.map((packed) => ({
+			name: packed.packageName,
+			version: packed.version,
+			path: packed.packagePath,
+		})),
 	});
 }
 
@@ -268,12 +244,16 @@ try {
   }
   const validation = wf.validate();
   const json = wf.toJSON({ tidyUp: true });
+  const declaredOutputJson = typeof wf.generatePinData === 'function'
+    ? wf.generatePinData().toJSON({ tidyUp: true })
+    : undefined;
+  const declaredOutputFixtures = declaredOutputJson?.pinData;
   const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
   // Use a replacer to preserve undefined values as null — newCredential() produces
   // NewCredentialImpl which serializes to undefined in toJSON(). Without this,
   // JSON.stringify drops the credential keys entirely and the server can't resolve them.
   const replacer = (k, v) => v === undefined ? null : v;
-  console.log(JSON.stringify({ success: true, workflow: json, warnings }, replacer));
+  console.log(JSON.stringify({ success: true, workflow: json, declaredOutputFixtures, warnings }, replacer));
 } catch (e) {
   console.log(JSON.stringify({ success: false, errors: [e instanceof Error ? e.message : String(e)] }));
   process.exit(1);
@@ -479,7 +459,7 @@ export async function setupSandboxWorkspace(
 
 	// Existing workflows as JSON (fetch in parallel)
 	try {
-		const workflows = await context.workflowService.list({ limit: 100 });
+		const { workflows } = await context.workflowService.list({ limit: 100 });
 		const results = await Promise.allSettled(
 			workflows.map(async (summary) => {
 				const detail = await context.workflowService.get(summary.id);

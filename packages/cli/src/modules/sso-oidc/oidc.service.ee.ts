@@ -1,5 +1,6 @@
 import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
@@ -16,19 +17,17 @@ import { randomUUID } from 'crypto';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
-import { EnvHttpProxyAgent } from 'undici';
 import { inspect } from 'util';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 import {
+	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	reloadAuthenticationMethod,
 	setCurrentAuthenticationMethod,
@@ -44,6 +43,7 @@ const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	prompt: 'select_account',
 	authenticationContextClassReference: [],
 	additionalScopes: '',
+	rpInitiatedLogoutEnabled: false,
 };
 
 type OidcRuntimeConfig = Pick<
@@ -54,6 +54,8 @@ type OidcRuntimeConfig = Pick<
 	| 'prompt'
 	| 'authenticationContextClassReference'
 	| 'additionalScopes'
+	| 'emailVerifiedRequired'
+	| 'rpInitiatedLogoutEnabled'
 > & {
 	discoveryEndpoint: URL;
 };
@@ -99,6 +101,7 @@ export class OidcService {
 		private readonly jwtService: JwtService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async init() {
@@ -254,7 +257,16 @@ export class OidcService {
 		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
 	}
 
-	async loginUser(callbackUrl: URL, storedState: string, storedNonce: string): Promise<User> {
+	/**
+	 * Completes the authorization code flow and resolves the n8n user. Also
+	 * returns the raw ID token so the controller can persist it for OIDC
+	 * RP-Initiated Logout (`id_token_hint`).
+	 */
+	async loginUser(
+		callbackUrl: URL,
+		storedState: string,
+		storedNonce: string,
+	): Promise<{ user: User; idToken?: string }> {
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
@@ -304,6 +316,11 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
+		await this.assertProvisioningLoginAllowed(
+			claims as Record<string, unknown>,
+			userInfo as Record<string, unknown>,
+		);
+
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: {
@@ -320,7 +337,7 @@ export class OidcService {
 				userInfo as Record<string, unknown>,
 			);
 
-			return openidUser.user;
+			return { user: openidUser.user, idToken: tokens.id_token };
 		}
 
 		const foundUser = await this.userRepository.findOne({
@@ -329,6 +346,10 @@ export class OidcService {
 		});
 
 		if (foundUser) {
+			// Linking to an existing account uses the email as the key, so only do it
+			// when the IdP says the email is verified.
+			this.assertEmailVerified(userInfo.email_verified);
+
 			this.logger.debug(
 				`OIDC login: User with email ${userInfo.email} already exists, linking OIDC identity.`,
 			);
@@ -346,7 +367,7 @@ export class OidcService {
 				userInfo as Record<string, unknown>,
 			);
 
-			return foundUser;
+			return { user: foundUser, idToken: tokens.id_token };
 		}
 
 		const user = await this.userRepository.manager.transaction(async (trx) => {
@@ -379,7 +400,73 @@ export class OidcService {
 			userInfo as Record<string, unknown>,
 		);
 
-		return user;
+		return { user, idToken: tokens.id_token };
+	}
+
+	/**
+	 * Encrypts the OIDC ID token with the instance encryption key so it can
+	 * be stored in an httpOnly cookie without exposing its claims.
+	 */
+	async encryptIdToken(idToken: string): Promise<string> {
+		return await this.cipher.encryptV2(idToken);
+	}
+
+	/**
+	 * Decrypts a previously stored OIDC ID token. Returns `undefined` when
+	 * the value cannot be decrypted (e.g. tampered cookie or rotated
+	 * encryption key), in which case sign-out degrades to a local logout.
+	 */
+	async decryptIdToken(encryptedIdToken: string): Promise<string | undefined> {
+		try {
+			const idToken = await this.cipher.decryptV2(encryptedIdToken);
+			return idToken === '' ? undefined : idToken;
+		} catch (error) {
+			this.logger.warn('Failed to decrypt the stored OIDC ID token', {
+				cause: safeStringify(error),
+			});
+			return undefined;
+		}
+	}
+
+	/**
+	 * Builds the OIDC RP-Initiated Logout URL from the provider's discovered
+	 * metadata, including the `id_token_hint` required by the specification.
+	 * Returns `undefined` when the provider does not advertise an
+	 * `end_session_endpoint`, in which case sign-out is local to n8n only.
+	 */
+	async generateEndSessionUrl(idToken: string): Promise<URL | undefined> {
+		// RP-Initiated Logout is opt-in: when disabled, sign-out stays local to n8n.
+		if (!this.oidcConfig.rpInitiatedLogoutEnabled) {
+			return undefined;
+		}
+
+		await this.loadOpenIdClient();
+		const configuration = await this.getOidcConfiguration();
+
+		if (!configuration.serverMetadata().end_session_endpoint) {
+			this.logger.debug(
+				'The OIDC provider does not advertise an end_session_endpoint, skipping RP-initiated logout',
+			);
+			return undefined;
+		}
+
+		return this.openidClient.buildEndSessionUrl(configuration, {
+			id_token_hint: idToken,
+			post_logout_redirect_uri: `${this.urlService.getInstanceBaseUrl()}/signin`,
+		});
+	}
+
+	/**
+	 * Throws if the email is not verified. By default only an explicit `false` is
+	 * rejected; `emailVerifiedRequired` also rejects an absent claim.
+	 */
+	private assertEmailVerified(emailVerified: unknown): void {
+		const isVerified = emailVerified === true || emailVerified === 'true';
+		const isExplicitlyUnverified = emailVerified === false || emailVerified === 'false';
+
+		if (isExplicitlyUnverified || (this.oidcConfig.emailVerifiedRequired && !isVerified)) {
+			throw new BadRequestError('Email address is not verified by the identity provider');
+		}
 	}
 
 	async generateTestLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
@@ -515,17 +602,31 @@ export class OidcService {
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
-		if (instanceRole) {
-			await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
-		}
+		// Called even when the claim is missing so the configured default condition applies
+		await this.provisioningService.provisionInstanceRoleForUser(user, instanceRole);
 		if (projectRoleMapping) {
 			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
 		}
 	}
 
+	/**
+	 * Denies the login (before any account is created or session issued) when
+	 * role mapping resolves to Block access.
+	 */
+	private async assertProvisioningLoginAllowed(
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
+		const provisioningConfig = await this.provisioningService.getConfig();
+		await this.provisioningService.assertSsoLoginAllowed(
+			buildOidcClaimsContext(claims, userInfo),
+			claims[provisioningConfig.scopesInstanceRoleClaimName],
+		);
+	}
+
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-oidc-config' });
 		}
 	}
@@ -608,14 +709,8 @@ export class OidcService {
 	}
 
 	async updateConfig(newConfig: OidcConfigDto) {
-		const isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled =
-			newConfig.loginEnabled &&
-			!isEmailCurrentAuthenticationMethod() &&
-			!isOidcCurrentAuthenticationMethod();
-		if (isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled) {
-			throw new InternalServerError(
-				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${getCurrentAuthenticationMethod()})`,
-			);
+		if (newConfig.loginEnabled) {
+			assertAuthenticationMethodCanBeEnabled('oidc');
 		}
 
 		let discoveryEndpoint: URL;
@@ -672,12 +767,8 @@ export class OidcService {
 	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {
 		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
 
-		const isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled =
-			enabled && !isEmailCurrentAuthenticationMethod() && !isOidcCurrentAuthenticationMethod();
-		if (isEnablingOidcWhileOtherSsoProtocolIsAlreadyEnabled) {
-			throw new InternalServerError(
-				`Cannot switch OIDC login enabled state when an authentication method other than email or OIDC is active (current: ${currentAuthenticationMethod})`,
-			);
+		if (enabled) {
+			assertAuthenticationMethodCanBeEnabled('oidc');
 		}
 
 		const targetAuthenticationMethod =
@@ -695,8 +786,7 @@ export class OidcService {
 		| undefined;
 
 	/**
-	 * Creates a proxy-aware configuration for openid-client.
-	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
+	 * Creates a configuration for openid-client whose HTTP calls route through the outbound HTTP factory.
 	 */
 	private async createProxyAwareConfiguration(
 		discoveryUrl: URL,
@@ -705,46 +795,31 @@ export class OidcService {
 	): Promise<openidClientTypes.Configuration> {
 		await this.loadOpenIdClient();
 
-		// Check if proxy environment variables are set
-		const hasProxyConfig =
-			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
+		const customFetch = this.outboundHttp
+			.transport({
+				// SSRF is explicitly disabled: the discovery endpoint (and the issuer's
+				// token/userinfo endpoints reached with the same `customFetch`) is
+				// admin-configured and may legitimately point at an internal IdP, so enabling
+				// SSRF protection here would block valid internal setups
+				useDefaultSsrfPolicy: 'unsafe',
+				// `proxy` defaults = `'env'`
+			})
+			.asCustomFetch() as unknown as openidClientTypes.CustomFetch;
 
-		if (hasProxyConfig) {
-			this.logger.debug('Configuring OIDC client with proxy support', {
-				HTTP_PROXY: process.env.HTTP_PROXY,
-				HTTPS_PROXY: process.env.HTTPS_PROXY,
-				NO_PROXY: process.env.NO_PROXY,
-				ALL_PROXY: process.env.ALL_PROXY,
-			});
+		const configuration = await this.openidClient.discovery(
+			discoveryUrl,
+			clientId,
+			clientSecret,
+			undefined,
+			{
+				[this.openidClient.customFetch]: customFetch,
+			},
+		);
 
-			// Create a proxy agent that automatically reads from environment variables
-			const proxyAgent = new EnvHttpProxyAgent();
-			const proxyFetch: openidClientTypes.CustomFetch = async (url, options) => {
-				return await fetch(url, {
-					...options,
-					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
-					dispatcher: proxyAgent,
-				});
-			};
+		// Reuse the same fetch for token-exchange / userinfo on the returned configuration.
+		configuration[this.openidClient.customFetch] = customFetch;
 
-			// discovery call with custom fetch client using proxy agent
-			const configuration = await this.openidClient.discovery(
-				discoveryUrl,
-				clientId,
-				clientSecret,
-				undefined,
-				{
-					[this.openidClient.customFetch]: proxyFetch,
-				},
-			);
-
-			// Configure customFetch to use the proxy agent
-			configuration[this.openidClient.customFetch] = proxyFetch;
-
-			return configuration;
-		}
-
-		return await this.openidClient.discovery(discoveryUrl, clientId, clientSecret);
+		return configuration;
 	}
 
 	private async getOidcConfiguration(): Promise<openidClientTypes.Configuration> {

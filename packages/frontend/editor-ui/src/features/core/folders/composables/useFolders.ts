@@ -145,6 +145,11 @@ export function useFolders() {
 		const dropTarget = getDragAndDropTarget(eventTarget);
 		if (!dropTarget || !isDropTarget(dropTarget)) return {};
 
+		// prevent dropping a resource onto itself
+		if (dropTarget.id === draggedResourceId && dropTarget.type === draggedResourceType) {
+			return {};
+		}
+
 		return {
 			draggedResource: {
 				type: draggedResourceType,

@@ -92,7 +92,7 @@ defineExpose({
 				ref="modelSelectorRef"
 				:selected-agent="selectedModel"
 				:credentials="credentials"
-				text
+				:show-border="false"
 				:agents="chatStore.agents"
 				:is-loading="isLoadingAgents"
 				@change="onModelChange"

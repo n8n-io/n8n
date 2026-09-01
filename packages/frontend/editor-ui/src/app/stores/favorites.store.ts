@@ -4,7 +4,7 @@ import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as favoritesApi from '@/app/api/favorites';
 import type { FavoriteResourceType, UserFavorite } from '@/app/api/favorites';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 	const rootStore = useRootStore();
@@ -27,6 +27,10 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 
 	const folderFavoriteIds = computed(() =>
 		favorites.value.filter((f) => f.resourceType === 'folder').map((f) => f.resourceId),
+	);
+
+	const agentFavoriteIds = computed(() =>
+		favorites.value.filter((f) => f.resourceType === 'agent').map((f) => f.resourceId),
 	);
 
 	async function fetchFavorites() {
@@ -96,6 +100,7 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 		projectFavoriteIds,
 		dataTableFavoriteIds,
 		folderFavoriteIds,
+		agentFavoriteIds,
 		fetchFavorites,
 		isFavorite,
 		renameFavorite,

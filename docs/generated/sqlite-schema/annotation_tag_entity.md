@@ -15,9 +15,9 @@ CREATE TABLE "annotation_tag_entity" ("id" varchar(16) PRIMARY KEY NOT NULL, "na
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar(16) |  | false | [execution_annotation_tags](execution_annotation_tags.md) |  |  |
 | name | varchar(24) |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -42,9 +42,9 @@ erDiagram
 "execution_annotation_tags" |o--|| "annotation_tag_entity" : "FOREIGN KEY (tagId) REFERENCES annotation_tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "annotation_tag_entity" {
+  datetime_3_ createdAt
   varchar_16_ id PK
   varchar_24_ name
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "execution_annotation_tags" {

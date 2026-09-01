@@ -2,6 +2,7 @@ import * as fill from '../../../actions/interaction/fill.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
+import type { Mock } from 'vitest';
 
 const baseNodeParameters = {
 	resource: 'interaction',
@@ -24,25 +25,21 @@ const mockCompletedResponse = {
 	},
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(),
+		apiRequest: vi.fn(),
 	};
 });
 
 describe('Test Airtop, fill form operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should execute fill operation successfully', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 
 		// Mock the initial async request
 		apiRequestMock.mockResolvedValueOnce(mockAsyncResponse);
@@ -94,7 +91,7 @@ describe('Test Airtop, fill form operation', () => {
 	});
 
 	it('should throw error when operation times out after 2 sec', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		const nodeParameters = {
 			...baseNodeParameters,
 		};
@@ -113,7 +110,7 @@ describe('Test Airtop, fill form operation', () => {
 	});
 
 	it('should handle error status in response', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		const errorResponse = {
 			status: 'error',
 			error: {

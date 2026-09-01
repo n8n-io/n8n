@@ -17,10 +17,10 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -123,6 +123,15 @@ export function renameColumnQuery(
 	const quotedNewName = quoteIdentifier(newColumnName, dbType);
 
 	return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
+}
+
+export function renameTableQuery(
+	oldTableName: DataTableUserTableName,
+	newTableName: DataTableUserTableName,
+	dbType: DataSourceOptions['type'],
+): string {
+	// `ALTER TABLE ... RENAME TO` is valid on both SQLite and Postgres
+	return `ALTER TABLE ${quoteIdentifier(oldTableName, dbType)} RENAME TO ${quoteIdentifier(newTableName, dbType)}`;
 }
 
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {

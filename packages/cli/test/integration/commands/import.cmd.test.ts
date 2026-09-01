@@ -395,15 +395,15 @@ describe('--activeState flag', () => {
 	beforeEach(() => {
 		// Bypass webhook conflict detection to avoid infrastructure dependencies
 		// (getWorkflowExecutionData → VariablesService.getAllCached → CacheService/Redis)
-		jest
-			.spyOn(Container.get(WorkflowService) as any, '_findConflictingWebhooks')
-			.mockResolvedValue([]);
+		vi.spyOn(Container.get(WorkflowService) as any, '_findConflictingWebhooks').mockResolvedValue(
+			[],
+		);
 
 		mockNodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
 			if (nodeType === 'n8n-nodes-base.webhook') {
 				return {
 					description: { webhooks: undefined, properties: [] },
-					webhook: jest.fn(),
+					webhook: vi.fn(),
 				} as unknown as INodeType;
 			}
 			return { description: { properties: [] } } as unknown as INodeType;
@@ -489,8 +489,8 @@ describe('--activeState flag', () => {
 			expect(active.activeVersionId).toBe(active.versionId);
 
 			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
-			jest.mocked(activeWorkflowManager.add).mockClear();
-			jest.mocked(activeWorkflowManager.remove).mockClear();
+			vi.mocked(activeWorkflowManager.add).mockClear();
+			vi.mocked(activeWorkflowManager.remove).mockClear();
 
 			await command.run([`--input=${fixture}`, '--activeState=false']);
 

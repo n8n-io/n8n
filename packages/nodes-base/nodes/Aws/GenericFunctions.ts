@@ -1,7 +1,9 @@
 import type {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 	IWebhookFunctions,
 	IHttpRequestOptions,
 	JsonObject,
@@ -15,7 +17,13 @@ import type {
 } from '../../credentials/common/aws/types';
 
 export async function getAwsCredentials(
-	context: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	context:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IPollFunctions
+		| IWebhookFunctions,
 ) {
 	let credentialsType: 'aws' | 'awsAssumeRole' = 'aws';
 

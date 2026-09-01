@@ -3,6 +3,8 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { JwtService } from '@/services/jwt.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -15,6 +17,7 @@ const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-s
 let owner: User;
 let member: User;
 let jwtService: JwtService;
+let supportedScopes: string[];
 
 const createSessionToken = (payload: OAuthSessionPayload): string => {
 	return jwtService.sign(payload, { expiresIn: '10m' });
@@ -26,6 +29,7 @@ beforeAll(async () => {
 	member = await createMember();
 	jwtService = Container.get(JwtService);
 	oauthClientRepository = Container.get(OAuthClientRepository);
+	supportedScopes = Container.get(ProtectedResourceRegistry).getDefaultResource()?.scopes ?? [];
 });
 
 afterEach(async () => {
@@ -60,7 +64,89 @@ describe('GET /rest/consent/details', () => {
 		expect(response.body.data).toEqual({
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
+			redirectUri: 'https://example.com/callback',
+			scopes: supportedScopes,
+			scopeTools: expect.objectContaining({
+				'workflow:read': expect.arrayContaining(['search_workflows']),
+			}),
+			isFirstParty: false,
 		});
+	});
+
+	test('should include the resource name when the session resource resolves', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'resource-client-id',
+			name: 'Test OAuth Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		const resourceUrl = 'https://n8n.example.com/mcp/named-workflow';
+		Container.get(ProtectedResourceRegistry).register({
+			id: 'test-named-resource',
+			displayName: 'My Named Workflow',
+			getResourceUrl: () => resourceUrl,
+			getAudiences: () => [resourceUrl],
+			authorize: async () => true,
+			scopes: [],
+		});
+
+		const sessionToken = createSessionToken({
+			clientId: client.id,
+			redirectUri: 'https://example.com/callback',
+			codeChallenge: 'test-challenge',
+			state: 'test-state',
+			resource: resourceUrl,
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/consent/details')
+			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual({
+			clientName: 'Test OAuth Client',
+			clientId: 'resource-client-id',
+			resourceName: 'My Named Workflow',
+			redirectUri: 'https://example.com/callback',
+			scopes: [],
+			isFirstParty: false,
+		});
+	});
+
+	test('should return 422 and clear the session when the resource cannot be resolved', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'unresolvable-client-id',
+			name: 'Test OAuth Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		const sessionToken = createSessionToken({
+			clientId: client.id,
+			redirectUri: 'https://example.com/callback',
+			codeChallenge: 'test-challenge',
+			state: 'test-state',
+			resource: 'https://n8n.example.com/mcp/does-not-exist',
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/consent/details')
+			.set('Cookie', `n8n-oauth-session=${sessionToken}`);
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toEqual({
+			status: 'error',
+			message: 'Authorization target is no longer available',
+		});
+
+		const setCookieHeader = response.headers['set-cookie'];
+		expect(setCookieHeader).toBeDefined();
+		expect(setCookieHeader[0]).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/);
 	});
 
 	test('should return 400 when session cookie is missing', async () => {
@@ -191,7 +277,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toEqual({
@@ -203,6 +289,9 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('code')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('code')?.length).toBeGreaterThan(32);
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 	});
 
 	test('should handle consent denial and return error redirect URL', async () => {
@@ -222,6 +311,9 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('error')).toBe('access_denied');
 		expect(redirectUrl.searchParams.get('error_description')).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('test-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 	});
 
 	test('should clear session cookie after processing consent', async () => {
@@ -229,7 +321,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -274,7 +366,7 @@ describe('POST /rest/consent/approve', () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.post('/consent/approve')
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 		expect(response.body).toEqual({
@@ -288,7 +380,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', 'n8n-oauth-session=invalid-token')
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 		expect(response.body.status).toBe('error');
@@ -299,7 +391,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', 'n8n-oauth-session=invalid-token')
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		const setCookieHeader = response.headers['set-cookie'];
 		expect(setCookieHeader).toBeDefined();
@@ -311,7 +403,7 @@ describe('POST /rest/consent/approve', () => {
 		const response = await testServer.authlessAgent
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBe(401);
 	});
@@ -321,12 +413,12 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'../database/repositories/oauth-user-consent.repository.js'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -349,7 +441,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'../database/repositories/oauth-user-consent.repository.js'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -364,7 +456,7 @@ describe('POST /rest/consent/approve', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(ownerResponse.statusCode).toBe(200);
 		expect(ownerResponse.body.data.redirectUrl).toContain('code=');
@@ -418,7 +510,7 @@ describe('Consent Flow - End-to-End', () => {
 			.authAgentFor(owner)
 			.post('/consent/approve')
 			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true });
+			.send({ approved: true, scopes: ['workflow:read'] });
 
 		expect(approvalResponse.statusCode).toBe(200);
 		expect(approvalResponse.body.data.status).toBe('success');

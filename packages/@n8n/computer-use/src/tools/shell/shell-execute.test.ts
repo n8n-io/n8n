@@ -3,12 +3,10 @@ import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import type { Mock, Mocked, MockedFunction } from 'vitest';
 
-import { getSettingsDir } from '../../config';
 import { textOf } from '../test-utils';
 import type { AffectedResource } from '../types';
 import { buildShellResource } from './build-shell-resource';
-import { ShellModule } from './index';
-import { shellExecuteTool } from './shell-execute';
+import { createShellExecuteTool } from './shell-execute';
 
 vi.mock('child_process');
 vi.mock('@vscode/ripgrep', () => ({ rgPath: '/usr/bin/rg' }));
@@ -24,6 +22,10 @@ const mockSandboxManager = SandboxManager as Mocked<typeof SandboxManager>;
 
 const mockSpawn = spawn as MockedFunction<typeof spawn>;
 
+// Plumbing tests use the unsandboxed tool (sh -c) so spawn is called with the
+// classic (executable, args, options) shape. Sandbox-mode behavior is covered in
+// the cross-platform block below and in sandbox.test.ts.
+const shellExecuteTool = createShellExecuteTool('unsandboxed');
 const DUMMY_CONTEXT = { dir: '/test/base' };
 
 function makeMockChild(
@@ -58,6 +60,9 @@ function getErrorHandler(on: Mock): ((error: Error) => void) | undefined {
 /** Flush all pending microtasks. */
 async function flushMicrotasks(ticks = 1) {
 	for (let i = 0; i < ticks; i++) await Promise.resolve();
+}
+async function flushUntil(predicate: () => boolean, maxTicks = 50) {
+	for (let i = 0; i < maxTicks && !predicate(); i++) await Promise.resolve();
 }
 
 describe('shell_execute tool', () => {
@@ -231,6 +236,67 @@ describe('shell_execute tool', () => {
 		expect(spawnOptions?.cwd).toBe('/custom/path');
 	});
 
+	it('resolves a relative cwd against the configured directory before spawning', async () => {
+		const child = makeMockChild();
+		mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
+
+		const resultPromise = shellExecuteTool.execute(
+			{ command: 'pwd', timeout: 5000, cwd: 'custom/path' },
+			DUMMY_CONTEXT,
+		);
+
+		await flushMicrotasks();
+
+		const closeHandler = getCloseHandler(child.on);
+		closeHandler?.(0);
+		await resultPromise;
+
+		const [, , spawnOptions] = mockSpawn.mock.calls[0];
+		expect(spawnOptions?.cwd).toBe('/test/base/custom/path');
+	});
+
+	it('binds the resolved cwd into the permission resource', async () => {
+		const resources = await shellExecuteTool.getAffectedResources(
+			{ command: 'ls', cwd: '/custom/path' },
+			DUMMY_CONTEXT,
+		);
+
+		expect(resources).toEqual([
+			{
+				toolGroup: 'shell',
+				resource: '/custom/path: ls',
+				description: 'Execute shell command: ls in /custom/path',
+			},
+		]);
+	});
+
+	it('binds the configured directory when cwd is omitted', async () => {
+		const resources = await shellExecuteTool.getAffectedResources({ command: 'ls' }, DUMMY_CONTEXT);
+
+		expect(resources).toEqual([
+			{
+				toolGroup: 'shell',
+				resource: '/test/base: ls',
+				description: 'Execute shell command: ls in /test/base',
+			},
+		]);
+	});
+
+	it('does not collide with commands that include cwd-looking suffixes', async () => {
+		const [explicitCwdResource] = await shellExecuteTool.getAffectedResources(
+			{ command: 'cat .env #', cwd: '/tmp' },
+			DUMMY_CONTEXT,
+		);
+		const [commandSuffixResource] = await shellExecuteTool.getAffectedResources(
+			{ command: 'cat .env #(cwd: /tmp)' },
+			DUMMY_CONTEXT,
+		);
+
+		expect(explicitCwdResource.resource).toBe('/tmp: cat .env #');
+		expect(commandSuffixResource.resource).toBe('/test/base: cat .env #(cwd: /tmp)');
+		expect(explicitCwdResource.resource).not.toBe(commandSuffixResource.resource);
+	});
+
 	describe('cross-platform shell selection', () => {
 		it('uses cmd.exe /C on win32', async () => {
 			Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
@@ -276,55 +342,27 @@ describe('shell_execute tool', () => {
 			expect(args).toEqual(['-c', 'ls']);
 		});
 
-		it('wraps command with SandboxManager on darwin', async () => {
-			Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+		it('wraps the command with the sandbox when sandboxed, regardless of platform', async () => {
 			mockSandboxManager.wrapWithSandbox.mockResolvedValue('sandboxed-ls');
 
 			const child = makeMockChild();
 			mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
 
-			const resultPromise = shellExecuteTool.execute(
-				{ command: 'ls', timeout: 5000 },
-				DUMMY_CONTEXT,
-			);
+			const sandboxedTool = createShellExecuteTool('sandboxed');
+			const resultPromise = sandboxedTool.execute({ command: 'ls', timeout: 5000 }, DUMMY_CONTEXT);
 
-			// darwin path has extra async depth: initializeSandbox (×2 awaits) + wrapWithSandbox + return + .then()
-			await flushMicrotasks(5);
+			// The sandboxed path lazy-imports the runtime and awaits the wrap, so wait
+			// for the spawn rather than counting microtasks.
+			await flushUntil(() => mockSpawn.mock.calls.length > 0);
 
 			const closeHandler = getCloseHandler(child.on);
 			closeHandler?.(0);
 			await resultPromise;
 
-			expect(mockSandboxManager.initialize).toHaveBeenCalled();
 			expect(mockSandboxManager.wrapWithSandbox).toHaveBeenCalledWith('ls');
 			const [executable, spawnOptions] = mockSpawn.mock.calls[0];
 			expect(executable).toBe('sandboxed-ls');
 			expect(spawnOptions).toMatchObject({ shell: true });
-		});
-
-		it('includes settings dir in sandbox denyWrite and denyRead on darwin', async () => {
-			Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
-			mockSandboxManager.wrapWithSandbox.mockResolvedValue('sandboxed-ls');
-
-			const child = makeMockChild();
-			mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
-
-			const resultPromise = shellExecuteTool.execute(
-				{ command: 'ls', timeout: 5000 },
-				DUMMY_CONTEXT,
-			);
-
-			await flushMicrotasks(5);
-
-			const closeHandler = getCloseHandler(child.on);
-			closeHandler?.(0);
-			await resultPromise;
-
-			const initCall = mockSandboxManager.initialize.mock.calls[0][0] as {
-				filesystem: { denyWrite: string[]; denyRead: string[] };
-			};
-			expect(initCall.filesystem.denyWrite).toContain(getSettingsDir());
-			expect(initCall.filesystem.denyRead).toContain(getSettingsDir());
 		});
 	});
 
@@ -385,12 +423,6 @@ describe('shell_execute tool', () => {
 	});
 });
 
-describe('ShellModule', () => {
-	it('isSupported returns true', () => {
-		expect(ShellModule.isSupported()).toBe(true);
-	});
-});
-
 describe('getAffectedResources', () => {
 	it('uses buildShellResource for the resource and includes the full command in description', () => {
 		const resources = shellExecuteTool.getAffectedResources(
@@ -400,7 +432,8 @@ describe('getAffectedResources', () => {
 		expect(resources).toHaveLength(1);
 		const [resource] = resources as AffectedResource[];
 		expect(resource.toolGroup).toBe('shell');
-		expect(resource.resource).toBe(buildShellResource('git status'));
+		expect(resource.resource).toBe(buildShellResource('git status', '/tmp'));
 		expect(resource.description).toContain('git status');
+		expect(resource.description).toContain('/tmp');
 	});
 });

@@ -1,35 +1,260 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { mock } from 'jest-mock-extended';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { createResultError, createResultOk } from '@n8n/utils/result';
+import type { Consumer } from 'kafkajs';
 import type {
 	ITriggerFunctions,
 	IRun,
 	INode,
 	Logger,
-	IDeferredPromise,
 	ICredentialDataDecryptedObject,
+	NodeEgressFilter,
 } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeOperationError, OperationalError } from 'n8n-workflow';
+import { getEventListeners } from 'node:events';
+import http from 'node:http';
+import https from 'node:https';
+import type { LookupFunction } from 'node:net';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
+	createSchemaRegistry,
 	getAutoCommitSettings,
 	configureDataEmitter,
-	getSchemaRegistryOptions,
-	setSchemaRegistry,
 	type KafkaTriggerOptions,
+	type KafkaCredentials,
+	getSchemaRegistryOptions,
+	resolveKafkaSsl,
+	resolveRetryDelay,
+	sanitizeRegistryError,
+	setSchemaRegistry,
+	stopAndDisconnectConsumer,
+	withTimeout,
 } from '../utils';
 
-jest.mock('@kafkajs/confluent-schema-registry');
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
-	return {
-		...actual,
-		sleep: jest.fn().mockResolvedValue(undefined),
-	};
-});
+vi.mock('@kafkajs/confluent-schema-registry');
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
+}));
 
-const mockedSleep = jest.mocked(sleep);
+const mockedSleep = vi.mocked(sleep);
 
 describe('Kafka Utils', () => {
+	describe('sanitizeRegistryError', () => {
+		const CAP = 500;
+
+		describe('credentials in the URL', () => {
+			it('redacts userinfo', () => {
+				expect(
+					sanitizeRegistryError(new Error('request to https://user:pw@registry.local failed')),
+				).toStrictEqual({ message: 'request to https://***@registry.local failed' });
+			});
+
+			it('redacts up to the last @ when the password contains an unencoded one', () => {
+				// The shared scrubber stops at the first @ and would leave "ssw0rd" behind.
+				const { message } = sanitizeRegistryError(
+					new Error('request to https://user:p@ssw0rd@registry.local failed'),
+				);
+
+				expect(message).toBe('request to https://***@registry.local failed');
+				expect(message).not.toContain('ssw0rd');
+			});
+
+			it('leaves a URL without credentials alone', () => {
+				expect(
+					sanitizeRegistryError(new Error('request to https://registry.local failed')),
+				).toStrictEqual({ message: 'request to https://registry.local failed' });
+			});
+		});
+
+		describe('secrets the shared scrubber catches', () => {
+			it.each([
+				['a JWT', 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123def456', 'eyJ'],
+				['a Bearer header', 'Authorization: Bearer abcdefghijklmnop123456', 'abcdefghij'],
+				['an API key assignment', 'api_key=sk-ant-abcdefghijklmnop1234', 'sk-ant-'],
+			])('redacts %s echoed back in the body', (_, secret, leak) => {
+				const { message } = sanitizeRegistryError(new Error(`registry rejected: ${secret}`));
+
+				expect(message).not.toContain(leak);
+				expect(message).toContain('[REDACTED]');
+			});
+		});
+
+		describe('length', () => {
+			it('caps an oversized message and marks it truncated', () => {
+				const { message } = sanitizeRegistryError(new Error('x'.repeat(CAP + 100)));
+
+				expect(message).toHaveLength(CAP + 3);
+				expect(message.endsWith('...')).toBe(true);
+			});
+
+			it('leaves a message at the cap untouched', () => {
+				const { message } = sanitizeRegistryError(new Error('x'.repeat(CAP)));
+
+				expect(message).toHaveLength(CAP);
+				expect(message.endsWith('...')).toBe(false);
+			});
+
+			it('caps after redacting, so the cap applies to the safe text', () => {
+				// A long secret must not survive by pushing the redaction past the cap.
+				const secret = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.' + 'a'.repeat(600);
+				const { message } = sanitizeRegistryError(new Error(secret));
+
+				expect(message).not.toContain('eyJ');
+				expect(message.length).toBeLessThanOrEqual(CAP + 3);
+			});
+		});
+
+		describe('shape', () => {
+			it('includes the status when the error carries one', () => {
+				expect(
+					sanitizeRegistryError(Object.assign(new Error('nope'), { status: 404 })),
+				).toStrictEqual({ message: 'nope', status: 404 });
+			});
+
+			it('omits the status when the error has none', () => {
+				expect(Object.keys(sanitizeRegistryError(new Error('nope')))).toStrictEqual(['message']);
+			});
+
+			it('drops a thrown value that is not an Error rather than stringifying it', () => {
+				// ensureError substitutes a placeholder, so an arbitrary thrown value
+				// never reaches the log, which is the safe outcome here.
+				const { message } = sanitizeRegistryError('https://user:pw@registry.local');
+
+				expect(message).not.toContain('registry.local');
+				expect(message).toBe('Error that was not an instance of Error was thrown');
+			});
+		});
+	});
+
+	describe('resolveKafkaSsl', () => {
+		const CERT_PEM = '-----BEGIN CERTIFICATE-----\nMIIBclientcertbody==\n-----END CERTIFICATE-----';
+		const KEY_PEM = '-----BEGIN PRIVATE KEY-----\nMIIBclientkeybody==\n-----END PRIVATE KEY-----';
+		const CA_PEM = '-----BEGIN CERTIFICATE-----\nMIIBcacertbody==\n-----END CERTIFICATE-----';
+
+		const creds = (overrides: Partial<KafkaCredentials> = {}): KafkaCredentials => ({
+			clientId: 'test',
+			brokers: 'localhost:9092',
+			ssl: true,
+			authentication: false,
+			...overrides,
+		});
+
+		type SslObject = Exclude<ReturnType<typeof resolveKafkaSsl>, boolean>;
+
+		it('returns false when SSL is disabled, even if cert material is present', () => {
+			expect(resolveKafkaSsl(creds({ ssl: false, cert: CERT_PEM, key: KEY_PEM }))).toBe(false);
+		});
+
+		it('returns plain boolean true for SSL-only credentials (legacy, no mTLS material)', () => {
+			expect(resolveKafkaSsl(creds())).toBe(true);
+		});
+
+		it('treats whitespace-only cert/key/CA as empty and stays on boolean SSL', () => {
+			expect(resolveKafkaSsl(creds({ cert: '   ', key: '\n', ca: ' ' }))).toBe(true);
+		});
+
+		it('builds cert + key buffers when a client certificate and key are provided', () => {
+			const ssl = resolveKafkaSsl(creds({ cert: CERT_PEM, key: KEY_PEM })) as SslObject;
+			expect(Buffer.isBuffer(ssl.cert)).toBe(true);
+			expect(Buffer.isBuffer(ssl.key)).toBe(true);
+			expect((ssl.cert as Buffer).toString()).toContain('BEGIN CERTIFICATE');
+			expect((ssl.key as Buffer).toString()).toContain('BEGIN PRIVATE KEY');
+			expect(ssl.ca).toBeUndefined();
+			expect(ssl.rejectUnauthorized).toBeUndefined();
+		});
+
+		it('wraps a CA certificate in an array', () => {
+			const ssl = resolveKafkaSsl(creds({ ca: CA_PEM })) as SslObject;
+			expect(Array.isArray(ssl.ca)).toBe(true);
+			expect(Buffer.isBuffer((ssl.ca as Buffer[])[0])).toBe(true);
+			expect(ssl.cert).toBeUndefined();
+			expect(ssl.key).toBeUndefined();
+		});
+
+		it('maps cert, key, CA and the insecure toggle together', () => {
+			const ssl = resolveKafkaSsl(
+				creds({ cert: CERT_PEM, key: KEY_PEM, ca: CA_PEM, allowUnauthorizedCerts: true }),
+			) as SslObject;
+			expect(Buffer.isBuffer(ssl.cert)).toBe(true);
+			expect(Buffer.isBuffer(ssl.key)).toBe(true);
+			expect(Array.isArray(ssl.ca)).toBe(true);
+			expect(ssl.rejectUnauthorized).toBe(false);
+		});
+
+		it('sets rejectUnauthorized:false for the insecure toggle on its own', () => {
+			expect(resolveKafkaSsl(creds({ allowUnauthorizedCerts: true }))).toEqual({
+				rejectUnauthorized: false,
+			});
+		});
+
+		it('throws when a client certificate is provided without its key', () => {
+			expect(() => resolveKafkaSsl(creds({ cert: CERT_PEM }))).toThrow('Kafka mTLS needs both');
+		});
+
+		it('throws when a client key is provided without its certificate', () => {
+			expect(() => resolveKafkaSsl(creds({ key: KEY_PEM }))).toThrow('Kafka mTLS needs both');
+		});
+
+		it('throws on a value that is not PEM at all', () => {
+			expect(() => resolveKafkaSsl(creds({ ca: 'not-a-pem' }))).toThrow('not a valid PEM block');
+		});
+
+		it('throws on a truncated PEM that has BEGIN but no matching END', () => {
+			const truncated = '-----BEGIN CERTIFICATE-----\nMIIBtruncatedbody==';
+			expect(() => resolveKafkaSsl(creds({ cert: truncated, key: KEY_PEM }))).toThrow(
+				'not a valid PEM block',
+			);
+		});
+	});
+
+	describe('resolveRetryDelay', () => {
+		it('keeps a usable delay', () => {
+			expect(resolveRetryDelay(10_000)).toBe(10_000);
+		});
+
+		it('keeps zero, which means do not wait', () => {
+			expect(resolveRetryDelay(0)).toBe(0);
+		});
+
+		it('keeps the largest delay a timer can hold', () => {
+			expect(resolveRetryDelay(2_147_483_647)).toBe(2_147_483_647);
+		});
+
+		it.each([
+			['missing', undefined],
+			['NaN, e.g. from an expression that did not produce a number', Number.NaN],
+			['Infinity', Number.POSITIVE_INFINITY],
+			['negative', -1],
+			['past the 32-bit timer limit', 2_147_483_648],
+		])('falls back to the default when the delay is %s', (_case, value) => {
+			// setTimeout turns every one of these into no wait at all, so without
+			// this the pacing would silently disappear rather than fail.
+			expect(resolveRetryDelay(value)).toBe(5000);
+		});
+
+		it.each([Number.NaN, -1, 2_147_483_648])(
+			'warns that a delay of %s was replaced, so the misconfiguration is visible',
+			(value) => {
+				const logger = mock<Logger>();
+
+				resolveRetryDelay(value, logger);
+
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Retry Delay on Error'));
+			},
+		);
+
+		it('stays quiet when no delay was set, which is not a misconfiguration', () => {
+			const logger = mock<Logger>();
+
+			resolveRetryDelay(undefined, logger);
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getAutoCommitSettings', () => {
 		it('should return autoCommit true and eachBatchAutoResolve false for version 1.1', () => {
 			const options: KafkaTriggerOptions = {};
@@ -182,7 +407,7 @@ describe('Kafka Utils', () => {
 			if (deferredPromise) {
 				ctx.helpers = {
 					...ctx.helpers,
-					createDeferredPromise: jest.fn().mockReturnValue(deferredPromise),
+					createDeferredPromise: vi.fn().mockReturnValue(deferredPromise),
 				} as unknown as ITriggerFunctions['helpers'];
 			}
 
@@ -190,12 +415,12 @@ describe('Kafka Utils', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
-			jest.useFakeTimers();
+			vi.clearAllMocks();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		describe('immediate emit mode', () => {
@@ -203,7 +428,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({ resolveOffset: 'onCompletion' }, 'manual');
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const result = await emitter(testData);
@@ -216,7 +441,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({}, 'trigger');
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1);
+				const emitter = configureDataEmitter(ctx, options, 1, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const result = await emitter(testData);
@@ -229,7 +454,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({}, 'trigger');
 				const options: KafkaTriggerOptions = { parallelProcessing: true };
 
-				const emitter = configureDataEmitter(ctx, options, 1.1);
+				const emitter = configureDataEmitter(ctx, options, 1.1, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const result = await emitter(testData);
@@ -242,7 +467,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({ resolveOffset: 'immediately' }, 'trigger');
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const result = await emitter(testData);
@@ -262,7 +487,7 @@ describe('Kafka Utils', () => {
 				);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -285,7 +510,7 @@ describe('Kafka Utils', () => {
 				);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -303,7 +528,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({}, 'trigger', deferredPromise);
 				const options: KafkaTriggerOptions = { parallelProcessing: false };
 
-				const emitter = configureDataEmitter(ctx, options, 1.1);
+				const emitter = configureDataEmitter(ctx, options, 1.1, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -323,7 +548,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({ resolveOffset: 'onSuccess' }, 'trigger', deferredPromise);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -340,7 +565,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({ resolveOffset: 'onSuccess' }, 'trigger', deferredPromise);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -359,7 +584,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({ resolveOffset: 'onSuccess' }, 'trigger', deferredPromise);
 				const options: KafkaTriggerOptions = { errorRetryDelay: 10000 };
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -380,7 +605,9 @@ describe('Kafka Utils', () => {
 				);
 				const options: KafkaTriggerOptions = {};
 
-				expect(() => configureDataEmitter(ctx, options, 1.3)).toThrow(NodeOperationError);
+				expect(() => configureDataEmitter(ctx, options, 1.3, new AbortController().signal)).toThrow(
+					NodeOperationError,
+				);
 			});
 
 			it('should return success when execution status matches allowed statuses', async () => {
@@ -392,7 +619,7 @@ describe('Kafka Utils', () => {
 				);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -413,7 +640,7 @@ describe('Kafka Utils', () => {
 				);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -438,13 +665,13 @@ describe('Kafka Utils', () => {
 				ctx.getWorkflowSettings.mockReturnValue({ executionTimeout: 1 }); // 1 second timeout
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
 
 				// Advance timers past the timeout
-				jest.advanceTimersByTime(1001);
+				vi.advanceTimersByTime(1001);
 
 				const result = await resultPromise;
 
@@ -463,7 +690,7 @@ describe('Kafka Utils', () => {
 				ctx.getWorkflowSettings.mockReturnValue({}); // No timeout configured
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -486,7 +713,7 @@ describe('Kafka Utils', () => {
 				ctx.getWorkflowSettings.mockReturnValue({ executionTimeout: 10 });
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -497,7 +724,7 @@ describe('Kafka Utils', () => {
 				const result = await resultPromise;
 
 				// Advance timers past what would have been the timeout
-				jest.advanceTimersByTime(15000);
+				vi.advanceTimersByTime(15000);
 
 				// Should not have logged any timeout error
 				expect(result).toEqual({ success: true });
@@ -514,7 +741,7 @@ describe('Kafka Utils', () => {
 				);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -537,7 +764,7 @@ describe('Kafka Utils', () => {
 				);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -557,7 +784,7 @@ describe('Kafka Utils', () => {
 				const ctx = createMockContext({}, 'manual');
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test1' } }, { json: { message: 'test2' } }];
 
 				await emitter(testData);
@@ -574,7 +801,7 @@ describe('Kafka Utils', () => {
 				);
 				const options: KafkaTriggerOptions = {};
 
-				const emitter = configureDataEmitter(ctx, options, 1.3);
+				const emitter = configureDataEmitter(ctx, options, 1.3, new AbortController().signal);
 				const testData = [{ json: { message: 'test' } }];
 
 				const resultPromise = emitter(testData);
@@ -585,6 +812,179 @@ describe('Kafka Utils', () => {
 
 				expect(ctx.emit).toHaveBeenCalledWith([testData], undefined, deferredPromise);
 			});
+		});
+
+		describe('close signal', () => {
+			it('should unblock a pending execution wait when the close signal aborts', async () => {
+				const deferredPromise = createDeferredPromise<IRun>();
+				const ctx = createMockContext(
+					{ resolveOffset: 'onCompletion' },
+					'trigger',
+					deferredPromise,
+				);
+				const closeController = new AbortController();
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const resultPromise = emitter([{ json: { message: 'test' } }]);
+
+				closeController.abort();
+
+				const result = await resultPromise;
+
+				expect(result).toEqual({ success: false });
+				expect(mockedSleep).not.toHaveBeenCalled();
+			});
+
+			it('should not start an execution when the close signal is already aborted', async () => {
+				const deferredPromise = createDeferredPromise<IRun>();
+				const ctx = createMockContext(
+					{ resolveOffset: 'onCompletion' },
+					'trigger',
+					deferredPromise,
+				);
+				const closeController = new AbortController();
+				closeController.abort();
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const result = await emitter([{ json: { message: 'test' } }]);
+
+				expect(result).toEqual({ success: false });
+				expect(ctx.emit).not.toHaveBeenCalled();
+			});
+
+			it('should not emit in immediate mode when the close signal is already aborted', async () => {
+				const ctx = createMockContext({ resolveOffset: 'immediately' }, 'trigger');
+				const closeController = new AbortController();
+				closeController.abort();
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const result = await emitter([{ json: { message: 'test' } }]);
+
+				expect(result).toEqual({ success: false });
+				expect(ctx.emit).not.toHaveBeenCalled();
+			});
+
+			it('should cut the error retry backoff short when the close signal aborts mid-backoff', async () => {
+				const deferredPromise = createDeferredPromise<IRun>();
+				const ctx = createMockContext({ resolveOffset: 'onSuccess' }, 'trigger', deferredPromise);
+				const closeController = new AbortController();
+				// Never-ending backoff: the test hangs here unless abort cuts it short
+				mockedSleep.mockReturnValueOnce(new Promise<void>(() => {}));
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				const resultPromise = emitter([{ json: { message: 'test' } }]);
+
+				deferredPromise.resolveWith({ status: 'error' } as unknown as IRun);
+				await vi.advanceTimersByTimeAsync(0);
+				expect(mockedSleep).toHaveBeenCalled();
+
+				closeController.abort();
+
+				const result = await resultPromise;
+				expect(result).toEqual({ success: false });
+			});
+
+			it('should not accumulate abort listeners across messages', async () => {
+				const deferredPromise = createDeferredPromise<IRun>();
+				const ctx = createMockContext(
+					{ resolveOffset: 'onCompletion' },
+					'trigger',
+					deferredPromise,
+				);
+				const closeController = new AbortController();
+
+				const emitter = configureDataEmitter(ctx, {}, 1.3, closeController.signal);
+				deferredPromise.resolveWith({ status: 'success' } as unknown as IRun);
+
+				await emitter([{ json: { message: 'one' } }]);
+				await emitter([{ json: { message: 'two' } }]);
+				await emitter([{ json: { message: 'three' } }]);
+
+				expect(getEventListeners(closeController.signal, 'abort')).toHaveLength(1);
+			});
+		});
+	});
+
+	describe('stopAndDisconnectConsumer', () => {
+		const logger = mock<Logger>();
+
+		it('should stop then disconnect and return undefined on success', async () => {
+			const consumer = mock<Consumer>({
+				stop: vi.fn(async () => {}),
+				disconnect: vi.fn(async () => {}),
+			});
+
+			await expect(stopAndDisconnectConsumer(consumer, logger, 1000)).resolves.toBeUndefined();
+
+			expect(consumer.stop).toHaveBeenCalled();
+			expect(consumer.disconnect).toHaveBeenCalled();
+		});
+
+		it('should still disconnect and return the stop error when stop() rejects', async () => {
+			const stopError = new Error('The group is rebalancing, so a rejoin is needed');
+			const consumer = mock<Consumer>({
+				stop: vi.fn(async () => {
+					throw stopError;
+				}),
+				disconnect: vi.fn(async () => {}),
+			});
+
+			await expect(stopAndDisconnectConsumer(consumer, logger, 1000)).resolves.toBe(stopError);
+
+			expect(consumer.disconnect).toHaveBeenCalled();
+		});
+
+		it('should not await disconnect while stop() is pending, then disconnect once it settles', async () => {
+			vi.useFakeTimers();
+			try {
+				let resolveStop!: () => void;
+				const consumer = mock<Consumer>({
+					stop: vi.fn(
+						async () =>
+							await new Promise<void>((resolve) => {
+								resolveStop = resolve;
+							}),
+					),
+					disconnect: vi.fn(async () => {}),
+				});
+
+				const resultPromise = stopAndDisconnectConsumer(consumer, logger, 1000);
+				await vi.advanceTimersByTimeAsync(1000);
+				const error = await resultPromise;
+
+				expect(error).toBeInstanceOf(OperationalError);
+				expect((error as Error).message).toBe('Kafka consumer did not stop in time');
+				// A still-pending stop() means disconnect() would join the same shared promise
+				expect(consumer.disconnect).not.toHaveBeenCalled();
+
+				resolveStop();
+				await vi.advanceTimersByTimeAsync(0);
+				expect(consumer.disconnect).toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('withTimeout', () => {
+		it('should resolve with the value when the promise settles in time', async () => {
+			await expect(withTimeout(Promise.resolve('ok'), 1000, 'too slow')).resolves.toBe('ok');
+		});
+
+		it('should reject when the promise rejects in time', async () => {
+			await expect(
+				withTimeout(Promise.reject(new Error('boom')), 1000, 'too slow'),
+			).rejects.toThrow('boom');
+		});
+
+		it('should reject with an OperationalError when the promise does not settle in time', async () => {
+			const error = await withTimeout(new Promise<never>(() => {}), 20, 'too slow').then(
+				() => null,
+				(e: unknown) => e,
+			);
+
+			expect(error).toBeInstanceOf(OperationalError);
+			expect((error as Error).message).toBe('too slow');
 		});
 	});
 
@@ -602,10 +1002,12 @@ describe('Kafka Utils', () => {
 			params = {},
 			nodeCredentials,
 			credentialData,
+			secureEgressFilter,
 		}: {
 			params?: Record<string, unknown>;
 			nodeCredentials?: INode['credentials'];
 			credentialData?: ICredentialDataDecryptedObject;
+			secureEgressFilter?: NodeEgressFilter;
 		} = {}) => {
 			const ctx = mock<ITriggerFunctions>();
 			ctx.getNode.mockReturnValue({ ...registryNode, credentials: nodeCredentials });
@@ -614,6 +1016,10 @@ describe('Kafka Utils', () => {
 				(name: string, fallback?: unknown) => (params[name] ?? fallback) as never,
 			);
 			ctx.logger = mock<Logger>();
+			ctx.helpers = {
+				...ctx.helpers,
+				getSecureEgressFilter: vi.fn().mockReturnValue(secureEgressFilter),
+			};
 			return ctx;
 		};
 
@@ -621,8 +1027,31 @@ describe('Kafka Utils', () => {
 			schemaRegistryApi: { id: '1', name: 'Schema Registry account' },
 		};
 
+		// Builds an egress filter whose validateUrl resolves to the given result and
+		// whose createSecureLookup returns a stable sentinel, so tests can assert the
+		// exact lookup is wired onto the agent.
+		const createEgressFilter = (
+			result: Awaited<ReturnType<NodeEgressFilter['validateUrl']>>,
+		): { filter: NodeEgressFilter; lookup: LookupFunction; validateUrl: Mock } => {
+			const lookup = vi.fn() as unknown as LookupFunction;
+			const validateUrl = vi.fn().mockResolvedValue(result);
+			const filter: NodeEgressFilter = {
+				validateUrl,
+				createSecureLookup: () => lookup,
+			};
+			return { filter, lookup, validateUrl };
+		};
+
+		const okFilter = () => createEgressFilter(createResultOk(undefined));
+		const blockedFilter = (message = 'The request was blocked') =>
+			createEgressFilter(createResultError(new Error(message)));
+
+		// `options` is set on the agent at runtime but not part of the public type.
+		const agentLookup = (agent?: http.Agent) =>
+			(agent as unknown as { options?: { lookup?: LookupFunction } } | undefined)?.options?.lookup;
+
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		describe('getSchemaRegistryOptions', () => {
@@ -735,6 +1164,174 @@ describe('Kafka Utils', () => {
 			});
 		});
 
+		describe('createSchemaRegistry', () => {
+			const lastConstructorArg = () => {
+				const calls = (SchemaRegistry as Mock).mock.calls;
+				return calls[calls.length - 1][0] as {
+					host: string;
+					agent?: http.Agent;
+					auth?: { username: string; password: string };
+				};
+			};
+
+			it('rejects a space-injected host when egress filtering is enabled', async () => {
+				const { filter, validateUrl } = okFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				const error = await createSchemaRegistry(ctx, 'http://169.254.169.254:80 /v').catch(
+					(e: unknown) => e,
+				);
+
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).description).toBe(
+					'The Schema Registry URL is not a valid URL',
+				);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+				expect(validateUrl).not.toHaveBeenCalled();
+			});
+
+			it('rejects an unparseable host when egress filtering is enabled', async () => {
+				const { filter, validateUrl } = okFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await expect(createSchemaRegistry(ctx, 'not a url')).rejects.toThrow(NodeOperationError);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+				expect(validateUrl).not.toHaveBeenCalled();
+			});
+
+			it('rejects a non-http(s) scheme when egress filtering is enabled', async () => {
+				const { filter, validateUrl } = okFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await expect(createSchemaRegistry(ctx, 'ftp://internal/')).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+				expect(validateUrl).not.toHaveBeenCalled();
+			});
+
+			it('rejects an IPv6-literal host when its addresses are blocked', async () => {
+				const { filter } = blockedFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await expect(createSchemaRegistry(ctx, 'http://[::1]:8081')).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+			});
+
+			it('rejects a direct-IP registry host when egress filtering is enabled', async () => {
+				const { filter, validateUrl } = blockedFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await expect(createSchemaRegistry(ctx, 'http://169.254.169.254')).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(validateUrl).toHaveBeenCalled();
+				expect(SchemaRegistry).not.toHaveBeenCalled();
+			});
+
+			it('passes an http agent carrying the secure lookup for an http host', async () => {
+				const { filter, lookup } = okFilter();
+				const input = 'http://schema-registry.local:8081';
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await createSchemaRegistry(ctx, input);
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe(new URL(input).href);
+				expect(arg.agent).toBeInstanceOf(http.Agent);
+				expect(arg.agent).not.toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(lookup);
+			});
+
+			it('passes an https agent for an https host', async () => {
+				const { filter, lookup } = okFilter();
+				const input = 'https://schema-registry.local:8081';
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await createSchemaRegistry(ctx, input);
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe(new URL(input).href);
+				expect(arg.agent).toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(lookup);
+			});
+
+			it('normalizes the host and selects the agent by scheme', async () => {
+				const { filter, validateUrl } = okFilter();
+				const input = 'HTTP://Schema-Registry.local:8081';
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await createSchemaRegistry(ctx, input);
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe('http://schema-registry.local:8081/');
+				expect(arg.agent).toBeInstanceOf(http.Agent);
+				expect(arg.agent).not.toBeInstanceOf(https.Agent);
+				// The filter must validate the canonical URL that is actually connected to,
+				// not the raw input string (which differs after canonicalization).
+				expect(validateUrl).toHaveBeenCalledWith(new URL(input));
+			});
+
+			it('preserves a base path without adding a trailing slash', async () => {
+				const { filter } = okFilter();
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				await createSchemaRegistry(ctx, 'https://schema-registry.local/base');
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe('https://schema-registry.local/base');
+			});
+
+			it('still applies basic auth alongside the secure agent', async () => {
+				const { filter, lookup } = okFilter();
+				const input = 'https://schema-registry.local:8081';
+				const ctx = createRegistryContext({
+					secureEgressFilter: filter,
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: input,
+						authentication: 'basicAuth',
+						username: 'registry-user',
+						password: 'registry-password',
+					},
+				});
+
+				await createSchemaRegistry(ctx, '');
+
+				const arg = lastConstructorArg();
+				expect(arg.host).toBe(new URL(input).href);
+				expect(arg.auth).toEqual({ username: 'registry-user', password: 'registry-password' });
+				expect(arg.agent).toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(lookup);
+			});
+
+			it('constructs the registry without an agent or pre-flight when egress filtering is not configured', async () => {
+				const ctx = createRegistryContext();
+
+				await createSchemaRegistry(ctx, 'http://169.254.169.254:80 /v');
+
+				const arg = lastConstructorArg();
+				expect(arg).toEqual({ host: 'http://169.254.169.254:80 /v' });
+				expect(arg).not.toHaveProperty('agent');
+			});
+
+			it('throws a NodeOperationError surfaced as the continueOnFail item message', async () => {
+				const { filter } = blockedFilter('The request was blocked by egress rules');
+				const ctx = createRegistryContext({ secureEgressFilter: filter });
+
+				const error = await createSchemaRegistry(ctx, 'http://169.254.169.254').catch(
+					(e: unknown) => e,
+				);
+
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).message).toBe(
+					'Verify your Schema Registry configuration',
+				);
+			});
+		});
+
 		describe('setSchemaRegistry', () => {
 			it('should return undefined and not construct a registry when disabled', async () => {
 				const ctx = createRegistryContext({ params: { useSchemaRegistry: false } });
@@ -776,7 +1373,7 @@ describe('Kafka Utils', () => {
 				const connectionError = Object.assign(new Error('connect ECONNREFUSED'), {
 					status: 503,
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw connectionError;
 				});
 
@@ -796,7 +1393,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error(
 						'request to https://registry-user:registry-password@fallback-registry.local/subjects failed',
 					);
@@ -805,7 +1402,7 @@ describe('Kafka Utils', () => {
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [logMessage, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [logMessage, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				expect(logMessage).toBe('Could not connect to Schema Registry');
 				expect(logPayload).toStrictEqual({
 					message: 'request to https://***@fallback-registry.local/subjects failed',
@@ -819,7 +1416,7 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error(
 						'request to https://registry-user:p@ssw0rd@fallback-registry.local/subjects failed',
 					);
@@ -828,7 +1425,7 @@ describe('Kafka Utils', () => {
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				expect(logPayload).toStrictEqual({
 					message: 'request to https://***@fallback-registry.local/subjects failed',
 				});
@@ -841,14 +1438,14 @@ describe('Kafka Utils', () => {
 						schemaRegistryUrl: 'https://fallback-registry.local',
 					},
 				});
-				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+				(SchemaRegistry as Mock).mockImplementationOnce(function () {
 					throw new Error('x'.repeat(2000));
 				});
 
 				const result = await setSchemaRegistry(ctx);
 
 				expect(result).toBeUndefined();
-				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const [, logPayload] = vi.mocked(ctx.logger.warn).mock.calls[0];
 				const { message } = logPayload as { message: string };
 				expect(message).toHaveLength(503);
 				expect(message.endsWith('...')).toBe(true);
@@ -875,6 +1472,42 @@ describe('Kafka Utils', () => {
 				await expect(setSchemaRegistry(ctx)).rejects.toThrow(
 					'Select a Schema Registry credential or enter a Schema Registry URL',
 				);
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('constructs the activation registry with a secure agent when egress filtering is enabled', async () => {
+				const { filter, lookup } = okFilter();
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'http://schema-registry.local:8081',
+					},
+					secureEgressFilter: filter,
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeDefined();
+				const arg = (SchemaRegistry as Mock).mock.calls[0][0] as {
+					host: string;
+					agent?: http.Agent;
+				};
+				expect(arg.host).toBe('http://schema-registry.local:8081/');
+				expect(agentLookup(arg.agent)).toBe(lookup);
+			});
+
+			it('fails activation loudly when the registry host is blocked', async () => {
+				const { filter } = blockedFilter();
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'http://schema-registry.local:8081',
+					},
+					secureEgressFilter: filter,
+				});
+
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow(NodeOperationError);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
 				expect(ctx.logger.warn).not.toHaveBeenCalled();
 			});
 		});

@@ -1,19 +1,27 @@
 <script lang="ts" setup>
+import {
+	N8nButton,
+	N8nIcon,
+	type IconName,
+	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+	N8nAiActivityStep as ToolCallStep,
+	N8nAiActivityStepResultSection,
+} from '@n8n/design-system';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
+import { HIDDEN_TOOLS, isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { getToolIcon, useToolLabel } from '../toolLabels';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
+import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import ButtonLike from './ButtonLike.vue';
-import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import ToolCallStep from './ToolCallStep.vue';
+import ToolResultJson from './ToolResultJson.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -31,11 +39,8 @@ const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
 const CODE_BLOCK_PATTERN = /```/;
 
-/** Tool calls that are internal and should not be shown in the step timeline. */
-const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
-
 interface TimelineStep {
-	type: 'tool-call' | 'text';
+	type: 'tool-call' | 'text' | 'reasoning';
 	icon: IconName;
 	label: string;
 	isLoading: boolean;
@@ -45,6 +50,7 @@ interface TimelineStep {
 	textContent?: string;
 	isLongText?: boolean;
 	shortLabel?: string;
+	entry?: Extract<InstanceAiTimelineEntry, { type: 'reasoning' }>;
 }
 
 function extractShortLabel(content: string): string {
@@ -100,8 +106,16 @@ const steps = computed((): TimelineStep[] => {
 				hideLabel: getHideLabel(tc),
 				toolCall: tc,
 			});
+		} else if (entry.type === 'reasoning') {
+			result.push({
+				type: 'reasoning',
+				icon: 'brain',
+				label: '',
+				isLoading: false,
+				entry,
+			});
 		}
-		// Skip 'child' entries — parent AgentTimeline handles child cards
+		// Skip 'child' entries (parent AgentTimeline handles child cards)
 	}
 
 	return result;
@@ -114,10 +128,18 @@ const steps = computed((): TimelineStep[] => {
 			<!-- Tool call: rendered via ToolCallStep (has its own icon column) -->
 			<ToolCallStep
 				v-if="step.type === 'tool-call' && step.toolCall"
-				:tool-call="step.toolCall"
 				:label="step.label"
-				:show-connector="idx < steps.length - 1"
-			/>
+				:loading="step.toolCall.isLoading"
+				:error="step.toolCall.error"
+			>
+				<ToolResultJson v-if="step.toolCall.args" :value="step.toolCall.args" />
+				<ToolResultRenderer
+					v-if="step.toolCall.result !== undefined"
+					:result="step.toolCall.result"
+					:tool-name="step.toolCall.toolName"
+					:tool-args="step.toolCall.args"
+				/>
+			</ToolCallStep>
 
 			<template v-else-if="step.type === 'text'">
 				<CollapsibleRoot v-if="step.isLongText" v-slot="{ open }">
@@ -136,9 +158,9 @@ const steps = computed((): TimelineStep[] => {
 						</N8nButton>
 					</CollapsibleTrigger>
 					<AnimatedCollapsibleContent :class="$style.toggleContent">
-						<DataSection>
+						<N8nAiActivityStepResultSection>
 							<InstanceAiMarkdown :content="step.textContent!" />
-						</DataSection>
+						</N8nAiActivityStepResultSection>
 					</AnimatedCollapsibleContent>
 				</CollapsibleRoot>
 				<ButtonLike v-else>
@@ -150,6 +172,12 @@ const steps = computed((): TimelineStep[] => {
 					<InstanceAiMarkdown v-else :content="step.label" />
 				</ButtonLike>
 			</template>
+
+			<AiReasoningBlock
+				v-else-if="step.type === 'reasoning' && step.entry"
+				:entry="step.entry"
+				:streaming="isStreamingTimelineEntry(props.agentNode, step.entry)"
+			/>
 		</template>
 	</div>
 </template>

@@ -1,27 +1,28 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import promClient from 'prom-client';
 
 import { PrometheusVersionMetricsService } from '../version-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusVersionMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 	});
 	let service: PrometheusVersionMetricsService;
-	let mockGaugeSet: jest.Mock;
+	let mockGaugeSet: Mock;
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_' });
 		service = new PrometheusVersionMetricsService(config);
-		mockGaugeSet = jest.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {

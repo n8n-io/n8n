@@ -7,7 +7,6 @@ import path from 'path';
 
 import { ALPHABET } from './constants';
 import { UserError } from './errors/base/user.error';
-import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
 
@@ -242,27 +241,10 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 	return JSON.stringify(options?.replaceCircularRefs ? replaceCircularReferences(obj) : obj);
 };
 
-export const sleep = async (ms: number): Promise<void> =>
-	await new Promise((resolve) => {
-		setTimeout(resolve, ms);
-	});
-
-export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
-	await new Promise((resolve, reject) => {
-		if (abortSignal?.aborted) {
-			reject(new ManualExecutionCancelledError(''));
-			return;
-		}
-
-		const timeout = setTimeout(resolve, ms);
-
-		const abortHandler = () => {
-			clearTimeout(timeout);
-			reject(new ManualExecutionCancelledError(''));
-		};
-
-		abortSignal?.addEventListener('abort', abortHandler, { once: true });
-	});
+// Kept only as a backwards-compat layer for community nodes — internal code
+// must import `sleep` from `@n8n/utils/sleep` (enforced by eslint rule
+// no-restricted-sleep-import).
+export { sleep } from '@n8n/utils/sleep';
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
 	if (mimeType.startsWith('application/json')) return 'json';
@@ -391,6 +373,7 @@ const unsafeObjectProperties = new Set([
 	'__defineGetter__',
 	'__defineSetter__',
 	'caller',
+	'callee',
 	'arguments',
 	'getBuiltinModule',
 	'dlopen',
@@ -408,6 +391,7 @@ export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
 }
 
+// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 const unsafeObjectPropertyTokenPattern = new RegExp(
 	`\\b(?:${[...unsafeObjectProperties]
 		.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))

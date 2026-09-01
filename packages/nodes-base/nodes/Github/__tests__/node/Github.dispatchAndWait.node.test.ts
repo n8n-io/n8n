@@ -50,7 +50,7 @@ describe('Test Github Node - Dispatch and Wait', () => {
 		const refsResponse = [{ ref: `refs/heads/${ref}` }];
 
 		beforeAll(async () => {
-			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
+			vi.useFakeTimers({ now });
 		});
 
 		beforeEach(async () => {

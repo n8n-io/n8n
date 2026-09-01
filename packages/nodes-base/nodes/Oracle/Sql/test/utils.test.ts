@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import * as oracleDBTypes from 'oracledb';
-import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import type { ExecuteOpBindParam } from '../helpers/interfaces';
 import {
@@ -395,12 +395,12 @@ describe('Test getBindParameters ', () => {
 
 describe('Test configureQueryRunner', () => {
 	it('should return object out bind values from execute operations', async () => {
-		const execute = jest.fn().mockResolvedValue({ outBinds: { ret: 'registered' } });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ outBinds: { ret: 'registered' } });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) => data);
 		const context = {
@@ -453,26 +453,170 @@ describe('Test configureQueryRunner', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 
+	it('should return RETURNING date out binds as ISO strings on version 1.1', async () => {
+		const date = new Date('2020-01-01T12:00:00.000Z');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { created: date } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: { constructExecutionMetaData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1.1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING created INTO :created', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect(result).toEqual([{ json: { created: '2020-01-01T12:00:00.000Z' } }]);
+	});
+
+	it('should keep RETURNING date out binds as Date objects before version 1.1', async () => {
+		const date = new Date('2020-01-01T12:00:00.000Z');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { created: date } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: { constructExecutionMetaData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING created INTO :created', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect((result[0].json as IDataObject).created).toBeInstanceOf(Date);
+	});
+
+	it('should move RETURNING binary out binds to the binary output on version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+		const execute = vi.fn().mockResolvedValue({ outBinds: { doc: blob } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const context = {
+			helpers: { constructExecutionMetaData, prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1.1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[{ query: 'INSERT ... RETURNING doc INTO :doc', values: {} }],
+			[],
+			{ operation: 'execute', stmtBatching: 'independently' },
+		);
+
+		expect(result[0].json).not.toHaveProperty('doc');
+		expect(prepareBinaryData).toHaveBeenCalledWith(blob, 'doc');
+		expect((result[0] as INodeExecutionData).binary?.doc).toBeDefined();
+	});
+
+	it('should move fetched binary columns to the binary output on version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+		const execute = vi.fn().mockResolvedValue({ rows: [{ ID: 1, DOC: blob }] });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const context = {
+			helpers: { constructExecutionMetaData, prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1.1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner([{ query: 'SELECT id, doc FROM docs', values: {} }], [], {
+			operation: 'select',
+			stmtBatching: 'independently',
+		});
+
+		expect(result[0].json).toEqual({ ID: 1 });
+		expect(prepareBinaryData).toHaveBeenCalledWith(blob, 'DOC');
+		expect((result[0] as INodeExecutionData).binary?.DOC).toBeDefined();
+	});
+
+	it('should keep fetched binary columns in json before version 1.1', async () => {
+		const blob = Buffer.from('file-bytes');
+		const execute = vi.fn().mockResolvedValue({ rows: [{ ID: 1, DOC: blob }] });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: { constructExecutionMetaData },
+		} as unknown as IExecuteFunctions;
+		const node = { typeVersion: 1 } as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner([{ query: 'SELECT id, doc FROM docs', values: {} }], [], {
+			operation: 'select',
+			stmtBatching: 'independently',
+		});
+
+		expect((result[0].json as IDataObject).DOC).toBe(blob);
+		expect((result[0] as INodeExecutionData).binary).toBeUndefined();
+	});
+
 	it('should append out-bind execution data one item at a time without spread push', async () => {
-		const pushSpy = jest.spyOn(Array.prototype, 'push');
+		// Manually patch Array.prototype.push instead of vi.spyOn — vitest records spy calls
+		// via array push internally, so spying on push itself recurses infinitely. Record via
+		// index assignment to avoid that.
+		const originalPush = Array.prototype.push;
+		const pushCalls: unknown[][] = [];
+		Array.prototype.push = function (...args: unknown[]) {
+			pushCalls[pushCalls.length] = args;
+			return originalPush.apply(this, args);
+		};
 		const outBinds = [
 			[[1], ['Alice']],
 			[[2], ['Bob']],
 			[[3], ['Charlie']],
 		];
-		const executeMany = jest.fn().mockResolvedValue({ outBinds });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const executeMany = vi.fn().mockResolvedValue({ outBinds });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { executeMany, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
 		const expectedEntries: INodeExecutionData[] = [];
-		const constructExecutionMetaData = jest
-			.fn()
-			.mockImplementation((data: INodeExecutionData[]) => {
-				const item = data[0];
-				if (item) expectedEntries[expectedEntries.length] = item;
-				return item ? [item, item, item] : [];
-			});
+		const constructExecutionMetaData = vi.fn().mockImplementation((data: INodeExecutionData[]) => {
+			const item = data[0];
+			if (item) expectedEntries[expectedEntries.length] = item;
+			return item ? [item, item, item] : [];
+		});
 		const context = {
 			helpers: {
 				constructExecutionMetaData,
@@ -499,11 +643,11 @@ describe('Test configureQueryRunner', () => {
 					stmtBatching: 'single',
 				},
 			);
-			executionDataPushCalls = pushSpy.mock.calls.filter(
+			executionDataPushCalls = pushCalls.filter(
 				([entry]) => entry && expectedEntries.includes(entry as INodeExecutionData),
 			);
 		} finally {
-			pushSpy.mockRestore();
+			Array.prototype.push = originalPush;
 		}
 
 		expect(result).toHaveLength(9);
@@ -517,15 +661,15 @@ describe('Test configureQueryRunner', () => {
 	});
 
 	it('should return select execution data from the concat path', async () => {
-		const concatSpy = jest.spyOn(Array.prototype, 'concat');
+		const concatSpy = vi.spyOn(Array.prototype, 'concat');
 		const rows = [{ COL1: 1 }, { COL1: 2 }, { COL1: 3 }];
 		const executionData = rows.map((row) => ({ json: row }));
-		const execute = jest.fn().mockResolvedValue({ rows });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ rows });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest.fn().mockImplementation(() => executionData);
+		const constructExecutionMetaData = vi.fn().mockImplementation(() => executionData);
 		const context = {
 			helpers: {
 				constructExecutionMetaData,
@@ -568,12 +712,12 @@ describe.skip('configureQueryRunner stack overflow regression', () => {
 	it('should handle large out bind datasets without stack overflow', async () => {
 		const chunkSize = 250_000;
 		const outBinds = [[[42]]];
-		const executeMany = jest.fn().mockResolvedValue({ outBinds });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const executeMany = vi.fn().mockResolvedValue({ outBinds });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { executeMany, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) =>
 				Array.from({ length: chunkSize }, () => data[0]),
@@ -610,12 +754,12 @@ describe.skip('configureQueryRunner stack overflow regression', () => {
 	it('should handle large select result sets without stack overflow', async () => {
 		const chunkSize = 250_000;
 		const rows = Array.from({ length: chunkSize }, (_, index) => ({ COL1: index }));
-		const execute = jest.fn().mockResolvedValue({ rows });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ rows });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) => data);
 		const context = {

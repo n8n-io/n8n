@@ -111,6 +111,13 @@ export class Snowflake implements ICredentialType {
 			description: 'Enter the security role you want to use after creating the connection',
 		},
 		{
+			displayName: 'Origin Hostname',
+			name: 'host',
+			type: 'string',
+			default: '',
+			description: 'Optional Snowflake hostname to use for the connection',
+		},
+		{
 			displayName: 'Client Session Keep Alive',
 			name: 'clientSessionKeepAlive',
 			type: 'boolean',

@@ -551,3 +551,59 @@ async def test_env_accessible_when_allowed_per_item(
     for item in result["data"]["result"]:
         assert item["json"]["has_path"] is True
         assert item["json"]["env_count"] > 0
+
+
+# ========== transitive dependency imports (N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS) ==========
+
+
+@pytest.mark.asyncio
+async def test_allowlisted_package_transitive_import_rejected_by_default(
+    broker, manager_pandas_strict
+):
+    # pandas is allowlisted but pytz (which pandas imports internally) is not.
+    # By default the transitive import is validated and rejected end-to-end.
+    pytest.importorskip("pandas")
+    task_id = nanoid()
+    code = "import pandas\nreturn [{'json': {'ok': True}}]"
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    error_msg = await wait_for_task_error(broker, task_id, timeout=30)
+
+    assert error_msg["taskId"] == task_id
+    assert "security violation" in str(error_msg["error"]["message"]).lower()
+
+
+@pytest.mark.asyncio
+async def test_allowlisted_package_transitive_import_allowed_when_opted_in(
+    broker, manager_pandas_transitive
+):
+    # With the opt-in on, pandas imports its own dependencies without each
+    # being allowlisted, so the same code succeeds end-to-end.
+    pytest.importorskip("pandas")
+    task_id = nanoid()
+    code = "import pandas\nreturn [{'json': {'ok': True}}]"
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id, timeout=30)
+
+    assert result["data"]["result"] == [{"json": {"ok": True}}]
+
+
+@pytest.mark.asyncio
+async def test_user_code_import_still_gated_with_opt_in(
+    broker, manager_pandas_transitive
+):
+    # The opt-in does not relax the user's own imports: importing a
+    # non-allowlisted external module directly is still rejected (the guard
+    # rejects the name before it is imported, so it need not be installed).
+    task_id = nanoid()
+    code = "import requests\nreturn [{'json': {'ok': True}}]"
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    error_msg = await wait_for_task_error(broker, task_id, timeout=30)
+
+    assert error_msg["taskId"] == task_id
+    assert "security violation" in str(error_msg["error"]["message"]).lower()

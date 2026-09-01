@@ -1,12 +1,11 @@
 import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { createHttpProxyAgent, createHttpsProxyAgent } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
 import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import axios from 'axios';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
 import { Cipher, InstanceSettings } from 'n8n-core';
@@ -103,6 +102,7 @@ export class SamlService {
 		private readonly provisioningService: ProvisioningService,
 		private readonly cipher: Cipher,
 		private readonly cacheService: CacheService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/**
@@ -376,6 +376,12 @@ export class SamlService {
 			metadataOverride,
 		);
 
+		// Deny a blocked login before any account is created or session issued
+		await this.provisioningService.assertSsoLoginAllowed(
+			buildSamlClaimsContext(rawAttributes),
+			attributes.n8nInstanceRole,
+		);
+
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
 
@@ -446,9 +452,8 @@ export class SamlService {
 			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
 			return;
 		}
-		if (attributes?.n8nInstanceRole) {
-			await this.provisioningService.provisionInstanceRoleForUser(user, attributes.n8nInstanceRole);
-		}
+		// Called even when the attribute is missing so the configured default condition applies
+		await this.provisioningService.provisionInstanceRoleForUser(user, attributes?.n8nInstanceRole);
 		if (attributes?.n8nProjectRoles) {
 			await this.provisioningService.provisionProjectRolesForUser(
 				user.id,
@@ -459,7 +464,7 @@ export class SamlService {
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-saml-config' });
 		}
 	}
@@ -564,12 +569,23 @@ export class SamlService {
 				throw new InvalidSamlMetadataError();
 			}
 		}
-		this.getIdentityProviderInstance(true);
+		if (this._samlPreferences.metadata) {
+			this.getIdentityProviderInstance(true);
+		} else {
+			// Metadata was cleared — drop the cached IdP so a later configure can recreate it.
+			this.identityProviderInstance = undefined;
+		}
 	}
 
 	async loadPreferencesWithoutValidation(prefs: Partial<SamlPreferences>) {
+		await this.applySamlPreferenceFields(prefs);
+		this.applyIdpMetadataPreferences(prefs);
+		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
+		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
+	}
+
+	private async applySamlPreferenceFields(prefs: Partial<SamlPreferences>) {
 		this._samlPreferences.loginBinding = prefs.loginBinding ?? this._samlPreferences.loginBinding;
-		this._samlPreferences.metadata = prefs.metadata ?? this._samlPreferences.metadata;
 		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
 		this._samlPreferences.ignoreSSL = prefs.ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		this._samlPreferences.acsBinding = prefs.acsBinding ?? this._samlPreferences.acsBinding;
@@ -581,12 +597,14 @@ export class SamlService {
 			prefs.wantAssertionsSigned ?? this._samlPreferences.wantAssertionsSigned;
 		this._samlPreferences.wantMessageSigned =
 			prefs.wantMessageSigned ?? this._samlPreferences.wantMessageSigned;
+
 		if (prefs.signingCertificate === '') {
 			this._samlPreferences.signingCertificate = undefined;
 		} else {
 			this._samlPreferences.signingCertificate =
 				prefs.signingCertificate ?? this._samlPreferences.signingCertificate;
 		}
+
 		if (
 			prefs.signingPrivateKey !== undefined &&
 			prefs.signingPrivateKey !== CREDENTIAL_BLANKING_VALUE
@@ -604,15 +622,22 @@ export class SamlService {
 				this._samlPreferences.signingPrivateKey = prefs.signingPrivateKey;
 			}
 		}
-		if (prefs.metadataUrl) {
-			this._samlPreferences.metadataUrl = prefs.metadataUrl;
-		} else if (prefs.metadata) {
-			// remove metadataUrl if metadata is set directly
-			this._samlPreferences.metadataUrl = undefined;
+	}
+
+	/**
+	 * Apply IdP metadata sources. `undefined` leaves the field unchanged; `''` clears it
+	 * (PUT replacement). Providing XML without a URL also clears the URL alternate.
+	 */
+	private applyIdpMetadataPreferences(prefs: Partial<SamlPreferences>) {
+		if (prefs.metadata !== undefined) {
 			this._samlPreferences.metadata = prefs.metadata;
 		}
-		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
-		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
+		if (prefs.metadataUrl !== undefined) {
+			this._samlPreferences.metadataUrl = prefs.metadataUrl || undefined;
+		}
+		if (prefs.metadata && !prefs.metadataUrl) {
+			this._samlPreferences.metadataUrl = undefined;
+		}
 	}
 
 	async loadFromDbAndApplySamlPreferences(
@@ -682,23 +707,18 @@ export class SamlService {
 		const shouldIgnoreSSL = ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		if (!url) throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
 		try {
-			// Create a proxy-aware HTTPS agent that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY
-			// environment variables while also supporting SSL certificate validation options
-			const httpsAgent = createHttpsProxyAgent(
-				null, // Uses proxy from environment variables
-				url,
-				{
-					rejectUnauthorized: !shouldIgnoreSSL,
-				},
-			);
-			const httpAgent = createHttpProxyAgent(null, url);
-
-			const response = await axios.get(url, {
-				httpsAgent,
-				httpAgent,
-			});
-			if (response.status === 200 && response.data) {
-				const xml = (await response.data) as string;
+			const response = await this.outboundHttp
+				.requests({
+					useDefaultSsrfPolicy: 'unsafe', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
+				})
+				.request({
+					url,
+					method: 'GET',
+					skipSslCertificateValidation: shouldIgnoreSSL,
+					returnFullResponse: true,
+				});
+			if (response.statusCode === 200 && response.body) {
+				const xml = response.body as string;
 				const validationResult = await this.validator.validateMetadata(xml);
 				if (!validationResult) {
 					throw new BadRequestError(`Data received from ${url} is not valid SAML metadata.`);

@@ -25,6 +25,9 @@
         "can_write": {
             "type": "boolean"
         },
+        "card_schema": {
+            "type": "integer"
+        },
         "collection": {
             "type": "object",
             "properties": {
@@ -44,6 +47,9 @@
                     "type": "string"
                 },
                 "is_personal": {
+                    "type": "boolean"
+                },
+                "is_remote_synced": {
                     "type": "boolean"
                 },
                 "is_sample": {
@@ -84,8 +90,14 @@
                 "email": {
                     "type": "string"
                 },
+                "first_name": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
+                },
+                "is_data_analyst": {
+                    "type": "boolean"
                 },
                 "is_qbnewb": {
                     "type": "boolean"
@@ -113,6 +125,9 @@
                 "database": {
                     "type": "integer"
                 },
+                "lib/type": {
+                    "type": "string"
+                },
                 "native": {
                     "type": "object",
                     "properties": {
@@ -121,13 +136,92 @@
                         }
                     }
                 },
+                "stages": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "lib/type": {
+                                "type": "string"
+                            },
+                            "native": {
+                                "type": "string"
+                            },
+                            "template-tags": {
+                                "type": "object",
+                                "properties": {
+                                    "Conta": {
+                                        "type": "object",
+                                        "properties": {
+                                            "display-name": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "Data_Final": {
+                                        "type": "object",
+                                        "properties": {
+                                            "display-name": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "Data_Inicial": {
+                                        "type": "object",
+                                        "properties": {
+                                            "display-name": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "type": {
                     "type": "string"
                 }
             }
         },
+        "dimension_mappings": {
+            "type": "null"
+        },
+        "dimensions": {
+            "type": "null"
+        },
         "display": {
             "type": "string"
+        },
+        "document_id": {
+            "type": "null"
         },
         "embedding_params": {
             "type": "null"
@@ -141,6 +235,9 @@
         "initially_published_at": {
             "type": "null"
         },
+        "is_remote_synced": {
+            "type": "boolean"
+        },
         "last_used_at": {
             "type": "string"
         },
@@ -148,6 +245,9 @@
             "type": "object",
             "properties": {
                 "email": {
+                    "type": "string"
+                },
+                "first_name": {
                     "type": "string"
                 },
                 "id": {
@@ -255,5 +355,5 @@
             }
         }
     },
-    "version": 4
+    "version": 6
 }

@@ -11,7 +11,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
 	() => {
-		const PROVIDER_KEY = 'aws-localstack-e2e';
+		const PROVIDER_KEY = 'awsLocalstackE2e';
 		const PROVIDER_TYPE = 'awsSecretsManager';
 
 		test.beforeEach(async ({ n8n, services }) => {

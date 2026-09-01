@@ -15,20 +15,20 @@ CREATE TABLE "webhook_entity" ("workflowId" varchar(36) NOT NULL, "webhookPath" 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| workflowId | varchar(36) |  | false |  |  |  |
-| webhookPath | varchar |  | false |  |  |  |
 | method | varchar |  | false |  |  |  |
 | node | varchar |  | false |  |  |  |
-| webhookId | varchar |  | true |  |  |  |
 | pathLength | INTEGER |  | true |  |  |  |
+| webhookId | varchar |  | true |  |  |  |
+| webhookPath | varchar |  | false |  |  |  |
+| workflowId | varchar(36) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| webhookPath | PRIMARY KEY | PRIMARY KEY (webhookPath) |
 | method | PRIMARY KEY | PRIMARY KEY (method) |
 | sqlite_autoindex_webhook_entity_1 | PRIMARY KEY | PRIMARY KEY (webhookPath, method) |
+| webhookPath | PRIMARY KEY | PRIMARY KEY (webhookPath) |
 
 ## Indexes
 
@@ -44,12 +44,12 @@ erDiagram
 
 
 "webhook_entity" {
-  varchar_36_ workflowId
-  varchar webhookPath PK
   varchar method PK
   varchar node
-  varchar webhookId
   INTEGER pathLength
+  varchar webhookId
+  varchar webhookPath PK
+  varchar_36_ workflowId
 }
 ```
 

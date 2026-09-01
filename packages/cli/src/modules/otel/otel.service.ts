@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import type { DiagLogger } from '@opentelemetry/api';
 import { DiagLogLevel, diag, context, metrics, propagation, trace } from '@opentelemetry/api';
@@ -32,6 +33,7 @@ export class OtelService {
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async init(): Promise<void> {
@@ -110,16 +112,24 @@ export class OtelService {
 	}
 
 	async shutdown(): Promise<void> {
-		await this.sdk?.shutdown();
-		this.sdk = undefined;
+		try {
+			await this.sdk?.shutdown();
+		} catch (error) {
+			this.logger.warn(
+				'Failed to cleanly shut down OpenTelemetry SDK (exporter flush may have failed)',
+				{ error: error instanceof Error ? error.message : String(error) },
+			);
+		} finally {
+			this.sdk = undefined;
 
-		// Unregister the global providers so the next NodeSDK.start() can register
-		// new ones. Without this, OTel's allowOverride=false guard blocks
-		// re-registration and the restart silently fails.
-		trace?.disable();
-		context?.disable();
-		propagation?.disable();
-		metrics?.disable();
+			// Unregister the global providers so the next NodeSDK.start() can register
+			// new ones. Without this, OTel's allowOverride=false guard blocks
+			// re-registration and the restart silently fails.
+			trace?.disable();
+			context?.disable();
+			propagation?.disable();
+			metrics?.disable();
+		}
 	}
 
 	private startSdk(settings: OtelConfig): string {
@@ -199,7 +209,9 @@ export class OtelService {
 			// HEAD is used for a cheap connectivity check (no request/response body).
 			// OTLP endpoints are POST-only, so this will often return 4xx, but any
 			// HTTP response means the server is reachable. We only catch network errors.
-			await fetch(url, {
+			// SSRF is disabled: the OTLP endpoint is admin-configured observability
+			// infrastructure and is commonly an internal/localhost collector.
+			await this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' }).asCustomFetch()(url, {
 				method: 'HEAD',
 				signal: AbortSignal.timeout(timeoutMs),
 			});

@@ -1,4 +1,4 @@
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
@@ -11,6 +11,16 @@ import Assignment from './Assignment.vue';
 import { flushPromises } from '@vue/test-utils';
 
 vi.mock('vue-router');
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 	pinia: createTestingPinia({

@@ -1,4 +1,4 @@
-import type { BaseDocumentLoader } from '@langchain/classic/dist/document_loaders/base';
+import type { BaseDocumentLoader } from '@langchain/classic/document_loaders/base';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseChatMessageHistory } from '@langchain/core/chat_history';

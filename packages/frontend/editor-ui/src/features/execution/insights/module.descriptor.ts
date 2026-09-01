@@ -1,10 +1,8 @@
 import { RouterView } from 'vue-router';
-import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 
-const InsightsDashboard = async () =>
-	await import('@/features/execution/insights/components/InsightsDashboard.vue');
+const InsightsDashboard = async () => await import('./components/InsightsDashboard.vue');
 
 export const InsightsModule: FrontendModuleDescription = {
 	id: 'insights',
@@ -14,9 +12,12 @@ export const InsightsModule: FrontendModuleDescription = {
 	routes: [
 		{
 			path: '/insights',
-			beforeEnter() {
-				const insightsStore = useInsightsStore();
-				return insightsStore.isInsightsEnabled || { name: VIEWS.NOT_FOUND };
+			// Loaded inside the guard, not at module top level: the descriptor is imported
+			// eagerly by the shell manifest, so a static store import would pull the whole
+			// feature into the boot chunk even when the module is disabled.
+			async beforeEnter() {
+				const { useInsightsStore } = await import('./insights.store');
+				return useInsightsStore().isInsightsEnabled || { name: VIEWS.NOT_FOUND };
 			},
 			component: RouterView,
 			meta: {

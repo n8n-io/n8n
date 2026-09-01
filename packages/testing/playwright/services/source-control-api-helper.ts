@@ -34,6 +34,16 @@ export class SourceControlApiHelper {
 		return result.data;
 	}
 
+	async getPreferences() {
+		const response = await this.api.request.get('/rest/source-control/preferences');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get source control preferences: ${await response.text()}`);
+		}
+		const result = await response.json();
+		return result.data;
+	}
+
 	/**
 	 * This will push all the changes
 	 * OPTIMIZE: add a fileNames to select what specific changes to push

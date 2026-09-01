@@ -1,5 +1,11 @@
+# Temporary: kept side by side with the top-level OWNERS file while the
+# "Required Reviews" enforcement is on trial. Do not add entries here;
+# add them to OWNERS. See "Transition from CODEOWNERS" in WORKFLOWS.md.
 packages/@n8n/db/src/migrations/ @n8n-io/migrations-review
+/OWNERS @n8n-io/qa-dx
 .github/workflows @n8n-io/qa-dx
 .github/scripts @n8n-io/qa-dx
 .github/actions @n8n-io/qa-dx
 .github/poutine-rules @n8n-io/qa-dx
+docker/get-n8n.sh @n8n-io/qa-dx
+.code-health-baseline.json @n8n-io/qa-dx

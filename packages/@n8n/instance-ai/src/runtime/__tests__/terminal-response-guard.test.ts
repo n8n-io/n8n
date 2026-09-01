@@ -87,6 +87,20 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.visibilitySource).toBe('root-text');
 	});
 
+	it('counts coalesced text-block facts as root text (durable-log reads carry no deltas)', () => {
+		const rootBlock: InstanceAiEvent = {
+			type: 'text-block',
+			runId,
+			agentId: rootAgentId,
+			responseId: 'resp-1',
+			payload: { text: 'hello' },
+		};
+		const decision = guard().evaluateTerminal([runStart(), rootBlock], 'completed');
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-text');
+	});
+
 	it('emits text fallback for silent completed runs with structured work counts only', () => {
 		const decision = guard().evaluateTerminal([runStart()], 'completed', {
 			workSummary: { totalToolCalls: 3, totalToolErrors: 1, toolCalls: [] },
@@ -130,6 +144,33 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.event?.type).toBe('text-delta');
 	});
 
+	it('emits fallback when a completed run only produced a preamble before its tool calls', () => {
+		const decision = guard().evaluateTerminal(
+			[runStart(), rootText('Let me read the current source first.'), toolCall()],
+			'completed',
+		);
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('completed-silent');
+		expect(decision.event?.type).toBe('text-delta');
+	});
+
+	it('does not emit fallback when a completed run answers after its tool calls', () => {
+		const decision = guard().evaluateTerminal(
+			[
+				runStart(),
+				rootText('Let me read the current source first.'),
+				toolCall(),
+				rootText('Done.'),
+			],
+			'completed',
+		);
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-text');
+		expect(decision.reason).toBe('already-visible');
+	});
+
 	it('does not emit completed fallback when the message group already has root text', () => {
 		const decision = new InstanceAiTerminalResponseGuard({
 			runId,
@@ -155,11 +196,46 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		});
 	});
 
+	it('tags the emitted error with a structured code when provided', () => {
+		const decision = guard().evaluateTerminal([runStart()], 'errored', {
+			errorMessage: "You've run out of AI credits.",
+			errorCode: 'quota_exhausted',
+		});
+
+		expect(decision.action).toBe('emit');
+		expect(decision.event).toMatchObject({
+			type: 'error',
+			payload: { content: "You've run out of AI credits.", code: 'quota_exhausted' },
+		});
+	});
+
+	it('does not emit a second error when a root error is already visible', () => {
+		const decision = guard().evaluateTerminal(
+			[runStart(), rootError('Have reached end of quota')],
+			'errored',
+			{
+				errorMessage: 'ignored fallback',
+			},
+		);
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-error');
+		expect(decision.reason).toBe('already-visible');
+	});
+
 	it('does not emit cancellation fallback when partial root text exists', () => {
 		const decision = guard().evaluateTerminal([runStart(), rootText('partial')], 'cancelled');
 
 		expect(decision.action).toBe('none');
 		expect(decision.visibilitySource).toBe('root-text');
+	});
+
+	it('emits no placeholder when a run is cancelled with no output', () => {
+		const decision = guard().evaluateTerminal([runStart()], 'cancelled');
+
+		expect(decision.action).toBe('none');
+		expect(decision.reason).toBe('cancelled-silent');
+		expect(decision.event).toBeUndefined();
 	});
 
 	it('logs root error then completed as already visible', () => {

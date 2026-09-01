@@ -14,7 +14,7 @@ import {
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import { isValueExpression, parseResourceMapperFieldName } from '@/app/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -45,6 +45,7 @@ type Props = {
 	eventBus?: EventBus;
 	canBeOverridden?: boolean;
 	hideLabel?: boolean;
+	externalIssues?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -62,7 +63,7 @@ const emit = defineEmits<{
 	textInput: [value: IUpdateInformation];
 }>();
 
-const ndvStore = injectNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
@@ -99,9 +100,11 @@ const parameterHint = computed(() => {
 	return props.hint;
 });
 
-const targetItem = computed(() => ndvStore.value.expressionTargetItem);
+const targetItem = computed(() => ndvStore.value?.expressionTargetItem ?? null);
 
-const isInputParentOfActiveNode = computed(() => ndvStore.value.isInputParentOfActiveNode);
+const isInputParentOfActiveNode = computed(
+	() => ndvStore.value?.isInputParentOfActiveNode ?? false,
+);
 
 const expression = computed(() => {
 	if (!isExpression.value) return '';
@@ -197,6 +200,7 @@ defineExpose({
 				:data-test-id="`parameter-input-${parsedParameterName}`"
 				:event-bus="eventBus"
 				:can-be-overridden="canBeOverridden"
+				:external-issues="externalIssues"
 				@focus="onFocus"
 				@blur="onBlur"
 				@drop="onDrop"

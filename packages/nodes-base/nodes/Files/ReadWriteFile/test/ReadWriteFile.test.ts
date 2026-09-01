@@ -15,7 +15,7 @@ describe('Test ReadWriteFile Node', () => {
 	writeFileNode.parameters.fileName = `${testHarness.temporaryDir}/image-written.jpg`;
 
 	beforeEach(() => {
-		jest.spyOn(fsPromises, 'realpath').mockImplementation(async (path) => path as string);
+		vi.spyOn(fsPromises, 'realpath').mockImplementation(async (path) => path as string);
 	});
 
 	const tests: WorkflowTestData[] = [

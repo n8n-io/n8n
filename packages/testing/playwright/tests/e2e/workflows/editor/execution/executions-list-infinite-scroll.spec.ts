@@ -16,7 +16,10 @@ test.use({
 test.describe(
 	'Executions list infinite scroll',
 	{
-		annotation: [{ type: 'issue', description: 'LIGO-304' }],
+		annotation: [
+			{ type: 'owner', description: 'Lifecycle & Governance' },
+			{ type: 'issue', description: 'LIGO-304' },
+		],
 	},
 	() => {
 		const TOTAL_EXECUTIONS = 25;

@@ -1,16 +1,18 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { Readable } from 'stream';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { YouTube } from '../../YouTube.node';
+import type { MockInstance } from 'vitest';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../GenericFunctions');
+vi.mock('../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../GenericFunctions');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function (method: string) {
+		googleApiRequest: vi.fn(async function (method: string) {
 			if (method === 'POST') {
 				return {
 					headers: { location: 'https://www.youtube.com/watch?v=1234' },
@@ -23,29 +25,29 @@ jest.mock('../../GenericFunctions', () => {
 	};
 });
 
-const httpRequestMock = jest.fn(() => ({ id: '5678' }));
+const httpRequestMock = vi.fn(() => ({ id: '5678' }));
 
 describe('Test YouTube, video => upload', () => {
 	let youTube: YouTube;
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
-	let fromSpy: jest.SpyInstance;
+	let fromSpy: MockInstance;
 
 	beforeEach(() => {
-		fromSpy = jest.spyOn(Readable, 'from');
+		fromSpy = vi.spyOn(Readable, 'from');
 		youTube = new YouTube();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		const buffer = Buffer.alloc(2 * 1024 * 1024, 'a');
 		mockExecuteFunctions.helpers = {
-			constructExecutionMetaData: jest.fn(() => []),
-			returnJsonArray: jest.fn(() => []),
-			assertBinaryData: jest.fn(() => ({ data: buffer.toString('base64'), mimeType: 'video/mp4' })),
+			constructExecutionMetaData: vi.fn(() => []),
+			returnJsonArray: vi.fn(() => []),
+			assertBinaryData: vi.fn(() => ({ data: buffer.toString('base64'), mimeType: 'video/mp4' })),
 			httpRequest: httpRequestMock,
 		} as any;
 	});
 
 	afterEach(() => {
 		fromSpy.mockRestore();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should create readable from buffer', async () => {

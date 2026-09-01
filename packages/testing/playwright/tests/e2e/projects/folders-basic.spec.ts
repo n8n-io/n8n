@@ -143,17 +143,17 @@ test.describe(
 
 			for (const invalidName of invalidNames) {
 				await n8n.modal.fillInput(invalidName);
-				await expect(n8n.modal.container.getByText(errorMessage, { exact: false })).toBeVisible();
+				await expect(n8n.modal.getText(errorMessage, { exact: false })).toBeVisible();
 			}
 
 			await n8n.modal.fillInput('');
-			await expect(n8n.modal.container.getByText(emptyErrorMessage)).toBeVisible();
+			await expect(n8n.modal.getText(emptyErrorMessage)).toBeVisible();
 
 			await n8n.modal.fillInput('a'.repeat(129));
-			await expect(n8n.modal.container.getByText(tooLongErrorMessage)).toBeVisible();
+			await expect(n8n.modal.getText(tooLongErrorMessage)).toBeVisible();
 
 			await n8n.modal.fillInput('...');
-			await expect(n8n.modal.container.getByText(dotsErrorMessage)).toBeVisible();
+			await expect(n8n.modal.getText(dotsErrorMessage)).toBeVisible();
 		});
 
 		test('should navigate to a folder using card actions', async ({ n8n }) => {
@@ -170,8 +170,7 @@ test.describe(
 			await n8n.start.fromNewProject();
 			const folderName = await n8n.workflows.addFolder();
 			await n8n.notifications
-				.getNotificationByTitleOrContent(FOLDER_CREATED_NOTIFICATION)
-				.getByText('Open folder')
+				.getNotificationAction(FOLDER_CREATED_NOTIFICATION, 'Open folder')
 				.click();
 			await expect(n8n.breadcrumbs.getCurrentBreadcrumb()).toContainText(folderName);
 		});

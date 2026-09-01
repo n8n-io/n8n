@@ -12,6 +12,7 @@ import {
 	titleBarFromNodesRect,
 	type GetNodeDisplaySize,
 } from './useCanvasMapping.groups';
+import { applyOffset } from '../canvas.utils';
 
 export interface UseCanvasNodeGroupDragDeps {
 	canvasId?: string;
@@ -131,10 +132,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 			const node = deps.getNodeById(move.id);
 			if (!node) return true;
 			const offset = deps.getNodeVisualOffset?.(move.id) ?? { x: 0, y: 0 };
-			return (
-				node.position[0] + offset.x !== move.position.x ||
-				node.position[1] + offset.y !== move.position.y
-			);
+			const visual = applyOffset(node.position, offset);
+			return visual.x !== move.position.x || visual.y !== move.position.y;
 		});
 	}
 
@@ -176,10 +175,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 				const node = deps.getNodeById(nodeId);
 				if (!node) continue;
 				const offset = deps.getNodeVisualOffset?.(nodeId) ?? { x: 0, y: 0 };
-				positionOverrides.set(nodeId, {
-					x: node.position[0] + offset.x,
-					y: node.position[1] + offset.y,
-				});
+				positionOverrides.set(nodeId, applyOffset(node.position, offset));
 			}
 
 			const rect = computeNodesRectFromStore(

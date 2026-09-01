@@ -7,18 +7,50 @@ Capability-aware test distribution across CI shards.
 | Step | What Happens |
 |------|--------------|
 | 1. Discovery | `pnpm janitor discover` (AST-based, detects `test.fixme()`/`test.skip()` automatically) |
-| 2. Metrics | Get `avgDuration` per spec from Currents (last 30 days) |
+| 2. Metrics | Get `avgDuration` per spec from Currents (last 7 days) |
 | 3. Default | Missing specs get **60s** default (accounts for container startup) |
 | 4. Group | Group specs by `@capability:xxx` tag for worker reuse |
 | 5. Effective Duration | Calculate actual time accounting for container reuse within groups |
 | 6. Split | If a group exceeds **5 min**, split into sub-groups |
-| 7. Bin Pack | Greedy assign groups + standard specs to lightest shard |
+| 7. Limit | Aim for **5 min** of tests on each shard, one shard per capability |
+| 8. Bin Pack | Greedy assign groups + standard specs to lightest shard |
 
 ### Why Group by Capability?
 
 Tests requiring containers (proxy, email, etc.) include ~20s startup overhead. When grouped on the same shard, only the first test pays this cost - the rest reuse the worker.
 
 **Example:** 15 proxy tests across 8 shards = 8 container starts (160s). Grouped on 2 shards = 2 starts (40s). **Saves 120s.**
+
+### Why the Shard Count Has a Limit
+
+Each shard pays about 3.4 minutes of fixed setup: checkout, Setup Environment,
+browser install, and image load. This cost does not change with the size of the
+workload. An impact-scoped PR selects only a few specs. Without a limit, the
+packer distributes those few minutes of tests over many runners, and each runner
+pays the full setup cost.
+
+`targetShardDuration` (5 minutes) limits the bucket count to
+`ceil(totalTestTime / targetShardDuration)`. The packer creates only the shards
+it can fill. `minShardSpecs` applies a second limit to the same count. Set it to
+`1` to disable it.
+
+The name says target, not minimum, because `ceil` divides the work evenly over
+the shards that remain. A 12-minute selection gets 3 shards of 4 minutes, not 2
+shards of 6 minutes. `floor` would enforce a true minimum, but it would also add
+about 2 minutes of wall-clock time to keep one more runner idle.
+
+The shard count never drops below the number of capability groups. One runner
+that starts every image set pays back in container startup what it saved in
+setup. Capability groups therefore stay on separate shards.
+
+The packer applies the limits before it fills the buckets. Bin-packing still
+balances the shards. This is not a merge step after the packer runs.
+
+Full-suite selections do not change: about 196 minutes of test time still fills
+all 16 shards. Over 7 days of PR CI, the limit removed about 9% of the E2E shard
+jobs, and the average wall-clock time did not increase.
+
+Configure both values under `orchestration` in `janitor.config.mjs`.
 
 ### Self-Balancing
 
@@ -130,15 +162,25 @@ echo "$MATRIX_SPECS" | janitor filter-shard
 ## Refreshing Metrics
 
 ```bash
-CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=<id>
+CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=nHHLA5
 ```
 
-This fetches the last 30 days of test durations from Currents, aggregates by spec, and writes to `.github/test-metrics/playwright.json`.
+This fetches the last 7 days of test durations from Currents, aggregates by spec, and writes to `.github/test-metrics/playwright.json`. The PR-CI project is `nHHLA5` (n8n-ci); the legacy `LRxcNt` project still backs the nightly e2e workflows.
 
 **When to refresh:**
 - Weekly (recommended)
 - After significant test changes
 - When adding new specs (optional - they get 60s default)
+
+Stale metrics do not cause an obvious failure. The packer still reports balanced
+shards, because it balances against the durations in the file. The real spread is
+what changes. A 3-month-stale file predicted a uniform 9.7 minutes for each
+shard. Against refreshed durations, the same shards took 8.6 to 18.5 minutes.
+
+**How to read the reported numbers:** Currents `avgDuration` is about 1.5 times
+the test time that a shard uses in CI. Use `Total test time` and
+`Expected wall-clock` to compare the shards with each other. Do not use them as
+absolute predictions. `targetShardDuration` uses these same units.
 
 ## Architecture
 

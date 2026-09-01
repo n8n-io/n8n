@@ -20,7 +20,7 @@ import type {
 	ChatConversation,
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);

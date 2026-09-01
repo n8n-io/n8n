@@ -3,7 +3,9 @@ import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import type { McpRegistryConnection } from 'n8n-workflow';
 
+import { inE2ETests } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -12,6 +14,11 @@ import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
+import {
+	listMcpRegistryServers,
+	searchMcpRegistryServers,
+	type McpRegistrySearchResult,
+} from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
@@ -44,7 +51,10 @@ export class McpRegistryService {
 
 	async init(): Promise<void> {
 		await this.refreshRegistryNodeTypes(false);
-		if (this.instanceSettings.isLeader) {
+		// In E2E the registry is populated deterministically via the test seed
+		// endpoint; skip the remote refresh so tests never reach api.n8n.io and
+		// the background refresh can't race the seed.
+		if (this.instanceSettings.isLeader && !inE2ETests) {
 			// don't want to wait for API calls to block on init
 			void this.refreshFromApi('startup');
 			this.startPeriodicRefresh();
@@ -53,6 +63,7 @@ export class McpRegistryService {
 
 	@OnLeaderTakeover()
 	async onLeaderTakeover(): Promise<void> {
+		if (inE2ETests) return;
 		await this.refreshFromApi('leader-takeover');
 		this.startPeriodicRefresh();
 	}
@@ -97,6 +108,30 @@ export class McpRegistryService {
 
 		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
 		return entities.map(fromEntity);
+	}
+
+	/**
+	 * Match active registry servers against free-text queries and return them in
+	 * the config-ready shape used by the agent-builder tools. Centralizes the
+	 * matching + mapping that used to be re-implemented per call site.
+	 */
+	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
+		return searchMcpRegistryServers(await this.getAll(), queries);
+	}
+
+	async list(limit: number): Promise<McpRegistrySearchResult[]> {
+		return listMcpRegistryServers(await this.getAll()).slice(0, limit);
+	}
+
+	async resolveBySlugs(slugs: string[]): Promise<McpRegistrySearchResult[]> {
+		const servers = await this.getBySlugs(slugs);
+		return listMcpRegistryServers(servers.filter((server) => server.status === 'active'));
+	}
+
+	async getConnection(nodeTypeName: string): Promise<McpRegistryConnection | undefined> {
+		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
+		if (!(loader instanceof McpRegistryNodeLoader)) return undefined;
+		return loader.getConnection(nodeTypeName);
 	}
 
 	private startPeriodicRefresh(): void {

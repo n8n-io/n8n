@@ -4,22 +4,24 @@ import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 import { netlifyApiRequest } from '../GenericFunctions';
 import { NetlifyTrigger } from '../NetlifyTrigger.node';
 import { verifySignature } from '../NetlifyTriggerHelpers';
+import type { Mock, Mocked } from 'vitest';
+import type * as _importType0 from 'crypto';
 
-jest.mock('../GenericFunctions');
-jest.mock('../NetlifyTriggerHelpers');
-jest.mock('crypto', () => ({
-	...jest.requireActual('crypto'),
-	randomBytes: jest.fn(),
+vi.mock('../GenericFunctions');
+vi.mock('../NetlifyTriggerHelpers');
+vi.mock('crypto', async () => ({
+	...(await vi.importActual<typeof _importType0>('crypto')),
+	randomBytes: vi.fn(),
 }));
 
 describe('NetlifyTrigger', () => {
 	let trigger: NetlifyTrigger;
 	let mockHookFunctions: Pick<
-		jest.Mocked<IHookFunctions>,
+		Mocked<IHookFunctions>,
 		'getNodeWebhookUrl' | 'getNodeParameter' | 'getWorkflowStaticData'
 	>;
 	let mockWebhookFunctions: Pick<
-		jest.Mocked<IWebhookFunctions>,
+		Mocked<IWebhookFunctions>,
 		| 'getNodeParameter'
 		| 'getRequestObject'
 		| 'getResponseObject'
@@ -28,22 +30,22 @@ describe('NetlifyTrigger', () => {
 	>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		trigger = new NetlifyTrigger();
 
 		mockHookFunctions = {
-			getNodeWebhookUrl: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getNodeWebhookUrl: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 		};
 
 		mockWebhookFunctions = {
-			getNodeParameter: jest.fn(),
-			getRequestObject: jest.fn(),
-			getResponseObject: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getNodeParameter: vi.fn(),
+			getRequestObject: vi.fn(),
+			getResponseObject: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 			helpers: {
-				returnJsonArray: jest.fn((data) => data),
+				returnJsonArray: vi.fn((data) => data),
 			} as any,
 		};
 	});
@@ -66,10 +68,10 @@ describe('NetlifyTrigger', () => {
 			const webhookData: any = {};
 			mockHookFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
 
-			(randomBytes as jest.Mock).mockReturnValue({
-				toString: jest.fn().mockReturnValue(webhookSecret),
+			(randomBytes as Mock).mockReturnValue({
+				toString: vi.fn().mockReturnValue(webhookSecret),
 			});
-			(netlifyApiRequest as jest.Mock).mockResolvedValue({ id: webhookId });
+			(netlifyApiRequest as Mock).mockResolvedValue({ id: webhookId });
 
 			const result = await trigger.webhookMethods!.default.create.call(
 				mockHookFunctions as unknown as IHookFunctions,
@@ -104,10 +106,10 @@ describe('NetlifyTrigger', () => {
 			});
 			mockHookFunctions.getWorkflowStaticData.mockReturnValue({});
 
-			(randomBytes as jest.Mock).mockReturnValue({
-				toString: jest.fn().mockReturnValue(webhookSecret),
+			(randomBytes as Mock).mockReturnValue({
+				toString: vi.fn().mockReturnValue(webhookSecret),
 			});
-			(netlifyApiRequest as jest.Mock).mockResolvedValue({ id: 'hook-2' });
+			(netlifyApiRequest as Mock).mockResolvedValue({ id: 'hook-2' });
 
 			await trigger.webhookMethods!.default.create.call(
 				mockHookFunctions as unknown as IHookFunctions,
@@ -134,7 +136,7 @@ describe('NetlifyTrigger', () => {
 			};
 
 			mockHookFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
-			(netlifyApiRequest as jest.Mock).mockResolvedValue({});
+			(netlifyApiRequest as Mock).mockResolvedValue({});
 
 			const result = await trigger.webhookMethods!.default.delete.call(
 				mockHookFunctions as unknown as IHookFunctions,
@@ -150,12 +152,12 @@ describe('NetlifyTrigger', () => {
 	describe('webhook', () => {
 		it('should respond 401 when signature verification fails', async () => {
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn().mockReturnThis(),
-				end: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn(),
 			};
 
-			(verifySignature as jest.Mock).mockReturnValue(false);
+			(verifySignature as Mock).mockReturnValue(false);
 			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse as any);
 
 			const result = await trigger.webhook.call(
@@ -173,7 +175,7 @@ describe('NetlifyTrigger', () => {
 		it('should return workflow data when verification passes', async () => {
 			const body = { id: 'deploy-1', state: 'ready' };
 
-			(verifySignature as jest.Mock).mockReturnValue(true);
+			(verifySignature as Mock).mockReturnValue(true);
 			mockWebhookFunctions.getNodeParameter.mockImplementation((name) => {
 				if (name === 'simple') return false;
 				if (name === 'event') return 'deployCreated';
@@ -192,7 +194,7 @@ describe('NetlifyTrigger', () => {
 		it('should return workflow data when no secret is configured (backward compat)', async () => {
 			const body = { id: 'deploy-1', state: 'ready' };
 
-			(verifySignature as jest.Mock).mockReturnValue(true);
+			(verifySignature as Mock).mockReturnValue(true);
 			mockWebhookFunctions.getNodeParameter.mockImplementation((name) => {
 				if (name === 'simple') return false;
 				if (name === 'event') return 'deployCreated';
@@ -211,7 +213,7 @@ describe('NetlifyTrigger', () => {
 		it('should unwrap data field for simplified submissionCreated payloads', async () => {
 			const body = { data: { name: 'Alice', email: 'alice@example.com' } };
 
-			(verifySignature as jest.Mock).mockReturnValue(true);
+			(verifySignature as Mock).mockReturnValue(true);
 			mockWebhookFunctions.getNodeParameter.mockImplementation((name) => {
 				if (name === 'simple') return true;
 				if (name === 'event') return 'submissionCreated';

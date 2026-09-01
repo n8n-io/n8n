@@ -396,7 +396,6 @@ describe('executionData.store', () => {
 				| { sourceOverwrite?: { previousNode: string } }
 				| undefined;
 			expect(overwrite?.sourceOverwrite?.previousNode).toBe('NewName');
-
 			expect(store.execution?.executedNode).toBe('NewName');
 
 			const workflowData = store.execution?.workflowData;
@@ -1429,6 +1428,100 @@ describe('executionData.store', () => {
 			expect(outputData?.iterations).toBe(1);
 			expect(outputData?.total).toBe(3);
 			expect(outputData?.byTarget?.['vector-1']).toEqual({ iterations: 1, total: 3 });
+		});
+	});
+
+	describe('executionIssuesByNodeId', () => {
+		const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+		it('returns the issues recorded under the node name', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [{ error: { message: 'Boom' } }],
+				},
+			});
+			await flushPromises();
+
+			expect(store.executionIssuesByNodeId.get('node-1')?.value).toEqual(['Boom']);
+		});
+
+		it('has no entry for an id the execution never ran', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [{ error: { message: 'Boom' } }],
+				},
+			});
+			await flushPromises();
+
+			// A node added after the run: its name may match, its id cannot.
+			expect(store.executionIssuesByNodeId.get('node-added-later')).toBeUndefined();
+		});
+
+		it('follows a renamed node, because the snapshot is renamed with it', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithSnapshot(store, {
+				nodes: [node],
+				runData: {
+					'Node 1': [{ error: { message: 'Boom' } }],
+				},
+			});
+			await flushPromises();
+
+			store.renameExecutionDataNode('Node 1', 'Renamed');
+			await flushPromises();
+
+			expect(store.executionIssuesByNodeId.get('node-1')?.value).toEqual(['Boom']);
+		});
+	});
+
+	describe('executionPinDataByNodeId', () => {
+		const node = createTestNode({ id: 'node-1', name: 'Node 1' });
+
+		it('returns the pin data recorded under the node name', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			store.setExecution(
+				createTestExecution({
+					workflowData: createTestWorkflow({ nodes: [node] }),
+					data: {
+						resultData: {
+							runData: {},
+							pinData: { 'Node 1': [{ json: { pinned: true } }] },
+						},
+					} as never,
+				}),
+			);
+			await flushPromises();
+
+			expect(store.executionPinDataByNodeId.get('node-1')?.value).toEqual([
+				{ json: { pinned: true } },
+			]);
+		});
+
+		it('has no entry for an id the execution never ran', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			store.setExecution(
+				createTestExecution({
+					workflowData: createTestWorkflow({ nodes: [node] }),
+					data: {
+						resultData: {
+							runData: {},
+							pinData: { 'Node 1': [{ json: { pinned: true } }] },
+						},
+					} as never,
+				}),
+			);
+			await flushPromises();
+
+			expect(store.executionPinDataByNodeId.get('node-added-later')).toBeUndefined();
 		});
 	});
 });

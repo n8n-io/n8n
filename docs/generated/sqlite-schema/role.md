@@ -15,12 +15,12 @@ CREATE TABLE "role" ("slug" varchar(128) PRIMARY KEY NOT NULL, "displayName" tex
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| slug | varchar(128) |  | false | [role_scope](role_scope.md) [user](user.md) [project_relation](project_relation.md) [role_mapping_rule](role_mapping_rule.md) |  |  |
-| displayName | TEXT |  | true |  |  |  |
-| description | TEXT |  | true |  |  |  |
-| roleType | TEXT |  | true |  |  |  |
-| systemRole | boolean | false | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| description | TEXT |  | true |  |  |  |
+| displayName | TEXT |  | true |  |  |  |
+| roleType | TEXT |  | true |  |  |  |
+| slug | varchar(128) |  | false | [project_relation](project_relation.md) [role_mapping_rule](role_mapping_rule.md) [role_scope](role_scope.md) [user](user.md) |  |  |
+| systemRole | boolean | false | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -42,18 +42,34 @@ CREATE TABLE "role" ("slug" varchar(128) PRIMARY KEY NOT NULL, "displayName" tex
 ```mermaid
 erDiagram
 
-"role_scope" |o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
-"user" }o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "project_relation" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "role_mapping_rule" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
+"role_scope" |o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
+"user" }o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 
 "role" {
-  varchar_128_ slug PK
-  TEXT displayName
-  TEXT description
-  TEXT roleType
-  boolean systemRole
   datetime_3_ createdAt
+  TEXT description
+  TEXT displayName
+  TEXT roleType
+  varchar_128_ slug PK
+  boolean systemRole
+  datetime_3_ updatedAt
+}
+"project_relation" {
+  datetime_3_ createdAt
+  varchar_36_ projectId PK
+  varchar role FK
+  datetime_3_ updatedAt
+  varchar userId PK
+}
+"role_mapping_rule" {
+  datetime_3_ createdAt
+  TEXT expression
+  varchar_16_ id PK
+  INTEGER order
+  varchar_128_ role FK
+  varchar_64_ type
   datetime_3_ updatedAt
 }
 "role_scope" {
@@ -61,36 +77,20 @@ erDiagram
   VARCHAR_128_ scopeSlug PK
 }
 "user" {
-  varchar id PK
+  datetime_3_ createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
   varchar password
   TEXT personalizationAnswers
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT settings
-  boolean disabled
-  boolean mfaEnabled
-  TEXT mfaSecret
-  TEXT mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
-}
-"project_relation" {
-  varchar_36_ projectId PK
-  varchar userId PK
-  varchar role FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
-"role_mapping_rule" {
-  varchar_16_ id PK
-  TEXT expression
-  varchar_128_ role FK
-  varchar_64_ type
-  INTEGER order
-  datetime_3_ createdAt
+  TEXT settings
   datetime_3_ updatedAt
 }
 ```

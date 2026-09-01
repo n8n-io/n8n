@@ -24,15 +24,17 @@ export class InsightsController {
 	@Get('/summary')
 	@GlobalScope('insights:list')
 	async getInsightsSummary(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: InsightsDateFilterDto = {},
 	): Promise<InsightsSummary> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsSummary({
+			user: req.user,
 			startDate,
 			endDate,
+			timeZone,
 			projectId: query.projectId,
 		});
 	}
@@ -41,19 +43,21 @@ export class InsightsController {
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByWorkflow(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsByWorkflow({
+			user: req.user,
 			skip: query.skip,
 			take: query.take,
 			sortBy: query.sortBy,
 			projectId: query.projectId,
 			startDate,
 			endDate,
+			timeZone,
 		});
 	}
 
@@ -61,18 +65,20 @@ export class InsightsController {
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByTime(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		// Cast to full insights by time type
 		// as the service returns all types by default
 		return (await this.insightsService.getInsightsByTime({
+			user: req.user,
 			projectId: query.projectId,
 			startDate,
 			endDate,
+			timeZone,
 		})) as InsightsByTime[];
 	}
 
@@ -83,19 +89,21 @@ export class InsightsController {
 	@Get('/by-time/time-saved')
 	@GlobalScope('insights:list')
 	async getTimeSavedInsightsByTime(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		// Cast to restricted insights by time type
 		// as the service returns only time saved data
 		return (await this.insightsService.getInsightsByTime({
+			user: req.user,
 			insightTypes: ['time_saved_min'],
 			projectId: query.projectId,
 			startDate,
 			endDate,
+			timeZone,
 		})) as RestrictedInsightsByTime[];
 	}
 
@@ -127,11 +135,12 @@ export class InsightsController {
 	private prepareDateFilters(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto): {
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	} {
 		this.validateQueryDates(query);
-		const { startDate, endDate } = this.getSanitizedDateFilters(query);
+		const { startDate, endDate, timeZone } = this.getSanitizedDateFilters(query);
 		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
-		return { startDate, endDate };
+		return { startDate, endDate, timeZone };
 	}
 
 	/**
@@ -141,17 +150,20 @@ export class InsightsController {
 	private getSanitizedDateFilters(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto): {
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	} {
 		const today = new Date();
+		const timeZone = query.timeZone;
 
 		if (!query.startDate) {
 			return {
 				startDate: DateTime.now().minus({ days: 7 }).toJSDate(),
 				endDate: today,
+				timeZone,
 			};
 		}
 
-		return { startDate: query.startDate, endDate: query.endDate ?? today };
+		return { startDate: query.startDate, endDate: query.endDate ?? today, timeZone };
 	}
 
 	private checkDatesFiltersAgainstLicense(dateFilters: { startDate: Date; endDate: Date }) {

@@ -2,20 +2,23 @@
 // Shared agent-run chat loop
 //
 // Drives an agent run to completion: opens an SSE event stream, waits for
-// the main run to finish, drains background agent tasks, auto-approves any
+// the main run to finish, drains background agent tasks, waits for observational-
+// memory jobs (via thread status polling), auto-approves any confirmation
 // confirmation requests, and surfaces the captured events.
 //
-// Used by `harness/runner.ts` (workflow eval) and the computer-use eval
+// Used by `harness/build-workflow.ts` (workflow eval) and the computer-use eval
 // harness. Both consume the same primitives so any fix here lands in both
 // flows automatically.
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
+import { lastSavedWorkflowIdFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
@@ -28,6 +31,7 @@ import { getNestedRecord } from '../utils/safe-extract';
 export const SSE_SETTLE_DELAY_MS = 200;
 export const POLL_INTERVAL_MS = 500;
 export const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;
+const MEMORY_TASK_POLL_INTERVAL_MS = 500;
 export const MAX_CONFIRMATION_RETRIES = 5;
 
 /**
@@ -123,6 +127,9 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 		const remainingMs = Math.max(0, config.timeoutMs - (Date.now() - config.startTime));
 		await waitForBackgroundTasks(config, remainingMs);
 
+		// Wait for observational-memory jobs (observer/reflector) before the next user turn
+		await waitForMemoryTasks(config);
+
 		// Check if the main agent started a new run after background tasks completed
 		await delay(SSE_SETTLE_DELAY_MS);
 		const newRunStarts = countEvents(config.events, 'run-start');
@@ -207,11 +214,82 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 	);
 }
 
+async function waitForMemoryTasks(config: WaitConfig): Promise<void> {
+	const waitStartedAt = Date.now();
+	config.logger.verbose(
+		`[${config.threadId}] Waiting for observational-memory jobs (timeout ${String(INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS)}ms)...`,
+	);
+
+	const deadline = Date.now() + INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS;
+	let lastLoggedPendingCount = -1;
+	let lastLogAt = 0;
+	let pollCount = 0;
+	const HEARTBEAT_MS = 20_000;
+
+	while (Date.now() < deadline) {
+		await processConfirmationRequests(config);
+
+		pollCount++;
+		const status = await config.client.getThreadStatus(config.threadId);
+		const tasks = status.memoryTasks ?? [];
+		const pending = tasks.filter((task) => task.status === 'queued' || task.status === 'running');
+		const now = Date.now();
+
+		if (
+			pollCount === 1 ||
+			pending.length !== lastLoggedPendingCount ||
+			(pending.length > 0 && now - lastLogAt >= HEARTBEAT_MS)
+		) {
+			config.logger.verbose(
+				`[${config.threadId}] Memory task poll #${String(pollCount)} (${String(now - waitStartedAt)}ms): ${String(pending.length)} pending, ${String(tasks.length)} tracked — ${formatMemoryTasksForLog(tasks)}`,
+			);
+			lastLoggedPendingCount = pending.length;
+			lastLogAt = now;
+		}
+
+		if (pending.length === 0) {
+			config.logger.verbose(
+				`[${config.threadId}] Memory tasks idle after ${String(now - waitStartedAt)}ms (${String(pollCount)} poll(s))`,
+			);
+			await delay(SSE_SETTLE_DELAY_MS);
+			return;
+		}
+
+		await delay(MEMORY_TASK_POLL_INTERVAL_MS);
+	}
+
+	config.logger.verbose(
+		`[${config.threadId}] Memory task wait timed out after ${String(INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS)}ms (${String(pollCount)} poll(s), last pending=${String(lastLoggedPendingCount)})`,
+	);
+}
+
+function formatMemoryTasksForLog(
+	tasks: Array<{ taskId: string; taskKind: string; status: string }>,
+): string {
+	if (tasks.length === 0) {
+		return 'none';
+	}
+	return tasks.map((task) => `${task.taskKind}:${task.status}`).join(', ');
+}
+
 // ---------------------------------------------------------------------------
 // Multi-turn conversation loop
 // ---------------------------------------------------------------------------
 
-export type NextMessageDecision = { kind: 'followUp'; message: string } | { kind: 'done' };
+export type NextMessageDecision =
+	| {
+			kind: 'followUp';
+			message: string;
+			/**
+			 * The user-proxy asked for the last saved workflow to be renamed from
+			 * outside the conversation, driven by a stage direction. Lets a case
+			 * exercise the optimistic-concurrency path ("modified outside this
+			 * conversation"), which the agent otherwise only reaches by accident when
+			 * its own setup or credential work happens to advance the checksum.
+			 */
+			renameWorkflowTo?: string;
+	  }
+	| { kind: 'done' };
 
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
@@ -234,6 +312,13 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			return;
 		}
 
+		// After the decision, so an edit never lands on the boundary that ends the
+		// conversation: there the agent would get no turn to react, and the renamed
+		// workflow would still be what the judge and workflow checks read.
+		if (decision.renameWorkflowTo !== undefined) {
+			await applyExternalRename(config, decision.renameWorkflowTo);
+		}
+
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
 		);
@@ -245,6 +330,64 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			config.logger.verbose(`[multi-turn] sendMessage failed: ${msg} — exiting loop`);
 			return;
 		}
+	}
+}
+
+/**
+ * Renames the workflow this run last saved, from outside the conversation — the
+ * side effect behind a `renameWorkflowTo` stage direction.
+ *
+ * The proxy only ever sees the transcript, so it decides a workflow exists from
+ * what the agent *claimed*. Both guards below re-derive that from ground truth
+ * before writing anything.
+ *
+ * Logging is deliberately loud on every path. Skips and failures are `warn`, and
+ * the success is `info` rather than `verbose` — the failure that matters most is
+ * a direction that stops driving `renameWorkflowTo` at all, and that one never
+ * reaches this function, so it cannot log anything itself. Printing the rename
+ * in a normal run is what makes its ABSENCE meaningful: without it, a case whose
+ * direction silently stopped working reds on its name assertion and reads as an
+ * agent regression, with nothing in the log to say the conflict never happened.
+ *
+ * A failure is logged and swallowed rather than thrown — the case grades the
+ * agent's recovery, and killing the run here would report that as a build
+ * failure instead.
+ */
+async function applyExternalRename(config: MultiTurnConfig, rename: string): Promise<void> {
+	// Only builds that actually SAVED. Failed builds are excluded deliberately:
+	// they still report a workflowId, and acting on one would rename a workflow
+	// this run never created (an attached or pre-existing one). Last rather than
+	// first — the proxy fires at a turn boundary, so "the workflow under
+	// discussion" is the most recent one to reach the instance.
+	const workflowId = lastSavedWorkflowIdFromEvents(config.events);
+	if (workflowId === undefined) {
+		config.logger.warn(
+			`[external-edit] Skipped rename to "${rename}": this run has saved no workflow yet, so there is nothing to conflict`,
+		);
+		return;
+	}
+
+	try {
+		const current = await config.client.getWorkflow(workflowId);
+		if (current.name === rename) {
+			// Re-issuing the same rename advances the checksum a second time and
+			// re-conflicts a save the agent may already have recovered from, which
+			// would grade a successful recovery as a failure.
+			config.logger.warn(
+				`[external-edit] Skipped rename of ${workflowId}: it is already named "${rename}"`,
+			);
+			return;
+		}
+
+		await config.client.updateWorkflow(workflowId, { name: rename });
+		config.logger.info(
+			`[external-edit] Renamed ${workflowId} from "${current.name}" to "${rename}" outside the conversation`,
+		);
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		config.logger.warn(
+			`[external-edit] Failed to rename ${workflowId} to "${rename}": ${message} — the conflict path was not exercised`,
+		);
 	}
 }
 

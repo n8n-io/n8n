@@ -1,7 +1,7 @@
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 /**
  * Shared OAuth 2.1 authorization server.
@@ -11,45 +11,47 @@ import { Container } from '@n8n/di';
  * documents for the protected resources registered in the
  * `ProtectedResourceRegistry` (e.g. the instance MCP server).
  */
-@BackendModule({ name: 'oauth-server', instanceTypes: ['main'] })
+// Loaded on workers too: in queue mode an MCP trigger tool call executes on a
+// worker, where resolving the caller's private credentials verifies the n8n
+// OAuth token through `OAuthTokenVerifierProxy`. Without the module the verifier
+// provider is unregistered and resolution fails with `verifier_not_registered`.
+@BackendModule({ name: 'oauth-server', instanceTypes: ['main', 'webhook', 'worker'] })
 export class OAuthServerModule implements ModuleInterface {
 	async init() {
-		await import('./oauth.controller');
-		await import('./oauth-consent.controller');
-		await import('./oauth-clients.controller');
+		// Only import controllers in the main process, since the webhook/worker processes don't run an HTTP server and don't need them.
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			await import('./oauth.controller.js');
+			await import('./oauth-consent.controller.js');
+			await import('./oauth-clients.controller.js');
+		}
 
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core
 		// `OAuthTokenVerifierProxy` instead of importing this module.
 		const { OAuthTokenVerifierProxy } = await import(
-			'@/services/oauth-token-verifier-proxy.service'
+			'@/services/oauth-token-verifier-proxy.service.js'
 		);
-		const { OAuthTokenService } = await import('./oauth-token.service');
+		const { OAuthTokenService } = await import('./oauth-token.service.js');
 		Container.get(OAuthTokenVerifierProxy).registerProvider(Container.get(OAuthTokenService));
 
-		const { WorkflowMcpTriggerResourceResolver } = await import(
-			'./protected-resource-resolvers/workflow-mcp-trigger-resource.resolver'
+		const { registerProtectedResourceResolvers } = await import(
+			'./protected-resource-resolvers/index.js'
 		);
-		Container.get(ProtectedResourceRegistry).registerResolver(
-			Container.get(WorkflowMcpTriggerResourceResolver),
-		);
+		registerProtectedResourceResolvers();
 
-		const { WorkflowMcpTestTriggerResourceResolver } = await import(
-			'./protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver'
-		);
-		Container.get(ProtectedResourceRegistry).registerResolver(
-			Container.get(WorkflowMcpTestTriggerResourceResolver),
-		);
+		const { OAuth2FlowProxy } = await import('@/services/oauth2-flow-proxy.service.js');
+		const { OAuth2FlowService } = await import('./oauth-flow.service.js');
+		Container.get(OAuth2FlowProxy).registerProvider(Container.get(OAuth2FlowService));
 	}
 
 	async entities() {
-		const { OAuthClient } = await import('./database/entities/oauth-client.entity');
+		const { OAuthClient } = await import('./database/entities/oauth-client.entity.js');
 		const { AuthorizationCode } = await import(
-			'./database/entities/oauth-authorization-code.entity'
+			'./database/entities/oauth-authorization-code.entity.js'
 		);
-		const { AccessToken } = await import('./database/entities/oauth-access-token.entity');
-		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity');
-		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity');
+		const { AccessToken } = await import('./database/entities/oauth-access-token.entity.js');
+		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity.js');
+		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity.js');
 
 		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
 	}

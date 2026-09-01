@@ -3,7 +3,7 @@ name: 'CI: Owners Assign Reviewers'
 # Opt-in reviewer auto-assignment.
 #
 # When a PR carries the `Auto-assign reviewers` label, requests review from
-# every team that owns a changed file (based on .github/OWNERS). Without the
+# every team that owns a changed file (based on OWNERS). Without the
 # label this is a no-op — opting in is entirely up to the PR author.
 #
 # Assignment runs once: afterwards the trigger label is swapped for a
@@ -28,10 +28,13 @@ jobs:
     name: Assign reviewers
     # Skipped for:
     #  - PRs from forks (no token to assign with)
-    #  - Bot-authored PRs (Dependabot, Renovate, etc.)
+    #  - Bot-authored PRs (Dependabot, etc.), except cat-bot which
+    #    opts in explicitly so a human-applied label can route its PRs to the
+    #    owning team
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.type != 'Bot'
+      (github.event.pull_request.user.type != 'Bot' ||
+       github.event.pull_request.user.login == 'n8n-cat-bot[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -57,4 +60,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .github/scripts/owners-assign-reviewers.mjs
+        run: node .github/scripts/owners/assign-reviewers.mjs

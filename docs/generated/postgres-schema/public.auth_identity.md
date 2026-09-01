@@ -4,22 +4,22 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| userId | uuid |  | true |  | [public.user](public.user.md) |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | providerId | varchar(255) |  | false |  |  |  |
 | providerType | varchar(32) |  | false |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| userId | uuid |  | true |  | [public.user](public.user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | auth_identity_createdAt_not_null | n | NOT NULL "createdAt" |
+| auth_identity_pkey | PRIMARY KEY | PRIMARY KEY ("providerId", "providerType") |
 | auth_identity_providerId_not_null | n | NOT NULL "providerId" |
 | auth_identity_providerType_not_null | n | NOT NULL "providerType" |
 | auth_identity_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | auth_identity_userId_fkey | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) |
-| auth_identity_pkey | PRIMARY KEY | PRIMARY KEY ("providerId", "providerType") |
 
 ## Indexes
 
@@ -35,28 +35,28 @@ erDiagram
 "public.auth_identity" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id)"
 
 "public.auth_identity" {
-  uuid userId FK
+  timestamp_3__with_time_zone createdAt
   varchar_255_ providerId
   varchar_32_ providerType
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.user" {
-  uuid id
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
   varchar_255_ email
   varchar_32_ firstName
+  uuid id
+  date lastActiveAt
   varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
   varchar_255_ password
   json personalizationAnswers
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  boolean disabled
-  boolean mfaEnabled
-  text mfaSecret
-  text mfaRecoveryCodes
-  date lastActiveAt
   varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 

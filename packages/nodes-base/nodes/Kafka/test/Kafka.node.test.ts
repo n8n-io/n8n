@@ -1,185 +1,201 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
-import type { Producer } from 'kafkajs';
-import { Kafka as apacheKafka } from 'kafkajs';
-import type { OnError, WorkflowTestData } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import type * as _kafkajs from 'kafkajs';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeTypeBaseDescription,
+} from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('kafkajs');
-jest.mock('@kafkajs/confluent-schema-registry');
+import { Kafka } from '../Kafka.node';
+import { KafkaV1 } from '../v1/KafkaV1.node';
+import { KafkaV2 } from '../v2/KafkaV2.node';
+import {
+	confluentKafkaModuleMock,
+	getConfluentKafkaAccessCount,
+	resetConfluentKafkaAccessCount,
+} from './mocks/confluent-kafka';
 
-const errorWorkflow = (
-	eventName: string,
-	message = '{"foo":"bar"}',
-	onError?: OnError,
-): WorkflowTestData['input']['workflowData'] => ({
-	nodes: [
-		{
-			parameters: {},
-			id: 'b1dcfb89-3dda-4d18-bdd6-c12d8dee70d2',
-			name: 'When clicking ‘Execute workflow’',
-			type: 'n8n-nodes-base.manualTrigger',
-			typeVersion: 1,
-			position: [0, 0],
-		},
-		{
-			parameters: {
-				topic: 'error-test-topic',
-				sendInputData: false,
-				message,
-				useSchemaRegistry: true,
-				schemaRegistryUrl: '',
-				eventName,
-				options: {},
-			},
-			id: '49emc1d5-4d18-4f9b-a2cd-7e2f871a23ed',
-			name: 'Schema Registry Error',
-			type: 'n8n-nodes-base.kafka',
-			typeVersion: 1,
-			position: [220, 0],
-			...(onError ? { onError } : {}),
-			credentials: {
-				kafka: { id: 'JJBjHkOrIfcj91EX', name: 'Kafka account' },
-				schemaRegistryApi: { id: 'wW0eW1iZK9d3Yz2g', name: 'Schema Registry account' },
-			},
-		},
-	],
-	connections: {
-		'When clicking ‘Execute workflow’': {
-			main: [
-				[
-					{
-						node: 'Schema Registry Error',
-						type: NodeConnectionTypes.Main,
-						index: 0,
-					},
-				],
-			],
-		},
-	},
-});
+// The node is imported directly (through vite) so vi.mock can intercept its
+// `kafkajs` / `@kafkajs/confluent-schema-registry` imports. NodeTestHarness can't
+// be used here: it loads nodes from dist via require(), where vi.mock can't reach
+// them. So every node run goes through `new KafkaV1(baseDescription).execute.call(...)`.
+//
+// The constructor mocks use `vi.fn(function () { ... })` (not `mockReturnValue`):
+// the node calls `new apacheKafka(...)` / `new SchemaRegistry(...)`, and vitest
+// throws "Cannot use mockReturnValue when called with new". importActual keeps the
+// real `CompressionTypes` enum the node relies on.
+const baseDescription: INodeTypeBaseDescription = {
+	displayName: 'Kafka',
+	name: 'kafka',
+	group: ['transform'],
+	description: 'Sends messages to a Kafka topic',
+};
 
-describe('Kafka Node', () => {
-	let mockProducer: jest.Mocked<Producer>;
-	let mockKafka: jest.Mocked<apacheKafka>;
-	let mockRegistry: jest.Mocked<SchemaRegistry>;
-	let mockProducerConnect: jest.Mock;
-	let mockProducerSend: jest.Mock;
-	let mockProducerDisconnect: jest.Mock;
-	let mockRegistryEncode: jest.Mock;
-	let mockRegistryGetLatestSchemaId: jest.Mock;
-
-	beforeAll(() => {
-		mockProducerConnect = jest.fn();
-		mockProducerSend = jest.fn().mockImplementation(async () => []);
-		mockProducerDisconnect = jest.fn();
-
-		mockProducer = mock<Producer>({
-			connect: mockProducerConnect,
-			send: mockProducerSend,
-			sendBatch: mockProducerSend,
-			disconnect: mockProducerDisconnect,
-		});
-
-		mockKafka = mock<apacheKafka>({
-			producer: jest.fn().mockReturnValue(mockProducer),
-		});
-
-		mockRegistryEncode = jest.fn((_id, input) => Buffer.from(JSON.stringify(input)));
-		mockRegistryGetLatestSchemaId = jest.fn(async (eventName: string) => {
-			if (eventName === 'failing-event-name') {
-				throw new Error('Subject not found');
-			}
-			return 1;
-		});
-		mockRegistry = mock<SchemaRegistry>({
-			encode: mockRegistryEncode,
-			getLatestSchemaId: mockRegistryGetLatestSchemaId,
-		});
-
-		(apacheKafka as jest.Mock).mockReturnValue(mockKafka);
-		(SchemaRegistry as jest.Mock).mockReturnValue(mockRegistry);
-	});
-
-	const harness = new NodeTestHarness();
-	const schemaRegistryCredential = {
-		url: 'https://cred-kafka-registry.local',
-		authentication: 'basicAuth',
-		username: 'registry-user',
-		password: 'registry-password',
+const {
+	mockProducerConnect,
+	mockProducerSend,
+	mockProducerDisconnect,
+	mockRegistryEncode,
+	mockRegistryGetLatestSchemaId,
+} = vi.hoisted(() => {
+	const mockProducerConnect = vi.fn(async () => {});
+	const mockProducerSend = vi.fn(async () => [] as unknown[]);
+	const mockProducerDisconnect = vi.fn(async () => {});
+	const mockProducer = {
+		connect: mockProducerConnect,
+		send: mockProducerSend,
+		sendBatch: mockProducerSend,
+		disconnect: mockProducerDisconnect,
 	};
 
-	harness.setupTests({
-		credentials: { schemaRegistryApi: schemaRegistryCredential },
+	const mockRegistryEncode = vi.fn(async (_id: number, input: unknown) =>
+		Buffer.from(JSON.stringify(input)),
+	);
+	const mockRegistryGetLatestSchemaId = vi.fn(async (eventName: string) => {
+		if (eventName === 'failing-event-name') {
+			throw new Error('Subject not found');
+		}
+		return 1;
 	});
 
-	harness.setupTest({
-		description:
-			'should fail with the misconfiguration message when the credential is missing the password',
-		input: { workflowData: errorWorkflow('test-event-name') },
-		output: {
-			nodeData: {},
-			error: 'Username and password are required for Schema Registry Basic Auth',
-		},
-		credentials: {
-			schemaRegistryApi: { ...schemaRegistryCredential, password: '' },
-		},
+	return {
+		mockProducerConnect,
+		mockProducerSend,
+		mockProducerDisconnect,
+		mockRegistryEncode,
+		mockRegistryGetLatestSchemaId,
+		mockProducer,
+	};
+});
+
+vi.mock('kafkajs', async () => {
+	const actual = await vi.importActual<typeof _kafkajs>('kafkajs');
+	return {
+		...actual,
+		Kafka: vi.fn(function () {
+			return {
+				producer: () => ({
+					connect: mockProducerConnect,
+					send: mockProducerSend,
+					sendBatch: mockProducerSend,
+					disconnect: mockProducerDisconnect,
+				}),
+			};
+		}),
+	};
+});
+
+vi.mock('@kafkajs/confluent-schema-registry', () => ({
+	SchemaRegistry: vi.fn(function () {
+		return {
+			getLatestSchemaId: mockRegistryGetLatestSchemaId,
+			encode: mockRegistryEncode,
+		};
+	}),
+}));
+
+// v1 must never load the new library — the ESLint import restrictions guard the
+// static-import side; this covers the runtime side (e.g. a dynamic import added
+// by mistake down the line).
+vi.mock('@confluentinc/kafka-javascript', () => confluentKafkaModuleMock());
+
+const defaultKafkaCredentials: IDataObject = {
+	brokers: 'localhost:9092',
+	clientId: 'test-client',
+	ssl: false,
+	authentication: false,
+};
+
+function createExecuteFunctions(
+	params: IDataObject,
+	items: INodeExecutionData[],
+	options: {
+		schemaRegistryCredential?: IDataObject;
+		continueOnFail?: boolean;
+	} = {},
+) {
+	const { schemaRegistryCredential, continueOnFail = false } = options;
+
+	const node = mock<INode>({
+		name: 'Kafka',
+		// The node reads `getNode().credentials?.schemaRegistryApi` to decide
+		// between the credential and the legacy URL parameter path.
+		credentials: schemaRegistryCredential
+			? { schemaRegistryApi: { id: 'wW0eW1iZK9d3Yz2g', name: 'Schema Registry account' } }
+			: undefined,
 	});
 
-	harness.setupTest({
-		description: 'should fail with the generic message when the schema lookup fails',
-		input: { workflowData: errorWorkflow('failing-event-name') },
-		output: {
-			nodeData: {},
-			error: 'Verify your Schema Registry configuration',
-		},
-		credentials: {
-			schemaRegistryApi: schemaRegistryCredential,
-		},
+	return mock<IExecuteFunctions>({
+		getInputData: () => items,
+		getNode: () => node,
+		getNodeParameter: ((name: string, _index: number, fallback?: unknown) =>
+			name in params ? params[name] : fallback) as IExecuteFunctions['getNodeParameter'],
+		getCredentials: (async (type: string) =>
+			type === 'schemaRegistryApi'
+				? schemaRegistryCredential
+				: defaultKafkaCredentials) as IExecuteFunctions['getCredentials'],
+		continueOnFail: () => continueOnFail,
+		helpers: {
+			returnJsonArray: (data: IDataObject | IDataObject[]) =>
+				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+			constructExecutionMetaData: (data: INodeExecutionData[]) => data,
+		} as unknown as IExecuteFunctions['helpers'],
+	});
+}
+
+const schemaRegistryCredential = {
+	url: 'https://cred-kafka-registry.local',
+	authentication: 'basicAuth',
+	username: 'registry-user',
+	password: 'registry-password',
+};
+
+describe('Kafka Node', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		resetConfluentKafkaAccessCount();
 	});
 
-	harness.setupTest({
-		description: 'should report a malformed message distinctly from a registry config error',
-		input: { workflowData: errorWorkflow('test-event-name', 'not-json') },
-		output: {
-			nodeData: {},
-			error: 'Message is not valid JSON',
-		},
-		credentials: {
-			schemaRegistryApi: schemaRegistryCredential,
-		},
+	test('never loads the new confluent-kafka-javascript library', async () => {
+		const params: IDataObject = {
+			options: { acks: true, compression: true, timeout: 1000 },
+			sendInputData: true,
+			useSchemaRegistry: false,
+			topic: 'test-topic',
+			jsonParameters: false,
+			useKey: false,
+			headersUi: {},
+		};
+		const items: INodeExecutionData[] = [{ json: { name: 'item' } }];
+
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
+
+		expect(getConfluentKafkaAccessCount()).toBe(0);
 	});
 
-	harness.setupTest({
-		description: 'should return the error as item data when the node continues on fail',
-		input: {
-			workflowData: errorWorkflow('test-event-name', '{"foo":"bar"}', 'continueRegularOutput'),
-		},
-		output: {
-			nodeData: {
-				'Schema Registry Error': [
-					[{ error: 'Username and password are required for Schema Registry Basic Auth' }],
-				],
-			},
-		},
-		credentials: {
-			schemaRegistryApi: { ...schemaRegistryCredential, password: '' },
-		},
-	});
+	test('publishes input data as messages with key, headers and options', async () => {
+		const params: IDataObject = {
+			options: { acks: true, compression: true, timeout: 1000 },
+			sendInputData: true,
+			useSchemaRegistry: false,
+			topic: 'test-topic',
+			jsonParameters: false,
+			useKey: true,
+			key: 'messageKey',
+			headersUi: { headerValues: [{ key: 'header', value: 'value' }] },
+		};
+		const items: INodeExecutionData[] = [
+			{ json: { name: 'First item', code: 1 } },
+			{ json: { name: 'Second item', code: 2 } },
+		];
 
-	test('should only connect the producer once the schema registry is resolved', async () => {
-		// Cumulative count across all the workflows above: 3 node executions from
-		// the two successful workflows, plus 1 from the encode-failure workflow
-		// (encoding fails inside the loop, after the producer has connected).
-		// The two registry-resolution error workflows (missing password, failing
-		// schema lookup) must NOT contribute: registry misconfiguration surfaces
-		// before `producer.connect()`, so no connected producer is ever leaked.
-		expect(mockProducerConnect).toHaveBeenCalledTimes(4);
-	});
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
 
-	test('should publish the correct kafka messages', async () => {
-		expect(mockProducerSend).toHaveBeenCalledTimes(3);
+		expect(mockProducerConnect).toHaveBeenCalledTimes(1);
+		expect(mockProducerSend).toHaveBeenCalledTimes(1);
 		expect(mockProducerSend).toHaveBeenCalledWith({
 			acks: 1,
 			compression: 1,
@@ -207,6 +223,31 @@ describe('Kafka Node', () => {
 				},
 			],
 		});
+	});
+
+	test('publishes schema-registry-encoded messages with json headers', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: JSON.stringify({ foo: 'bar' }),
+			schemaRegistryUrl: 'https://test-kafka-registry.local',
+			eventName: 'test-event-name',
+			topic: 'test-topic',
+			jsonParameters: true,
+			useKey: false,
+			headerParametersJson: '{\n  "headerKey": "headerValue"\n}',
+		};
+		const items: INodeExecutionData[] = [{ json: { success: true } }, { json: { success: true } }];
+
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
+
+		// The legacy URL-parameter path stays unauthenticated
+		expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'https://test-kafka-registry.local' });
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledWith('test-event-name');
+		expect(mockRegistryEncode).toHaveBeenCalledWith(1, { foo: 'bar' });
+
+		expect(mockProducerSend).toHaveBeenCalledTimes(1);
 		expect(mockProducerSend).toHaveBeenCalledWith({
 			acks: 0,
 			compression: 0,
@@ -236,13 +277,28 @@ describe('Kafka Node', () => {
 	});
 
 	test('should configure the schema registry from the selected credential', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: JSON.stringify({ foo: 'bar' }),
+			schemaRegistryUrl: '',
+			eventName: 'test-event-name',
+			topic: 'cred-test-topic',
+			jsonParameters: true,
+			useKey: false,
+			headerParametersJson: '{\n  "headerKey": "headerValue"\n}',
+		};
+		const items: INodeExecutionData[] = [{ json: { success: true } }];
+
+		await new KafkaV1(baseDescription).execute.call(
+			createExecuteFunctions(params, items, { schemaRegistryCredential }),
+		);
+
 		expect(SchemaRegistry).toHaveBeenCalledWith({
 			host: 'https://cred-kafka-registry.local',
 			auth: { username: 'registry-user', password: 'registry-password' },
 		});
-		// The legacy URL-parameter path stays unauthenticated
-		expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'https://test-kafka-registry.local' });
-
 		expect(mockProducerSend).toHaveBeenCalledWith(
 			expect.objectContaining({
 				topicMessages: [
@@ -261,10 +317,160 @@ describe('Kafka Node', () => {
 		);
 	});
 
-	test('should resolve the schema id from the configured event name and encode with it', async () => {
-		// Exercised by the credential success path (workflow.credentials.json):
-		// eventName 'test-event-name' resolves to schemaId 1, used to encode the payload.
-		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledWith('test-event-name');
-		expect(mockRegistryEncode).toHaveBeenCalledWith(1, { foo: 'bar' });
+	test('should fail with the misconfiguration message when the credential is missing the password', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: '{"foo":"bar"}',
+			schemaRegistryUrl: '',
+			eventName: 'test-event-name',
+			topic: 'error-test-topic',
+		};
+		const items: INodeExecutionData[] = [{ json: {} }];
+
+		await expect(
+			new KafkaV1(baseDescription).execute.call(
+				createExecuteFunctions(params, items, {
+					schemaRegistryCredential: { ...schemaRegistryCredential, password: '' },
+				}),
+			),
+		).rejects.toThrow('Username and password are required for Schema Registry Basic Auth');
+
+		// Registry misconfiguration surfaces before the producer connects, so no
+		// connected producer is ever leaked.
+		expect(mockProducerConnect).not.toHaveBeenCalled();
+	});
+
+	test('should fail with the generic message when the schema lookup fails', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: '{"foo":"bar"}',
+			schemaRegistryUrl: '',
+			eventName: 'failing-event-name',
+			topic: 'error-test-topic',
+		};
+		const items: INodeExecutionData[] = [{ json: {} }];
+
+		await expect(
+			new KafkaV1(baseDescription).execute.call(
+				createExecuteFunctions(params, items, { schemaRegistryCredential }),
+			),
+		).rejects.toThrow('Verify your Schema Registry configuration');
+
+		expect(mockProducerConnect).not.toHaveBeenCalled();
+	});
+
+	test('should report a malformed message distinctly from a registry config error', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: 'not-json',
+			schemaRegistryUrl: '',
+			eventName: 'test-event-name',
+			topic: 'error-test-topic',
+		};
+		const items: INodeExecutionData[] = [{ json: {} }];
+
+		await expect(
+			new KafkaV1(baseDescription).execute.call(
+				createExecuteFunctions(params, items, { schemaRegistryCredential }),
+			),
+		).rejects.toThrow('Message is not valid JSON');
+
+		// The malformed message fails inside the loop, after the producer connected
+		// but before any message is published.
+		expect(mockProducerConnect).toHaveBeenCalledTimes(1);
+		expect(mockProducerSend).not.toHaveBeenCalled();
+	});
+
+	test('should return the error as item data when the node continues on fail', async () => {
+		const params: IDataObject = {
+			options: {},
+			sendInputData: false,
+			useSchemaRegistry: true,
+			message: '{"foo":"bar"}',
+			schemaRegistryUrl: '',
+			eventName: 'test-event-name',
+			topic: 'error-test-topic',
+		};
+		const items: INodeExecutionData[] = [{ json: {} }];
+
+		const result = await new KafkaV1(baseDescription).execute.call(
+			createExecuteFunctions(params, items, {
+				schemaRegistryCredential: { ...schemaRegistryCredential, password: '' },
+				continueOnFail: true,
+			}),
+		);
+
+		expect(result).toEqual([
+			[
+				expect.objectContaining({
+					json: { error: 'Username and password are required for Schema Registry Basic Auth' },
+				}),
+			],
+		]);
+	});
+});
+
+describe('Kafka (versioned entry point)', () => {
+	let kafka: Kafka;
+
+	beforeEach(() => {
+		kafka = new Kafka();
+	});
+
+	it('should instantiate without errors', () => {
+		expect(kafka).toBeInstanceOf(Kafka);
+	});
+
+	it('should expose version 1 as KafkaV1', () => {
+		expect(kafka.nodeVersions[1]).toBeInstanceOf(KafkaV1);
+	});
+
+	it('should expose version 2 as KafkaV2', () => {
+		expect(kafka.nodeVersions[2]).toBeInstanceOf(KafkaV2);
+	});
+
+	// One credential test per credential type, not per node version. Adding
+	// `methods.credentialTest.kafkaConnectionTest` to v2 wouldn't add a second test — it is
+	// resolved newest-version-first, so it would take over v1's test for everyone. Until it
+	// moves, the test exercises v1's kafkajs path while v2 connects through librdkafka.
+	it('should leave the kafka credential test to v1', () => {
+		const v2 = kafka.nodeVersions[2];
+
+		expect(v2.methods?.credentialTest).toBeUndefined();
+		expect(v2.description.credentials?.find((c) => c.name === 'kafka')?.testedBy).toBeUndefined();
+		expect(kafka.nodeVersions[1].methods?.credentialTest).toHaveProperty('kafkaConnectionTest');
+	});
+
+	it('should resolve v1 by default', () => {
+		expect(kafka.getNodeType()).toBeInstanceOf(KafkaV1);
+	});
+
+	it('should resolve v2 when requested', () => {
+		expect(kafka.getNodeType(2)).toBeInstanceOf(KafkaV2);
+	});
+
+	it('should have defaultVersion set to 1', () => {
+		expect(kafka.description.defaultVersion).toBe(1);
+	});
+
+	it('should have the correct displayName', () => {
+		expect(kafka.description.displayName).toBe('Kafka');
+	});
+
+	it('should have the correct name', () => {
+		expect(kafka.description.name).toBe('kafka');
+	});
+
+	it('should have the correct icon', () => {
+		expect(kafka.description.icon).toEqual({
+			light: 'file:kafka.svg',
+			dark: 'file:kafka.dark.svg',
+		});
 	});
 });

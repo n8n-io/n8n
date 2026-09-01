@@ -1,6 +1,6 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.10.0",
+  "version": "0.21.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "publishConfig": {
     "bin": {
@@ -10,7 +10,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/cli.js http://localhost:5678 --log-level debug --allowed-origins http://localhost:5678",
-    "dev": "pnpm build && (pnpm watch & pnpm start)",
+    "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
@@ -38,7 +38,7 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "@anthropic-ai/sandbox-runtime": "^0.0.42",
+    "@anthropic-ai/sandbox-runtime": "^0.0.66",
     "@inquirer/prompts": "^8.3.2",
     "@jitsi/robotjs": "^0.6.21",
     "@modelcontextprotocol/sdk": "catalog:",
@@ -61,6 +61,8 @@
     "@types/node": "catalog:",
     "@types/yargs-parser": "21.0.0",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

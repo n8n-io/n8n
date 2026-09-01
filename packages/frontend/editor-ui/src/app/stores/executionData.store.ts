@@ -12,6 +12,7 @@ import {
 	WAIT_INDEFINITELY,
 	type ExecutionStatus,
 	type INode,
+	type IPinData,
 	type IRunData,
 	type IRunExecutionData,
 	type ITaskData,
@@ -67,6 +68,15 @@ export function getExecutionDataStoreId(id: ExecutionDataId) {
 }
 
 /**
+ * Reports whether an execution data store currently exists for this id without
+ * instantiating one. Use this to peek before calling `useExecutionDataStore`,
+ * which would otherwise register an empty store as a side effect.
+ */
+export function hasExecutionDataStore(id: ExecutionDataId): boolean {
+	return getActivePinia()?.state.value[getExecutionDataStoreId(id)] !== undefined;
+}
+
+/**
  * Creates an execution data store keyed by execution id.
  *
  * Multiple instances live concurrently (active execution, displayed execution,
@@ -87,6 +97,10 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		);
 
 		const executedNode = computed(() => execution.value?.executedNode);
+
+		const executionPinDataByNodeName = computed<IPinData>(
+			() => execution.value?.data?.resultData?.pinData ?? {},
+		);
 
 		// Per-node-name execution-issues map with atomic per-name updates.
 		// Each entry is a structuralComputed in its own effectScope, so only
@@ -174,10 +188,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		// per-entry projections below — collapses id → node resolution from
 		// O(N) per lookup to O(1).
 		const executionNodeById = computed(() => {
-			const map = new Map<string, INode>();
-			const nodes = execution.value?.workflowData?.nodes;
-			if (nodes) for (const n of nodes) map.set(n.id, n);
-			return map;
+			const snapshotNodes = execution.value?.workflowData?.nodes ?? [];
+			const kvPairs = snapshotNodes.map((n) => [n.id, n] as const);
+			return new Map(kvPairs);
 		});
 
 		function getExecutionNodeById(nodeId: string): INode | undefined {
@@ -198,10 +211,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		const executionWaitingByNodeId = shallowReactive(
 			new Map<string, ComputedRef<string | undefined>>(),
 		);
+		const executionIssuesByNodeId = shallowReactive(new Map<string, ComputedRef<string[]>>());
+		const executionPinDataByNodeId = shallowReactive(
+			new Map<string, ComputedRef<IPinData[string] | undefined>>(),
+		);
 
 		function computeExecutionStatus(nodeId: string): ExecutionStatus {
 			const node = getExecutionNodeById(nodeId);
-			if (!node) return 'new';
+			if (!node) {
+				return 'new';
+			}
+
 			const tasks = executionRunData.value?.[node.name] ?? [];
 			// A canceled top-of-stack tends to mask the prior "real" status — peek
 			// one task back so the UI shows the meaningful state.
@@ -209,14 +229,36 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (tasks.length > 1 && status === 'canceled') {
 				status = tasks.at(-2)?.executionStatus;
 			}
+
 			return status ?? 'new';
 		}
 
 		function computeExecutionRunData(nodeId: string): ITaskData[] | null {
 			const node = getExecutionNodeById(nodeId);
-			if (!node) return null;
+			if (!node) {
+				return null;
+			}
 			const tasks = executionRunData.value?.[node.name];
+
 			return tasks ?? null;
+		}
+
+		function computeNodeExecutionIssuesById(nodeId: string): string[] {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) {
+				return [];
+			}
+
+			return computeNodeExecutionIssues(node.name);
+		}
+
+		function computeExecutionPinData(nodeId: string): IPinData[string] | undefined {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) {
+				return undefined;
+			}
+
+			return executionPinDataByNodeName.value[node.name];
 		}
 
 		function computeExecutionWaiting(nodeId: string): string | undefined {
@@ -256,13 +298,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		}
 
 		function applyAddByIdEntry(nodeId: string) {
-			if (byIdScopes.has(nodeId)) return;
+			if (byIdScopes.has(nodeId)) {
+				return;
+			}
+
 			const scope = effectScope();
 			scope.run(() => {
 				executionStatusByNodeId.set(
 					nodeId,
 					structuralComputed(() => computeExecutionStatus(nodeId)),
 				);
+
 				// Plain `computed` (Object.is) rather than `structuralComputed(..., isEqual)`:
 				// per-task data can be megabytes for nodes with large outputs, and
 				// every push replaces the runData array reference with new content
@@ -272,11 +318,27 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					nodeId,
 					computed(() => computeExecutionRunData(nodeId)),
 				);
+
 				executionWaitingByNodeId.set(
 					nodeId,
 					structuralComputed(() => computeExecutionWaiting(nodeId)),
 				);
+
+				executionIssuesByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeNodeExecutionIssuesById(nodeId), isEqual),
+				);
+
+				// Plain `computed` for the same reason as `executionRunDataByNodeId`
+				// above: this returns a reference out of the payload, so `Object.is`
+				// already short-circuits and `isEqual` would deep-compare pin data
+				// that can reach megabytes.
+				executionPinDataByNodeId.set(
+					nodeId,
+					computed(() => computeExecutionPinData(nodeId)),
+				);
 			});
+
 			byIdScopes.set(nodeId, () => scope.stop());
 		}
 
@@ -286,6 +348,8 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionStatusByNodeId.delete(nodeId);
 			executionRunDataByNodeId.delete(nodeId);
 			executionWaitingByNodeId.delete(nodeId);
+			executionIssuesByNodeId.delete(nodeId);
+			executionPinDataByNodeId.delete(nodeId);
 		}
 
 		function applyReconcileByIdEntries(nodeIds: string[]) {
@@ -703,10 +767,13 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate: readonly(executionResultDataLastUpdate),
 			executionRunData,
 			executedNode,
+			executionPinDataByNodeName,
 			executionIssuesByNodeName,
 			executionStatusByNodeId,
 			executionRunDataByNodeId,
 			executionWaitingByNodeId,
+			executionIssuesByNodeId,
+			executionPinDataByNodeId,
 			executionRunDataOutputMapByNodeId,
 			executionStartedData: readonly(executionStartedData),
 			executionPairedItemMappings: readonly(executionPairedItemMappings),

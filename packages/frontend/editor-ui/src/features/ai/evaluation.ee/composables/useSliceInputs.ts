@@ -1,16 +1,21 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	getParentNodes,
 	mapConnectionsByDestination,
 } from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	injectWorkflowExecutionStateStore,
+	type useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEvaluationsWizardSidepanelStore } from '../wizardSidepanel.store';
 import { stringifyValue } from '../evaluation.utils';
+import { resolveSingleUpstream } from './resolveSingleUpstream';
 
 export type SliceInputs = {
 	fieldNames: string[];
@@ -18,7 +23,9 @@ export type SliceInputs = {
 	hasExecution: boolean;
 };
 
-type ExecutionLike = NonNullable<ReturnType<typeof useWorkflowsStore>['lastSuccessfulExecution']>;
+type ExecutionLike = NonNullable<
+	ReturnType<typeof useWorkflowExecutionStateStore>['lastSuccessfulExecution']
+>;
 
 export type UseSliceInputsOptions = {
 	fallbackExecution?: MaybeRefOrGetter<ExecutionLike | null | undefined>;
@@ -28,7 +35,7 @@ export type UseSliceInputsOptions = {
 // non-evaluation execution. Uses graph-based parent lookup rather than
 // `task.source` — langchain AI nodes have an unreliable source array.
 export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<SliceInputs> {
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const wizardStore = useEvaluationsWizardSidepanelStore();
@@ -36,6 +43,11 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 	return computed<SliceInputs>(() => {
 		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
 		const triggers = allNodes.filter((node) => nodeTypesStore.isTriggerNode(node.type));
+		const evaluationTriggerNames = new Set(
+			allNodes
+				.filter((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE)
+				.map((node) => node.name),
+		);
 		const connections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
 
 		const probeNode = wizardStore.isSliceMode ? wizardStore.startNodeName : wizardStore.aiNodeName;
@@ -43,8 +55,11 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 			withFallback(result, allNodes, connections, probeNode);
 
 		const exec = pickUserExecution([
-			workflowsStore.workflowExecutionData,
-			workflowsStore.lastSuccessfulExecution,
+			// A user-chosen seed execution (from the Tests list) wins so the detail
+			// form prefills from exactly the execution they picked.
+			wizardStore.seedExecution,
+			workflowExecutionStateStore.value.activeExecution,
+			workflowExecutionStateStore.value.lastSuccessfulExecution,
 			toValue(options?.fallbackExecution),
 		]);
 		const runData = exec?.data?.resultData?.runData;
@@ -58,7 +73,7 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 		const isTrigger = triggers.some((n) => n.name === probeNode);
 		const firstItem = isTrigger
 			? readFirstOutputItem(runData, probeNode)
-			: readFirstInputItemViaGraph(runData, connections, probeNode);
+			: readFirstInputItemViaGraph(runData, connections, probeNode, evaluationTriggerNames);
 		if (!firstItem) return fallback({ fieldNames: [], values: {}, hasExecution: true });
 
 		const fieldNames = Object.keys(firstItem);
@@ -128,15 +143,23 @@ function pickUserExecution(
 	return undefined;
 }
 
-function readFirstOutputItem(runData: RunData, nodeName: string) {
+export function readFirstOutputItem(runData: RunData, nodeName: string) {
 	const task = runData[nodeName]?.[0];
 	return task?.data?.main?.[0]?.[0]?.json;
 }
 
-function readFirstInputItemViaGraph(runData: RunData, connections: Connections, nodeName: string) {
+export function readFirstInputItemViaGraph(
+	runData: RunData,
+	connections: Connections,
+	nodeName: string,
+	evaluationTriggerNames: Set<string> = new Set(),
+) {
 	const byDest = mapConnectionsByDestination(connections);
 	const parents = getParentNodes(byDest, nodeName, 'main', 1);
-	const parent = parents[0];
+	// A pre-existing Evaluation Trigger can converge on the same node as the
+	// workflow's real trigger; a normal (non-evaluation) execution never ran it,
+	// so picking it over the real trigger would read no input at all.
+	const parent = resolveSingleUpstream(parents, evaluationTriggerNames) ?? parents[0];
 	if (!parent) return undefined;
 	return readFirstOutputItem(runData, parent);
 }

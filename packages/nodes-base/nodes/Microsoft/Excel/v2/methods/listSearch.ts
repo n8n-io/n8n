@@ -4,14 +4,29 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { microsoftApiRequest } from '../transport';
+import { getExcelCredentialType, microsoftApiRequest } from '../transport';
+
+// listSearch context throughout this file: the transport's trailing `0` is its
+// fallback read (getNodeParameter's 2nd arg here is a fallback, not an item index).
 
 export async function searchWorkbooks(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
+	if (getExcelCredentialType.call(this) === 'microsoftEntraServicePrincipalApi') {
+		// App-only Graph can't search a drive — steer the user to "By ID".
+		throw new NodeOperationError(
+			this.getNode(),
+			'Search is not supported with the Service Principal credential',
+			{
+				description:
+					'App-only Microsoft Graph cannot search a drive. Switch the Workbook field to "By ID" and paste the workbook ID, or use an OAuth2 credential.',
+			},
+		);
+	}
 	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
 	const extensionFilter = fileExtensions.join(' OR ');
 
@@ -27,6 +42,8 @@ export async function searchWorkbooks(
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
+			undefined,
+			0,
 		);
 	} else {
 		response = await microsoftApiRequest.call(
@@ -38,6 +55,9 @@ export async function searchWorkbooks(
 				select: 'id,name,webUrl',
 				$top: 100,
 			},
+			undefined,
+			undefined,
+			0,
 		);
 	}
 
@@ -86,6 +106,9 @@ export async function getWorksheetsList(
 		{
 			select: 'id,name',
 		},
+		undefined,
+		undefined,
+		0,
 	);
 
 	return {
@@ -121,6 +144,10 @@ export async function getWorksheetTables(
 		'GET',
 		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
 		undefined,
+		undefined,
+		undefined,
+		undefined,
+		0,
 	);
 
 	const results: INodeListSearchItems[] = [];
@@ -137,6 +164,9 @@ export async function getWorksheetTables(
 			{
 				select: 'address',
 			},
+			undefined,
+			undefined,
+			0,
 		);
 
 		const [sheetName, sheetRange] = address.split('!' as string);

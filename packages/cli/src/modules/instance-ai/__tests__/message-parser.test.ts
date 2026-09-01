@@ -267,7 +267,9 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			expect(result[1].content).toBe('Hello');
-			expect(result[1].agentTree?.timeline).toEqual([{ type: 'text', content: 'Hello' }]);
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'text', content: 'Hello', responseId: 'msg-a' },
+			]);
 		});
 
 		it('should parse reasoning from native parts', () => {
@@ -293,6 +295,173 @@ describe('parseStoredMessages', () => {
 
 			expect(result[1].reasoning).toBe('Reasoning part');
 			expect(result[1].content).toBe('Answer');
+			// Reasoning keeps its chronological slot in the timeline
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Reasoning part', responseId: 'msg-a' },
+				{ type: 'text', content: 'Answer', responseId: 'msg-a' },
+			]);
+		});
+
+		it('should build agentTree for reasoning-only assistant messages', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Think only',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'reasoning', text: 'Just reasoning' }],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result[1].reasoning).toBe('Just reasoning');
+			expect(result[1].content).toBe('');
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Just reasoning', responseId: 'msg-a' },
+			]);
+		});
+
+		it('should bracket reconstructed tool calls with adjacent message timestamps', () => {
+			// Snapshot-less reloads have no real per-call timestamps; the interval
+			// between stored rows approximates them so thinking blocks can still
+			// derive a "Thought for Xs" duration.
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build it',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-done',
+							toolName: 'search-nodes',
+							input: {},
+							state: 'resolved',
+							output: {},
+						},
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-pending',
+							toolName: 'build-workflow',
+							input: {},
+							state: 'pending',
+						},
+					],
+					createdAt: makeDate(12_000),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			const toolCalls = result[1].agentTree?.toolCalls ?? [];
+			expect(toolCalls[0]).toMatchObject({
+				toolCallId: 'tc-done',
+				startedAt: makeDate().toISOString(),
+				completedAt: makeDate(12_000).toISOString(),
+			});
+			// An unresolved call gets no completedAt — it never finished.
+			expect(toolCalls[1].startedAt).toBe(makeDate().toISOString());
+			expect(toolCalls[1].completedAt).toBeUndefined();
+		});
+
+		it('should group each assistant row under its own synthetic responseId', () => {
+			// One stored assistant row = one LLM response. The synthetic per-row
+			// responseId lets the frontend fold narration (text followed by trace
+			// content in the same response) into thinking blocks after a reload
+			// where no snapshot survived.
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build it',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'Checking the nodes first.' },
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'search-nodes',
+							input: {},
+							state: 'resolved',
+							output: {},
+						},
+					],
+					createdAt: makeDate(1),
+				},
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Done — here is the workflow.' }],
+					createdAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'text', content: 'Checking the nodes first.', responseId: 'msg-a1' },
+				{ type: 'tool-call', toolCallId: 'tc-1', responseId: 'msg-a1' },
+			]);
+			expect(result[2].agentTree?.timeline).toEqual([
+				{ type: 'text', content: 'Done — here is the workflow.', responseId: 'msg-a2' },
+			]);
+		});
+
+		it('should normalize legacy aggregate reasoning into the timeline on reload', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Think',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Answer' }],
+					createdAt: makeDate(1),
+				},
+			];
+			const snapshotTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'Answer',
+				reasoning: 'Legacy aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text', content: 'Answer' }],
+			};
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: snapshotTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			]);
+
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Legacy aggregate reasoning' },
+				{ type: 'text', content: 'Answer' },
+			]);
 		});
 
 		it('should use agentTree snapshot when available', () => {
@@ -348,6 +517,460 @@ describe('parseStoredMessages', () => {
 			expect(result[1].agentTree?.children).toHaveLength(1);
 			// Should use the native runId from the snapshot (not the user message id)
 			expect(result[1].runId).toBe('run_abc123');
+		});
+
+		it('should render the message-derived tree when the paired snapshot is an empty cancelled tree', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'Working on it' },
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'gmail',
+							input: { q: 'invoices' },
+							state: 'resolved',
+							output: { count: 3 },
+						},
+					],
+					createdAt: makeDate(1),
+				},
+			];
+			// Snapshot saved at cancel time (after the message): an empty `cancelled` tree
+			// from a run whose events were lost before the snapshot was built.
+			const cancelledTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'cancelled',
+				cancellationReason: 'user',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: cancelledTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(5),
+					updatedAt: makeDate(5),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			// The empty snapshot is discarded in favour of the message content.
+			expect(assistant?.agentTree?.toolCalls).toHaveLength(1);
+			expect(assistant?.agentTree?.toolCalls[0].toolName).toBe('gmail');
+			expect(assistant?.agentTree?.textContent).toBe('Working on it');
+			// The cancelled status + cause are inherited from the snapshot so the UI can flag it.
+			expect(assistant?.agentTree?.status).toBe('cancelled');
+			expect(assistant?.agentTree?.cancellationReason).toBe('user');
+			// Snapshot grouping metadata is still attached.
+			expect(assistant?.messageGroupId).toBe('mg_x');
+			expect(assistant?.runId).toBe('run_x');
+		});
+
+		it('should keep a task-list-only snapshot instead of discarding it as empty', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'plan it', createdAt: makeDate() },
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: "Here's the plan" }],
+					createdAt: makeDate(1),
+				},
+			];
+			// The snapshot carries only a task checklist — no text/tools/timeline. It must
+			// still count as renderable, otherwise the checklist UI is lost on reload.
+			const taskTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				tasks: { tasks: [{ id: 't1', description: 'Do the thing', status: 'todo' }] },
+			};
+			const snapshots = [
+				{
+					tree: taskTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(2),
+					updatedAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			// The snapshot tree (with its checklist) is used, not a flat fallback that drops it.
+			expect(assistant?.agentTree?.tasks?.tasks).toHaveLength(1);
+		});
+
+		it('should normalize a non-terminal (running) snapshot status to completed', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'do it', createdAt: makeDate() },
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Partial work' }],
+					createdAt: makeDate(1),
+				},
+			];
+			// A mid-run snapshot (e.g. persisted while active) that is otherwise empty. A
+			// reconstructed historical turn has no live stream, so it must not stay "busy".
+			const runningTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: runningTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(2),
+					updatedAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree?.status).toBe('completed');
+		});
+
+		it('should settle a pending tool call when reconstructing a cancelled turn', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'run tools', createdAt: makeDate() },
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'gmail',
+							input: {},
+							state: 'pending',
+						},
+					],
+					createdAt: makeDate(1),
+				},
+			];
+			const cancelledTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'cancelled',
+				cancellationReason: 'user',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: cancelledTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(2),
+					updatedAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree?.status).toBe('cancelled');
+			const toolCall = assistant?.agentTree?.toolCalls.find((t) => t.toolCallId === 'tc-1');
+			// No spinner that never resolves next to "You stopped this run".
+			expect(toolCall?.isLoading).toBe(false);
+		});
+
+		it('should aggregate a multi-row cancelled turn into one bubble, not just the last row', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'gmail',
+							input: {},
+							state: 'resolved',
+							output: {},
+						},
+					],
+					createdAt: makeDate(1),
+				},
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-2',
+							toolName: 'sheets',
+							input: {},
+							state: 'resolved',
+							output: {},
+						},
+					],
+					createdAt: makeDate(2),
+				},
+			];
+			const cancelledTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'cancelled',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: cancelledTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(5),
+					updatedAt: makeDate(5),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistants = result.filter((m) => m.role === 'assistant');
+			expect(assistants).toHaveLength(1);
+			// Both iterations' tool calls survive the dedup collapse, in chronological order.
+			expect(assistants[0].agentTree?.toolCalls.map((t) => t.toolName)).toEqual([
+				'gmail',
+				'sheets',
+			]);
+		});
+
+		it('should reconstruct a completed run whose snapshot was lost (real-world: bus eviction)', () => {
+			// Reproduces thread 058e9ce5: a long HITL build run whose snapshot was rebuilt
+			// from an already-evicted event bus, persisting an empty `agent-001` tree even
+			// though the run completed. The orchestrator's work survives in the message rows,
+			// so the parser must reconstruct it. Real timestamps — the snapshot lands between
+			// rows a3 and a4, so it pairs with a3 (pairing is timestamp-sensitive).
+			const at = (iso: string): Date => new Date(iso);
+			const tc = (toolCallId: string, toolName: string) => ({
+				type: 'tool-call' as const,
+				toolCallId,
+				toolName,
+				input: {},
+				state: 'resolved' as const,
+				output: {},
+			});
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'u',
+					role: 'user',
+					content: 'get my linear issues via http request',
+					createdAt: at('2026-06-30T10:12:11.929Z'),
+				},
+				{
+					id: 'a1',
+					role: 'assistant',
+					content: [tc('t1', 'load_skill'), tc('t2', 'credentials')],
+					createdAt: at('2026-06-30T10:12:16.626Z'),
+				},
+				{
+					id: 'a2',
+					role: 'assistant',
+					content: [tc('t3', 'nodes'), tc('t4', 'credentials')],
+					createdAt: at('2026-06-30T10:12:23.292Z'),
+				},
+				{
+					id: 'a3',
+					role: 'assistant',
+					content: [tc('t5', 'research')],
+					createdAt: at('2026-06-30T10:13:07.951Z'),
+				},
+				{
+					id: 'a4',
+					role: 'assistant',
+					content: [tc('t6', 'workspace_write_file')],
+					createdAt: at('2026-06-30T10:13:30.262Z'),
+				},
+				{
+					id: 'a5',
+					role: 'assistant',
+					content: [tc('t7', 'build-workflow')],
+					createdAt: at('2026-06-30T10:14:05.669Z'),
+				},
+				{
+					id: 'a6',
+					role: 'assistant',
+					content: [tc('t8', 'verify-built-workflow')],
+					createdAt: at('2026-06-30T10:14:21.413Z'),
+				},
+				{
+					id: 'a7',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'The workflow is ready to test.' }],
+					createdAt: at('2026-06-30T10:52:59.237Z'),
+				},
+			];
+			const emptyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: emptyTree,
+					runId: 'run_YNR',
+					messageGroupId: 'mg_N-C2',
+					runIds: ['run_YNR'],
+					createdAt: at('2026-06-30T10:13:08.274Z'),
+					updatedAt: at('2026-06-30T10:13:08.274Z'),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			// One bubble with the full orchestrator activity, not an empty `cancelled`-looking card.
+			const assistants = result.filter((m) => m.role === 'assistant');
+			expect(assistants).toHaveLength(1);
+			expect(assistants[0].agentTree?.toolCalls.map((t) => t.toolName)).toEqual([
+				'load_skill',
+				'credentials',
+				'nodes',
+				'credentials',
+				'research',
+				'workspace_write_file',
+				'build-workflow',
+				'verify-built-workflow',
+			]);
+		});
+
+		it('should reconstruct tool calls when an empty snapshot is consumed as a leading orphan', () => {
+			// Real-world (thread 36a79497 / fal.ai build): a completed run whose snapshot was
+			// rebuilt from an already-evicted event bus, persisting an empty `agent-001` tree
+			// tagged with the turn's messageGroupId. Its createdAt sits at run start — before
+			// every assistant row — so it is consumed as a chronological *orphan* rather than
+			// paired. The empty orphan must not clobber the message-derived flat tree when the
+			// dedup pass collapses the turn.
+			const tc = (toolCallId: string, toolName: string) => ({
+				type: 'tool-call' as const,
+				toolCallId,
+				toolName,
+				input: {},
+				state: 'resolved' as const,
+				output: {},
+			});
+			const messages: StoredAgentMessage[] = [
+				{ id: 'u', role: 'user', content: 'generate content with fal.ai', createdAt: makeDate(0) },
+				{
+					id: 'a1',
+					role: 'assistant',
+					content: [tc('t1', 'workspace_write_file')],
+					createdAt: makeDate(20),
+				},
+				{ id: 'a2', role: 'assistant', content: [tc('t2', 'workflows')], createdAt: makeDate(30) },
+				{
+					id: 'a3',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'The workflow is built and verified.' }],
+					createdAt: makeDate(40),
+				},
+			];
+			const emptyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: emptyTree,
+					runId: 'run_h4',
+					messageGroupId: 'mg_1',
+					runIds: ['run_h4'],
+					// Before every assistant row → consumed as a leading orphan, not paired.
+					createdAt: makeDate(5),
+					updatedAt: makeDate(5),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistants = result.filter((m) => m.role === 'assistant');
+			expect(assistants).toHaveLength(1);
+			// The empty orphan snapshot must not overwrite the reconstructed activity.
+			expect(assistants[0].agentTree?.toolCalls.map((t) => t.toolName)).toEqual([
+				'workspace_write_file',
+				'workflows',
+			]);
+			expect(assistants[0].agentTree?.textContent).toBe('The workflow is built and verified.');
+		});
+
+		it('should not surface an empty paired snapshot tree on a content-less assistant row', () => {
+			// Same invariant as the orphan guard, on the *pairing* path: a non-renderable
+			// snapshot must never be authoritative. Here the empty snapshot pairs with an
+			// assistant row that also has no text/tools, so there is no flat tree to fall
+			// back to either — the row must end up with no tree, not the empty `agent-001`
+			// snapshot tree leaking through.
+			const messages: StoredAgentMessage[] = [
+				{ id: 'u', role: 'user', content: 'do nothing', createdAt: makeDate(0) },
+				{ id: 'a', role: 'assistant', content: [], createdAt: makeDate(1) },
+			];
+			const emptyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: emptyTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			]);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree).toBeUndefined();
+			// Grouping metadata from the snapshot is still attached.
+			expect(assistant?.messageGroupId).toBe('mg_x');
 		});
 
 		it('should hydrate orphan snapshots without a matching assistant message', () => {
@@ -621,7 +1244,7 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			const toolCalls = result[1].agentTree?.toolCalls ?? [];
-			expect(toolCalls[0].renderHint).toBe('delegate');
+			expect(toolCalls[0].renderHint).toBe('default');
 			expect(toolCalls[1].renderHint).toBe('builder');
 			expect(toolCalls[2].renderHint).toBe('planner');
 		});

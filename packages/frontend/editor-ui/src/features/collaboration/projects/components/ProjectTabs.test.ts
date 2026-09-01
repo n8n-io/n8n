@@ -34,23 +34,34 @@ describe('ProjectTabs', () => {
 		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue(null);
 	});
 
-	it('should render home tabs', async () => {
+	it('should render home tabs, keeping variables while the project is still loading', async () => {
 		const { getByText, queryByText } = renderComponent();
 
 		expect(getByText('Workflows')).toBeInTheDocument();
 		expect(getByText('Credentials')).toBeInTheDocument();
 		expect(getByText('Executions')).toBeInTheDocument();
 		expect(queryByText('Project settings')).not.toBeInTheDocument();
-		expect(queryByText('Variables')).not.toBeInTheDocument();
+		expect(getByText('Variables')).toBeInTheDocument();
 	});
 
 	it('should render project tab Settings', () => {
-		const { getByText, queryByText } = renderComponent({ props: { showSettings: true } });
+		const { getByText } = renderComponent({ props: { showSettings: true } });
 
 		expect(getByText('Workflows')).toBeInTheDocument();
 		expect(getByText('Credentials')).toBeInTheDocument();
 		expect(getByText('Executions')).toBeInTheDocument();
 		expect(getByText('Project settings')).toBeInTheDocument();
+		expect(getByText('Variables')).toBeInTheDocument();
+	});
+
+	it('should not render variables on a public project', () => {
+		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue({
+			id: '1',
+			name: 'Public',
+			type: 'public',
+		} as Project);
+		const { queryByText } = renderComponent();
+
 		expect(queryByText('Variables')).not.toBeInTheDocument();
 	});
 

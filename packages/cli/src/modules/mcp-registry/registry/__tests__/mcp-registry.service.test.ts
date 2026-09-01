@@ -1,11 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { resolveMcpRegistryConnection } from '../../mcp-registry-connection';
+import { McpRegistryNodeLoader } from '../../mcp-registry-node-loader';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../../node-description-transform';
 import type { McpRegistryApiClient, McpRegistryServerMetadata } from '../mcp-registry-api.client';
 import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
 import type { McpRegistryServerRepository } from '../mcp-registry-server.repository';
@@ -26,7 +29,7 @@ type CreateServiceOptions = {
 };
 
 function createService(options: CreateServiceOptions = {}) {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const repository = mock<McpRegistryServerRepository>();
 	const apiClient = mock<McpRegistryApiClient>();
 	const instanceSettings = mock<InstanceSettings>({
@@ -34,8 +37,8 @@ function createService(options: CreateServiceOptions = {}) {
 		instanceType: options.instanceType ?? 'main',
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ loaders: {} });
-	const push = mock<Push>({ broadcast: jest.fn() });
-	const publisher = mock<Publisher>({ publishCommand: jest.fn().mockResolvedValue(undefined) });
+	const push = mock<Push>({ broadcast: vi.fn() });
+	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 
 	if (options.storedServers === null) {
 		repository.find.mockResolvedValue([]);
@@ -45,6 +48,10 @@ function createService(options: CreateServiceOptions = {}) {
 		const entities = servers.map(toMockEntity);
 		repository.find.mockResolvedValue(entities);
 		repository.findBy.mockImplementation(async (where) => {
+			if (Array.isArray(where)) {
+				const slugs = new Set(where.map((condition) => condition.slug));
+				return entities.filter((e) => slugs.has(e.slug));
+			}
 			if (where && 'status' in where) {
 				return entities.filter((e) => e.status === where.status);
 			}
@@ -79,13 +86,14 @@ function createService(options: CreateServiceOptions = {}) {
 		apiClient,
 		push,
 		publisher,
+		loadNodesAndCredentials,
 	};
 }
 
 describe('McpRegistryService', () => {
 	afterEach(() => {
-		jest.useRealTimers();
-		jest.restoreAllMocks();
+		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	describe('getAll / get', () => {
@@ -149,12 +157,39 @@ describe('McpRegistryService', () => {
 			expect(repository.findBy).toHaveBeenCalledWith([{ slug: 'notion' }, { slug: 'linear' }]);
 			expect(servers).toEqual([notionMockServer, linearMockServer]);
 		});
+
+		it('maps resolveBySlugs into the same shape as search', async () => {
+			const { service } = createService();
+
+			const resolved = await service.resolveBySlugs(['notion']);
+			const searched = await service.search(['notion']);
+
+			expect(resolved).toEqual(searched);
+		});
+
+		it('omits unknown slugs from resolveBySlugs', async () => {
+			const { service } = createService({ storedServers: [notionMockServer, linearMockServer] });
+
+			const results = await service.resolveBySlugs(['notion', 'made-up']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
+		});
+
+		it('omits deprecated servers from resolveBySlugs, as search does', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, { ...linearMockServer, status: 'deprecated' }],
+			});
+
+			const results = await service.resolveBySlugs(['notion', 'linear']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
+		});
 	});
 
 	describe('refresh flow', () => {
 		it('init does not start periodic refresh on followers', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			vi.useFakeTimers();
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 			const { service, apiClient } = createService({ isLeader: false });
 
 			await service.init();
@@ -164,8 +199,8 @@ describe('McpRegistryService', () => {
 		});
 
 		it('init starts periodic refresh and kicks off startup refresh on leaders', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			vi.useFakeTimers();
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 			const { service, apiClient } = createService({ isLeader: true });
 
 			await service.init();
@@ -178,8 +213,8 @@ describe('McpRegistryService', () => {
 		});
 
 		it('onLeaderTakeover skips write + notifications when metadata is unchanged', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			vi.useFakeTimers();
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 			const metadata: McpRegistryServerMetadata[] = [
 				{
 					slug: notionMockServer.slug,
@@ -287,6 +322,25 @@ describe('McpRegistryService', () => {
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
 
 			service.shutdown();
+		});
+	});
+
+	describe('getConnection', () => {
+		it('returns the connection from the registry node loader', async () => {
+			const { service, loadNodesAndCredentials } = createService();
+			const connection = resolveMcpRegistryConnection(notionMockServer);
+			const loader = Object.create(McpRegistryNodeLoader.prototype) as McpRegistryNodeLoader;
+			loader.getConnection = vi.fn().mockReturnValue(connection);
+			loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
+
+			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toEqual(connection);
+			expect(loader.getConnection).toHaveBeenCalledWith('@n8n/mcp-registry.notion');
+		});
+
+		it('returns undefined when the registry loader is not registered', async () => {
+			const { service } = createService();
+
+			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toBeUndefined();
 		});
 	});
 

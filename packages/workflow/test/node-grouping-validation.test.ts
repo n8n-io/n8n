@@ -1,12 +1,19 @@
 import {
+	dropInvalidWorkflowGroups,
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	makeGetNodeTypeForGrouping,
+	normalizeGroupDescription,
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
+	validateWorkflowGroups,
 } from '../src/node-grouping-validation';
 import {
 	NodeConnectionTypes,
+	STICKY_NODE_TYPE,
 	type IConnections,
 	type INode,
 	type INodeTypeDescription,
+	type INodeTypes,
 } from '../src';
 
 function makeNode(overrides: Partial<INode> = {}): INode {
@@ -35,6 +42,23 @@ function makeNodeType(overrides: Partial<INodeTypeDescription> = {}): INodeTypeD
 		...overrides,
 	};
 }
+
+function makeStickyNode(overrides: Partial<INode> = {}): INode {
+	return makeNode({
+		id: overrides.id ?? 'sticky',
+		name: overrides.name ?? 'Sticky',
+		type: STICKY_NODE_TYPE,
+		parameters: { content: '', width: 240, height: 160 },
+		...overrides,
+	});
+}
+
+const stickyNodeType = makeNodeType({
+	name: STICKY_NODE_TYPE,
+	group: ['input'],
+	inputs: [],
+	outputs: [],
+});
 
 function makeLinearGraph() {
 	const nodes = [
@@ -381,5 +405,675 @@ describe('node grouping validation', () => {
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
+	});
+
+	describe('sticky notes', () => {
+		const stickyNodeTypes: Record<string, INodeTypeDescription> = {
+			'n8n-nodes-base.set': makeNodeType(),
+			[STICKY_NODE_TYPE]: stickyNodeType,
+		};
+
+		it('allows grouping a sticky together with a connected selection', () => {
+			const graph = makeLinearGraph();
+			const sticky = makeStickyNode();
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], sticky],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: stickyNodeTypes,
+			});
+
+			expect(result.valid).toBe(true);
+			if (result.valid) {
+				expect(result.subGraph.map((node) => node.name)).toEqual(['A', 'B', 'Sticky']);
+			}
+		});
+
+		it('allows grouping a sticky with a single connectable node', () => {
+			const graph = makeLinearGraph();
+			const stickies = [makeStickyNode(), makeStickyNode({ id: 'sticky2', name: 'Sticky2' })];
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[1], ...stickies],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: stickyNodeTypes,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('still rejects disconnected connectable nodes when a sticky is present', () => {
+			const graph = makeLinearGraph();
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[2], makeStickyNode()],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: stickyNodeTypes,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+
+		it('treats sticky-only selections as valid group data', () => {
+			// Sticky-only groups can come to exist when a group's last connectable
+			// node is deleted, so they must validate (creation surfaces enforce at
+			// least one connectable node separately).
+			for (const nodes of [
+				[makeStickyNode()],
+				[makeStickyNode(), makeStickyNode({ id: 'sticky2', name: 'Sticky2' })],
+			]) {
+				const result = validateGrouping({
+					nodes,
+					connectionsBySourceNode: {},
+					nodeTypes: stickyNodeTypes,
+				});
+
+				expect(result.valid).toBe(true);
+				if (result.valid) {
+					expect(result.subGraph).toEqual(nodes);
+					expect(result.subGraphData).toEqual({ start: undefined, end: undefined });
+				}
+			}
+		});
+
+		it('returns node-already-grouped when the sticky belongs to another group', () => {
+			const graph = makeLinearGraph();
+			const sticky = makeStickyNode();
+
+			const result = validateNodeSelectionForGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], sticky],
+				connectionsBySourceNode: graph.connections,
+				getNodeType: (node) => stickyNodeTypes[node.type],
+				existingNodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['sticky'] }],
+			});
+
+			expect(result).toEqual({
+				valid: false,
+				reason: 'node-already-grouped',
+				nodeIds: ['sticky'],
+			});
+		});
+
+		it('returns trigger-selected when a trigger accompanies the sticky', () => {
+			const graph = makeLinearGraph();
+			graph.nodes[0].type = 'n8n-nodes-base.manualTrigger';
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], makeStickyNode()],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: {
+					...stickyNodeTypes,
+					'n8n-nodes-base.manualTrigger': makeNodeType({
+						name: 'n8n-nodes-base.manualTrigger',
+						group: ['trigger'],
+					}),
+				},
+			});
+
+			expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
+		});
+
+		it('still rejects non-main boundary connections when a sticky is present', () => {
+			const graph = makeLinearGraph();
+			const model = makeNode({ id: 'model', name: 'Model' });
+			const connectionsBySourceNode: IConnections = {
+				...graph.connections,
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[
+							{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+							{ node: 'C', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						],
+					],
+				},
+			};
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], model, makeStickyNode()],
+				connectionsBySourceNode,
+				nodeTypes: stickyNodeTypes,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('non-main-boundary');
+			}
+		});
+
+		it('keeps rejecting stickies in extraction selections', () => {
+			const graph = makeLinearGraph();
+
+			const result = validateNodeSelectionForExtraction({
+				nodes: [graph.nodes[0], graph.nodes[1], makeStickyNode()],
+				connectionsBySourceNode: graph.connections,
+				getNodeType: (node) => stickyNodeTypes[node.type],
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+	});
+});
+
+describe('normalizeGroupDescription', () => {
+	test('keeps a description within the cap unchanged', () => {
+		expect(normalizeGroupDescription('short')).toBe('short');
+	});
+
+	test('caps an over-long description to the max length', () => {
+		const result = normalizeGroupDescription('x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50));
+		expect(result).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+	});
+
+	test('treats an empty string as no description', () => {
+		expect(normalizeGroupDescription('')).toBeUndefined();
+	});
+
+	test.each([
+		['undefined', undefined],
+		['a number', 42],
+		['an object', { a: 1 }],
+		['an array', [1, 2, 3]],
+		['null', null],
+	])('drops a non-string value (%s)', (_label, value) => {
+		expect(normalizeGroupDescription(value)).toBeUndefined();
+	});
+});
+
+describe('validateWorkflowGroups', () => {
+	const nodeTypesByName: Record<string, INodeTypeDescription> = {
+		'n8n-nodes-base.set': makeNodeType(),
+		'n8n-nodes-base.manualTrigger': makeNodeType({
+			name: 'n8n-nodes-base.manualTrigger',
+			group: ['trigger'],
+		}),
+	};
+	const getNodeType = (node: INode) => nodeTypesByName[node.type] ?? null;
+
+	const expectViolations = (
+		result: ReturnType<typeof validateWorkflowGroups>,
+		violations: Array<
+			Partial<{ groupId: string; groupName: string; code: string; message: string }>
+		>,
+	) => {
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.violations).toEqual(violations.map((v) => expect.objectContaining(v)));
+		}
+	};
+
+	it('returns valid when nodeGroups is missing or empty', () => {
+		const graph = makeLinearGraph();
+
+		expect(
+			validateWorkflowGroups({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				getNodeType,
+			}),
+		).toEqual({ valid: true });
+
+		expect(
+			validateWorkflowGroups({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				nodeGroups: [],
+				getNodeType,
+			}),
+		).toEqual({ valid: true });
+	});
+
+	it('returns valid for a well-formed group', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+			getNodeType,
+		});
+
+		expect(result).toEqual({ valid: true });
+	});
+
+	it('reports a duplicate group ID', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [
+				{ id: 'g1', name: 'First', nodeIds: ['a'] },
+				{ id: 'g1', name: 'Second', nodeIds: ['b'] },
+			],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{
+				groupId: 'g1',
+				groupName: 'Second',
+				code: 'duplicate-group-id',
+				message: 'Duplicate node group ID "g1".',
+			},
+		]);
+	});
+
+	it('reports a duplicate group name', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [
+				{ id: 'g1', name: 'Group', nodeIds: ['a'] },
+				{ id: 'g2', name: 'Group', nodeIds: ['b'] },
+			],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{
+				groupId: 'g2',
+				code: 'duplicate-group-name',
+				message: 'Duplicate node group name "Group".',
+			},
+		]);
+	});
+
+	it('reports a memberless group', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [] }],
+			getNodeType,
+		});
+
+		expectViolations(result, [{ code: 'empty-group', message: 'Group "Group" has no members.' }]);
+	});
+
+	it('reports a group member that does not exist in the workflow', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'missing'] }],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{
+				code: 'unknown-node-id',
+				message: 'Group "Group" references node ID "missing" that does not exist in the workflow.',
+			},
+		]);
+	});
+
+	it('reports a node that belongs to multiple groups', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [
+				{ id: 'g1', name: 'First', nodeIds: ['a'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['a'] },
+			],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{
+				groupId: 'g2',
+				code: 'node-in-multiple-groups',
+				message: 'Node "A" belongs to multiple groups: "First" and "Second".',
+			},
+			// The clean first group still fails its graph rules against the second.
+			{
+				groupId: 'g1',
+				code: 'node-already-grouped',
+				message: 'Node group "First" contains nodes that already belong to another group: A.',
+			},
+		]);
+	});
+
+	it('falls back to the node id in messages when the node has no name', () => {
+		const unnamed = makeNode({ id: 'node-id-1', name: '' });
+
+		const result = validateWorkflowGroups({
+			nodes: [unnamed],
+			connectionsBySourceNode: {},
+			nodeGroups: [
+				{ id: 'g1', name: 'First', nodeIds: ['node-id-1'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['node-id-1'] },
+			],
+			getNodeType: null,
+		});
+
+		expectViolations(result, [
+			{
+				code: 'node-in-multiple-groups',
+				message: 'Node "node-id-1" belongs to multiple groups: "First" and "Second".',
+			},
+		]);
+	});
+
+	it('reports a group containing a trigger node', () => {
+		const graph = makeLinearGraph();
+		const trigger = makeNode({
+			id: 'trigger',
+			name: 'Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
+		const connections: IConnections = {
+			Trigger: { main: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]] },
+			...graph.connections,
+		};
+
+		const result = validateWorkflowGroups({
+			nodes: [...graph.nodes, trigger],
+			connectionsBySourceNode: connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{
+				code: 'trigger-selected',
+				message: 'Node group "Group" cannot contain trigger nodes: Trigger.',
+			},
+		]);
+	});
+
+	it('reports a group crossing a non-main connection boundary', () => {
+		const graph = makeLinearGraph();
+		const model = makeNode({ id: 'model', name: 'Model' });
+		const connections: IConnections = {
+			...graph.connections,
+			Model: {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
+		};
+
+		const result = validateWorkflowGroups({
+			nodes: [...graph.nodes, model],
+			connectionsBySourceNode: connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{
+				code: 'non-main-boundary',
+				message:
+					'Node group "Group" cannot cross the "ai_languageModel" connection between "Model" and "B".',
+			},
+		]);
+	});
+
+	it('reports a disconnected selection as an invalid subgraph', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'c'] }],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{
+				code: 'invalid-subgraph',
+				message:
+					'Node group "Group" must form a single connected subgraph with a single entry and exit.',
+			},
+		]);
+	});
+
+	it('identifies the group by name only, keeping the id on the structured violation', () => {
+		// The id is deliberately absent from the message: a group that fails these
+		// rules may never have been persisted. Consumers use `groupId` instead.
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [{ id: 'group-uuid-1', name: 'Group', nodeIds: ['a', 'c'] }],
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.violations[0].groupId).toBe('group-uuid-1');
+			expect(result.violations[0].message).not.toContain('group-uuid-1');
+		}
+	});
+
+	it('skips graph rules for a group that already has a basic violation', () => {
+		const graph = makeLinearGraph();
+
+		// Without the skip, {a, c} would additionally report invalid-subgraph.
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'c', 'missing'] }],
+			getNodeType,
+		});
+
+		expectViolations(result, [{ code: 'unknown-node-id' }]);
+	});
+
+	it('runs basic checks only when getNodeType is null', () => {
+		const graph = makeLinearGraph();
+		const trigger = makeNode({
+			id: 'trigger',
+			name: 'Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
+
+		// A trigger-containing group passes basic-only validation…
+		expect(
+			validateWorkflowGroups({
+				nodes: [...graph.nodes, trigger],
+				connectionsBySourceNode: graph.connections,
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }],
+				getNodeType: null,
+			}),
+		).toEqual({ valid: true });
+
+		// …but basic violations are still reported.
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [] }],
+			getNodeType: null,
+		});
+		expectViolations(result, [{ code: 'empty-group' }]);
+	});
+
+	it('collects all violations, basic checks first', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [
+				{ id: 'g1', name: 'Broken', nodeIds: [] },
+				{ id: 'g2', name: 'Disconnected', nodeIds: ['a', 'c'] },
+			],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{ groupId: 'g1', code: 'empty-group' },
+			{ groupId: 'g2', code: 'invalid-subgraph' },
+		]);
+	});
+});
+
+describe('makeGetNodeTypeForGrouping', () => {
+	it('returns the description for a known type and null for an unknown one', () => {
+		const description = makeNodeType({ name: 'known.node' });
+		const nodeTypes = {
+			getByNameAndVersion(nodeType: string) {
+				if (nodeType === 'known.node') return { description };
+				throw new Error('Unknown node type');
+			},
+		} as INodeTypes;
+
+		const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
+
+		expect(getNodeType(makeNode({ type: 'known.node' }))).toBe(description);
+		expect(getNodeType(makeNode({ type: 'unknown.node' }))).toBeNull();
+	});
+});
+
+describe('dropInvalidWorkflowGroups', () => {
+	it('leaves a valid workflow untouched and reports nothing', () => {
+		const graph = makeLinearGraph();
+		const workflow = {
+			nodes: graph.nodes,
+			connections: graph.connections,
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+		};
+
+		expect(dropInvalidWorkflowGroups(workflow, null)).toEqual([]);
+		expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]);
+	});
+
+	it('drops every violating group and keeps the valid ones', () => {
+		const graph = makeLinearGraph();
+		const workflow = {
+			nodes: graph.nodes,
+			connections: graph.connections,
+			nodeGroups: [
+				{ id: 'g1', name: 'Valid', nodeIds: ['a', 'b'] },
+				{ id: 'g2', name: 'Unknown member', nodeIds: ['missing'] },
+			],
+		};
+
+		const violations = dropInvalidWorkflowGroups(workflow, null);
+
+		expect(violations).toHaveLength(1);
+		expect(violations[0]).toMatchObject({ groupId: 'g2', code: 'unknown-node-id' });
+		expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Valid', nodeIds: ['a', 'b'] }]);
+	});
+
+	it('returns every violation for dropped groups while dropping each group once', () => {
+		const graph = makeLinearGraph();
+		const workflow = {
+			nodes: graph.nodes,
+			connections: graph.connections,
+			nodeGroups: [
+				{ id: 'g1', name: 'Duplicate', nodeIds: ['a'] },
+				{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+			],
+		};
+
+		const violations = dropInvalidWorkflowGroups(workflow, null);
+
+		expect(violations).toEqual([
+			expect.objectContaining({
+				groupId: 'g2',
+				groupName: 'Duplicate',
+				code: 'duplicate-group-name',
+			}),
+			expect.objectContaining({
+				groupId: 'g2',
+				groupName: 'Duplicate',
+				code: 'empty-group',
+			}),
+		]);
+		expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Duplicate', nodeIds: ['a'] }]);
+	});
+
+	it('drops only the reported group when duplicate IDs make groupId ambiguous', () => {
+		const graph = makeLinearGraph();
+		const workflow = {
+			nodes: graph.nodes,
+			connections: graph.connections,
+			nodeGroups: [
+				{ id: 'dup', name: 'First', nodeIds: ['a'] },
+				{ id: 'dup', name: 'Second', nodeIds: ['b'] },
+			],
+		};
+
+		const violations = dropInvalidWorkflowGroups(workflow, null);
+
+		expect(violations).toEqual([
+			expect.objectContaining({
+				groupId: 'dup',
+				groupName: 'Second',
+				code: 'duplicate-group-id',
+			}),
+		]);
+		expect(workflow.nodeGroups).toEqual([{ id: 'dup', name: 'First', nodeIds: ['a'] }]);
+	});
+
+	describe('with a shouldDrop predicate', () => {
+		// Two groups sharing A: the second is flagged for the overlap, and the
+		// first for holding a node that now belongs elsewhere. A caller that can
+		// only blame one of them must be able to drop just that one.
+		const buildOverlapping = () => {
+			const graph = makeLinearGraph();
+			return {
+				nodes: graph.nodes,
+				connections: graph.connections,
+				nodeGroups: [
+					{ id: 'g1', name: 'First', nodeIds: ['a', 'b'] },
+					{ id: 'g2', name: 'Second', nodeIds: ['a'] },
+				],
+			};
+		};
+
+		it('drops only the matching groups and reports only those', () => {
+			const workflow = buildOverlapping();
+
+			const violations = dropInvalidWorkflowGroups(
+				workflow,
+				() => makeNodeType(),
+				(violation) => violation.groupId === 'g2',
+			);
+
+			expect(violations).toHaveLength(1);
+			expect(violations[0].groupId).toBe('g2');
+			expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'First', nodeIds: ['a', 'b'] }]);
+		});
+
+		it('clears the collateral violation once the culprit is gone', () => {
+			const workflow = buildOverlapping();
+			dropInvalidWorkflowGroups(
+				workflow,
+				() => makeNodeType(),
+				(violation) => violation.groupId === 'g2',
+			);
+
+			// Second pass: "First" only ever failed because "Second" overlapped it.
+			expect(dropInvalidWorkflowGroups(workflow, () => makeNodeType())).toEqual([]);
+			expect(workflow.nodeGroups).toHaveLength(1);
+		});
+
+		it('keeps the workflow untouched when nothing matches', () => {
+			const workflow = buildOverlapping();
+
+			expect(
+				dropInvalidWorkflowGroups(
+					workflow,
+					() => makeNodeType(),
+					() => false,
+				),
+			).toEqual([]);
+			expect(workflow.nodeGroups).toHaveLength(2);
+		});
 	});
 });

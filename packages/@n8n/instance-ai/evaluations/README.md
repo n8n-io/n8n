@@ -1,13 +1,19 @@
 # Workflow evaluation framework
 
+> Module layout, extension points and external contracts: [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
-Four harnesses live here:
+Five harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
+- **`eval:agents`** — intent-resolution cases (plain build requests graded on enacted routing behavior) from the LangTracer `agents` suite (author new ones in `data/agents/`)
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
+- **`eval:computer-use`** — grades the computer-use agent (file / OAuth / doc-reading tasks) against fixtures; see [`computer-use/README.md`](computer-use/README.md)
+
+> **Writing a test case?** This README is the reference and quick-start. The step-by-step *how* — the four case archetypes (build / behaviour / credential / seeded), right-sizing assertions, director-note scripts for multi-turn cases, seeding vs synthetic, and running/lanes/baselines — lives in the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md). To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
 Sections:
 
@@ -132,33 +138,65 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--filter` | — | Filter test cases by filename substring. Comma-separated values mean OR (e.g. `contact-form,deduplication`) |
 | `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
 | `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
-| `--keep-workflows` | `false` | Don't delete built workflows after the run. Pair with the HTML report's "view in n8n" links to inspect each scenario's canvas execution |
+| `--keep-workflows` | `false` | Don't delete any build artifacts after the run — workflows, data tables, and threads (with their sandboxes) all survive. Pair with the HTML report's "view in n8n" links to inspect each scenario's canvas execution. Sandboxes have no auto-cleanup, so use with `--filter` on a few cases rather than full baselines |
 | `--delete-prebuilt-workflows` | `false` | With `--prebuilt-workflows`, delete successfully used manifest workflows after the eval run. Mutually exclusive with `--keep-workflows` |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
-| `--timeout-ms` | `900000` | Per-test-case timeout |
+| `--timeout-ms` | `900000` | Per-test-case timeout (the MCP CI workflow passes `1500000` — its multi-agent cases with large mocked payloads legitimately run past 15 min) |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
-| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
+| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the loaded test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
+| `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
 | `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
+| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/` and `data/agents/` — preferred for local development (authoring/calibrating a case); `langtracer` pulls a suite from LangTracer's REST API — bigger runs, already-pushed cases, and CI. See [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
+| `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
+| `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; requires `LANGSMITH_API_KEY`; mutually exclusive with `--prebuilt-workflows` |
+| `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
+| `ANTHROPIC_MODEL` (env) | `claude-opus-4-8` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model. Not a flag: it rides `claude`'s native env var, and the CLI pins the default when unset so builds never float with claude-code's bundled default |
+| `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills |
+| `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
+| `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
+| `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
 
-**pass@k / pass^k**: with `--iterations N`, each scenario runs N times. `pass@k` is the fraction of scenarios that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
+**pass@k / pass^k**: with `--iterations N`, each unit — an execution scenario or an evaluated process/outcome expectation — is measured N times. `pass@k` is the fraction of units that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
 
 ### Test-case datasets (logical groupings)
 
-Each test case declares a `datasets` array in its JSON (default `["full"]` if omitted). The value identifies one or more logical groupings the case belongs to. Two named groupings exist today:
+Each test case declares a `datasets` array (default `["full"]` if omitted). The value identifies one or more logical groupings the case belongs to. Named groupings include:
 
 | Value | What it means |
 |------|----------------|
 | `full` | Default — every case runs in this grouping. Use for nightly / full-suite runs. |
-| `pr` | Curated thin set for PR-time runs. ~6 cases, chosen for capability diversity and high baseline reliability. |
+| `pr` | Curated thin set for PR-time runs, chosen for capability diversity and high baseline reliability. |
+| `agents` | Intent-resolution cases graded on enacted routing behavior, loaded from `data/agents/`. |
 
-A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
+A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. Agent intent cases declare `"datasets": ["agents"]` and can be run with `pnpm eval:agents` or `pnpm eval:instance-ai --tier agents`. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
 
-**Adding a case to `pr`**: edit the case's JSON, add `"pr"` to its `datasets` array, re-sync. No promotion process is enforced today — use judgment about reliability + capability coverage when curating.
+**Adding a case to `pr`**: edit the case's `datasets` in LangTracer — the suite is what CI runs, and the export round-trips non-default `datasets`, so `--tier pr` works in langtracer mode. For a not-yet-pushed local case, put `"pr"` in the JSON before `eval:langtracer-push` (push sends `datasets` on create but deliberately does not re-sync tier-only edits to an existing case — see the planner note in `langtracer/push.ts`). No promotion process is enforced today — use judgment about reliability + capability coverage when curating.
+
+### Sourcing test cases from LangTracer
+
+**LangTracer is the source of truth for the workflow-eval corpus** — the `baseline` suite holds the cases, and CI pulls it on every run (see `.github/workflows/test-evals-instance-ai.yml`). The two `--source` modes split the work:
+
+- **`disk` (the default) — the preferred mode for local development.** Reads `data/workflows/` and `data/agents/`. Use it while authoring and calibrating a case: drop the JSON in, `--filter` it, iterate. It is also the only home of a `replay`-seeded case — that seed is reconstructed from a LangSmith trace at run time, so no suite can be its durable home. Everything else — including the agents-team cases (suite `agents`: agent-artifact + intent-resolution) — lives in LangTracer, so disk mode is about the case in front of you, not the full suite.
+- **`langtracer` — for bigger runs, already-pushed cases, and CI.** Pulls a suite from [LangTracer](https://github.com/n8n-io/lang-tracer)'s REST API (`GET /api/v1/suites/:id/export`), validated through the same `EvalTestCaseSchema`. Reach for it locally when you want the real corpus (a full or tier run) or to re-run a specific case that already lives in the suite; CI always runs this way.
+
+Set these in `.env.local`:
+
+| Var | What |
+|------|------|
+| `LANGTRACER_URL` | LangTracer base URL (the API base is `${LANGTRACER_URL}/api/v1`) |
+| `LANGTRACER_API_KEY` | Bearer key (`lt_…`), minted in LangTracer's API-keys UI (one key works for MCP + REST) |
+
+```
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --source langtracer --suite baseline --base-url http://localhost:5678
+```
+
+In langtracer mode, `--dataset` / `--baseline-prefix` default to a suite-scoped, eval-tagged name (`instance-ai-langtracer-<suite>`) so runs don't touch the shared `instance-ai-workflow-evals` cohort and re-runs of a suite upsert one stable dataset. `--filter` / `--exclude` / `--tier` still narrow within the suite. The MCP manifest builder (`eval:build-mcp-manifest`) accepts the same `--source langtracer --suite` flags.
 
 ### Outputs
 
@@ -173,7 +211,7 @@ Every run produces:
 
 After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
 
-The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `execution_outcome`, is served by the existing execution verifier):
+The 28 checks are grouped into 8 WHAT-side rubric dimensions (the 9th, `execution_outcome`, is served by the existing execution verifier):
 
 | Dimension | Checks |
 |---|---|
@@ -181,8 +219,9 @@ The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `executio
 | `connection_topology` | 4 — graph reachability, branch wiring, multi-item handling |
 | `parameter_correctness` | 8 — node config, expressions, field references |
 | `intent_match` | 1 — workflow fulfills the user's request |
+| `communication` | 1 — agent narration honestly describes the changes made |
 | `ai_nodes` | 6 — agent / memory / vector-store / tool wiring |
-| `nodes_craftsmanship` | 3 — naming, no-code preference, response honesty |
+| `nodes_craftsmanship` | 2 — naming, no-code preference |
 | `security` | 2 — hardcoded credentials, inbound auth defaults |
 
 The signal surfaces in:
@@ -195,20 +234,24 @@ Operational details:
 
 - Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
 - Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
-- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
+- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_describes_changes_accurately`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
 ### Build expectations (per test case)
 
-A test case can declare optional natural-language assertions about *how the build went* — `buildExpectations: string[]` in its JSON. Each is graded by a separate Sonnet judge (`build-expectations/verifier.ts`) against the **conversation transcript + final workflow + conversation metrics**, and **counts as a unit in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. It doesn't flip an individual scenario's pass/fail (it's its own unit), and a judge `incomplete` verdict is excluded from the count.
+A test case can declare optional natural-language assertions, split by what they judge:
 
-Use it for things the binary checks and `successCriteria` don't cover:
+- **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt/MCP runs**. e.g. `"Before building, the agent asked which Slack channel to use."`
+- **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt/MCP runs** (which have no transcript). e.g. `"The final workflow splits the records envelope before posting."`
 
-- **Process / conversational** — `"Before building, the agent asked which Slack channel to use."` (judged from the transcript)
-- **Outcome tied to the conversation** — `"The final workflow reflects the user's follow-up to split the records envelope before posting."` (judged from the workflow)
+Both are graded by the same Sonnet judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
+
+Use them for things the binary checks and `successCriteria` don't cover:
 
 ```json
-"buildExpectations": [
-  "Before building, the agent asked which Airtable table and which Slack channel to use.",
+"processExpectations": [
+  "Before building, the agent asked which Airtable table and which Slack channel to use."
+],
+"outcomeExpectations": [
   "The agent honored the user's instruction to fetch via an HTTP Request node, not the Airtable node."
 ]
 ```
@@ -216,14 +259,36 @@ Use it for things the binary checks and `successCriteria` don't cover:
 The signal surfaces in:
 
 - **HTML report** — a "Build expectations" disclosure on the test case: per-expectation &#10003;/&#10007; with a one-line judge reason.
-- **`eval-results.json`** — `buildExpectations` (aggregated per-expectation pass rate) plus `buildExpectationResultsPerRun` (per-iteration verdicts).
+- **`eval-results.json`** — `buildExpectations` (aggregated per-expectation pass rate across both fields) plus `buildExpectationResultsPerRun` (per-iteration verdicts).
 
 Operational details:
 
 - Judged **once per build** (not per scenario), fired concurrently with the scenario batch — ~0 added wall-clock in the common case.
-- Runs on both eval paths (direct loop + LangSmith). Requires a build transcript, so it's judged even when the build fails, and skipped only when no transcript was captured.
+- Runs on both eval paths (direct loop + LangSmith). `processExpectations` need a transcript (judged even when the build fails, skipped only when no transcript was captured); `outcomeExpectations` are judged from the workflow, including in prebuilt/MCP runs.
 - The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
-- Absent the field, it's a complete no-op.
+- Absent both fields, it's a complete no-op.
+
+### Artifact types (workflow / agent / config-eval)
+
+A test case's build can produce more than a workflow — a builder can also create a standalone **agent** or attach a **config-eval** (an evaluation config on a workflow, graded against its referenced dataset). These are graded through the **same `outcomeExpectations`** as everything else — there are no artifact-specific case fields.
+
+When a build produces a non-workflow artifact, the harness discovers it, fetches it, and renders it into the judge context as an **Agent** / **Config-eval** section (agent: sanitized JSON config + skills; config-eval: the eval configs + a sample of the referenced data-table dataset). Each section falls back to `(no agent produced)` / `(no config-eval produced)` when the build produced none — mirroring the workflow block's `(no workflow built)`. Authors then write ordinary `outcomeExpectations` covering existence, absence and content:
+
+```json
+"outcomeExpectations": [
+  "An agent was created and no workflow was built.",
+  "The agent instructions mention escalating to a human for refund requests."
+]
+```
+
+Because these are plain outcome expectations, scoring, the gate, the PR comment, and the HTML report all handle them with no artifact-specific plumbing. A scenario-less agent case is graded on its expectations (`requiresWorkflowOutput` keys off execution scenarios only, so a missing workflow isn't reported as a build failure).
+
+Discovery reads the build's SSE tool-result stream (in `outcome/event-parser.ts`, alongside workflow/data-table id capture):
+
+- **agent** — the build-agent sub-agent announces itself with an `agent-spawned` event carrying `targetResource: { type: 'agent', id }`; that `id` is the ref. (The `build-agent` tool result carries no id.)
+- **config-eval** — the `eval-config` tool's `create` action returns `{ config }`; the ref is the owning workflow id from the call args (config-evals are fetched per-workflow).
+
+Not yet covered: an automatic "unexpected artifact" fail (a build producing an artifact the case never mentions). That's parked until the signals exist, to be added later as a binary check or per-dataset rather than as a case-schema field.
 
 ## Environment variables
 
@@ -231,6 +296,8 @@ Operational details:
 |----------|----------|-------------|
 | `N8N_INSTANCE_AI_MODEL` | Yes | Model used by Instance AI and, by default, the eval helper calls for mock generation and verification |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | No | Generic eval-model API key override |
+| `N8N_INSTANCE_AI_MODEL_URL` | No | OpenAI-compatible base URL for custom eval models (used with `custom/...` model ids) |
+| `EVAL_MODAL_LLM_HEADERS` | No | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints |
 | `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
 | `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
@@ -241,33 +308,49 @@ Operational details:
 | `LANGSMITH_BRANCH` | No | Branch name to tag the experiment with (auto-set in CI) |
 | `CONTEXT7_API_KEY` | No | Context7 key for API-doc lookups. Improves mock realism for less-common services; the LLM falls back to training data when unset |
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
+| `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
+| `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
 
 ## Regression detection
 
-When `LANGSMITH_API_KEY` is set, every eval run automatically compares its results against the most recent pinned baseline (any experiment whose name starts with `instance-ai-baseline-`). Two output files are written:
+When `LANGSMITH_API_KEY` is set, every eval run automatically compares its results against the most recent pinned baseline (any experiment whose name starts with `instance-ai-baseline-`). The comparison is **unit-based**: execution scenarios and evaluated build expectations are compared side by side, keyed `file/scenario` and `file#expectation:text` respectively (`comparison.result.evaluationUnits`, each entry carrying `kind: 'scenario' | 'expectation'`). Expectation verdicts reach the baseline via the per-run `expectationResults` embedded in LangSmith run outputs — a baseline captured before that persistence simply contributes no expectation units, so those show as PR-only (with an explanatory note) until the baseline is refreshed. Renaming an expectation's text drops it out of the intersection until the next refresh — same semantics as renaming a scenario. Two output files are written:
 
 - `eval-results.json` — structured data only, including `comparison.result` when a baseline was found.
 - `eval-pr-comment.md` — the full PR comment rendered as markdown, including the alert, aggregate, comparison sections, per-test-case results, and failure details. Always written; falls back to a no-baseline summary when no comparison ran.
 
 The CI PR-comment step uses `eval-pr-comment.md` as the entire comment body (no jq assembly in the workflow). The console output uses a separate aligned-text formatter — same data, no markdown noise in the terminal.
 
+### Re-running on a PR
+
+Evals auto-run when a PR is **opened / reopened / marked ready** (path-filtered), but **not on new pushes** — `synchronize` is intentionally off (full runs are expensive). To exercise the latest push, re-run against the PR head on demand:
+
+```bash
+gh workflow run ci-instance-ai-evals.yml -f pr=<number>
+```
+
+…or use the **Run workflow** button on the **Instance AI Evals: PR Gate** workflow and set `pr=<number>`. A `resolve` job looks up the PR's current head at dispatch time (preferring the merge ref when it reflects the latest push, so it tests the merged state like a PR-open run; otherwise it uses the head), runs the eval against it, and posts results back to the PR. A dispatched run rebuilds the docker image either way — the prebuilt image cache is scoped to `refs/pull/<n>/merge`, which a dispatch can't restore. GitHub's built-in "Re-run jobs" instead replays the original PR-open commit, so use the dispatch above. Each eval PR comment also embeds this `gh workflow run -f pr=<n>` line.
+
 ### Refreshing the baseline
 
 There is no auto-refresh — refresh explicitly when you want a new reference point, ideally with high N for low noise:
 
 ```bash
-# From packages/@n8n/instance-ai/, on master at the version you want to pin
+# From packages/@n8n/instance-ai/, on master at the version you want to pin.
+# The --dataset/--baseline-prefix pins mirror CI: langtracer mode otherwise
+# derives suite-scoped names, and later runs would never find this baseline.
 LANGSMITH_API_KEY=... dotenvx run -f ../../../.env.local -- \
-  pnpm eval:instance-ai --experiment-name instance-ai-baseline --iterations 10
+  pnpm eval:instance-ai --source langtracer --suite baseline \
+  --dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline- \
+  --experiment-name instance-ai-baseline --iterations 10
 ```
 
 LangSmith appends a random suffix (e.g. `instance-ai-baseline-7abc1234`); the most recently started one becomes the comparison target on the next eval run. The comparison is silently skipped on the baseline-creation run itself.
 
-### How scenarios are tiered
+### How units are tiered
 
-Each scenario lands in one of three regression tiers, evaluated in order of strictness:
+Each unit (scenario or expectation) lands in one of three regression tiers, evaluated in order of strictness:
 
 - **Regression** — high-confidence flag, gating-grade. The drop must be statistically significant (chance of seeing it by noise < 5%), at least 30 percentage points in size, and the baseline must have been reliable (≥ 70% pass rate).
 - **Likely regression** — looser bar for visibility on borderline cases. Looser confidence threshold (chance by noise < 20%), drop ≥ 15 percentage points, baseline ≥ 50%. Frequently natural variance — worth a glance only if your changes touch related code paths.
@@ -298,7 +381,7 @@ The manifest is a JSON file mapping test-case file slugs to workflow IDs:
 }
 ```
 
-- **Keys** are test-case file slugs — the JSON filename without `.json` (e.g. `contact-form-automation` for `evaluations/data/workflows/contact-form-automation.json`). The `--filter` flag uses the same identifier.
+- **Keys** are test-case slugs — the case name in LangTracer (for disk-loaded cases, the JSON filename without `.json`), e.g. `contact-form-automation`. The `--filter` flag uses the same identifier.
 - **Values** are arrays of workflow IDs that already exist in the target n8n instance. Multiple iterations rotate through the list with `iteration % ids.length`, so an `--iterations 5` run with 5 IDs gets 5 distinct builds.
 
 Test cases not present in the manifest fall back to the regular Instance AI build path. To run *only* the prebuilt set, pair with `--exclude` to skip the rest, or `--filter` to narrow the run.
@@ -333,16 +416,101 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
 
 For runs that need to leave the n8n repo (for example, driving the build from a separate Claude project where you have skills configured), three flags decouple the script from its default assumptions:
 
-- `--workflow-dir <path>` — read test-case JSONs from a directory other than the n8n repo's `evaluations/data/workflows/`. When set, the script no longer needs `git rev-parse` to find the repo.
+- `--workflow-dir <path>` — read test-case JSONs from a different directory (the default `evaluations/data/workflows/` is an authoring dir, not the corpus; use `--source langtracer --suite <slug>` for that). When set, the script no longer needs `git rev-parse` to find the repo.
 - `--build-cwd <path>` — set the working directory the `claude` subprocess spawns from. Affects which `~/.claude.json` `projects` entry (and which skills) Claude loads.
 - `--project-id <id>` — instructs the model to pass `projectId` to `create_workflow_from_code` so workflows land in a specific n8n project instead of the user's personal one.
 
 Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
 
+## Building via MCP (`--build-via-mcp`)
+
+`--build-via-mcp` folds the MCP build into the eval run: instead of the two-phase
+`eval:build-mcp-manifest` → `--prebuilt-workflows` flow, one `eval:instance-ai`
+process builds each workflow by driving a lane's own MCP server with `claude -p`,
+then verifies it on that **same** lane. This is the recommended way to run the
+`mcp` tier — one process means one LangSmith experiment (no manifest hop, no
+shard/merge step), and the work-stealing allocator spreads builds across lanes
+(capped per-lane), so N lanes parallelize the whole build+verify pipeline.
+
+How it differs from the manifest flow:
+
+- **No manifest.** Each `(slug, iteration)` is built on demand and verified in
+  place, so every iteration gets a genuinely fresh build (clean `pass@k`/`pass^k`
+  variance) instead of rotating a fixed list of prebuilt IDs.
+- **Multi-lane.** Unlike `--prebuilt-workflows` (single instance), `--build-via-mcp`
+  accepts a comma-separated `--base-url`. Each lane enables MCP; the CLI does this
+  setup for you.
+- **Per-case build users + credential seeding.** Every build runs `claude` as its
+  own freshly-invited member user (invited in batches through the lane owner,
+  accepted lazily per build), with that user's MCP API key staged into a per-build
+  `claude` MCP config. MCP credential/workflow visibility is user-scoped, so each
+  build sees an isolated view: exactly the case's declared `credentials` (created
+  in the member's personal project — the MCP analog of the orchestrator's
+  per-thread credential pinning), and nothing from concurrent builds. Requires the
+  lanes to have no SMTP configured (otherwise invites are emailed and the CLI
+  can't obtain the accept token — eval instances never have SMTP). Build users are
+  deleted with the built workflows after the run; under `--keep-workflows` they
+  stay, since deleting a user deletes their remaining data.
+- **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
+  `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
+  `claude` prints, so a build that times out or never emits the trailer can leave
+  its workflow behind on the lane even though cleanup is on.
+- **Per-case spend reporting.** Each build's `claude` cost/turns (summed across
+  attempts — failed attempts cost money too) land as `build_cost_usd` /
+  `build_turns` row feedback in LangSmith and as `buildCostUsdPerRun` /
+  `buildTurnsPerRun` per case in `eval-results.json`, alongside the run-level
+  `summary.mcpBuild` totals. For builder cost comparisons across any runs
+  (MCP vs AIA, builder-model A/Bs), the un-wired helper
+  `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`, one `--results`
+  per arm) auto-detects each arm's cost source — these persisted fields, or
+  the backend build threads priced in LangSmith.
+
+**Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
+LangSmith path, whose lane allocator caps builds at 4 per lane globally (the
+keyless direct loop parallelizes iterations, which would multiply concurrent
+`claude` sessions by the iteration count). Plus the `claude` CLI installed and
+authenticated (the build subprocess reads `ANTHROPIC_API_KEY`; set
+`ANTHROPIC_MODEL` to pick the build model, defaulting to `claude-opus-4-8` when
+unset); each lane reachable and seeded with the E2E owner. The MCP module is on
+by default, so no server-side config is needed beyond a running instance.
+
+Local run against a pool of container lanes (reuses `scripts/run-eval-lanes.sh`,
+which starts + seeds the lanes and forwards everything after `--`):
+
+```bash
+# 6 lanes; build via MCP + verify the mcp tier, one experiment.
+# --concurrency 12 = lanes * 2 (the script's own default is lanes * 4).
+./scripts/run-eval-lanes.sh --instance-count 6 --tier mcp --concurrency 12 -- \
+  --build-via-mcp \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline-
+```
+
+Or point at lanes you started yourself:
+
+```bash
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --base-url http://localhost:5678,http://localhost:5679 \
+  --build-via-mcp \
+  --tier mcp \
+  --iterations 3 \
+  --concurrency 4 \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline-
+```
+
+In CI this is what `ci-mcp-evals.yml` runs (see `test-evals-mcp.yml`): a single
+job starts `lanes` containers and runs one `--build-via-mcp` process, defaulting
+`--concurrency` to `lanes * 2`. Use the same ratio locally: `claude` builds,
+mock generation, and the verifier all draw on one Anthropic budget, and running
+lanes flat-out at `lanes * 4` (each lane's per-lane build cap) starves it,
+surfacing as verifier/MCP timeouts. Treat `lanes * 4` as an aggressive upper
+bound for keys with rate-limit headroom, not the starting point.
+
 ## Discovery evals
 
 Discovery evals run the orchestrator in-process and assert first-hop tool or
-sub-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
+background-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
 `agent-spawned` events. Use them when a regression is about which path the
 agent chooses, not whether a generated workflow executes.
 
@@ -355,7 +523,7 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
-workflow-builder, or delegate entries in the spawned-agent section.
+workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ## Pairwise evals
 
@@ -512,11 +680,15 @@ No tools, services, or workflow imports are mocked. The `eval:subagent` command 
 
 ## LangSmith integration
 
-When `LANGSMITH_API_KEY` is set, each run is recorded as a LangSmith experiment against the `instance-ai-workflow-evals` dataset (synced from the JSON files before each run). Experiments against the same dataset can be compared side-by-side to spot regressions.
+When `LANGSMITH_API_KEY` is set, each run is recorded as a LangSmith experiment against the `instance-ai-workflow-evals` dataset (synced from the loaded test cases before each run). Experiments against the same dataset can be compared side-by-side to spot regressions.
+
+To record an isolated cohort without touching the shared dataset or baseline — e.g. MCP-built workflows scored via `--prebuilt-workflows` — pass a dedicated `--dataset` and `--baseline-prefix`. The sync then only writes that cohort's cases (filtered by `--tier`) into its own dataset, and regression comparison only looks for baselines under the given prefix. See the [MCP workflow evaluations README](../../../cli/src/modules/mcp/evaluations/README.md#record-runs-in-langsmith).
 
 ## Adding test cases
 
-Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `data/workflows/schema.ts`.
+The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author a case as a local JSON file in `evaluations/data/workflows/` (disk mode picks it up, no registration step), calibrate it against a real build, then push it to the suite with `pnpm eval:langtracer-push --suite baseline <slug>` and delete the local file rather than committing it. An `inline` seed pushes with the case; a `replay`-seeded case is refused (it's reconstructed from a LangSmith trace at run time, so a suite can't be its home). Every case is validated against `harness/schema.ts`.
+
+> The essentials are below. For the full authoring guide — picking a case archetype, sizing assertions so a wrong build fails, multi-turn director scripts, seeding vs synthetic, and calibrating against a real build — follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) (with [`case-shapes.md`](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md) and [`running-evals.md`](../../../../.agents/skills/create-instance-ai-eval/running-evals.md)).
 
 ```json
 {
@@ -538,9 +710,9 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the C
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, and `datasets` (default `["full"]`) are optional. A turn's `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
-**One JSON file = one LangSmith split**, named from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
+**One case = one LangSmith split**, named from the case slug (the LangTracer case name; for disk-loaded files, the filename without `.json`). Pick a slug you're happy to also use as a `--filter` target.
 
 ### Conversations & stage directions
 
@@ -556,8 +728,9 @@ Write the turns as a screenplay of what the user wants, keeping concrete values 
 | Withhold a value until asked | `[Don't bring up the channel unless the agent asks where to post; then say 'Slack #growth.']` |
 | Refuse and hold firm on re-ask | `[The user has no channel and won't provide one. If asked — question or setup card, even repeatedly — skip it; never invent one.]` |
 | Keep the conversation going | `[After each change lands, send the next one from the list, one at a time, until done.]` |
+| Refuse network access | `[Deny the web-search request — the user doesn't want it searching the web.]` |
 
-A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
+A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Network-access prompts (`web-search`, `fetch-url`) are the one gate that's granted **without** consulting the proxy LLM, so they cost nothing by default — but while any stage direction is still pending the decision goes to the LLM, which is what makes the refusal above reachable. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
 
 **Prompt / conversation tips**
 
@@ -577,21 +750,237 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 - Edge cases — empty data, missing fields, single vs multiple items
 - Error scenarios only if the workflow is expected to handle them gracefully. Most agent-built workflows don't include error handling, so "the workflow crashes on invalid input" is a legitimate finding, not a test-case failure.
 
-### Adding a new credential type
+### Credentials
 
-`credentials/seeder.ts` seeds every credential with a placeholder token on every run — execution is mocked at the wire level, so the value is never used. Set the matching `EVAL_*_ACCESS_TOKEN` to override a service with a real token for a live run. If your scenario needs a credential type that isn't seeded, add it to `seeder.ts`.
+By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
 
-## Failure categories
+A case that tests credential behaviour declares what should exist:
+
+```json
+"credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
+```
+
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+
+Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
+
+### Seeded cases (conversation pre-seeding)
+
+A seeded case starts **mid-conversation**: prior history is restored into the build thread before the live turn, so the eval drives only the turn under test. Use it to replicate a real misbehaviour — restore the conversation up to the moment it went wrong, re-drive that turn, and assert what should happen instead.
+
+The seed lives in **one slot** — `seed` — whose `mode` says where it comes from, so
+a case cannot declare two seeding modes by accident. Pick the lightest path that fits:
+
+| Situation | Path |
+|---|---|
+| Reproduce a real conversation (the common case) | `seed.mode: "replay"` — fetch + reconstruct its LangSmith trace at run time; nothing committed |
+| Prior work already exists (a workflow to repair) | `seed.mode: "inline"` — prior messages + the workflows they reference, in the case body |
+| Prelude is just "what was discussed" (no tool calls, no workflows) | `seed.mode: "inline"` with `{role, text}` shorthand messages |
+| Shallow 2–3 turn prelude where the agent's live replies matter | Neither — a plain multi-turn `conversation` script re-drives it live |
+
+The literals match lang-tracer's `metadata.seed` verbatim, so nothing translates
+between the two repos. They read asymmetrically — `inline` names where the seed
+lives, `replay` names what the harness does with it — which is a cost we took
+knowingly: renaming `replay` would break a lang-tracer API contract.
+
+#### `mode: "replay"` — reproduce a real conversation (no repo content)
+
+The case carries only a **thread id**. At run time the harness pulls that thread's runs from LangSmith, reconstructs the message log (user/assistant text + resolved tool-call blocks, deduped across suspend/resume), and splits at the **last user message**: everything before it is restored as the seed, that last message is sent live. The seed workflow is compiled from the build/patch tool's captured SDK code **as of the seed boundary**, so it matches what the live turn first saw.
+
+```json
+"seed": { "mode": "replay", "threadId": "<thread-id>", "project": "instance-ai" }
+```
+
+No `conversation` field needed — the live turn comes from the trace. `project` is optional (defaults to `instance-ai`). No conversation content lands in the repo — only the opaque thread id.
+
+**What's restored.** The workflows the seed references are recreated pinned to their ids (node credentials are stripped — the eval credential pin owns the credential view, so a pre-attached id would bypass it). Data tables those workflows reference are recreated **schema-only** — columns and a remapped id, **no rows**: an empty table is all a data-table node needs to resolve, and a real conversation's row values are the most sensitive part, so they're never reconstructed, sent, or inserted (the same row values are also redacted out of the restored message history). The row content stays in the source trace and never reaches the eval instance.
+
+**Continuing past the live turn.** Add a `conversation` to keep driving *after* the trace's last message is replayed — the effective conversation becomes `[<trace live turn>, ...conversation]`, so the live turn is sent for real and your authored turns become proxy-driven follow-ups (multi-turn). Use it to push a reproduced conversation further (e.g. "now also add error handling", or pressure-test the next decision):
+
+```json
+"seed": { "mode": "replay", "threadId": "…", "project": "instance-ai" },
+"conversation": [
+  { "role": "assistant", "text": "Updated the schedule to every 30 minutes." },
+  { "role": "user", "text": "Now also send a copy to #ops." }
+]
+```
+
+(The first authored turn is typically the expected assistant reply as proxy reference; subsequent `user` turns are sent as follow-ups. Omit `conversation` to just send the live turn and stop.)
+
+**Cross-workspace, zero config (e.g. prod traces, staging eval).** A source thread can live in a different LangSmith **workspace** than the eval writes to. You don't declare which, and there are no extra env vars — the harness enumerates the workspaces your `LANGSMITH_API_KEY` can access and finds the one holding the thread (the workspace is selected per request via the `x-tenant-id` header; a personal access token typically spans staging/prod/feature). Reads use the ambient key; the eval still writes its own traces/datasets to its own workspace, so **nothing is ever written to the source workspace**. The resolved workspace is logged (`[Prod/instance-ai]`).
+
+`seed.project` overrides the source project name (default `instance-ai`); the same name is searched in every workspace, so if prod and staging share it you need nothing. Reconstruction recreates the source conversation on the eval instance (and in its model calls, traces, and local report artifacts): the most sensitive content is scrubbed first — see *What's restored* above (no data-table rows, values redacted from the restored history, credentials stripped) — but scrubbing isn't guaranteed exhaustive, so treat a reproduced conversation as if it may carry user data and follow your team's data-handling policy for real threads.
+
+> **Transient.** LangSmith base-tier traces retain ~14 days, so a `replay` case is runnable only while its trace lives. Keep these out of CI datasets (tag them `["seeded"]`, not `full`/`pr`) until durable seed snapshots land; the resolver fails loudly when a trace has aged out. Durable snapshotting (e.g. materialising the reconstructed seed into a private LangSmith dataset on first resolve) is a planned follow-up.
+
+To find the thread id, open the conversation's trace in LangSmith (or read it from the instance the conversation happened on) and copy its `thread_id`.
+
+#### `mode: "inline"` — durable synthetic fixture
+
+For a **synthetic, sanitized** seed you want pinned in git (never a real user's conversation): author the prior messages, plus the workflows they reference, in the case body. Real conversations belong in `replay`, which keeps their content out of the repo entirely. Paired with a normal `conversation` for the live turn.
+
+```json
+"seed": {
+  "mode": "inline",
+  "messages": [ … ],
+  "workflows": [ { "id": "wKk3RmT9xQ2bVn7L", "name": "Batch loop", "nodes": [], "connections": {} } ]
+}
+```
+
+Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows`, `dataTables` and `agents` (all default to `[]`, so a messages-only seed is valid). Two constraints worth knowing: a workflow or agent `id` must be ≥8 characters (`remapSeedArtifactIds` refuses to rewrite shorter ids safely), and a seeded `build-workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
+
+**Each message must carry the envelope** — `id`, `role` (`user` or `assistant`), `type` (`llm`, `custom`, …), `createdAt` (a parseable timestamp; ordering before the live turn depends on it), and `content` as an array of blocks each with a `type`. Only the envelope is validated: **unknown block types are accepted**, because block shapes belong to the agent's message store rather than to the harness, and unknown keys are preserved rather than stripped. A `type: 'custom'` message is the one exception — it's stored but never rendered, so it may omit `role` and carry any `content` shape. The envelope is checked because a malformed message would otherwise be stored verbatim *and* skipped by `transcriptPrefixFromSeed`, leaving the case graded against a transcript that doesn't match what the agent saw.
+
+##### `{role, text}` shorthand — a prose prelude
+
+When the prelude is just "what was discussed" — no tool calls, no workflows — write a
+message as `{role, text}` and the schema expands it into a full envelope for you:
+
+```json
+"seed": {
+  "mode": "inline",
+  "messages": [
+    { "role": "user", "text": "We agreed: digests go to #growth, daily at 9am." },
+    { "role": "assistant", "text": "Noted — #growth, daily at 9am." }
+  ]
+}
+```
+
+`text` also takes an array of lines (newline-joined), same as a `conversation` turn.
+The expansion stamps `createdAt` itself — ascending and in the past — so a shorthand
+message can't accidentally order *after* the live turn. Shorthand and full envelopes
+can be mixed in one `messages` array; a full envelope keeps its authored `createdAt`
+— **unless the authored stamps don't already ascend and sit in the past**, in which
+case the whole sequence is restamped onto the same ascending pre-live slots. A future
+stamp would sort a seeded turn after the live turn, and a non-ascending sequence (a
+shorthand turn appended after later-stamped envelopes, say) would present the history
+in an order the graded transcript never had; restamping only the offending entry would
+reorder it relative to the array the transcript is graded from. The slots are fixed,
+never derived from the current time, so re-pushing an unchanged case is a no-op.
+A near-miss (say `text: 123`) is deliberately **not** expanded: it falls through to
+the envelope rules above and fails at load, rather than becoming a message the
+transcript builder would silently drop.
+
+The seed lives **in the case body** rather than in a sibling file, so it travels with the case whatever the source — a JSON on disk, a suite pulled with `--source langtracer`, or a case body handed to a dispatcher. (There used to be a `seedFile` path pointing at a sibling JSON. Only the disk loader could resolve it, so a case delivered any other way lost its seed; the key is gone and a case still carrying it fails at load.)
+
+#### Handing the agent the workflow (`attach`)
+
+When a real user opens the assistant with a workflow in front of them — "why is this
+failing?" — the editor sends that workflow as a resource reference and the agent
+resolves it by **id**, never by name. Declare it on the opening turn:
+
+```json
+"conversation": [
+  { "role": "user", "text": "why is this failing?", "attach": { "workflow": "wKk3RmT9xQ2bVn7L" } }
+]
+```
+
+The id is the one the seed declares; the harness substitutes the per-run remapped id,
+so the attachment always points at the workflow that actually exists. Only the opening
+turn may carry it, and it must name a workflow the inline seed declares — both are
+refused at case load rather than silently ignored.
+
+Omit it when the user refers to the workflow in words instead ("the batch image
+workflow") — finding it is then part of what the case tests. Getting this backwards
+makes a case harder than reality: the agent has to guess from prose that deliberately
+names nothing, and a clarification the real user never saw scores as a failure.
+
+> **Pushing an `attach` case needs lang-tracer [#119](https://github.com/n8n-io/lang-tracer/pull/119) deployed.**
+> Carrying `attach` through import and case-write is that PR's job; a deployment
+> predating it stores the turn without the key, so the case would come back from
+> the suite as a hand-off with neither text nor attachment — a quietly different
+> test. **You don't have to remember this:** the push re-reads the suite export
+> after every write and fails if the server didn't store what it was sent, naming
+> the fields it dropped. The same check covers a `seed` against a deployment
+> predating [#113](https://github.com/n8n-io/lang-tracer/pull/113). Until the
+> server is upgraded, keep such a case on disk (`--source disk`).
+> Round-trip coverage: `langtracer-to-exported.test.ts`.
+
+#### How restore works (all paths)
+
+At build time the seed is restored right after the credential pin: seeded workflows are recreated under **fresh ids and a per-restore unique name** (`… [seed <8 hex>]`) with node credentials stripped, and the message log is written verbatim. Both are remapped through the history, so parallel iterations never share a workflow row *or* a name — a seeded case's live turn names its workflow the way a user would, so a same-named copy is one the agent can ground on instead, and the judge would then grade a different workflow than the agent edited. Any leftover carrying the seed suffix with the same base name is deleted before the restore; workflows without the suffix (real ones, and anything the agent built) are never touched. Restore failures fail the build — a seeded case cannot meaningfully run unseeded. Seeded turns join the transcript marked as *seeded prior context*, visible to the expectations judge and prompt-aware checks but distinguishable from live behaviour.
+
+Rules of thumb:
+
+- **A seeded case is only worth shipping with `buildExpectations` that detect the misbehaviour recurring** — without them it passes vacuously. Sanity-check by running the case once with the seed removed: it should fail.
+- **One slot means the modes are mutually exclusive by construction** — there is no way to declare two. Both order strictly before the live turn: `replay` provides its own live turn (omit `conversation`), `inline` pairs with one.
+- **A suite-sourced case carrying a pre-union key (`conversationSeed`, `priorConversation`, `seedThread`, `seedFile`) fails the suite pull by name.** The normalizer whitelists a hosted case down to the schema's keys, so without that guard the key would be stripped and the case would run *unseeded* — passing or failing for reasons that have nothing to do with what it tests.
+
+## Failure categories and attribution
 
 When a scenario fails, the verifier categorizes the root cause:
 
 - **builder_issue** — the agent misconfigured a node, chose the wrong node type, or built the wrong structure.
 - **mock_issue** — the LLM mock returned incorrect data (`_evalMockError`, wrong response shape).
 - **framework_issue** — Phase 1 failed (empty trigger content) or the eval framework itself cascaded an error.
-- **verification_failure** — the verifier couldn't produce a valid result.
-- **build_failure** — Instance AI failed to build the workflow or a scenario timed out.
+- **verification_gap** — the verifier didn't have enough information in the artifact to decide.
+
+Harness code stamps three more onto rows the verifier never saw:
+
+- **build_failure** — Instance AI failed to build the workflow.
+- **verification_failure** — the verifier produced no result at all after every attempt (also back-filled onto a failing verdict that arrived without a category).
+- **expectations_failed** — a build-only case whose expectation verdicts failed.
 
 Suite pass rates typically sit between 40–65%; most failures are `builder_issue` on scenarios that require error handling the agent doesn't produce by default.
+
+### `attribution` — the field that carries the meaning
+
+`failureCategory` is a free-form string with three producers, so downstream
+consumers used to re-derive what it meant and drifted (TRUST-375). Every failed
+scenario iteration and build expectation now also carries an **`attribution`**,
+defined once in `harness/attribution.ts` and stored verbatim by LangTracer:
+
+| bucket | means |
+| -- | -- |
+| `builder_issue` | the agent built it wrong, including "runs as built, misses the criteria" |
+| `mock_issue` | the eval mock/fixture layer served data the scenario didn't describe |
+| `framework_issue` | the eval framework failed the test rather than the test failing — no trigger content, seed table missing, provider outage, transport error, budget abort, runner crash |
+| `verification_gap` | we couldn't measure it — verifier returned nothing, judge died, unit ungraded |
+
+Deliberately the same four names the verifier prompt already defines, so ingest
+is an identity map rather than a translation. The harness-code categories fold
+in: `build_failure` and `expectations_failed` → `builder_issue`,
+`verification_failure` → `verification_gap`, and a build that died on seeding,
+transport or a provider outage → `framework_issue`.
+
+`failureCategory` still ships unchanged for readers on the legacy contract.
+
+### Provider outages are never a builder verdict
+
+A model-provider 5xx/429/529 during the build happens upstream of the n8n
+instance, so the lane stays healthy and nothing looks broken locally — but the
+build fails, and unclassified it reads exactly like "the agent built it wrong".
+A ~15-minute Anthropic outage recorded 124 flat-zero units as a product
+regression in nightly sweep #57 (TRUST-374).
+
+`harness/transient-error.ts` classifies these from the run's `error` events
+(structured `statusCode`), falling back to the flattened `Agent error: …` text.
+A classified outage is:
+
+- **retried** up to `MAX_PROVIDER_BUILD_ATTEMPTS` times, waiting **30s then 90s
+  between attempts**. This is a delay between attempts, not a limit on build
+  duration — the build's own budget (`effectiveTimeoutMs`, 15+ minutes) is
+  untouched. It matters because a provider 5xx returns in ~3 seconds, so instant
+  cross-lane retries re-hit the same upstream and let one runner shred its whole
+  queue at ~60× normal speed;
+- reported as `framework_issue`, never `build_failure` (which LangTracer maps
+  straight to `builder_issue`);
+- attributed **`framework_issue`**, and additionally stamped with
+  `PROVIDER_OUTAGE_ROOT_CAUSE` on the row's `rootCause`. LangTracer used to key
+  its infra bucket off that exact prefix; it now reads the attribution directly,
+  so the marker is the fallback for older pinned harness commits — same
+  arrangement as `BUDGET_TIMEOUT_ROOT_CAUSE`;
+- left **ungraded** by the expectation judge: a run that produced no agent output
+  has nothing to grade, so its expectations are recorded as `incomplete` rather
+  than judged against an empty transcript (`build-expectations/select.ts`).
+
+A `Tool errors: …` 5xx is deliberately **not** an outage — that is the built
+workflow's own (mocked) HTTP traffic, which is a real product signal.
+
+Still uncovered: the server-side LLM mock generator shares the same provider, so
+during an outage its failures surface as `_evalMockError` and land in the
+`mock_issue` bucket. Detecting that needs the server to expose the provider
+status.
 
 ## Troubleshooting
 
@@ -609,9 +998,35 @@ Suite pass rates typically sit between 40–65%; most failures are `builder_issu
 
 ## CI
 
-Evals run automatically on PRs that change Instance AI code (path-filtered). The workflow starts a single Docker container and runs the CLI against it. See `.github/workflows/test-evals-instance-ai.yml`.
+Evals run automatically on PRs that change Instance AI code (path-filtered). The workflow boots a set of n8n lane containers, pulls the test-case suite from LangTracer (`--source langtracer --suite baseline`), and runs the CLI against the lanes. See `.github/workflows/test-evals-instance-ai.yml`.
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
+
+For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`). Native providers use `model` alone (`anthropic/*`, `openai/*`, `openrouter/*`, `xai/*`, `google-vertex-anthropic/*`). OpenAI-compatible vendors use **`custom/<model>` + `model-url` + `model-key`** — no first-class provider prefixes.
+
+| Experiment | `model` | `model-url` | `model-key` → secret |
+|------------|---------|-------------|----------------------|
+| Anthropic / OpenAI / OpenRouter / xAI | `anthropic/…`, `openai/…`, etc. | empty | (prefix → `EVALS_*`) |
+| Google Vertex Claude | `google-vertex-anthropic/claude-opus-4-8` | empty | (prefix → `EVALS_VERTEX_KEY` + `EVALS_VERTEX_PROJECT_ID`; optional `EVALS_VERTEX_LOCATION`, default `global`) |
+| Baseten | `custom/<model>` | `https://inference.baseten.co/v1` | `baseten` → `EVALS_BASETEN_KEY` |
+| Fireworks | `custom/accounts/fireworks/models/…` | `https://api.fireworks.ai/inference/v1` | `fireworks` → `EVALS_FIREWORKS_KEY` |
+| Together | `custom/moonshotai/Kimi-K3` | `https://api.together.ai/v1` | `together` → `EVALS_TOGETHER_KEY` |
+| Modal | `custom/…` | `https://….modal.direct…/v1` | `modal` → `EVALS_MODAL_KEY` |
+| Databricks | `custom/workspace.default.kimi-k3` | `https://….databricks.com/ai-gateway/mlflow/v1` | `databricks` → `EVALS_DATABRICKS_KEY` |
+| Lyceum | `custom/moonshotai/Kimi-K3` | OpenAI-compatible `/v1` base URL | `lyceum` → `EVALS_LYCEUM_KEY` |
+| Azure OpenAI | `custom/<deployment>` | `https://….openai.azure.com/openai/v1` | `azure` → `EVALS_AZURE_FOUNDRY_KEY` |
+| Keyless custom router | `custom/<model>` | `https://host/v1` | empty (no API key) |
+| Azure Foundry Claude | `anthropic/<deployment>` | Foundry Anthropic base | `azure` (or omit — defaults to Foundry key) |
+
+`lanes` / `eval-concurrency` default to **10 / 32**. For `model-key=baseten` they auto-throttle to **1 / 2** (~0.5M TPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets)); override the inputs if you have more headroom.
+
+Verifier/mocks always use `EVALS_ANTHROPIC_KEY`.
+
+For `custom/*`, optional dispatch inputs `reasoning-effort` and `supports-structured-outputs`
+override `N8N_INSTANCE_AI_REASONING_EFFORT` / `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS`.
+When unset, the runtime looks up
+`packages/@n8n/instance-ai/src/utils/custom-model-defaults.ts` (substring match on the model id).
+If still unresolved, the field is omitted from the request (no blanket custom default).
 
 ## Architecture
 
@@ -622,7 +1037,8 @@ evaluations/
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
-├── data/workflows/       # e2e test case JSON files
+├── data/agents/          # authoring dir for intent-resolution cases (the corpus lives in LangTracer suite `agents`)
+├── data/workflows/       # authoring dir for case JSONs (the corpus lives in LangTracer)
 ├── data/subagent/        # workflow-build compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)
 ├── harness/              # Runners: buildWorkflow + executeScenario (e2e), in-memory event bus (discovery)

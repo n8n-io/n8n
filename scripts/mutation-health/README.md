@@ -1,6 +1,6 @@
 # `scripts/mutation-health/`
 
-Phase 1 substrate for the Mutation Health Observability initiative.
+Patch-scoped mutation testing for n8n: prove the tests covering your change actually assert its behaviour.
 
 ## What is mutation testing?
 
@@ -49,198 +49,101 @@ That divergence is exactly why this project exists.
 
 ---
 
+
 ## What's in this directory
 
-| File | Purpose |
+| File | Role |
 | --- | --- |
-| `pick-next.mjs` | Walk `<pkg>/src/`, merge with the live ledger, return the next source file to mutate |
-| `mutate.mjs` | Run Stryker on one source file of any vitest package, write `summary.json` |
-| `stryker.default.mjs` | Default Stryker config for onboarded packages (points at the package's own `vitest.config.*`) |
-| `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready writer payload |
+| `mutate.mjs` | The whole engine. Runs Stryker over a package and emits an actionable summary. Exposed as `pnpm mutate`. |
+| `mutate.test.mjs` | Unit tests for its pure helpers (`node --test 'scripts/mutation-health/*.test.mjs'`). |
+| `stryker.default.mjs` | Shared Stryker config for any vitest package. A package that needs special handling ships its own `stryker.config.mjs`, which `mutate.mjs` prefers. |
 
-`mutate.mjs` is package-agnostic — run `pnpm mutate <repo-relative-file>` from the repo root and the package is inferred from the path (or pass `--package-dir <pkg>` for a package-relative target, as the nightly does). It uses the package's own `stryker.config.mjs` if one exists (e.g. `packages/workflow` carves out the isolated-vm engine), otherwise `stryker.default.mjs`.
+Outputs land in `<package>/reports/mutation/` (gitignored):
 
-The reader and writer webhooks are plain HTTP — the GHA hits them with `curl`. There is no fetch/post wrapper script; if you want to call them locally, see [Local usage](#local-usage).
+- `raw.json` — the full Stryker Mutation Testing Elements report (600 KB+; don't read it directly).
+- `summary.json` — the compact actionable summary: every survivor's location, mutator, replacement, and covering tests. **This is the file to read.**
 
-The BQ table schema lives with the writer workflow (in n8n's internal Quality project), not in this repo — the writer owns the MERGE statement and is the single source of truth.
+## Usage
 
-## End-to-end pipeline
-
-```
-[GHA nightly cron, .github/workflows/mutation-health-nightly.yml]
-       │
-       ├─► curl GET reader webhook          → live-ledger.json (current BQ state)
-       │       │
-       │       └─► [n8n: QA Mutation Health Reader] ──► SELECT from BQ ledger
-       │
-       ├─► pick-next.mjs                    → one source file
-       │     walks <pkg>/src/, merges with live ledger
-       │     files missing from ledger are synthesised as `new`
-       │     priority: new → red → stale → skip green
-       │     within new:        alphabetical
-       │     within red/stale:  lowest score first
-       │
-       ├─► mutate.mjs --package-dir <pkg>   → summary.json
-       │
-       ├─► emit-payload.mjs                 → bq-payload.json
-       │
-       └─► curl POST writer webhook         → INSERTs event + MERGEs ledger row
-                                              ↓
-                              [n8n writer workflow: QA: Mutation Health Writer]
-                                              ↓
-                              ┌───────────────────────────────────┐
-                              │ qa_mutation_health_ledger (MERGE) │
-                              │ qa_performance_metrics  (INSERT)  │
-                              └───────────────────────────────────┘
-```
-
-The writer workflow lives in n8n's internal Quality project. It's created and maintained outside this repo. This README documents the contract it implements.
-
-## Passes, packages & onboarding
-
-The nightly runs a **matrix of `package × pass`** (built once in the `setup` job of `mutation-health-nightly.yml`). Each leg picks, mutates, and writes back independently; the ledger is keyed by package, so they don't collide. Two passes, selectable via the `mode` dispatch input (`both` on schedule):
-
-- **baseline** — `pick-next.mjs --mode baseline` → scores files with no result yet (the `new` bucket). Builds out coverage.
-- **coverage** — `pick-next.mjs --mode coverage` → revisits the weakest scored files (`red`/`stale`, lowest score first). Strengthens existing tests.
-
-To onboard a **vitest** package: add one `{ name, dir, slug }` line to the `packages` array in the `setup` job. No per-package config needed — `stryker.default.mjs` auto-resolves the package's own `vitest.config.*` (verified on plain and DI-decorator packages). Add a local `stryker.config.mjs` only if the package needs special handling.
-
-Not yet covered: **jest** packages (need Stryker's jest-runner — different setup) and `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
-
-## State transitions
-
-| Trigger | Stored `status` |
-| --- | --- |
-| Source file in `src/` but no row yet | synthesised as `new` at pick time; not stored |
-| Last run scored ≥ `threshold_at_run` | `green` |
-| Last run scored < `threshold_at_run` | `red` |
-
-Stored statuses are just two: `red` and `green`. `new` is computed in-memory by the picker for any file in the source tree that has no ledger row yet — the row is only persisted after that file's first scored run. The picker also computes a transient `stale` state — any `green` row whose `last_checked_at` is older than 4 weeks is treated as `stale` for that pick. No `last_checked_sha` is needed; no git history is consulted.
-
-Picker priority: `new` → `red` → `stale` → skip fresh `green`.
-
-- Within `new`: alphabetical (rows exit the bucket as they're scored)
-- Within `red`: lowest score first (weakest tests revisited first)
-- Within `stale`: oldest `last_checked_at` first (natural cycling of long-stable files)
-
-If every row is green and fresh, the picker exits 0 with `{"picked": null, "reason": "all-green"}` — a healthy "nothing to do" state, not a failure.
-
-## Webhook contracts
-
-Two n8n workflows back the pipeline. Both live in the internal Quality project (`L8csxtEbFpFOWlf8`) and are created/maintained outside this repo. Both run unauthenticated (URL-as-secret pattern, matching existing `qa_*` workers).
-
-| Endpoint | Method | Workflow | Purpose |
-| --- | --- | --- | --- |
-| `https://internal.users.n8n.cloud/webhook/mutation-health-writer` | POST | `QA: Mutation Health Writer` (`iYEBmBat8OscRTVq`) | INSERT events + MERGE ledger |
-| `https://internal.users.n8n.cloud/webhook/mutation-health-ledger?package=<name>` | GET | `QA: Mutation Health Reader` (`ZmRsNUwvgfCSq0JI`) | Read current ledger state |
-
-### Writer webhook
-
-`POST https://internal.users.n8n.cloud/webhook/mutation-health-writer` with `Content-Type: application/json`:
-
-```json
-{
-  "ledger": [
-    {
-      "source_file_path": "packages/workflow/src/cron.ts",
-      "package": "n8n-workflow",
-      "last_score": 95.12,
-      "threshold_at_run": 80,
-      "last_checked_at": "2026-05-22T10:03:55.660Z",
-      "status": "green",
-      "mutants_killed": 39,
-      "mutants_survived": 2,
-      "mutants_no_coverage": 0,
-      "mutants_timeout": 0
-    }
-  ],
-  "events": [
-    {
-      "benchmark_name": "mutation_health",
-      "value": 95.12,
-      "timestamp": "2026-05-22T10:03:55.660Z",
-      "dimensions": {
-        "package": "n8n-workflow",
-        "source_file": "packages/workflow/src/cron.ts",
-        "sha": "095239e175",
-        "status_after": "green",
-        "threshold": 80,
-        "mutants_killed": 39,
-        "mutants_survived": 2,
-        "mutants_no_coverage": 0,
-        "mutants_timeout": 0
-      }
-    }
-  ]
-}
-```
-
-Either array may be empty (manual smoke tests sometimes send only `events`).
-
-The writer:
-
-1. For each `events[]` row → `INSERT` into `qa_performance_metrics`.
-2. For each `ledger[]` row → `MERGE` into `qa_mutation_health_ledger` on `source_file_path`. Status is always `red` or `green` — the picker synthesises `new` in-memory and never posts it.
-
-The webhook URL is delivered to GHA via the `MUTATION_HEALTH_WEBHOOK` repo secret. The secret URL itself is the only auth (matches existing `qa_*` writer pattern); rotate the secret if leaked.
-
-### Reader webhook
-
-`GET https://internal.users.n8n.cloud/webhook/mutation-health-ledger?package=<pkg>`:
-
-```json
-{
-  "ledger": [
-    {
-      "source_file_path": "packages/workflow/src/cron.ts",
-      "package": "n8n-workflow",
-      "last_score": 95.12,
-      "threshold_at_run": 80,
-      "last_checked_at": "2026-05-22T10:03:55.660Z",
-      "status": "green",
-      "mutants_killed": 39,
-      "mutants_survived": 2,
-      "mutants_no_coverage": 0,
-      "mutants_timeout": 0
-    }
-  ]
-}
-```
-
-The `package` query param is validated server-side against the same pnpm-workspace allowlist regex used elsewhere in the pipeline; invalid input returns 500. No SQL is constructed or accepted on the client side — the SELECT is hardcoded in the workflow.
-
-Unauthenticated — the URL is not a secret. The data isn't sensitive (file paths + integer scores), but treat the URL as low-trust: anyone with it can read all current ledger state for the queried package.
-
-## Threshold (provisional)
-
-Runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to evidence-based after ~4 weeks of accumulated data. Until then, treat `red`/`green` verdicts as preliminary.
-
-## Local usage
+The primary mode is `--diff`: mutate only the lines this branch changed.
 
 ```bash
-# Run Stryker on one file (the inner loop — also invokable via /mutant-score skill).
-# Package is inferred from the repo-relative path; works for any vitest package.
-pnpm mutate packages/workflow/src/cron.ts
+# Everything you changed vs origin/master — committed and uncommitted —
+# batched into one Stryker run per package.
+pnpm mutate --diff
+pnpm mutate --diff --base upstream/master
+
+# One file, whole.
 pnpm mutate packages/@n8n/crdt/src/utils.ts
 
-# Pull current ledger from BQ
-curl --fail -sS \
-  'https://internal.users.n8n.cloud/webhook/mutation-health-ledger?package=n8n-workflow' \
-  -o /tmp/ledger.json
+# One file, only lines 40-75.
+pnpm mutate packages/@n8n/crdt/src/utils.ts:40-75
 
-# Pick the next file to score
-node scripts/mutation-health/pick-next.mjs \
-  --package-dir packages/workflow \
-  --ledger-file /tmp/ledger.json
-
-# Build a BQ payload from a Stryker run
-node scripts/mutation-health/emit-payload.mjs \
-  --summary packages/workflow/reports/mutation/summary.json \
-  --package n8n-workflow
-
-# POST the result (requires MUTATION_HEALTH_WEBHOOK to be set)
-curl --fail -sS -X POST \
-  -H 'Content-Type: application/json' \
-  --data @packages/workflow/reports/mutation/bq-payload.json \
-  "$MUTATION_HEALTH_WEBHOOK"
+# Package-relative target.
+pnpm mutate src/cron.ts --package-dir packages/workflow
 ```
+
+Exit codes: `0` gate passed · `1` gate failed (summary.json still written — this is the
+iterate signal) · `2` usage error · `3` Stryker could not run. A toolchain failure is
+**never** `1`, so a broken checkout can't be mistaken for a score of zero.
+
+### Why `--diff` is fast
+
+Two things do the work:
+
+1. **Patch scoping.** Stryker's mutation-range syntax (`file.ts:13-16`) means only the mutants
+   inside your changed lines are generated. You're scored on the lines you touched, not on
+   inherited debt.
+2. **One dry run per package.** Targets are comma-joined into a single `--mutate` argument.
+   Repeated `--mutate` flags silently *overwrite* each other in Stryker's CLI, so comma-joining
+   is the only way to batch — and it means a package pays for its dry run once, not once per file.
+
+On top of that, Stryker's vitest runner only loads the tests *related* to the mutated files, so
+cost tracks the related suite rather than package size. Measured end-to-end, whole-file:
+`@n8n/decorators` 1s · `@n8n/scheduler` 3s · `packages/workflow` 13s · `nodes-base` 26s ·
+`packages/cli` 88s. Line-scoping cuts these further.
+
+### In-place mutation
+
+Runs use Stryker's `--inPlace`. Its default sandbox copy breaks on any package whose vitest
+config resolves a workspace dependency through a path alias — the alias doesn't survive the
+copy, and `packages/cli` dies on `ERR_LOAD_URL … .stryker-tmp/@n8n/backend-test-utils`.
+
+Stryker restores your files on a clean exit and on `Ctrl-C`. Because a hard crash would not,
+and because in `--diff` mode those files hold *uncommitted work* (so `git checkout --` is not a
+safe undo), `mutate.mjs` snapshots the exact bytes of every target before the run and writes
+them back if they differ afterwards.
+
+## Which packages can be scored
+
+Any package whose `test` script runs **vitest** — which, since the Jest migration, is nearly all
+of them, including `nodes-base`, `nodes-langchain`, `cli` and `db`. `--diff` derives eligibility
+per file and prints a one-line reason for anything it skips; there is no curated list to
+maintain.
+
+Not scored:
+
+- `@n8n/expression-runtime` — Stryker's dry run SIGABRTs on the isolated-vm engine ([DEVP-257](https://linear.app/n8n/issue/DEVP-257)).
+- `.vue` single-file components — every SFC package crashed Stryker's mutate step in the 2026-06 sweep, and the component layer is low-value to mutate.
+- Tests, declarations, stories, configs, migrations and build output.
+
+## Gate semantics
+
+A run passes only when **both**:
+
+1. Mutation score meets `STRYKER_THRESHOLD` (default `80`), **and**
+2. Zero `Survived` / `NoCoverage` mutants remain — every unkilled mutant must be explicitly justified as `Ignored` via a `// Stryker disable next-line <Mutator>: <reason>` comment in the source.
+
+Stryker excludes `Ignored` mutants from both numerator and denominator of the score (see `scoreFromCounts` in `mutate.mjs`), so marking a genuine equivalent as ignored is **not** padding — it's the documented mechanism for "this mutant is equivalent / not behaviour-bearing, here's why". The score becomes a coarse floor; the real gate is "no unjustified survivors". This stops agents from padding the suite with trivial tests to clear `80%` while leaving real behaviour gaps unasserted. See [DEVP-442](https://linear.app/n8n/issue/DEVP-442) for the motivation.
+
+`summary.json` surfaces every `Ignored` mutant alongside its disable-comment reason so reviewers can spot-check the justifications — those become the high-signal review artifact rather than N padding tests.
+
+A **partial** run never passes: if Stryker exits non-zero but left a salvageable `raw.json`,
+the summary is kept (survivors found so far are still useful) and flagged `partial`, because
+mutants it never got to could be survivors.
+
+### Threshold (provisional)
+
+Runs use `STRYKER_THRESHOLD=80` as a placeholder. Scoped to a patch the number is coarse — a
+handful of mutants makes for a jumpy percentage — so the load-bearing half of the gate is
+"no unjustified survivors", not the score.

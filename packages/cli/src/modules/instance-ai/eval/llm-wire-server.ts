@@ -4,6 +4,7 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 import { type Server } from 'node:http';
 
+import { isMockErrorSentinel } from './mock-handler';
 import {
 	buildOpenAiErrorEnvelope,
 	extractRequestModel,
@@ -29,6 +30,17 @@ export interface InterceptedTurn {
 	method: string;
 	nodeType: string;
 	requestBody: unknown;
+	/**
+	 * Wire-level response body as served to the vendor SDK (post protocol
+	 * translation) — NOT the mock handler's internal shorthand. Judges read this
+	 * field as "what the node received"; recording the pre-translation shorthand
+	 * made them misattribute node-side failures to a malformed mock envelope.
+	 * For streamed turns this is the equivalent non-streamed envelope.
+	 *
+	 * Exception: generation/translation failures keep their sentinel shorthand
+	 * (`_evalMockError` / `evalMockGenerationError`) so consumers can still
+	 * attribute mock_issue — a wire envelope would hide it in message content.
+	 */
 	mockResponse: unknown;
 }
 
@@ -38,7 +50,7 @@ export interface LlmWireServerOptions {
 	rootToSubNode?: ReadonlyMap<string, INode>;
 	/** Pushed to `nodeResults[rootName].interceptedRequests` by the caller. */
 	onIntercept?: (turn: InterceptedTurn) => void;
-	logger?: Logger;
+	logger: Logger;
 }
 
 /** Per-protocol translator + formatter — adding a new vendor envelope is a new adapter, not a new handler. */
@@ -103,7 +115,7 @@ export class LlmWireServer {
 	/** Set by `stop()` so any request that beats the close-callback gets a 503 instead of starting a fresh handler that would race the teardown. */
 	private stopping = false;
 
-	constructor(private readonly options: LlmWireServerOptions = {}) {}
+	constructor(private readonly options: LlmWireServerOptions) {}
 
 	get url(): string {
 		if (!this.resolvedUrl) {
@@ -204,10 +216,68 @@ export class LlmWireServer {
 			mockResponse = await this.options.mockHandler(synthetic, subNode);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.error(`[EvalMock] Wire-server mock generation failed: ${message}`);
+			this.options.logger.error(
+				`[EvalMock] Wire-server mock generation failed for root "${rootName}": ${message}`,
+			);
+			// Record failed turns too — this branch previously skipped the ledger,
+			// leaving downstream parser failures (e.g. error envelopes surfacing as
+			// stringified objects) with no captured evidence of the failed turn.
+			try {
+				this.options.onIntercept?.({
+					rootName,
+					url: req.originalUrl ?? req.url ?? '',
+					method: req.method ?? 'POST',
+					nodeType: subNode.type,
+					requestBody: req.body,
+					mockResponse: { evalMockGenerationError: message },
+				});
+			} catch {
+				// Ledger write must never block the error response.
+			}
 			this.respondWithError(adapter, res, message);
 			return;
 		}
+
+		// Diagnostic trace for structured-output coercion forensics: what the mock
+		// handler actually returned for each intercepted vendor turn.
+		this.options.logger.info(
+			`[EvalMock] wire turn root="${rootName}" stream=${String(stream)} responseHead=${JSON.stringify(mockResponse?.body ?? null).slice(0, 300)}`,
+		);
+
+		// Translate to the wire envelope BEFORE the ledger write so the ledger
+		// records exactly what the SDK receives (a translator throw records an
+		// error turn instead of leaking the handler's internal shorthand).
+		let wireBody: Record<string, unknown>;
+		try {
+			wireBody = adapter.forwardObject(mockResponse, model);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.options.logger.error(
+				`[EvalMock] Wire-server envelope translation failed for root "${rootName}": ${message}`,
+			);
+			try {
+				this.options.onIntercept?.({
+					rootName,
+					url: synthetic.url,
+					method: synthetic.method ?? 'POST',
+					nodeType: subNode.type,
+					requestBody: req.body,
+					mockResponse: { evalMockGenerationError: `envelope translation failed: ${message}` },
+				});
+			} catch {
+				// Ledger write must never block the error response.
+			}
+			this.respondWithError(adapter, res, message);
+			return;
+		}
+
+		// A handler-returned generation failure carries the `_evalMockError` sentinel
+		// that ledger consumers key on to attribute mock_issue. Translating it into a
+		// vendor envelope buries the sentinel in assistant message content, so record
+		// the shorthand verbatim for this branch — a failed generation has no
+		// meaningful "what the node received" beyond the failure itself.
+		const ledgerBody =
+			mockResponse && isMockErrorSentinel(mockResponse) ? mockResponse.body : wireBody;
 
 		// Ledger write BEFORE the response so consumers see the entry deterministically
 		// after `await fetch(...)`. `requestBody` is stored by reference (express.json
@@ -220,22 +290,22 @@ export class LlmWireServer {
 				method: synthetic.method ?? 'POST',
 				nodeType: subNode.type,
 				requestBody: req.body,
-				mockResponse: mockResponse?.body,
+				mockResponse: ledgerBody,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.warn(`[EvalMock] Wire-server ledger write failed: ${message}`);
+			this.options.logger.warn(`[EvalMock] Wire-server ledger write failed: ${message}`);
 		}
 
 		try {
 			if (stream) {
 				this.writeSseResponse(adapter, req, res, mockResponse, model);
 			} else {
-				res.status(200).json(adapter.forwardObject(mockResponse, model));
+				res.status(200).json(wireBody);
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.options.logger?.error(`[EvalMock] Wire-server response write failed: ${message}`);
+			this.options.logger.error(`[EvalMock] Wire-server response write failed: ${message}`);
 			// Headers not yet flushed → send a typed error envelope; otherwise close.
 			if (!res.headersSent) {
 				this.respondWithError(adapter, res, message);
@@ -320,7 +390,7 @@ export class LlmWireServer {
 		const subNode = this.options.rootToSubNode?.get(rootName);
 		if (subNode) return subNode;
 		// Defensive fallback — can't crash on a missing mapping mid-eval.
-		this.options.logger?.warn(
+		this.options.logger.warn(
 			`[EvalMock] Wire server has no sub-node mapping for root "${rootName}" — using synthetic identity`,
 		);
 		return {

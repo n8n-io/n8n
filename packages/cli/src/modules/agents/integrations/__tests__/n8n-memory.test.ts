@@ -1,21 +1,22 @@
 import { hashEpisodicMemoryEvidence, type NewObservationLogEntry } from '@n8n/agents';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentMemoryEntryCursorEntity } from '../../entities/agent-memory-entry-cursor.entity';
-import { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
 import type { AgentMemoryEntryLockEntity } from '../../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../../entities/agent-memory-entry-source.entity';
+import { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../../entities/agent-thread.entity';
-import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentMemoryEntryCursorRepository } from '../../repositories/agent-memory-entry-cursor.repository';
 import type { AgentMemoryEntryLockRepository } from '../../repositories/agent-memory-entry-lock.repository';
 import type { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import type { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
+import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
@@ -23,42 +24,41 @@ import type { AgentResourceRepository } from '../../repositories/agent-resource.
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { N8nMemory } from '../n8n-memory';
 
-const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
 describe('N8nMemory', () => {
 	let memory: N8nMemoryImplementation;
 	let memoryService: N8nMemory;
-	let messageRepository: jest.Mocked<AgentMessageRepository>;
-	let threadRepository: jest.Mocked<AgentThreadRepository>;
-	let resourceRepository: jest.Mocked<AgentResourceRepository>;
-	let observationRepository: jest.Mocked<AgentObservationRepository>;
-	let observationCursorRepository: jest.Mocked<AgentObservationCursorRepository>;
-	let observationLockRepository: jest.Mocked<AgentObservationLockRepository>;
-	let memoryEntryRepository: jest.Mocked<AgentMemoryEntryRepository>;
-	let memoryEntryLockRepository: jest.Mocked<AgentMemoryEntryLockRepository>;
-	let memoryEntrySourceRepository: jest.Mocked<AgentMemoryEntrySourceRepository>;
-	let memoryEntryCursorRepository: jest.Mocked<AgentMemoryEntryCursorRepository>;
-	let runInTransaction: jest.Mock;
-	let transactionDelete: jest.Mock;
-	let observationRunInTransaction: jest.Mock;
-	let transactionObservationCreate: jest.Mock;
-	let transactionObservationFind: jest.Mock;
-	let transactionObservationSave: jest.Mock;
-	let transactionObservationUpdate: jest.Mock;
-	let memoryEntryRunInTransaction: jest.Mock;
-	let transactionMemoryEntryCreate: jest.Mock;
-	let transactionMemoryEntryFind: jest.Mock;
-	let transactionMemoryEntryFindOneBy: jest.Mock;
-	let transactionMemoryEntrySave: jest.Mock;
-	let transactionMemoryEntryUpdate: jest.Mock;
-	let transactionMemoryEntrySourceCreate: jest.Mock;
-	let transactionMemoryEntrySourceFind: jest.Mock;
-	let transactionMemoryEntrySourceFindOneBy: jest.Mock;
-	let transactionMemoryEntrySourceSave: jest.Mock;
+	let messageRepository: Mocked<AgentMessageRepository>;
+	let threadRepository: Mocked<AgentThreadRepository>;
+	let resourceRepository: Mocked<AgentResourceRepository>;
+	let observationRepository: Mocked<AgentObservationRepository>;
+	let observationCursorRepository: Mocked<AgentObservationCursorRepository>;
+	let observationLockRepository: Mocked<AgentObservationLockRepository>;
+	let memoryEntryRepository: Mocked<AgentMemoryEntryRepository>;
+	let memoryEntryLockRepository: Mocked<AgentMemoryEntryLockRepository>;
+	let memoryEntrySourceRepository: Mocked<AgentMemoryEntrySourceRepository>;
+	let memoryEntryCursorRepository: Mocked<AgentMemoryEntryCursorRepository>;
+	let runInTransaction: Mock;
+	let transactionDelete: Mock;
+	let observationRunInTransaction: Mock;
+	let transactionObservationCreate: Mock;
+	let transactionObservationFind: Mock;
+	let transactionObservationSave: Mock;
+	let transactionObservationUpdate: Mock;
+	let memoryEntryRunInTransaction: Mock;
+	let transactionMemoryEntryCreate: Mock;
+	let transactionMemoryEntryFind: Mock;
+	let transactionMemoryEntryFindOneBy: Mock;
+	let transactionMemoryEntrySave: Mock;
+	let transactionMemoryEntryUpdate: Mock;
+	let transactionMemoryEntrySourceCreate: Mock;
+	let transactionMemoryEntrySourceFind: Mock;
+	let transactionMemoryEntrySourceFindOneBy: Mock;
+	let transactionMemoryEntrySourceSave: Mock;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		messageRepository = mock<AgentMessageRepository>();
 		threadRepository = mock<AgentThreadRepository>();
@@ -71,10 +71,10 @@ describe('N8nMemory', () => {
 		memoryEntrySourceRepository = mock<AgentMemoryEntrySourceRepository>();
 		memoryEntryCursorRepository = mock<AgentMemoryEntryCursorRepository>();
 		resourceRepository.existsBy.mockResolvedValue(true);
-		transactionDelete = jest.fn().mockResolvedValue({ affected: 1, raw: {} });
-		transactionObservationCreate = jest.fn((input) => ({ ...input }) as AgentObservationEntity);
-		transactionObservationFind = jest.fn().mockResolvedValue([]);
-		transactionObservationSave = jest.fn(async (input: AgentObservationEntity[]) =>
+		transactionDelete = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
+		transactionObservationCreate = vi.fn((input) => ({ ...input }) as AgentObservationEntity);
+		transactionObservationFind = vi.fn().mockResolvedValue([]);
+		transactionObservationSave = vi.fn(async (input: AgentObservationEntity[]) =>
 			input.map((entity, index) => ({
 				...entity,
 				id: `merged-${index + 1}`,
@@ -82,11 +82,11 @@ describe('N8nMemory', () => {
 				updatedAt: entity.updatedAt ?? new Date('2026-05-12T10:00:00Z'),
 			})),
 		);
-		transactionObservationUpdate = jest.fn().mockResolvedValue({ affected: 1, raw: {} });
-		observationRunInTransaction = jest.fn(
-			async (callback: (trx: { getRepository: jest.Mock }) => Promise<unknown>) =>
+		transactionObservationUpdate = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
+		observationRunInTransaction = vi.fn(
+			async (callback: (trx: { getRepository: Mock }) => Promise<unknown>) =>
 				await callback({
-					getRepository: jest.fn().mockReturnValue({
+					getRepository: vi.fn().mockReturnValue({
 						create: transactionObservationCreate,
 						find: transactionObservationFind,
 						save: transactionObservationSave,
@@ -98,10 +98,10 @@ describe('N8nMemory', () => {
 			value: { transaction: observationRunInTransaction },
 		});
 
-		transactionMemoryEntryCreate = jest.fn((input) => ({ ...input }) as AgentMemoryEntryEntity);
-		transactionMemoryEntryFind = jest.fn().mockResolvedValue([]);
-		transactionMemoryEntryFindOneBy = jest.fn().mockResolvedValue(null);
-		transactionMemoryEntrySave = jest.fn(async (input: AgentMemoryEntryEntity[]) =>
+		transactionMemoryEntryCreate = vi.fn((input) => ({ ...input }) as AgentMemoryEntryEntity);
+		transactionMemoryEntryFind = vi.fn().mockResolvedValue([]);
+		transactionMemoryEntryFindOneBy = vi.fn().mockResolvedValue(null);
+		transactionMemoryEntrySave = vi.fn(async (input: AgentMemoryEntryEntity[]) =>
 			input.map((entity, index) => ({
 				...entity,
 				id: `merged-memory-${index + 1}`,
@@ -109,13 +109,13 @@ describe('N8nMemory', () => {
 				updatedAt: entity.updatedAt ?? new Date('2026-05-12T10:00:00Z'),
 			})),
 		);
-		transactionMemoryEntryUpdate = jest.fn().mockResolvedValue({ affected: 1, raw: {} });
-		transactionMemoryEntrySourceCreate = jest.fn(
+		transactionMemoryEntryUpdate = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
+		transactionMemoryEntrySourceCreate = vi.fn(
 			(input) => ({ ...input }) as AgentMemoryEntrySourceEntity,
 		);
-		transactionMemoryEntrySourceFind = jest.fn().mockResolvedValue([]);
-		transactionMemoryEntrySourceFindOneBy = jest.fn().mockResolvedValue(null);
-		transactionMemoryEntrySourceSave = jest.fn(async (input: AgentMemoryEntrySourceEntity[]) =>
+		transactionMemoryEntrySourceFind = vi.fn().mockResolvedValue([]);
+		transactionMemoryEntrySourceFindOneBy = vi.fn().mockResolvedValue(null);
+		transactionMemoryEntrySourceSave = vi.fn(async (input: AgentMemoryEntrySourceEntity[]) =>
 			input.map((entity, index) => ({
 				...entity,
 				id: `merged-source-${index + 1}`,
@@ -123,16 +123,16 @@ describe('N8nMemory', () => {
 				updatedAt: entity.updatedAt ?? new Date('2026-05-12T10:00:00Z'),
 			})),
 		);
-		runInTransaction = jest.fn(
+		runInTransaction = vi.fn(
 			async (
 				callback: (trx: {
 					delete: typeof transactionDelete;
-					getRepository: jest.Mock;
+					getRepository: Mock;
 				}) => Promise<void>,
 			) => {
 				await callback({
 					delete: transactionDelete,
-					getRepository: jest.fn((entity) => {
+					getRepository: vi.fn((entity) => {
 						if (entity === AgentMemoryEntryEntity) {
 							return { update: transactionMemoryEntryUpdate };
 						}
@@ -144,10 +144,10 @@ describe('N8nMemory', () => {
 		Object.defineProperty(threadRepository, 'manager', {
 			value: { transaction: runInTransaction },
 		});
-		memoryEntryRunInTransaction = jest.fn(
-			async (callback: (trx: { getRepository: jest.Mock }) => Promise<unknown>) =>
+		memoryEntryRunInTransaction = vi.fn(
+			async (callback: (trx: { getRepository: Mock }) => Promise<unknown>) =>
 				await callback({
-					getRepository: jest.fn((entity) => {
+					getRepository: vi.fn((entity) => {
 						if (entity === AgentMemoryEntryEntity) {
 							return {
 								create: transactionMemoryEntryCreate,
@@ -202,6 +202,39 @@ describe('N8nMemory', () => {
 			updatedAt: createdAt,
 		} as unknown as AgentMessageEntity;
 	}
+
+	describe('saveMessages — hydrated file parts', () => {
+		it('strips data from fileRef file parts before upserting, keeping the reference', async () => {
+			const bytes = new Uint8Array([1, 2, 3]);
+			await memory.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [
+					{
+						id: 'm-1',
+						createdAt: new Date('2026-05-12T10:00:00Z'),
+						role: 'user',
+						content: [
+							{ type: 'text', text: 'look at this' },
+							{
+								type: 'file',
+								mediaType: 'image/png',
+								data: bytes,
+								fileRef: { id: 'att-1', fileName: 'photo.png', sizeBytes: 3 },
+							},
+						],
+					},
+				],
+			});
+
+			expect(messageRepository.upsert).toHaveBeenCalledTimes(1);
+			const [entities] = messageRepository.upsert.mock.calls[0];
+			const content = (entities as Array<{ content: { content: unknown[] } }>)[0].content;
+			const filePart = content.content[1] as Record<string, unknown>;
+			expect(filePart.data).toBeUndefined();
+			expect(filePart.fileRef).toEqual({ id: 'att-1', fileName: 'photo.png', sizeBytes: 3 });
+		});
+	});
 
 	describe('getMessages — resourceId filter', () => {
 		beforeEach(() => {
@@ -740,7 +773,7 @@ describe('N8nMemory', () => {
 		});
 
 		it('persists active marker rows with a default token count', async () => {
-			(observationRepository.save as unknown as jest.Mock).mockImplementation(
+			(observationRepository.save as unknown as Mock).mockImplementation(
 				async (input: AgentObservationEntity | AgentObservationEntity[]) =>
 					(Array.isArray(input) ? input : [input]).map((e, i) => ({
 						...e,
@@ -761,7 +794,7 @@ describe('N8nMemory', () => {
 					marker: 'important',
 					text: 'hello',
 					parentId: null,
-					tokenCount: estimateObservationTokens('hello'),
+					tokenCount: 1,
 					status: 'active',
 					supersededBy: null,
 				}),
@@ -895,7 +928,7 @@ describe('N8nMemory', () => {
 					marker: 'important',
 					text: 'Merged observation',
 					parentId: null,
-					tokenCount: estimateObservationTokens('Merged observation'),
+					tokenCount: 3,
 					status: 'active',
 					supersededBy: null,
 				}),
@@ -1003,19 +1036,19 @@ describe('N8nMemory', () => {
 			claimed?: AgentObservationLockEntity | null;
 		}) => {
 			const updateQueryBuilder = {
-				update: jest.fn().mockReturnThis(),
-				set: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				setParameters: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ affected: updateAffected }),
+				update: vi.fn().mockReturnThis(),
+				set: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				setParameters: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ affected: updateAffected }),
 			};
 			const insertQueryBuilder = {
-				insert: jest.fn().mockReturnThis(),
-				into: jest.fn().mockReturnThis(),
-				values: jest.fn().mockReturnThis(),
-				orIgnore: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
+				insert: vi.fn().mockReturnThis(),
+				into: vi.fn().mockReturnThis(),
+				values: vi.fn().mockReturnThis(),
+				orIgnore: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
 			};
 
 			observationLockRepository.createQueryBuilder
@@ -1162,19 +1195,19 @@ describe('N8nMemory', () => {
 			claimed?: AgentMemoryEntryLockEntity | null;
 		}) => {
 			const updateQueryBuilder = {
-				update: jest.fn().mockReturnThis(),
-				set: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				setParameters: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ affected: updateAffected }),
+				update: vi.fn().mockReturnThis(),
+				set: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				setParameters: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ affected: updateAffected }),
 			};
 			const insertQueryBuilder = {
-				insert: jest.fn().mockReturnThis(),
-				into: jest.fn().mockReturnThis(),
-				values: jest.fn().mockReturnThis(),
-				orIgnore: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
+				insert: vi.fn().mockReturnThis(),
+				into: vi.fn().mockReturnThis(),
+				values: vi.fn().mockReturnThis(),
+				orIgnore: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
 			};
 
 			memoryEntryLockRepository.createQueryBuilder
@@ -1603,19 +1636,19 @@ describe('N8nMemory', () => {
 
 		const mockEpisodicCursorWrite = () => {
 			const insertQueryBuilder = {
-				insert: jest.fn().mockReturnThis(),
-				into: jest.fn().mockReturnThis(),
-				values: jest.fn().mockReturnThis(),
-				orIgnore: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
+				insert: vi.fn().mockReturnThis(),
+				into: vi.fn().mockReturnThis(),
+				values: vi.fn().mockReturnThis(),
+				orIgnore: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
 			};
 			const updateQueryBuilder = {
-				update: jest.fn().mockReturnThis(),
-				set: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				setParameters: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({ affected: 1 }),
+				update: vi.fn().mockReturnThis(),
+				set: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				setParameters: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ affected: 1 }),
 			};
 
 			memoryEntryCursorRepository.createQueryBuilder

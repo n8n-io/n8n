@@ -1,4 +1,5 @@
 name: 'Release: Create Pull Request'
+run-name: "Release: Create ${{ inputs['release-type'] }} PR from ${{ inputs['base-branch'] }}"
 
 on:
   workflow_call:
@@ -37,9 +38,7 @@ on:
           - experimental
           - premajor
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   create-release-pr:
@@ -82,14 +81,17 @@ jobs:
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
       - name: Bump package versions
+        # Assign first: a command substitution nested in another command's
+        # arguments (e.g. `echo "X=$(node …)"`) discards the script's exit code.
+        shell: bash
         run: |
-          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> "$GITHUB_ENV"
+          NEXT_RELEASE="$(node .github/scripts/bump-versions.mjs)"
+          if [ -z "$NEXT_RELEASE" ]; then
+            echo "::error::bump-versions.mjs produced no version"
+            exit 1
+          fi
+          echo "NEXT_RELEASE=$NEXT_RELEASE" >> "$GITHUB_ENV"
         env:
           RELEASE_TYPE: ${{ inputs.release-type }}
 
@@ -128,11 +130,14 @@ jobs:
           branch: 'release-pr/${{ env.NEXT_RELEASE }}'
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
-          labels: release,release:${{ inputs.release-type }}
+          labels: release,release:${{ inputs.release-type }},automation:release
           title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           body: ${{ steps.generate-body.outputs.content }}
 
   approve-and-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [create-release-pr]
     if: |
       needs.create-release-pr.outputs.pull-request-number != ''
@@ -140,3 +145,15 @@ jobs:
     secrets: inherit
     with:
       pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
+
+  # Packs every publishable package, so it only runs at release prep, in parallel with the PR.
+  verify-single-instance-npm-full:
+    name: Verify single-instance deps (npm-install, full)
+    uses: ./.github/workflows/test-single-instance-npm.yml
+    permissions:
+      contents: read
+    with:
+      scope: all
+      # Profile the release being prepared, not this workflow's triggering revision.
+      base-branch: ${{ inputs.base-branch }}
+      timeout-minutes: 30

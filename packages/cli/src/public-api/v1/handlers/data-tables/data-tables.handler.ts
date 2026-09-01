@@ -5,18 +5,6 @@ import {
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
-import { ProjectService } from '@/services/project.service.ee';
-
-import { getDataTableListFilter, resolveProjectIdForCreate } from './data-tables.service';
 import type { DataTableRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
@@ -26,15 +14,30 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
+import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { ProjectNotFoundError } from '@/services/project.service.ee';
+
 const handleError = (error: unknown) => {
 	if (error instanceof DataTableValidationError) {
 		throw new BadRequestError(error.message);
 	}
+	if (error instanceof ProjectNotFoundError) {
+		throw new BadRequestError(`Project with ID "${error.projectId}" not found`);
+	}
 	if (error instanceof DataTableNotFoundError) {
 		throw new NotFoundError(error.message);
 	}
-	if (error instanceof ForbiddenError) {
-		throw new ForbiddenError(error.message);
+	if (error instanceof DataTableAccessDeniedError) {
+		throw new ForbiddenError();
 	}
 	if (error instanceof DataTableNameConflictError) {
 		throw new ConflictError(error.message);
@@ -57,6 +60,11 @@ const stringifyQuery = (query: Record<string, unknown>): Record<string, string |
 	return result;
 };
 
+function toPublicDataTable<T extends { project?: unknown }>(dataTable: T) {
+	const { project: _project, ...rest } = dataTable;
+	return rest;
+}
+
 type DataTableHandlers = {
 	listDataTables: PublicAPIEndpoint<DataTableRequest.List>;
 	createDataTable: PublicAPIEndpoint<DataTableRequest.Create>;
@@ -78,35 +86,14 @@ const dataTableHandlers: DataTableHandlers = {
 
 				const { offset, limit, filter, sortBy } = payload.data;
 
-				const providedFilter = filter ?? {};
-				const { projectId: requestedProjectId, ...restFilter } = providedFilter;
-
-				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
-
-				if (requestedProjectId && !isGlobalOwnerOrAdmin) {
-					const projectWithScope = await Container.get(ProjectService).getProjectWithScope(
-						req.user,
-						requestedProjectId,
-						['dataTable:listProject'],
-					);
-					if (!projectWithScope) return res.json({ data: [], nextCursor: null });
-				}
-
-				const finalFilter = await getDataTableListFilter(
-					req.user.id,
-					isGlobalOwnerOrAdmin,
-					requestedProjectId,
-					restFilter,
-				);
-
-				const result = await Container.get(DataTableService).getManyAndCount({
+				const result = await Container.get(DataTableAggregateService).getManyAndCount(req.user, {
 					skip: offset,
 					take: limit,
-					filter: finalFilter,
+					filter,
 					sortBy,
 				});
 
-				const data = result.data.map(({ project: _project, ...rest }) => rest);
+				const data = result.data.map(toPublicDataTable);
 
 				return res.json({
 					data,
@@ -130,16 +117,19 @@ const dataTableHandlers: DataTableHandlers = {
 				throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
 			}
 
-			const { projectId: requestedProjectId, ...dto } = payload.data;
-
-			const projectId = await resolveProjectIdForCreate(req.user, requestedProjectId);
+			const { projectId, name, columns, fileId, hasHeaders } = payload.data;
+			const dataTableService = Container.get(DataTableService);
 
 			try {
-				const result = await Container.get(DataTableService).createDataTable(projectId, dto);
+				const owningProjectId = await dataTableService.resolveOwningProjectId(req.user, projectId);
+				const result = await dataTableService.createDataTable(owningProjectId, {
+					name,
+					columns,
+					fileId,
+					hasHeaders,
+				});
 
-				const { project: _project, ...dataTable } = result;
-
-				return res.status(201).json(dataTable);
+				return res.status(201).json(toPublicDataTable(result));
 			} catch (error) {
 				return handleError(error);
 			}
@@ -156,18 +146,9 @@ const dataTableHandlers: DataTableHandlers = {
 				const projectId =
 					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 
-				const result = await Container.get(DataTableRepository).findOne({
-					where: { id: dataTableId, project: { id: projectId } },
-					relations: ['project', 'columns'],
-				});
+				const result = await Container.get(DataTableService).getOne(dataTableId, projectId);
 
-				if (!result) {
-					throw new DataTableNotFoundError(dataTableId);
-				}
-
-				const { project: _project, ...dataTable } = result;
-
-				return res.json(dataTable);
+				return res.json(toPublicDataTable(result));
 			} catch (error) {
 				return handleError(error);
 			}
@@ -186,23 +167,14 @@ const dataTableHandlers: DataTableHandlers = {
 					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
 				}
 
-				const projectId =
-					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
+				const dataTableService = Container.get(DataTableService);
+				const projectId = await dataTableService.getProjectIdForDataTable(dataTableId);
 
-				await Container.get(DataTableService).updateDataTable(dataTableId, projectId, payload.data);
+				await dataTableService.updateDataTable(dataTableId, projectId, payload.data);
 
-				const result = await Container.get(DataTableRepository).findOne({
-					where: { id: dataTableId, project: { id: projectId } },
-					relations: ['project', 'columns'],
-				});
+				const result = await dataTableService.getOne(dataTableId, projectId);
 
-				if (!result) {
-					throw new DataTableNotFoundError(dataTableId);
-				}
-
-				const { project: _project, ...dataTable } = result;
-
-				return res.json(dataTable);
+				return res.json(toPublicDataTable(result));
 			} catch (error) {
 				return handleError(error);
 			}

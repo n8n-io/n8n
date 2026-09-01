@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+description: Request body for triggering an LDAP synchronization.
+required:
+  - type
+properties:
+  type:
+    type: string
+    enum: [live, dry]
+    description: >
+      Type of synchronization. 'live' applies changes to the database, 'dry' performs
+      a test run without persisting changes.
+    example: live

@@ -18,6 +18,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { JwtService } from '@/services/jwt.service';
 
@@ -46,7 +47,11 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsCommunityPackages = true;
 
+	override needsExpressionEngine = true;
+
 	override needsTaskRunner = true;
+
+	override seedsInstanceIdentity = true;
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -98,7 +103,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
-		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 
@@ -159,6 +163,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe(subscriber.getCommandChannel());
 		Container.get(WorkerStatusService);
+		Container.get(ExecutionStopService);
 	}
 
 	async setConcurrency() {
@@ -176,7 +181,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async initScalingService() {
-		const { ScalingService } = await import('@/scaling/scaling.service');
+		const { ScalingService } = await import('@/scaling/scaling.service.js');
 		this.scalingService = Container.get(ScalingService);
 
 		await this.scalingService.setupQueue();
@@ -191,7 +196,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		let workerServer: WorkerServer | undefined;
 		if (Object.values(endpointsConfig).some((e) => e)) {
-			const { WorkerServer } = await import('@/scaling/worker-server');
+			const { WorkerServer } = await import('@/scaling/worker-server.js');
 			workerServer = Container.get(WorkerServer);
 			await workerServer.init(endpointsConfig);
 		}

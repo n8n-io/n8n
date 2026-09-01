@@ -15,7 +15,9 @@ import type {
 	IRunData,
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
+	GenericValue,
 	NodeParameterValue,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -54,8 +56,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
+	deriveHomeProject,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
@@ -274,6 +278,37 @@ export async function resolveParameter<T = IDataObject>(
 	) as T;
 }
 
+async function resolveParameterLeaves(
+	parameter: NodeParameterValueType,
+	workflowDocumentId: WorkflowDocumentId,
+	opts: ResolveParameterOptions | ExpressionLocalResolveContext,
+): Promise<GenericValue> {
+	if (Array.isArray(parameter)) {
+		return await Promise.all(
+			parameter.map(async (value) => await resolveParameterLeaves(value, workflowDocumentId, opts)),
+		);
+	}
+
+	if (parameter !== null && typeof parameter === 'object') {
+		const entries = await Promise.all(
+			Object.entries(parameter).map(
+				async ([name, value]): Promise<[string, GenericValue]> => [
+					name,
+					await resolveParameterLeaves(value, workflowDocumentId, opts),
+				],
+			),
+		);
+
+		return Object.fromEntries(entries);
+	}
+
+	try {
+		return await resolveParameter<GenericValue>(parameter, workflowDocumentId, opts);
+	} catch {
+		return null;
+	}
+}
+
 export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
@@ -284,7 +319,7 @@ export async function resolveRequiredParameters(
 
 	const entries = Object.entries(parameters);
 	const resolvedEntries = await Promise.all(
-		entries.map(async ([name, parameter]): Promise<[string, IDataObject | null]> => {
+		entries.map(async ([name, parameter]): Promise<[string, GenericValue]> => {
 			const required = loadOptionsDependsOn.has(name);
 
 			if (required) {
@@ -298,9 +333,10 @@ export async function resolveRequiredParameters(
 						name,
 						await resolveParameter(parameter as NodeParameterValue, workflowDocumentId, opts),
 					];
-				} catch (error) {
-					// ignore any expressions errors for non required parameters
-					return [name, null];
+				} catch {
+					// Load options may still need the parameter structure when a nested
+					// expression fails, so resolve a complex parameter recursively.
+					return [name, await resolveParameterLeaves(parameter, workflowDocumentId, opts)];
 				}
 			}
 		}),
@@ -371,9 +407,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+	const documentId = createWorkflowDocumentId(workflowsStore.workflowId);
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+	const executionStateStore = useWorkflowExecutionStateStore(documentId);
 
 	return executeDataImpl(
 		connections,
@@ -382,7 +418,7 @@ export function executeData(
 		inputName,
 		runIndex,
 		workflowDocumentStore.getPinDataSnapshot(),
-		workflowsStore.getWorkflowRunData,
+		executionStateStore.activeExecutionRunData,
 		parentRunIndex,
 	);
 }
@@ -489,6 +525,7 @@ export function useWorkflowHelpers() {
 	const i18n = useI18n();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const currentWorkflowId = useWorkflowId();
 
 	function getNodeTypesMaxCount() {
 		const nodes = workflowDocumentStore.value.allNodes;
@@ -574,7 +611,7 @@ export function useWorkflowHelpers() {
 			},
 		} as const;
 		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
-		const workflowId = workflowsStore.workflowId;
+		const workflowId = currentWorkflowId.value;
 		const path = (await getWebhookExpressionValue(webhookData, 'path', true, node.name)) ?? '';
 		const isFullPath =
 			((await getWebhookExpressionValue(
@@ -663,7 +700,7 @@ export function useWorkflowHelpers() {
 		let data: WorkflowDataUpdate = {};
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
+		const isCurrentWorkflow = workflowId === currentWorkflowId.value;
 		if (isCurrentWorkflow) {
 			data = partialData
 				? { versionId: workflowDocumentStore.versionId }
@@ -745,6 +782,11 @@ export function useWorkflowHelpers() {
 
 			node.credentials = Object.entries(node.credentials).reduce<INodeCredentials>(
 				(acc, [credentialType, credential]) => {
+					if (credential.__aiGatewayManaged && credential.id === null) {
+						acc[credentialType] = credential;
+						return acc;
+					}
+
 					const isUsableCredential = usableCredentials.some(
 						(ownCredential) => `${ownCredential.id}` === `${credential.id}`,
 					);
@@ -829,7 +871,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setPinData(workflowData.pinData ?? {});
 		initializedWorkflowDocumentStore.setCreatedAt(workflowData.createdAt);
 		initializedWorkflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
-		initializedWorkflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
+		initializedWorkflowDocumentStore.setHomeProject(deriveHomeProject(workflowData));
 		if (workflowData.checksum) {
 			initializedWorkflowDocumentStore.setChecksum(workflowData.checksum);
 		}
@@ -873,7 +915,7 @@ export function useWorkflowHelpers() {
 		let data;
 		if (uiStore.stateIsDirty) {
 			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+				createWorkflowDocumentId(currentWorkflowId.value),
 			);
 			data = workflowDocumentStore.serialize();
 		} else {

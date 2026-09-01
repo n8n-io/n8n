@@ -17,6 +17,8 @@ import type { z } from 'zod';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { UserLike } from '@/events/maps/relay.event-map';
 
 import {
 	assertAndNormalizeProjectIdsForRuleType,
@@ -47,6 +49,7 @@ export class RoleMappingRuleService {
 		private readonly roleMappingRuleRepository: RoleMappingRuleRepository,
 		private readonly roleRepository: RoleRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	async list(query: ListRoleMappingRuleQueryInput): Promise<RoleMappingRuleListResponse> {
@@ -80,7 +83,7 @@ export class RoleMappingRuleService {
 		};
 	}
 
-	async create(dto: CreateRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
+	async create(dto: CreateRoleMappingRuleInput, user: UserLike): Promise<RoleMappingRuleResponse> {
 		const uniqueProjectIds = assertAndNormalizeProjectIdsForRuleType(dto.type, dto.projectIds, []);
 
 		const role = await this.roleRepository.findOne({ where: { slug: dto.role } });
@@ -106,7 +109,17 @@ export class RoleMappingRuleService {
 			relations: ['projects', 'role'],
 		});
 
-		return this.toResponse(loaded);
+		const result = this.toResponse(loaded);
+
+		this.eventService.emit('role-mapping-rule-created', {
+			user: { id: user.id, email: user.email },
+			ruleId: result.id,
+			ruleType: result.type,
+			expression: result.expression,
+			role: result.role,
+		});
+
+		return result;
 	}
 
 	private async saveWithOrderRetry(
@@ -165,7 +178,17 @@ export class RoleMappingRuleService {
 		throw new ConflictError('Could not create role mapping rule due to an order conflict');
 	}
 
-	async patch(id: string, dto: PatchRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
+	async patch({
+		id,
+		dto,
+		userId,
+		userEmail,
+	}: {
+		id: string;
+		dto: PatchRoleMappingRuleInput;
+		userId: string;
+		userEmail?: string;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
@@ -236,24 +259,52 @@ export class RoleMappingRuleService {
 			relations: ['projects', 'role'],
 		});
 
-		return this.toResponse(loaded);
+		const result = this.toResponse(loaded);
+
+		this.eventService.emit('role-mapping-rule-updated', {
+			user: { id: userId, email: userEmail },
+			ruleId: result.id,
+			ruleType: result.type,
+			patchedFields: Object.keys(dto),
+		});
+
+		return result;
 	}
 
-	async delete(id: string): Promise<{ ruleType: 'instance' | 'project' }> {
+	async delete({
+		id,
+		userId,
+		userEmail,
+	}: {
+		id: string;
+		userId: string;
+		userEmail?: string;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
 
-		const rule = await this.roleMappingRuleRepository.findOne({ where: { id } });
+		const rule = await this.roleMappingRuleRepository.findOne({
+			where: { id },
+			relations: ['projects', 'role'],
+		});
 
 		if (!rule) {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
-		const ruleType = rule.type as 'instance' | 'project';
+		const result = this.toResponse(rule);
+
 		await this.roleMappingRuleRepository.remove(rule);
-		await this.normalizeOrderForType(ruleType);
-		return { ruleType };
+		await this.normalizeOrderForType(result.type);
+
+		this.eventService.emit('role-mapping-rule-deleted', {
+			user: { id: userId, email: userEmail },
+			ruleId: id,
+			ruleType: result.type,
+		});
+
+		return result;
 	}
 
 	async deleteAllOfType(type: 'instance' | 'project', tx?: EntityManager): Promise<number> {
@@ -262,7 +313,17 @@ export class RoleMappingRuleService {
 		return result.affected ?? 0;
 	}
 
-	async move(id: string, targetIndex: number): Promise<RoleMappingRuleResponse> {
+	async move({
+		id,
+		targetIndex,
+		userId,
+		userEmail,
+	}: {
+		id: string;
+		targetIndex: number;
+		userId: string;
+		userEmail?: string;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
@@ -298,7 +359,16 @@ export class RoleMappingRuleService {
 			relations: ['projects', 'role'],
 		});
 
-		return this.toResponse(loaded);
+		const result = this.toResponse(loaded);
+
+		this.eventService.emit('role-mapping-rule-updated', {
+			user: { id: userId, email: userEmail },
+			ruleId: result.id,
+			ruleType: result.type,
+			patchedFields: ['order'],
+		});
+
+		return result;
 	}
 
 	private async applyOrder(orderedIds: string[]): Promise<void> {

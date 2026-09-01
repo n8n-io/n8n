@@ -1,11 +1,13 @@
-import { upsertEvaluationConfigSchema } from '@n8n/api-types';
+import { addDatasetRowSchema, upsertEvaluationConfigSchema } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Delete, Get, Post, Put, RestController } from '@n8n/decorators';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { EvaluationConfigService } from './evaluation-config.service';
+import { EvaluationDatasetService } from './evaluation-dataset.service';
 
 type WorkflowParam = { workflowId: string };
 type ConfigParam = { workflowId: string; configId: string };
@@ -14,6 +16,7 @@ type ConfigParam = { workflowId: string; configId: string };
 export class EvaluationConfigController {
 	constructor(
 		private readonly service: EvaluationConfigService,
+		private readonly datasetService: EvaluationDatasetService,
 		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
@@ -76,5 +79,32 @@ export class EvaluationConfigController {
 		await this.assertWorkflowAccess(req.params.workflowId, req.user, 'workflow:update');
 		await this.service.delete(req.params.workflowId, req.params.configId);
 		return { success: true };
+	}
+
+	@Get('/:workflowId/evaluation-configs/:configId/dataset-candidate')
+	async datasetCandidate(req: AuthenticatedRequest<ConfigParam, {}, {}, { executionId?: string }>) {
+		await this.assertWorkflowAccess(req.params.workflowId, req.user, 'workflow:read');
+		const { executionId } = req.query;
+		if (!executionId) {
+			throw new BadRequestError('executionId query parameter is required');
+		}
+		return await this.datasetService.getCandidate(
+			req.user,
+			req.params.workflowId,
+			req.params.configId,
+			executionId,
+		);
+	}
+
+	@Post('/:workflowId/evaluation-configs/:configId/dataset-rows')
+	async addDatasetRow(req: AuthenticatedRequest<ConfigParam>) {
+		await this.assertWorkflowAccess(req.params.workflowId, req.user, 'workflow:update');
+		const dto = addDatasetRowSchema.parse(req.body);
+		return await this.datasetService.addRow(
+			req.user,
+			req.params.workflowId,
+			req.params.configId,
+			dto,
+		);
 	}
 }

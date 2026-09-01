@@ -1,13 +1,18 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import mysql2 from 'mysql2/promise';
 import type { Connection, QueryResult } from 'mysql2/promise';
 
 const mockConnection = mock<Connection>();
-const createConnection = jest.fn().mockReturnValue(mockConnection);
-jest.mock('mysql2/promise', () => ({ createConnection }));
 
 describe('Test MySqlV1, executeQuery', () => {
-	mockConnection.query.mockResolvedValue([{ success: true } as unknown as QueryResult, []]);
+	// The harness loads the node from dist via require(), so vi.mock cannot intercept its
+	// `mysql2/promise` import. mysql2 is externalized, so the test and the node share the same
+	// module instance — spy on it instead. Re-applied per test since restoreMocks resets spies.
+	beforeEach(() => {
+		vi.spyOn(mysql2, 'createConnection').mockResolvedValue(mockConnection);
+		mockConnection.query.mockResolvedValue([{ success: true } as unknown as QueryResult, []]);
+	});
 
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['executeQuery.workflow.json'],

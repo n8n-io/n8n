@@ -48,6 +48,12 @@ export interface GenerateWorkflowCodeOptions {
 	valuesExcluded?: boolean;
 	/** Node names whose output schema was derived from pin data rather than real execution output */
 	pinnedNodes?: string[];
+	/**
+	 * Emit each node's saved `id` into its config so a rebuild of the generated code
+	 * preserves node identity. Off by default — opt in only where the generated code is
+	 * edited and built back into the same saved workflow.
+	 */
+	includeNodeIds?: boolean;
 }
 
 // Re-export individual functions for testing and extension
@@ -55,7 +61,11 @@ export { buildSemanticGraph } from './semantic-graph';
 export { annotateGraph } from './graph-annotator';
 export { buildCompositeTree } from './composite-builder';
 export { generateCode } from './code-generator';
-export { emitInstanceAi, type EmitInstanceAiOptions } from './emit-instance-ai';
+export {
+	emitInstanceAi,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type EmitInstanceAiOptions,
+} from './emit-instance-ai';
 export {
 	getOutputName,
 	getInputName,
@@ -103,6 +113,7 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 		executionData,
 		valuesExcluded,
 		pinnedNodes,
+		includeNodeIds,
 	} = isOptionsObject(input)
 		? input
 		: {
@@ -112,6 +123,7 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 				executionData: undefined,
 				valuesExcluded: undefined,
 				pinnedNodes: undefined,
+				includeNodeIds: undefined,
 			};
 
 	// Phase 1: Build semantic graph
@@ -146,5 +158,6 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 		workflowStatusJSDoc: workflowStatusJSDoc || undefined,
 		valuesExcluded,
 		pinnedNodes: pinnedNodes ? new Set(pinnedNodes) : undefined,
+		includeNodeIds,
 	});
 }

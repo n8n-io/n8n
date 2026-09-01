@@ -16,11 +16,11 @@ const baseNodeParameters = {
 	saveProfileOnTermination: false,
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {
 				...mockCreatedSession,
 			};
@@ -29,12 +29,8 @@ jest.mock('../../../transport', () => {
 });
 
 describe('Test Airtop, session create operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 	/**
 	 * Minimal parameters

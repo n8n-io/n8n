@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { N8nIcon, N8nText } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -8,11 +8,19 @@ const props = withDefaults(
 		disabled?: boolean;
 		variant?: 'default' | 'suggestion';
 		active?: boolean;
+		/** Marks the chip as having an unresolved configuration error (e.g. a missing credential). */
+		invalid?: boolean;
+		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
+		invalidReasons?: string[];
+		clickable?: boolean;
 	}>(),
 	{
 		disabled: false,
 		variant: 'default',
 		active: false,
+		invalid: false,
+		invalidReasons: () => [],
+		clickable: true,
 	},
 );
 
@@ -32,7 +40,11 @@ const emit = defineEmits<{
 		:class="[
 			$style.chip,
 			props.variant === 'suggestion' ? $style.suggestion : $style.default,
-			{ [$style.active]: props.active },
+			{
+				[$style.active]: props.active,
+				[$style.invalid]: props.invalid,
+				[$style.nonClickable]: !props.clickable,
+			},
 		]"
 		:disabled="props.disabled"
 		@click="emit('click', $event)"
@@ -50,10 +62,22 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
+		<N8nTooltip v-if="props.invalid" :disabled="props.invalidReasons.length === 0" placement="top">
+			<N8nIcon
+				icon="triangle-alert"
+				:size="14"
+				:class="$style.invalidIcon"
+				data-testid="agent-chip-invalid-icon"
+			/>
+			<template #content>
+				<div v-for="reason in props.invalidReasons" :key="reason">{{ reason }}</div>
+			</template>
+		</N8nTooltip>
 	</button>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
 .chip {
 	display: inline-flex;
 	align-items: center;
@@ -66,15 +90,31 @@ const emit = defineEmits<{
 	box-shadow: var(--shadow--xs);
 	font-family: inherit;
 	cursor: pointer;
+
+	&:focus-visible {
+		@include focus.focus-ring-with-border;
+	}
 }
 
-.default:hover {
+.default:not(:disabled):hover {
 	background-color: var(--background--hover);
 }
 
 .chip:disabled {
 	cursor: not-allowed;
 	opacity: 0.6;
+}
+
+.invalid {
+	border-color: var(--canvas-node--border-color--error, var(--color--danger));
+}
+
+.invalidIcon {
+	flex-shrink: 0;
+}
+
+.nonClickable {
+	pointer-events: none;
 }
 
 .suggestion {
@@ -94,9 +134,9 @@ const emit = defineEmits<{
 		transform 0.15s ease;
 }
 
-.suggestion:hover,
-.suggestion:focus-visible,
-.suggestion.active {
+.suggestion:not(:disabled):hover,
+.suggestion:not(:disabled):focus-visible,
+.suggestion.active:not(:disabled) {
 	color: color-mix(in srgb, var(--background--brand) 68%, var(--text-color));
 	border-color: color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
 	background: color-mix(in srgb, var(--background--brand) 12%, var(--background--hover));
@@ -105,7 +145,7 @@ const emit = defineEmits<{
 	outline-color: var(--focus--border-color);
 }
 
-.suggestion:active {
+.suggestion:not(:disabled):active {
 	transform: translateY(0);
 	box-shadow: none;
 }
@@ -126,9 +166,9 @@ const emit = defineEmits<{
 	transition: opacity 0.15s ease;
 }
 
-.suggestion:hover .suggestionIcon,
-.suggestion:focus-visible .suggestionIcon,
-.suggestion.active .suggestionIcon {
+.suggestion:not(:disabled):hover .suggestionIcon,
+.suggestion:not(:disabled):focus-visible .suggestionIcon,
+.suggestion.active:not(:disabled) .suggestionIcon {
 	opacity: 1;
 }
 

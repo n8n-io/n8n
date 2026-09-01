@@ -61,6 +61,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				passthroughBinaryPdfs?: boolean;
 				tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 			};
 
@@ -68,6 +69,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			const messages = await prepareMessages(this, itemIndex, {
 				systemMessage: options.systemMessage,
 				passthroughBinaryImages: options.passthroughBinaryImages ?? true,
+				passthroughBinaryPdfs: options.passthroughBinaryPdfs ?? false,
 				outputParser,
 			});
 			const prompt = preparePrompt(messages);
@@ -134,7 +136,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 			returnData.push(itemResult);
 		} catch (error) {
-			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
+			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex, {
+				enrichNonParserErrors: true,
+			});
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: { error: executionError.message },

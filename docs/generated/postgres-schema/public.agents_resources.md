@@ -4,19 +4,19 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(255) |  | false | [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) |  |  |
 | metadata | text |  | true |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| PK_fa6b20b2d31a9991529dbf8ef7d | PRIMARY KEY | PRIMARY KEY (id) |
 | agents_resources_createdAt_not_null | n | NOT NULL "createdAt" |
 | agents_resources_id_not_null | n | NOT NULL id |
 | agents_resources_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| PK_fa6b20b2d31a9991529dbf8ef7d | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -33,32 +33,32 @@ erDiagram
 "public.agents_memory_entry_locks" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
 
 "public.agents_resources" {
+  timestamp_3__with_time_zone createdAt
   varchar_255_ id
   text metadata
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entries" {
-  varchar_36_ id
   varchar_36_ agentId FK
-  varchar_255_ resourceId FK
   text content
   varchar_64_ contentHash
+  timestamp_3__with_time_zone createdAt
+  json embedding
+  varchar_128_ embeddingModel
+  varchar_36_ id
+  timestamp_3__with_time_zone lastSeenAt
+  json metadata
+  varchar_255_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
-  varchar_128_ embeddingModel
-  json embedding
-  json metadata
-  timestamp_3__with_time_zone lastSeenAt
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_locks" {
   varchar_36_ agentId FK
-  varchar_255_ resourceId FK
-  varchar_64_ holderId
-  timestamp_3__with_time_zone heldUntil
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone heldUntil
+  varchar_64_ holderId
+  varchar_255_ resourceId FK
   timestamp_3__with_time_zone updatedAt
 }
 ```

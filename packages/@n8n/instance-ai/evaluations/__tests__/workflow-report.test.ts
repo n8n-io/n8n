@@ -20,6 +20,58 @@ function resultWith(
 	};
 }
 
+describe('intercepted request rendering', () => {
+	it('renders "(no URL)" instead of crashing when a request was captured without a URL', () => {
+		const result: WorkflowTestCaseResult = {
+			testCase: TEST_CASE,
+			workflowBuildSuccess: true,
+			executionScenarioResults: [
+				{
+					scenario: TEST_CASE.executionScenarios![0],
+					success: false,
+					score: 0,
+					reasoning: 'node routing produced an empty request',
+					evalResult: {
+						executionId: 'e1',
+						success: false,
+						errors: [],
+						hints: {
+							globalContext: '',
+							triggerContent: {},
+							nodeHints: {},
+							warnings: [],
+							bypassPinData: {},
+						},
+						mockedCredentials: [],
+						nodeResults: {
+							'Transcribe Audio': {
+								outputs: {},
+								outputCount: 0,
+								iterationCount: 1,
+								executionMode: 'mocked',
+								interceptedRequests: [
+									{
+										// Older captures stored undefined for URL-less requests
+										// (broken routing); the report must tolerate it.
+										url: undefined as unknown as string,
+										method: 'GET',
+										nodeType: 'n8n-nodes-base.openAi',
+									},
+								],
+							},
+						},
+					},
+				},
+			],
+		};
+
+		const html = generateWorkflowReport([result]);
+
+		expect(html).toContain('(no URL)');
+		expect(html).not.toContain('GET undefined');
+	});
+});
+
 describe('build expectations in the workflow report', () => {
 	it('renders a section with per-expectation verdicts and reasons', () => {
 		const html = generateWorkflowReport([
@@ -36,6 +88,27 @@ describe('build expectations in the workflow report', () => {
 		expect(html).toContain('no Slack node');
 		expect(html).toContain('&#10003;'); // pass icon
 		expect(html).toContain('&#10007;'); // fail icon
+	});
+
+	it('links to the LLM debug report when run debug was captured', () => {
+		const html = generateWorkflowReport([
+			{
+				...resultWith([]),
+				fileSlug: 'slack-notifier',
+				runDebug: [
+					{
+						threadId: 'thread-1',
+						runId: 'run-1',
+						startedAt: 1,
+						steps: [],
+						workflowCode: [],
+					},
+				],
+			},
+		]);
+
+		expect(html).toContain('workflow-eval-llm-debug.html#tc-slack-notifier');
+		expect(html).toContain('LLM steps →');
 	});
 
 	it('renders an incomplete verdict neutrally and keeps it out of the count', () => {
@@ -110,5 +183,80 @@ describe('transcript rendering', () => {
 		};
 		const html = generateWorkflowReport([result]);
 		expect(html).toContain('<span class="transcript-inline-arg">workflow-builder</span>');
+	});
+
+	it('surfaces a skipped ask-user answer so it is not mistaken for unanswered', () => {
+		const result: WorkflowTestCaseResult = {
+			testCase: TEST_CASE,
+			workflowBuildSuccess: true,
+			executionScenarioResults: [],
+			transcript: [
+				{
+					userMessage: 'Build it',
+					steps: [
+						{
+							kind: 'ask-user',
+							questions: [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }],
+							answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }],
+						},
+					],
+				},
+			],
+		};
+		const html = generateWorkflowReport([result]);
+		expect(html).toContain('👤 (skipped)');
+		expect(html).toContain('ask-user (with answers)');
+	});
+});
+
+// The '1. Prompt' review stage was gated on `failureCategory === 'legitimate_failure'`
+// — a lang-tracer bucket this harness never emits — so it could NEVER fail. TRUST-375
+// rewired it (and the improvement suggestion) to `attribution`, making it reachable
+// for the first time. Pin the toggle so the unreachable-stage bug can't come back.
+describe('prompt review stage keys off attribution', () => {
+	function failedScenario(
+		over: Partial<WorkflowTestCaseResult['executionScenarioResults'][number]>,
+	): WorkflowTestCaseResult {
+		return {
+			testCase: TEST_CASE,
+			workflowBuildSuccess: true,
+			executionScenarioResults: [
+				{
+					scenario: TEST_CASE.executionScenarios![0],
+					success: false,
+					score: 0,
+					reasoning: 'the success criteria are ambiguous about the error branch',
+					...over,
+				},
+			],
+		} as WorkflowTestCaseResult;
+	}
+
+	it('fails the stage when the builder owns an under-specified prompt', () => {
+		const html = generateWorkflowReport([failedScenario({ attribution: 'builder_issue' })]);
+
+		expect(html).toContain('1. Prompt');
+		expect(html).toContain('under-specified request');
+	});
+
+	it('does not blame the prompt when the failure is not the builder’s', () => {
+		// Same evidence text; only the attribution differs. A mock or infra failure
+		// says nothing about the prompt.
+		for (const attribution of ['mock_issue', 'framework_issue', 'verification_gap'] as const) {
+			const html = generateWorkflowReport([failedScenario({ attribution })]);
+			expect(html).not.toContain('under-specified request');
+		}
+	});
+
+	it('offers an improvement suggestion keyed to each attribution bucket', () => {
+		// The old switch mixed our categories with lang-tracer bucket names, so two
+		// arms were unreachable. Each bucket must now produce its own advice.
+		const suggestions = (
+			['builder_issue', 'mock_issue', 'framework_issue', 'verification_gap'] as const
+		).map((attribution) => generateWorkflowReport([failedScenario({ attribution })]));
+		expect(suggestions[0]).toContain('observable acceptance conditions');
+		expect(suggestions[1]).toContain('response envelope');
+		expect(suggestions[2]).toContain('trigger preconditions');
+		expect(suggestions[3]).toContain('inspectable success evidence');
 	});
 });

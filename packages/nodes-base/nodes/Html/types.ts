@@ -1,6 +1,6 @@
-import type cheerio from 'cheerio';
+import type { CheerioAPI } from 'cheerio';
 
-export type Cheerio = ReturnType<typeof cheerio>;
+export type Cheerio = ReturnType<CheerioAPI>;
 
 export interface IValueData {
 	attribute?: string;

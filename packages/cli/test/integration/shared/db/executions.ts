@@ -45,6 +45,7 @@ export async function createExecution(
 		metadata,
 		createdAt,
 		jsonSizeBytes,
+		binaryDataSizeBytes,
 		workflowVersionId,
 	} = attributes;
 
@@ -59,6 +60,7 @@ export async function createExecution(
 		status: status ?? 'success',
 		deletedAt,
 		...(jsonSizeBytes !== undefined && { jsonSizeBytes }),
+		...(binaryDataSizeBytes !== undefined && { binaryDataSizeBytes }),
 		...(workflowVersionId !== undefined && { workflowVersionId }),
 	});
 

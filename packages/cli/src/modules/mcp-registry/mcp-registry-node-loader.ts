@@ -1,8 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import { camelCase } from 'change-case';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	ensureError,
 	NodeHelpers,
 	type ICredentialType,
 	type ICredentialTypeData,
@@ -12,6 +12,8 @@ import {
 	type IVersionedNodeType,
 	type KnownNodesAndCredentials,
 	type LoadedClass,
+	type McpRegistryConnection,
+	type McpRegistryRuntime,
 	type NodeLoader,
 } from 'n8n-workflow';
 
@@ -25,7 +27,21 @@ import {
 	serverToNodeDescription,
 	type IsKnownCredentialType,
 } from './node-description-transform';
+import {
+	prepareMcpRegistryConnection,
+	resolveMcpRegistryConnection,
+} from './mcp-registry-connection';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
+
+type McpRegistryBaseNode = INodeType & {
+	setRegistryRuntime(runtime: McpRegistryRuntime): void;
+};
+
+function supportsRegistryRuntime(
+	node: INodeType | IVersionedNodeType,
+): node is McpRegistryBaseNode {
+	return 'setRegistryRuntime' in node && typeof node.setRegistryRuntime === 'function';
+}
 
 /**
  * Synthetic node loader: turns each registry server into a node type, all
@@ -48,6 +64,8 @@ export class McpRegistryNodeLoader implements NodeLoader {
 	private typesReleased = true;
 
 	private servers: McpRegistryServer[] = [];
+
+	private connections = new Map<string, McpRegistryConnection>();
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
@@ -79,6 +97,9 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			);
 			const credentialDescription = serverToCredentialDescription(server, isKnownCredentialType);
 			if (!nodeDescription || !credentialDescription) continue;
+			const connection = resolveMcpRegistryConnection(server);
+			if (!connection) continue;
+			this.connections.set(connection.nodeTypeName, connection);
 
 			const bareName = camelCase(server.slug);
 
@@ -104,6 +125,17 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				supportedNodes: [bareName],
 			};
 		}
+
+		if (supportsRegistryRuntime(baseNode)) {
+			baseNode.setRegistryRuntime({
+				resolveConnection: (nodeTypeName) => this.connections.get(nodeTypeName),
+				prepareConnection: prepareMcpRegistryConnection,
+			});
+		}
+	}
+
+	getConnection(nodeTypeName: string): McpRegistryConnection | undefined {
+		return this.connections.get(nodeTypeName);
 	}
 
 	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
@@ -123,6 +155,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		this.types = { nodes: [], credentials: [] };
 		this.nodeTypes = {};
 		this.credentialTypes = {};
+		this.connections.clear();
 		this.typesReleased = true;
 	}
 

@@ -10,7 +10,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { startSseServer, type TestServer } from './mcp-server-helpers';
-import { McpConnection } from '../../runtime/mcp-connection';
+import { McpConnection } from '../../runtime/mcp/mcp-connection';
 
 // ---------------------------------------------------------------------------
 // Helpers

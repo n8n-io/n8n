@@ -3,7 +3,8 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 import { RedisClientService } from '@/services/redis-client.service';
 

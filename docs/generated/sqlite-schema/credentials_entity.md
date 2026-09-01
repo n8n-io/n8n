@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "data" text NOT NULL, "type" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isManaged" boolean NOT NULL DEFAULT (0), "isGlobal" boolean NOT NULL DEFAULT (0), "isResolvable" boolean NOT NULL DEFAULT (false), "resolvableAllowFallback" boolean NOT NULL DEFAULT (false), "resolverId" varchar(16), CONSTRAINT "credentials_entity_resolverId_foreign" FOREIGN KEY ("resolverId") REFERENCES "dynamic_credential_resolver" ("id") ON DELETE SET NULL)
+CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "data" text NOT NULL, "type" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isManaged" boolean NOT NULL DEFAULT (0), "isGlobal" boolean NOT NULL DEFAULT (0), "isResolvable" boolean NOT NULL DEFAULT (false), "resolvableAllowFallback" boolean NOT NULL DEFAULT (false), "resolverId" varchar(16), "usageScope" VARCHAR(16) NOT NULL DEFAULT 'project' CONSTRAINT "CHK_credentials_entity_usageScope" CHECK ("usageScope" IN ('project', 'instance')), CONSTRAINT "credentials_entity_resolverId_foreign" FOREIGN KEY ("resolverId") REFERENCES "dynamic_credential_resolver" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,30 +15,33 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false | [shared_credentials](shared_credentials.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [dynamic_credential_entry](dynamic_credential_entry.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) |  |  |
-| name | varchar(128) |  | false |  |  |  |
-| data | TEXT |  | false |  |  |  |
-| type | varchar(32) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| isManaged | boolean | 0 | false |  |  |  |
+| data | TEXT |  | false |  |  |  |
+| id | varchar(36) |  | false | [agent_credential_dependency](agent_credential_dependency.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_credential_assignment](instance_credential_assignment.md) [shared_credentials](shared_credentials.md) |  |  |
 | isGlobal | boolean | 0 | false |  |  |  |
+| isManaged | boolean | 0 | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
+| name | varchar(128) |  | false |  |  |  |
 | resolvableAllowFallback | boolean | false | false |  |  |  |
 | resolverId | varchar(16) |  | true |  | [dynamic_credential_resolver](dynamic_credential_resolver.md) |  |
+| type | varchar(32) |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| usageScope | VARCHAR(16) | 'project' | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
+| - | CHECK | CHECK ("usageScope" IN ('project', 'instance')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_credentials_entity_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_credentials_entity_is_global | CREATE INDEX "IDX_credentials_entity_is_global" ON "credentials_entity" ("id") WHERE "isGlobal" = true |
 | idx_credentials_entity_type | CREATE INDEX "idx_credentials_entity_type" ON "credentials_entity" ("type")  |
 | sqlite_autoindex_credentials_entity_1 | PRIMARY KEY (id) |
 
@@ -47,103 +50,117 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 ```mermaid
 erDiagram
 
-"shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"dynamic_credential_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_credential_dependency" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agents" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "chat_hub_sessions" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "credential_dependency" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"dynamic_credential_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "credentials_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT data
-  varchar_32_ type
   datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isManaged
+  TEXT data
+  varchar_36_ id PK
   boolean isGlobal
+  boolean isManaged
   boolean isResolvable
+  varchar_128_ name
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
+  varchar_32_ type
+  datetime_3_ updatedAt
+  VARCHAR_16_ usageScope
 }
-"shared_credentials" {
-  varchar_36_ credentialsId PK
-  varchar_36_ projectId PK
-  TEXT role
+"agent_credential_dependency" {
+  varchar_36_ agentId PK
   datetime_3_ createdAt
+  varchar_36_ credentialId PK
+}
+"chat_hub_agents" {
+  datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar_512_ description
+  TEXT files
+  TEXT icon
+  varchar id PK
+  varchar_64_ model
+  varchar_256_ name
+  varchar ownerId FK
+  varchar_16_ provider
+  TEXT suggestedPrompts
+  TEXT systemPrompt
+  datetime_3_ updatedAt
+}
+"chat_hub_sessions" {
+  varchar_36_ agentId FK
+  varchar_128_ agentName
+  datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar id PK
+  datetime_3_ lastMessageAt
+  varchar_64_ model
+  varchar ownerId FK
+  varchar_16_ provider
+  varchar_256_ title
+  varchar_16_ type
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"credential_dependency" {
+  datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar_255_ dependencyId
+  varchar_64_ dependencyType
+  INTEGER id
+}
+"dynamic_credential_entry" {
+  datetime_3_ createdAt
+  varchar_16_ credential_id PK
+  TEXT data
+  varchar_16_ resolver_id PK
+  varchar_2048_ subject_id PK
   datetime_3_ updatedAt
 }
 "dynamic_credential_user_entry" {
+  datetime_3_ createdAt
   varchar_16_ credentialId PK
-  varchar userId PK
+  TEXT data
   varchar_16_ resolverId PK
-  TEXT data
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-}
-"dynamic_credential_entry" {
-  varchar_16_ credential_id PK
-  varchar_2048_ subject_id PK
-  varchar_16_ resolver_id PK
-  TEXT data
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
-"chat_hub_agents" {
-  varchar id PK
-  varchar_256_ name
-  varchar_512_ description
-  TEXT systemPrompt
-  varchar ownerId FK
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT icon
-  TEXT files
-  TEXT suggestedPrompts
-}
-"chat_hub_sessions" {
-  varchar id PK
-  varchar_256_ title
-  varchar ownerId FK
-  datetime_3_ lastMessageAt
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
-  varchar_36_ workflowId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  varchar_36_ agentId FK
-  varchar_128_ agentName
-  varchar_16_ type
-}
-"credential_dependency" {
-  INTEGER id
-  varchar_36_ credentialId FK
-  varchar_64_ dependencyType
-  varchar_255_ dependencyId
-  datetime_3_ createdAt
+  varchar userId PK
 }
 "instance_ai_mcp_registry_connections" {
-  varchar id PK
+  datetime_3_ createdAt
   varchar_36_ credentialId FK
+  varchar id PK
   varchar_255_ serverSlug FK
   TEXT toolFilter
+  datetime_3_ updatedAt
   varchar userId FK
+}
+"instance_credential_assignment" {
   datetime_3_ createdAt
+  varchar_36_ credentialId FK
+  varchar_128_ credentialUseId PK
+  datetime_3_ updatedAt
+}
+"shared_credentials" {
+  datetime_3_ createdAt
+  varchar_36_ credentialsId PK
+  varchar_36_ projectId PK
+  TEXT role
   datetime_3_ updatedAt
 }
 "dynamic_credential_resolver" {
+  TEXT config
+  datetime_3_ createdAt
   varchar_16_ id PK
   varchar_128_ name
   varchar_128_ type
-  TEXT config
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 ```

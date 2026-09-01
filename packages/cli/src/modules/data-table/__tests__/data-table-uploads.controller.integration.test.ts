@@ -237,7 +237,21 @@ describe('POST /data-tables/uploads', () => {
 				.expect(400);
 		});
 
-		test('should reject non-CSV files based on MIME type', async () => {
+		test('should accept .csv files even when the browser reports a non-text/csv MIME type', async () => {
+			// Windows Firefox derives the MIME from the registry (Excel sets it to
+			// application/vnd.ms-excel), so the extension is the authoritative signal.
+			const csvContent = 'a,b\n1,2';
+
+			await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(csvContent), {
+					filename: 'test.csv',
+					contentType: 'application/vnd.ms-excel',
+				})
+				.expect(200);
+		});
+
+		test('should reject non-CSV files based on extension', async () => {
 			const textContent = 'This is a plain text file';
 
 			const response = await authOwnerAgent

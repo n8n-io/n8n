@@ -1,17 +1,18 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeOperationError, ApplicationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { SwitchV3 } from '../SwitchV3.node';
+import type { Mocked } from 'vitest';
 
 describe('SwitchV3 Node', () => {
 	let switchNode: SwitchV3;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	const baseDescription: INodeTypeBaseDescription = {
 		displayName: 'Switch',
@@ -24,7 +25,7 @@ describe('SwitchV3 Node', () => {
 		switchNode = new SwitchV3(baseDescription);
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Version-specific behavior', () => {
@@ -393,18 +394,6 @@ describe('SwitchV3 Node', () => {
 			await expect(switchNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
 				NodeOperationError,
 			);
-		});
-
-		it('should handle ApplicationError with context', async () => {
-			const inputData = [{ json: { value: 1 } }];
-
-			mockExecuteFunctions.getInputData.mockReturnValue(inputData);
-			mockExecuteFunctions.getNodeParameter.mockImplementation(() => {
-				const error = new ApplicationError('Application error');
-				throw error;
-			});
-
-			await expect(switchNode.execute.call(mockExecuteFunctions)).rejects.toThrow(ApplicationError);
 		});
 
 		it('should wrap generic errors in NodeOperationError', async () => {

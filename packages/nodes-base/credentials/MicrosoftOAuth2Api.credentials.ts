@@ -18,6 +18,77 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'authorizationCode',
 		},
+		{
+			displayName: 'Authentication',
+			name: 'clientCredentialType',
+			type: 'options',
+			options: [
+				{
+					name: 'Client Secret',
+					value: 'clientSecret',
+				},
+				{
+					name: 'Certificate',
+					value: 'certificate',
+				},
+			],
+			default: 'clientSecret',
+			description:
+				'How n8n authenticates to Microsoft Entra when exchanging and refreshing tokens. Certificate signs a client assertion (private_key_jwt) instead of sending a client secret.',
+		},
+		// Overrides the `clientSecret` inherited from `oAuth2Api` so it only shows
+		// (and is only required) when using shared-secret authentication.
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					clientCredentialType: ['clientSecret'],
+				},
+			},
+		},
+		{
+			displayName: 'Private Key',
+			name: 'privateKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+				rows: 4,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					clientCredentialType: ['certificate'],
+				},
+			},
+			description:
+				'PEM-encoded RSA private key paired with the certificate uploaded to the Entra app registration. Use the multiline editor, in standard PEM format:<br />-----BEGIN PRIVATE KEY-----<br />KEY DATA GOES HERE<br />-----END PRIVATE KEY-----',
+		},
+		{
+			displayName: 'Certificate',
+			name: 'certificate',
+			type: 'string',
+			typeOptions: {
+				password: true,
+				rows: 4,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					clientCredentialType: ['certificate'],
+				},
+			},
+			description:
+				'PEM-encoded public certificate registered on the Entra app registration (Certificates & secrets). Used to derive the x5t thumbprint that tells Entra which key verifies the assertion.',
+		},
 		// Info about the tenantID
 		// https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
 		// Endpoints `/common` can only be used for multitenant apps

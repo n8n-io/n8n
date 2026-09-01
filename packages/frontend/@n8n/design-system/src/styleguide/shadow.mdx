@@ -1,6 +1,6 @@
 import { Meta, Source } from '@storybook/addon-docs/blocks';
 
-<Meta title="Styleguide/Shadow" />
+<Meta title="Style guide/Shadow" />
 
 # Shadows
 
@@ -68,12 +68,12 @@ Shadows can be applied using the `shadow-*` primitive. It's recommended to creat
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacing--lg);
 	padding: var(--spacing--xl);
-	padding-bottom:calc(2rem + var(--spacing--xl));
-	border-radius:var(--radius--lg) var(--radius--lg) 0 0;
-	border: 1px solid var(--border-color);
-	border-bottom:0;
+	padding-bottom: calc(2 * var(--spacing--xl));
+	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
+	border: var(--border);
+	border-bottom: 0;
 	background: light-dark(var(--color--neutral-100), var(--color--neutral-900));
-	margin-bottom:-2rem;
+	margin-bottom: calc(-1 * var(--spacing--xl));
 }
 .shadow-demo__item {
 	display: flex;
@@ -88,7 +88,7 @@ Shadows can be applied using the `shadow-*` primitive. It's recommended to creat
 .shadow-demo__card {
 	width: 160px;
 	height: 160px;
-	border: 1px solid var(--border-color);
+	border: var(--border);
 	border-radius: var(--radius--lg);
 	background: var(--background--surface);
 }

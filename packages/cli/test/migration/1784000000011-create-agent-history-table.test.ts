@@ -14,7 +14,6 @@ const MIGRATION_NAME = 'CreateAgentHistoryTable1784000000011';
 
 describe('CreateAgentHistoryTable Migration', () => {
 	let dataSource: DataSource;
-	jest.setTimeout(20_000);
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
 		const context = createTestMigrationContext(dataSource);

@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+
+import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -10,10 +13,12 @@ import {
 	type SandboxConfig,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
+import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
 
@@ -26,11 +31,18 @@ const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 export type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
+	configFingerprint: string;
 	setupComplete: boolean;
 	setupPromise: Promise<void> | undefined;
 	expiresAt: number;
 	cleanupTimer?: ReturnType<typeof setTimeout>;
 };
+
+type SandboxCacheState = { fingerprint: string; config?: SandboxConfig };
+
+function sandboxConfigFingerprint(config: object): string {
+	return createHash('sha256').update(JSON.stringify(config)).digest('hex');
+}
 
 function slugifySandboxName(value: string, maxLen: number): string {
 	const slug = value
@@ -78,8 +90,29 @@ function buildThreadScopedSandboxLabels(
 	return labels;
 }
 
+/**
+ * Fixed UUIDv5 namespace for deriving thread-scoped n8n-sandbox ids. Never
+ * change it: any main must be able to recompute the id of a sandbox created
+ * by an older process to reattach to it.
+ */
+const N8N_SANDBOX_THREAD_ID_NAMESPACE = '5e6c2f7a-93a1-4b0e-8f27-c1d6a3b9e514';
+
+/** The n8n sandbox service only accepts lowercase UUID ids, so hash the thread-scoped name into a stable UUIDv5. */
+function buildThreadScopedSandboxUuid(threadId: string): string {
+	return uuidv5(getThreadScopedSandboxName(threadId), N8N_SANDBOX_THREAD_ID_NAMESPACE);
+}
+
+/**
+ * Give the sandbox a deterministic, thread-derived identity so any process —
+ * after a restart, a cache eviction, or on another main — resolves the same
+ * remote sandbox instead of creating a duplicate and orphaning the old one.
+ */
 function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
-	if (!config.enabled || config.provider !== 'daytona') return config;
+	if (!config.enabled) return config;
+
+	if (config.provider === 'n8n-sandbox') {
+		return { ...config, id: buildThreadScopedSandboxUuid(threadId) };
+	}
 
 	const name = buildThreadScopedSandboxName(threadId, config.namePrefix);
 	return {
@@ -106,8 +139,8 @@ export type InstanceAiSandboxBackgroundTasks = {
 
 /** Settings collaborator that resolves provider credentials from admin config. */
 export type InstanceAiSandboxSettings = {
-	resolveDaytonaConfig: (user: User) => Promise<{ apiUrl?: string; apiKey?: string }>;
-	resolveN8nSandboxConfig: (user: User) => Promise<{ serviceUrl?: string; apiKey?: string }>;
+	resolveDaytonaConfig: () => Promise<{ apiUrl?: string; apiKey?: string }>;
+	resolveN8nSandboxConfig: () => Promise<{ serviceUrl?: string; apiKey?: string }>;
 };
 
 /** Proxy collaborator that routes Daytona traffic through the AI assistant service. */
@@ -116,7 +149,7 @@ export type InstanceAiSandboxProxy = {
 	getClient: () => Promise<{
 		getSandboxProxyConfig: () => Promise<{ image?: string }>;
 		getSandboxProxyBaseUrl: () => string;
-		getBuilderApiProxyToken: (
+		getInstanceAiApiProxyToken: (
 			user: { id: string },
 			options: { userMessageId: string },
 		) => Promise<{ accessToken: string }>;
@@ -138,22 +171,29 @@ export type InstanceAiSandboxServiceOptions = {
  *
  * Each conversation thread gets a single shared sandbox + workspace, created
  * lazily on first use and reused across runs and background tasks. Sandbox
- * names are deterministic (derived from the thread ID) so a restarted process
- * — or another main in a multi-main deployment — reconnects to the same remote
+ * identities are deterministic (derived from the thread ID — a name for
+ * Daytona, a UUIDv5 for the n8n sandbox service) so a restarted process — or
+ * another main in a multi-main deployment — reconnects to the same remote
  * sandbox instead of spawning a duplicate. An in-process TTL drops idle cache
- * entries so the map cannot grow without bound; provider auto-stop reclaims the
- * remote sandbox itself, so an idle eviction never destroys live work.
+ * entries so the map cannot grow without bound; the provider reclaims the
+ * remote sandbox itself (Daytona auto-stop, sandbox-service idle reaping), so
+ * an idle eviction never destroys live work.
  */
 export class InstanceAiSandboxService {
 	/**
 	 * Shared runtime workspaces keyed by thread ID. This is only an in-process
-	 * cache; deterministic sandbox names let providers reconnect after restart
+	 * cache; deterministic sandbox identities let providers reconnect after restart
 	 * or from another main when the thread uses the workspace again.
 	 */
 	private readonly sandboxes = new Map<string, RuntimeSandboxEntry>();
 
 	/** In-flight runtime workspace creations keyed by thread ID. */
-	private readonly sandboxCreations = new Map<string, Promise<RuntimeSandboxEntry | undefined>>();
+	private readonly sandboxCreations = new Map<
+		string,
+		{ fingerprint: string; promise: Promise<RuntimeSandboxEntry | undefined> }
+	>();
+
+	private cacheGeneration = 0;
 
 	constructor(private readonly options: InstanceAiSandboxServiceOptions) {}
 
@@ -174,6 +214,7 @@ export class InstanceAiSandboxService {
 			n8nSandboxServiceUrl,
 			n8nSandboxServiceApiKey,
 			sandboxImage,
+			sandboxSnapshot,
 			sandboxTimeout,
 			sandboxNamePrefix,
 			sandboxEphemeral,
@@ -198,6 +239,7 @@ export class InstanceAiSandboxService {
 				daytonaApiUrl: daytonaApiUrl || undefined,
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
+				snapshot: sandboxSnapshot || undefined,
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
@@ -227,16 +269,27 @@ export class InstanceAiSandboxService {
 			// If AI assistant service is available, route Daytona calls through its sandbox proxy
 			if (this.options.aiService.isProxyEnabled()) {
 				const client = await this.options.aiService.getClient();
-				const proxyConfig = await client.getSandboxProxyConfig();
+				const proxyConfig = await callAiServiceWithRetry(
+					'Sandbox proxy config fetch',
+					async () => await client.getSandboxProxyConfig(),
+					this.logger,
+					this.options.errorReporter,
+				);
 				return {
 					...base,
 					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
 					image: proxyConfig.image,
 					logger: this.logger,
 					getAuthToken: async () => {
-						const token = await client.getBuilderApiProxyToken(
-							{ id: user.id },
-							{ userMessageId: nanoid() },
+						const token = await callAiServiceWithRetry(
+							'Sandbox proxy token mint',
+							async () =>
+								await client.getInstanceAiApiProxyToken(
+									{ id: user.id },
+									{ userMessageId: nanoid() },
+								),
+							this.logger,
+							this.options.errorReporter,
 						);
 
 						return token.accessToken;
@@ -245,14 +298,20 @@ export class InstanceAiSandboxService {
 			}
 
 			// Direct mode: Daytona credentials from env vars or admin credential
-			const daytona = await this.options.settingsService.resolveDaytonaConfig(user);
+			const daytona = await this.options.settingsService.resolveDaytonaConfig();
+			const daytonaApiKey = daytona.apiKey ?? base.daytonaApiKey;
+			if (!daytonaApiKey) {
+				throw new OperationalError(
+					'The Daytona sandbox is enabled in direct mode but no API key is configured. Set the Daytona API key environment variable or connect the Daytona credential.',
+				);
+			}
 			return {
 				...base,
 				daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
-				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
+				daytonaApiKey,
 			};
 		}
-		const sandbox = await this.options.settingsService.resolveN8nSandboxConfig(user);
+		const sandbox = await this.options.settingsService.resolveN8nSandboxConfig();
 		return {
 			...base,
 			serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
@@ -264,9 +323,17 @@ export class InstanceAiSandboxService {
 		threadId: string,
 		user: User,
 	): Promise<RuntimeSandboxEntry | undefined> {
+		const cacheGeneration = this.cacheGeneration;
+		const cacheState = await this.resolveSandboxCacheState(user);
+		if (cacheGeneration !== this.cacheGeneration) {
+			return await this.getOrCreateWorkspaceEntry(threadId, user);
+		}
 		const existing = this.sandboxes.get(threadId);
 		if (existing) {
-			if (this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId)) {
+			if (
+				existing.configFingerprint !== cacheState.fingerprint ||
+				(this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId))
+			) {
 				this.evictSandboxEntry(threadId, existing);
 			} else {
 				this.touchSandboxEntry(threadId, existing);
@@ -275,14 +342,26 @@ export class InstanceAiSandboxService {
 		}
 
 		const pending = this.sandboxCreations.get(threadId);
-		if (pending) return await pending;
+		if (pending?.fingerprint === cacheState.fingerprint) return await pending.promise;
 
-		const creation = this.createWorkspaceEntry(threadId, user);
-		this.sandboxCreations.set(threadId, creation);
+		const creation = this.createWorkspaceEntry(threadId, user, cacheState);
+		const pendingCreation = { fingerprint: cacheState.fingerprint, promise: creation };
+		this.sandboxCreations.set(threadId, pendingCreation);
 		try {
-			return await creation;
+			const entry = await creation;
+			if (
+				entry &&
+				cacheGeneration === this.cacheGeneration &&
+				this.sandboxCreations.get(threadId) === pendingCreation
+			) {
+				this.sandboxes.set(threadId, entry);
+				this.scheduleSandboxExpiry(threadId, entry);
+			}
+			return entry;
 		} finally {
-			this.sandboxCreations.delete(threadId);
+			if (this.sandboxCreations.get(threadId) === pendingCreation) {
+				this.sandboxCreations.delete(threadId);
+			}
 		}
 	}
 
@@ -317,8 +396,12 @@ export class InstanceAiSandboxService {
 	private async createWorkspaceEntry(
 		threadId: string,
 		user: User,
+		cacheState: SandboxCacheState,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
+		const config = withThreadScopedSandboxIdentity(
+			cacheState.config ?? (await this.resolveSandboxConfig(user)),
+			threadId,
+		);
 		if (!config.enabled) return undefined;
 
 		const sandbox = await createSandbox(config, {
@@ -336,19 +419,49 @@ export class InstanceAiSandboxService {
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
 			}
+			// Only the generic transient wrap is downgraded to a non-reported warning.
+			// Classified subclasses (name conflict, sandbox not ready) keep their identity
+			// so they stay visible in Sentry as distinct issues.
+			if (
+				error instanceof SandboxAcquisitionError &&
+				error.constructor === SandboxAcquisitionError
+			) {
+				throw new OperationalError(error.message, { cause: error });
+			}
 			throw error;
 		}
 
 		const entry: RuntimeSandboxEntry = {
 			sandbox,
 			workspace,
+			configFingerprint: cacheState.fingerprint,
 			setupComplete: false,
 			setupPromise: undefined,
 			expiresAt: this.nextSandboxExpiry(),
 		};
-		this.sandboxes.set(threadId, entry);
-		this.scheduleSandboxExpiry(threadId, entry);
 		return entry;
+	}
+
+	private async resolveSandboxCacheState(user: User): Promise<SandboxCacheState> {
+		if (this.options.aiService.isProxyEnabled()) {
+			return {
+				fingerprint: sandboxConfigFingerprint({
+					mode: 'proxy',
+					config: this.getSandboxConfigFromEnv(),
+				}),
+			};
+		}
+
+		const config = await this.resolveSandboxConfig(user);
+		return { config, fingerprint: sandboxConfigFingerprint(config) };
+	}
+
+	invalidateCachedWorkspaces(): void {
+		this.cacheGeneration++;
+		this.sandboxCreations.clear();
+		for (const [threadId, entry] of this.sandboxes) {
+			this.evictSandboxEntry(threadId, entry);
+		}
 	}
 
 	private evictSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
@@ -364,11 +477,50 @@ export class InstanceAiSandboxService {
 	/** Destroy and remove the shared runtime workspace for a thread. */
 	async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
-		if (!entry?.sandbox) return;
+		if (!entry?.sandbox) {
+			await this.destroyUncachedSandbox(threadId, reason);
+			return;
+		}
 
 		this.evictSandboxEntry(threadId, entry);
 		try {
 			await entry.workspace?.destroy();
+		} catch (error) {
+			this.logger.warn('Failed to destroy sandbox', {
+				threadId,
+				reason,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Delete the remote sandbox for a thread with no cache entry (after a
+	 * restart or an idle eviction). Only the n8n-sandbox provider supports
+	 * this: its id is recomputable from the thread id, and a delete for an id
+	 * that never existed is a cheap 404. Daytona is left to its own
+	 * auto-stop/auto-delete lifecycle.
+	 */
+	private async destroyUncachedSandbox(threadId: string, reason: string): Promise<void> {
+		try {
+			const base = this.getSandboxConfigFromEnv();
+			if (!base.enabled || base.provider !== 'n8n-sandbox') return;
+
+			const settings = await this.options.settingsService.resolveN8nSandboxConfig();
+			const config = withThreadScopedSandboxIdentity(
+				{
+					...base,
+					serviceUrl: settings.serviceUrl ?? base.serviceUrl,
+					apiKey: settings.apiKey ?? base.apiKey,
+				},
+				threadId,
+			);
+			// Constructing the adapter makes no remote calls; destroy() issues the delete.
+			const sandbox = await createSandbox(config, {
+				logger: this.logger,
+				errorReporter: this.options.errorReporter,
+			});
+			await sandbox?.destroy?.();
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
@@ -408,8 +560,10 @@ export class InstanceAiSandboxService {
 		if (this.sandboxTtlMs <= 0) return;
 		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
 
-		// Provider auto-stop handles remote Daytona sandboxes. This timer only
-		// drops our in-process cache entry so the map cannot grow indefinitely.
+		// The provider reclaims the remote sandbox (Daytona auto-stop, sandbox-service
+		// idle reaping), and the deterministic identity lets a later request reattach
+		// while it is still alive. This timer only drops our in-process cache entry
+		// so the map cannot grow indefinitely.
 		const delay = Math.max(0, entry.expiresAt - Date.now());
 		entry.cleanupTimer = setTimeout(() => {
 			const current = this.sandboxes.get(threadId);

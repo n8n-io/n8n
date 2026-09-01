@@ -12,17 +12,17 @@ import type { CredentialSharingRole } from '@n8n/permissions';
 export async function encryptCredentialData(
 	credential: CredentialsEntity,
 ): Promise<ICredentialsDb> {
-	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
+	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper.js');
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
-	// @ts-ignore
+	// @ts-expect-error entity data typed as string
 	await coreCredential.setData(credential.data);
 
 	return Object.assign(credential, coreCredential.getDataToSave());
 }
 
 export async function decryptCredentialData(credential: ICredentialsDb): Promise<unknown> {
-	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
+	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper.js');
 	const coreCredential = createCredentialsFromCredentialsEntity(credential);
 
 	return await coreCredential.getData();

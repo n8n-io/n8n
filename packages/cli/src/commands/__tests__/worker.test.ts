@@ -1,27 +1,42 @@
 import type { Logger } from '@n8n/backend-common';
+import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import http from 'node:http';
+import https from 'node:https';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { JwtService } from '@/services/jwt.service';
 import { RedisClientService } from '@/services/redis-client.service';
+import { ShutdownService } from '@/shutdown/shutdown.service';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 import { Worker } from '../worker';
 
-jest.mock('@/crash-journal');
+vi.mock('@/crash-journal');
 
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
@@ -39,14 +54,29 @@ const mockWorkerServer = mockInstance(WorkerServer);
 mockInstance(LoadNodesAndCredentials);
 const activeExecutions = mockInstance(ActiveExecutions);
 
+// Mocks for services reached by the full `init()` path, as in start.test.ts
+mockInstance(ErrorReporter);
+mockInstance(NodeTypes);
+mockInstance(ShutdownService);
+mockInstance(MessageEventBus);
+mockInstance(PostHogClient);
+mockInstance(TelemetryEventRelay);
+mockInstance(WorkflowFailureNotificationEventRelay);
+mockInstance(DeprecationService);
+mockInstance(CredentialsOverwrites);
+mockInstance(CommunityPackagesConfig, { enabled: false });
+mockInstance(JwtService);
+mockInstance(BinaryDataConfig);
+mockInstance(TaskRunnerModule);
+
 describe('Worker', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('initOrchestration', () => {
 		it('should instantiate WorkerStatusService during orchestration setup', async () => {
-			const containerGetSpy = jest.spyOn(Container, 'get');
+			const containerGetSpy = vi.spyOn(Container, 'get');
 
 			await new Worker().initOrchestration();
 
@@ -66,11 +96,83 @@ describe('Worker', () => {
 
 		it('should initialize PubSubRegistry', async () => {
 			const pubSubRegistry = Container.get(PubSubRegistry);
-			const initSpy = jest.spyOn(pubSubRegistry, 'init');
+			const initSpy = pubSubRegistry.init;
 
 			await new Worker().initOrchestration();
 
 			expect(initSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('installOutboundProxyAgents', () => {
+		const workerWithOutboundProxyMode = (mode: 'all' | 'main-only') => {
+			const worker = new Worker();
+			// @ts-expect-error - Accessing protected property for testing
+			worker.globalConfig = { outboundProxy: { mode } };
+			return worker;
+		};
+
+		afterEach(() => {
+			uninstallGlobalProxyAgent();
+			vi.unstubAllEnvs();
+		});
+
+		it('should install env-proxy global agents in `all` mode', () => {
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+
+			// @ts-expect-error - Accessing protected method for testing
+			workerWithOutboundProxyMode('all').installOutboundProxyAgents();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+		});
+
+		it('should keep plain global agents in `main-only` mode, as workers are not the main server', () => {
+			uninstallGlobalProxyAgent();
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+
+			// @ts-expect-error - Accessing protected method for testing
+			workerWithOutboundProxyMode('main-only').installOutboundProxyAgents();
+
+			expect(http.globalAgent.constructor.name).toBe('Agent');
+			expect(https.globalAgent.constructor.name).toBe('Agent');
+		});
+
+		it('should install env-proxy global agents on `init()`, via the base command', async () => {
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+
+			const worker = new Worker();
+			// @ts-expect-error - Overriding readonly property for testing
+			worker.globalConfig = {
+				executions: { mode: 'regular' },
+				multiMainSetup: { enabled: false },
+				endpoints: { metrics: { enable: false }, health: '/health' },
+				database: { type: 'sqlite' },
+				sentry: { backendDsn: '' },
+				cache: { backend: 'memory' },
+				taskRunners: {},
+				outboundProxy: { mode: 'all' },
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+			};
+			// Stub the init steps that go beyond `super.init()`, as in start.test.ts
+			worker.setConcurrency = vi.fn().mockResolvedValue(undefined);
+			worker.initLicense = vi.fn().mockResolvedValue(undefined);
+			worker.initBinaryDataService = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected method for testing
+			worker.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
+			worker.initExternalHooks = vi.fn().mockResolvedValue(undefined);
+			worker.initEventBus = vi.fn().mockResolvedValue(undefined);
+			worker.initScalingService = vi.fn().mockResolvedValue(undefined);
+			worker.initOrchestration = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected property for testing
+			worker.moduleRegistry = { initModules: vi.fn().mockResolvedValue(undefined) };
+			// @ts-expect-error - Accessing protected property for testing
+			worker.executionContextHookRegistry = { init: vi.fn().mockResolvedValue(undefined) };
+
+			await worker.init();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
 		});
 	});
 
@@ -96,9 +198,9 @@ describe('Worker', () => {
 
 			const executionId = await realActiveExecutions.add(mock<IWorkflowExecutionDataProcess>());
 
-			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			try {
 				const worker = new Worker();
@@ -108,7 +210,7 @@ describe('Worker', () => {
 
 				// While the execution is in flight, shutdown must stay in the drain
 				// loop without closing the DB connection.
-				await jest.advanceTimersByTimeAsync(drainLoopInterval * 3);
+				await vi.advanceTimersByTimeAsync(drainLoopInterval * 3);
 				expect(dbConnection.close).not.toHaveBeenCalled();
 
 				// On execution complete, post-execution hook persists the result,
@@ -116,11 +218,11 @@ describe('Worker', () => {
 				await executionPersistence.updateExistingExecution(executionId, { status: 'success' });
 				realActiveExecutions.finalizeExecution(executionId);
 
-				await jest.advanceTimersByTimeAsync(drainLoopInterval);
+				await vi.advanceTimersByTimeAsync(drainLoopInterval);
 
 				await stopPromise;
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 				exitSpy.mockRestore();
 				Container.set(ActiveExecutions, activeExecutions);
 			}
@@ -135,7 +237,7 @@ describe('Worker', () => {
 	describe('run', () => {
 		// `run()` registers the job processor, so it needs a scaling service and
 		// concurrency in place (normally set during `init()`).
-		const mockScalingService = { setupWorker: jest.fn() };
+		const mockScalingService = { setupWorker: vi.fn() };
 		const createWorkerForRun = () => {
 			const worker = new Worker();
 
@@ -177,4 +279,8 @@ describe('Worker', () => {
 			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
 		});
 	});
+});
+
+test('worker needs the expression engine', () => {
+	expect(new Worker().needsExpressionEngine).toBe(true);
 });
