@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { ICredentialDataDecryptedObject } from './interfaces';
 
 /** Covers `mcpOAuth2Api` and registry-specific variants like `notionMcpOAuth2Api`. */
@@ -36,10 +38,6 @@ export type PrepareMcpRegistryConnectionResult =
 export interface McpRegistryRuntime {
 	resolveConnection(nodeTypeName: string): McpRegistryConnection | undefined;
 	prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
