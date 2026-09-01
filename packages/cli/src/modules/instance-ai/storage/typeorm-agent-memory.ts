@@ -425,10 +425,6 @@ export class TypeORMAgentMemory
 		});
 	}
 
-	async hasUserMessages(threadId: string): Promise<boolean> {
-		return await this.messageRepo.existsBy({ threadId, role: 'user' });
-	}
-
 	async listMessages(args: {
 		threadId: string;
 		limit?: number;

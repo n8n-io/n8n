@@ -1,4 +1,4 @@
-import { computed, reactive, ref, triggerRef, watch } from 'vue';
+import { computed, nextTick, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -20,11 +20,12 @@ import {
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
 	type InstanceAiHandoffContext,
+	type InstanceAiThreadSourcePersisted,
 	type TaskList,
 	type AgentRunState,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { redactTelemetryProperties } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, redactTelemetryProperties } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -61,6 +62,7 @@ import {
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
+import { instanceAiResponseNow } from './instanceAi.responseTiming';
 
 export interface PlanEditContext {
 	requestId: string;
@@ -93,6 +95,23 @@ const MAX_SEEN_EVENT_IDS = 1000;
 
 /** Silence window after which an active run with no stream traffic counts as stalled. */
 const GENERATION_STALL_TIMEOUT_MS = 60_000;
+
+type ResponseKind = 'completed' | 'awaiting_input';
+
+type ResponseSignal =
+	| {
+			kind: 'received';
+			responseKind: ResponseKind;
+			rendered: Promise<{ atEpochMs: number; tabVisible: boolean }>;
+	  }
+	| { kind: 'discard' };
+
+interface PendingResponseMetric {
+	startedAtEpochMs: number;
+	isFirstUserMessage: boolean;
+	actionSource: InstanceAiThreadSourcePersisted;
+	generation: number;
+}
 
 /**
  * Cross-runtime hooks the store wires up at creation time.
@@ -423,6 +442,10 @@ export function createThreadRuntime(
 	// is the run state's own root node.
 	const runStateByGroupId = new Map<string, AgentRunState>();
 	const groupIdByRunId = new Map<string, string>();
+	const pendingResponseMetrics = new Map<string, PendingResponseMetric>();
+	const earlyResponseSignals = new Map<string, ResponseSignal>();
+	const earlyTerminalRunIds = new Set<string>();
+	let responseMetricGeneration = 0;
 	let eventSource: EventSource | null = null;
 	let sseGeneration = 0;
 	let hydrationGeneration = 0;
@@ -496,6 +519,88 @@ export function createThreadRuntime(
 		},
 		{ flush: 'sync' },
 	);
+
+	function responseKindForEvent(event: InstanceAiEvent): ResponseKind | null | undefined {
+		if (event.type === 'confirmation-request') {
+			const confirmation = pendingConfirmations.value.find(
+				(item) => item.toolCall.confirmation.requestId === event.payload.requestId,
+			);
+			return confirmation && hasSessionAlwaysAllowGrant(confirmation)
+				? undefined
+				: 'awaiting_input';
+		}
+		if (event.type !== 'run-finish') return undefined;
+		return event.payload.status === 'completed' ? 'completed' : null;
+	}
+
+	async function observeResponseRender(): Promise<{ atEpochMs: number; tabVisible: boolean }> {
+		await nextTick();
+		const tabVisible = document.visibilityState === 'visible';
+		if (tabVisible) {
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+		}
+		return { atEpochMs: instanceAiResponseNow(), tabVisible };
+	}
+
+	function createResponseSignal(responseKind: ResponseKind | null): ResponseSignal {
+		if (responseKind === null) return { kind: 'discard' };
+		return {
+			kind: 'received',
+			responseKind,
+			rendered: observeResponseRender(),
+		};
+	}
+
+	function settleResponseMetric(
+		runId: string,
+		metric: PendingResponseMetric,
+		signal: ResponseSignal,
+	): void {
+		pendingResponseMetrics.delete(runId);
+		if (signal.kind === 'discard') return;
+
+		void signal.rendered.then(({ atEpochMs, tabVisible }) => {
+			if (metric.generation !== responseMetricGeneration) return;
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE, {
+				instance_id: rootStore.instanceId,
+				thread_id: threadId,
+				run_id: runId,
+				latency_ms: Math.max(0, Math.round(atEpochMs - metric.startedAtEpochMs)),
+				is_first_user_message: metric.isFirstUserMessage,
+				response_kind: signal.responseKind,
+				action_source: metric.actionSource,
+				tab_visible: tabVisible,
+			});
+		});
+	}
+
+	function handleResponseMetricEvent(event: InstanceAiEvent): void {
+		const responseKind = responseKindForEvent(event);
+		if (responseKind === undefined) return;
+
+		const isTerminal = event.type === 'run-finish';
+		if (isTerminal && pendingMessageCount.value > 0) {
+			earlyTerminalRunIds.add(event.runId);
+		}
+
+		const pendingMetric = pendingResponseMetrics.get(event.runId);
+		if (!pendingMetric && pendingMessageCount.value === 0) return;
+
+		const signal = createResponseSignal(responseKind);
+		if (pendingMetric) {
+			settleResponseMetric(event.runId, pendingMetric, signal);
+		} else if (!earlyResponseSignals.has(event.runId)) {
+			earlyResponseSignals.set(event.runId, signal);
+		}
+	}
+
+	function registerResponseMetric(runId: string, metric: PendingResponseMetric): void {
+		pendingResponseMetrics.set(runId, metric);
+		const earlySignal = earlyResponseSignals.get(runId);
+		if (!earlySignal) return;
+		earlyResponseSignals.delete(runId);
+		settleResponseMetric(runId, metric, earlySignal);
+	}
 
 	// --- Telemetry: 'Builder generation stalled' ---
 	// Fires when the active run has produced nothing on the stream for a minute.
@@ -689,6 +794,17 @@ export function createThreadRuntime(
 		return true;
 	}
 
+	function hasSessionAlwaysAllowGrant(item: PendingConfirmationItem): boolean {
+		if (!isGenericApprovalEligible(item)) return false;
+		const confirmation = item.toolCall.confirmation;
+		const key = buildAlwaysAllowKey(
+			item.toolCall.toolName,
+			item.toolCall.args ?? {},
+			confirmation.workflowId,
+		);
+		return key !== null && sessionAlwaysAllowKeys.value.has(key);
+	}
+
 	// In-flight guard for the auto-approve watcher. We can't rely on
 	// `resolvedConfirmationIds` to skip duplicates here because we only mark
 	// resolved *after* `confirmAction` succeeds — otherwise a failed request
@@ -703,13 +819,7 @@ export function createThreadRuntime(
 				const conf = item.toolCall.confirmation;
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
-				if (!isGenericApprovalEligible(item)) continue;
-				const key = buildAlwaysAllowKey(
-					item.toolCall.toolName,
-					item.toolCall.args ?? {},
-					conf.workflowId,
-				);
-				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
+				if (!hasSessionAlwaysAllowGrant(item)) continue;
 
 				autoApproveInFlight.add(conf.requestId);
 				try {
@@ -833,6 +943,7 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'run-start' || parsed.data.type === 'run-finish') {
 				triggerRef(messages);
 			}
+			handleResponseMetricEvent(parsed.data);
 			// When a run finishes, refresh thread list to pick up auto-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				hooks.onRunFinish();
@@ -1001,6 +1112,10 @@ export function createThreadRuntime(
 		sessionAlwaysAllowKeys.value = new Set();
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
+		pendingResponseMetrics.clear();
+		earlyResponseSignals.clear();
+		earlyTerminalRunIds.clear();
+		responseMetricGeneration += 1;
 		lastEventId.value = undefined;
 		seenEventIds.clear();
 		disarmGenerationStallWatchdog();
@@ -1133,7 +1248,7 @@ export function createThreadRuntime(
 		}
 	}
 
-	function trackUserMessageSent(isFirstMessage: boolean): void {
+	function resolveActionSource(): InstanceAiThreadSourcePersisted {
 		const rawSource = hooks.getThreadMetadata?.(threadId)?.source;
 		const actionSource = isInstanceAiThreadSource(rawSource)
 			? rawSource
@@ -1149,7 +1264,13 @@ export function createThreadRuntime(
 					'Pass launch metadata through syncThread so action_source is attributed.',
 			);
 		}
+		return actionSource;
+	}
 
+	function trackUserMessageSent(
+		isFirstMessage: boolean,
+		actionSource: InstanceAiThreadSourcePersisted,
+	): void {
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
@@ -1163,7 +1284,7 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		handoffContext?: InstanceAiHandoffContext,
 		pushRef?: string,
-	): Promise<boolean> {
+	): Promise<string | null> {
 		try {
 			const { runId } = await postMessage(
 				rootStore.restApiContext,
@@ -1175,10 +1296,7 @@ export function createThreadRuntime(
 				pushRef,
 			);
 
-			if (runId) {
-				activeRunId.value = runId;
-			}
-			return true;
+			return runId;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
 			if (status === 409) {
@@ -1195,7 +1313,7 @@ export function createThreadRuntime(
 			} else {
 				toast.showError(new Error('Failed to send message. Try again.'), 'Send failed');
 			}
-			return false;
+			return null;
 		}
 	}
 
@@ -1204,22 +1322,38 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
 		handoffContext?: InstanceAiHandoffContext,
+		responseStartedAtEpochMs = instanceAiResponseNow(),
 	): Promise<boolean> {
+		const metricGeneration = responseMetricGeneration;
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
+			const actionSource = resolveActionSource();
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
-			trackUserMessageSent(isFirstMessage);
+			trackUserMessageSent(isFirstMessage, actionSource);
 
-			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
+			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
+			if (!runId) {
 				removeOptimisticMessage(optimistic);
 				return false;
 			}
+			if (metricGeneration !== responseMetricGeneration) return true;
+			if (!earlyTerminalRunIds.has(runId)) activeRunId.value = runId;
+			registerResponseMetric(runId, {
+				startedAtEpochMs: responseStartedAtEpochMs,
+				isFirstUserMessage: isFirstMessage,
+				actionSource,
+				generation: metricGeneration,
+			});
 			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
+			if (pendingMessageCount.value === 0) {
+				earlyResponseSignals.clear();
+				earlyTerminalRunIds.clear();
+			}
 		}
 	}
 

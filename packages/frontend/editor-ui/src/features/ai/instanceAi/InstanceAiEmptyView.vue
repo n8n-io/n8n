@@ -459,7 +459,12 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+async function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	_restoreDraft?: () => boolean,
+	responseStartedAtEpochMs?: number,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -494,7 +499,17 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
-	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	if (responseStartedAtEpochMs === undefined) {
+		void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	} else {
+		void thread.sendMessage(
+			finalMessage,
+			attachments,
+			rootStore.pushRef,
+			undefined,
+			responseStartedAtEpochMs,
+		);
+	}
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },

@@ -742,12 +742,22 @@ function reconnectThreadAfterHydration(): void {
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(props.threadId);
 		if (pending) {
-			void thread.sendMessage(
-				pending.message,
-				pending.attachments,
-				rootStore.pushRef,
-				pending.context,
-			);
+			const sendMessage =
+				pending.responseStartedAtEpochMs === undefined
+					? thread.sendMessage(
+							pending.message,
+							pending.attachments,
+							rootStore.pushRef,
+							pending.context,
+						)
+					: thread.sendMessage(
+							pending.message,
+							pending.attachments,
+							rootStore.pushRef,
+							pending.context,
+							pending.responseStartedAtEpochMs,
+						);
+			void sendMessage;
 			// Experiment cleanup: remove with openWorkflowInAssistant.
 			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
 		}
@@ -813,6 +823,7 @@ function handleSubmit(
 	message: string,
 	attachments?: InstanceAiAttachment[],
 	restoreDraft?: () => boolean,
+	responseStartedAtEpochMs?: number,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -866,29 +877,37 @@ function handleSubmit(
 		? [...(attachments ?? []), agentAttachment]
 		: attachments;
 
-	void thread
-		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
-		.then((sent) => {
-			if (!sent) {
-				if (restoreDraft?.()) return;
-				const input = chatInputRef.value;
-				if (input && !input.isDirty()) input.setText(message);
-				return;
-			}
-			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
-			const isCurrentDraft =
-				!submittedGeneratedDraft || generatedComposerDraft.value === submittedGeneratedDraft;
-			if ((handoffContext || submittedGeneratedDraft) && isCurrentHandoff && isCurrentDraft) {
-				clearPendingHandoffContext(props.threadId);
-				clearPendingComposerDraft(props.threadId);
-				if (handoffContext) pendingComposerContext.value = null;
-				if (submittedGeneratedDraft) generatedComposerDraft.value = null;
-			}
-			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
-				clearPendingAgentAttachment(props.threadId);
-				pendingAgentAttachment.value = null;
-			}
-		});
+	const sendMessage =
+		responseStartedAtEpochMs === undefined
+			? thread.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
+			: thread.sendMessage(
+					message,
+					submittedAttachments,
+					rootStore.pushRef,
+					handoffContext,
+					responseStartedAtEpochMs,
+				);
+	void sendMessage.then((sent) => {
+		if (!sent) {
+			if (restoreDraft?.()) return;
+			const input = chatInputRef.value;
+			if (input && !input.isDirty()) input.setText(message);
+			return;
+		}
+		const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
+		const isCurrentDraft =
+			!submittedGeneratedDraft || generatedComposerDraft.value === submittedGeneratedDraft;
+		if ((handoffContext || submittedGeneratedDraft) && isCurrentHandoff && isCurrentDraft) {
+			clearPendingHandoffContext(props.threadId);
+			clearPendingComposerDraft(props.threadId);
+			if (handoffContext) pendingComposerContext.value = null;
+			if (submittedGeneratedDraft) generatedComposerDraft.value = null;
+		}
+		if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
+			clearPendingAgentAttachment(props.threadId);
+			pendingAgentAttachment.value = null;
+		}
+	});
 }
 
 function handleStop() {
@@ -1251,7 +1270,11 @@ async function dismissComposerContextChip() {
 													ref="chatInputRef"
 													key="chat-input"
 													:is-streaming="thread.isStreaming"
-													:is-submitting="thread.isSendingMessage"
+													:is-submitting="
+														thread.isSendingMessage ||
+														thread.hydrationStatus === 'idle' ||
+														thread.isHydratingThread
+													"
 													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
 													:is-plan-edit-mode="thread.activePlanEdit !== null"
 													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"

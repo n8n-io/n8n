@@ -12,6 +12,7 @@ import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { base64EncodedSize, type InstanceAiAttachment } from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
+import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 
 type AmendContext = { agentId: string; role: string } | null;
 type SuggestionPromptPayload =
@@ -88,7 +89,12 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	submit: [message: string, attachments?: InstanceAiAttachment[], restoreDraft?: () => boolean];
+	submit: [
+		message: string,
+		attachments?: InstanceAiAttachment[],
+		restoreDraft?: () => boolean,
+		responseStartedAtEpochMs?: number,
+	];
 	stop: [];
 	'cancel-plan-edit': [];
 	'dismiss-context-chip': [];
@@ -278,13 +284,10 @@ function emitSubmittedMessage(
 	message: string,
 	attachments?: InstanceAiAttachment[],
 	restoreDraft?: () => boolean,
+	responseStartedAtEpochMs?: number,
 ) {
 	previewPrompt.value = null;
-	if (restoreDraft) {
-		emit('submit', message, attachments, restoreDraft);
-		return;
-	}
-	emit('submit', message, attachments);
+	emit('submit', message, attachments, restoreDraft, responseStartedAtEpochMs);
 }
 
 function resetDraftComposer() {
@@ -303,7 +306,11 @@ function restoreSubmittedDraft(message: string, files: File[]) {
 	return true;
 }
 
-function submitComposerMessage(message: string, attachments?: InstanceAiAttachment[]) {
+function submitComposerMessage(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	responseStartedAtEpochMs = instanceAiResponseNow(),
+) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
 		return;
 	}
@@ -314,6 +321,7 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 		message,
 		attachments,
 		submittedFiles.length > 0 ? () => restoreSubmittedDraft(message, submittedFiles) : undefined,
+		responseStartedAtEpochMs,
 	);
 	resetDraftComposer();
 }
@@ -332,6 +340,7 @@ async function handleSubmit() {
 	if (!canSubmitMessage(text, attachedFiles.value.length)) {
 		return;
 	}
+	const responseStartedAtEpochMs = instanceAiResponseNow();
 
 	let attachments: InstanceAiAttachment[] | undefined;
 	if (attachedFiles.value.length > 0) {
@@ -344,7 +353,7 @@ async function handleSubmit() {
 		}));
 	}
 
-	submitComposerMessage(text, attachments);
+	submitComposerMessage(text, attachments, responseStartedAtEpochMs);
 }
 
 function handleStop() {

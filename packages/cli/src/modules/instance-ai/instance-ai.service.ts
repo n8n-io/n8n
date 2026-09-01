@@ -217,17 +217,6 @@ function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-function isSuccessfulWorkflowReply(result: unknown): boolean {
-	return (
-		typeof result === 'object' &&
-		result !== null &&
-		'success' in result &&
-		result.success === true &&
-		'workflowId' in result &&
-		typeof result.workflowId === 'string'
-	);
-}
-
 /** A resource attachment as the trace records it: the reference, not its contents. */
 type TracedResourceAttachment = {
 	type: InstanceAiResourceAttachment['type'];
@@ -723,11 +712,6 @@ export class InstanceAiService {
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
-
-	private readonly firstReplyTrackers = new Map<
-		string,
-		{ threadId: string; unsubscribe: () => void }
-	>();
 
 	/**
 	 * Runs where the credentials tool handed off to browser-assisted credential
@@ -1426,16 +1410,7 @@ export class InstanceAiService {
 		return this.runState.getActiveRunId(threadId);
 	}
 
-	private clearFirstReplyTrackers(threadId: string): void {
-		for (const [trackerId, tracker] of this.firstReplyTrackers) {
-			if (tracker.threadId !== threadId) continue;
-			tracker.unsubscribe();
-			this.firstReplyTrackers.delete(trackerId);
-		}
-	}
-
 	cancelRun(threadId: string, reason = 'user_cancelled'): void {
-		this.clearFirstReplyTrackers(threadId);
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
@@ -1822,7 +1797,6 @@ export class InstanceAiService {
 	 * Must be called when a thread is deleted so the maps don't leak.
 	 */
 	async clearThreadState(threadId: string): Promise<void> {
-		this.clearFirstReplyTrackers(threadId);
 		this.liveness.clearThreadState(threadId);
 
 		// Clear run-state registry entries (active/suspended runs, confirmations,
@@ -1887,8 +1861,6 @@ export class InstanceAiService {
 	async shutdown(): Promise<void> {
 		this.stopCheckpointPruning();
 		this.liveness.shutdown();
-		for (const tracker of this.firstReplyTrackers.values()) tracker.unsubscribe();
-		this.firstReplyTrackers.clear();
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
@@ -3631,115 +3603,6 @@ export class InstanceAiService {
 		];
 	}
 
-	private async setupFirstReplyTracking({
-		userId,
-		threadId,
-		runId,
-		signal,
-		resumeReason,
-	}: {
-		userId: string;
-		threadId: string;
-		runId: string;
-		signal: AbortSignal;
-		resumeReason?: OrchestratorResumeReason;
-	}): Promise<void> {
-		let unsubscribe: (() => void) | undefined;
-
-		try {
-			const activeRun = this.runState.getActiveRun(threadId);
-			const runStartedAt = activeRun?.startedAt;
-			const trackerId = activeRun?.messageGroupId;
-			if (
-				resumeReason !== undefined ||
-				signal.aborted ||
-				activeRun?.runId !== runId ||
-				runStartedAt === undefined ||
-				trackerId === undefined
-			) {
-				return;
-			}
-
-			const isFirstUserMessage = !(await this.agentMemory.hasUserMessages(threadId));
-			const currentRun = this.runState.getActiveRun(threadId);
-			if (
-				signal.aborted ||
-				currentRun?.runId !== runId ||
-				currentRun.messageGroupId !== trackerId
-			) {
-				return;
-			}
-
-			const workflowToolCallIds = new Set<string>();
-			const clearTracker = () => {
-				this.firstReplyTrackers.get(trackerId)?.unsubscribe();
-				this.firstReplyTrackers.delete(trackerId);
-			};
-
-			unsubscribe = this.eventBus.subscribe(threadId, ({ event }) => {
-				try {
-					if (
-						event.runId !== runId &&
-						!this.getRunIdsForMessageGroup(trackerId).includes(event.runId)
-					) {
-						return;
-					}
-					if (
-						event.runId === runId &&
-						event.type === 'run-finish' &&
-						(event.payload.status === 'error' || event.payload.status === 'cancelled')
-					) {
-						clearTracker();
-						return;
-					}
-					if (event.type === 'tool-call') {
-						if (event.payload.toolName === 'build-workflow') {
-							workflowToolCallIds.add(event.payload.toolCallId);
-						}
-						return;
-					}
-
-					const isTextReply =
-						(event.type === 'text-delta' || event.type === 'text-block') &&
-						event.payload.text.trim().length > 0;
-					const isWorkflowReply =
-						event.type === 'tool-result' &&
-						workflowToolCallIds.has(event.payload.toolCallId) &&
-						isSuccessfulWorkflowReply(event.payload.result);
-					if (!isTextReply && event.type !== 'confirmation-request' && !isWorkflowReply) {
-						return;
-					}
-
-					clearTracker();
-					const latencyMs = Math.max(0, (event.ts ?? Date.now()) - runStartedAt);
-
-					this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_RESPONSE_STARTED, {
-						user_id: userId,
-						thread_id: threadId,
-						run_id: runId,
-						latency_ms: latencyMs,
-						is_first_user_message: isFirstUserMessage,
-					});
-				} catch (error) {
-					clearTracker();
-					this.logger.warn('Failed to track AI Assistant response start', {
-						threadId,
-						runId,
-						error: getErrorMessage(error),
-					});
-				}
-			});
-			this.firstReplyTrackers.set(trackerId, { threadId, unsubscribe });
-		} catch (error) {
-			unsubscribe?.();
-			this.logger.warn('Failed to set up AI Assistant response start tracking', {
-				threadId,
-				runId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
 	/**
 	 * Run body for a fresh orchestrator turn. Never call directly — go through
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
@@ -3802,14 +3665,6 @@ export class InstanceAiService {
 		let errorReporterExecutionToken: symbol | undefined;
 
 		try {
-			await this.setupFirstReplyTracking({
-				userId: user.id,
-				threadId,
-				runId,
-				signal,
-				resumeReason,
-			});
-
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
 
 			messageId = nanoid();

@@ -36,6 +36,24 @@ const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
+// Mirrors the persisted thread sources in @n8n/api-types, with its fallback value.
+const instanceAiThreadSource = z.enum([
+	'website-template',
+	'template-view',
+	'canvas_action_button',
+	'canvas_choice_prompt',
+	'node_error_view',
+	'credential_edit',
+	'credentials_list',
+	'agent_builder_page',
+	'agent_preview',
+	'assistant_page',
+	'workflow_list_auto',
+	'workflow_list_button',
+	'evals',
+	'playwright',
+	'unknown',
+]);
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_AI_CREDIT_BALANCE: {
@@ -178,24 +196,29 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The AI Assistant requested a direct connection through the Browser Use extension.',
 		properties: z.object({}),
 	},
-	AI_ASSISTANT_RESPONSE_STARTED: {
-		name: 'AI Assistant response started',
+	USER_RECEIVED_AI_ASSISTANT_RESPONSE: {
+		name: 'User received AI Assistant response',
 		description:
-			'The AI Assistant started responding to a user turn with a non-empty text chunk, confirmation request, or successfully completed workflow build. Latency starts when the backend accepts the message and includes setup work such as sandbox startup. Fires at most once per turn.',
+			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample.',
 		properties: z.object({
-			user_id: z.string(),
+			instance_id: z.string(),
 			thread_id: z.string(),
-			run_id: z
-				.string()
-				.describe('Initial run ID for the user turn; the reply may come from a follow-up run'),
+			run_id: z.string().describe('Run ID returned for the user-submitted message'),
 			latency_ms: z
 				.number()
 				.int()
 				.nonnegative()
-				.describe('Milliseconds from backend message acceptance to response start'),
+				.describe('Milliseconds from submit intent until the initial foreground reply is rendered'),
 			is_first_user_message: z
 				.boolean()
 				.describe("Whether this was the thread's first user message"),
+			response_kind: z
+				.enum(['completed', 'awaiting_input'])
+				.describe('Whether the response completed the run or rendered an input request'),
+			action_source: instanceAiThreadSource,
+			tab_visible: z
+				.boolean()
+				.describe('Whether the document was visible when the response rendered'),
 		}),
 	},
 	COMPUTER_USE_MODAL_OPENED: {

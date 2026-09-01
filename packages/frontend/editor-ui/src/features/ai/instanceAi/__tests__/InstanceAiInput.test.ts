@@ -441,6 +441,8 @@ describe('InstanceAiInput', () => {
 		expect(emitted().submit?.[0]).toEqual([
 			'I want to build a new agent. Help me figure out what to build. Ask me what the main purpose of the agent is, what should trigger it into action, what apps, tools, or knowledge it should have access to, and whether I have a preference for the AI model used.',
 			undefined,
+			undefined,
+			expect.any(Number),
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -592,6 +594,7 @@ describe('InstanceAiInput', () => {
 					}),
 				],
 				expect.any(Function),
+				expect.any(Number),
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -767,7 +770,9 @@ describe('InstanceAiInput', () => {
 		await userEvent.type(textbox, 'Make the first workflow simpler');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 
-		expect(emitted().submit).toEqual([['Make the first workflow simpler', undefined]]);
+		expect(emitted().submit).toEqual([
+			['Make the first workflow simpler', undefined, undefined, expect.any(Number)],
+		]);
 	});
 
 	it('emits cancel-plan-edit and clears the draft when the plan edit context is closed', async () => {
