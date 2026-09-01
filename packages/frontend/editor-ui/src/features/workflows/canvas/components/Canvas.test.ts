@@ -1507,6 +1507,25 @@ describe('Canvas', () => {
 			useContextMenu().close();
 		});
 
+		it('clears the node selection when opening the pane context menu', async () => {
+			const node = createCanvasNodeElement({ id: 'node-1', label: 'Node 1' });
+			workflowDocumentStore.setNodes([createTestNode({ id: node.id, name: 'Node 1' })]);
+
+			const { container } = renderComponent({
+				props: { nodes: [node] },
+			});
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const { addSelectedNodes, findNode, getSelectedNodes } = useVueFlow(canvasId);
+			addSelectedNodes([findNode(node.id)!]);
+			await waitFor(() => expect(getSelectedNodes.value).toHaveLength(1));
+
+			await fireEvent.contextMenu(container.querySelector('.vue-flow__pane')!);
+
+			await waitFor(() => expect(getSelectedNodes.value).toHaveLength(0));
+			expect(useContextMenu().targetNodeIds.value).toEqual([]);
+		});
+
 		async function renderWithGroup(
 			props: { readOnly?: boolean; suppressInteraction?: boolean } = {},
 			{
