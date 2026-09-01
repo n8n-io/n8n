@@ -12,10 +12,7 @@
         },
         "_updateTime": {
             "type": "string"
-        },
-        "telefono": {
-            "type": "string"
         }
     },
-    "version": 5
+    "version": 4
 }
