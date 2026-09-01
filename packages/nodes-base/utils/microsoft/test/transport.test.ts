@@ -773,6 +773,20 @@ describe('Microsoft Graph transport kernel', () => {
 			// the off-host link is never requested
 			expect(requestOAuth2).toHaveBeenCalledTimes(1);
 		});
+
+		it('refuses to follow an unparseable @odata.nextLink', async () => {
+			const requestOAuth2 = vi.fn().mockResolvedValue({
+				value: [{ id: '1' }],
+				'@odata.nextLink': 'not-a-url',
+			});
+			const ctx = makeContext(requestOAuth2);
+
+			// A node error, not the bare TypeError `new URL` would throw.
+			await expect(
+				microsoftApiRequestAllItems.call(ctx, 'value', 'GET', '/v1.0/teams/1/channels'),
+			).rejects.toThrow('Refusing to send credentials to an unexpected host');
+			expect(requestOAuth2).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('microsoftApiRequest under a webhook hook (IHookFunctions) context', () => {
