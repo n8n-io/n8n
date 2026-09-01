@@ -1,0 +1,26 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_5c12a9da88942b::t_ecd4c2a36b1cf3 603,608
+  s_5c12a9da88942b::t_4894bb4cd4c4bd 586-592,600-602,604-607,609-610
+  s_5c12a9da88942b::t_64080ba6048786 593-599
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_5c12a9da88942b::t_bef7a874f798a1 53
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_5c12a9da88942b::t_432bb05eff0209 159-162,173-181
+  s_5c12a9da88942b::t_9f1f78cb570422 22-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1755fc8c86ade672cee14e5c3f2294d5ebfe6a13",
+  "prompts": {},
+  "sessions": {
+    "s_5c12a9da88942b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "714b480f-ec2b-41c6-b996-85e5f382b522",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
