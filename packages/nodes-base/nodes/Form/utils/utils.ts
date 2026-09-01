@@ -248,7 +248,7 @@ function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: nu
 
 /** Target of the "Form automated with n8n" attribution footer. */
 export function getN8nWebsiteLink(instanceId?: string) {
-	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
+	const utm_campaign = instanceId ? `&utm_campaign=${encodeURIComponent(instanceId)}` : '';
 	return `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
 }
 
