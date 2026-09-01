@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /**
  * Run these tests by running
@@ -15,7 +18,7 @@ mock.module('@actions/github', {
 	},
 });
 
-const { postOrUpdateComment } = await import('./github-helpers.mjs');
+const { postOrUpdateComment, writeGithubOutput } = await import('./github-helpers.mjs');
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -86,5 +89,35 @@ describe('postOrUpdateComment', () => {
 			comment_id: 42,
 			body: 'updated body',
 		});
+	});
+});
+
+describe('writeGithubOutput', () => {
+	it('appends key=value lines to the GITHUB_OUTPUT of the given env', () => {
+		const file = join(mkdtempSync(join(tmpdir(), 'github-output-')), 'output.txt');
+
+		writeGithubOutput(
+			{ conflict_pr: 'https://example.test/pr/1', conflict_owners: '' },
+			{ GITHUB_OUTPUT: file },
+		);
+
+		assert.equal(
+			readFileSync(file, 'utf8'),
+			'conflict_pr=https://example.test/pr/1\nconflict_owners=\n',
+		);
+	});
+
+	it('does nothing when the given env has no GITHUB_OUTPUT', () => {
+		assert.doesNotThrow(() => writeGithubOutput({ conflict_pr: 'https://example.test/pr/1' }, {}));
+	});
+
+	it('falls back to process.env when no env is given', () => {
+		const file = join(mkdtempSync(join(tmpdir(), 'github-output-')), 'output.txt');
+		process.env.GITHUB_OUTPUT = file;
+
+		writeGithubOutput({ target_branches: 'release/1.x' });
+
+		assert.equal(readFileSync(file, 'utf8'), 'target_branches=release/1.x\n');
+		delete process.env.GITHUB_OUTPUT;
 	});
 });
