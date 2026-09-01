@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 1142-1294
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_82508c87469e04::t_3cfb15a4d253e0 1827
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentValidationTooltip.test.ts
+  s_82508c87469e04::t_9fdfe7d9d0dba7 1-90
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_82508c87469e04::t_3cfb15a4d253e0 32,49-50,227
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 293,513,542,577,596-600
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_82508c87469e04::t_3cfb15a4d253e0 2-6,17-18,20,79-98,124-126,128
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 172,696-713
+  s_82508c87469e04::t_bcb50b61e9a591 714-715
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 431-508
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_82508c87469e04::t_3cfb15a4d253e0 8027
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_82508c87469e04::t_3cfb15a4d253e0 9,27-28,36,165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d05f37a38530408c27f9521a8f82a9489062220",
+  "prompts": {},
+  "sessions": {
+    "s_82508c87469e04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a71432a2-03b0-4483-9061-b9d762e81bfb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
