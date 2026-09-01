@@ -36,7 +36,7 @@ const suggestionUrl = computed(() => {
 		<N8nExternalLink
 			:class="[$style.link, 'ignore-key-press-node-creator']"
 			:href="suggestionUrl"
-			size="small"
+			size="large"
 		>
 			{{ action }}
 		</N8nExternalLink>
@@ -54,7 +54,7 @@ const suggestionUrl = computed(() => {
 
 .link {
 	color: var(--text-color);
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
 
 	&:hover {
