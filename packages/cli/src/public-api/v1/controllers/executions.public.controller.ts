@@ -28,8 +28,7 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-/** `deletedAt` is on the entity but missing from `IExecutionBase`, and the response carries it. */
-type PublicExecution = IExecutionBase & Partial<IExecutionResponse> & { deletedAt?: Date | null };
+type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
 
 function isRedactableExecution(
 	execution: IExecutionBase,
