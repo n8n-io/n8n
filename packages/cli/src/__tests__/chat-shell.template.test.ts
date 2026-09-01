@@ -237,4 +237,46 @@ describe('chat-shell.handlebars', () => {
 
 		expect(html).not.toMatch(/\son\w+=['"]/);
 	});
+
+	/**
+	 * Presence pins, not behaviour tests. Each guard below was added after a real
+	 * defect, and each is a security property of a visitor-facing page, so the case
+	 * worth catching is a future change quietly dropping one.
+	 */
+	describe('the inline script keeps its security gates', () => {
+		const script = async () => {
+			const html = await renderView(withOneMissingAccount);
+			return html.slice(html.lastIndexOf('<script>'));
+		};
+
+		// A sandboxed frame can nest another frame, whose `source` is neither the frame
+		// nor the popup, so excluding only the frame let author content fake a connect
+		// and un-gate the visitor's input.
+		it('trusts a connect signal only from the popup it opened', async () => {
+			expect(await script()).toContain('event.source !== pendingPopup');
+		});
+
+		it('refuses to open a popup at a non-http scheme', async () => {
+			expect(await script()).toContain('/^https?:\\/\\//i.test(url)');
+		});
+
+		// Forcing readiness in test mode un-gated an input whose first send the server
+		// rejects with 428.
+		it('never forces readiness in test mode', async () => {
+			const src = await script();
+
+			expect(src).toContain('ready: total <= count');
+			expect(src).not.toContain('TEST_MODE || total <= count');
+		});
+
+		// The acceptance criteria require a visible error, never a silent revert to
+		// Connect - including when a popup closes with no signal at all.
+		it('surfaces a failed or cancelled attempt', async () => {
+			const src = await script();
+
+			expect(src).toContain("'Connection failed \u00b7 try again'");
+			expect(src).toContain("sub.classList.add('error')");
+			expect(src).toContain('if (!pendingPopup || pendingPopup.closed) onErrorSignal()');
+		});
+	});
 });
