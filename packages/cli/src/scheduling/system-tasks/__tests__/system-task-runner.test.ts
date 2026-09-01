@@ -376,6 +376,22 @@ describe('SystemTaskRunner', () => {
 			await stopping;
 		});
 
+		it('does not report a run that rejects once stepdown aborted its signal', async () => {
+			const { runner, metadata, errorReporter, logger } = setup();
+			dummy.onRun = async (signal) =>
+				await new Promise<void>((_, reject) => {
+					signal.addEventListener('abort', () => reject(new Error('aborted')));
+				});
+			metadata.register(DummySystemTask);
+			runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			await runner.stopTimers();
+
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
 		it('hands the runs of a later takeover a fresh signal', async () => {
 			const { runner, metadata } = setup();
 			const runSignals: AbortSignal[] = [];

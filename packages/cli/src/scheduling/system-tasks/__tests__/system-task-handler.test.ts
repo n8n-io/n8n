@@ -14,9 +14,21 @@ describe('SystemTaskHandler', () => {
 		task.effects = effects;
 		const report = mock<DispatchReporter>();
 		const onRunError = vi.fn();
-		const shutdownSignal = new AbortController().signal;
-		const handler = new SystemTaskHandler(task, shutdownSignal, mockLogger(), onRunError);
-		return { task, report, handler, onRunError, shutdownSignal };
+		const shutdownController = new AbortController();
+		const handler = new SystemTaskHandler(
+			task,
+			shutdownController.signal,
+			mockLogger(),
+			onRunError,
+		);
+		return {
+			task,
+			report,
+			handler,
+			onRunError,
+			shutdownController,
+			shutdownSignal: shutdownController.signal,
+		};
 	}
 
 	it('runs the task', async () => {
@@ -102,6 +114,20 @@ describe('SystemTaskHandler', () => {
 			expect(onRunError).toHaveBeenCalledWith(error);
 		},
 	);
+
+	it('does not report a run that rejects once shutdown aborted its signal', async () => {
+		const { task, report, handler, onRunError, shutdownController } = setup('idempotent');
+		task.onRun = async (signal) =>
+			await new Promise<void>((_, reject) => {
+				signal.addEventListener('abort', () => reject(new Error('aborted')));
+			});
+
+		const executing = handler.execute(claimed, report);
+		shutdownController.abort();
+
+		await expect(executing).rejects.toThrow();
+		expect(onRunError).not.toHaveBeenCalled();
+	});
 
 	it('does not report a run that succeeds', async () => {
 		const { report, handler, onRunError } = setup('idempotent');

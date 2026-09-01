@@ -24,7 +24,12 @@ export class SystemTaskHandler implements TaskHandler {
 		try {
 			await this.systemTask.run(this.shutdownSignal);
 		} catch (error) {
-			this.onRunError(error);
+			// A rejection after shutdown aborted the signal is the task honoring
+			// the abort, not a failure. It still propagates so the executor keeps
+			// deciding the occurrence's fate.
+			if (!this.shutdownSignal.aborted) {
+				this.onRunError(error);
+			}
 			throw error;
 		}
 

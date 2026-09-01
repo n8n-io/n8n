@@ -246,11 +246,16 @@ export class SystemTaskRunner {
 	}
 
 	private async runOnce(routed: RoutedTask): Promise<void> {
+		const { signal } = this.inMemoryRunsController;
 		try {
-			await routed.task.run(this.inMemoryRunsController.signal);
+			await routed.task.run(signal);
 		} catch (error) {
-			this.reportFailure('A system task run failed', routed.task, error);
-			this.scheduleRetry(routed);
+			// A rejection after the run's signal aborted is the task honoring the
+			// abort, not a failure.
+			if (!signal.aborted) {
+				this.reportFailure('A system task run failed', routed.task, error);
+				this.scheduleRetry(routed);
+			}
 		}
 	}
 
