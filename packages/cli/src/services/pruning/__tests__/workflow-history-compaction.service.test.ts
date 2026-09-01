@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
-import type { DbConnection } from '@n8n/db';
+import type { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -263,6 +263,51 @@ describe('WorkflowHistoryCompactionService', () => {
 		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
 
 		vi.useRealTimers();
+	});
+
+	describe('compactHistories', () => {
+		const createService = (workflowHistoryRepository: WorkflowHistoryRepository) => {
+			const eventService = mock<EventService>();
+			const compactingService = new WorkflowHistoryCompactionService(
+				config,
+				globalConfig,
+				mockLogger(),
+				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+				dbConnection,
+				workflowHistoryRepository,
+				eventService,
+			);
+			return { compactingService, eventService };
+		};
+
+		it('should not emit telemetry when no workflows are in range', async () => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
+			const { compactingService, eventService } = createService(workflowHistoryRepository);
+
+			await compactingService['optimizeHistories']();
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('should emit telemetry when workflows are in range', async () => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue(['workflow-id']);
+			workflowHistoryRepository.pruneHistory.mockResolvedValue({ seen: 5, deleted: 2 });
+			const { compactingService, eventService } = createService(workflowHistoryRepository);
+
+			await compactingService['optimizeHistories']();
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'history-compacted',
+				expect.objectContaining({
+					workflowsProcessed: 1,
+					totalVersionsSeen: 5,
+					totalVersionsDeleted: 2,
+					errorCount: 0,
+				}),
+			);
+		});
 	});
 
 	it('should not trim if triggered outside of 3 AM with trimOnStartUp as false', () => {

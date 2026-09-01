@@ -21,6 +21,7 @@ import {
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
@@ -75,6 +76,45 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses setup-items events (the FE drops any type failing this parse)', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Send message' }],
+					},
+				],
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('rejects a credential setup item without a credentialType', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [{ id: 'wf-1:credential:slackApi', kind: 'credential' }],
+			},
+		};
+
+		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
 	});
 });
 
