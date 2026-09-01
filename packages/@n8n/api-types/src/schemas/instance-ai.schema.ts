@@ -955,8 +955,7 @@ export const tasksUpdatePayloadSchema = z.object({
  */
 const setupItemBase = {
 	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
-	 *  for credential items, nodeName for parameter items. Items carry no
-	 *  workflowId field of their own: they are scoped by the payload's. */
+	 *  for credential items, nodeName for parameter items. */
 	id: z.string(),
 };
 
@@ -986,9 +985,7 @@ export const setupItemsPayloadSchema = z.object({
 	workflowId: z.string(),
 	/** FULL current list for this workflow. Each event replaces the previous
 	 *  snapshot — removal is implicit (an item absent from the next snapshot is
-	 *  gone), and an empty list is a tombstone: it must survive so it keeps
-	 *  overriding older non-empty snapshots on restore. No delta/retraction
-	 *  protocol. */
+	 *  gone). No delta/retraction protocol. */
 	items: z.array(setupItemSchema),
 });
 
