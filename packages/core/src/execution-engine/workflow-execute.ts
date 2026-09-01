@@ -995,7 +995,9 @@ export class WorkflowExecute {
 					if (
 						mainData?.length &&
 						previousNode !== undefined &&
-						descendants.includes(previousNode)
+						// getChildNodes never lists the node itself, so a direct
+						// self-edge counts as a loop back too
+						(previousNode === node.name || descendants.includes(previousNode))
 					) {
 						connectionInputData = mainData;
 						break;
