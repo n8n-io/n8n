@@ -781,12 +781,18 @@ async function backgroundWaitingExecution(
 		const recheck = await executionPersistence.findSingleExecution(result.executionId);
 
 		if (!recheck) {
-			await jobService.settle(jobId, { status: 'failed', error: EXECUTION_OUTCOME_UNKNOWN_ERROR });
+			const claimed = await jobService.settle(jobId, {
+				status: 'failed',
+				error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
+			});
+			// A lost claim means the settle hook already recorded the real outcome.
 			return {
 				executionId: result.executionId,
 				status: 'unknown',
 				jobId,
-				note: EXECUTION_OUTCOME_UNKNOWN_ERROR,
+				note: claimed
+					? EXECUTION_OUTCOME_UNKNOWN_ERROR
+					: `This run already settled as background job ${jobId} — use check_background_jobs for its outcome.`,
 			};
 		}
 
@@ -802,12 +808,16 @@ async function backgroundWaitingExecution(
 				full?.data,
 				allOutputs,
 			);
-			// The job row carries every node's output regardless of the tool's
-			// `allOutputs` scope, matching the settle hook.
+			// The job row keeps the last node's output for completed runs only,
+			// matching the settle hook's projection.
+			const settlementStatus = settlementStatusForExecution(rawStatus);
 			const runData = full?.data?.resultData?.runData;
 			await jobService.settle(jobId, {
-				status: settlementStatusForExecution(rawStatus),
-				result: runData ? serializeWorkflowJobResult(collectResultData(runData, true)) : null,
+				status: settlementStatus,
+				result:
+					settlementStatus === 'completed' && runData
+						? serializeWorkflowJobResult(collectResultData(runData, false))
+						: null,
 				error: fresh.error ?? null,
 			});
 

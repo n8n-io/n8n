@@ -356,6 +356,10 @@ describe('registerWorkflowJob', () => {
 				workflowId: 'workflow-1',
 			}),
 		);
+		// No timeout: the execution's own lifecycle governs how long it may wait.
+		expect(jobRepository.insertWorkflowJobOrGetExisting.mock.calls[0][0]).not.toHaveProperty(
+			'timeoutAt',
+		);
 		expect(jobRepository.countRunningByParentThread).not.toHaveBeenCalled();
 	});
 
@@ -497,6 +501,24 @@ describe('reconcile — workflow jobs', () => {
 				status: 'failed',
 				error: expect.stringContaining('outcome is unknown'),
 			}),
+		);
+	});
+
+	it('settles with a null result when the finished execution’s data cannot be read', async () => {
+		const { service, jobRepository, executionPersistence } = setup();
+		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
+			kind === 'workflow' ? [makeWorkflowJob()] : [],
+		);
+		executionPersistence.findSingleExecution.mockImplementation(async (_id, options) => {
+			if (options?.includeData) throw new Error('data bundle unreadable');
+			return { status: 'success' } as never;
+		});
+
+		await service.reconcile();
+
+		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+			'wf-job-1',
+			expect.objectContaining({ status: 'completed', result: null }),
 		);
 	});
 

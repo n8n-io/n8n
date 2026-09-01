@@ -376,15 +376,25 @@ export class AgentBackgroundJobService {
 
 	/** Serialized all-node output of a finished execution, for a settle whose run data is not in memory. */
 	private async loadExecutionResult(executionId: string): Promise<string | null> {
-		const execution = await this.executionPersistence.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+		// A failed data read must not block the settle: workflow jobs have no
+		// timeout, so a row skipped here could stay running forever.
+		try {
+			const execution = await this.executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
 
-		const runData = execution?.data?.resultData?.runData;
-		if (!runData) return null;
+			const runData = execution?.data?.resultData?.runData;
+			if (!runData) return null;
 
-		return serializeWorkflowJobResult(collectResultData(runData, true));
+			return serializeWorkflowJobResult(collectResultData(runData, false));
+		} catch (error) {
+			this.logger.warn('Failed to read a finished execution’s data for its job result', {
+				executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
 	}
 
 	private async failJobsPastTimeout(): Promise<void> {

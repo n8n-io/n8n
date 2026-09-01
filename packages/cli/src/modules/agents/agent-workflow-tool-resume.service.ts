@@ -91,14 +91,17 @@ export class AgentWorkflowToolResumeService {
 	 * Settle the background job tracking this execution, carrying a bounded
 	 * serialization of the result — the run data is in memory here, so the job
 	 * row gets its answer without a later read of the executions table. Job
-	 * results always carry every node's output (the truncation cap bounds
-	 * them): the row does not know the tool's `allOutputs` setting, and the
-	 * full data beats silently dropping nodes. A no-op when the execution was
-	 * not backgrounded. Never throws into the execution's lifecycle.
+	 * results carry the last node's output only: the row does not know the
+	 * tool's `allOutputs` setting, so it keeps the tightest projection and the
+	 * execution keeps the full data. A no-op when the execution was not
+	 * backgrounded. Never throws into the execution's lifecycle.
 	 */
 	private async settleBackgroundJob(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		const { status, data } = ctx.runData;
 		if (!isTerminalExecutionStatus(status)) return;
+		// A success callback for a run that has not actually finished must not
+		// seal the job with partial output; reconciliation settles it later.
+		if (status === 'success' && !ctx.runData.finished) return;
 
 		try {
 			const settlementStatus = settlementStatusForExecution(status);
@@ -107,7 +110,7 @@ export class AgentWorkflowToolResumeService {
 				status: settlementStatus,
 				result:
 					settlementStatus === 'completed' && runData
-						? serializeWorkflowJobResult(collectResultData(runData, true))
+						? serializeWorkflowJobResult(collectResultData(runData, false))
 						: null,
 				error: data.resultData?.error?.message ?? null,
 			});

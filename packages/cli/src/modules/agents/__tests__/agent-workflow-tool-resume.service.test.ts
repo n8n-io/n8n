@@ -91,6 +91,8 @@ function afterContext(
 		executionId: 'exec-1',
 		runData: {
 			status,
+			// The engine stamps this only on runs that ended without error or wait.
+			finished: status === 'success',
 			data: { ...data, ...(parentAgentRun ? { parentAgentRun } : {}) },
 		} as IRun,
 	});
@@ -343,16 +345,26 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 		return ctx;
 	}
 
-	it('settles the job with every node’s output serialized', async () => {
+	it('settles the job with only the last node’s output serialized', async () => {
 		const { service, backgroundJobService } = setup();
 
 		await service.handleWorkflowExecuteAfter(afterContextWithOutput('success'));
 
 		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
 			status: 'completed',
-			result: '{"Fetch":[{"page":1}],"Set":[{"ok":true}]}',
+			result: '{"Set":[{"ok":true}]}',
 			error: null,
 		});
+	});
+
+	it('does not settle a success callback for a run that has not finished', async () => {
+		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('success');
+		Object.assign(ctx.runData, { finished: false });
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).not.toHaveBeenCalled();
 	});
 
 	it('settles a failed execution with its error and no result', async () => {

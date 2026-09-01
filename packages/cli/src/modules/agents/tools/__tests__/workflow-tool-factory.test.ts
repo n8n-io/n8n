@@ -919,6 +919,24 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
+	it('settles a failed inline finish with its error and no result', async () => {
+		const failed = settledInDb();
+		failed.status = 'error';
+		failed.data.resultData.error = { message: 'boom' } as never;
+		setPersistence(failed);
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		await tool.handler?.({}, ctx);
+
+		expect(jobService.settle).toHaveBeenCalledWith('job-1', {
+			status: 'failed',
+			result: null,
+			error: 'boom',
+		});
+	});
+
 	it('falls back to suspending when the run has no parent identity', async () => {
 		setPersistence({
 			status: 'waiting',
@@ -971,5 +989,21 @@ describe('workflow tool → background job handoff', () => {
 			note: expect.stringContaining('Do not run the workflow again'),
 		});
 		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('points at check_background_jobs when the settle hook already recorded the outcome', async () => {
+		setPersistence(undefined);
+		const jobService = setJobService();
+		jobService.settle.mockResolvedValue(false);
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({
+			status: 'unknown',
+			jobId: 'job-1',
+			note: expect.stringContaining('check_background_jobs'),
+		});
 	});
 });
