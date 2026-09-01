@@ -149,7 +149,11 @@ declare global {
 		featureFlags?: {
 			getAll: () => FeatureFlags;
 			getVariant: (name: string) => string | boolean | undefined;
-			override: (name: string, value: string) => void;
+			override: (
+				name: string,
+				value: string | boolean,
+				payload?: FeatureFlagPayloads[string],
+			) => void;
 		};
 	}
 }

@@ -4,6 +4,8 @@ export const OVERRIDES_STORAGE_KEY = 'N8N_EXPERIMENT_OVERRIDES';
 
 export type FlagValue = boolean | string;
 
+type StoredFlagOverride = FlagValue | { value: FlagValue; payload?: unknown };
+
 export type Flag = {
 	name: string;
 	phValue: FlagValue | undefined;
@@ -86,20 +88,24 @@ function readPersistedFlags(): Record<string, FlagValue> {
 	return out;
 }
 
-function readOverrides(): Record<string, FlagValue> {
+function readOverrides(): Record<string, StoredFlagOverride> {
 	try {
 		const raw = window.localStorage.getItem(OVERRIDES_STORAGE_KEY);
 		if (!raw) return {};
 		const parsed = JSON.parse(raw) as unknown;
-		if (parsed && typeof parsed === 'object') return parsed as Record<string, FlagValue>;
+		if (parsed && typeof parsed === 'object') return parsed as Record<string, StoredFlagOverride>;
 		return {};
 	} catch {
 		return {};
 	}
 }
 
-function writeOverrides(overrides: Record<string, FlagValue>) {
+function writeOverrides(overrides: Record<string, StoredFlagOverride>) {
 	window.localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
+}
+
+function getOverrideValue(override: StoredFlagOverride | undefined): FlagValue | undefined {
+	return typeof override === 'object' ? override.value : override;
 }
 
 function isVariantFlag(phValue: FlagValue | undefined, override: FlagValue | undefined): boolean {
@@ -110,7 +116,7 @@ function isVariantFlag(phValue: FlagValue | undefined, override: FlagValue | und
 
 export function useFeatureFlags() {
 	const flags = ref<Flag[]>([]);
-	const overrides = ref<Record<string, FlagValue>>({});
+	const overrides = ref<Record<string, StoredFlagOverride>>({});
 
 	function refresh() {
 		const persisted = readPersistedFlags();
@@ -124,8 +130,8 @@ export function useFeatureFlags() {
 		flags.value = allNames.map((name) => ({
 			name,
 			phValue: ph[name],
-			override: ovr[name],
-			isVariant: isVariantFlag(ph[name], ovr[name]),
+			override: getOverrideValue(ovr[name]),
+			isVariant: isVariantFlag(ph[name], getOverrideValue(ovr[name])),
 		}));
 	}
 

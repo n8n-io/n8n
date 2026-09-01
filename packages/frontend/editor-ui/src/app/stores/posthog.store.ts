@@ -15,6 +15,11 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
+type FeatureFlagOverride = {
+	value: string | boolean;
+	payload?: FeatureFlagPayloads[string];
+};
+
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
@@ -28,7 +33,7 @@ export const usePostHog = defineStore('posthog', () => {
 	const trackedExposures: Ref<FeatureFlags> = ref({});
 	const pendingFeatureFlagsEvaluation = ref(false);
 
-	const overrides: Ref<Record<string, string | boolean>> = ref({});
+	const overrides: Ref<Record<string, FeatureFlagOverride>> = ref({});
 	let featureFlagsWaitPromise: Promise<FeatureFlags | null> | null = null;
 	let resolveFeatureFlagsWait: ((flags: FeatureFlags | null) => void) | null = null;
 
@@ -58,10 +63,13 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
-		return overrides.value[experiment] ?? featureFlags.value?.[experiment];
+		return overrides.value[experiment]?.value ?? featureFlags.value?.[experiment];
 	};
 
-	const getFeatureFlagPayload = (flag: string) => featureFlagPayloads.value?.[flag];
+	const getFeatureFlagPayload = (flag: string) => {
+		const override = overrides.value[flag];
+		return override ? override.payload : featureFlagPayloads.value?.[flag];
+	};
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
 		return getVariant(experiment) === variant;
@@ -96,9 +104,15 @@ export const usePostHog = defineStore('posthog', () => {
 		if (cachedOverrides) {
 			try {
 				console.log('Overriding feature flags', cachedOverrides);
-				const parsedOverrides = JSON.parse(cachedOverrides);
+				const parsedOverrides: Record<string, FeatureFlagOverride | string | boolean> =
+					JSON.parse(cachedOverrides);
 				if (typeof parsedOverrides === 'object') {
-					overrides.value = JSON.parse(cachedOverrides);
+					overrides.value = Object.fromEntries(
+						Object.entries(parsedOverrides).map(([name, override]) => [
+							name,
+							typeof override === 'object' ? override : { value: override },
+						]),
+					);
 				}
 			} catch (e) {
 				console.log('Could not override experiment', e);
@@ -107,8 +121,11 @@ export const usePostHog = defineStore('posthog', () => {
 
 		window.featureFlags = {
 			// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
-			override: (name: string, value: string | boolean) => {
-				overrides.value[name] = value;
+			override: (name: string, value: string | boolean, payload?: FeatureFlagPayloads[string]) => {
+				overrides.value[name] = {
+					value,
+					...(payload !== undefined && payload !== null ? { payload } : {}),
+				};
 				try {
 					useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value = JSON.stringify(overrides.value);
 				} catch (e) {}
