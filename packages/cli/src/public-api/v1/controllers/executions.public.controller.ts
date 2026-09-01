@@ -23,18 +23,12 @@ import { replaceCircularReferences } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
-
-function isRedactableExecution(
-	execution: IExecutionBase,
-): execution is IExecutionBase & RedactableExecution {
-	return 'data' in execution && 'workflowData' in execution;
-}
 
 @PublicApiController('/executions')
 export class ExecutionsPublicController {
@@ -135,12 +129,12 @@ export class ExecutionsPublicController {
 			retryOf: execution.retryOf ?? null,
 			retrySuccessId: execution.retrySuccessId ?? null,
 			status: execution.status,
-			createdAt: execution.createdAt,
-			startedAt: execution.startedAt ?? null,
-			stoppedAt: execution.stoppedAt ?? null,
-			deletedAt: execution.deletedAt ?? null,
+			createdAt: execution.createdAt.toISOString(),
+			startedAt: execution.startedAt ? execution.startedAt.toISOString() : null,
+			stoppedAt: execution.stoppedAt ? execution.stoppedAt.toISOString() : null,
+			deletedAt: execution.deletedAt ? execution.deletedAt.toISOString() : null,
 			workflowId: execution.workflowId,
-			waitTill: execution.waitTill ?? null,
+			waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
 			storedAt: execution.storedAt,
 			tracingContext: execution.tracingContext ?? null,
 			deduplicationKey: execution.deduplicationKey ?? null,
@@ -175,9 +169,8 @@ export class ExecutionsPublicController {
 	}
 
 	/**
-	 * `replaceCircularReferences` makes the object safe to serialise and calls `toJSON` on every
-	 * `Date`, turning it into the ISO string the DTO declares. The cast covers that change, which
-	 * the type system cannot see.
+	 * `replaceCircularReferences` makes `data` and `workflowData` safe to serialise, and converts any
+	 * `Date` nested inside them. The cast covers that change, which the type system cannot see.
 	 */
 	private serialize<T>(response: object): T {
 		return replaceCircularReferences(response) as unknown as T;
