@@ -1,3 +1,8 @@
+import { OTLP_PROTOCOLS, type OtlpProtocol } from '@n8n/api-types';
+
+/** Re-exported so this module keeps one import site for its constants. */
+export { OTLP_PROTOCOLS, type OtlpProtocol };
+
 export const OTEL_STORE = 'otel';
 
 /**
@@ -10,14 +15,6 @@ export const OTEL_SETTINGS_VIEW = 'SettingsOpenTelemetryView';
 
 /** Name of the span emitted by the "Send test trace" button — shown in the result copy. */
 export const OTEL_TEST_SPAN_NAME = 'n8n.test_trace';
-
-/**
- * Wire protocols the collector connection supports, mirroring the upstream
- * `OTEL_EXPORTER_OTLP_PROTOCOL` value strings the backend accepts.
- */
-export const OTLP_PROTOCOLS = ['http/protobuf', 'grpc'] as const;
-
-export type OtlpProtocol = (typeof OTLP_PROTOCOLS)[number];
 
 /** Maps each settings field to its env-var name — shown in per-field tooltips. */
 export const OTEL_FIELD_ENV_VARS = {

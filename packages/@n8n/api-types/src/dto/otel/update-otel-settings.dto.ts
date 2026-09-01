@@ -2,13 +2,20 @@ import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 
+/**
+ * Wire protocols for the OTLP trace exporter, using the value strings from the
+ * upstream `OTEL_EXPORTER_OTLP_PROTOCOL` spec. `http/json` is not supported.
+ * Declared here because both the frontend and the backend use it.
+ */
+export const OTLP_PROTOCOLS = ['http/protobuf', 'grpc'] as const;
+
+export type OtlpProtocol = (typeof OTLP_PROTOCOLS)[number];
+
 export class UpdateOtelSettingsDto extends Z.class({
 	enabled: z.boolean(),
-	// Mirrors the upstream `OTEL_EXPORTER_OTLP_PROTOCOL` value strings. Redeclared
-	// here because api-types cannot import from the backend's otel module.
 	// Defaulted rather than required: this endpoint shipped without the field, so
 	// a body written against the older API must stay valid on upgrade.
-	exporterProtocol: z.enum(['http/protobuf', 'grpc']).default('http/protobuf'),
+	exporterProtocol: z.enum(OTLP_PROTOCOLS).default('http/protobuf'),
 	exporterEndpoint: z.string().url(),
 	// Ignored when the protocol is gRPC (gRPC endpoints take no URL path), but
 	// still required so toggling protocols round-trips without losing the value.

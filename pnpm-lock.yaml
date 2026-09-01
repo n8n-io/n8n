@@ -6583,6 +6583,9 @@ importers:
 
   packages/modules/otel/frontend:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
       '@n8n/composables':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/composables

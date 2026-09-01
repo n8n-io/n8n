@@ -1,4 +1,8 @@
+import { OTLP_PROTOCOLS, type OtlpProtocol } from '@n8n/api-types';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+
+/** Re-exported so this module keeps one import site for its constants. */
+export { OTLP_PROTOCOLS, type OtlpProtocol };
 
 export const OTEL_ENV_VARS = {
 	enabled: 'N8N_OTEL_ENABLED',
@@ -13,14 +17,6 @@ export const OTEL_ENV_VARS = {
 	injectOutbound: 'N8N_OTEL_TRACES_INJECT_OUTBOUND',
 	productionExecutionsOnly: 'N8N_OTEL_TRACES_PRODUCTION_ONLY',
 } as const;
-
-/**
- * Wire protocols for the OTLP trace exporter, using the value strings from the
- * upstream `OTEL_EXPORTER_OTLP_PROTOCOL` spec. `http/json` is not supported.
- */
-export const OTLP_PROTOCOLS = ['http/protobuf', 'grpc'] as const;
-
-export type OtlpProtocol = (typeof OTLP_PROTOCOLS)[number];
 
 export const OTEL_TEST_SPAN_NAME = 'n8n.test_trace';
 
