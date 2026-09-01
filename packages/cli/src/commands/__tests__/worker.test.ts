@@ -20,6 +20,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import type { EventService } from '@/events/event.service';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import type { ProjectExecutionQuotaService } from '@/execution-quota/project-execution-quota.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -183,6 +184,8 @@ describe('Worker', () => {
 			// jobs; use a real instance with one in-flight execution.
 			const executionPersistence = mock<ExecutionPersistence>();
 			executionPersistence.create.mockResolvedValue('test');
+			const projectExecutionQuotaService = mock<ProjectExecutionQuotaService>();
+			projectExecutionQuotaService.assertWithinQuotaAndIncrement.mockResolvedValue(undefined);
 			const realActiveExecutions = new ActiveExecutions(
 				mock<Logger>(),
 				mock<ExecutionRepository>(),
@@ -190,6 +193,7 @@ describe('Worker', () => {
 				mock<ConcurrencyControlService>(),
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
+				projectExecutionQuotaService,
 			);
 
 			const drainLoopInterval = 500;
