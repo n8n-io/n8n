@@ -89,6 +89,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 
 	test('deregisters one trigger or poll node id', async () => {
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+		activeWorkflowTriggers.removeTriggers.mockResolvedValue();
 		const registrar = new NonWebhookTriggerRegistrar(
 			logger,
 			activeWorkflowTriggers,
@@ -197,6 +198,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 
 		test('deregister removes durable jobs alongside in-memory triggers', async () => {
 			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockResolvedValue();
 
 			await registrar.deregister('wf-1', 'trigger-a');
 
@@ -265,6 +267,16 @@ describe('NonWebhookTriggerRegistrar', () => {
 					error: expect.any(WorkflowDeactivationError),
 				}),
 			);
+		});
+
+		test('deregister propagates a durable removal failure even when the in-memory teardown never settles', async () => {
+			// The caller abandons a deregistration that never settles, so a durable
+			// failure held back behind the hung in-memory teardown would never retry.
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockReturnValue(new Promise(() => {}));
+			scheduleTriggerJobRegistrar.remove.mockRejectedValue(new Error('db down'));
+
+			await expect(registrar.deregister('wf-1', 'trigger-a')).rejects.toThrow('db down');
 		});
 	});
 });

@@ -182,27 +182,24 @@ export class NonWebhookTriggerRegistrar {
 			async (span) => {
 				// The durable rows are database state the node no longer owns, and a close
 				// function that never settles is abandoned by the caller rather than
-				// retried, so their removal must not wait on the in-memory teardown.
-				const [inMemory, durable] = await Promise.allSettled([
-					this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId])),
-					this.removeDurableJobs(workflowId, nodeId),
-				]);
+				// retried, so their removal must neither wait on the in-memory teardown
+				// nor let it hold back a durable failure the caller must retry.
+				const inMemory = this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+				// Logs an in-memory failure a durable failure would otherwise swallow, and
+				// keeps its rejection handled while the durable removal is awaited first.
+				void inMemory.catch((error: unknown) => {
+					this.logger.error('Failed to deregister a trigger node from memory', {
+						workflowId,
+						nodeId,
+						error: ensureError(error),
+					});
+				});
 
-				// A durable failure wins: it must reach the caller for retry, while an
-				// in-memory failure may be abandoned as permanent. Log the in-memory
-				// failure the throw would otherwise swallow.
-				if (durable.status === 'rejected') {
-					if (inMemory.status === 'rejected') {
-						this.logger.error('Failed to deregister a trigger node from memory', {
-							workflowId,
-							nodeId,
-							error: ensureError(inMemory.reason),
-						});
-					}
-					throw ensureError(durable.reason);
-				}
-				if (inMemory.status === 'rejected') {
-					throw ensureError(inMemory.reason);
+				try {
+					await this.removeDurableJobs(workflowId, nodeId);
+					await inMemory;
+				} catch (error) {
+					throw ensureError(error);
 				}
 
 				span.setStatus({ code: SpanStatus.ok });
