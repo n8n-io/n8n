@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nInputNumber2, N8nSwitch2, N8nText } from '@n8n/design-system';
+import { N8nInputNumber, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 const DEFAULT_MINUTES = 60 * 24;
@@ -36,7 +36,7 @@ function onMinutesInput(value: number) {
 			</N8nText>
 		</div>
 		<div :class="$style.controls">
-			<N8nInputNumber2
+			<N8nInputNumber
 				v-if="enabled"
 				:model-value="minutes"
 				:min="1"
