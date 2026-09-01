@@ -8,6 +8,7 @@ import { sleep } from '@n8n/utils/sleep';
 import {
 	UnexpectedError,
 	UserError,
+	type ExecutionStatus,
 	type IRun,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
@@ -26,6 +27,26 @@ import {
 
 /** How many times each parent-resume step is attempted before giving up. */
 const MAX_PARENT_RESUME_ATTEMPTS = 3;
+
+/**
+ * Parent statuses that mean resuming is no longer useful: the parent already
+ * finished (success/error/crashed/canceled) and there is nothing to wake up.
+ */
+const TERMINAL_PARENT_STATUSES: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
+
+/**
+ * How long `resumeParentExecution` keeps retrying while the parent is still
+ * `running` before giving up. A sub-workflow with a human-in-the-loop step can
+ * complete while the parent (an in-process Agent v1/v2) is still looping on
+ * LLM calls; the parent only parks at `waiting` once its agent node finishes.
+ * Generous on purpose: giving up while the parent is still running strands it
+ * at `WAIT_INDEFINITELY`, and an agent loop can legitimately run a long time.
+ * The poll is a cheap primary-key read, so a long window costs little.
+ */
+const PARENT_RESUME_TIMEOUT_MS = 60 * 60 * 1000;
+
+/** How often `resumeParentExecution` re-checks the parent's status while waiting for it to park. */
+const PARENT_RESUME_POLL_INTERVAL_MS = 1000;
 
 /**
  * Whether a resume parent failure is worth retrying. Only `UserError` and
@@ -102,7 +123,15 @@ export class WaitTracker {
 				this.waitingExecutions[executionId] = {
 					executionId,
 					timer: setTimeout(() => {
-						void this.startExecution(executionId);
+						void this.startExecution(executionId).catch((error) => {
+							// Another process already resumed this execution (e.g. multi-main
+							// duplicate timer) — expected, nothing to do.
+							if (error instanceof ExecutionAlreadyResumingError) return;
+							this.logger.error('Failed to start waiting execution', {
+								executionId,
+								error: ensureError(error).message,
+							});
+						});
 					}, triggerTime),
 				};
 			}
@@ -151,24 +180,10 @@ export class WaitTracker {
 		};
 
 		// Start the execution again
-		try {
-			await this.workflowRunner.run(data, false, false, {
-				executionId,
-				expectedStatus: 'waiting',
-			});
-		} catch (error) {
-			if (error instanceof ExecutionAlreadyResumingError) {
-				// This execution is already being resumed by another child execution
-				// This is expected in "run once for each item" mode when multiple children complete
-				this.logger.debug(
-					`Execution ${executionId} is already being resumed, skipping duplicate resume`,
-					{ executionId },
-				);
-				return;
-			}
-			// Rethrow any other errors
-			throw error;
-		}
+		await this.workflowRunner.run(data, false, false, {
+			executionId,
+			expectedStatus: 'waiting',
+		});
 
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {
@@ -184,12 +199,20 @@ export class WaitTracker {
 	/**
 	 * Resume a parent execution once its child execution has completed.
 	 *
-	 * The resume crosses several async boundaries (DB write to patch the parent,
-	 * then resuming the parent). Each step is retried up to `MAX_PARENT_RESUME_ATTEMPTS`
-	 * so a transient failure recovers and the parent resumes.
-	 * If every attempt fails, the error is caught and logged below; the parent stays in `waiting`, but the
-	 * failure is now visible and attributable instead of lost.
-	 * This never rejects, so callers can invoke it as fire and forget.
+	 * A sub-workflow with a human-in-the-loop step can complete (the human
+	 * approves) while the parent is still `running` — an in-process Agent v1/v2
+	 * keeps making LLM calls after the tool returns its placeholder, and only
+	 * parks at `waiting` once its agent node finishes. Patching/claiming before
+	 * the parent parks is a no-op (`updateParentExecutionWithChildResults`
+	 * early-returns on a non-`waiting` parent) and the parent then strands at
+	 * `WAIT_INDEFINITELY`, which the waiting-executions sweep never picks up.
+	 *
+	 * So this retries the resume until the parent parks, then patches its stack
+	 * and claims it. It bails when the parent is gone/terminal, when a sibling
+	 * already claimed it (`ExecutionAlreadyResumingError`, expected in "run once
+	 * for each item" mode), or when the timeout elapses. Each step is retried up
+	 * to `MAX_PARENT_RESUME_ATTEMPTS` for transient failures so a flaky DB write
+	 * recovers. This never rejects, so callers can invoke it fire and forget.
 	 */
 	async resumeParentExecution(
 		parentExecution: RelatedExecution,
@@ -201,25 +224,66 @@ export class WaitTracker {
 			if (!subworkflowResults) return;
 			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 
-			await this.withRetry(
-				async () => {
-					await updateParentExecutionWithChildResults(
+			const deadline = Date.now() + PARENT_RESUME_TIMEOUT_MS;
+			for (;;) {
+				// A failed poll read is treated like "parent not parked yet" and retried on
+				// the next tick (bounded by the deadline) — a transient DB error here must
+				// not abandon the resume, only a successful read may decide to bail.
+				let parent;
+				try {
+					parent = await this.executionPersistence.findSingleExecution(
 						parentExecution.executionId,
-						subworkflowResults,
-						childExecution,
+						{ includeData: false },
 					);
-				},
-				MAX_PARENT_RESUME_ATTEMPTS,
-				isRetryableResumeError,
-			);
+					// Parent gone or already finished — nothing left to resume.
+					if (!parent || TERMINAL_PARENT_STATUSES.includes(parent.status)) return;
+				} catch (error) {
+					this.logger.debug('Failed to poll parent execution status, retrying', {
+						parentExecutionId: parentExecution.executionId,
+						error: ensureError(error).message,
+					});
+				}
 
-			await this.withRetry(
-				async () => {
-					await this.startExecution(parentExecution.executionId);
-				},
-				MAX_PARENT_RESUME_ATTEMPTS,
-				isRetryableResumeError,
-			);
+				if (parent?.status === 'waiting') {
+					// Parent parked — patch its stack, then claim and resume it.
+					await this.withRetry(
+						() =>
+							updateParentExecutionWithChildResults(
+								parentExecution.executionId,
+								subworkflowResults,
+								childExecution,
+							),
+						MAX_PARENT_RESUME_ATTEMPTS,
+						isRetryableResumeError,
+					);
+
+					try {
+						await this.withRetry(
+							() => this.startExecution(parentExecution.executionId),
+							MAX_PARENT_RESUME_ATTEMPTS,
+							(error) =>
+								!(error instanceof ExecutionAlreadyResumingError) && isRetryableResumeError(error),
+						);
+					} catch (error) {
+						// A sibling already claimed the parent ("run once for each item") — done.
+						if (error instanceof ExecutionAlreadyResumingError) return;
+						throw error;
+					}
+					return;
+				}
+
+				// Parent still `running` (hasn't parked yet) — wait and re-check.
+				if (Date.now() >= deadline) {
+					// If the parent parks after this, it strands at WAIT_INDEFINITELY with
+					// the child's results dropped — make that visible to operators.
+					this.logger.warn('Timed out waiting to resume parent after sub-workflow completed', {
+						parentExecutionId: parentExecution.executionId,
+						childExecutionId: childExecution?.executionId,
+					});
+					return;
+				}
+				await sleep(PARENT_RESUME_POLL_INTERVAL_MS);
+			}
 		} catch (error) {
 			this.logger.error('Failed to resume parent execution after sub-workflow completed', {
 				parentExecutionId: parentExecution.executionId,

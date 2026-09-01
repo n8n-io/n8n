@@ -11,6 +11,7 @@ import type { Mock, MockInstance } from 'vitest';
 import { mock, captor } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -194,6 +195,7 @@ describe('WaitTracker', () => {
 				const parentExecution = mock<IExecutionResponse>({
 					id: 'parent_execution_id',
 					finished: false,
+					status: 'waiting',
 					data: createRunExecutionData(),
 				});
 				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] });
@@ -710,6 +712,167 @@ describe('WaitTracker', () => {
 					// the non-retryable error is not retried, and gets logged
 					expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 					expect(logger.error).toHaveBeenCalled();
+				});
+			});
+
+			describe('race: child completes before parent parks', () => {
+				// These tests replace the whole `findSingleExecution` implementation, which
+				// `vi.clearAllMocks()` does not undo — reset it so nothing leaks into tests
+				// added after this block (the outer beforeEach re-registers the stubs).
+				afterEach(() => {
+					executionPersistence.findSingleExecution.mockReset();
+				});
+
+				// Earlier tests in this suite set `workflowRunner.run` return values that
+				// `vi.clearAllMocks()` does not reset, so each race test resets it first.
+				it('waits for the parent to park, then patches and resumes it', async () => {
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+
+					// First poll: parent still running. Second poll onwards: parent parked at waiting.
+					let parentPolls = 0;
+					executionPersistence.findSingleExecution.mockImplementation(async (id, opts) => {
+						if (id === parentExecution.id && !opts?.unflattenData) {
+							// Loop poll (includeData: false): running first, then waiting.
+							parentPolls += 1;
+							return parentPolls === 1
+								? mock<IExecutionResponse>({ id, status: 'running' })
+								: parentExecution;
+						}
+						if (id === parentExecution.id) return parentExecution; // patch / claim reads
+						return execution; // child
+					});
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+
+					// First poll sees running → sleeps the poll interval; second poll sees waiting → patch + claim.
+					await vi.advanceTimersByTimeAsync(1000);
+					await vi.advanceTimersByTimeAsync(1000);
+
+					// The loop polled (includeData: false) and then claimed the parent: child + claim = 2 runs.
+					expect(parentPolls).toBeGreaterThanOrEqual(2);
+					expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+					expect(logger.error).not.toHaveBeenCalled();
+				});
+
+				it('bails without patching or resuming if the parent finishes before parking', async () => {
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+
+					// First poll: parent running. Second poll: parent finished (terminal) → bail.
+					let parentPolls = 0;
+					executionPersistence.findSingleExecution.mockImplementation(async (id, opts) => {
+						if (id === parentExecution.id && !opts?.unflattenData) {
+							parentPolls += 1;
+							return parentPolls === 1
+								? mock<IExecutionResponse>({ id, status: 'running' })
+								: mock<IExecutionResponse>({ id, status: 'success' });
+						}
+						if (id === parentExecution.id) return parentExecution;
+						return execution;
+					});
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					await vi.advanceTimersByTimeAsync(1000);
+					await vi.advanceTimersByTimeAsync(1000);
+
+					expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					expect(workflowRunner.run).toHaveBeenCalledTimes(1); // only the child
+					expect(logger.error).not.toHaveBeenCalled();
+				});
+
+				it('bails with a timeout log if the parent never parks', async () => {
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+
+					// Parent stays running for every poll until the resume timeout elapses.
+					executionPersistence.findSingleExecution.mockImplementation(async (id, opts) => {
+						if (id === parentExecution.id && !opts?.unflattenData) {
+							return mock<IExecutionResponse>({ id, status: 'running' });
+						}
+						if (id === parentExecution.id) return parentExecution;
+						return execution;
+					});
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					await vi.advanceTimersByTimeAsync(60 * 60 * 1000 + 1000);
+
+					expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+					expect(workflowRunner.run).toHaveBeenCalledTimes(1); // only the child
+					expect(logger.warn).toHaveBeenCalledWith(
+						expect.stringContaining('Timed out waiting to resume parent'),
+						expect.objectContaining({
+							parentExecutionId: parentExecution.id,
+							childExecutionId: execution.id,
+						}),
+					);
+				});
+
+				it('keeps polling and resumes the parent when a poll read fails transiently', async () => {
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+					workflowRunner.run.mockReset();
+					workflowRunner.run.mockResolvedValue(execution.id);
+
+					// First poll read rejects (transient DB error); second poll sees the parent waiting.
+					let parentPolls = 0;
+					executionPersistence.findSingleExecution.mockImplementation(async (id, opts) => {
+						if (id === parentExecution.id && !opts?.unflattenData) {
+							parentPolls += 1;
+							if (parentPolls === 1) throw new Error('connection terminated unexpectedly');
+							return parentExecution;
+						}
+						if (id === parentExecution.id) return parentExecution;
+						return execution;
+					});
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					await vi.advanceTimersByTimeAsync(1000);
+					await vi.advanceTimersByTimeAsync(1000);
+
+					// The failed read is treated as "not parked yet"; the next poll resumes the parent.
+					expect(parentPolls).toBeGreaterThanOrEqual(2);
+					expect(workflowRunner.run).toHaveBeenCalledTimes(2); // child + parent claim
+					expect(logger.error).not.toHaveBeenCalled();
+				});
+
+				it('bails without retrying when a sibling already claimed the parent', async () => {
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+					workflowRunner.run.mockReset();
+					// First run() is the child; the claim attempt throws — a sibling already resumed it.
+					workflowRunner.run
+						.mockResolvedValueOnce(execution.id)
+						.mockRejectedValue(new ExecutionAlreadyResumingError(parentExecution.id));
+
+					// Parent is already parked (waiting) on the first poll → patch → claim throws.
+					executionPersistence.findSingleExecution.mockImplementation(async (id) => {
+						if (id === parentExecution.id) return parentExecution;
+						return execution;
+					});
+
+					await waitTracker.startExecution(execution.id);
+					postExecutePromise.resolve(subworkflowResults);
+					await vi.advanceTimersByTimeAsync(1000);
+					await vi.advanceTimersByTimeAsync(1000);
+
+					// Patch ran (early-returns on the empty test stack), claim attempted once and not
+					// retried — the sibling owns the parent, so this one bails without logging an error.
+					expect(workflowRunner.run).toHaveBeenCalledTimes(2); // child + single claim attempt
+					expect(logger.error).not.toHaveBeenCalled();
 				});
 			});
 		});
