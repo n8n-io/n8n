@@ -353,11 +353,17 @@ export async function getUsers(
 		{ ConsistencyLevel: 'eventual' },
 	)) as IDataObject;
 
-	const users = Array.isArray(response.value) ? (response.value as IDataObject[]) : [];
+	// An unexpected shape is not an empty directory: keeping the token would offer "load more"
+	// into nothing.
+	if (!Array.isArray(response.value)) {
+		return { results: [], paginationToken: undefined };
+	}
 
 	// Display names are not unique, so the UPN is the disambiguator shown in the picker.
-	const results: INodeListSearchItems[] = users.map((user) => ({
-		name: (user.displayName as string) || (user.userPrincipalName as string),
+	// Same fallback chain as `resolveMentions`, so a nameless directory object still shows a
+	// label rather than a blank row.
+	const results: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => ({
+		name: (user.displayName as string) || (user.userPrincipalName as string) || (user.id as string),
 		value: user.id as string,
 		description: user.userPrincipalName as string,
 	}));
