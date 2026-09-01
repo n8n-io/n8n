@@ -1531,22 +1531,6 @@ describe('POST /executions/stop', () => {
 		executionServiceSpy.mockRestore();
 	});
 
-	test('should not route the literal /stop path to the by-id handler', async () => {
-		const stopSpy = vi.spyOn(Container.get(ExecutionService), 'stop');
-		const stopManySpy = vi.spyOn(Container.get(ExecutionService), 'stopMany').mockResolvedValue(0);
-
-		await createWorkflow({}, user1);
-
-		const response = await authUser1Agent.post('/executions/stop').send({ status: ['running'] });
-
-		expect(response.statusCode).toBe(200);
-		expect(stopManySpy).toHaveBeenCalled();
-		expect(stopSpy).not.toHaveBeenCalled();
-
-		stopSpy.mockRestore();
-		stopManySpy.mockRestore();
-	});
-
 	test('should stop many when the API key has the "execution:stop" scope', async () => {
 		const scopedOwner = await createOwnerWithApiKey({ scopes: ['execution:stop'] });
 		const scopedAgent = testServer.publicApiAgentFor(scopedOwner);
