@@ -117,6 +117,12 @@ export {
 } from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export {
+	CredentialPublicDto,
+	CredentialListPublicDto,
+	credentialPublicSchema,
+} from './credentials/credential-public.dto';
+export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,

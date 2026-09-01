@@ -435,6 +435,44 @@ describe('GET /credentials', () => {
 			.query({ cursor: first.body.nextCursor });
 		expect(second.statusCode).toBe(200);
 		expect(second.body.data.length).toBe(1);
+		expect(second.body.nextCursor).toBeNull();
+	});
+
+	test('should reject an invalid cursor', async () => {
+		const response = await authOwnerAgent.get('/credentials').query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
+	});
+
+	test('should reject a non-numeric limit', async () => {
+		const response = await authOwnerAgent.get('/credentials').query({ limit: 'abc' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should ignore an offset query parameter', async () => {
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get('/credentials').query({ offset: 5 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(3);
+	});
+
+	test('should not include credential data or secrets in the response', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const decryptedData = await getDecryptedCredentialData(savedCredential.id);
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		for (const item of response.body.data) {
+			expect(item).not.toHaveProperty('data');
+		}
+		expect(JSON.stringify(response.body)).not.toContain(decryptedData.accessToken);
 	});
 });
 
@@ -483,6 +521,35 @@ describe('GET /credentials/:id', () => {
 		const response = await authOwnerAgent.get('/credentials/123');
 
 		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for member without global scope requesting a nonexistent credential', async () => {
+		const memberWithReadScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const authMemberWithReadScopeAgent = testServer.publicApiAgentFor(memberWithReadScope);
+
+		const response = await authMemberWithReadScopeAgent.get('/credentials/123');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should expose only the allowlisted response fields', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body).sort()).toEqual([
+			'createdAt',
+			'id',
+			'isGlobal',
+			'isManaged',
+			'isResolvable',
+			'name',
+			'resolvableAllowFallback',
+			'resolverId',
+			'type',
+			'updatedAt',
+		]);
 	});
 });
 

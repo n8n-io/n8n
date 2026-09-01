@@ -65,7 +65,7 @@
 		"GET /credentials": {
 			"status": "gap"
 		},
-		"GET /credentials/{id}": {
+		"GET /credentials/{credentialId}": {
 			"status": "gap"
 		},
 		"POST /credentials": {

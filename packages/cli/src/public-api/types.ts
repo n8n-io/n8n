@@ -142,15 +142,6 @@ export declare namespace UserRequest {
 }
 
 export declare namespace CredentialRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{ limit?: number; cursor?: string; offset?: number }
-	>;
-
-	type Get = AuthenticatedRequest<{ id: string }>;
-
 	type Create = AuthenticatedRequest<
 		{},
 		{},
