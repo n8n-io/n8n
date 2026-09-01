@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
+  s_14f52ab61740a5::t_3c039796d9beab 1-4
+  s_14f52ab61740a5::t_2713e7e874b941 79-82,84,86-88
+  s_14f52ab61740a5::t_49c7c41df7830a 5-78,83,85,89-150
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_14f52ab61740a5::t_0649b41c83bc81 14,215-228
+  s_14f52ab61740a5::t_4e275ea5fd6dfa 229
+install.log
+  s_14f52ab61740a5::t_6738673fe8a7c9 1-2
+  s_14f52ab61740a5::t_6f8ecce921a970 3-5
+  s_14f52ab61740a5::t_c966f54d239e2a 6-12
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/rlc.description.ts
+  s_14f52ab61740a5::t_d4eee18ed7d758 270-330
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_14f52ab61740a5::t_c17bb2781558a1 3-4,25-45
+  s_14f52ab61740a5::t_686bf44e062a1f 46-48
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_14f52ab61740a5::t_9e850391d62c74 318-366
+packages/nodes-base/utils/microsoft/transport.ts
+  s_ef9b3842d19546::t_e600343b852232 220-222,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "13634a3956fc0dfe93003dde7664a1e546ba302a",
+  "prompts": {},
+  "sessions": {
+    "s_14f52ab61740a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3435d574-b67e-42e7-9ac5-77452c95f9ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_ef9b3842d19546": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03e721dda3bd03ca",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
