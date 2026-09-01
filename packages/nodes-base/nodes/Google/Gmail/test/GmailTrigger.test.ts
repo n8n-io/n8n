@@ -2678,6 +2678,35 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(2);
 		});
 
+		it('should clear the no-progress count once a scan reaches the whole window', async () => {
+			// A scan that exhausted the page token proves nothing is out of reach, so
+			// the window is not wedged. Without this, a quiet poll between two slow
+			// ones keeps the count, and slow ticks weeks apart add up to a give-up.
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					possibleDuplicates: ['A'],
+					noProgressTicks: 2,
+				},
+			};
+
+			mockLabels();
+			// One page, no continuation token, and its only id is already handled.
+			mockList(listPage(['A']));
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 10 } },
+				workflowStaticData,
+			});
+
+			expect(response).toBeNull();
+			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(0);
+			// Nothing new arrived, so the cursor and the boundary set stay as they were.
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['A']);
+		});
+
 		it('should give up once consecutive ticks keep making no progress', async () => {
 			// Repeated no-progress ticks are no longer one unlucky sample: the
 			// window is wedged, so give up loudly rather than hold forever.

@@ -697,6 +697,13 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 						// nothing — every other path merges the set instead.
 						nodeStaticData.possibleDuplicates = [];
 						nodeStaticData.noProgressTicks = 0;
+					} else if (nodeStaticData.noProgressTicks) {
+						// The scan exhausted the token, so nothing is out of reach and the
+						// window is not wedged. Without this, a quiet poll between two slow
+						// ones keeps the count and the run no longer has to be consecutive.
+						// Only written when there is a count to clear: an idle node polls
+						// this path every tick, and any write marks the static data dirty.
+						nodeStaticData.noProgressTicks = 0;
 					}
 					return null;
 				}

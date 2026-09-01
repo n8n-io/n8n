@@ -60,7 +60,7 @@ export type GmailWorkflowStaticData = {
 	pendingMessageIds?: string[];
 	/** v1.4+: IDs whose fetch failed, with how many attempts each has had so far */
 	failedFetches?: Array<[string, number]>;
-	/** v1.4+: Consecutive polls that listed nothing new; resets as soon as one fetches */
+	/** v1.4+: Consecutive polls that listed nothing new; a delivery or a full scan clears it */
 	noProgressTicks?: number;
 };
 export type GmailWorkflowStaticDataDictionary = Record<string, GmailWorkflowStaticData>;
