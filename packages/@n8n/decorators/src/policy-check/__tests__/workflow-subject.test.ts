@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { PolicedWorkflow } from '../policy-check';
-import { workflowSubject } from '../policy-cleared';
+import { workflowContentSubject, workflowSubject } from '../policy-cleared';
 
 const policed = (workflow: object) => workflow as unknown as PolicedWorkflow;
 
@@ -40,6 +40,28 @@ describe('workflowSubject', () => {
 		const nodes = [{ name: 'Start' }];
 
 		expect(workflowSubject(policed({ id, name: 'x', nodes }))).toEqual({
+			type: 'workflow',
+			id: hashOf(nodes),
+		});
+	});
+});
+
+describe('workflowContentSubject', () => {
+	it('binds to the node hash', () => {
+		const nodes = [{ name: 'Start' }];
+
+		expect(workflowContentSubject(policed({ nodes }))).toEqual({
+			type: 'workflow',
+			id: hashOf(nodes),
+		});
+	});
+
+	// A create binds to its content even with an id: a client-supplied id is no proof of what
+	// was checked, so the clearance must cover the nodes policy actually saw.
+	it('ignores a supplied id and binds to the nodes', () => {
+		const nodes = [{ name: 'Start' }];
+
+		expect(workflowContentSubject(policed({ id: 'wf-9', nodes }))).toEqual({
 			type: 'workflow',
 			id: hashOf(nodes),
 		});

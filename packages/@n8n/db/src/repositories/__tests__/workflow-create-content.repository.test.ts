@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { workflowSubject } from '@n8n/decorators';
+import { workflowContentSubject } from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -23,7 +23,7 @@ const newWorkflow = (nodes: INode[]) => {
 const clearanceFor = (workflow: WorkflowEntity) =>
 	mintPolicyCleared({
 		point: 'workflowSave',
-		subject: workflowSubject(workflow),
+		subject: workflowContentSubject(workflow),
 		decision: { violations: [] },
 	});
 
@@ -87,18 +87,31 @@ describe('WorkflowRepository.createContent', () => {
 		expect(entityManager.save).not.toHaveBeenCalled();
 	});
 
-	it('binds to the id when the caller supplied one', async () => {
+	// A create binds to content even with a client-supplied id: the id is no proof of what was
+	// checked, so a content clearance unlocks the write and an id clearance does not.
+	it('binds to content, not the id, when the caller supplied one', async () => {
 		const workflow = newWorkflow(nodes);
 		workflow.id = 'wf-1';
 
-		await workflowRepository.createContent(workflow, {
-			policyCleared: mintPolicyCleared({
-				point: 'workflowSave',
-				subject: { type: 'workflow', id: 'wf-1' },
-				decision: { violations: [] },
-			}),
-		});
+		await workflowRepository.createContent(workflow, { policyCleared: clearanceFor(workflow) });
 
 		expect(entityManager.save).toHaveBeenCalledWith(workflow);
+	});
+
+	it('throws when the clearance binds to the supplied id rather than the content', async () => {
+		const workflow = newWorkflow(nodes);
+		workflow.id = 'wf-1';
+
+		await expect(
+			workflowRepository.createContent(workflow, {
+				policyCleared: mintPolicyCleared({
+					point: 'workflowSave',
+					subject: { type: 'workflow', id: 'wf-1' },
+					decision: { violations: [] },
+				}),
+			}),
+		).rejects.toThrow();
+
+		expect(entityManager.save).not.toHaveBeenCalled();
 	});
 });

@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { assertClearedFor, workflowSubject } from '@n8n/decorators';
+import { assertClearedFor, workflowContentSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
@@ -181,14 +181,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	/**
 	 * Persists a new workflow, gated on a clearance for its content.
 	 *
-	 * The entity has no id until insert, so the clearance binds to the node hash — meaning
-	 * nothing may mutate `nodes` between the `enforceWorkflowSave` call and this write.
+	 * A create binds to the node hash, not the id — an id here is either generated on insert or
+	 * client-supplied, and neither is proof of what was checked. So nothing may mutate `nodes`
+	 * between the `enforceWorkflowSave` call and this write.
 	 *
 	 * `save`, not `insert`: only `save` writes the `workflows_tags` junction rows for a
 	 * populated `tags` relation, and returns the entity with its generated id.
 	 */
 	async createContent(workflow: WorkflowEntity, ctx: OperationContext): Promise<WorkflowEntity> {
-		assertClearedFor(ctx.policyCleared, 'workflowSave', workflowSubject(workflow));
+		assertClearedFor(ctx.policyCleared, 'workflowSave', workflowContentSubject(workflow));
 		return await this.managerFor(ctx).save(workflow);
 	}
 
