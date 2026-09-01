@@ -354,7 +354,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		const items = activeRuntime(registry).setupItemsByWorkflowId['wf-1'];
 		expect(items).toHaveLength(1);
-		expect(items[0].credentialType).toBe('notionApi');
+		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
 	});
 
 	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
@@ -398,7 +398,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		await runtime.loadHistoricalMessages();
 
 		expect(runtime.setupItemsByWorkflowId['wf-1']).toHaveLength(1);
-		expect(runtime.setupItemsByWorkflowId['wf-1'][0].credentialType).toBe('slackApi');
+		expect(runtime.setupItemsByWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'slackApi' });
 	});
 
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
