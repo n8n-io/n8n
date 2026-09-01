@@ -163,6 +163,9 @@ export async function requestWithAuthentication(
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+	// A single-use body only counts as consumed once a send was actually attempted;
+	// a failure in preAuthentication/authenticate leaves it intact and replayable.
+	let requestSent = false;
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
 	if (additionalData.evalLlmMockHandler) {
@@ -232,6 +235,7 @@ export async function requestWithAuthentication(
 			workflow,
 			node,
 		)) as IRequestOptions;
+		requestSent = true;
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
 		try {
@@ -253,7 +257,7 @@ export async function requestWithAuthentication(
 					// would send a request that advertises a body it never delivers and hang
 					// until timeout. Keep the refreshed credential for the next run, but
 					// surface the original error (same rule as requestOAuth2).
-					if (hasSingleUseBody(requestOptions)) {
+					if (requestSent && hasSingleUseBody(requestOptions)) {
 						this.logger.warn(
 							`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
 						);

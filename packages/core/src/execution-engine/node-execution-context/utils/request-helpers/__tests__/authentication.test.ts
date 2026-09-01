@@ -202,4 +202,29 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 			true,
 		);
 	});
+
+	test('still retries a stream body when the failure happened before any send', async () => {
+		// preAuthentication fails on the first pass; the body was never sent, so the
+		// retry may (and must) send it.
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockRejectedValueOnce(new Error('token endpoint hiccup'))
+			.mockResolvedValueOnce({ accessToken: 'fresh' });
+		proxyRequestToAxiosMock.mockResolvedValueOnce({ ok: true });
+
+		const result = await requestWithAuthentication.call(
+			mockThis,
+			'testPreAuth',
+			{
+				method: 'POST',
+				uri: 'https://api.example.com/attachments',
+				formData: { file: { value: Readable.from(['content']), options: { filename: 'a.txt' } } },
+			},
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+	});
 });
