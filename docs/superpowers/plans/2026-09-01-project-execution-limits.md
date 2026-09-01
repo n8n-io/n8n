@@ -57,7 +57,7 @@ In `packages/@n8n/backend-common/src/license-state.ts`, add a new method to the 
 
 - [ ] **Step 3: Write the failing test for the resolver**
 
-Create `packages/cli/src/execution-quota/__tests__/project-execution-quota.helper.test.ts`:
+Create `packages/cli/src/execution-quota/__tests__/project-execution-quota.helper.test.ts`. This codebase runs tests on vitest, not jest — use `vi.fn()`, not `jest.fn()` (see `packages/cli/src/evaluation.ee/__tests__/evaluation-concurrency.helper.test.ts` for the exact house pattern this mirrors):
 
 ```ts
 import type { License } from '@/license';
@@ -71,8 +71,8 @@ const ENV_VAR = 'N8N_PROJECT_EXECUTION_LIMIT_DEFAULT';
 
 function mockLicense(overrides: { quota?: number; planName?: string } = {}): License {
 	return {
-		getValue: jest.fn().mockReturnValue(overrides.quota),
-		getPlanName: jest.fn().mockReturnValue(overrides.planName ?? 'Community'),
+		getValue: vi.fn().mockReturnValue(overrides.quota),
+		getPlanName: vi.fn().mockReturnValue(overrides.planName ?? 'Community'),
 	} as unknown as License;
 }
 
@@ -674,12 +674,12 @@ export class ProjectExecutionQuotaExceededError extends UserError {
 
 - [ ] **Step 6: Write the failing test for the service**
 
-Create `packages/cli/src/execution-quota/__tests__/project-execution-quota.service.test.ts`:
+Create `packages/cli/src/execution-quota/__tests__/project-execution-quota.service.test.ts`. This codebase runs tests on vitest, not jest — use `mock` from `vitest-mock-extended` and `vi.clearAllMocks()`, following the exact pattern in the existing `packages/cli/src/evaluation.ee/__tests__/evaluation-concurrency.helper.test.ts` (read that file first for the house style: `mock<License>({ getPlanName: vi.fn()..., getValue: vi.fn()... })`).
 
 ```ts
 import type { Project, ProjectExecutionCounterRepository, ProjectExecutionQuotaRepository, SharedWorkflowRepository } from '@n8n/db';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
 
@@ -702,7 +702,7 @@ describe('ProjectExecutionQuotaService.assertWithinQuotaAndIncrement', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(project);
 	});
 
