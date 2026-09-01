@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_176da1aff184f0::t_31bb88c0596e5f 31-33,41
+  s_176da1aff184f0::t_831f2b4839a41a 16
+packages/@n8n/api-types/src/dto/executions/execution-public.dto.ts
+  s_176da1aff184f0::t_31bb88c0596e5f 12,15
+packages/@n8n/api-types/src/schemas/object-guard.schema.ts
+  s_176da1aff184f0::t_18131bba051b55 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f314354eb05760ada851383e32f9029a567d8230",
+  "prompts": {},
+  "sessions": {
+    "s_176da1aff184f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8cc965-adbd-49e9-a63e-907c657a03a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}
