@@ -34,6 +34,30 @@ describe('OtelSettingsService', () => {
 	});
 
 	describe('loadSettings', () => {
+		it('warns and falls back to defaults when persisted exporterHeaders is not a string', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterHeaders: 123 }),
+			} as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('non-string exporterHeaders'),
+			);
+			expect(result.exporterHeaders).toBe('');
+		});
+
+		it('warns and falls back to defaults when the persisted row is not a settings object', async () => {
+			settingsRepository.findByKey.mockResolvedValue({ value: '"a-string"' } as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('not a settings object'));
+			expect(result.exporterServiceName).toBe('n8n');
+		});
+
 		it('warns and falls back to defaults when the persisted row contains invalid JSON', async () => {
 			settingsRepository.findByKey.mockResolvedValue({ value: 'not-valid-json' } as Settings);
 

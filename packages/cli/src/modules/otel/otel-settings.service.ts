@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 
 import { OtelConfig } from './otel.config';
@@ -69,7 +70,22 @@ export class OtelSettingsService {
 	private parsePersisted(value: string | null | undefined): Partial<OtelConfig> | undefined {
 		if (!value) return undefined;
 		try {
-			return jsonParse<Partial<OtelConfig>>(value);
+			const persisted: unknown = jsonParse(value);
+			// The DB row is not shape-checked, so validate before it reaches any consumer
+			if (!isRecord(persisted)) {
+				this.logger.warn(
+					'Persisted OTel settings are not a settings object; using defaults instead',
+				);
+				return undefined;
+			}
+			const settings = persisted as Partial<OtelConfig>;
+			if ('exporterHeaders' in settings && typeof settings.exporterHeaders !== 'string') {
+				this.logger.warn(
+					'Persisted OTel settings contain a non-string exporterHeaders value; using the default instead',
+				);
+				delete settings.exporterHeaders;
+			}
+			return settings;
 		} catch (error) {
 			this.logger.warn('Persisted OTel settings contain invalid JSON; using defaults instead', {
 				error: error instanceof Error ? error.message : String(error),
