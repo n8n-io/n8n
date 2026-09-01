@@ -583,6 +583,31 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(1);
 		});
 
+		it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
+			'rejects a task declaring a retry delay of %s',
+			(retryDelaySeconds) => {
+				dummy.retryDelaySeconds = retryDelaySeconds;
+				const { runner, metadata } = setup();
+				metadata.register(DummySystemTask);
+
+				expect(() => runner.init()).toThrow(
+					expect.objectContaining({
+						cause: expect.objectContaining({
+							message: expect.stringContaining('out-of-range retry delay'),
+						}),
+					}),
+				);
+			},
+		);
+
+		it('accepts the longest retry delay a timeout honors', () => {
+			dummy.retryDelaySeconds = 2_147_483;
+			const { runner, metadata } = setup();
+			metadata.register(DummySystemTask);
+
+			expect(() => runner.init()).not.toThrow();
+		});
+
 		it('rejects two tasks registered under the same name', () => {
 			const other = new OtherDummySystemTask();
 			other.name = dummy.name;

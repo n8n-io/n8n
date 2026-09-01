@@ -50,6 +50,7 @@ export interface SystemTask {
 	 * How long after a failed run an earlier retry occurrence runs, instead of
 	 * waiting for the next scheduled one. In-memory timers only, and only
 	 * honored for idempotent work. Durable runs retry via `maxAttempts`.
+	 * An integer of at least 1, capped at what a timeout honors (about 24 days).
 	 */
 	readonly retryDelaySeconds?: number;
 

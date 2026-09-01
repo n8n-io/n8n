@@ -19,6 +19,12 @@ import { SystemTaskHandler } from './system-task-handler';
 import { SystemTaskTimer } from './system-task-timer';
 import { systemTaskType } from './system-task-type';
 
+/**
+ * Longest retry delay whose millisecond value still fits the signed 32-bit
+ * range a timeout honors. Node fires anything outside it after about 1 ms.
+ */
+const MAX_RETRY_DELAY_SECONDS = Math.floor((2 ** 31 - 1) / Time.seconds.toMilliseconds);
+
 type InFlightRun = {
 	promise: Promise<void>;
 	skipWarned: boolean;
@@ -150,6 +156,10 @@ export class SystemTaskRunner {
 	 * `@SystemTask()` decorator for one registered after. Either way the runner is
 	 * left half-routed and startup fails, which is the point: a duplicate name is a
 	 * coding mistake.
+	 *
+	 * @throws {UnexpectedError} When a task declares a `retryDelaySeconds` that is
+	 * not an integer between 1 and {@link MAX_RETRY_DELAY_SECONDS}. A timeout would
+	 * silently turn such a delay into an immediate retry.
 	 */
 	private route(taskClass: SystemTaskClass): void {
 		const task = Container.get(taskClass);
@@ -157,6 +167,18 @@ export class SystemTaskRunner {
 		if (this.routedTasksByName.has(task.name)) {
 			throw new UnexpectedError('A system task name is registered more than once', {
 				extra: { name: task.name },
+			});
+		}
+
+		const { retryDelaySeconds } = task;
+		if (
+			retryDelaySeconds !== undefined &&
+			(!Number.isInteger(retryDelaySeconds) ||
+				retryDelaySeconds < 1 ||
+				retryDelaySeconds > MAX_RETRY_DELAY_SECONDS)
+		) {
+			throw new UnexpectedError('A system task declares an out-of-range retry delay', {
+				extra: { name: task.name, retryDelaySeconds },
 			});
 		}
 
