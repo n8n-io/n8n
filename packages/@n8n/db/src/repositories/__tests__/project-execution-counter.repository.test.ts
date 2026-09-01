@@ -1,8 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { Mock } from 'vitest';
 
 import { ProjectExecutionCounter } from '../../entities/project-execution-counter';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
+import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { ProjectExecutionCounterRepository } from '../project-execution-counter.repository';
 
 /**
@@ -19,6 +21,7 @@ import { ProjectExecutionCounterRepository } from '../project-execution-counter.
  */
 describe('ProjectExecutionCounterRepository', () => {
 	const entityManager = mockEntityManager(ProjectExecutionCounter);
+	const logger = mockInstance(Logger);
 	const repo = Container.get(ProjectExecutionCounterRepository);
 
 	beforeEach(() => {
@@ -77,7 +80,8 @@ describe('ProjectExecutionCounterRepository', () => {
 
 		it('falls back to a composite-key increment when a concurrent insert wins the race', async () => {
 			entityManager.findOneBy.mockResolvedValueOnce(null);
-			(entityManager.insert as Mock).mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
+			const insertError = new Error('UNIQUE constraint failed');
+			(entityManager.insert as Mock).mockRejectedValueOnce(insertError);
 			entityManager.increment.mockResolvedValueOnce({
 				affected: 1,
 				generatedMaps: [],
@@ -94,6 +98,34 @@ describe('ProjectExecutionCounterRepository', () => {
 			});
 			expect(entityManager.increment.mock.calls[0]?.[2]).toBe('count');
 			expect(entityManager.increment.mock.calls[0]?.[3]).toBe(1);
+		});
+
+		it('logs the swallowed insert error before falling back to increment, so a masked failure still leaves a trace', async () => {
+			entityManager.findOneBy.mockResolvedValueOnce(null);
+			const insertError = new Error('connection terminated unexpectedly');
+			(entityManager.insert as Mock).mockRejectedValueOnce(insertError);
+			entityManager.increment.mockResolvedValueOnce({
+				affected: 1,
+				generatedMaps: [],
+				raw: [],
+			});
+
+			await repo.incrementWorkflowCount('project-1', 'workflow-1', 'day', '2026-09-01');
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Insert failed while incrementing project execution count',
+				expect.objectContaining({
+					error: insertError,
+					projectId: 'project-1',
+					workflowId: 'workflow-1',
+					periodUnit: 'day',
+					periodStart: '2026-09-01',
+				}),
+			);
+			// Still falls through to increment even though the failure wasn't the
+			// expected unique-constraint race — this is the documented trade-off,
+			// not a bug: the point of the log is visibility, not narrowing.
+			expect(entityManager.increment).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -147,6 +179,27 @@ describe('ProjectExecutionCounterRepository', () => {
 			expect(qb.where).toHaveBeenCalledWith('counter.workflowId = :workflowId', {
 				workflowId: 'workflow-1',
 			});
+		});
+
+		it('scopes to the day bucket, not just the workflow', async () => {
+			const qb = {
+				select: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				getRawOne: vi.fn().mockResolvedValue({ total: '5' }),
+			};
+			(entityManager.createQueryBuilder as Mock).mockReturnValue(qb);
+
+			const total = await repo.getWorkflowDailyCount('workflow-1', '2026-09-01');
+
+			// [0] is the 'day'-literal filter (no params — the unit itself isn't
+			// caller-supplied), [1] is the caller-supplied day bucket. A
+			// regression that dropped the unit filter, or passed the wrong
+			// variable into `:day`, would go undetected without asserting both.
+			expect(qb.andWhere.mock.calls[0]?.[0]).toBe("counter.periodUnit = 'day'");
+			expect(qb.andWhere.mock.calls[1]?.[0]).toBe('counter.periodStart = :day');
+			expect(qb.andWhere.mock.calls[1]?.[1]).toEqual({ day: '2026-09-01' });
+			expect(total).toBe(5);
 		});
 	});
 });
