@@ -278,5 +278,21 @@ describe('NonWebhookTriggerRegistrar', () => {
 
 			await expect(registrar.deregister('wf-1', 'trigger-a')).rejects.toThrow('db down');
 		});
+
+		test('deregister hands a pending in-memory teardown to onDetached when a durable removal fails', async () => {
+			// The rejection escapes deregister while the in-memory teardown still
+			// runs, so the caller's lifecycle lock must be told to outlive it.
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			const pendingInMemory = new Promise<void>(() => {});
+			activeWorkflowTriggers.removeTriggers.mockReturnValue(pendingInMemory);
+			scheduleTriggerJobRegistrar.remove.mockRejectedValue(new Error('db down'));
+			const onDetached = vi.fn();
+
+			await expect(registrar.deregister('wf-1', 'trigger-a', onDetached)).rejects.toThrow(
+				'db down',
+			);
+
+			expect(onDetached).toHaveBeenCalledWith(pendingInMemory);
+		});
 	});
 });
