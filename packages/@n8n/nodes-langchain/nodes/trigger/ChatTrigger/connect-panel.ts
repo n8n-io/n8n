@@ -16,6 +16,7 @@ export function buildChatShellViewModel(
 ): ChatShellViewModel {
 	const initialOf = (name: string) => (name.trim().charAt(0) || '?').toUpperCase();
 	const rows: ChatShellCredentialRow[] = credentials.map((c) => ({
+		key: `${c.credentialId}::${c.resolverId ?? ''}`,
 		id: c.credentialId,
 		name: c.credentialName,
 		connected: c.status === 'configured',
@@ -46,12 +47,14 @@ export function buildChatShellViewModel(
  * after a click - so this covers the three states the server can know about.
  */
 export function connectBarText(vm: ChatShellViewModel, testMode?: boolean): string {
-	if (testMode) {
-		return "You're testing with your own connected accounts. Visitors will need to connect their own.";
-	}
 	const remaining = Math.max(vm.total - vm.connectedCount, 0);
 	if (remaining === 0) {
-		return `All ${vm.total} ${accountsLabel(vm.total)} connected \u00b7 ready to chat`;
+		return testMode
+			? "You're testing with your own connected accounts. Visitors will need to connect their own."
+			: `All ${vm.total} ${accountsLabel(vm.total)} connected \u00b7 ready to chat`;
+	}
+	if (vm.total === 1) {
+		return `Connect ${vm.credentials[0].name} to start this chat`;
 	}
 	// Nothing connected yet names the full count; part-way through, only what is left.
 	if (vm.connectedCount === 0) {

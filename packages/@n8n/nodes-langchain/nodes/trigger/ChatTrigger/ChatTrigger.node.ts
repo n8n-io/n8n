@@ -957,8 +957,10 @@ export class ChatTrigger extends Node {
 						let credentialStatus: CredentialCheckResult | undefined;
 						try {
 							credentialStatus = await ctx.checkTriggerCredentialStatus();
-						} catch (error) {
-							ctx.logger.error('Chat trigger credential readiness check failed', { error });
+						} catch {
+							// Logged without the error: it can carry decrypted credential context
+							// and resolver detail, which must not reach the logs.
+							ctx.logger.error('Chat trigger credential readiness check failed');
 							// `send` ends the response itself.
 							res.status(503).send('Chat is unavailable right now. Please try again later.');
 							return { noWebhookResponse: true };
@@ -977,7 +979,10 @@ export class ChatTrigger extends Node {
 							testMode: mode === 'test',
 							visitorEmail: outerIdentity.visitor.email,
 							hasCredentials: !!connect,
-							ready: connect ? mode === 'test' || connect.connectedCount >= connect.total : false,
+							// Not forced true in test mode: the send gate refuses a builder with
+							// outstanding accounts just as it refuses a visitor, so claiming
+							// readiness here would un-gate an input whose first send is rejected.
+							ready: connect ? connect.connectedCount >= connect.total : false,
 							barText: connect ? connectBarText(connect, mode === 'test') : '',
 							...connect,
 						});
@@ -1047,8 +1052,8 @@ export class ChatTrigger extends Node {
 			let readiness: CredentialCheckResult | undefined;
 			try {
 				readiness = await ctx.checkTriggerCredentialStatus();
-			} catch (error) {
-				ctx.logger.error('Chat trigger credential readiness check failed', { error });
+			} catch {
+				ctx.logger.error('Chat trigger credential readiness check failed');
 				res.status(503).json({ status: 'credential_readiness_check_failed' });
 				return { noWebhookResponse: true };
 			}

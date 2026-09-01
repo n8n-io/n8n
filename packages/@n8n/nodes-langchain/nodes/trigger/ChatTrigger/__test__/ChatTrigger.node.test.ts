@@ -503,9 +503,14 @@ describe('ChatTrigger Node', () => {
 			expect(mockResponse.json).toHaveBeenCalledWith({
 				status: 'credential_readiness_check_failed',
 			});
+			// The error itself is deliberately not logged: it can carry decrypted
+			// credential context and resolver detail.
 			expect(mockContext.logger.error).toHaveBeenCalledWith(
 				'Chat trigger credential readiness check failed',
-				{ error },
+			);
+			expect(mockContext.logger.error).not.toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ error: expect.anything() }),
 			);
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
@@ -782,7 +787,7 @@ describe('ChatTrigger Node', () => {
 					hasCredentials: true,
 					ready: false,
 					visitorEmail: 'visitor@example.com',
-					barText: '1 account needed to start this chat',
+					barText: 'Connect Slack account to start this chat',
 					// One required account connects straight from the bar, so the template
 					// keeps the no-dialog shortcut — but still renders the dialog, since it
 					// is the only place carrying Disconnect once that account is connected.
@@ -811,7 +816,10 @@ describe('ChatTrigger Node', () => {
 				expect(mockResponse.status).toHaveBeenCalledWith(503);
 				expect(mockContext.logger.error).toHaveBeenCalledWith(
 					'Chat trigger credential readiness check failed',
-					{ error },
+				);
+				expect(mockContext.logger.error).not.toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ error: expect.anything() }),
 				);
 				expect(result).toEqual({ noWebhookResponse: true });
 				expect(mockResponse.render).not.toHaveBeenCalled();

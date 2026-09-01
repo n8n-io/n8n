@@ -15,6 +15,7 @@ export type ChatFrameIdentity = { visitor: IUser; authToken: string };
 
 /** One credential row in the outer shell's "Connect your accounts" panel. */
 export type ChatShellCredentialRow = {
+	key: string;
 	id: string;
 	name: string;
 	connected: boolean;

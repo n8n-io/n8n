@@ -31,6 +31,7 @@ const withOneMissingAccount = {
 	footerText: '0 of 1 account connected',
 	credentials: [
 		{
+			key: 'cred-1::system-n8n',
 			id: 'cred-1',
 			name: 'Slack account',
 			connected: false,
@@ -176,11 +177,18 @@ describe('chat-shell.handlebars', () => {
 
 		// Test mode establishes identity from the builder's own credentials, so there is
 		// nothing for them to connect.
-		it('drops the button entirely in test mode', async () => {
-			const html = await renderView({ ...withOneMissingAccount, testMode: true, ready: true });
+		// Test mode resolves identity from the builder's own accounts, but the send gate
+		// still refuses them when outstanding — so the control has to be there.
+		it('keeps the control in test mode while accounts are outstanding', async () => {
+			const html = await renderView({
+				...withOneMissingAccount,
+				testMode: true,
+				barText: 'Connect Slack account to start this chat',
+			});
 
-			expect(html).not.toMatch(/<button[^>]*bar-action/);
+			expect(html).toMatch(/<button[^>]*bar-action/);
 			expect(html).toContain("data-test-mode='true'");
+			expect(html).toContain('Connect Slack account to start this chat');
 		});
 	});
 
@@ -260,18 +268,38 @@ describe('chat-shell.handlebars', () => {
 			expect(await script()).not.toMatch(/&&\s*!failed\[/);
 		});
 
+		// The AC requires a visible error, never a silent revert to Connect. Pinned here
+		// because a regression that dropped the failure state would otherwise pass.
+		it('shows a visible error when a connect fails or is cancelled', async () => {
+			const src = await script();
+
+			expect(src).toContain("'Connection failed \u00b7 try again'");
+			expect(src).toContain("sub.classList.add('error')");
+			// A popup closing with neither signal is treated as a cancelled attempt.
+			expect(src).toContain('if (!pendingPopup || pendingPopup.closed) onErrorSignal()');
+		});
+
+		// One credential resolves once per distinct fallback resolver, so rows must not
+		// share an identity — otherwise connecting one context marks the other ready.
+		it('keys row state on the composite row key, not the credential id', async () => {
+			const html = await renderView(withOneMissingAccount);
+
+			expect(html).toContain("data-row-key='cred-1::system-n8n'");
+			expect(html).not.toContain('data-cred-id');
+			expect(await script()).toContain("row.getAttribute('data-row-key')");
+		});
+
 		it('refuses to open a popup at a non-http scheme', async () => {
 			expect(await script()).toContain('/^https?:\\/\\//i.test(url)');
 		});
 
 		// Nothing can open the dialog in test mode, so shipping it would embed live
 		// authorize links in unreachable markup.
-		it('tolerates the dialog being absent in test mode', async () => {
-			const html = await renderView({ ...withOneMissingAccount, testMode: true, ready: true });
-
-			expect(html).not.toContain("id='n8n-connect-overlay'");
-			expect(html).not.toContain('data-url=');
-			expect(html).toContain('if (overlay) overlay.classList.add');
+		// Readiness is never forced true for test mode: claiming it would un-gate an
+		// input whose first send the server rejects.
+		it('does not claim readiness in test mode', async () => {
+			expect(await script()).not.toContain('TEST_MODE || total <= count');
+			expect(await script()).toContain('ready: total <= count');
 		});
 
 		// Decided server-side from the view model, not recomputed here, so the rule

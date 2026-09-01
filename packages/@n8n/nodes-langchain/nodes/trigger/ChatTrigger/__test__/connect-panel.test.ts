@@ -64,6 +64,22 @@ describe('buildChatShellViewModel', () => {
 		expect(vm.credentials.find((c) => c.id === 'cred-2')?.account).toBe('visitor@example.com');
 	});
 
+	// One credential resolves once per distinct fallback resolver, so the same
+	// credentialId legitimately arrives twice. Keying rows on it alone collapsed them,
+	// and connecting one context then marked the other ready.
+	it('gives each credential-and-resolver pair its own row key', () => {
+		const vm = buildChatShellViewModel([
+			missingCred({ resolverId: 'resolver-a' }),
+			missingCred({ resolverId: 'resolver-b' }),
+		]);
+
+		expect(vm.total).toBe(2);
+		expect(vm.credentials.map((c) => c.key)).toEqual(['cred-1::resolver-a', 'cred-1::resolver-b']);
+		expect(new Set(vm.credentials.map((c) => c.key)).size).toBe(2);
+		// The credential id itself is unchanged - only the row identity is composite.
+		expect(vm.credentials.every((c) => c.id === 'cred-1')).toBe(true);
+	});
+
 	it('derives the letter tile from the credential name', () => {
 		const vm = buildChatShellViewModel([missingCred({ credentialName: 'slack account' })]);
 
@@ -78,13 +94,18 @@ describe('buildChatShellViewModel', () => {
 });
 
 describe('connectBarText', () => {
-	it('names the full count while nothing is connected', () => {
+	// A single account is named so the visitor knows what they are about to connect
+	// before the consent screen opens.
+	it('names the credential when exactly one is required', () => {
 		expect(connectBarText(buildChatShellViewModel([missingCred()]))).toBe(
-			'1 account needed to start this chat',
+			'Connect Slack account to start this chat',
 		);
-		expect(connectBarText(buildChatShellViewModel([missingCred(), missingCred()]))).toBe(
-			'2 accounts needed to start this chat',
-		);
+	});
+
+	it('names the full count for two or more, while nothing is connected', () => {
+		expect(
+			connectBarText(buildChatShellViewModel([missingCred(), missingCred({ credentialId: 'x' })])),
+		).toBe('2 accounts needed to start this chat');
 	});
 
 	// Part-way through, naming the full count again would read as if no progress had
@@ -101,13 +122,19 @@ describe('connectBarText', () => {
 		);
 	});
 
-	// Test mode establishes identity from the builder's own credentials, so there is
-	// nothing for them to connect - the bar is informational and has no button.
-	it('explains test mode regardless of what is connected', () => {
-		const vm = buildChatShellViewModel([missingCred()]);
-
-		expect(connectBarText(vm, true)).toBe(
+	// Test mode resolves identity from the builder's own credentials, so once they are
+	// all connected the bar explains that a visitor's experience differs.
+	it('explains test mode once every account is connected', () => {
+		expect(connectBarText(buildChatShellViewModel([configuredCred()]), true)).toBe(
 			"You're testing with your own connected accounts. Visitors will need to connect their own.",
+		);
+	});
+
+	// The send gate refuses a builder with outstanding accounts just as it refuses a
+	// visitor, so test mode is not exempt from naming what is missing.
+	it('still names what is missing in test mode', () => {
+		expect(connectBarText(buildChatShellViewModel([missingCred()]), true)).toBe(
+			'Connect Slack account to start this chat',
 		);
 	});
 });

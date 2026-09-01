@@ -128,7 +128,7 @@
 		{{#*inline "credRow"}}
 			<div
 				class='cred-row'
-				data-cred-id='{{id}}'
+				data-row-key='{{key}}'
 				data-resolver-id='{{resolverId}}'
 				data-not-connected-text='{{notConnectedText}}'
 				{{#if connected}} data-connected='true'{{/if}}
@@ -178,9 +178,7 @@
 					</span>
 				</span>
 				<span class='bar-text' id='n8n-connect-bar-text'>{{barText}}</span>
-				{{#unless testMode}}
-					<button class='btn btn-primary bar-action' id='n8n-connect-bar-action'><span class='dot'></span><span class='label'>{{#if ready}}Manage{{else}}Connect{{/if}}</span></button>
-				{{/unless}}
+				<button class='btn btn-primary bar-action' id='n8n-connect-bar-action'><span class='dot'></span><span class='label'>{{#if ready}}Manage{{else}}Connect{{/if}}</span></button>
 			</div>
 
 			{{!-- Holds the real per-credential authorize/revoke links, which is why it
@@ -188,10 +186,7 @@
 			      a single account too: once that one is connected, this is the only place
 			      carrying a Disconnect control, so omitting it would leave the bar's
 			      Manage with nothing to open.
-
-			      Skipped in test mode, which has no control that can open it - rendering
-			      it there would embed live authorize links in unreachable markup. --}}
-			{{#unless testMode}}
+ --}}
 			<div class='overlay' id='n8n-connect-overlay'>
 				<div class='dialog' role='dialog' aria-modal='true' aria-labelledby='n8n-connect-dialog-title'>
 					<div class='dialog-head'>
@@ -210,7 +205,6 @@
 					</div>
 				</div>
 			</div>
-			{{/unless}}
 		{{/if}}
 
 		<script>
@@ -251,9 +245,9 @@
 					var connected = {};
 					var failed = {};
 					document.querySelectorAll('.cred-row').forEach(function (row) {
-						var id = row.getAttribute('data-cred-id');
-						ids[id] = true;
-						if (row.getAttribute('data-connected') === 'true') connected[id] = true;
+						var key = row.getAttribute('data-row-key');
+						ids[key] = true;
+						if (row.getAttribute('data-connected') === 'true') connected[key] = true;
 					});
 					var total = Object.keys(ids).length;
 					// Design: one account connects straight from the bar; two or more collapse
@@ -263,11 +257,11 @@
 					function accountsLabel(count) { return count === 1 ? 'account' : 'accounts'; }
 					function connectedCount() {
 						var n = 0;
-						for (var id in connected) if (connected[id]) n++;
+						for (var k in connected) if (connected[k]) n++;
 						return n;
 					}
 					function hasFailed() {
-						for (var id in failed) if (failed[id]) return true;
+						for (var k in failed) if (failed[k]) return true;
 						return false;
 					}
 					function onlyRow() {
@@ -278,9 +272,12 @@
 					// the failure state - which only arises after a click, so it has no
 					// server-rendered counterpart.
 					function barText(count) {
-						if (TEST_MODE) return "You're testing with your own connected accounts. Visitors will need to connect their own.";
 						var remaining = Math.max(total - count, 0);
-						if (remaining === 0) return 'All ' + total + ' ' + accountsLabel(total) + ' connected · ready to chat';
+						if (remaining === 0) {
+							return TEST_MODE
+								? "You're testing with your own connected accounts. Visitors will need to connect their own."
+								: 'All ' + total + ' ' + accountsLabel(total) + ' connected · ready to chat';
+						}
 						if (hasFailed()) return 'Connection failed · try again';
 						if (count === 0) return total + ' ' + accountsLabel(total) + ' needed to start this chat';
 						return remaining + ' more ' + accountsLabel(remaining) + ' needed to start this chat';
@@ -295,7 +292,7 @@
 						frame.contentWindow.postMessage(
 							{
 								type: 'n8n-chat:credential-status',
-								ready: TEST_MODE || total <= count,
+								ready: total <= count,
 								missingCount: Math.max(total - count, 0),
 								testMode: TEST_MODE,
 							},
@@ -309,7 +306,7 @@
 						if (barTextEl) barTextEl.textContent = barText(count);
 						if (barLabelEl) barLabelEl.textContent = count >= total ? 'Manage' : 'Connect';
 						if (barEl) {
-							if (TEST_MODE || count >= total) barEl.classList.add('all-connected');
+							if (count >= total) barEl.classList.add('all-connected');
 							else barEl.classList.remove('all-connected');
 						}
 						notifyFrame();
@@ -337,9 +334,9 @@
 						if (img.complete && img.naturalWidth === 0) fallBackToLetterTile(img);
 					});
 
-					function clearError(id) {
-						delete failed[id];
-						document.querySelectorAll('.cred-row[data-cred-id="' + id + '"] .cred-sub').forEach(function (sub) {
+					function clearError(key) {
+						delete failed[key];
+						document.querySelectorAll('.cred-row[data-row-key="' + key + '"] .cred-sub').forEach(function (sub) {
 							sub.classList.remove('error');
 						});
 					}
@@ -348,11 +345,11 @@
 						'<button type="button" class="btn-connected"><span class="dot"></span> Connected <span class="caret">&#9662;</span></button>' +
 						'<div class="cred-menu"><button type="button" class="btn-disconnect">Disconnect</button></div>';
 
-					function markConnected(id) {
-						if (!id || connected[id]) return;
-						connected[id] = true;
-						clearError(id);
-						document.querySelectorAll('.cred-row[data-cred-id="' + id + '"]').forEach(function (row) {
+					function markConnected(key) {
+						if (!key || connected[key]) return;
+						connected[key] = true;
+						clearError(key);
+						document.querySelectorAll('.cred-row[data-row-key="' + key + '"]').forEach(function (row) {
 							row.setAttribute('data-connected', 'true');
 							var sub = row.querySelector('.cred-sub');
 							if (sub) sub.textContent = VISITOR_EMAIL ? 'Connected as ' + VISITOR_EMAIL : 'Connected';
@@ -379,11 +376,11 @@
 						refresh();
 					}
 
-					function markDisconnected(id) {
-						if (!id) return;
-						delete connected[id];
-						clearError(id);
-						document.querySelectorAll('.cred-row[data-cred-id="' + id + '"]').forEach(function (row) {
+					function markDisconnected(key) {
+						if (!key) return;
+						delete connected[key];
+						clearError(key);
+						document.querySelectorAll('.cred-row[data-row-key="' + key + '"]').forEach(function (row) {
 							row.removeAttribute('data-connected');
 							var sub = row.querySelector('.cred-sub');
 							if (sub) sub.textContent = row.getAttribute('data-not-connected-text') || 'Not connected';
@@ -404,10 +401,10 @@
 
 					// A visible error, never a silent revert to "Connect": the row and the bar
 					// both say plainly that the last attempt didn't work.
-					function markFailed(id) {
-						if (!id || connected[id]) return;
-						failed[id] = true;
-						document.querySelectorAll('.cred-row[data-cred-id="' + id + '"] .cred-sub').forEach(function (sub) {
+					function markFailed(key) {
+						if (!key || connected[key]) return;
+						failed[key] = true;
+						document.querySelectorAll('.cred-row[data-row-key="' + key + '"] .cred-sub').forEach(function (sub) {
 							sub.textContent = 'Connection failed · try again';
 							sub.classList.add('error');
 						});
@@ -425,15 +422,15 @@
 					}
 					function onSuccessSignal() {
 						if (!pendingId || pendingSettled) return;
-						var id = pendingId;
+						var key = pendingId;
 						settlePending();
-						markConnected(id);
+						markConnected(key);
 					}
 					function onErrorSignal() {
 						if (!pendingId || pendingSettled) return;
-						var id = pendingId;
+						var key = pendingId;
 						settlePending();
-						markFailed(id);
+						markFailed(key);
 					}
 
 					// The popup can close without either broadcast firing - the visitor closes
@@ -477,13 +474,13 @@
 						return 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',menubar=no,toolbar=no';
 					}
 
-					function openConnect(id, url) {
+					function openConnect(key, url) {
 						// Both links are built server-side from the instance base URL, so this is
 						// belt and braces - but nothing else stands between a data attribute and
 						// window.open.
 						if (!url || !/^https?:\/\//i.test(url)) return;
-						pendingId = id;
-						clearError(id);
+						pendingId = key;
+						clearError(key);
 						refresh();
 						watchPopup(window.open(url, 'n8n-credential-connect', popupFeatures()));
 					}
@@ -498,26 +495,26 @@
 						return {};
 					}
 
-					function disconnectById(id) {
-						var row = document.querySelector('.cred-row[data-cred-id="' + id + '"]');
+					function disconnectById(key) {
+						var row = document.querySelector('.cred-row[data-row-key="' + key + '"]');
 						var revokeUrl = row ? row.getAttribute('data-revoke-url') : null;
-						if (!id || !revokeUrl) return;
+						if (!key || !revokeUrl) return;
 						fetch(revokeUrl + '&authSource=cookie', {
 							method: 'DELETE',
 							credentials: 'include',
 							headers: authHeaders(),
 						})
-							.then(function (r) { if (r.ok) markDisconnected(id); })
+							.then(function (r) { if (r.ok) markDisconnected(key); })
 							.catch(function () {});
 					}
 
 					// Reconnect after a disconnect: mint a fresh authorize link and send the
 					// popup there. The popup opens synchronously so it isn't a pop-under.
-					function reconnect(id, mintUrl) {
-						if (!id || !mintUrl) return;
+					function reconnect(key, mintUrl) {
+						if (!key || !mintUrl) return;
 						var popup = window.open('', 'n8n-credential-connect', popupFeatures());
-						pendingId = id;
-						clearError(id);
+						pendingId = key;
+						clearError(key);
 						refresh();
 						watchPopup(popup);
 						fetch(mintUrl + '&authSource=cookie', {
@@ -544,10 +541,10 @@
 						var connectBtn = e.target.closest('.connect');
 						if (connectBtn) {
 							var row = connectBtn.closest('.cred-row');
-							var id = row ? row.getAttribute('data-cred-id') : null;
+							var key = row ? row.getAttribute('data-row-key') : null;
 							var mintUrl = connectBtn.getAttribute('data-authorize-url');
-							if (mintUrl) reconnect(id, mintUrl);
-							else openConnect(id, connectBtn.getAttribute('data-url'));
+							if (mintUrl) reconnect(key, mintUrl);
+							else openConnect(key, connectBtn.getAttribute('data-url'));
 							return;
 						}
 						var menuBtn = e.target.closest('.btn-connected');
@@ -570,7 +567,7 @@
 						if (disconnectBtn) {
 							e.stopPropagation();
 							var disconnectRow = disconnectBtn.closest('.cred-row');
-							if (disconnectRow) disconnectById(disconnectRow.getAttribute('data-cred-id'));
+							if (disconnectRow) disconnectById(disconnectRow.getAttribute('data-row-key'));
 							return;
 						}
 						document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
@@ -596,11 +593,11 @@
 							// fine to repeat: the intent behind the link is read without being
 							// consumed, so it stays valid for a retry within its TTL.
 							var row = onlyRow();
-							var id = row ? row.getAttribute('data-cred-id') : null;
+							var key = row ? row.getAttribute('data-row-key') : null;
 							var btn = row ? row.querySelector('.connect') : null;
 							var url = btn ? btn.getAttribute('data-url') : null;
-							if (id && !connected[id] && url) {
-								openConnect(id, url);
+							if (key && !connected[key] && url) {
+								openConnect(key, url);
 								return;
 							}
 							// Everything else, including a fully connected single account, lands
