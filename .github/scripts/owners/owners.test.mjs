@@ -19,7 +19,7 @@ import {
 
 /** @param {Partial<import('./owners.mjs').OwnersEntry>} entry */
 function entry(entry) {
-	return { teams: [], required: false, line: 1, pattern: '*', ...entry };
+	return { team: '@n8n-io/some-team', required: false, line: 1, pattern: '*', ...entry };
 }
 
 describe('parseOwnersContent', () => {
@@ -33,9 +33,9 @@ describe('parseOwnersContent', () => {
 		].join('\n');
 
 		assert.deepEqual(parseOwnersContent(content), [
-			{ pattern: '*', teams: ['@n8n-io/catalysts'], required: false, line: 3 },
-			{ pattern: 'packages/cli/', teams: ['@n8n-io/cli-team'], required: false, line: 4 },
-			{ pattern: 'packages/foo/bar.ts', teams: ['@n8n-io/some-team'], required: false, line: 5 },
+			{ pattern: '*', team: '@n8n-io/catalysts', required: false, line: 3 },
+			{ pattern: 'packages/cli/', team: '@n8n-io/cli-team', required: false, line: 4 },
+			{ pattern: 'packages/foo/bar.ts', team: '@n8n-io/some-team', required: false, line: 5 },
 		]);
 	});
 
@@ -43,21 +43,21 @@ describe('parseOwnersContent', () => {
 		const entries = parseOwnersContent('pkg/  @n8n-io/keepers required');
 
 		assert.deepEqual(entries, [
-			{ pattern: 'pkg/', teams: ['@n8n-io/keepers'], required: true, line: 1 },
+			{ pattern: 'pkg/', team: '@n8n-io/keepers', required: true, line: 1 },
 		]);
 	});
 
-	it('parses multiple teams on one line', () => {
-		const entries = parseOwnersContent('pkg/  @n8n-io/keepers @n8n-io/others required');
-
-		assert.deepEqual(entries[0].teams, ['@n8n-io/keepers', '@n8n-io/others']);
-		assert.equal(entries[0].required, true);
+	it('throws on a second team', () => {
+		assert.throws(
+			() => parseOwnersContent('pkg/  @n8n-io/keepers @n8n-io/others'),
+			/OWNERS line 1: only one team per pattern is supported/,
+		);
 	});
 
 	it('ignores inline comments', () => {
 		const entries = parseOwnersContent('pkg/  @n8n-io/keepers # the why');
 
-		assert.deepEqual(entries[0].teams, ['@n8n-io/keepers']);
+		assert.equal(entries[0].team, '@n8n-io/keepers');
 	});
 
 	it('throws on an unknown token with the line number', () => {
@@ -89,11 +89,11 @@ describe('parseOwnersFile', () => {
 
 		assert.ok(entries.length > 0, 'OWNERS file should not be empty');
 		assert.ok(
-			entries.every((e) => e.teams.length > 0 && e.pattern),
-			'every parsed entry should have both teams and a pattern',
+			entries.every((e) => e.team && e.pattern),
+			'every parsed entry should have both a team and a pattern',
 		);
 		assert.ok(
-			entries.every((e) => e.teams.every((team) => team.startsWith('@n8n-io/'))),
+			entries.every((e) => e.team.startsWith('@n8n-io/')),
 			'every parsed team should belong to the @n8n-io org',
 		);
 	});
@@ -142,21 +142,10 @@ describe('validateOwners', () => {
 		assert.match(errors[0], /pattern "pkg" \(line 1\) is a directory; add a trailing "\/"/);
 	});
 
-	it('reports teams that are not sorted alphabetically', () => {
-		const entries = [
-			entry({ pattern: 'pkg/', line: 1, teams: ['@n8n-io/zulu', '@n8n-io/alfa'] }),
-		];
-
-		const errors = validateOwners(entries, kindFromShape);
-
-		assert.equal(errors.length, 1);
-		assert.match(errors[0], /teams of "pkg\/" \(line 1\) must be sorted alphabetically/);
-	});
-
 	it('returns no errors for a valid set of entries', () => {
 		const entries = [
 			entry({ pattern: '*' }),
-			entry({ pattern: 'pkg/', line: 2, teams: ['@n8n-io/alfa', '@n8n-io/zulu'] }),
+			entry({ pattern: 'pkg/', line: 2 }),
 			entry({ pattern: 'pkg/a.ts', line: 3 }),
 		];
 
@@ -178,8 +167,8 @@ describe('teamHandleToSlug', () => {
 describe('findOwningEntry', () => {
 	it('returns the last matching entry', () => {
 		const entries = [
-			entry({ pattern: '*', teams: ['@n8n-io/catalysts'] }),
-			entry({ pattern: 'pkg/', teams: ['@n8n-io/keepers'] }),
+			entry({ pattern: '*', team: '@n8n-io/catalysts' }),
+			entry({ pattern: 'pkg/', team: '@n8n-io/keepers' }),
 		];
 
 		assert.equal(findOwningEntry('pkg/a.ts', entries), entries[1]);
@@ -194,7 +183,7 @@ describe('findOwningEntry', () => {
 describe('assignOwnership', () => {
 	it('assigns every file to the catch-all team when only `*` is defined', () => {
 		const files = new Set(['a.ts', 'packages/cli/src/index.ts', 'docs/readme.md']);
-		const owners = [entry({ pattern: '*', teams: ['@n8n-io/catalysts'] })];
+		const owners = [entry({ pattern: '*', team: '@n8n-io/catalysts' })];
 
 		const result = assignOwnership(files, owners);
 
@@ -212,8 +201,8 @@ describe('assignOwnership', () => {
 			'packages/cli/src/lib/foo.ts',
 		]);
 		const owners = [
-			entry({ pattern: '*', teams: ['@n8n-io/catalysts'] }),
-			entry({ pattern: 'packages/cli/', teams: ['@n8n-io/cli-team'] }),
+			entry({ pattern: '*', team: '@n8n-io/catalysts' }),
+			entry({ pattern: 'packages/cli/', team: '@n8n-io/cli-team' }),
 		];
 
 		const result = assignOwnership(files, owners);
@@ -230,7 +219,7 @@ describe('assignOwnership', () => {
 			'packages/cli/src/deep/nested/file.ts',
 			'packages/cli/package.json',
 		]);
-		const owners = [entry({ pattern: 'packages/cli/', teams: ['@n8n-io/cli-team'] })];
+		const owners = [entry({ pattern: 'packages/cli/', team: '@n8n-io/cli-team' })];
 
 		const result = assignOwnership(files, owners);
 
@@ -248,7 +237,7 @@ describe('assignOwnership', () => {
 		const owners = [
 			entry({
 				pattern: 'packages/cli/src/controllers/ai.controller.ts',
-				teams: ['@n8n-io/ai-team'],
+				team: '@n8n-io/ai-team',
 			}),
 		];
 
@@ -261,19 +250,9 @@ describe('assignOwnership', () => {
 		assert.equal(result.size, 1);
 	});
 
-	it('assigns a file to every team of the winning entry', () => {
-		const files = new Set(['pkg/a.ts']);
-		const owners = [entry({ pattern: 'pkg/', teams: ['@n8n-io/team-a', '@n8n-io/team-b'] })];
-
-		const result = assignOwnership(files, owners);
-
-		assert.deepEqual(result.get('@n8n-io/team-a'), ['pkg/a.ts']);
-		assert.deepEqual(result.get('@n8n-io/team-b'), ['pkg/a.ts']);
-	});
-
 	it('omits files that match no rule (no catch-all present)', () => {
 		const files = new Set(['unowned/file.ts', 'packages/cli/src/x.ts']);
-		const owners = [entry({ pattern: 'packages/cli/', teams: ['@n8n-io/cli-team'] })];
+		const owners = [entry({ pattern: 'packages/cli/', team: '@n8n-io/cli-team' })];
 
 		const result = assignOwnership(files, owners);
 
@@ -282,7 +261,7 @@ describe('assignOwnership', () => {
 	});
 
 	it('returns an empty Map when there are no changed files', () => {
-		const owners = [entry({ pattern: '*', teams: ['@n8n-io/catalysts'] })];
+		const owners = [entry({ pattern: '*', team: '@n8n-io/catalysts' })];
 		const result = assignOwnership(new Set(), owners);
 
 		assert.equal(result.size, 0);
@@ -291,10 +270,10 @@ describe('assignOwnership', () => {
 
 describe('resolveRequiredTeams', () => {
 	const owners = [
-		entry({ pattern: '*', teams: ['@n8n-io/catalysts'] }),
-		entry({ pattern: '.github/', teams: ['@n8n-io/qa-dx'] }),
-		entry({ pattern: '.github/workflows/', teams: ['@n8n-io/qa-dx'], required: true }),
-		entry({ pattern: 'db/migrations/', teams: ['@n8n-io/migrations-review'], required: true }),
+		entry({ pattern: '*', team: '@n8n-io/catalysts' }),
+		entry({ pattern: '.github/', team: '@n8n-io/qa-dx' }),
+		entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true }),
+		entry({ pattern: 'db/migrations/', team: '@n8n-io/migrations-review', required: true }),
 	];
 
 	it('collects the teams of `required` entries that win for a changed file', () => {
@@ -316,19 +295,11 @@ describe('resolveRequiredTeams', () => {
 
 	it('a later non-required entry overrides an earlier required one', () => {
 		const result = resolveRequiredTeams(new Set(['db/migrations/1-init.ts']), [
-			entry({ pattern: 'db/', teams: ['@n8n-io/migrations-review'], required: true }),
-			entry({ pattern: 'db/migrations/', teams: ['@n8n-io/catalysts'] }),
+			entry({ pattern: 'db/', team: '@n8n-io/migrations-review', required: true }),
+			entry({ pattern: 'db/migrations/', team: '@n8n-io/catalysts' }),
 		]);
 
 		assert.equal(result.size, 0);
-	});
-
-	it('requires every team of a required entry', () => {
-		const result = resolveRequiredTeams(new Set(['pkg/a.ts']), [
-			entry({ pattern: 'pkg/', teams: ['@n8n-io/team-a', '@n8n-io/team-b'], required: true }),
-		]);
-
-		assert.deepEqual([...result.keys()].sort(), ['@n8n-io/team-a', '@n8n-io/team-b']);
 	});
 
 	it('lists files deterministically (sorted) per team', () => {

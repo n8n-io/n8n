@@ -1,11 +1,10 @@
 # n8n OWNERS
 #
-# Format: <pattern> <@org/team>... [required]
+# Format: <pattern> <@org/team> [required]
 #
 # Examples:
-#   packages/foo/        @n8n-io/team-a                  one owning team, advisory
-#   packages/foo/bar.ts  @n8n-io/team-a @n8n-io/team-b   several owning teams (sorted)
-#   packages/baz/        @n8n-io/team-a required         team approval blocks merge
+#   packages/foo/        @n8n-io/team-a            advisory reviewer recommendation
+#   packages/foo/bar.ts  @n8n-io/team-b required   team approval blocks merge
 #
 # Last-match-wins: specific rules MUST come AFTER general rules.
 #

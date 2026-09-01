@@ -4,8 +4,8 @@ import { join } from "node:path";
 /**
  * @typedef OwnersEntry
  * @property { string } pattern
- * @property { string[] } teams
- * @property { boolean } required A member of each team must approve before merge.
+ * @property { string } team
+ * @property { boolean } required A member of the team must approve before merge.
  * @property { number } line 1-based line number in the OWNERS file.
  * */
 
@@ -29,8 +29,8 @@ export const OWNERS_FILE = join(REPO_ROOT, "OWNERS");
 const TEAM_TOKEN = /^@[\w.-]+\/[\w.-]+$/;
 
 /**
- * Line grammar: `<pattern> <@org/team>... [required]`
- * New option keywords (e.g. and/or team combinators) go here.
+ * Line grammar: `<pattern> <@org/team> [required]`
+ * New option keywords go here.
  */
 const OPTION_TOKENS = new Set(["required"]);
 
@@ -62,8 +62,8 @@ export function parseOwnersContent(content) {
 		if (!line) return;
 
 		const [pattern, ...tokens] = line.split(/\s+/);
-		/** @type { string[] } */
-		const teams = [];
+		/** @type { string | null } */
+		let team = null;
 		let required = false;
 		let sawOption = false;
 
@@ -72,7 +72,10 @@ export function parseOwnersContent(content) {
 				if (sawOption) {
 					throw new Error(`OWNERS line ${lineNumber}: team "${token}" must come before options`);
 				}
-				teams.push(token);
+				if (team) {
+					throw new Error(`OWNERS line ${lineNumber}: only one team per pattern is supported`);
+				}
+				team = token;
 			} else if (token === "required") {
 				required = true;
 				sawOption = true;
@@ -83,11 +86,11 @@ export function parseOwnersContent(content) {
 			}
 		}
 
-		if (teams.length === 0) {
+		if (!team) {
 			throw new Error(`OWNERS line ${lineNumber}: no team for pattern "${pattern}"`);
 		}
 
-		entries.push({ pattern, teams, required, line: lineNumber });
+		entries.push({ pattern, team, required, line: lineNumber });
 	});
 
 	return entries;
@@ -119,7 +122,6 @@ function getPathKind(pattern) {
  *   - no duplicate patterns
  *   - directory patterns (trailing `/`) point at existing directories,
  *     all other patterns (except `*`) at existing files
- *   - teams on a line sorted alphabetically
  *
  * @param { OwnersEntry[] } entries
  * @param { (pattern: string) => 'file' | 'directory' | null } [pathKind]
@@ -151,11 +153,6 @@ export function validateOwners(entries, pathKind = getPathKind) {
 						: `pattern "${entry.pattern}" (line ${entry.line}) is a file; remove the trailing "/"`,
 				);
 			}
-		}
-
-		const sortedTeams = entry.teams.toSorted();
-		if (entry.teams.some((team, index) => team !== sortedTeams[index])) {
-			errors.push(`teams of "${entry.pattern}" (line ${entry.line}) must be sorted alphabetically`);
 		}
 	}
 
@@ -210,7 +207,7 @@ export function findOwningEntry(file, entries) {
 }
 
 /**
- * Map each changed file to the team(s) that own it, applying CODEOWNERS
+ * Map each changed file to the team that owns it, applying CODEOWNERS
  * last-match-wins semantics. Files that match no rule are omitted.
  *
  * @param { Set<string> } files
@@ -225,14 +222,12 @@ export function assignOwnership(files, entries) {
 		const entry = findOwningEntry(file, entries);
 		if (!entry) continue;
 
-		for (const team of entry.teams) {
-			const bucket = teamToFiles.get(team);
+		const bucket = teamToFiles.get(entry.team);
 
-			if (bucket) {
-				bucket.push(file);
-			} else {
-				teamToFiles.set(team, [file]);
-			}
+		if (bucket) {
+			bucket.push(file);
+		} else {
+			teamToFiles.set(entry.team, [file]);
 		}
 	}
 
@@ -241,7 +236,7 @@ export function assignOwnership(files, entries) {
 
 /**
  * Determine which teams must approve the changeset: a team is required when
- * it appears on a `required` entry that wins (last-match) for a changed file.
+ * its `required` entry wins (last-match) for a changed file.
  *
  * @param { Set<string> } files
  * @param { OwnersEntry[] } entries
@@ -255,14 +250,12 @@ export function resolveRequiredTeams(files, entries) {
 		const entry = findOwningEntry(file, entries);
 		if (!entry?.required) continue;
 
-		for (const team of entry.teams) {
-			const bucket = teamToFiles.get(team);
+		const bucket = teamToFiles.get(entry.team);
 
-			if (bucket) {
-				bucket.push(file);
-			} else {
-				teamToFiles.set(team, [file]);
-			}
+		if (bucket) {
+			bucket.push(file);
+		} else {
+			teamToFiles.set(entry.team, [file]);
 		}
 	}
 

@@ -2,7 +2,7 @@ name: 'CI: Owners Required Reviews'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Required Reviews (PR #{0})', inputs.pr_number) || '' }}"
 
 # Enforces the `required` entries in OWNERS: when a PR changes a file
-# whose winning OWNERS entry carries `required`, a member of each listed team
+# whose winning OWNERS entry carries `required`, a member of the owning team
 # must approve the PR before merge.
 #
 # Replaces the GitHub-native CODEOWNERS enforcement, which could not express

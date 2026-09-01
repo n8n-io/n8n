@@ -611,7 +611,7 @@ GitHub-native `CODEOWNERS` file; see the transition note below). The scripts
 that consume it live in `.github/scripts/owners/`. Line format:
 
 ```
-<pattern> <@org/team>... [required]
+<pattern> <@org/team> [required]
 ```
 
 Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
@@ -620,8 +620,8 @@ after general rules.
 
 The format is strict, enforced by `node .github/scripts/owners/owners.mjs --check`:
 
-- Tokens on a line come in a fixed order: pattern, team(s), then options such
-  as `required`. Multiple teams are sorted alphabetically.
+- Tokens on a line come in a fixed order: pattern, one team, then options
+  such as `required`.
 - Directory patterns end with `/` and must be existing directories; all other
   patterns must be existing files. Duplicate patterns are rejected.
 

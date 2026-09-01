@@ -1,6 +1,6 @@
 name: 'CI: Validate OWNERS'
 
-# Validates OWNERS strictly: line syntax (pattern, team(s),
+# Validates OWNERS strictly: line syntax (pattern, one team,
 # then options), duplicate patterns, and patterns that no longer point at an
 # existing file or directory. Runs on OWNERS changes and on changes to the
 # owned paths, so a move or delete that orphans an OWNERS entry fails here.

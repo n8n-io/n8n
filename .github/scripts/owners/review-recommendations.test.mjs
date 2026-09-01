@@ -439,7 +439,7 @@ describe('run', () => {
 	it('includes the required reviews section with the team review prompt', async () => {
 		getPrFilesImpl = async () => [{ filename: '.github/workflows/ci.yml', additions: 1, deletions: 0 }];
 		parseOwnersFileImpl = () => [
-			{ pattern: '.github/workflows/', teams: ['@n8n-io/qa-dx'], required: true, line: 1 },
+			{ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true, line: 1 },
 		];
 		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['.github/workflows/ci.yml']]]);
 
