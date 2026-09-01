@@ -1,82 +1,15 @@
 {
     "type": "object",
     "properties": {
-        "agenda": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "activityName": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "fields": {
-                        "type": "string"
-                    },
-                    "order": {
-                        "type": "integer"
-                    },
-                    "parallelWith": {
-                        "type": "string"
-                    },
-                    "people": {
-                        "type": "string"
-                    },
-                    "practicalNotes": {
-                        "type": "string"
-                    },
-                    "time": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "createdAt": {
-            "type": "string"
-        },
-        "environment": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
-        "pax": {
-            "type": "integer"
-        },
-        "programmeName": {
-            "type": "string"
-        },
-        "selectedActivities": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "duration": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "reasonChosen": {
-                        "type": "string"
-                    },
-                    "teamSize": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "threadId": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "whyThisProgramme": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 2
 }
