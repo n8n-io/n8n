@@ -160,8 +160,8 @@ describe('countFilteredAdditions', () => {
 
 	it('excludes test and misc files inside dot-directories', () => {
 		const files = [
-			{ filename: '.github/owners/owners.mjs', additions: 50 },
-			{ filename: '.github/owners/owners.test.mjs', additions: 100 },
+			{ filename: '.github/scripts/owners/owners.mjs', additions: 50 },
+			{ filename: '.github/scripts/owners/owners.test.mjs', additions: 100 },
 			{ filename: '.github/WORKFLOWS.md', additions: 100 },
 		];
 		assert.equal(countFilteredAdditions(files, EXCLUDE_PATTERNS), 50);

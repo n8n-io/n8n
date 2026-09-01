@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/owners/assign-reviewers.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/scripts/owners/assign-reviewers.test.mjs
  * */
 
 /** @type {() => string[]} */
@@ -18,7 +18,7 @@ let addLabelImpl = async () => {};
 /** @type {(pullRequestNumber: number, label: string) => Promise<void>} */
 let removeLabelImpl = async () => {};
 
-mock.module('../scripts/github-helpers.mjs', {
+mock.module('../github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op in tests
 		readPrLabels: () => readPrLabelsImpl(),

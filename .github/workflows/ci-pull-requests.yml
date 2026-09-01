@@ -115,7 +115,7 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
-              .github/owners/**
+              OWNERS
               scripts/licenses/**
               scripts/mutation-health/**
             performance:

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/owners/review-recommendations.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/scripts/owners/review-recommendations.test.mjs
  * */
 
 /** @type {(pullRequestNumber: number) => Promise<Array<{ filename: string, additions: number, deletions: number, previous_filename?: string }>>} */
@@ -12,7 +12,7 @@ let getPrFilesImpl = async () => [];
 /** @type {(pullRequestNumber: number, body: string, botMarker: string) => Promise<void>} */
 let postOrUpdateCommentImpl = async () => {};
 
-mock.module('../scripts/github-helpers.mjs', {
+mock.module('../github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op in tests
 		initGithub: () => {}, // no-op in tests
@@ -218,7 +218,7 @@ describe('computeLineStats', () => {
 			['fixtures/ directory', 'src/fixtures/data.json'],
 			['__mocks__/ directory', 'src/__mocks__/axios.ts'],
 			['packages/testing/**', 'packages/testing/playwright/spec.ts'],
-			['dot-directory *.test.mjs', '.github/owners/owners.test.mjs'],
+			['dot-directory *.test.mjs', '.github/scripts/owners/owners.test.mjs'],
 		]) {
 			it(`classifies ${label} as testFiles`, () => {
 				const stats = computeLineStats([{ filename, additions: 7, deletions: 2 }]);

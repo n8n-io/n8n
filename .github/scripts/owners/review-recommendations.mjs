@@ -11,8 +11,8 @@
  * lives in required-reviews.mjs.
  */
 
-import { ensureEnvVar, getPrFiles, postOrUpdateComment } from '../scripts/github-helpers.mjs';
-import { categorizeFile, SIZE_LIMIT } from '../scripts/quality/check-pr-size.mjs';
+import { ensureEnvVar, getPrFiles, postOrUpdateComment } from '../github-helpers.mjs';
+import { categorizeFile, SIZE_LIMIT } from '../quality/check-pr-size.mjs';
 import {
 	assignOwnership,
 	ownershipsToAllocations,
@@ -208,7 +208,7 @@ export function buildRequiredReviewsSection(requiredTeamFiles) {
 	return [
 		'### Required reviews',
 		'',
-		'Some changed files have a `required` owner in `.github/owners/OWNERS`. A member of each of these teams must approve this PR before it can merge:',
+		'Some changed files have a `required` owner in `OWNERS`. A member of each of these teams must approve this PR before it can merge:',
 		'',
 		'| Team | Files |',
 		'| --- | ---: |',

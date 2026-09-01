@@ -10,7 +10,6 @@ Complete reference for n8n's `.github/` folder.
 .github/
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
-├── owners/                               # Team ownership (OWNERS file + owners scripts)
 ├── CODEOWNERS                            # Temporary, side by side with OWNERS during the trial
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
@@ -22,6 +21,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── config.yml                        # Routes to community/security
 │   └── 01-bug.yml                        # Structured bug report form
 ├── scripts/                              # Automation scripts
+│   ├── owners/                           # Owners scripts (the OWNERS file lives at the repo root)
 │   ├── bump-versions.mjs                 # Calculate next version
 │   ├── update-changelog.mjs              # Generate CHANGELOG
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
@@ -560,9 +560,9 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ## OWNERS
 
-Team ownership lives in `.github/owners/OWNERS` (this replaces the
-GitHub-native `CODEOWNERS` file; see the transition note below), next to the
-scripts that consume it. Line format:
+Team ownership lives in the top-level `OWNERS` file (this replaces the
+GitHub-native `CODEOWNERS` file; see the transition note below). The scripts
+that consume it live in `.github/scripts/owners/`. Line format:
 
 ```
 <pattern> <@org/team>... [required]
@@ -572,7 +572,7 @@ Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
 exact file path. Matching is last-match-wins, so specific rules must come
 after general rules.
 
-The format is strict, enforced by `node .github/owners/owners.mjs --check`:
+The format is strict, enforced by `node .github/scripts/owners/owners.mjs --check`:
 
 - Tokens on a line come in a fixed order: pattern, team(s), then options such
   as `required`. Multiple teams are sorted alphabetically.
@@ -611,7 +611,7 @@ cannot lift its own review requirement.
 During a trial period, `.github/CODEOWNERS` stays in place next to OWNERS:
 GitHub's native code-owner enforcement keeps gating merges while the
 "Required Reviews" status runs side by side. The two must agree — CODEOWNERS
-holds exactly the `required` entries of OWNERS (plus `.github/owners` itself)
+holds exactly the `required` entries of OWNERS (plus the OWNERS file itself)
 and must not gain new entries; new ownership goes into OWNERS. After the
 trial, delete `.github/CODEOWNERS`, remove "Require review from Code Owners"
 from the master ruleset, and delete this section (tracked in DEVP-887).

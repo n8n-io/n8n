@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/owners/required-reviews.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/scripts/owners/required-reviews.test.mjs
  * */
 
 /** @type {() => any} */
@@ -20,7 +20,7 @@ let isTeamMemberImpl = async () => false;
 /** @type {(sha: string, status: any) => Promise<void>} */
 let setCommitStatusImpl = async () => {};
 
-mock.module('../scripts/github-helpers.mjs', {
+mock.module('../github-helpers.mjs', {
 	namedExports: {
 		getEventFromGithubEventPath: () => eventImpl(),
 		getPullRequestById: (n) => getPullRequestByIdImpl(n),

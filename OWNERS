@@ -15,7 +15,7 @@
 # All other entries are advisory (reviewer recommendations and opt-in
 # reviewer auto-assignment).
 #
-# Validated by ci-owners-validation.yml (`node .github/owners/owners.mjs --check`).
+# Validated by ci-owners-validation.yml (`node .github/scripts/owners/owners.mjs --check`).
 
 # Default catch-all (ensures every file gets at least one reviewer)
 *                                                       @n8n-io/catalysts
@@ -53,6 +53,7 @@ patches/                                                @n8n-io/qa-dx
 assets/                                                 @n8n-io/adore
 security/                                               @n8n-io/qa-dx
 .code-health-baseline.json                              @n8n-io/qa-dx required
+OWNERS                                                  @n8n-io/qa-dx required
 
 # @n8n/cli
 packages/@n8n/cli/                                      @n8n-io/adore
@@ -237,7 +238,6 @@ packages/extensions/insights/                           @n8n-io/ligo
 # CI/CD
 
 .github/                                       					@n8n-io/qa-dx
-.github/owners/                                         @n8n-io/qa-dx required
 .github/workflows/                                      @n8n-io/qa-dx required
 .github/scripts/                                        @n8n-io/qa-dx required
 .github/actions/                                        @n8n-io/qa-dx required

@@ -1,7 +1,7 @@
 name: 'CI: Owners Required Reviews'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Required Reviews (PR #{0})', inputs.pr_number) || '' }}"
 
-# Enforces the `required` entries in .github/owners/OWNERS: when a PR changes a file
+# Enforces the `required` entries in OWNERS: when a PR changes a file
 # whose winning OWNERS entry carries `required`, a member of each listed team
 # must approve the PR before merge.
 #
@@ -152,7 +152,7 @@ jobs:
         run: |
           # Bootstrap: the checkout is the trusted base branch. Until the
           # enforcement script exists there, there is no policy to enforce.
-          if [ ! -f .github/owners/required-reviews.mjs ]; then
+          if [ ! -f .github/scripts/owners/required-reviews.mjs ]; then
             echo "No enforcement script on the base branch; nothing to enforce."
             if [ -n "$STATUS_SHA" ]; then
               gh api "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}" \
@@ -162,4 +162,4 @@ jobs:
             fi
             exit 0
           fi
-          node .github/owners/required-reviews.mjs
+          node .github/scripts/owners/required-reviews.mjs

@@ -2,7 +2,7 @@
  * Opt-in reviewer auto-assignment.
  *
  * When a PR carries the `Auto-assign reviewers` label, request review from
- * every team that owns a changed file (per .github/owners/OWNERS). This is strictly
+ * every team that owns a changed file (per OWNERS). This is strictly
  * opt-in: without the label the script is a no-op, so it never adds friction
  * to PRs that don't want it.
  *
@@ -22,7 +22,7 @@ import {
 	readPrLabels,
 	removeLabel,
 	requestTeamReviewers,
-} from '../scripts/github-helpers.mjs';
+} from '../github-helpers.mjs';
 import {
 	assignOwnership,
 	ownershipsToAllocations,

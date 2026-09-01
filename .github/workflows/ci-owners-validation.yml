@@ -1,6 +1,6 @@
 name: 'CI: Validate OWNERS'
 
-# Validates .github/owners/OWNERS strictly: line syntax (pattern, team(s),
+# Validates OWNERS strictly: line syntax (pattern, team(s),
 # then options), duplicate patterns, and patterns that no longer point at an
 # existing file or directory. Runs on OWNERS changes and on changes to the
 # owned paths, so a move or delete that orphans an OWNERS entry fails here.
@@ -21,6 +21,7 @@ on:
       - 'scripts/**'
       - 'security/**'
       - '.code-health-baseline.json'
+      - 'OWNERS'
 
 permissions:
   contents: read
@@ -35,4 +36,4 @@ jobs:
           persist-credentials: false
 
       # owners.mjs only uses node built-ins, so no dependency install is needed.
-      - run: node .github/owners/owners.mjs --check
+      - run: node .github/scripts/owners/owners.mjs --check

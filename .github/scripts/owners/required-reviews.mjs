@@ -1,7 +1,7 @@
 /**
  * Required-review enforcement for OWNERS entries marked `required`.
  *
- * Computes the teams whose approval the changeset needs (per .github/owners/OWNERS)
+ * Computes the teams whose approval the changeset needs (per OWNERS)
  * and reports the verdict as a "Required Reviews" commit status on the PR
  * head SHA. A ruleset that lists this status as a required check blocks the
  * merge until a member of each required team has approved the PR. Merge-queue
@@ -21,7 +21,7 @@ import {
 	getPullRequestById,
 	isTeamMember,
 	setCommitStatus,
-} from '../scripts/github-helpers.mjs';
+} from '../github-helpers.mjs';
 import { parseOwnersFile, resolveRequiredTeams, teamHandleToSlug } from './owners.mjs';
 
 export const STATUS_CONTEXT = 'Required Reviews';
