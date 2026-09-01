@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	N8nDialog,
 	N8nIcon,
@@ -10,7 +10,7 @@ import {
 } from '@n8n/design-system';
 import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { useDebounceFn, useResizeObserver } from '@vueuse/core';
+import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
@@ -90,34 +90,12 @@ const activeCategory = ref<ToolCategoryKey>(props.categories[0] ?? 'connected');
 
 const searchInputRef = useTemplateRef('searchInputRef');
 const scrollerRef = useTemplateRef('scrollerRef');
-const listWrapperRef = useTemplateRef<HTMLElement>('listWrapperRef');
-const hasReachedListEnd = ref(false);
 
-function updateListEndState(element?: HTMLElement) {
-	const scrollElement =
-		element ?? listWrapperRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper');
-
-	if (!scrollElement) return;
-	const isAtEnd =
-		scrollElement.scrollHeight - scrollElement.scrollTop <= scrollElement.clientHeight + 1;
-
-	if (isAtEnd === hasReachedListEnd.value) return;
-	hasReachedListEnd.value = isAtEnd;
-	if (!isAtEnd) return;
-
-	// Showing the footer reduces the viewport height, so pin the resized list to its new end.
+function focusSearchInput() {
 	void nextTick(() => {
-		scrollerRef.value?.scrollTo(Number.MAX_SAFE_INTEGER);
+		searchInputRef.value?.focus();
 	});
 }
-
-function handleListScroll(event: Event) {
-	if (event.currentTarget instanceof HTMLElement) {
-		updateListEndState(event.currentTarget);
-	}
-}
-
-useResizeObserver(listWrapperRef, () => updateListEndState());
 
 /**
  * Search text and active tab live as long as this component, which a consumer
@@ -134,13 +112,17 @@ watch(
 			savedScrollTop.value = scrollerRef.value?.scrollTop ?? 0;
 			return;
 		}
+		focusSearchInput();
 		await nextTick();
-		searchInputRef.value?.focus();
 		scrollerRef.value?.scrollTo(savedScrollTop.value);
-		updateListEndState();
 	},
-	{ immediate: true },
 );
+
+onMounted(() => {
+	if (props.open) {
+		focusSearchInput();
+	}
+});
 
 const hasActiveSearch = computed(() => debouncedSearchQuery.value.length > 0);
 
@@ -201,16 +183,15 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-const flattenedRows = computed<FlattenedRow[]>(() =>
+type ListRow = FlattenedRow | { key: 'suggestion' };
+
+const toolRows = computed<FlattenedRow[]>(() =>
 	itemsForCategory(activeCategory.value)
 		.filter(matchesQuery)
 		.map((item) => ({ key: `item:${item.id}`, item })),
 );
 
-watch(flattenedRows, () => {
-	hasReachedListEnd.value = false;
-	void nextTick(updateListEndState);
-});
+const flattenedRows = computed<ListRow[]>(() => [...toolRows.value, { key: 'suggestion' }]);
 
 /** Categories only worth a tab once they hold something. */
 const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
@@ -276,7 +257,7 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
-const isListEmpty = computed(() => flattenedRows.value.length === 0);
+const isListEmpty = computed(() => toolRows.value.length === 0);
 const emptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		return i18n.baseText('tools.connection.empty.noResults', {
@@ -403,20 +384,26 @@ function handleOpenChange(value: boolean) {
 					</span>
 				</button>
 
-				<div v-if="isListEmpty" :class="$style.empty" data-test-id="tools-connection-empty">
-					<N8nText color="text-light">{{ emptyMessage }}</N8nText>
-				</div>
-				<div v-else ref="listWrapperRef" :class="$style.listWrapper">
+				<div :class="$style.listWrapper">
+					<template v-if="isListEmpty">
+						<div :class="$style.empty" data-test-id="tools-connection-empty">
+							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
+						</div>
+						<div :class="$style.suggestionRow">
+							<SuggestToolFooter />
+						</div>
+					</template>
 					<N8nRecycleScroller
+						v-else
 						ref="scrollerRef"
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
 						item-key="key"
 						:class="$style.scroller"
-						@scroll.passive="handleListScroll"
 					>
 						<template #default="{ item: row }">
 							<ToolRow
+								v-if="'item' in row"
 								:item="row.item"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
@@ -428,13 +415,12 @@ function handleOpenChange(value: boolean) {
 								@first-credential-connect="emit('first-credential-connect', $event)"
 								@new-credential-connect="emit('new-credential-connect', $event)"
 							/>
+							<div v-else :class="$style.suggestionRow">
+								<SuggestToolFooter />
+							</div>
 						</template>
 					</N8nRecycleScroller>
 				</div>
-				<SuggestToolFooter
-					v-if="isListEmpty || hasReachedListEnd"
-					:class="$style.suggestionFooter"
-				/>
 			</template>
 		</div>
 	</N8nDialog>
@@ -510,9 +496,12 @@ function handleOpenChange(value: boolean) {
 }
 
 .listWrapper {
+	display: flex;
+	flex-direction: column;
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
+	margin-bottom: calc(-1 * var(--spacing--lg));
 }
 
 .scroller {
@@ -529,7 +518,8 @@ function handleOpenChange(value: boolean) {
 	min-height: 200px;
 }
 
-.suggestionFooter {
-	margin-bottom: calc(-1 * var(--spacing--lg));
+.suggestionRow {
+	width: 100%;
+	padding-top: var(--spacing--sm);
 }
 </style>
