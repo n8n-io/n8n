@@ -6,9 +6,9 @@ import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import {
+	isTerminalExecutionStatus,
 	UnexpectedError,
 	UserError,
-	type ExecutionStatus,
 	type IRun,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
@@ -27,12 +27,6 @@ import {
 
 /** How many times each parent-resume step is attempted before giving up. */
 const MAX_PARENT_RESUME_ATTEMPTS = 3;
-
-/**
- * Parent statuses that mean resuming is no longer useful: the parent already
- * finished (success/error/crashed/canceled) and there is nothing to wake up.
- */
-const TERMINAL_PARENT_STATUSES: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
 
 /**
  * How long `resumeParentExecution` keeps retrying while the parent is still
@@ -236,7 +230,7 @@ export class WaitTracker {
 						{ includeData: false },
 					);
 					// Parent gone or already finished — nothing left to resume.
-					if (!parent || TERMINAL_PARENT_STATUSES.includes(parent.status)) return;
+					if (!parent || isTerminalExecutionStatus(parent.status)) return;
 				} catch (error) {
 					this.logger.debug('Failed to poll parent execution status, retrying', {
 						parentExecutionId: parentExecution.executionId,
