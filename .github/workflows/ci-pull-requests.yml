@@ -149,7 +149,8 @@ jobs:
               packages/@n8n/db/**
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
-              packages/cli/**/__tests__/**
+              packages/cli/src/**/*.integration.test.ts
+              packages/cli/vitest.config.*
               packages/testing/containers/services/postgres.ts
               packages/testing/containers/postgres-versions.json
               packages/testing/containers/test-containers.ts
