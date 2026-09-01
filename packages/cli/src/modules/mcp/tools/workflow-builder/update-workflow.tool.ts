@@ -1473,7 +1473,12 @@ export const createUpdateWorkflowTool = (
 						!isEqual(
 							normalize(existingWorkflow.connections),
 							normalize(expectedWorkflow?.connections),
-						);
+						) ||
+						(expectedWorkflow?.nodeGroups !== undefined &&
+							!isEqual(
+								normalize(existingWorkflow.nodeGroups),
+								normalize(expectedWorkflow.nodeGroups),
+							));
 
 					const existingUpdatedAt = existingWorkflow.updatedAt
 						? new Date(existingWorkflow.updatedAt).getTime()

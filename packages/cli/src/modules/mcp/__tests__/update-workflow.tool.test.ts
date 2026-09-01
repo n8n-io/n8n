@@ -1560,6 +1560,32 @@ describe('update-workflow MCP tool', () => {
 			expect(response.note).toContain('post-save operation failed');
 		});
 
+		test('recovers node-group-only update when updatedAt has the same millisecond timestamp', async () => {
+			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
+
+			const preUpdate = buildExistingWorkflow();
+			preUpdate.updatedAt = sameTimestamp;
+			const recovered = buildExistingWorkflow();
+			recovered.updatedAt = sameTimestamp;
+			recovered.nodeGroups = [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }];
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler(
+				{
+					workflowId: 'wf-1',
+					operations: [{ type: 'addNodeGroup', id: 'g1', name: 'Group', nodeNames: ['A', 'B'] }],
+				},
+				createTool({ canvasGroupsEnabled: true }),
+			);
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+		});
+
 		test('recovers graph update when node parameter undefined is omitted after persistence', async () => {
 			const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
 			updateMock.mockRejectedValue(new Error('workflow.afterUpdate hook failed'));
