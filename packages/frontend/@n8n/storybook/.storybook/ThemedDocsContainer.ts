@@ -5,7 +5,7 @@ import { themes } from 'storybook/theming';
 
 import { applyN8nTheme } from './applyN8nTheme';
 
-export function ThemedDocsContainer(props: ComponentProps<typeof DocsContainer>) {
+export const ThemedDocsContainer = (props: ComponentProps<typeof DocsContainer>) => {
 	const isDark = useDarkMode();
 	applyN8nTheme(isDark);
 
@@ -13,4 +13,4 @@ export function ThemedDocsContainer(props: ComponentProps<typeof DocsContainer>)
 		...props,
 		theme: isDark ? themes.dark : themes.light,
 	});
-}
+};
