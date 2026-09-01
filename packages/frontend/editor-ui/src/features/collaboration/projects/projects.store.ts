@@ -9,7 +9,13 @@ import * as workflowsEEApi from '@/app/api/workflows.ee';
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
 import { getProjectSecretProviderConnectionsByProjectId } from '@n8n/rest-api-client';
-import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
+import type {
+	Project,
+	ProjectExecutionQuota,
+	ProjectExecutionQuotaPeriodUnit,
+	ProjectListItem,
+	ProjectsCount,
+} from './projects.types';
 import { ProjectTypes } from './projects.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -307,6 +313,17 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		);
 	};
 
+	const getExecutionQuota = async (projectId: string): Promise<ProjectExecutionQuota> => {
+		return await projectsApi.getExecutionQuota(rootStore.restApiContext, projectId);
+	};
+
+	const updateExecutionQuota = async (
+		projectId: string,
+		payload: { limit: number; periodUnit: ProjectExecutionQuotaPeriodUnit },
+	): Promise<void> => {
+		await projectsApi.updateExecutionQuota(rootStore.restApiContext, projectId, payload);
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -389,5 +406,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		moveResourceToProject,
 		getResourceCounts,
 		getProjectSecretProviders,
+		getExecutionQuota,
+		updateExecutionQuota,
 	};
 });

@@ -1,6 +1,12 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
-import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
+import type {
+	Project,
+	ProjectExecutionQuota,
+	ProjectExecutionQuotaPeriodUnit,
+	ProjectListItem,
+	ProjectsCount,
+} from './projects.types';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import type { AssignableProjectRole } from '@n8n/permissions';
 
@@ -109,4 +115,19 @@ export const deleteProjectMember = async (
 	userId: string,
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/users/${userId}`);
+};
+
+export const getExecutionQuota = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectExecutionQuota> => {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/execution-quota`);
+};
+
+export const updateExecutionQuota = async (
+	context: IRestApiContext,
+	projectId: string,
+	payload: { limit: number; periodUnit: ProjectExecutionQuotaPeriodUnit },
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/execution-quota`, payload);
 };
