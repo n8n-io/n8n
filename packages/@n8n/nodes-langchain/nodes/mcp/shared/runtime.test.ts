@@ -118,6 +118,22 @@ describe('runtime', () => {
 			);
 		});
 
+		it('passes an oAuth2Api authentication config through to connectMcpClientForCredential', async () => {
+			const connectMcpClientForCredential = vi
+				.spyOn(utils, 'connectMcpClientForCredential')
+				.mockResolvedValue({ ok: true, result: mock<Client>() });
+			vi.spyOn(utils, 'getAllTools').mockResolvedValue([sampleTool] as McpTool[]);
+
+			const ctx = createSupplyDataCtx();
+
+			await buildMcpToolkit(ctx, 0, { ...baseConfig, authentication: 'oAuth2Api' });
+
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ authentication: 'oAuth2Api' }),
+			);
+		});
+
 		it('surfaces a cancelled connection result without listing tools', async () => {
 			const abortError = new Error('aborted');
 			abortError.name = 'AbortError';

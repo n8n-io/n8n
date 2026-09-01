@@ -19,15 +19,11 @@ import {
 	assertCredentialAllowsUrl,
 	assertUrlAllowed,
 	getMcpAuthHeaders,
+	isOAuth2Authentication,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	isMcpOAuth2Authentication,
-	type McpAuthenticationOption,
-	type McpServerTransport,
-	type McpTool,
-} from './types';
+import { type McpAuthenticationOption, type McpServerTransport, type McpTool } from './types';
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
@@ -353,16 +349,17 @@ export async function getAuthHeaders(
 	if (authentication === 'none') return {};
 
 	let credentialType: string;
-	if (isMcpOAuth2Authentication(authentication)) {
+	if (isOAuth2Authentication(authentication)) {
 		credentialType = authentication;
 	} else {
-		const credentialTypes = {
+		const credentialTypes: Partial<Record<McpAuthenticationOption, string>> = {
 			headerAuth: 'httpHeaderAuth',
 			bearerAuth: 'httpBearerAuth',
 			multipleHeadersAuth: 'httpMultipleHeadersAuth',
 		};
-		credentialType = credentialTypes[authentication];
-		if (!credentialType) return {};
+		const mapped = credentialTypes[authentication];
+		if (!mapped) return {};
+		credentialType = mapped;
 	}
 
 	const credentials = await ctx
@@ -370,7 +367,7 @@ export async function getAuthHeaders(
 		.catch(() => null);
 	if (!credentials) return {};
 
-	if (isMcpOAuth2Authentication(authentication) && shouldRefreshOAuth2Token(credentials)) {
+	if (isOAuth2Authentication(authentication) && shouldRefreshOAuth2Token(credentials)) {
 		const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
 		if (refreshedHeaders) return { headers: refreshedHeaders, credentials };
 	}
@@ -384,14 +381,14 @@ export async function getAuthHeaders(
  * @param ctx - The execution context
  * @param authentication - The authentication method
  * @param headers - The headers to refresh
- * @returns The refreshed headers or null if authentication is not an MCP OAuth2 credential type or has failed
+ * @returns The refreshed headers or null if authentication is not an OAuth2 credential type or has failed
  */
 export async function tryRefreshOAuth2Token(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
 	headers?: Record<string, string>,
 ) {
-	if (!isMcpOAuth2Authentication(authentication)) {
+	if (!isOAuth2Authentication(authentication)) {
 		return null;
 	}
 

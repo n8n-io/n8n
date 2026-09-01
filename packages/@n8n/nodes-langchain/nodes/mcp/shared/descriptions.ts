@@ -54,6 +54,16 @@ export const credentials: INodeCredentialDescription[] = [
 		},
 	},
 	{
+		name: 'oAuth2Api',
+		required: true,
+		displayOptions: {
+			show: {
+				authentication: ['oAuth2Api'],
+			},
+		},
+		hint: 'Unlike mcpOAuth2Api, the generic OAuth2 API credential has no RFC 8707 Resource URL field. MCP servers that require a resource parameter must use mcpOAuth2Api instead.',
+	},
+	{
 		name: 'httpMultipleHeadersAuth',
 		required: true,
 		displayOptions: {

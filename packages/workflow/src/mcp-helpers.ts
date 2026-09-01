@@ -50,11 +50,23 @@ export function isMcpOAuth2Authentication(
 	return authentication === 'mcpOAuth2Api' || authentication.endsWith('McpOAuth2Api');
 }
 
+/**
+ * Returns `true` for the generic `oAuth2Api` credential type and every MCP
+ * OAuth2 variant matched by `isMcpOAuth2Authentication`.
+ *
+ * Use this at call sites that mean "this is an OAuth2 bearer flow". Keep
+ * `isMcpOAuth2Authentication` where "an MCP-registry credential variant" is
+ * meant.
+ */
+export function isOAuth2Authentication(credentialType: string): boolean {
+	return credentialType === 'oAuth2Api' || isMcpOAuth2Authentication(credentialType);
+}
+
 export function getMcpAuthHeaders(
 	authentication: string,
 	credentialData: ICredentialDataDecryptedObject,
 ): Record<string, string> {
-	if (isMcpOAuth2Authentication(authentication)) {
+	if (isOAuth2Authentication(authentication)) {
 		const tokenData = credentialData.oauthTokenData;
 		const accessToken = isRecord(tokenData)
 			? (tokenData.access_token ?? tokenData.accessToken)

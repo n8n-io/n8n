@@ -9,6 +9,7 @@ import type {
 	NodeEgressFilter,
 	PrepareMcpRegistryConnectionInput,
 } from 'n8n-workflow';
+import { isMcpOAuth2Authentication, isOAuth2Authentication } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 import { expect } from 'vitest';
@@ -40,36 +41,50 @@ describe('utils', () => {
 		vi.restoreAllMocks();
 	});
 
+	describe('OAuth2 authentication predicates', () => {
+		it('should classify oAuth2Api as OAuth2 but not as an MCP-registry credential variant', () => {
+			expect(isOAuth2Authentication('oAuth2Api')).toBe(true);
+			expect(isMcpOAuth2Authentication('oAuth2Api')).toBe(false);
+		});
+	});
+
 	describe('tryRefreshOAuth2Token', () => {
-		it('should refresh an OAuth2 token without headers', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: 'new-access-token',
-			});
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should refresh an OAuth2 token without headers for %s',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: 'new-access-token',
+				});
 
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
+				const headers = await tryRefreshOAuth2Token(ctx, authentication);
 
-			expect(headers).toEqual({ Authorization: 'Bearer new-access-token' });
-		});
+				expect(headers).toEqual({ Authorization: 'Bearer new-access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith(authentication);
+			},
+		);
 
-		it('should refresh an OAuth2 token with headers', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: 'new-access-token',
-			});
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should refresh an OAuth2 token with headers for %s',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: 'new-access-token',
+				});
 
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api', {
-				Foo: 'bar',
-				authorization: 'Bearer old-access-token',
-			});
+				const headers = await tryRefreshOAuth2Token(ctx, authentication, {
+					Foo: 'bar',
+					authorization: 'Bearer old-access-token',
+				});
 
-			expect(headers).toEqual({
-				Foo: 'bar',
-				Authorization: 'Bearer new-access-token',
-			});
-		});
+				expect(headers).toEqual({
+					Foo: 'bar',
+					Authorization: 'Bearer new-access-token',
+				});
+			},
+		);
 
-		it('should return null if the authentication method is not oAuth2Api', async () => {
+		it('should return null if the authentication method is not an OAuth2 credential type', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
 
 			const headers = await tryRefreshOAuth2Token(ctx, 'headerAuth');
@@ -77,185 +92,217 @@ describe('utils', () => {
 			expect(headers).toBeNull();
 		});
 
-		it('should return null if the refreshOAuth2Token returns no access_token', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: null,
-			});
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should return null for %s if the refreshOAuth2Token returns no access_token',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: null,
+				});
 
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
+				const headers = await tryRefreshOAuth2Token(ctx, authentication);
 
-			expect(headers).toBeNull();
-		});
+				expect(headers).toBeNull();
+			},
+		);
 
-		it('should return null if the refreshOAuth2Token throws an error', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockRejectedValue(new Error('Failed to refresh OAuth2 token'));
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should return null for %s if the refreshOAuth2Token throws an error',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.helpers.refreshOAuth2Token.mockRejectedValue(
+					new Error('Failed to refresh OAuth2 token'),
+				);
 
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
+				const headers = await tryRefreshOAuth2Token(ctx, authentication);
 
-			expect(headers).toBeNull();
-		});
+				expect(headers).toBeNull();
+			},
+		);
 	});
 
 	describe('getAuthHeaders', () => {
-		it('should return the headers and credentials for mcpOAuth2Api', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should return the headers and credentials for %s',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result).toEqual({
-				headers: { Authorization: 'Bearer access-token' },
-				credentials,
-			});
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result).toEqual({
+					headers: { Authorization: 'Bearer access-token' },
+					credentials,
+				});
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
-		it('should not send an undefined bearer token when mcpOAuth2Api token data is empty', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				clientId: 'client-id',
-				clientSecret: 'client-secret',
-				accessTokenUrl: 'https://auth.example.com/token',
-				grantType: 'clientCredentials',
-				authentication: 'header',
-				useDynamicClientRegistration: false,
-				resourceUrl: 'https://mcp.example.com/',
-				oauthTokenData: {},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should not send an undefined bearer token when %s token data is empty',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://auth.example.com/token',
+					grantType: 'clientCredentials',
+					authentication: 'header',
+					useDynamicClientRegistration: false,
+					resourceUrl: 'https://mcp.example.com/',
+					oauthTokenData: {},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-			expect(result).toEqual({ credentials });
-			expect(result.headers?.Authorization).not.toBe('Bearer undefined');
-		});
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+				expect(result).toEqual({ credentials });
+				expect(result.headers?.Authorization).not.toBe('Bearer undefined');
+			},
+		);
 
-		it('should not set headers when mcpOAuth2Api token data is undefined', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				clientId: 'client-id',
-				clientSecret: 'client-secret',
-				accessTokenUrl: 'https://auth.example.com/token',
-				grantType: 'clientCredentials',
-				authentication: 'header',
-				useDynamicClientRegistration: false,
-				resourceUrl: 'https://mcp.example.com/',
-				oauthTokenData: undefined,
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should not set headers when %s token data is undefined',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					accessTokenUrl: 'https://auth.example.com/token',
+					grantType: 'clientCredentials',
+					authentication: 'header',
+					useDynamicClientRegistration: false,
+					resourceUrl: 'https://mcp.example.com/',
+					oauthTokenData: undefined,
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-			expect(result).toEqual({ credentials });
-			expect(result.headers).toBeUndefined();
-		});
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+				expect(result).toEqual({ credentials });
+				expect(result.headers).toBeUndefined();
+			},
+		);
 
-		it('should ignore a provider expiry field when the internal expiry is unknown', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					expires_at: '1700000060',
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should ignore a provider expiry field for %s when the internal expiry is unknown',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						expires_at: '1700000060',
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result).toEqual({
-				headers: { Authorization: 'Bearer access-token' },
-				credentials,
-			});
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result).toEqual({
+					headers: { Authorization: 'Bearer access-token' },
+					credentials,
+				});
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
-		it('should not proactively refresh legacy credentials without an absolute expiry', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					expires_in: '3600',
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should not proactively refresh legacy %s credentials without an absolute expiry',
+			async (authentication) => {
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						expires_in: '3600',
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
-		it('should refresh mcpOAuth2Api credentials before the access token expires', async () => {
-			const now = 1_700_000_000_000;
-			vi.spyOn(Date, 'now').mockReturnValue(now);
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					n8n_expires_at: String(now + 60_000),
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: 'new-access-token',
-			});
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should refresh %s credentials before the access token expires',
+			async (authentication) => {
+				const now = 1_700_000_000_000;
+				vi.spyOn(Date, 'now').mockReturnValue(now);
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						n8n_expires_at: String(now + 60_000),
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: 'new-access-token',
+				});
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
-			expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('mcpOAuth2Api');
-		});
+				expect(result.headers).toEqual({ Authorization: 'Bearer new-access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith(authentication);
+			},
+		);
 
-		it('should not refresh mcpOAuth2Api credentials when the access token is still valid', async () => {
-			const now = 1_700_000_000_000;
-			vi.spyOn(Date, 'now').mockReturnValue(now);
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					n8n_expires_at: String(now + 10 * 60_000),
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should not refresh %s credentials when the access token is still valid',
+			async (authentication) => {
+				const now = 1_700_000_000_000;
+				vi.spyOn(Date, 'now').mockReturnValue(now);
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						n8n_expires_at: String(now + 10 * 60_000),
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
-		it('should not immediately refresh a short-lived token', async () => {
-			const now = 1_700_000_000_000;
-			vi.spyOn(Date, 'now').mockReturnValue(now);
-			const ctx = mockDeep<IExecuteFunctions>();
-			const credentials = {
-				oauthTokenData: {
-					access_token: 'access-token',
-					refresh_token: 'refresh-token',
-					expires_in: '60',
-					n8n_expires_at: String(now + 60_000),
-				},
-			};
-			ctx.getCredentials.mockResolvedValue(credentials);
+		it.each(['mcpOAuth2Api', 'oAuth2Api'] as const)(
+			'should not immediately refresh a short-lived %s token',
+			async (authentication) => {
+				const now = 1_700_000_000_000;
+				vi.spyOn(Date, 'now').mockReturnValue(now);
+				const ctx = mockDeep<IExecuteFunctions>();
+				const credentials = {
+					oauthTokenData: {
+						access_token: 'access-token',
+						refresh_token: 'refresh-token',
+						expires_in: '60',
+						n8n_expires_at: String(now + 60_000),
+					},
+				};
+				ctx.getCredentials.mockResolvedValue(credentials);
 
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+				const result = await getAuthHeaders(ctx, authentication);
 
-			expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
-			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
-		});
+				expect(result.headers).toEqual({ Authorization: 'Bearer access-token' });
+				expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should return the headers and credentials for headerAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
@@ -325,6 +372,7 @@ describe('utils', () => {
 			'headerAuth',
 			'bearerAuth',
 			'mcpOAuth2Api',
+			'oAuth2Api',
 			'multipleHeadersAuth',
 		] as McpAuthenticationOption[])(
 			'should return an empty object for %s when it fails',
@@ -817,6 +865,71 @@ describe('utils', () => {
 						headers: { Authorization: 'Bearer refreshed-token' },
 					}),
 				);
+			});
+
+			it('should connect with oAuth2Api credentials using proactively refreshed headers', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.getNode.mockReturnValue({ type: 'test-client', typeVersion: 1 } as unknown as INode);
+				ctx.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'old-token',
+						refresh_token: 'refresh-token',
+						n8n_expires_at: '0',
+					},
+				});
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: 'refreshed-token',
+				});
+
+				const result = await connectMcpClientForCredential(ctx, {
+					authentication: 'oAuth2Api',
+					serverTransport: transport,
+					endpointUrl: 'https://example.com/mcp',
+					surface: 'MCP Client Tool',
+				});
+
+				expect(result.ok).toBe(true);
+				expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('oAuth2Api');
+
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com/mcp', {});
+
+				const call = mockedProxyFetch.mock.calls[0];
+				expect(new Headers(call[1]?.headers).get('authorization')).toBe('Bearer refreshed-token');
+			});
+
+			it('should refresh an oAuth2Api token on a 401 response', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				const ctx = mockDeep<IExecuteFunctions>();
+				ctx.getNode.mockReturnValue({ type: 'test-client', typeVersion: 1 } as unknown as INode);
+				ctx.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'old-token',
+					},
+				});
+				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+					access_token: 'refreshed-token',
+				});
+				mockedProxyFetch
+					.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }))
+					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+				const result = await connectMcpClientForCredential(ctx, {
+					authentication: 'oAuth2Api',
+					serverTransport: transport,
+					endpointUrl: 'https://example.com/mcp',
+					surface: 'MCP Client Tool',
+				});
+
+				expect(result.ok).toBe(true);
+
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com/mcp', {});
+
+				expect(ctx.helpers.refreshOAuth2Token).toHaveBeenCalledWith('oAuth2Api');
+				expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
 			});
 
 			it('should block requests to a target rejected by the instance egress filter', async () => {

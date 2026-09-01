@@ -10,6 +10,7 @@ export type McpAuthenticationOption =
 	| 'headerAuth'
 	| 'bearerAuth'
 	| 'multipleHeadersAuth'
+	| 'oAuth2Api'
 	| McpOAuth2CredentialType;
 
 export { isMcpOAuth2Authentication, type McpOAuth2CredentialType };

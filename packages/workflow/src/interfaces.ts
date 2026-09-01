@@ -2632,6 +2632,8 @@ export interface INodeCredentialDescription {
 	disabledOptions?: ICredentialsDisplayOptions;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
+	/** Short guidance about this credential type for the node, e.g. a known limitation. */
+	hint?: string;
 }
 
 export type INodeIssueTypes = 'credentials' | 'execution' | 'input' | 'parameters' | 'typeUnknown';
