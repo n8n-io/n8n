@@ -52,7 +52,6 @@ const props = withDefaults(
 		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
-		showInstructionsToolbar?: boolean;
 		/**
 		 * Emit instructions edits per keystroke instead of debounced. For hosts
 		 * whose updates are cheap local writes (inline agent → node parameter);
@@ -283,7 +282,15 @@ watch(
 			? getDefaultModelForPicker(effectiveCredentials.value, pendingDefaultProvider.value)
 			: null,
 	(defaultModel) => {
-		if (!defaultModel || props.disabled || modelToString(props.config?.model)) return;
+		const currentModel = parseModelString(modelToString(props.config?.model));
+		if (
+			!defaultModel ||
+			props.disabled ||
+			(currentModel?.provider === defaultModel.provider && currentModel.name === defaultModel.model)
+		) {
+			pendingDefaultProvider.value = null;
+			return;
+		}
 
 		pendingDefaultProvider.value = null;
 		onModelChange(defaultModel, 'auto');
@@ -318,18 +325,9 @@ watch(
 
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
-	if (credentialId && !modelToString(props.config?.model)) {
-		pendingDefaultProvider.value = provider;
-	}
 	const parsed = parseModelString(modelToString(props.config?.model));
 	if (parsed?.provider === provider && credentialId) {
 		emit('update:config', { credential: credentialId });
-	}
-}
-
-function onConfigureCredential(provider: AgentModelProvider) {
-	if (!modelToString(props.config?.model)) {
-		pendingDefaultProvider.value = provider;
 	}
 }
 
@@ -383,7 +381,6 @@ function onInstructionsInput(value: string) {
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
-				@configure-credential="onConfigureCredential"
 			/>
 			<N8nCallout
 				v-if="defaultModelHint && !props.disabled"
@@ -443,8 +440,8 @@ function onInstructionsInput(value: string) {
 				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:disabled="props.disabled"
-				:show-toolbar="instructionsToolbarMode"
 				:max-height="props.instructionsMaxHeight"
+				show-toolbar="floating"
 				variant="contained"
 				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"

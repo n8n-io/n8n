@@ -219,19 +219,26 @@ function getDelegatedChildCheckpoints(
 		if (!childCheckpoint) continue;
 
 		let ownerAgentId: string;
-		if (childCheckpoint.subAgentId === INLINE_SUB_AGENT_ID) {
-			if (childCheckpoint.resumeContext !== undefined) continue;
+		if (childCheckpoint.resumeContext === undefined) {
+			if (childCheckpoint.subAgentId !== INLINE_SUB_AGENT_ID) continue;
 			ownerAgentId = parentAgentId;
 		} else {
 			if (
 				!isRecord(childCheckpoint.resumeContext) ||
-				childCheckpoint.resumeContext.agentId !== childCheckpoint.subAgentId ||
-				typeof childCheckpoint.resumeContext.versionId !== 'string' ||
-				childCheckpoint.resumeContext.versionId.length === 0
+				typeof childCheckpoint.resumeContext.agentId !== 'string' ||
+				childCheckpoint.resumeContext.agentId.length === 0 ||
+				(childCheckpoint.resumeContext.versionId !== undefined &&
+					(typeof childCheckpoint.resumeContext.versionId !== 'string' ||
+						childCheckpoint.resumeContext.versionId.length === 0))
 			) {
 				continue;
 			}
-			ownerAgentId = childCheckpoint.subAgentId;
+			const expectedOwnerAgentId =
+				childCheckpoint.subAgentId === INLINE_SUB_AGENT_ID
+					? parentAgentId
+					: childCheckpoint.subAgentId;
+			if (childCheckpoint.resumeContext.agentId !== expectedOwnerAgentId) continue;
+			ownerAgentId = expectedOwnerAgentId;
 		}
 
 		const identity = `${ownerAgentId}\0${childCheckpoint.runId}`;

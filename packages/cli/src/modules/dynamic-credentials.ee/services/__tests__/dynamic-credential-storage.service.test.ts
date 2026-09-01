@@ -220,6 +220,7 @@ describe('DynamicCredentialStorageService', () => {
 						resolverName: 'test-resolver',
 						resolverId: 'resolver-456',
 					}),
+					undefined,
 				);
 
 				expect(mockLogger.debug).toHaveBeenCalledWith(
@@ -228,6 +229,33 @@ describe('DynamicCredentialStorageService', () => {
 						credentialId: 'cred-123',
 						resolverId: 'resolver-456',
 					}),
+				);
+			});
+
+			it('forwards executionId to the resolver, so a context bound to this execution passes the replay check', async () => {
+				const metadata = createMockCredentialMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const mockResolver = createMockResolver();
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
+
+				await service.storeIfNeeded(
+					metadata,
+					dynamicData,
+					credentialContext,
+					staticData,
+					undefined,
+					'exec-123',
+				);
+
+				expect(mockResolver.setSecret).toHaveBeenCalledWith(
+					'cred-123',
+					credentialContext,
+					expect.any(Object),
+					expect.any(Object),
+					'exec-123',
 				);
 			});
 

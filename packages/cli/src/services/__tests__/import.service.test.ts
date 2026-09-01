@@ -1,6 +1,11 @@
 import type { Mock } from 'vitest';
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-import type { CredentialsRepository, TagRepository, UserRepository } from '@n8n/db';
+import type {
+	CredentialsRepository,
+	SharedWorkflowRepository,
+	TagRepository,
+	UserRepository,
+} from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
@@ -8,6 +13,7 @@ import type { Cipher } from 'n8n-core';
 
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { ImportService } from '../import.service';
@@ -47,6 +53,8 @@ describe('ImportService', () => {
 	let mockDataTableDDLService: DataTableDDLService;
 	let mockUserRepository: UserRepository;
 	let mockWorkflowService: WorkflowService;
+	let mockPolicyEnforcementService: PolicyEnforcementService;
+	let mockSharedWorkflowRepository: SharedWorkflowRepository;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -61,6 +69,15 @@ describe('ImportService', () => {
 		mockDataTableDDLService = mock<DataTableDDLService>();
 		mockUserRepository = mock<UserRepository>();
 		mockWorkflowService = mock<WorkflowService>();
+		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
+		mockPolicyEnforcementService.hasChecksFor = vi.fn().mockReturnValue(true);
+		mockPolicyEnforcementService.evaluateContentImport = vi
+			.fn()
+			.mockResolvedValue({ violations: [] });
+		mockSharedWorkflowRepository = mock<SharedWorkflowRepository>();
+		mockSharedWorkflowRepository.findOwnerProjectsByWorkflowIds = vi
+			.fn()
+			.mockResolvedValue(new Map());
 
 		// Set up cipher mock
 		mockCipher.decryptV2 = vi.fn(async (data: string) =>
@@ -114,6 +131,8 @@ describe('ImportService', () => {
 			mockDataTableDDLService,
 			mockUserRepository,
 			mockWorkflowService,
+			mockPolicyEnforcementService,
+			mockSharedWorkflowRepository,
 		);
 	});
 

@@ -41,6 +41,8 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	cohere: apiKeyCreds,
 	mistral: apiKeyCreds,
 	moonshotai: apiKeyCreds,
+	alibaba: apiKeyCreds,
+	minimax: apiKeyCreds,
 	vercel: apiKeyCreds,
 	openrouter: apiKeyCreds,
 	nvidia: apiKeyCreds,

@@ -6,6 +6,8 @@ import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
+import { detectPythonCodeConstraints } from './detect-python-code-constraints';
+import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
@@ -92,6 +94,8 @@ function validateCompiledWorkflow(
 	warnings.push(...detectArrayInputCollapse(json));
 	warnings.push(...detectWrongKindLocatorValues(json, context.nodeTypesProvider));
 	warnings.push(...detectUnparseableOpenAiSchema(json));
+	warnings.push(...detectPythonCodeConstraints(json));
+	warnings.push(...detectSlackBlocksShape(json));
 	return warnings;
 }
 

@@ -2,15 +2,17 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { router } from '../../actions/router';
-import { confluenceApiRequest } from '../../transport';
+import { confluenceApiRequest, confluenceApiRequestUpload } from '../../transport';
 import { mockExecuteCtx } from '../shared';
 
 vi.mock('../../transport', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	confluenceApiRequest: vi.fn(),
+	confluenceApiRequestUpload: vi.fn(),
 }));
 
 const apiRequest = confluenceApiRequest as unknown as Mock;
+const apiRequestUpload = confluenceApiRequestUpload as unknown as Mock;
 
 const createParams: Record<string, unknown> = {
 	resource: 'page',
@@ -58,6 +60,23 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches attachment:delete and returns the deletion report', async () => {
+		apiRequest.mockResolvedValue('');
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'attachment',
+				operation: 'delete',
+				attachmentId: 'att123',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/attachments/att123');
+		expect(result).toEqual([
+			[{ json: { deleted: true, attachmentId: 'att123', purged: false }, pairedItem: { item: 0 } }],
+		]);
+	});
+
 	it('dispatches attachment:getMany and pairs the emitted items', async () => {
 		apiRequest.mockResolvedValue({ results: [{ id: 'a1', title: 'notes.txt' }] });
 
@@ -78,6 +97,121 @@ describe('Confluence router', () => {
 			{ limit: 250 },
 		);
 		expect(result).toEqual([[{ json: { id: 'a1', title: 'notes.txt' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches attachment:upload and returns the created attachment', async () => {
+		apiRequestUpload.mockResolvedValue({ results: [{ id: 'att1', title: 'notes.txt' }] });
+		const ctx = mockExecuteCtx({
+			resource: 'attachment',
+			operation: 'upload',
+			page: { mode: 'id', value: '9' },
+			binaryPropertyName: 'data',
+			minorEdit: false,
+			comment: '',
+		});
+		ctx.helpers.assertBinaryData.mockReturnValue({
+			data: '',
+			mimeType: 'text/plain',
+			fileName: 'notes.txt',
+		});
+		ctx.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('file-bytes'));
+
+		const result = await router.call(ctx);
+
+		expect(apiRequestUpload).toHaveBeenCalledWith(
+			'/wiki/rest/api/content/9/child/attachment',
+			expect.anything(),
+		);
+		expect(result).toEqual([
+			[{ json: { id: 'att1', title: 'notes.txt' }, pairedItem: { item: 0 } }],
+		]);
+	});
+
+	it('dispatches page:addComment and returns the created comment', async () => {
+		apiRequest.mockResolvedValue({ id: '555', pageId: '1' });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'addComment',
+				page: { mode: 'id', value: '1' },
+				bodyFormat: 'plainText',
+				bodyPlainText: 'Nice page',
+				parentCommentId: '',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+			pageId: '1',
+			body: { representation: 'storage', value: '<p>Nice page</p>' },
+		});
+		expect(result).toEqual([[{ json: { id: '555', pageId: '1' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches page:addLabels and returns the label list as one item', async () => {
+		const response = {
+			results: [
+				{ id: '9', name: 'runbook', prefix: 'global', label: 'runbook' },
+				{ id: '10', name: 'q3', prefix: 'global', label: 'q3' },
+			],
+			start: 0,
+			limit: 200,
+			size: 2,
+		};
+		apiRequest.mockResolvedValue(response);
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'addLabels',
+				page: { mode: 'id', value: '1' },
+				labels: 'runbook, q3',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/rest/api/content/1/label', [
+			{ prefix: 'global', name: 'runbook' },
+			{ prefix: 'global', name: 'q3' },
+		]);
+		expect(result).toEqual([[{ json: response, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches page:removeLabel and returns the removal report', async () => {
+		apiRequest.mockResolvedValue('');
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'removeLabel',
+				page: { mode: 'id', value: '1' },
+				labelName: 'runbook',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			'/wiki/rest/api/content/1/label',
+			{},
+			{ name: 'runbook' },
+		);
+		expect(result).toEqual([
+			[{ json: { removed: true, pageId: '1', label: 'runbook' }, pairedItem: { item: 0 } }],
+		]);
+	});
+
+	it('dispatches page:deleteComment and returns the deletion report', async () => {
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'deleteComment',
+				commentId: '555',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/footer-comments/555');
+		expect(result).toEqual([
+			[{ json: { deleted: true, commentId: '555' }, pairedItem: { item: 0 } }],
+		]);
 	});
 
 	it('dispatches page:delete and returns the deletion report', async () => {
@@ -136,6 +270,33 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches page:getComments and fans the comments out into one item each', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: '900' }, { id: '901' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'getComments',
+				page: { mode: 'id', value: '1' },
+				returnAll: false,
+				limit: 50,
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/pages/1/footer-comments',
+			{},
+			{ 'body-format': 'storage', limit: 50 },
+		);
+		expect(result).toEqual([
+			[
+				{ json: { id: '900' }, pairedItem: { item: 0 } },
+				{ json: { id: '901' }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
 	it('fans an array response out into one item per page', async () => {
 		apiRequest.mockImplementation(async (_method: string, url: string) =>
 			url.endsWith('/descendants')
@@ -153,6 +314,69 @@ describe('Confluence router', () => {
 				{ json: { id: '2' }, pairedItem: { item: 0 } },
 			],
 		]);
+	});
+
+	describe('page:getLabels', () => {
+		const getLabelsParams: Record<string, unknown> = {
+			resource: 'page',
+			operation: 'getLabels',
+			page: { mode: 'id', value: '1' },
+			returnAll: false,
+			limit: 50,
+			options: {},
+		};
+		const label1 = { id: '10', name: 'release', prefix: 'global' };
+		const label2 = { id: '11', name: 'draft', prefix: 'my' };
+
+		it('dispatches page:getLabels and fans the labels out into one item per label', async () => {
+			apiRequest.mockResolvedValue({ results: [label1, label2] });
+
+			const result = await router.call(mockExecuteCtx(getLabelsParams));
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/wiki/api/v2/pages/1/labels',
+				{},
+				{ limit: 50 },
+			);
+			expect(result).toEqual([
+				[
+					{ json: label1, pairedItem: { item: 0 } },
+					{ json: label2, pairedItem: { item: 0 } },
+				],
+			]);
+		});
+
+		it('emits no item for a page with no labels', async () => {
+			apiRequest
+				.mockResolvedValueOnce({ results: [] })
+				.mockResolvedValueOnce({ results: [label1, label2] });
+
+			const result = await router.call(mockExecuteCtx(getLabelsParams, 2));
+
+			expect(result).toEqual([
+				[
+					{ json: label1, pairedItem: { item: 1 } },
+					{ json: label2, pairedItem: { item: 1 } },
+				],
+			]);
+		});
+
+		it('discards partial labels for a failed item when continue-on-fail is on', async () => {
+			const ctx = mockExecuteCtx({ ...getLabelsParams, limit: 300 });
+			ctx.continueOnFail.mockReturnValue(true);
+			apiRequest
+				.mockResolvedValueOnce({
+					results: [label1, label2],
+					_links: { next: '/wiki/api/v2/pages/1/labels?cursor=next' },
+				})
+				.mockRejectedValueOnce(new Error('boom'));
+
+			const result = await router.call(ctx);
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(result).toEqual([[{ json: { error: 'boom' }, pairedItem: { item: 0 } }]]);
+		});
 	});
 
 	it('dispatches space:get and returns the fetched space', async () => {

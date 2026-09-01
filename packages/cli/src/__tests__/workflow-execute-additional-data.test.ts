@@ -271,7 +271,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
-			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
+			// getBase backfills projectId from the workflow owner (mocked to
+			// 'project-id-1' in this describe's beforeEach) before calling getVariables.
+			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, 'project-id-1');
 		});
 
 		describe('credential permission check routing', () => {
@@ -1329,6 +1331,52 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			expect(additionalData.workflowSettings).toBe(workflowSettings);
+		});
+
+		describe('projectId resolution', () => {
+			const ownershipService = mockInstance(OwnershipService);
+
+			beforeEach(() => {
+				ownershipService.getWorkflowProjectCached.mockReset();
+				// Both this and the executeWorkflow/executeAgent describes call
+				// mockInstance(OwnershipService), which each Container.set a fresh mock.
+				// Re-bind ours so the source resolves it.
+				Container.set(OwnershipService, ownershipService);
+			});
+
+			it('backfills projectId from the workflow owner when missing', async () => {
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: 'owning-project-1' }),
+				);
+
+				const additionalData = await getBase({ workflowId: 'workflow-1' });
+
+				expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
+				expect(additionalData.projectId).toBe('owning-project-1');
+			});
+
+			it('keeps the given projectId untouched when already present', async () => {
+				const additionalData = await getBase({
+					workflowId: 'workflow-1',
+					projectId: 'given-project',
+				});
+
+				expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+				expect(additionalData.projectId).toBe('given-project');
+			});
+
+			it('leaves projectId unset when workflowId is missing', async () => {
+				const additionalData = await getBase();
+
+				expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+				expect(additionalData.projectId).toBeUndefined();
+			});
+
+			it('rejects when the workflow has no resolvable owning project', async () => {
+				ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('not found'));
+
+				await expect(getBase({ workflowId: 'workflow-1' })).rejects.toThrow('not found');
+			});
 		});
 	});
 

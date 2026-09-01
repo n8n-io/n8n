@@ -425,6 +425,73 @@ export async function getPrFiles(pullRequestNumber) {
 }
 
 /**
+ * Returns all reviews submitted on a PR, in submission order.
+ *
+ * @param { number } pullRequestNumber
+ * @returns { Promise<Array<{ user: { login: string } | null, state: string, submitted_at?: string }>> }
+ * */
+export async function getPrReviews(pullRequestNumber) {
+	const { octokit, owner, repo } = initGithub();
+
+	return await octokit.paginate(octokit.rest.pulls.listReviews, {
+		owner,
+		repo,
+		pull_number: pullRequestNumber,
+		per_page: 100,
+	});
+}
+
+/**
+ * Test whether a user is an active member of an org team.
+ *
+ * Team slugs are the part after the org, e.g. `catalysts` for
+ * `@n8n-io/catalysts`. Requires a token with org members read access
+ * (the plain GITHUB_TOKEN cannot read team membership). Returns false
+ * for pending invitations and for teams that do not exist.
+ *
+ * @param { string } teamSlug
+ * @param { string } username
+ * @returns { Promise<boolean> }
+ * */
+export async function isTeamMember(teamSlug, username) {
+	const { octokit, owner } = initGithub();
+
+	try {
+		const { data } = await octokit.rest.teams.getMembershipForUserInOrg({
+			org: owner,
+			team_slug: teamSlug,
+			username,
+		});
+		return data.state === 'active';
+	} catch (ex) {
+		if (ex?.status === 404) return false;
+		throw ex;
+	}
+}
+
+/**
+ * Create (or overwrite) a commit status on the given SHA. A ruleset can list
+ * the status context as a required check to gate merges on it.
+ *
+ * @param { string } sha
+ * @param {{ state: 'success' | 'failure' | 'pending' | 'error', context: string, description: string, targetUrl?: string }} status
+ */
+export async function setCommitStatus(sha, { state, context, description, targetUrl }) {
+	const { octokit, owner, repo } = initGithub();
+
+	await octokit.rest.repos.createCommitStatus({
+		owner,
+		repo,
+		sha,
+		state,
+		context,
+		// The API rejects descriptions longer than 140 characters.
+		description: description.length > 140 ? `${description.slice(0, 139)}…` : description,
+		target_url: targetUrl,
+	});
+}
+
+/**
  * Post a PR comment, or update the existing one if a previous run already
  * left one identified by the provided bot marker.
  *

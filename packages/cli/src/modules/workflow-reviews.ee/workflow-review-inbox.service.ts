@@ -8,7 +8,7 @@ import type {
 	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
 import {
-	WorkflowReviewRequestRepository,
+	WorkflowReviewInboxRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type InboxCursor,
 	type User,
@@ -22,8 +22,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { WorkflowReviewAccessService } from './workflow-review-access.service';
-import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
+import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import {
 	WorkflowReviewParticipantResolver,
@@ -40,12 +39,11 @@ import {
 export class WorkflowReviewInboxService {
 	constructor(
 		private readonly featureGate: WorkflowReviewFeatureGate,
-		private readonly accessService: WorkflowReviewAccessService,
+		private readonly authorizationService: WorkflowReviewAuthorizationService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
+		private readonly workflowReviewInboxRepository: WorkflowReviewInboxRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly participantResolver: WorkflowReviewParticipantResolver,
-		private readonly eligibilityService: WorkflowReviewEligibilityService,
 	) {}
 
 	async listForInbox(
@@ -54,9 +52,9 @@ export class WorkflowReviewInboxService {
 	): Promise<ListWorkflowReviewInboxResponse> {
 		await this.featureGate.assertAvailable();
 
-		const visibility = await this.accessService.resolveInboxVisibility(user);
+		const visibility = await this.authorizationService.resolveInboxVisibility(user);
 		const { limit } = query;
-		const rows = await this.workflowReviewRequestRepository.findManyForInbox({
+		const rows = await this.workflowReviewInboxRepository.findRequests({
 			visibility,
 			state: query.state ?? 'open',
 			category:
@@ -92,8 +90,8 @@ export class WorkflowReviewInboxService {
 	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		await this.featureGate.assertAvailable();
 
-		const visibility = await this.accessService.resolveInboxVisibility(user);
-		return await this.workflowReviewRequestRepository.countByStateForInbox({ visibility });
+		const visibility = await this.authorizationService.resolveInboxVisibility(user);
+		return await this.workflowReviewInboxRepository.countRequestsByState(visibility);
 	}
 
 	async getDetail(
@@ -102,7 +100,7 @@ export class WorkflowReviewInboxService {
 	): Promise<WorkflowReviewRequestDetail> {
 		await this.featureGate.assertAvailable();
 
-		const access = await this.accessService.findReadableRequestOrFail(
+		const access = await this.authorizationService.findReadableRequestOrFail(
 			user,
 			workflowReviewRequestId,
 		);
@@ -111,14 +109,13 @@ export class WorkflowReviewInboxService {
 		const [workflows, participants, eligibility] = await Promise.all([
 			Promise.all(readableWorkflowRows.map(async (row) => await this.toWorkflowDetail(row))),
 			this.participantResolver.resolve([request]),
-			// Resolved against the pinned (pre-read-filter) row, matching the row
-			// decide() authorizes against — not against what the caller can read.
-			this.eligibilityService.resolveViewerEligibility(user, access),
+			// Reuses the snapshot above: capabilities are resolved against every covered
+			// row, matching what decide() authorizes against.
+			this.authorizationService.resolveViewerEligibility(user, access),
 		]);
 
 		return {
-			// One workflow per review for now, so the summary fields mirror the first row
-			...this.toInboxItem(request, workflows.at(0) ?? null, participants.for(request.id)),
+			...this.toReviewSummary(request, participants.for(request.id)),
 			description: request.description,
 			workflows,
 			viewerCanDecide: eligibility.canDecide,
@@ -221,17 +218,15 @@ export class WorkflowReviewInboxService {
 		return { createdAt, id };
 	}
 
-	private toInboxItem(
+	/** The review fields shared by the inbox card and the detail response. */
+	private toReviewSummary(
 		entity: WorkflowReviewRequest,
-		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
 		{ requester, authors, reviewers }: WorkflowReviewParticipants,
-	): WorkflowReviewInboxItem {
+	): Omit<WorkflowReviewInboxItem, 'workflowName' | 'workflowVersionId'> {
 		return {
 			id: entity.id,
 			projectId: entity.projectId,
 			title: entity.title,
-			workflowName: linkedWorkflow?.workflowName ?? null,
-			workflowVersionId: linkedWorkflow?.workflowVersionId ?? null,
 			decision: entity.decision,
 			state: entity.state,
 			createdAt: entity.createdAt.toISOString(),
@@ -239,6 +234,18 @@ export class WorkflowReviewInboxService {
 			requester,
 			authors,
 			reviewers,
+		};
+	}
+
+	private toInboxItem(
+		entity: WorkflowReviewRequest,
+		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
+		participants: WorkflowReviewParticipants,
+	): WorkflowReviewInboxItem {
+		return {
+			...this.toReviewSummary(entity, participants),
+			workflowName: linkedWorkflow?.workflowName ?? null,
+			workflowVersionId: linkedWorkflow?.workflowVersionId ?? null,
 		};
 	}
 }
