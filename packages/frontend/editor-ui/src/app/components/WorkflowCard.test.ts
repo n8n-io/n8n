@@ -21,6 +21,9 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { INSTANCE_AI_NEW_VIEW } from '@/features/ai/instanceAi/constants';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -1404,6 +1407,33 @@ describe('WorkflowCard', () => {
 				return text.includes('|') && text.trim() !== '|';
 			});
 			expect(embedsDivider).toBe(false);
+		});
+	});
+
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	describe('open in assistant experiment', () => {
+		let openInAssistantStore: MockedStore<typeof useOpenWorkflowInAssistantStore>;
+
+		beforeEach(() => {
+			openInAssistantStore = mockedStore(useOpenWorkflowInAssistantStore);
+			openInAssistantStore.opensInAssistant = false;
+		});
+
+		it('opens the workflow in the assistant for treatment users', async () => {
+			openInAssistantStore.opensInAssistant = true;
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				homeProject: { id: 'p1', type: 'personal', name: 'Personal' },
+			});
+			const { getByRole } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByRole('heading', { level: 2, name: new RegExp(data.name) }));
+			await waitFor(() => {
+				expect(router.push).toHaveBeenCalledWith({
+					name: INSTANCE_AI_NEW_VIEW,
+					query: { workflowId: data.id },
+				});
+			});
 		});
 	});
 });

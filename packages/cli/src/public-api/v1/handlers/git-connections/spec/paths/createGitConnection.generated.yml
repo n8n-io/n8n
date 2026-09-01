@@ -2,7 +2,7 @@ operationId: createGitConnection
 tags:
   - GitConnections
 summary: Create a Git connection
-description: Creates a Git connection and its authentication material.
+description: Creates a Git connection and its authentication material. Only one Git connection can exist.
 x-required-scope: gitConnection:create
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -58,5 +58,7 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

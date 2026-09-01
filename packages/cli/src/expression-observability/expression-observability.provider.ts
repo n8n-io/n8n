@@ -53,7 +53,10 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 	) {
 		this.scopedLogger = this.logger.scoped('expression-engine');
 
-		if (!this.config.observabilityEnabled || this.config.engine !== 'vm') {
+		if (
+			!this.config.observabilityEnabled ||
+			(this.config.engine !== 'vm' && this.config.engine !== 'quickjs')
+		) {
 			this.metrics = NoOpProvider.metrics;
 			this.traces = NoOpProvider.traces;
 			this.logs = NoOpProvider.logs;
@@ -168,7 +171,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		const errorType = tags?.type && tags.type !== 'none' ? tags.type : undefined;
 		const span = tracer.startSpan('expression.evaluate', {
 			attributes: {
-				[ATTRIBUTE.EXPRESSION_ENGINE]: 'vm',
+				[ATTRIBUTE.EXPRESSION_ENGINE]: this.config.engine,
 				[ATTRIBUTE.EXPRESSION_DURATION_SECONDS]: durationSeconds,
 				[ATTRIBUTE.EXPRESSION_OUTCOME]: outcome,
 				...(errorType ? { [ATTRIBUTE.EXPRESSION_ERROR_TYPE]: errorType } : {}),

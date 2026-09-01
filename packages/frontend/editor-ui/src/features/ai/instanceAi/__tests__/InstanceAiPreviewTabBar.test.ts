@@ -1,18 +1,22 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, h } from 'vue';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import { createTestingPinia } from '@pinia/testing';
 import { TabsRoot } from 'reka-ui';
 import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
+const mockCopy = vi.fn();
+const mockShowMessage = vi.fn();
+
 vi.mock('@n8n/composables/useClipboard', () => ({
-	useClipboard: () => ({ copy: vi.fn() }),
+	useClipboard: () => ({ copy: mockCopy }),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage: vi.fn() }),
+	useToast: () => ({ showMessage: mockShowMessage }),
 }));
 
 const workflowTab: ArtifactTab = {
@@ -28,6 +32,21 @@ const dataTableTab: ArtifactTab = {
 	name: 'My Table',
 	icon: 'table',
 	projectId: 'proj-1',
+};
+
+const agentTab: ArtifactTab = {
+	id: 'agent-1',
+	type: 'agent',
+	name: 'SEO Auditor',
+	icon: 'robot',
+	projectId: 'proj-1',
+};
+
+const agentTabWithoutProject: ArtifactTab = {
+	id: 'agent-2',
+	type: 'agent',
+	name: 'Standalone Agent',
+	icon: 'robot',
 };
 
 // TabsList/Trigger rely on reka-ui's Tabs context, so the harness wraps the
@@ -58,16 +77,47 @@ const Wrapper = defineComponent({
 	},
 });
 
-const renderComponent = createComponentRenderer(Wrapper);
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const renderComponent = createComponentRenderer(Wrapper, { pinia: createTestingPinia() });
+
+async function openAgentTabContextMenu(container: Element, tabId = 'agent-1') {
+	const agentTabTrigger = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
+	expect(agentTabTrigger).not.toBeNull();
+	await fireEvent.contextMenu(agentTabTrigger!);
+}
+
+async function selectContextMenuItem(label: string) {
+	let menuItem: HTMLElement | null = null;
+	await waitFor(() => {
+		menuItem =
+			[...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+				item.textContent?.includes(label),
+			) ?? null;
+		expect(menuItem).not.toBeNull();
+	});
+	await fireEvent.click(menuItem!);
+}
 
 describe('InstanceAiPreviewTabBar', () => {
+	beforeEach(() => {
+		mockCopy.mockReset();
+		mockShowMessage.mockReset();
+		mockCopy.mockResolvedValue(undefined);
+		vi.spyOn(window, 'open').mockImplementation(() => null);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it('renders a trigger with data-tab-id for each tab', () => {
 		const { container } = renderComponent({
-			props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
+			props: { tabs: [workflowTab, dataTableTab, agentTab], activeTabId: 'wf-1' },
 		});
 
 		expect(container.querySelector('[data-tab-id="wf-1"]')).not.toBeNull();
 		expect(container.querySelector('[data-tab-id="dt-1"]')).not.toBeNull();
+		expect(container.querySelector('[data-tab-id="agent-1"]')).not.toBeNull();
 	});
 
 	it('renders tab labels from props', () => {
@@ -156,5 +206,52 @@ describe('InstanceAiPreviewTabBar', () => {
 		);
 
 		expect(source).not.toContain('--left--fade');
+	});
+
+	describe('agent artifact context menu', () => {
+		it('opens the agent in the editor from the context menu', async () => {
+			const { container } = renderComponent({
+				props: { tabs: [agentTab], activeTabId: 'agent-1' },
+			});
+
+			await openAgentTabContextMenu(container);
+			await selectContextMenuItem('Open in editor');
+
+			expect(window.open).toHaveBeenCalledWith(
+				'/projects/proj-1/agents/agent-1',
+				'_blank',
+				'noopener',
+			);
+		});
+
+		it('copies the agent link from the context menu', async () => {
+			const { container } = renderComponent({
+				props: { tabs: [agentTab], activeTabId: 'agent-1' },
+			});
+
+			await openAgentTabContextMenu(container);
+			await selectContextMenuItem('Copy link');
+
+			await waitFor(() => {
+				expect(mockCopy).toHaveBeenCalledWith(
+					`${window.location.origin}/projects/proj-1/agents/agent-1`,
+				);
+			});
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				title: 'Copied to clipboard',
+				type: 'success',
+			});
+		});
+
+		it('falls back to the agents home route when the agent has no project', async () => {
+			const { container } = renderComponent({
+				props: { tabs: [agentTabWithoutProject], activeTabId: 'agent-2' },
+			});
+
+			await openAgentTabContextMenu(container, 'agent-2');
+			await selectContextMenuItem('Open in editor');
+
+			expect(window.open).toHaveBeenCalledWith('/home/agents', '_blank', 'noopener');
+		});
 	});
 });

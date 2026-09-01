@@ -69,6 +69,24 @@ export class WebhookTriggerRegistrar {
 	}
 
 	/**
+	 * The webhook triggers of a single node. Lets a caller isolate one node's
+	 * expression-evaluation failure instead of losing every node's webhooks to
+	 * the wholesale {@link getWebhookTriggers}. Same isolate note as there.
+	 */
+	getNodeWebhookTriggers(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): IWebhookData[] {
+		return this.webhookService.getNodeWebhooks(
+			workflow,
+			node,
+			additionalData,
+			/* ignoreRestartWebhooks */ true,
+		);
+	}
+
+	/**
 	 * Register one workflow-defined webhook in storage and with third-party services.
 	 */
 	async register({ workflow, webhookData, mode, activation }: WebhookTriggerRegistrationOptions) {

@@ -43,6 +43,7 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
+	threadProvenanceMetadata,
 	createInternalOperationTraceContext,
 	emitAgentSnapshotTraceEvent,
 	createInstanceAiLivenessPolicyConfig,
@@ -127,6 +128,7 @@ import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instan
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -165,6 +167,8 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withProjectContext,
+	getProjectContextSection,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -172,7 +176,6 @@ import {
 	buildInstanceAiObservabilityContext,
 	type InstanceAiObservabilityContext,
 } from './observability';
-import { resolveOutputRedaction } from './output-redaction-config';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -831,6 +834,7 @@ export class InstanceAiService {
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
+		private readonly push: Push,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -877,9 +881,8 @@ export class InstanceAiService {
 		});
 		this.tracing = new InstanceAiTracingService({
 			logger: this.logger,
-			// `first_visible_state` has to see the run's streamed text, which under
-			// the durable log lives in the log (as coalesced blocks), never in the
-			// bus cache.
+			// `first_visible_state` has to see the run's streamed text, which lives
+			// in the log as coalesced blocks — the bus retains nothing.
 			eventReader: {
 				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
 			},
@@ -897,7 +900,6 @@ export class InstanceAiService {
 			aiService: this.aiService,
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
-			durableLog: globalConfig.instanceAi.durableLog,
 			// The terminal guard and outcome-replay dedup must see the run's events
 			// after a restart too, which only the durable log can provide (the bus
 			// cache is empty in a fresh process).
@@ -1949,8 +1951,8 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.clear();
 		this.tracing.clear();
 
-		// Durable-log flag: flush in-flight drains + open coalesce buffers so the
-		// tail of every streamed segment survives the restart. No-op when off.
+		// Flush in-flight drains + open coalesce buffers so the tail of every
+		// streamed segment survives the restart.
 		await this.eventLog.flushAll();
 
 		this.eventBus.clear();
@@ -2644,7 +2646,7 @@ export class InstanceAiService {
 			checkpointStore: this.checkpointStore,
 			eventBus: this.eventBus,
 			logger: this.logger,
-			outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+			outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 			trackTelemetry: (eventName, properties) => {
 				this.telemetry.track(eventName, redactTelemetryProperties(properties));
 			},
@@ -3609,6 +3611,24 @@ export class InstanceAiService {
 	 * and shutdown can drain it before the DB closes.
 	 */
 	// eslint-disable-next-line complexity
+	/** Thread provenance for the trace. Best-effort by construction: a failed
+	 *  metadata read must not take the run with it — the trace just loses a
+	 *  label it would have been nice to have. */
+	private async readThreadProvenance(
+		userId: string,
+		threadId: string,
+	): Promise<Record<string, unknown>> {
+		try {
+			return threadProvenanceMetadata(await this.memoryService.getThreadMetadata(userId, threadId));
+		} catch (error) {
+			this.logger.debug('Could not read thread provenance for tracing', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return {};
+		}
+	}
+
 	private async executeRun(
 		user: User,
 		threadId: string,
@@ -3692,6 +3712,12 @@ export class InstanceAiService {
 			// Read per run: Chrome auto-updates extensions silently.
 			const browserExtension = this.browserSessionService.getExtensionTraceContext(user.id);
 
+			// Where this thread came from (entry point + the opener's own context),
+			// stamped on every run of it. Both trace paths get it: a build finishes
+			// on the RESUME beat, so stamping only the message turn would leave the
+			// spans that actually contain the work unattributable.
+			const threadProvenance = await this.readThreadProvenance(user.id, threadId);
+
 			// Create the trace before run-start so the SSE event carries traceId (modelId lands at finalization).
 			if (resumeReason) {
 				tracing = await this.tracing.createOrchestratorResumeTraceContext({
@@ -3703,6 +3729,7 @@ export class InstanceAiService {
 					input: traceInput,
 					resumeReason,
 					metadata: {
+						...threadProvenance,
 						...(checkpoint?.isCheckpointFollowUp
 							? { checkpoint_task_id: checkpoint.checkpointTaskId }
 							: {}),
@@ -3720,6 +3747,7 @@ export class InstanceAiService {
 					runId,
 					userId: user.id,
 					input: traceInput,
+					metadata: threadProvenance,
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
 					n8nVersion: N8N_VERSION,
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
@@ -3959,10 +3987,17 @@ export class InstanceAiService {
 			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
 				.filter(Boolean)
 				.join('\n\n');
+			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
+			// so putting it in the cached system prefix would break caching.
+			const projectSection = await this.resolveProjectContextSection(context);
+			const messageWithProject = projectSection
+				? withProjectContext(messageWithContext, projectSection)
+				: messageWithContext;
+
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithContext,
+				messageWithProject,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 
@@ -4068,7 +4103,7 @@ export class InstanceAiService {
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							stopSignal,
-							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
 				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -4080,7 +4115,7 @@ export class InstanceAiService {
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
-						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
 			if (result.status === 'suspended') {
 				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
@@ -5052,6 +5087,49 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * The one-line "you are in project X" fact for the per-turn block, or undefined
+	 * when there is nothing useful to say (no bound project, no workspace adapter, a
+	 * project we can't read).
+	 *
+	 * Best-effort by design: this is a guardrail, not a precondition. A run that cannot
+	 * name its project should be a less-informed run, not a failed one - the write access is
+	 * locked to the bound project either way.
+	 */
+	private async resolveProjectContextSection(
+		context: InstanceAiContext,
+	): Promise<string | undefined> {
+		const projectId = context.projectId;
+		if (!projectId) return undefined;
+
+		// Read per turn, deliberately NOT cached. A cache keyed by project id has no
+		// invalidation path here, so a renamed project would have the agent naming the
+		// old name for the rest of the process's life — and naming the wrong project is
+		// the failure this block exists to prevent.
+		try {
+			const project = await context.workspaceService?.getProject?.(projectId);
+			if (project) return getProjectContextSection({ name: project.name, type: project.type });
+
+			this.logger.warn('Instance AI could not name the bound project for this turn', {
+				projectId,
+				reason: context.workspaceService?.getProject ? 'not-readable' : 'no-workspace-adapter',
+			});
+			return undefined;
+		} catch (error) {
+			this.logger.warn('Instance AI failed to resolve the bound project for this turn', {
+				projectId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			this.errorReporter.error(error, {
+				level: 'warning',
+				tags: { component: 'instance-ai-project-context' },
+				extra: { projectId },
+				shouldIsolate: true,
+			});
+			return undefined;
+		}
+	}
+
 	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
 		const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
 		return await userHasScopes(user, requiredScopes, false, { projectId });
@@ -5197,6 +5275,7 @@ export class InstanceAiService {
 			},
 			resumeReason: 'approval',
 			metadata: {
+				...(await this.readThreadProvenance(activeUser.id, threadId)),
 				request_id: requestId,
 				pending_tool_call_id: toolCallId,
 				approved: data.approved,
@@ -5403,7 +5482,7 @@ export class InstanceAiService {
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							stopSignal,
-							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+							outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 						});
 					})
 				: await resumeAgentRun(agent, resumeData, resumeOptions, {
@@ -5416,7 +5495,7 @@ export class InstanceAiService {
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
-						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+						outputRedaction: false, // raw-at-rest: the redactor defaults ON when omitted (INS-837)
 					});
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
@@ -6793,18 +6872,13 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The one place the run-event source is chosen. With the durable log on it
-	 * is a read-own-writes barrier: settle the thread's drain (including open
-	 * coalesce buffers) so everything published before this call is visible,
-	 * then read the log. With it off the in-memory bus store is the only
-	 * source. Every caller is a run boundary — terminal-guard inputs, trace
-	 * metadata, snapshot builds — where closing the open segment early is
-	 * correct anyway.
+	 * Read-own-writes barrier for run-scoped reads: settle the thread's drain
+	 * (including open coalesce buffers) so everything published before this call
+	 * is visible, then read the log. Every caller is a run boundary —
+	 * terminal-guard inputs, trace metadata, snapshot builds — where closing the
+	 * open segment early is correct anyway.
 	 */
 	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
-		if (!this.instanceAiConfig.durableLog) {
-			return this.eventBus.getEventsForRuns(threadId, runIds);
-		}
 		await this.eventLog.flush(threadId);
 		return await this.eventLog.getEventsForRuns(threadId, runIds);
 	}
@@ -6835,10 +6909,10 @@ export class InstanceAiService {
 			} else {
 				events = await this.readRunEvents(threadId, [runId]);
 			}
-			// Durable-log flag on: the tree input comes from the DB, so long runs can
-			// no longer out-evict their own snapshot input (the empty-agentTree bug
-			// class). The snapshot write itself stays during migration so pre-log
-			// threads keep rendering; INS-841 moves history to fold-on-read.
+			// The tree input comes from the DB, so long runs cannot out-evict their
+			// own snapshot input (the empty-agentTree bug class). The snapshot write
+			// itself stays for now so pre-log threads keep rendering; history moves
+			// to fold-on-read separately.
 			if (isUpdate && events.length === 0) {
 				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
 					threadId,
@@ -6893,6 +6967,7 @@ export class InstanceAiService {
 	}): void {
 		const serverSlug = server.metadata?.serverSlug;
 		const userId = server.metadata?.userId;
+		const connectionId = server.metadata?.connectionId;
 		if (serverSlug && userId) {
 			this.telemetry.track('Instance AI mcp tool called', {
 				user_id: userId,
@@ -6900,6 +6975,12 @@ export class InstanceAiService {
 				tool_name: toolName,
 				success,
 			});
+		}
+
+		if (!success && connectionId && userId) {
+			this.push.sendToUsers({ type: 'instanceAiMcpToolCallFailed', data: { connectionId } }, [
+				userId,
+			]);
 		}
 	}
 }

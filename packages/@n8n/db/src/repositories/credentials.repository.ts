@@ -18,9 +18,21 @@ import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
 
+export type CredentialSharingRelation =
+	| 'shared'
+	| 'shared.project'
+	| 'shared.project.projectRelations';
+
+const DEFAULT_CREDENTIAL_RELATIONS: CredentialSharingRelation[] = [
+	'shared',
+	'shared.project',
+	'shared.project.projectRelations',
+];
+
 type CredentialsListQueryOptions = ListQuery.Options & {
 	includeData?: boolean;
 	user?: User;
+	relations?: CredentialSharingRelation[];
 };
 
 @Service()
@@ -149,7 +161,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.project', 'shared.project.projectRelations'];
+		const relations = listQueryOptions?.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
 		const defaultSelect: Select = [
 			'id',
 			'name',
@@ -165,7 +177,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		if (!listQueryOptions) {
 			return {
 				select: defaultSelect,
-				relations: defaultRelations,
+				relations,
 			} as FindManyOptions<CredentialsEntity>;
 		}
 
@@ -197,7 +209,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 
 		if (!findManyOptions.select) {
 			findManyOptions.select = defaultSelect;
-			findManyOptions.relations = defaultRelations;
+			findManyOptions.relations = relations;
 		}
 
 		if (sortBy) {
@@ -525,7 +537,6 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 
 		// Apply relations
 		if (!options.select) {
-			// Only add relations if using default select
 			qb.leftJoinAndSelect('credential.shared', 'shared')
 				.leftJoinAndSelect('shared.project', 'project')
 				.leftJoinAndSelect('project.projectRelations', 'projectRelations');
