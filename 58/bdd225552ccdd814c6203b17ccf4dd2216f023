@@ -22,11 +22,19 @@ packages/cli/src/modules/mcp-registry/node-description-transform.ts
   s_1b995c2a71c1af::t_d125f52289e182 155-159,187-191
   s_1b995c2a71c1af::t_ab8fd7cc507472 56-59,64
   s_1b995c2a71c1af::t_63c33e52a5d096 195-199
+  s_1b995c2a71c1af::t_703eebd139f73d 61-62,66-69,180-186
 packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
   s_1b995c2a71c1af::t_20d79a57bf5f67 321,342,343
   s_1b995c2a71c1af::t_bffb0b6d16e060 344
 packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
   s_1b995c2a71c1af::t_782c7c1c5f93d2 142
+packages/workflow/src/mcp-helpers.ts
+  s_1b995c2a71c1af::t_0ea7614543989b 40
+  s_1b995c2a71c1af::t_ef2e7d0b6e3a05 14-20
+packages/cli/src/modules/mcp-registry/mcp-registry-connection.ts
+  s_1b995c2a71c1af::t_dedbc6f98ef363 27-28
+  s_1b995c2a71c1af::t_9e24d5b858fd1a 29,32-48,52-53,57
+  s_1b995c2a71c1af::t_7ee27c9e93a4f7 82-100
 ---
 {
   "schema_version": "authorship/3.0.0",
