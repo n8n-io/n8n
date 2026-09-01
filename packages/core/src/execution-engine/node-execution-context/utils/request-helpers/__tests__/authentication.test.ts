@@ -124,6 +124,49 @@ describe('httpRequestWithAuthentication', () => {
 			true,
 		);
 	});
+
+	test('refreshes but does NOT resend a drained form-data body on 401; the original error surfaces', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => requestOptions as IHttpRequestOptions,
+		);
+
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401);
+
+		const formData = new FormData();
+		formData.append('file', Buffer.from('content'), { filename: 'file.txt' });
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'testSessionAuth',
+				{ method: 'POST', url: `${baseUrl}/upload`, body: formData },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === error401,
+		);
+
+		// Exactly one send: the drained body must not be replayed…
+		expect(request).toHaveBeenCalledTimes(1);
+		// …but the credential is still refreshed so the next run starts valid.
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+			{ helpers: mockThis.helpers },
+			expect.anything(),
+			'testSessionAuth',
+			mockNode,
+			true,
+		);
+	});
 });
 
 describe('requestWithAuthentication (legacy) — preAuthentication retry', () => {
