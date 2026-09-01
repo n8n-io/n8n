@@ -28,9 +28,6 @@ import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
 
-/** Connection parameters plus an optional per-export deadline. */
-type OtelExporterParams = OtelConnectionParams & { timeoutMillis?: number };
-
 /** What the startup connectivity check dials, and how. */
 type OtlpProbeTarget = { protocol: OtlpProtocol; url: string };
 
@@ -78,10 +75,10 @@ export class OtelService {
 	 * the active OTel configuration.
 	 */
 	async sendTestTrace(connection: OtelConnectionParams): Promise<OtelTestTraceResult> {
-		const exporter = await this.createTraceExporter({
-			...connection,
-			timeoutMillis: connection.startupConnectivityTimeoutMs,
-		});
+		const exporter = await this.createTraceExporter(
+			connection,
+			connection.startupConnectivityTimeoutMs,
+		);
 
 		let provider: BasicTracerProvider | undefined;
 		try {
@@ -167,28 +164,52 @@ export class OtelService {
 	}
 
 	/**
-	 * Builds the OTLP trace exporter for the configured wire protocol. The gRPC
-	 * exporter and grpc-js are imported lazily so instances on the default
-	 * HTTP/protobuf protocol never load grpc-js and its HTTP/2 stack.
+	 * Builds the OTLP trace exporter for the configured wire protocol.
+	 * `timeoutMillis` is the per-export deadline; the SDK exporter uses the
+	 * library default when it is not set.
 	 */
-	private async createTraceExporter(connection: OtelExporterParams): Promise<SpanExporter> {
+	private async createTraceExporter(
+		connection: OtelConnectionParams,
+		timeoutMillis?: number,
+	): Promise<SpanExporter> {
+		if (connection.exporterProtocol === 'grpc') {
+			return await this.createGrpcTraceExporter(connection, timeoutMillis);
+		}
+
+		return this.createHttpTraceExporter(connection, timeoutMillis);
+	}
+
+	private createHttpTraceExporter(
+		connection: OtelConnectionParams,
+		timeoutMillis?: number,
+	): SpanExporter {
 		const headers = this.parseOtlpHeaders(connection.exporterHeaders);
 		const url = this.resolveExporterUrl(connection);
 
-		if (connection.exporterProtocol === 'grpc') {
-			const [{ OTLPTraceExporter: OTLPGrpcTraceExporter }, { Metadata }] = await Promise.all([
-				import('@opentelemetry/exporter-trace-otlp-grpc'),
-				import('@grpc/grpc-js'),
-			]);
+		return new OTLPTraceExporter({ url, headers, timeoutMillis });
+	}
 
-			return new OTLPGrpcTraceExporter({
-				url,
-				metadata: this.toGrpcMetadata(headers, new Metadata()),
-				timeoutMillis: connection.timeoutMillis,
-			});
-		}
+	/**
+	 * The gRPC exporter and grpc-js are imported lazily so instances on the
+	 * default HTTP/protobuf protocol never load grpc-js and its HTTP/2 stack.
+	 */
+	private async createGrpcTraceExporter(
+		connection: OtelConnectionParams,
+		timeoutMillis?: number,
+	): Promise<SpanExporter> {
+		const headers = this.parseOtlpHeaders(connection.exporterHeaders);
+		const url = this.resolveExporterUrl(connection);
 
-		return new OTLPTraceExporter({ url, headers, timeoutMillis: connection.timeoutMillis });
+		const [{ OTLPTraceExporter: OTLPGrpcTraceExporter }, { Metadata }] = await Promise.all([
+			import('@opentelemetry/exporter-trace-otlp-grpc'),
+			import('@grpc/grpc-js'),
+		]);
+
+		return new OTLPGrpcTraceExporter({
+			url,
+			metadata: this.toGrpcMetadata(headers, new Metadata()),
+			timeoutMillis,
+		});
 	}
 
 	/**
