@@ -36,6 +36,7 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 
 export const state = {
 	initialized: false,
@@ -77,6 +78,14 @@ export async function initializeCore() {
 			type: 'error',
 			duration: 0,
 		});
+	}
+
+	// Must run before any view renders: expressions evaluate as soon as workflow
+	// data is displayed, and the engine has to be in place by then.
+	try {
+		await initializeExpressionEngine(settingsStore.settings.envFeatureFlags);
+	} catch (error) {
+		console.error('Failed to initialize the expression engine', error);
 	}
 
 	ssoStore.initialize({
