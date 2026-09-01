@@ -41,59 +41,14 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const Default = DefaultTemplate.bind({});
-Default.args = {
+export const EmptyState = DefaultTemplate.bind({});
+EmptyState.args = {
 	icon: { type: 'emoji', value: '😿' },
 	heading: 'Headline you need to know',
 	description:
 		'Long description that you should know something is the way it is because of how it is. ',
 	buttonText: 'Do something',
 };
-
-export const Variants: StoryFn = () => ({
-	components: { N8nEmptyState },
-	template: `
-		<div style="display: flex; flex-direction: column; gap: 16px;">
-			<n8n-empty-state
-				heading="Info"
-				description="Callout theme variants."
-				callout-text="This is an info callout."
-				callout-theme="info"
-			/>
-			<n8n-empty-state
-				heading="Success"
-				description="Callout theme variants."
-				callout-text="This is a success callout."
-				callout-theme="success"
-			/>
-			<n8n-empty-state
-				heading="Secondary"
-				description="Callout theme variants."
-				callout-text="This is a secondary callout."
-				callout-theme="secondary"
-			/>
-			<n8n-empty-state
-				heading="Warning"
-				description="Callout theme variants."
-				callout-text="This is a warning callout."
-				callout-theme="warning"
-			/>
-			<n8n-empty-state
-				heading="Danger"
-				description="Callout theme variants."
-				callout-text="This is a danger callout."
-				callout-theme="danger"
-			/>
-			<n8n-empty-state
-				heading="Custom"
-				description="Callout theme variants."
-				callout-text="This is a custom callout."
-				callout-theme="custom"
-				callout-icon="git-branch"
-			/>
-		</div>
-	`,
-});
 
 export const EmptyStateWithIcon = DefaultTemplate.bind({});
 EmptyStateWithIcon.args = {
