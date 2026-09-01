@@ -193,9 +193,20 @@ describe('GROUPING_GUIDANCE', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/deciding against groups/i);
 		});
 
-		it('tells agents to leave small or linear workflows ungrouped', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/small or purely linear/i);
-			expect(GROUPING_GUIDANCE).toMatch(/no groups at all/i);
+		it('decides whether to group by counting, not by shape', () => {
+			// An agent read "purely linear" as a standalone exemption and skipped the
+			// count: 9 top-level items, no groups.
+			expect(GROUPING_GUIDANCE).toMatch(/count the top-level items/i);
+			expect(GROUPING_GUIDANCE).toMatch(/more than 7 means you must group/i);
+			expect(GROUPING_GUIDANCE).toMatch(/one straight line is not an exemption/i);
+		});
+
+		it('leaves a workflow under the ceiling ungrouped', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/7 items or fewer.+leave it ungrouped/is);
+		});
+
+		it('tells agents to widen boundaries instead of emitting one-node groups', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/one or two nodes each, the boundaries are too fine/i);
 		});
 
 		it('breaks ties toward fewer groups', () => {
