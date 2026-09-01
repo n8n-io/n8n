@@ -366,5 +366,19 @@ export default defineConfig(
 			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
+	{
+		// The CodeMirror TypeScript language service runs in a browser web worker, so
+		// Vite bundles `typescript` and `@typescript/vfs` into it and nothing resolves
+		// them from node_modules at runtime. They stay devDependencies to keep the
+		// ~24MB compiler out of the server image, which installs editor-ui's
+		// production closure via packages/cli.
+		files: ['src/features/shared/editors/plugins/codemirror/typescript/**'],
+		rules: {
+			'import-x/no-extraneous-dependencies': [
+				'error',
+				{ devDependencies: true, optionalDependencies: false },
+			],
+		},
+	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

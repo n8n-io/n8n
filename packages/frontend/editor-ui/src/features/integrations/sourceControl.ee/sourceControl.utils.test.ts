@@ -169,6 +169,28 @@ describe('source control utils', () => {
 			]);
 		});
 
+		it('includes the remote/prior folder of a moved workflow so its source folder stays selectable', () => {
+			const options = buildFolderFilterOptions([
+				{
+					id: 'wf-moved',
+					name: 'Moved workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: true,
+					file: '/wf-moved.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Archive'],
+					remoteFolderPath: ['Production'],
+				},
+			]);
+
+			expect(options).toEqual([
+				{ label: 'Archive', value: 'Archive' },
+				{ label: 'Production', value: 'Production' },
+			]);
+		});
+
 		it('returns empty array when workflows have no folder paths', () => {
 			const options = buildFolderFilterOptions([
 				{

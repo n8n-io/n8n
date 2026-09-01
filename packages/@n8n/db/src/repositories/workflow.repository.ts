@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { assertClearedFor } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
@@ -11,6 +12,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -165,6 +167,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		const count = await qb.getCount();
 		return count > 0;
+	}
+
+	async updateContent(
+		id: string,
+		content: QueryDeepPartialEntity<WorkflowEntity>,
+		ctx: OperationContext,
+	) {
+		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
+		await this.managerFor(ctx).update(WorkflowEntity, id, content);
 	}
 
 	async findByCredentialResolverId(

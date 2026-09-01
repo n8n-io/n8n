@@ -154,6 +154,8 @@ export { GetResourceDependenciesDto } from './workflows/get-resource-dependencie
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
 export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
+export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
+export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
@@ -167,6 +169,8 @@ export {
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 	workflowParentFolderPublicSchema,
+	DeletedWorkflowPublicDto,
+	UpdatedWorkflowPublicDto,
 } from './workflows/workflow-public.dto';
 export {
 	ActivateWorkflowPublicDto,

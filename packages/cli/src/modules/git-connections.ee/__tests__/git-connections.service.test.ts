@@ -412,7 +412,10 @@ describe('GitConnectionsService (credential state machine)', () => {
 		});
 
 		it('refuses to push a connection with no branch', async () => {
-			repository.findOneBy.mockResolvedValueOnce({ ...sshEntity(), branchName: null });
+			repository.findOneBy.mockResolvedValueOnce({
+				...sshEntity(),
+				branchName: null,
+			} as GitConnection);
 
 			await expect(exportService.push('1', actor, { commitMessage: 'm' })).rejects.toThrow(
 				'branch name is required',
