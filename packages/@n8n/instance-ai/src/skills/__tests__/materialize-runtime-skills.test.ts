@@ -262,6 +262,46 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 	});
 
+	// A sandbox failure must not fail the whole run. Skill instructions are served from this
+	// process, so an unmaterialized source still answers load_skill.
+	it('serves skills in-process when the workspace is unreachable', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace, executeCommand } = createMockWorkspace();
+		executeCommand.mockRejectedValue(new Error('unauthorized: Bearer token is invalid'));
+		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
+			source,
+			workspace,
+		});
+
+		await expect(runtimeSource.prepare?.()).resolves.toBeUndefined();
+
+		const loadTool = createSkillLoadTool(runtimeSource);
+		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+
+		expect(skillLoadText(result)).toContain('[Skill: "data-table-manager"]');
+	});
+
+	it('materializes on a later load once the workspace recovers', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace, writes, executeCommand } = createMockWorkspace();
+		executeCommand.mockRejectedValueOnce(new Error('unauthorized: Bearer token is invalid'));
+		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
+			source,
+			workspace,
+		});
+
+		await runtimeSource.prepare?.();
+		expect(writes.size).toBe(0);
+
+		const loadTool = createSkillLoadTool(runtimeSource);
+		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+
+		const skillPath = `/home/daytona/workspace/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
+		expect(writes.get(skillPath)).toContain('data-tables');
+	});
+
 	it('uses prebaked runtime skills when the manifest matches the source hash', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, executeCommand, writeFile } = createMockWorkspace();

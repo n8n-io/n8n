@@ -563,8 +563,13 @@ export function createLazyWorkspaceRuntimeSkillSource({
 
 	const workspaceSource: RuntimeSkillSource = {
 		registry: source.registry,
+		// `Agent.build()` awaits this before the model runs. Materialization needs the sandbox,
+		// so a sandbox failure here would fail the whole run — including runs that never touch
+		// the workspace. Skill instructions come from this process, so an unmaterialized source
+		// still serves every skill; only the files behind `${N8N_SKILL_DIR}` are missing.
+		// Degrade instead, and let the file read fail later if a skill actually needs one.
 		prepare: async () => {
-			await ensureMaterialized();
+			await ensureMaterializedOrDegrade();
 		},
 		loadSkill: async (skillId: string) => await (await ensureSource()).loadSkill(skillId),
 		...(source.loadFile
@@ -599,8 +604,24 @@ export function createLazyWorkspaceRuntimeSkillSource({
 		return await materializePromise;
 	}
 
+	/**
+	 * Materialize, or fall back to the unmaterialized source. Each call retries, because
+	 * `ensureMaterialized` clears its cached promise on failure — a sandbox that recovers
+	 * mid-run materializes on the next skill load.
+	 */
+	async function ensureMaterializedOrDegrade(): Promise<MaterializedRuntimeSkills | undefined> {
+		try {
+			return await ensureMaterialized();
+		} catch (error) {
+			logger.warn('Could not materialize runtime skills into the workspace; serving in-process', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+
 	async function ensureSource(): Promise<RuntimeSkillSource> {
-		return (await ensureMaterialized())?.source ?? source;
+		return (await ensureMaterializedOrDegrade())?.source ?? source;
 	}
 
 	return workspaceSource;
