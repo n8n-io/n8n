@@ -204,7 +204,7 @@ export class InstanceAiConfig {
 	 * later behind the same accessors.
 	 */
 	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
-	setupPanelEnabled: boolean = false;
+	instanceAiSetupPanelEnabled: boolean = false;
 
 	/**
 	 * Activation-capped trial variant for n8n cloud experiment.

@@ -497,7 +497,7 @@ describe('useInstanceAiSettingsStore', () => {
 				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
-				setupPanelEnabled: true,
+				instanceAiSetupPanelEnabled: true,
 			});
 
 			const adminResponse = {
@@ -527,7 +527,7 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.sandboxEnabled).toBe(false);
 			expect(ms?.workflowBuilderAvailable).toBe(false);
 			expect(ms?.sandboxUnavailableReason).toBeNull();
-			expect(ms?.setupPanelEnabled).toBe(true);
+			expect(ms?.instanceAiSetupPanelEnabled).toBe(true);
 		});
 	});
 

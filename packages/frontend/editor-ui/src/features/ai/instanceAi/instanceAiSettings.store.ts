@@ -114,7 +114,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	 * Focus sidebar has its own unrelated `isSetupPanelEnabled` (setupPanel store).
 	 */
 	const isInstanceAiSetupPanelEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.setupPanelEnabled === true,
+		() => settingsStore.moduleSettings?.['instance-ai']?.instanceAiSetupPanelEnabled === true,
 	);
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
@@ -142,7 +142,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				? (prev?.sandboxUnavailableReason ?? null)
 				: null,
 			runDebugEnabled: prev?.runDebugEnabled ?? false,
-			setupPanelEnabled: prev?.setupPanelEnabled ?? false,
+			instanceAiSetupPanelEnabled: prev?.instanceAiSetupPanelEnabled ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,

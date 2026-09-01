@@ -367,7 +367,7 @@ describe('GlobalConfig', () => {
 			thinkingEnabled: true,
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
-			setupPanelEnabled: false,
+			instanceAiSetupPanelEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
 		},
