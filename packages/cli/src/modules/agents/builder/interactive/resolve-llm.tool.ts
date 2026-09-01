@@ -2,6 +2,7 @@ import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/age
 import { Tool } from '@n8n/agents/tool';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
@@ -45,15 +46,42 @@ type LlmCredentialEntry = [credentialType: string, defaults: LlmProviderDefault]
 
 const FREE_CREDITS_MODEL = 'gpt-5-mini';
 
+/**
+ * The model a freshly claimed free-credits key resolves to.
+ *
+ * The key reaches a short curated allowlist, not OpenAI's catalog, and models
+ * leave that allowlist when the provider shuts them down — the id simply stops
+ * being listed. So the baked-in pick is checked against the new credential like
+ * every other model this tool returns, and the first allowlisted model stands
+ * in when the pick is gone (the list is short and curated, the same reason the
+ * managed-gateway path may take its first entry).
+ *
+ * The credits are already claimed by the time this runs, so a list that cannot
+ * be reached keeps the baked-in pick rather than failing the resolution.
+ */
+async function resolveFreeCreditsModel(
+	credential: CredentialListItem,
+	modelLookup: ModelLookup,
+): Promise<string> {
+	const lookup = await listCallableModels(credential, 'openai', modelLookup);
+	if (!lookup.ok || lookup.models.length === 0) return FREE_CREDITS_MODEL;
+
+	const modelIds = lookup.models.map((model) => model.value);
+	return findVerifiedModelId('openai', FREE_CREDITS_MODEL, modelIds) ?? modelIds[0];
+}
+
 /** Silently claims free OpenAI credits if eligible; never throws. */
-async function tryClaimFreeCredits(freeCredits: FreeCreditsProvisioner) {
+async function tryClaimFreeCredits(freeCredits: FreeCreditsProvisioner, modelLookup: ModelLookup) {
 	try {
 		if (!(await freeCredits.isEligible())) return null;
 		const { credentialId, credentialName } = await freeCredits.claim();
 		return {
 			ok: true as const,
 			provider: 'openai',
-			model: FREE_CREDITS_MODEL,
+			model: await resolveFreeCreditsModel(
+				{ id: credentialId, name: credentialName, type: OPEN_AI_API_CREDENTIAL_TYPE },
+				modelLookup,
+			),
 			credentialId,
 			credentialName,
 			claimedFreeOpenAiCredits: true as const,
@@ -87,6 +115,32 @@ function toLlmResolution(
 interface CallableModel {
 	name: string;
 	value: string;
+}
+
+/**
+ * How many models an `unknown_model` result carries. A provider catalog runs to
+ * hundreds of ids (OpenRouter alone), and the whole list would land in the
+ * builder's context on every failed resolution. The agent needs enough options
+ * to retry with or to ask the user about, not the catalog, so send a bounded
+ * slice and say how much was left out.
+ */
+const MAX_AVAILABLE_MODELS = 25;
+
+function unknownModel(provider: string, requestedModel: string, availableModels: CallableModel[]) {
+	const shown = availableModels.slice(0, MAX_AVAILABLE_MODELS);
+	return {
+		ok: false as const,
+		reason: 'unknown_model' as const,
+		provider,
+		requestedModel,
+		availableModels: shown,
+		...(shown.length < availableModels.length
+			? {
+					availableModelsTruncated: true as const,
+					totalAvailableModels: availableModels.length,
+				}
+			: {}),
+	};
 }
 
 function modelLookupFailed(provider: string, requestedModel: string, error: unknown) {
@@ -153,13 +207,11 @@ async function resolveModelAgainstLookup(
 		return toLlmResolution(credential, defaults, candidates[0].value);
 	}
 
-	return {
-		ok: false as const,
-		reason: 'unknown_model' as const,
-		provider: defaults.provider,
-		requestedModel: trimmedModel,
-		availableModels: candidates.length > 0 ? candidates : availableModels,
-	};
+	return unknownModel(
+		defaults.provider,
+		trimmedModel,
+		candidates.length > 0 ? candidates : availableModels,
+	);
 }
 
 /**
@@ -199,13 +251,7 @@ async function resolveDefaultModelForCredential(
 		}
 	}
 
-	return {
-		ok: false as const,
-		reason: 'unknown_model' as const,
-		provider: defaults.provider,
-		requestedModel: defaults.defaultModel,
-		availableModels,
-	};
+	return unknownModel(defaults.provider, defaults.defaultModel, availableModels);
 }
 
 /**
@@ -280,14 +326,17 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'provider default model. Every model it returns — the default included — is checked ' +
 				'against the list the chosen credential can actually reach, so reason "unknown_model" ' +
 				'(carrying availableModels) can come back even when you passed no model: retry with a ' +
-				'value from availableModels, never the id that just failed. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
+				'value from availableModels, never the id that just failed. availableModels is capped: when ' +
+				'availableModelsTruncated is true, it is a sample of totalAvailableModels — ask the user with ' +
+				'ask_questions instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
 				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
 				'ask; keep building with model "" and include the model choice in the trailing ' +
 				'finish_setup call, then call resolve_llm again with the answer. For a model ' +
 				'change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. ' +
 				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
-				'claims them automatically and resolves to openai/gpt-5-mini — the result carries ' +
+				'claims them automatically and resolves to an OpenAI model the new key can reach (normally ' +
+				'gpt-5-mini) — the result carries ' +
 				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the ' +
 				'provider has no own credential but Gateway credits (the managed option) serve it, the tool ' +
 				'resolves to the managed credential — the result credentialName is "Gateway credits"; persist it ' +
@@ -479,7 +528,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 						defaults.provider === 'openai' &&
 						!model?.trim()
 					) {
-						const claimed = await tryClaimFreeCredits(deps.freeCredits);
+						const claimed = await tryClaimFreeCredits(deps.freeCredits, deps.modelLookup);
 						if (claimed) return claimed;
 					}
 
@@ -508,7 +557,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				}
 
 				if (llmCredentials.length === 0 && !model?.trim()) {
-					const claimed = await tryClaimFreeCredits(deps.freeCredits);
+					const claimed = await tryClaimFreeCredits(deps.freeCredits, deps.modelLookup);
 					if (claimed) return claimed;
 				}
 
