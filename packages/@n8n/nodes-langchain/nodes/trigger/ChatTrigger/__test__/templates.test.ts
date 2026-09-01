@@ -657,6 +657,93 @@ describe('createShellPage', () => {
 		expect(shell).toContain("'n8n-chat-shell/sessionId' + window.location.pathname");
 		expect(shell).toContain("'#sessionId=' + encodeURIComponent(sessionId)");
 	});
+
+	// With the OAuth path off there is no token to keep alive, so the shell must be
+	// exactly the document it was before refresh existed.
+	it('carries no refresh machinery when no refresh is passed', () => {
+		expect(shell).not.toContain('n8nChatRefresh');
+		expect(shell).not.toContain('n8n-chat-auth-token');
+		expect(shell).not.toContain('visibilitychange');
+		expect(shell).not.toContain('fetch(');
+	});
+});
+
+describe('createShellPage with token refresh', () => {
+	const shell = createShellPage({
+		iframeSrc: '/webhook/abc/chat?n8nShellInner=1',
+		refresh: { url: '/webhook/abc/chat?n8nChatRefresh=1', expiresIn: 3600 },
+	});
+
+	it('schedules ahead of the lifetime it was given', () => {
+		expect(shell).toContain('planFor(3600)');
+		expect(shell).toContain('setTimeout');
+		// The lead is the margin BEFORE expiry, not the refresh time: a fifth of the
+		// lifetime clamped to [60s, 600s], so a one-hour token refreshes at t+50min.
+		expect(shell).toContain('Math.min(600, Math.max(60, lifetimeSeconds * 0.2))');
+	});
+
+	// An absolute expiry the server computed, compared against the page's own
+	// `Date.now()`, is wrong by however far the two clocks disagree — and the page has
+	// no way to detect that. Every reading the schedule makes must come from one clock,
+	// so the server converts to a duration before it reaches the document.
+	it('never interpolates a server timestamp into the document', () => {
+		const rendered = createShellPage({
+			iframeSrc: '/webhook/abc/chat?n8nShellInner=1',
+			refresh: { url: '/webhook/abc/chat?n8nChatRefresh=1', expiresIn: 3600 },
+		});
+
+		// A 13-digit epoch-ms literal is what a leaked `expiresAt` would look like.
+		expect(rendered).not.toMatch(/\b1[0-9]{12}\b/);
+	});
+
+	// Anchoring the new lifetime to when the response *arrived* always overstates what
+	// is left, by however long the round trip took — a slow leg, or a paused server —
+	// and overstating is the direction that ends in 401s.
+	it('subtracts the round trip it measured before rescheduling', () => {
+		expect(shell).toContain('var startedAt = Date.now();');
+		expect(shell).toContain('planFor(lifetime - (Date.now() - startedAt) / 1000);');
+	});
+
+	it('rounds a fractional lifetime and never emits a negative one', () => {
+		const soon = createShellPage({
+			iframeSrc: '/x',
+			refresh: { url: '/x?n8nChatRefresh=1', expiresIn: 0 },
+		});
+
+		expect(soon).toContain('planFor(0)');
+		expect(soon).not.toContain('planFor(-');
+	});
+
+	it('fetches the refresh leg with the custom header that guards it', () => {
+		expect(shell).toContain('"/webhook/abc/chat?n8nChatRefresh=1"');
+		expect(shell).toContain("'x-n8n-chat-refresh': '1'");
+		expect(shell).toContain("credentials: 'same-origin'");
+	});
+
+	it('posts the new token into the frame', () => {
+		expect(shell).toContain("{ type: 'n8n-chat-auth-token', token: data.token }");
+		// The frame is sandboxed without allow-same-origin, so it has no origin to name.
+		expect(shell).toContain("'*'");
+	});
+
+	// Chrome throttles timers in hidden tabs and freezes them in backgrounded ones,
+	// so the timer alone would miss the deadline on a tab left in the background.
+	it('also refreshes when a hidden tab comes back past the deadline', () => {
+		expect(shell).toContain("addEventListener('visibilitychange'");
+		expect(shell).toContain('Date.now() >= refreshAt');
+	});
+
+	it('retries once and then reloads exactly once', () => {
+		expect(shell).toContain('refresh(true)');
+		expect(shell).toContain('window.location.reload()');
+		expect(shell).toContain('if (reloaded) return;');
+	});
+
+	// The whole point of the httpOnly cookie: the refresh token exists in no document.
+	it('carries no refresh token', () => {
+		expect(shell).not.toContain('refreshToken');
+		expect(shell).not.toContain('n8n-chat-oauth-refresh');
+	});
 });
 
 describe('createPage inside the shell frame', () => {
@@ -702,7 +789,31 @@ describe('createPage inside the shell frame', () => {
 	});
 
 	it('authenticates messages by request header', () => {
-		expect(inner).toContain('\'x-auth-token\': "signed.jwt.token",');
+		expect(inner).toContain('headers[\'x-auth-token\'] = "signed.jwt.token"');
+	});
+
+	// `createChat` keeps this object by reference and the widget reads it on every
+	// send, so a later in-place write is what makes a refreshed token take effect.
+	it('hands the widget a header object it can keep mutating', () => {
+		expect(inner).toContain('const headers = window.__n8nChatAuthHeaders || {};');
+		expect(inner).toContain('headers: headers');
+		expect(inner).toContain("headers['X-Instance-Id'] = 'test-instance';");
+		// Guards the race where a refresh lands before this module script runs.
+		expect(inner).toContain("if (!headers['x-auth-token'])");
+	});
+
+	it('accepts a rotated token only from the shell', () => {
+		expect(inner).toContain('window.__n8nChatAuthHeaders = {};');
+		expect(inner).toContain('if (event.source !== window.parent) return;');
+		expect(inner).toContain("data.type !== 'n8n-chat-auth-token'");
+		expect(inner).toContain("window.__n8nChatAuthHeaders['x-auth-token'] = data.token;");
+	});
+
+	// The refresh token lives only in an httpOnly cookie; it must appear in neither
+	// document.
+	it('carries no refresh token', () => {
+		expect(inner).not.toContain('refreshToken');
+		expect(inner).not.toContain('n8n-chat-oauth-refresh');
 	});
 
 	// Not merely skipped at runtime: the bootstrap is never emitted, so there is no
@@ -726,6 +837,14 @@ describe('createPage inside the shell frame', () => {
 			expect(plain).not.toContain('window.__n8nChatSessionId');
 			expect(plain).not.toContain('x-auth-token');
 			expect(plain).toContain('const injectedVisitor = null;');
+		});
+
+		// Nothing refreshes this render, so it keeps the inline header literal rather
+		// than the mutable object the frame render needs.
+		it('keeps the header literal inline', () => {
+			expect(plain).toContain("'X-Instance-Id': 'test-instance',");
+			expect(plain).not.toContain('window.__n8nChatAuthHeaders');
+			expect(plain).not.toContain('headers: headers');
 		});
 
 		// The client-side bootstrap is what the flag-off n8nUserAuth render still relies on.

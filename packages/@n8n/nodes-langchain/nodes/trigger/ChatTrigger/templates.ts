@@ -114,6 +114,21 @@ const innerBootstrapScript = `
 					if (window.__n8nChatSessionId) {
 						shim.setItem(${escapeForScriptContext(WIDGET_SESSION_ID_KEY)}, window.__n8nChatSessionId);
 					}
+
+					// The widget reads this same object on every send, so writing the rotated
+					// token into it in place is all a refresh has to do. Created here, before
+					// the module script, so a token that lands early is never dropped.
+					window.__n8nChatAuthHeaders = {};
+					window.addEventListener('message', function (event) {
+						// The shell is the only document that may set the token. An opaque origin
+						// can't name its parent's origin, so identity of the source window is the
+						// check available to us.
+						if (event.source !== window.parent) return;
+						var data = event.data;
+						if (!data || data.type !== 'n8n-chat-auth-token') return;
+						if (typeof data.token !== 'string' || !data.token) return;
+						window.__n8nChatAuthHeaders['x-auth-token'] = data.token;
+					});
 				})();
 			</script>`;
 
@@ -122,7 +137,19 @@ const innerBootstrapScript = `
  * the frame. Everything the author can shape lives in that frame, which has no origin
  * and so can't reach this document's cookies or the OAuth `BroadcastChannel`.
  */
-export function createShellPage({ iframeSrc }: { iframeSrc: string }) {
+export function createShellPage({
+	iframeSrc,
+	refresh,
+}: {
+	iframeSrc: string;
+	/**
+	 * Set only on the OAuth2 path: where to ask for a fresh access token, and how many
+	 * seconds the one the frame was just handed has left. A duration, never an absolute
+	 * timestamp — see `ChatShellSession`. Absent leaves the shell exactly what it was
+	 * before refresh existed.
+	 */
+	refresh?: { url: string; expiresIn: number };
+}) {
 	return `<!doctype html>
 <html lang="en">
 	<head>
@@ -158,9 +185,108 @@ export function createShellPage({ iframeSrc }: { iframeSrc: string }) {
 				var frame = document.getElementById('n8n-chat-frame');
 				frame.src = frame.getAttribute('data-src') + '#sessionId=' + encodeURIComponent(sessionId);
 			})();
-		</script>
+		</script>${refresh ? refreshScript(refresh) : ''}
 	</body>
 </html>`;
+}
+
+/**
+ * Keeps the frame's access token alive. The token is interpolated into the frame's HTML
+ * once and frozen for the life of that document, so without this a conversation older
+ * than the token fails every message with a 401.
+ *
+ * Lives on the shell, not in the frame: the refresh token is in an httpOnly cookie
+ * scoped to this path, and only a same-origin request carries it. The shell never reads
+ * that cookie either — it only asks the server to trade it.
+ */
+function refreshScript({ url, expiresIn }: { url: string; expiresIn: number }): string {
+	return `
+		<script>
+			(function () {
+				var endpoint = ${escapeForScriptContext(url)};
+				var refreshAt = 0;
+				var timer = null;
+				var reloaded = false;
+
+				// How long BEFORE expiry to refresh, not when to refresh: a fifth of the
+				// lifetime, clamped to [60s, 600s]. A one-hour token is therefore replaced at
+				// t+50min, leaving ten minutes of margin — enough for a throttled background
+				// tab, a slept laptop, and the one retry before the reload fallback.
+				function leadSeconds(lifetimeSeconds) {
+					return Math.min(600, Math.max(60, lifetimeSeconds * 0.2));
+				}
+
+				// Always a duration, never an absolute expiry the server computed: both readings
+				// below come from this browser's clock, so a clock that disagrees with the
+				// server's cannot skew the schedule.
+				function planFor(lifetimeSeconds) {
+					var remaining = Math.max(0, lifetimeSeconds);
+					refreshAt = Date.now() + (remaining - leadSeconds(remaining)) * 1000;
+					if (timer) clearTimeout(timer);
+					timer = setTimeout(function () { refresh(false); }, Math.max(0, refreshAt - Date.now()));
+				}
+
+				function giveUp() {
+					// One reload, guarded: it re-runs the handshake, which auto-approves against
+					// the visitor's existing consent. Without the guard a broken AS would put the
+					// page in a reload loop.
+					if (reloaded) return;
+					reloaded = true;
+					window.location.reload();
+				}
+
+				function refresh(isRetry) {
+					// Taken before the request leaves, so the elapsed time subtracted below covers
+					// the whole window — both network legs, our handler, and the AS round trip.
+					// Without it the page anchors the lifetime to when the response *arrived* and
+					// so always believes it has more left than it does, which is the direction
+					// that ends in 401s.
+					var startedAt = Date.now();
+					fetch(endpoint, {
+						method: 'GET',
+						credentials: 'same-origin',
+						cache: 'no-store',
+						// Custom header, so the request needs a preflight no other origin gets
+						// past. This is the CSRF guard on the leg.
+						headers: { 'x-n8n-chat-refresh': '1' },
+					})
+						.then(function (response) {
+							if (!response.ok) throw new Error('refresh failed: ' + response.status);
+							return response.json();
+						})
+						.then(function (data) {
+							if (!data || typeof data.token !== 'string' || !data.token) {
+								throw new Error('refresh returned no token');
+							}
+							// targetOrigin '*': the frame is sandboxed without allow-same-origin, so
+							// it has an opaque origin this document cannot name. The payload is a
+							// token that document already holds a copy of.
+							var frame = document.getElementById('n8n-chat-frame');
+							if (frame && frame.contentWindow) {
+								frame.contentWindow.postMessage(
+									{ type: 'n8n-chat-auth-token', token: data.token },
+									'*'
+								);
+							}
+							var lifetime = typeof data.expiresIn === 'number' ? data.expiresIn : 3600;
+							planFor(lifetime - (Date.now() - startedAt) / 1000);
+						})
+						.catch(function () {
+							if (isRetry) giveUp();
+							else setTimeout(function () { refresh(true); }, 5000);
+						});
+				}
+
+				// Hidden tabs get throttled timers and fully backgrounded ones get frozen ones,
+				// so a tab that comes back past the point we meant to refresh — or a laptop that
+				// slept — refreshes at once rather than waiting out a timer that never fired.
+				document.addEventListener('visibilitychange', function () {
+					if (document.visibilityState === 'visible' && Date.now() >= refreshAt) refresh(false);
+				});
+
+				planFor(${String(Math.max(0, Math.round(expiresIn)))});
+			})();
+		</script>`;
 }
 
 export function createPage({
@@ -273,6 +399,26 @@ export function createPage({
 				email: frameIdentity.visitor.email,
 			})} };`;
 
+	// In the frame, the header object is hoisted out of the `createChat` literal so a
+	// reference to it survives the call: `createChat` keeps this object's identity and
+	// the widget reads it on every send, so the shell's refresh writes the rotated token
+	// into it in place and nothing re-enters this code. The `if` covers the narrow race
+	// where a refresh lands before this module script runs. The unsplit render keeps the
+	// literal inline so its page stays byte-for-byte what it was.
+	const headersBootstrap = frameIdentity
+		? `const headers = window.__n8nChatAuthHeaders || {};
+					headers['X-Instance-Id'] = '${instanceId}';
+					if (!headers['x-auth-token']) headers['x-auth-token'] = ${escapeForScriptContext(frameIdentity.authToken)};
+
+					`
+		: '';
+	const webhookConfigHeaders = frameIdentity
+		? 'headers: headers'
+		: `headers: {
+								'X-Instance-Id': '${instanceId}',
+								
+							}`;
+
 	return `<!doctype html>
 	<html lang="en">
 		<head>
@@ -298,7 +444,7 @@ export function createPage({
 				(async function () {
 					${identityBootstrap}
 
-					createChat({
+					${headersBootstrap}createChat({
 						mode: 'fullscreen',
 						webhookUrl: ${escapeForScriptContext(webhookUrl ?? '')},
 						showWelcomeScreen: ${sanitizedShowWelcomeScreen},
@@ -306,10 +452,7 @@ export function createPage({
 						metadata: metadata,
 						${shellInner ? 'sessionId: window.__n8nChatSessionId || undefined,' : ''}
 						webhookConfig: {
-							headers: {
-								'X-Instance-Id': '${instanceId}',
-								${frameIdentity ? `'x-auth-token': ${escapeForScriptContext(frameIdentity.authToken)},` : ''}
-							}
+							${webhookConfigHeaders}
 						},
 						allowFileUploads: ${sanitizedAllowFileUploads},
 						allowedFilesMimeTypes: ${escapeForScriptContext(sanitizedAllowedFilesMimeTypes)},
