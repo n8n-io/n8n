@@ -105,11 +105,11 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 
 <template>
 	<div class="type-examples">
-		<div class="type-examples__controls">
+		<div class="controls">
 			<N8nInput
 				:id="sampleInputId"
 				v-model="sampleText"
-				class="type-examples__sample-control"
+				class="sample-control"
 				size="small"
 				placeholder="Type a sample string"
 				aria-label="Sample"
@@ -117,7 +117,7 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 			<N8nSelect
 				:id="weightInputId"
 				v-model="selectedWeight"
-				class="type-examples__weight-control"
+				class="weight-control"
 				size="small"
 				aria-label="Weight"
 			>
@@ -130,11 +130,11 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 			</N8nSelect>
 		</div>
 
-		<div class="type-examples__specimens" :style="{ fontFamily, fontWeight: selectedWeightToken }">
-			<div v-for="size in sizes" :key="size.name" class="type-examples__row">
-				<span class="type-examples__size">{{ size.name }}</span>
+		<div class="specimens" :style="{ fontFamily, fontWeight: selectedWeightToken }">
+			<div v-for="size in sizes" :key="size.name" class="row">
+				<span class="size">{{ size.name }}</span>
 				<p
-					class="type-examples__sample"
+					class="sample"
 					:style="{
 						fontSize: size.fontSize,
 						letterSpacing: size.letterSpacing,
@@ -155,59 +155,59 @@ const weightInputId = computed(() => `type-examples-weight-${props.family}`);
 	gap: var(--spacing--lg);
 	margin-block: var(--spacing--xl);
 	color: var(--text-color);
-}
 
-.type-examples__controls {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--sm);
-	align-items: center;
-}
-
-.type-examples__sample-control {
-	flex: 1 1 var(--spacing--5xl);
-	min-width: 0;
-}
-
-.type-examples__weight-control {
-	flex: 0 0 var(--spacing--5xl);
-
-	:deep(.el-select) {
-		width: 100%;
+	.controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing--sm);
+		align-items: center;
 	}
-}
 
-.type-examples__specimens {
-	display: flex;
-	flex-direction: column;
-	border: var(--border);
-	border-radius: var(--radius);
-	overflow: hidden;
-}
-
-.type-examples__row {
-	display: flex;
-	gap: var(--spacing--lg);
-	align-items: baseline;
-	padding: var(--spacing--sm) var(--spacing--md);
-	border-bottom: var(--border);
-
-	&:last-child {
-		border-bottom: none;
+	.sample-control {
+		flex: 1 1 var(--spacing--5xl);
+		min-width: 0;
 	}
-}
 
-.type-examples__size {
-	flex: 0 0 var(--spacing--2xl);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--text-color--subtle);
-	font-family: var(--font-family);
-}
+	.weight-control {
+		flex: 0 0 var(--spacing--5xl);
 
-.type-examples__sample {
-	flex: 1 1 auto;
-	min-width: 0;
-	margin: 0;
+		:deep(.el-select) {
+			width: 100%;
+		}
+	}
+
+	.specimens {
+		display: flex;
+		flex-direction: column;
+		border: var(--border);
+		border-radius: var(--radius);
+		overflow: hidden;
+	}
+
+	.row {
+		display: flex;
+		gap: var(--spacing--lg);
+		align-items: baseline;
+		padding: var(--spacing--sm) var(--spacing--md);
+		border-bottom: var(--border);
+
+		&:last-child {
+			border-bottom: none;
+		}
+	}
+
+	.size {
+		flex: 0 0 var(--spacing--2xl);
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--medium);
+		color: var(--text-color--subtle);
+		font-family: var(--font-family);
+	}
+
+	.sample {
+		flex: 1 1 auto;
+		min-width: 0;
+		margin: 0;
+	}
 }
 </style>
