@@ -85,10 +85,12 @@ export function getSanitizedCustomCss(customCss: string): string {
 const WIDGET_SESSION_ID_KEY = 'n8n-chat/sessionId';
 
 /**
- * Runs before the widget's module script (classic inline scripts aren't deferred). Both
- * jobs follow from the frame having no origin: stand in for `localStorage`, which the
- * widget touches at startup and which throws here, and read the session id the shell
- * passes in the fragment.
+ * Runs before the widget's module script (classic inline scripts aren't deferred). The
+ * first two jobs follow from the frame having no origin: stand in for `localStorage`,
+ * which the widget touches at startup and which throws here, and read the session id the
+ * shell passes in the fragment. The third is the auth channel — this document opens the
+ * `MessagePort` the shell delivers rotated tokens down, so the channel belongs to this
+ * document and no later one can inherit it.
  */
 const innerBootstrapScript = `
 			<script>
@@ -119,16 +121,27 @@ const innerBootstrapScript = `
 					// token into it in place is all a refresh has to do. Created here, before
 					// the module script, so a token that lands early is never dropped.
 					window.__n8nChatAuthHeaders = {};
-					window.addEventListener('message', function (event) {
-						// The shell is the only document that may set the token. An opaque origin
-						// can't name its parent's origin, so identity of the source window is the
-						// check available to us.
-						if (event.source !== window.parent) return;
-						var data = event.data;
-						if (!data || data.type !== 'n8n-chat-auth-token') return;
-						if (typeof data.token !== 'string' || !data.token) return;
-						window.__n8nChatAuthHeaders['x-auth-token'] = data.token;
-					});
+
+					// A private channel rather than a window listener: the port is an object in
+					// this document's realm, so it dies with this document. If author script
+					// navigates the frame away, the replacement can't obtain the port and the
+					// shell's next token reaches nothing.
+					try {
+						var channel = new MessageChannel();
+						// Assigning onmessage implicitly starts the port. No sender check is needed
+						// or possible: a port has one peer, and only the shell holds it.
+						channel.port1.onmessage = function (event) {
+							var data = event.data;
+							if (!data || data.type !== 'n8n-chat-auth-token') return;
+							if (typeof data.token !== 'string' || !data.token) return;
+							window.__n8nChatAuthHeaders['x-auth-token'] = data.token;
+						};
+						window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*', [channel.port2]);
+					} catch (error) {
+						// Announce anyway, with no port: that closes the shell's latch, so a document
+						// loaded here later cannot claim the channel we failed to open.
+						try { window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*'); } catch (postError) {}
+					}
 				})();
 			</script>`;
 
@@ -167,7 +180,7 @@ export function createShellPage({
 			title="Chat"
 			sandbox="${CHAT_FRAME_SANDBOX}"
 			data-src="${escapeForHtmlAttribute(iframeSrc)}"
-		></iframe>
+		></iframe>${refresh ? refreshScript(refresh) : ''}
 		<script>
 			(function () {
 				// Held here, not in the frame, whose storage dies with its opaque origin on
@@ -185,7 +198,7 @@ export function createShellPage({
 				var frame = document.getElementById('n8n-chat-frame');
 				frame.src = frame.getAttribute('data-src') + '#sessionId=' + encodeURIComponent(sessionId);
 			})();
-		</script>${refresh ? refreshScript(refresh) : ''}
+		</script>
 	</body>
 </html>`;
 }
@@ -206,6 +219,59 @@ function refreshScript({ url, expiresIn }: { url: string; expiresIn: number }): 
 				var endpoint = ${escapeForScriptContext(url)};
 				var timer = null;
 				var reloaded = false;
+
+				// Every token goes down a port the frame handed us, never at its contentWindow:
+				// that names the browsing context, which survives a navigation, so author script
+				// that navigates the frame away would be handed the next token. A port is an
+				// object in the frame document's realm — it dies with that document, and no
+				// replacement can obtain it.
+				var frame = document.getElementById('n8n-chat-frame');
+				var port = null;
+				var latched = false;
+				var pendingToken = '';
+				var portTimer = null;
+
+				window.addEventListener('message', function (event) {
+					// First announcement wins, and the latch never re-arms: the inner document is
+					// already unreloadable (its one-hop cookie is consumed on the first GET), so a
+					// second announcement can only come from a document we must not hand a token.
+					if (latched) return;
+					// allow-popups means a popup the frame opened can reach us as opener.parent,
+					// so the sender has to be the frame itself.
+					if (!frame || event.source !== frame.contentWindow) return;
+					var data = event.data;
+					if (!data || data.type !== 'n8n-chat-frame-ready') return;
+					latched = true;
+					if (event.ports && event.ports.length) port = event.ports[0];
+					if (portTimer) { clearTimeout(portTimer); portTimer = null; }
+					if (!port) {
+						// This browser can't carry a token to the frame. Stop: the frame keeps the
+						// token baked into its HTML for its full hour, as it did before refresh existed.
+						if (timer) { clearTimeout(timer); timer = null; }
+						return;
+					}
+					if (pendingToken) {
+						port.postMessage({ type: 'n8n-chat-auth-token', token: pendingToken });
+						pendingToken = '';
+					}
+				});
+
+				function deliver(token) {
+					if (port) { port.postMessage({ type: 'n8n-chat-auth-token', token: token }); return; }
+					// Hold the newest token rather than lose a one-shot post: a refresh can beat
+					// the frame's own bootstrap.
+					pendingToken = token;
+					if (!portTimer) portTimer = setTimeout(portMissing, 10000);
+				}
+
+				function portMissing() {
+					portTimer = null;
+					if (port) return;
+					// No fallback that posts at the frame's own window: a document that navigated
+					// the frame simply never announces itself, so the fallback would be the exact
+					// path that hands it the token. Reload instead — guarded, same-origin.
+					giveUp();
+				}
 
 				// How long BEFORE expiry to refresh, not when to refresh: a fifth of the
 				// lifetime, clamped to [60s, 600s]. A one-hour token is therefore replaced at
@@ -235,6 +301,10 @@ function refreshScript({ url, expiresIn }: { url: string; expiresIn: number }): 
 				}
 
 				function refresh(isRetry) {
+					// The frame announced itself with no port, so there is nowhere to put a fresh
+					// token. Reachable through the 5s retry: a request already in flight when that
+					// announcement arrives still schedules one.
+					if (latched && !port) return;
 					// Taken before the request leaves, so the elapsed time subtracted below covers
 					// the whole window — both network legs, our handler, and the AS round trip.
 					// Without it the page anchors the lifetime to when the response *arrived* and
@@ -257,16 +327,7 @@ function refreshScript({ url, expiresIn }: { url: string; expiresIn: number }): 
 							if (!data || typeof data.token !== 'string' || !data.token) {
 								throw new Error('refresh returned no token');
 							}
-							// targetOrigin '*': the frame is sandboxed without allow-same-origin, so
-							// it has an opaque origin this document cannot name. The payload is a
-							// token that document already holds a copy of.
-							var frame = document.getElementById('n8n-chat-frame');
-							if (frame && frame.contentWindow) {
-								frame.contentWindow.postMessage(
-									{ type: 'n8n-chat-auth-token', token: data.token },
-									'*'
-								);
-							}
+							deliver(data.token);
 							var lifetime = typeof data.expiresIn === 'number' ? data.expiresIn : 3600;
 							planFor(lifetime - (Date.now() - startedAt) / 1000);
 						})

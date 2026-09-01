@@ -663,7 +663,17 @@ describe('createShellPage', () => {
 	it('carries no refresh machinery when no refresh is passed', () => {
 		expect(shell).not.toContain('n8nChatRefresh');
 		expect(shell).not.toContain('n8n-chat-auth-token');
+		expect(shell).not.toContain('n8n-chat-frame-ready');
+		expect(shell).not.toContain('MessageChannel');
 		expect(shell).not.toContain('fetch(');
+	});
+
+	// The refresh script had to move ahead of this one so its listener is installed
+	// while the frame is still about:blank. With refresh absent the document must be
+	// byte-for-byte the one it was before refresh existed.
+	it('places the frame script exactly where it was before refresh existed', () => {
+		expect(shell).toContain('></iframe>\n\t\t<script>');
+		expect(shell).toContain('\t\t</script>\n\t</body>');
 	});
 });
 
@@ -729,10 +739,63 @@ describe('createShellPage with token refresh', () => {
 		expect(shell).toContain("credentials: 'same-origin'");
 	});
 
-	it('posts the new token into the frame', () => {
-		expect(shell).toContain("{ type: 'n8n-chat-auth-token', token: data.token }");
-		// The frame is sandboxed without allow-same-origin, so it has no origin to name.
-		expect(shell).toContain("'*'");
+	// `frame.contentWindow` names the browsing context, not the document, so it keeps
+	// resolving after author script navigates the frame away — and would hand the next
+	// rotated token to whatever loaded there. A port dies with the document that made it.
+	it('hands the token down a channel the frame opened, never at its window', () => {
+		expect(shell).toContain("port.postMessage({ type: 'n8n-chat-auth-token', token: token })");
+		expect(shell).toContain('deliver(data.token);');
+		expect(shell).not.toContain('contentWindow.postMessage');
+	});
+
+	// Two parser-inserted scripts do not run in one uninterrupted turn, so a listener
+	// installed after the frame is navigated could miss the announcement. Installed
+	// first, it is in place while the frame is still about:blank — which, sandboxed
+	// without allow-same-origin, has no script and cannot post.
+	it('installs the ready listener before it navigates the frame', () => {
+		expect(shell.indexOf("addEventListener('message'")).toBeGreaterThan(-1);
+		expect(shell.indexOf("addEventListener('message'")).toBeLessThan(
+			shell.indexOf("frame.src = frame.getAttribute('data-src')"),
+		);
+	});
+
+	it('accepts a ready message only from the frame itself', () => {
+		expect(shell).toContain('if (!frame || event.source !== frame.contentWindow) return;');
+		expect(shell).toContain("data.type !== 'n8n-chat-frame-ready'");
+	});
+
+	it('latches the first ready message and never a later one', () => {
+		expect(shell).toContain('if (latched) return;');
+		expect(shell).toContain('var latched = false;');
+		expect(shell).toContain('latched = true;');
+		// Nothing ever sets it back: the only assignment to false is the declaration.
+		expect(shell.match(/latched = false/g)).toHaveLength(1);
+	});
+
+	// A browser with no MessageChannel announces itself without a port. That still has
+	// to close the latch, or a document that later replaces the frame could claim it.
+	it('closes the latch on a ready message that carries no port', () => {
+		expect(shell.indexOf('latched = true;')).toBeLessThan(
+			shell.indexOf('if (event.ports && event.ports.length) port = event.ports[0];'),
+		);
+	});
+
+	// With no port there is nowhere to put a fresh token, and the frame's own baked-in
+	// token lasts its full lifetime — exactly the pre-refresh behaviour.
+	it('stops refreshing when the frame announces readiness without a port', () => {
+		expect(shell).toContain('if (latched && !port) return;');
+		expect(shell).toContain('if (timer) { clearTimeout(timer); timer = null; }');
+	});
+
+	// A refresh can beat the frame's bootstrap, and the post is one-shot.
+	it('holds the newest token until the port arrives', () => {
+		expect(shell).toContain('pendingToken = token;');
+		expect(shell).toContain(
+			"port.postMessage({ type: 'n8n-chat-auth-token', token: pendingToken })",
+		);
+		expect(shell).toContain("pendingToken = '';");
+		// If no port ever arrives, reload rather than fall back to the frame's window.
+		expect(shell).toContain('portTimer = setTimeout(portMissing, 10000);');
 	});
 
 	it('retries once and then reloads exactly once', () => {
@@ -804,11 +867,27 @@ describe('createPage inside the shell frame', () => {
 		expect(inner).toContain("if (!headers['x-auth-token'])");
 	});
 
-	it('accepts a rotated token only from the shell', () => {
+	// Not a window listener: a port belongs to this document's realm, so it dies with
+	// this document. A replacement loaded by author script cannot obtain it, which is
+	// what keeps the shell's next token away from it.
+	it('opens a private channel to the shell instead of listening on window', () => {
 		expect(inner).toContain('window.__n8nChatAuthHeaders = {};');
-		expect(inner).toContain('if (event.source !== window.parent) return;');
+		expect(inner).toContain('var channel = new MessageChannel();');
+		expect(inner).toContain('channel.port1.onmessage = function (event) {');
+		expect(inner).toContain(
+			"window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*', [channel.port2]);",
+		);
 		expect(inner).toContain("data.type !== 'n8n-chat-auth-token'");
 		expect(inner).toContain("window.__n8nChatAuthHeaders['x-auth-token'] = data.token;");
+		expect(inner).not.toContain("addEventListener('message'");
+	});
+
+	// Announcing with no port still closes the shell's latch, so a document loaded here
+	// later cannot claim the channel this one failed to open.
+	it('announces readiness without a port when the browser has no channel', () => {
+		expect(inner).toContain(
+			"try { window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*'); } catch (postError) {}",
+		);
 	});
 
 	// The refresh token lives only in an httpOnly cookie; it must appear in neither
