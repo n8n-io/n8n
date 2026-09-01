@@ -29,7 +29,7 @@ const FIRST_PAGE_QS = {
 };
 const HEADERS = { ConsistencyLevel: 'eventual' };
 
-describe('Microsoft Teams v2 — getUsers', () => {
+describe('Microsoft Teams v2, getUsers', () => {
 	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
 
@@ -151,7 +151,7 @@ describe('Microsoft Teams v2 — getUsers', () => {
 	});
 });
 
-describe('Microsoft Teams v2 — mention picker wiring', () => {
+describe('Microsoft Teams v2, mention picker wiring', () => {
 	const mentionUserRlc = (resource: string) => {
 		const mentions = versionDescription.properties.find(
 			(property) =>

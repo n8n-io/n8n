@@ -22,7 +22,7 @@ const USERS: Record<string, IDataObject> = {
 	'/v1.0/users/bob%40example.com': { id: 'guid-2', displayName: 'Bob Jones' },
 };
 
-describe('Microsoft Teams V2 — channelMessage:create per item', () => {
+describe('Microsoft Teams V2, channelMessage:create per item', () => {
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
