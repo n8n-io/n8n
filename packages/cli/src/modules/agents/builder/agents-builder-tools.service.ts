@@ -70,6 +70,7 @@ import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -825,11 +826,10 @@ export class AgentsBuilderToolsService {
 								message: error.message,
 							};
 						}
-						return {
-							status: 'error',
-							code: 'execution_failed',
-							message: error instanceof Error ? error.message : 'Agent test run failed.',
-						};
+						const { code, message } = describeCallAgentFailure(
+							error instanceof Error ? error.message : 'Agent test run failed.',
+						);
+						return { status: 'error', code, message };
 					}
 				},
 			)

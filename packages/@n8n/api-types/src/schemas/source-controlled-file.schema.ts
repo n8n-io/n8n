@@ -57,6 +57,7 @@ export const SourceControlledFileSchema = z.object({
 	isRemoteArchived: z.boolean().optional(),
 	parentFolderId: z.string().nullable().optional(),
 	folderPath: z.array(z.string()).optional(),
+	remoteFolderPath: z.array(z.string()).optional(),
 	owner: ResourceOwnerSchema.optional(), // Resource owner can be a personal email or team information
 	publishingError: z.string().optional(),
 	publishingErrorDetails: workflowPublishBlockedDetailsSchema.optional(),

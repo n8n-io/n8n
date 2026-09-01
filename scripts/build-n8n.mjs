@@ -168,6 +168,14 @@ await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --fil
 // `files` field in their package.json. These are valid runtime deps but their
 // authors published full source trees; syft inventories the subdirs as phantom
 // packages with no license, which fails enterprise SBOM license gates.
+// `.nothrow()` for the same reason as the runtime-asset check below: zx runs
+// with `pipefail`, and `du`/`find` exit non-zero for a single unstattable path.
+// These only feed a diagnostic, so a warning must never fail the build.
+const measureKb = async (dir) =>
+	Number((await $`du -sk ${dir} | cut -f1`.nothrow()).stdout.trim()) || 0;
+
+const closureKbBefore = await measureKb(config.compiledAppDir);
+
 echo(chalk.yellow('INFO: Stripping test/example/benchmark dirs from production closure...'));
 const phantomDirs = [
 	'resolve/*/test',
@@ -187,6 +195,46 @@ echo(chalk.green('✅ Phantom dirs stripped'));
 // isolated-vm ships prebuilds for darwin, win32 and linux. The image compiles
 // the binding from source, so these are unused. Removing them also keeps 15MB
 // out of the build context.
+// Third-party source maps are 20k files that only help when debugging inside a
+// dependency. First-party maps stay: source-map-support uses them for our own
+// stack traces. `file+packages` is how pnpm names the workspace packages.
+echo(chalk.yellow('INFO: Stripping third-party source maps...'));
+await $`find ${config.compiledAppDir}/node_modules/.pnpm -name "*.map" -not -path "*file+packages*" -delete 2>/dev/null || true`;
+echo(chalk.green('✅ Third-party source maps stripped'));
+
+// agent-browser ships one binary per platform. The image is Alpine, so only the
+// musl builds can run. Both architectures stay, because the build host does not
+// always match the image platform. The name filter matters: bin/ also holds
+// agent-browser.js, the launcher that package.json's `bin` field points at.
+echo(chalk.yellow('INFO: Stripping unusable agent-browser binaries...'));
+await $`find ${config.compiledAppDir}/node_modules/.pnpm -path "*agent-browser/bin/*" -type f -name "agent-browser-*" -not -name "*linux-musl*" -delete 2>/dev/null || true`;
+
+// Same class of bug as the isolated-vm rebuild in docker/images/n8n/Dockerfile:
+// the hardened base breaks a package's own musl detection. There it is
+// node-gyp-build reading /etc/alpine-release; here the agent-browser launcher
+// shells out to `ldd`, and swallows the failure (`|| true`) so its
+// /lib/ld-musl-* fallback never runs. The base ships no `ldd`, so detection
+// returns false and the launcher asks for the glibc build.
+//
+// libc6-compat does not save it: that provides the loader but not the full
+// symbol set, so the glibc binary gets past the loader and dies relocating
+// (`__res_init: symbol not found`, verified on a published image, native arm64).
+// isolated-vm is rebuilt from source instead; agent-browser ships prebuilt Rust
+// binaries, so hard-link the glibc name onto the musl build and let the wrong
+// answer resolve to something that runs. Links, so no additional bytes.
+echo(chalk.yellow('INFO: Aliasing glibc agent-browser names to the musl builds...'));
+await $`
+  set -eu
+  find ${config.compiledAppDir}/node_modules/.pnpm -path "*agent-browser/bin" -type d | while read -r bin; do
+    for a in x64 arm64; do
+      musl="$bin/agent-browser-linux-musl-$a"
+      [ -f "$musl" ] || continue
+      ln -f "$musl" "$bin/agent-browser-linux-$a"
+    done
+  done
+`;
+echo(chalk.green('✅ Non-musl agent-browser binaries stripped'));
+
 echo(chalk.yellow('INFO: Stripping isolated-vm prebuilds...'));
 await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/isolated-vm/prebuilds" -exec rm -rf {} + 2>/dev/null || true`;
 echo(chalk.green('✅ isolated-vm prebuilds stripped'));
@@ -211,10 +259,87 @@ echo(chalk.green('✅ Declaration files stripped'));
 // on the first AI request. Fail the build here instead.
 // `.nothrow()` because zx runs with `pipefail`: one unreadable path would
 // otherwise turn a healthy build into an unhandled rejection.
+// Both strips swallow errors, and the size line below is a report rather than a
+// gate — so a pattern that stops matching (a pnpm layout change, a quoting
+// regression) would make them silent no-ops and nothing would go red. Assert
+// the deletions happened, not just that the survivors survived.
+const strippedPatterns = [
+	{
+		label: 'third-party source maps',
+		find: ['-name', '*.map', '-not', '-path', '*file+packages*'],
+	},
+	{
+		// The linux names survive as hard links onto the musl builds (see above),
+		// so only the other platforms should be gone.
+		label: 'non-linux agent-browser binaries',
+		find: [
+			'-path',
+			'*agent-browser/bin/*',
+			'-type',
+			'f',
+			'(',
+			'-name',
+			'agent-browser-darwin-*',
+			'-o',
+			'-name',
+			'agent-browser-win32-*',
+			')',
+		],
+	},
+];
+
+echo(chalk.yellow('INFO: Verifying strips removed what they targeted'));
+for (const { label, find } of strippedPatterns) {
+	const left = await $`find ${config.compiledAppDir}/node_modules/.pnpm ${find}`.nothrow();
+	// A `find` that could not traverse the tree also returns empty stdout, which
+	// would read as "nothing survived" — the exact false pass this check exists
+	// to prevent. Fail closed when it could not run.
+	if (left.exitCode !== 0) {
+		echo(chalk.red(`ERROR: could not verify ${label} were stripped (find exited ${left.exitCode})`));
+		echo(chalk.dim(left.stderr.slice(0, 400)));
+		process.exit(1);
+	}
+	const count = left.stdout.split('\n').filter(Boolean).length;
+	if (count > 0) {
+		echo(chalk.red(`ERROR: ${count} ${label} survived the strip — the pattern no longer matches`));
+		process.exit(1);
+	}
+}
+// The alias is what makes agent-browser resolvable in the image at all, so
+// prove the glibc name and the musl build are the same inode rather than
+// trusting the link step ran.
+const aliasCheck = await $`
+  find ${config.compiledAppDir}/node_modules/.pnpm -path "*agent-browser/bin" -type d | while read -r bin; do
+    for a in x64 arm64; do
+      musl="$bin/agent-browser-linux-musl-$a"
+      alias="$bin/agent-browser-linux-$a"
+      [ -f "$musl" ] || continue
+      if [ ! -f "$alias" ] || [ "$(stat -c %i "$musl" 2>/dev/null || stat -f %i "$musl")" != "$(stat -c %i "$alias" 2>/dev/null || stat -f %i "$alias")" ]; then
+        echo "MISMATCH $alias"
+      fi
+    done
+  done
+`.nothrow();
+// Same reasoning as above: a failed traversal produces no MISMATCH lines, so
+// treat a non-zero exit as unverifiable rather than as a pass.
+if (aliasCheck.exitCode !== 0 || aliasCheck.stdout.includes('MISMATCH')) {
+	echo(chalk.red('ERROR: agent-browser glibc alias does not point at the musl build'));
+	echo(chalk.dim(aliasCheck.stdout || aliasCheck.stderr.slice(0, 400)));
+	process.exit(1);
+}
+
+echo(chalk.green('✅ Strips verified'));
+
 const runtimeAssetGlobs = [
 	'*/@n8n/instance-ai/skills/*',
 	'*/@n8n/instance-ai/knowledge-base/*',
 	'*/dist/node-definitions/*',
+	// source-map-support reads these for our own stack traces.
+	'*file+packages*/dist/*.js.map',
+	// The only agent-browser binary the Alpine image can run.
+	'*agent-browser/bin/*linux-musl*',
+	// The launcher that package.json's `bin` resolves to.
+	'*agent-browser/bin/agent-browser.js',
 ];
 
 echo(chalk.yellow('INFO: Verifying Runtime assets'));
@@ -227,6 +352,23 @@ for (const glob of runtimeAssetGlobs) {
 }
 echo(chalk.green('✅ Runtime assets intact'));
 
+// Reported, not enforced. A hard budget fails CI on ordinary dependency growth,
+// which costs more than the regression it catches.
+const closureBytes = (await measureKb(config.compiledAppDir)) * 1024;
+const closureFiles = Number(
+	(await $`find ${config.compiledAppDir} -type f | wc -l`.nothrow()).stdout.trim(),
+);
+if (closureKbBefore > 0 && closureBytes > 0) {
+	echo(
+		chalk.green(
+			`✅ Closure ${((closureKbBefore * 1024) / 1e6).toFixed(0)}MB -> ${(closureBytes / 1e6).toFixed(0)}MB ` +
+				`(stripped ${((closureKbBefore * 1024 - closureBytes) / 1e6).toFixed(0)}MB), ${closureFiles} files`,
+		),
+	);
+} else {
+	echo(chalk.yellow('INFO: Closure size unavailable (du could not read the tree)'));
+}
+
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
 echo(
@@ -235,6 +377,10 @@ echo(
 	),
 );
 
+// Deliberately unstripped. This closure ships as its own image and is two
+// orders of magnitude smaller than the n8n one, so the strips above are not
+// worth duplicating here — the closure figure they report covers the n8n image
+// only, not the shipped total.
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
 // Check the production closure for single-instance dependency duplication. A curated

@@ -1,8 +1,6 @@
 import {
 	createDelegateSubAgentTool,
-	generateResultToDelegateSubAgentOutput,
 	INLINE_SUB_AGENT_ID,
-	type DelegateSubAgentToolOutput,
 	type InlineSubAgentProviderToolsResolver,
 	type ModelConfig,
 	type SubAgentTaskDifficulty,
@@ -13,14 +11,11 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
-import type {
-	SubAgentForegroundRunContext,
-	SubAgentForegroundResult,
-	SubAgentForegroundRunner,
-} from './sub-agent-foreground-runner';
+import { formatSubAgentToolOutput } from './format-sub-agent-tool-output';
+import type { SubAgentRunContext, SubAgentRunner } from './sub-agent-runner';
 
-export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
-	runner: SubAgentForegroundRunner;
+export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentRunContext {
+	runner: SubAgentRunner;
 	sourcesById: Record<string, SubAgentSource>;
 	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
 	policy?: SubAgentRunPolicy;
@@ -64,11 +59,10 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			}
 			const parentSandboxScope = decodeAgentSandboxHostMetadata(request.parentHostMetadata);
 
-			const result = await runner.runForeground(
+			const result = await runner.run(
 				{
 					goal: request.goal,
 					source: selectedSource,
-					executionMode: 'foreground',
 					...(request.context !== undefined ? { context: request.context } : {}),
 					...(request.expectedOutput !== undefined
 						? { expectedOutput: request.expectedOutput }
@@ -178,20 +172,4 @@ function resolveExpectedSourceAgentId(subAgentId: string, parentAgentId?: string
 		throw new UserError('Inline sub-agent parent Agent identity is missing');
 	}
 	return parentAgentId;
-}
-
-export function formatSubAgentToolOutput(
-	result: SubAgentForegroundResult,
-): DelegateSubAgentToolOutput {
-	const output = generateResultToDelegateSubAgentOutput(
-		result.taskPath,
-		result.result,
-		result.threadId,
-	);
-	return {
-		...output,
-		...(output.status === 'suspended' && result.resumeContext !== undefined
-			? { resumeContext: result.resumeContext }
-			: {}),
-	};
 }

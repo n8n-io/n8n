@@ -2,33 +2,23 @@ import type {
 	ContentImportContext,
 	CredentialDecryptContext,
 	EnforcementPoint,
-	PolicedWorkflow,
 	PolicyDecision,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
 	WorkflowStartContext,
 	WorkflowTransferContext,
+	PolicyCleared,
+	PolicySubject,
 } from '@n8n/decorators';
+import { mintPolicyCleared, workflowSubject } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
 
-import { mintPolicyCleared, type PolicyCleared, type PolicySubject } from './policy-cleared';
 import type { PolicyContext, PolicyEnforcementBackend } from './policy-enforcement-backend';
 import { hasViolations, PolicyViolationError } from './policy-violation.error';
 
 /** Fresh each time — `violations` is mutable. */
 const emptyDecision = (): PolicyDecision => ({ violations: [] });
-
-/** A workflow being created has no id yet, so it binds to its nodes instead. */
-function workflowSubject(workflow: PolicedWorkflow): PolicySubject {
-	if (workflow.id !== null) return { type: 'workflow', id: workflow.id };
-
-	// Same object within one request, so key order is stable.
-	const nodes = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
-
-	return { type: 'workflow', id: nodes };
-}
 
 /**
  * The policy enforcement point every host call site talks to.
