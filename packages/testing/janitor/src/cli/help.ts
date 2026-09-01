@@ -220,17 +220,18 @@ Walks the pnpm workspace dependency graph: directly-affected packages plus
 everything transitively downstream. Outputs one package name per line.
 
 Usage:
-  janitor affected-packages [--changed-files=<list>]
+  janitor affected-packages [--changed-files=<list>] [--paths]
 
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
+  --paths:         print repo-root-relative package dirs instead of names.
 
 When neither --changed-files nor $CHANGED_FILES is set, returns ALL packages
 (safe default for local dev).
 
 Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json,
-anything under packages/@n8n/db/ (entities and migrations resolved at
-runtime via the DI container by every consuming package's integration tests).
+and the global trigger prefixes in core/global-triggers.ts (packages/@n8n/db,
+packages/workflow, packages/core, packages/@n8n/vitest-config).
 `);
 }
 

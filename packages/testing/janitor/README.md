@@ -203,11 +203,12 @@ ci-filter (in install-and-build)
   │
   └─→ CHANGED_FILES (newline-separated)
         │
-        ├─→ janitor affected-packages    (walks pnpm workspace dep graph)
+        ├─→ janitor affected-packages --paths   (walks pnpm workspace dep graph)
         │     │
-        │     └─→ AFFECTED_PACKAGES (space-separated list)
+        │     └─→ job-group flags (backend / nodes / frontend)
         │           │
-        │           └─→ passed to test jobs as workflow input
+        │           └─→ whole unit-test jobs skip when their group has no
+        │               affected package (fail-open for files outside packages/)
         │
         └─→ CHANGED_FILES forwarded to test jobs
               │
@@ -223,6 +224,9 @@ ci-filter (in install-and-build)
 ```bash
 # Walk the workspace dep graph. Output: one package name per line.
 CHANGED_FILES="packages/workflow/src/x.ts" janitor affected-packages
+
+# Same walk, but print repo-root-relative package dirs instead of names.
+CHANGED_FILES="packages/workflow/src/x.ts" janitor affected-packages --paths
 
 # Compute scope for the cwd package. Output: SKIP | RUN_FULL | <files>
 janitor scope

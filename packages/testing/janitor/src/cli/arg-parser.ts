@@ -57,6 +57,8 @@ export interface CliOptions {
 	// Affected-packages / scope options
 	changedFiles?: string;
 	packageDir?: string;
+	/** affected-packages: print package dirs instead of package names. */
+	paths: boolean;
 	/** Anything after `--` — forwarded to the test runner by `test-scoped`. */
 	passthroughArgs: string[];
 	// filter-shard-specific options
@@ -140,6 +142,9 @@ const FLAG_HANDLERS: Record<string, FlagHandler> = {
 	},
 	'--impact': (opts) => {
 		opts.impact = true;
+	},
+	'--paths': (opts) => {
+		opts.paths = true;
 	},
 };
 
@@ -243,6 +248,7 @@ function createDefaultOptions(): CliOptions {
 		impact: false,
 		changedFiles: undefined,
 		packageDir: undefined,
+		paths: false,
 		passthroughArgs: [],
 		url: undefined,
 	};
