@@ -8,7 +8,10 @@ vi.mock('../../../utils/eval-agents', async () => {
 
 import { SONNET_MODEL, createEvalAgent, extractText } from '../../../utils/eval-agents';
 import type { NodeSimulationVerdict } from '../../../workflow-loop/workflow-loop-state';
-import { generateSimulationFixtures } from '../generate-simulation-fixtures.service';
+import {
+	buildPlaceholderFixtures,
+	generateSimulationFixtures,
+} from '../generate-simulation-fixtures.service';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 const mockExtractText = extractText as MockedFunction<typeof extractText>;
@@ -86,7 +89,7 @@ describe('generateSimulationFixtures', () => {
 		);
 	});
 
-	it('fills empty fixtures for nodes the LLM omitted', async () => {
+	it('falls back to a placeholder for nodes the LLM omitted', async () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: { id: 1 } }] }));
 		const result = await generateSimulationFixtures({
 			workflow: wf([
@@ -99,7 +102,7 @@ describe('generateSimulationFixtures', () => {
 		expect(result.B).toEqual([{}]);
 	});
 
-	it('returns empty fixtures for every node on malformed LLM output', async () => {
+	it('falls back to a placeholder for every node on malformed LLM output', async () => {
 		setupAgentMock('not json');
 		const result = await generateSimulationFixtures({
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
@@ -108,7 +111,7 @@ describe('generateSimulationFixtures', () => {
 		expect(result).toEqual({ A: [{}] });
 	});
 
-	it('returns empty fixtures for every node when the LLM call throws', async () => {
+	it('falls back to a placeholder for every node when the LLM call throws', async () => {
 		const generate = vi.fn().mockRejectedValue(new Error('boom'));
 		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
 			typeof createEvalAgent
@@ -120,7 +123,7 @@ describe('generateSimulationFixtures', () => {
 		expect(result).toEqual({ A: [{}] });
 	});
 
-	it('warns on generation failure so the empty-fixture degrade is visible', async () => {
+	it('warns on generation failure so the placeholder degrade is visible', async () => {
 		mockCreateEvalAgent.mockImplementation(() => {
 			throw new Error('Missing API key');
 		});
@@ -267,6 +270,123 @@ describe('generateSimulationFixtures', () => {
 		});
 
 		expect(result['AI Root']).toEqual([{ output: { summary: 'hi' } }]);
+	});
+
+	it('shapes the fallback item from the node schema when generation fails', async () => {
+		setupAgentMock('not json');
+		const workflow = wf([{ name: 'Send Slack', type: 'n8n-nodes-base.slack' }]);
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Send Slack')],
+			outputSchemaLookup: () => ({
+				type: 'object',
+				properties: { ok: { type: 'boolean' }, channel: { type: 'string' } },
+			}),
+		});
+
+		expect(result).toEqual({ 'Send Slack': [{ ok: true, channel: 'sample' }] });
+	});
+
+	it('shapes the fallback item from the node schema when the LLM omits the node', async () => {
+		setupAgentMock(JSON.stringify({ A: [{ json: { id: 1 } }] }));
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([
+				{ name: 'A', type: 'n8n-nodes-base.slack' },
+				{ name: 'B', type: 'n8n-nodes-base.gmail' },
+			]),
+			plan: [simulateVerdict('A'), simulateVerdict('B')],
+			outputSchemaLookup: (node) =>
+				node.type === 'n8n-nodes-base.gmail'
+					? { type: 'object', properties: { messageId: { type: 'string' } } }
+					: undefined,
+		});
+
+		expect(result.A).toEqual([{ id: 1 }]);
+		expect(result.B).toEqual([{ messageId: 'sample' }]);
+	});
+
+	it('replaces items the LLM returned with no fields at all', async () => {
+		// A phantom `{}` reaches downstream nodes with nothing to read, which is
+		// the failure this floor exists to stop.
+		setupAgentMock(JSON.stringify({ A: [{ json: {} }] }));
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			outputSchemaLookup: () => ({ type: 'object', properties: { ts: { type: 'string' } } }),
+		});
+
+		expect(result.A).toEqual([{ ts: 'sample' }]);
+	});
+
+	it('keeps the real items when only some of them are empty', async () => {
+		setupAgentMock(JSON.stringify({ A: [{ json: {} }, { json: { id: 2 } }] }));
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+		});
+
+		expect(result.A).toEqual([{ id: 2 }]);
+	});
+
+	it('never emits zero items for a simulated node', async () => {
+		setupAgentMock(JSON.stringify({ A: [], B: [] }));
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([
+				{ name: 'A', type: 'n8n-nodes-base.slack' },
+				{ name: 'B', type: 'n8n-nodes-base.gmail' },
+			]),
+			plan: [simulateVerdict('A'), simulateVerdict('B')],
+		});
+
+		expect(result.A).toHaveLength(1);
+		expect(result.B).toHaveLength(1);
+	});
+
+	it('anchors placeholder timestamps to the current clock, not training data', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-09-01T10:30:00.000Z'));
+		setupAgentMock('not json');
+
+		const result = await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			outputSchemaLookup: () => ({
+				type: 'object',
+				properties: { sentAt: { type: 'string', format: 'date-time' } },
+			}),
+		});
+
+		expect(result.A).toEqual([{ sentAt: '2026-09-01T10:30:00.000Z' }]);
+		vi.useRealTimers();
+	});
+
+	it('gives a fixture-less simulated node a placeholder without an LLM call', () => {
+		const workflow = wf([
+			{ name: 'Send Slack', type: 'n8n-nodes-base.slack' },
+			{ name: 'Unknown', type: 'n8n-nodes-base.noOp' },
+		]);
+
+		const result = buildPlaceholderFixtures(
+			workflow,
+			['Send Slack', 'Unknown', 'Not In Workflow'],
+			(node) =>
+				node.type === 'n8n-nodes-base.slack'
+					? { type: 'object', properties: { ok: { type: 'boolean' } } }
+					: undefined,
+			new Date('2026-09-01T10:30:00.000Z'),
+		);
+
+		expect(result).toEqual({
+			'Send Slack': [{ ok: true }],
+			Unknown: [{}],
+			'Not In Workflow': [{}],
+		});
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
 
 	it('embeds the node output schema in the prompt when the lookup resolves one', async () => {

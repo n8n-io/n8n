@@ -31,6 +31,8 @@ const plainVerdict = {
 	source: 'deterministic' as const,
 };
 
+const otherVerdict = { ...plainVerdict, nodeName: 'Post Update' };
+
 describe('prepareVerificationRun — halted wait gates', () => {
 	it('pins a halted gate with zero items, ignoring any stored fixture', () => {
 		const result = prepareVerificationRun(
@@ -41,7 +43,7 @@ describe('prepareVerificationRun — halted wait gates', () => {
 					'Send Message': [{ ok: true }],
 				},
 			}),
-			undefined,
+			{},
 		);
 
 		expect(result.kind).toBe('ready');
@@ -54,7 +56,7 @@ describe('prepareVerificationRun — halted wait gates', () => {
 	it('still pins a fixture-less simulated node with one empty item', () => {
 		const result = prepareVerificationRun(
 			makeBuildOutcome({ nodeSimulationPlan: [plainVerdict] }),
-			undefined,
+			{},
 		);
 
 		expect(result.kind).toBe('ready');
@@ -65,7 +67,7 @@ describe('prepareVerificationRun — halted wait gates', () => {
 
 	it('blocks fixture overrides that target a halted gate', () => {
 		const result = prepareVerificationRun(makeBuildOutcome({ nodeSimulationPlan: [gateVerdict] }), {
-			'Email Approval': [{ data: { Decision: 'Request changes' } }],
+			fixtureOverrides: { 'Email Approval': [{ data: { Decision: 'Request changes' } }] },
 		});
 
 		expect(result.kind).toBe('blocked');
@@ -77,7 +79,7 @@ describe('prepareVerificationRun — halted wait gates', () => {
 	it('keeps applying overrides to ordinary simulated nodes', () => {
 		const result = prepareVerificationRun(
 			makeBuildOutcome({ nodeSimulationPlan: [gateVerdict, plainVerdict] }),
-			{ 'Send Message': [{ ok: false }] },
+			{ fixtureOverrides: { 'Send Message': [{ ok: false }] } },
 		);
 
 		expect(result.kind).toBe('ready');
@@ -96,7 +98,7 @@ describe('prepareVerificationRun — gate scripts', () => {
 		};
 		const result = prepareVerificationRun(
 			makeBuildOutcome({ nodeSimulationPlan: [gateVerdict], waitGateScripts: [script] }),
-			undefined,
+			{},
 		);
 
 		expect(result.kind).toBe('ready');
@@ -116,11 +118,52 @@ describe('prepareVerificationRun — gate scripts', () => {
 					},
 				],
 			}),
-			undefined,
+			{},
 		);
 
 		expect(result.kind).toBe('ready');
 		if (result.kind !== 'ready') return;
 		expect(result.prepared.gateScript).toBeUndefined();
+	});
+});
+
+describe('prepareVerificationRun — zero-item fixture overrides', () => {
+	it('blocks an override that pins zero items on an ordinary simulated node', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [plainVerdict] }),
+			{ fixtureOverrides: { 'Send Message': [] } },
+		);
+
+		expect(result.kind).toBe('blocked');
+		if (result.kind !== 'blocked') return;
+		expect(result.result.guidance).toContain('pin zero items');
+		expect(result.result.guidance).toContain('allowZeroItemFixtures');
+		expect(result.result.remediation?.reason).toBe('zero_item_fixture_override');
+	});
+
+	it('allows the empty override once the caller names the node', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [plainVerdict] }),
+			{
+				fixtureOverrides: { 'Send Message': [] },
+				allowZeroItemFixtures: ['Send Message'],
+			},
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.verificationPinData?.['Send Message']).toEqual([]);
+	});
+
+	it('names only the nodes that are actually empty', () => {
+		const result = prepareVerificationRun(
+			makeBuildOutcome({ nodeSimulationPlan: [plainVerdict, otherVerdict] }),
+			{ fixtureOverrides: { 'Send Message': [{ ok: true }], 'Post Update': [] } },
+		);
+
+		expect(result.kind).toBe('blocked');
+		if (result.kind !== 'blocked') return;
+		expect(result.result.guidance).toContain('Post Update');
+		expect(result.result.guidance).not.toContain('Send Message');
 	});
 });

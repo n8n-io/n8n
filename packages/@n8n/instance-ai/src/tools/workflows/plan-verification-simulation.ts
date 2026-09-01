@@ -9,14 +9,18 @@
  * - An empty plan (no candidate nodes) is kept as `[]` so verify can tell
  *   "nothing to simulate" apart from "classification failed". Only the latter
  *   (plan `undefined`) runs unprotected and makes verify surface a warning.
- * - Fixtures are only generated for non-empty plans; a fixture failure keeps
- *   the plan (verify pins fixture-less simulated nodes with an empty item).
+ * - Fixtures are only generated for non-empty plans. Every simulated node that
+ *   is not a halted wait gate leaves here with at least one item, because zero
+ *   items stop the whole branch below it and the verification then reports
+ *   success on a chain it never exercised. When generation is skipped or fails,
+ *   the item is a schema-shaped placeholder.
  */
 
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { classifyNodesForSimulation } from './classify-node-destructiveness.service';
 import {
+	buildPlaceholderFixtures,
 	generateSimulationFixtures,
 	type SimulationFixtures,
 } from './generate-simulation-fixtures.service';
@@ -294,6 +298,29 @@ function withDeclaredOutputVerdicts(
 	return overriddenPlan;
 }
 
+/**
+ * Fill in a placeholder for every non-halted simulated node the fixture map
+ * missed. Halted wait gates are skipped on purpose: a pinned gate cannot
+ * pause, and a canned decision would re-run its loop forever.
+ */
+function withFixtureFloor(
+	fixtures: SimulationFixtures,
+	plan: NodeSimulationVerdict[],
+	workflow: WorkflowJSON,
+	outputSchemaLookup?: OutputSchemaLookup,
+): SimulationFixtures {
+	const missing = plan
+		.filter(
+			(verdict) =>
+				verdict.verdict === 'simulate' &&
+				!verdict.haltBranch &&
+				!fixtures[verdict.nodeName]?.length,
+		)
+		.map((verdict) => verdict.nodeName);
+	if (missing.length === 0) return fixtures;
+	return { ...buildPlaceholderFixtures(workflow, missing, outputSchemaLookup), ...fixtures };
+}
+
 export async function planVerificationSimulation({
 	workflow,
 	mockedNodeNames,
@@ -340,7 +367,12 @@ export async function planVerificationSimulation({
 							logger,
 						})
 					: {};
-			const fixtures = { ...generatedFixtures, ...declaredFixtures };
+			const fixtures = withFixtureFloor(
+				{ ...generatedFixtures, ...declaredFixtures },
+				nodeSimulationPlan,
+				workflow,
+				outputSchemaLookup,
+			);
 			simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;
 			logger?.debug('Classified workflow nodes for verification simulation', {
 				workflowId,
@@ -360,9 +392,7 @@ export async function planVerificationSimulation({
 			// Re-apply ALL deterministic passes, not just the declared verdicts: a
 			// classification failure must never leave a plan where a simulated-only
 			// trigger has no verdict — verify would accept the plan and the trigger
-			// (e.g. a polling node) would really fire. Fixture-less simulated nodes
-			// are pinned with an empty item downstream, so skipping generation here
-			// is safe.
+			// (e.g. a polling node) would really fire.
 			nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan ?? [], declaredFixtures);
 			nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
 			nodeSimulationPlan = withSimulatedCredentiallessAiRootVerdicts(
@@ -372,6 +402,17 @@ export async function planVerificationSimulation({
 			);
 			nodeSimulationPlan = withWaitGateHaltVerdicts(nodeSimulationPlan, workflow);
 			simulationFixtures = declaredFixtures;
+		}
+		// Generation is out of reach here, but every node the surviving plan
+		// marks simulated still needs an item — a placeholder beats a dead branch.
+		if (nodeSimulationPlan) {
+			const floored = withFixtureFloor(
+				simulationFixtures ?? {},
+				nodeSimulationPlan,
+				workflow,
+				outputSchemaLookup,
+			);
+			simulationFixtures = Object.keys(floored).length > 0 ? floored : undefined;
 		}
 	}
 	return { nodeSimulationPlan, simulationFixtures, waitGateScripts };

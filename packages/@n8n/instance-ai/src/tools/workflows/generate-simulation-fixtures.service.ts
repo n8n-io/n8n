@@ -14,8 +14,11 @@
  * item, "simulated because" context, form/wait/trigger pass-through rules).
  *
  * Fallback posture: fixture generation is best-effort. On any failure every
- * simulated node gets a single empty item — verification stays safe (the node
- * still never executes), downstream data coverage degrades.
+ * simulated node still gets one item, synthesized from its `__schema__` (see
+ * `buildSchemaPlaceholderItem`) — verification stays safe (the node never
+ * executes) and the chain below it keeps running on the right field names.
+ * Zero items, or an item with no fields, would stop every downstream node and
+ * turn the run into a no-op that still reports success.
  */
 
 import { isRecord } from '@n8n/utils/is-record';
@@ -24,6 +27,7 @@ import {
 	buildDateAnchors,
 	buildNodeSchemaSection,
 	buildSchemaContexts,
+	buildSchemaPlaceholderItem,
 	findOutputParserTargets,
 	parsePinDataResponse,
 	repairStructuredOutput,
@@ -140,14 +144,51 @@ function buildUpstreamContext(
 	return ['Immediate upstream nodes (this node passes their data through):', ...lines].join('\n');
 }
 
-function emptyFixtures(nodeNames: string[]): SimulationFixtures {
-	return Object.fromEntries(nodeNames.map((name) => [name, [{}]]));
+function placeholderFixtures(
+	nodeNames: string[],
+	schemaContextByName: Map<string, NodeSchemaContext>,
+	now: Date,
+): SimulationFixtures {
+	return Object.fromEntries(
+		nodeNames.map((name) => [
+			name,
+			[buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })],
+		]),
+	);
+}
+
+/**
+ * The same one-item floor without an LLM call, for callers that skip fixture
+ * generation entirely (a planning failure) yet must not leave a simulated node
+ * pinned with zero items.
+ */
+export function buildPlaceholderFixtures(
+	workflow: WorkflowJSON,
+	nodeNames: string[],
+	outputSchemaLookup?: OutputSchemaLookup,
+	now: Date = new Date(),
+): SimulationFixtures {
+	const wanted = new Set(nodeNames);
+	const nodes = (workflow.nodes ?? []).filter(
+		(node): node is WorkflowJSON['nodes'][number] & { name: string } =>
+			typeof node.name === 'string' && wanted.has(node.name),
+	);
+	const schemaContexts = buildSchemaContexts(
+		nodes,
+		outputSchemaLookup,
+		findOutputParserTargets(workflow),
+	);
+	return placeholderFixtures(
+		nodeNames,
+		new Map(schemaContexts.map((ctx) => [ctx.nodeName, ctx] as const)),
+		now,
+	);
 }
 
 /**
  * Generate one fixture per `simulate`-verdict node. Always returns an entry
- * for every simulated node — LLM output is used when valid, a single empty
- * item otherwise.
+ * with at least one non-empty item for every simulated node — LLM output is
+ * used when valid, a schema-shaped placeholder otherwise.
  */
 export async function generateSimulationFixtures(
 	input: GenerateSimulationFixturesInput,
@@ -173,6 +214,7 @@ export async function generateSimulationFixtures(
 	const connectionsByDestination = mapConnectionsByDestination(
 		toEngineConnections(input.workflow.connections),
 	);
+	const now = new Date();
 	const userText = [
 		'Generate realistic mock output (pin-data items) for the following simulated n8n nodes.',
 		input.workflow.name ? `\nWorkflow: ${input.workflow.name}` : '',
@@ -194,7 +236,7 @@ export async function generateSimulationFixtures(
 		'Each value: an array with one item shaped like { "json": { ...fields } }.',
 		'',
 		'## Date anchors',
-		buildDateAnchors(new Date()),
+		buildDateAnchors(now),
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-simulation-fixtures', {
@@ -205,11 +247,11 @@ export async function generateSimulationFixtures(
 		fallbackModelConfig: input.fallbackModelConfig,
 	});
 	if (!result.ok) {
-		input.logger?.warn('Simulation fixture generation failed; simulated nodes get empty items', {
-			reason: result.reason,
-			nodeCount: nodeNames.length,
-		});
-		return emptyFixtures(nodeNames);
+		input.logger?.warn(
+			'Simulation fixture generation failed; simulated nodes get schema-shaped placeholders',
+			{ reason: result.reason, nodeCount: nodeNames.length },
+		);
+		return placeholderFixtures(nodeNames, schemaContextByName, now);
 	}
 
 	// Shared normalization + envelope repair, matching the eval pin-data paths:
@@ -222,10 +264,15 @@ export async function generateSimulationFixtures(
 
 	const fixtures: SimulationFixtures = {};
 	for (const name of nodeNames) {
-		const items = pinData[name];
-		fixtures[name] = items?.length
-			? items.map((item) => (isRecord(item.json) ? item.json : {}))
-			: [{}];
+		// An omitted node, an empty array, or items that unwrap to nothing all
+		// leave the branch below this node unreached, so each falls back to the
+		// schema-shaped floor.
+		const items = (pinData[name] ?? [])
+			.map((item) => (isRecord(item.json) ? item.json : {}))
+			.filter((item) => Object.keys(item).length > 0);
+		fixtures[name] = items.length
+			? items
+			: [buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })];
 	}
 	return fixtures;
 }

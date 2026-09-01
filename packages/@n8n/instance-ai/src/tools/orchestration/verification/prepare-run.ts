@@ -34,8 +34,10 @@ function getInvalidFixtureOverrideNodeNames(
  * outcome sidecar. Fixture items take precedence over the legacy
  * `{_mockedCredential}` markers (still read for build outcomes stored before
  * the marker channel was retired). A `simulate`-verdict node without a fixture
- * is still pinned with an empty item, because preventing a destructive call is
- * more important than preserving realistic output.
+ * still gets an empty item, because preventing a destructive call is more
+ * important than preserving realistic output. Planning gives every simulated
+ * node a schema-shaped item, so this floor only catches outcomes stored before
+ * that existed.
  */
 function buildVerificationPinData(
 	buildOutcome: WorkflowBuildOutcome,
@@ -78,12 +80,30 @@ function buildVerificationPinData(
 	};
 }
 
+function blocked(
+	reason: string,
+	guidance: string,
+): {
+	kind: 'blocked';
+	result: VerifyBuiltWorkflowOutput;
+} {
+	const remediation = createRemediation({
+		category: 'blocked',
+		shouldEdit: false,
+		reason,
+		guidance,
+	});
+	return { kind: 'blocked', result: { success: false, error: guidance, remediation, guidance } };
+}
+
 export function prepareVerificationRun(
 	buildOutcome: WorkflowBuildOutcome,
-	fixtureOverrides: VerifyToolInput['fixtureOverrides'],
+	input: Pick<VerifyToolInput, 'fixtureOverrides' | 'allowZeroItemFixtures'>,
 ):
 	| { kind: 'ready'; prepared: PreparedVerificationRun }
 	| { kind: 'blocked'; result: VerifyBuiltWorkflowOutput } {
+	const { fixtureOverrides } = input;
+	const allowedZeroItemNodes = new Set(input.allowZeroItemFixtures ?? []);
 	const haltedOverrideNodeNames = Object.keys(fixtureOverrides ?? {}).filter((nodeName) =>
 		(buildOutcome.nodeSimulationPlan ?? []).some(
 			(verdict) =>
@@ -97,21 +117,7 @@ export function prepareVerificationRun(
 			'answer forever. Verification drives such gates with scripted decisions where possible, or halts at ' +
 			'them otherwise. Treat the scripted/halted result as authoritative and tell the user the approval ' +
 			'loop needs a manual end-to-end test for final confirmation.';
-		const remediation = createRemediation({
-			category: 'blocked',
-			shouldEdit: false,
-			reason: 'halted_wait_gate_override',
-			guidance,
-		});
-		return {
-			kind: 'blocked',
-			result: {
-				success: false,
-				error: guidance,
-				remediation,
-				guidance,
-			},
-		};
+		return blocked('halted_wait_gate_override', guidance);
 	}
 
 	const invalidFixtureOverrideNodeNames = getInvalidFixtureOverrideNodeNames(
@@ -123,21 +129,23 @@ export function prepareVerificationRun(
 			'Fixture overrides can only target nodes already classified as simulated in the build outcome. ' +
 			`Invalid override node(s): ${invalidFixtureOverrideNodeNames.join(', ')}. ` +
 			'Do not run the workflow live; rebuild with declared output fixtures or override a simulated node.';
-		const remediation = createRemediation({
-			category: 'blocked',
-			shouldEdit: false,
-			reason: 'invalid_fixture_override',
-			guidance,
-		});
-		return {
-			kind: 'blocked',
-			result: {
-				success: false,
-				error: guidance,
-				remediation,
-				guidance,
-			},
-		};
+		return blocked('invalid_fixture_override', guidance);
+	}
+
+	// A zero-item override silences every node below the target, so the run can
+	// report success having exercised nothing. It stays available for a genuine
+	// empty-branch test, but the caller has to name the node to get it.
+	const zeroItemOverrideNodeNames = Object.entries(fixtureOverrides ?? {})
+		.filter(([nodeName, items]) => items.length === 0 && !allowedZeroItemNodes.has(nodeName))
+		.map(([nodeName]) => nodeName);
+	if (zeroItemOverrideNodeNames.length > 0) {
+		const guidance =
+			`Fixture override(s) for ${zeroItemOverrideNodeNames.join(', ')} pin zero items. ` +
+			'An empty item list stops every downstream node, so verification would pass without running ' +
+			'the branch you are checking. Give each node at least one plausible item instead. ' +
+			'If the empty result IS the case under test, repeat the call with the node listed in ' +
+			'`allowZeroItemFixtures` and report that the downstream branch stayed unverified.';
+		return blocked('zero_item_fixture_override', guidance);
 	}
 
 	return { kind: 'ready', prepared: buildVerificationPinData(buildOutcome, fixtureOverrides) };
