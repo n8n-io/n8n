@@ -1,10 +1,67 @@
 {
     "type": "object",
     "properties": {
+        "All versions": {
+            "type": "string"
+        },
+        "Create draft version": {
+            "type": "string"
+        },
+        "Current version": {
+            "type": "string"
+        },
+        "dimension": {
+            "type": "string"
+        },
+        "Draft version": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
+        "keywords": {
+            "type": "string"
+        },
+        "Lifecycle status": {
+            "type": "string"
+        },
+        "Linked Playbooks Name": {
+            "type": "string"
+        },
+        "linked_playbooks": {
+            "type": "string"
+        },
+        "New version ID": {
+            "type": "string"
+        },
+        "New version number": {
+            "type": "string"
+        },
+        "New version type": {
+            "type": "string"
+        },
+        "outcome_signal": {
+            "type": "string"
+        },
+        "outputs": {
+            "type": "string"
+        },
+        "Overlap Watch": {
+            "type": "string"
+        },
+        "overlap_watch": {
+            "type": "string"
+        },
         "pathway": {
+            "type": "string"
+        },
+        "Phase A inputs": {
+            "type": "string"
+        },
+        "Playbook ID": {
+            "type": "string"
+        },
+        "playbook_title": {
             "type": "string"
         },
         "promise": {
@@ -14,5 +71,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }
