@@ -175,7 +175,8 @@
       "@zone-eu/mailsplit@<5.4.15": "5.4.15",
       "fast-uri": "3.1.5",
       "sharp": "0.35.0",
-      "jose@<6.2.9": "6.2.9"
+      "jose@<6.2.9": "6.2.9",
+      "browserslist@<4.28.7": "4.28.7"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
