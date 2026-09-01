@@ -77,16 +77,10 @@ export async function resolveMentions(
 		// the same trimmed string, since the validator is anchored and callers trim.
 		const value = String(raw ?? '').trim();
 
-		try {
-			validateUserTargetId(value, node, mentionMessages(index + 1));
-		} catch (error) {
-			// Kept separate from the request below: a shared catch would route this through the
-			// 404 check, whose `undefined` httpCode rethrows it before the stamp is applied.
-			throw stampItemIndexOnError(error, itemIndex);
-		}
-
 		let user: IDataObject;
 		try {
+			validateUserTargetId(value, node, mentionMessages(index + 1));
+
 			user = (await microsoftApiRequest.call(
 				this,
 				'GET',
@@ -102,8 +96,9 @@ export async function resolveMentions(
 						'Pick the user from the list, or check that the user ID or email address is correct and that the user exists in this Microsoft 365 tenant.',
 				});
 			}
-			// 403 (missing User.Read.All), 429 and 5xx keep Graph's own message.
-			throw error;
+			// A validation failure and 403 (missing User.Read.All), 429 or 5xx all keep their own
+			// message; only the item index is added.
+			throw stampItemIndexOnError(error, itemIndex);
 		}
 
 		// Directory objects with no display name exist (some guests, some service accounts);
@@ -157,7 +152,7 @@ export function prepareMessage(
 	// `id` comes from the same index as the token above. Graph 400s on any mismatch between the
 	// two, which is the invariant this function exists to hold.
 	if (mentions.length) {
-		body.mentions = mentions.map((mention, index) => ({ id: index, ...mention }));
+		body.mentions = mentions.map((mention, index) => ({ ...mention, id: index }));
 	}
 
 	return body;
