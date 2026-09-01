@@ -21,5 +21,8 @@ export class PolicyInfrastructureModule implements ModuleInterface {
 		const { PolicyDecisionService } = await import('./policy-decision.service.js');
 
 		Container.get(PolicyEnforcementService).setImplementation(Container.get(PolicyDecisionService));
+
+		// Imported for its side effect: `@OnLifecycleEvent` registers on class definition.
+		await import('./policy-lifecycle-handler.js');
 	}
 }

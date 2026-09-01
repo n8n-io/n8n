@@ -34,16 +34,19 @@
  *   4. The content does NOT reconcile on a real code path → a genuinely new conflict. 3.x
  *      is left UNTOUCHED and a draft PR is opened on the sync branch carrying the conflict
  *      markers — with the mechanical files pre-resolved, so the resolver only deals with
- *      real code — attributed to the authors of the breaking commits behind the conflicted
- *      files. Syncs pause until it is merged.
+ *      real code — naming both ends of the clash: the authors of the breaking commits and
+ *      the master commits that touched the same files. Delete/modify conflicts leave no
+ *      markers, so they are resolved toward 3.x and reported as an explicit decision
+ *      instead. Syncs pause until it is merged.
  *
  * The conflict branch carries the conflict markers, so the resolver sees exactly what clashed
- * and the required checks stay red until they fix it in a commit of their own. That PR is
- * merged with the normal GitHub merge button — master's commits arrive as-is and the fix stays
- * its own commit. NEVER close a conflict PR unmerged: closing resolves nothing and the same
- * conflict reopens on the next sync. 3.x itself never has markers at its tip (nightly images
- * build from it), and the merge commit holding them is dropped from its history by the next
- * replay.
+ * and the required checks stay red until they fix it in a commit of their own. A conflict git
+ * left without markers (delete/modify) has no such gate: the PR body carries the decision that
+ * was made by default and says as much. That PR is merged with the normal GitHub merge button
+ * — master's commits arrive as-is and the fix stays its own commit. NEVER close a conflict PR
+ * unmerged: closing resolves nothing and the same conflict reopens on the next sync. 3.x
+ * itself never has markers at its tip (nightly images build from it), and the merge commit
+ * holding them is dropped from its history by the next replay.
  *
  * Runs from a checkout of the target branch (fetch-depth 0). Assumes credentials are NOT
  * persisted by checkout — pushes go through an explicit token URL.
@@ -71,12 +74,7 @@ import {
 	mergeTree,
 	runGit,
 } from './branch-replay.mjs';
-import {
-	conflictedFiles,
-	breakingShas,
-	resolveLogins,
-	buildOutputs,
-} from './sync-conflict-owners.mjs';
+import { conflictedFiles, gatherAttribution, buildOutputs } from './sync-conflict-owners.mjs';
 
 // Re-exported so this module stays the single entry point for the master→3.x flow, tests
 // included. The implementations are branch-pair-agnostic and shared with the bundle replay.
@@ -182,6 +180,34 @@ export function resolveQueueSidePath({ git, path, log = console.log }) {
 		log(`Resolving ${path} with the replayed commit's deletion...`);
 		git(['rm', '--force', '--', path]);
 	}
+}
+
+/**
+ * The unmerged paths git left as delete/modify: one side removed the file, the other
+ * changed it. These need naming separately, because a real merge leaves NO conflict
+ * markers for them — the working tree simply holds the surviving side, so committing the
+ * merge as-is silently takes that side with nothing for a resolver to look at.
+ *
+ * `ls-files -u` lines are `<mode> <oid> <stage>\t<path>`: stage 1 base, 2 ours (the target
+ * branch), 3 theirs (master). A base with one side missing is the delete; no base at all is
+ * an add/add, which is a normal content conflict and keeps its markers.
+ *
+ * @returns {Array<{ path: string, deletedBy: 'target' | 'master' }>}
+ */
+export function deleteModifyConflicts(git, paths) {
+	const out = [];
+	for (const path of paths) {
+		const stages = new Set(
+			git(['ls-files', '-u', '--', path])
+				.split('\n')
+				.map((line) => /^\S+ \S+ (\d)\t/.exec(line)?.[1])
+				.filter(Boolean),
+		);
+		if (!stages.has('1')) continue;
+		if (!stages.has('2')) out.push({ path, deletedBy: 'target' });
+		else if (!stages.has('3')) out.push({ path, deletedBy: 'master' });
+	}
+	return out;
 }
 
 /**
@@ -305,6 +331,11 @@ export function writeGithubOutput(obj, env = process.env) {
  * cannot be merged half-resolved (an auto-resolved branch would be green with master's
  * change silently dropped).
  *
+ * Delete/modify conflicts have no markers to leave, so they are resolved toward 3.x's side
+ * — the same side the replay favours — and reported separately. Left to `add -A` they would
+ * commit master's surviving blob instead, re-adding a file 3.x deleted on purpose with
+ * nothing in the diff to suggest a decision was made.
+ *
  * The lockfile is left with its markers when a manifest is among the code conflicts
  * (regenerating is meaningless until the manifests are resolved) or when the regen fails
  * transiently — flagged via `lockfileDeferred` so the PR body carries the instruction.
@@ -312,11 +343,18 @@ export function writeGithubOutput(obj, env = process.env) {
  * 3.x never carries the markers at its tip, and not for long in its history either: this
  * merge commit is dropped by the next replay, which takes the queue's commits only.
  *
- * @returns {{ files: string[], preResolved: string[], lockfileDeferred: boolean }}
- *   `files` is the list the PR reports and attributes owners for: the code conflicts,
- *   or every conflict when none are code (a fallback after a failed auto-resolution).
+ * @returns {{ files: string[], deleteConflicts: Array<{path: string, deletedBy: string}>,
+ *   preResolved: string[], lockfileDeferred: boolean }}
+ *   `files` is the marker-carrying list the PR reports, or every conflict when none are
+ *   code (a fallback after a failed auto-resolution); owners are attributed for both lists.
  */
-export function buildConflictBranch({ git, pnpm, masterSha, log = console.log }) {
+export function buildConflictBranch({
+	git,
+	pnpm,
+	masterSha,
+	target = TARGET_BRANCH,
+	log = console.log,
+}) {
 	const merge = attempt(git, ['merge', '--no-edit', masterSha]);
 	if (merge.ok) {
 		// merge-tree said these conflict; if a real merge disagrees, don't guess.
@@ -348,37 +386,35 @@ export function buildConflictBranch({ git, pnpm, masterSha, log = console.log })
 		}
 	}
 
+	// No markers to leave behind for these — resolve toward 3.x and report them instead.
+	const deleteConflicts = deleteModifyConflicts(git, code);
+	for (const { path, deletedBy } of deleteConflicts) {
+		if (deletedBy === 'target') {
+			log(`Keeping ${target}'s deletion of ${path} (master modified it)...`);
+			git(['rm', '--force', '--', path]);
+		} else {
+			log(`Keeping ${target}'s ${path} (master deleted it)...`);
+			git(['checkout', '--ours', '--', path]);
+			git(['add', '--', path]);
+		}
+	}
+	const deleted = new Set(deleteConflicts.map((c) => c.path));
+
 	git(['add', '-A']);
 	git(['commit', '--no-edit', '--no-verify']);
-	return { files: code.length > 0 ? code : all, preResolved, lockfileDeferred };
-}
-
-// Conflict PRs that were recently closed WITHOUT being merged — closing resolves nothing,
-// so the same conflict is about to come back; the new PR and Slack message call it out.
-export function recentAbandonedConflictPrs(
-	gh,
-	{ label = CONFLICT_LABEL, sinceDays = 14, now = Date.now() } = {},
-) {
-	const out = gh([
-		'pr',
-		'list',
-		'--state',
-		'closed',
-		'--label',
-		label,
-		'--json',
-		'number,url,mergedAt,closedAt',
-		'--limit',
-		'10',
-	]);
-	return JSON.parse(out || '[]').filter(
-		(pr) => !pr.mergedAt && pr.closedAt && now - Date.parse(pr.closedAt) < sinceDays * 86_400_000,
-	);
+	return {
+		files: code.length > 0 ? code.filter((p) => !deleted.has(p)) : all,
+		deleteConflicts,
+		preResolved,
+		lockfileDeferred,
+	};
 }
 
 /**
- * Push the marker-carrying conflict branch and open a draft PR, attributing it to the
- * authors of the breaking commits behind the conflicted files. 3.x is left untouched.
+ * Push the marker-carrying conflict branch and open a draft PR naming both ends of the
+ * conflict: the authors of the breaking commits behind the conflicted files, and the master
+ * commits that touched the same files. Nobody is requested as a reviewer — the PR body and
+ * the Slack post are the ping. 3.x is left untouched.
  *
  * @returns {Promise<{ prUrl: string, ownersSlack: string }>}
  */
@@ -392,38 +428,33 @@ export async function openConflictPr({
 	pushUrl,
 	target = TARGET_BRANCH,
 	files = [],
+	deleteConflicts = [],
 	preResolved = [],
 	lockfileDeferred = false,
 	fetchFn = fetch,
 	log = console.log,
 }) {
 	// Attribute against the pre-merge tip: HEAD is the merge commit by now.
-	const shas = breakingShas(masterSha, files, git, preHead);
+	const { owners, masterCommits } = await gatherAttribution({
+		repo,
+		token,
+		files: [...files, ...deleteConflicts.map((c) => c.path)],
+		base: masterSha,
+		tip: preHead,
+		git,
+		fetchFn,
+		log,
+	});
 
-	// Degrade gracefully: a transient API failure should still open the PR
-	// (unattributed) rather than fail the whole sync.
-	let owners = [];
-	try {
-		owners = await resolveLogins(repo, shas, token, fetchFn);
-	} catch (error) {
-		log(`warning: could not resolve owners: ${error.message}`);
-	}
-
-	let abandoned = [];
-	try {
-		abandoned = recentAbandonedConflictPrs(gh);
-	} catch (error) {
-		log(`warning: could not check for abandoned conflict PRs: ${error.message}`);
-	}
-
-	const { ownersCsv, slack, body } = buildOutputs({
+	const { slack, body } = buildOutputs({
 		syncBranch: SYNC_BRANCH,
 		targetBranch: target,
 		files,
 		owners,
+		deleteConflicts,
+		masterCommits,
 		preResolved,
 		lockfileDeferred,
-		abandoned,
 	});
 
 	git(['push', '--force', pushUrl, `HEAD:refs/heads/${SYNC_BRANCH}`]);
@@ -454,16 +485,6 @@ export async function openConflictPr({
 		'--body',
 		body,
 	]);
-
-	// Request owners as reviewers (best-effort: the API rejects the PR author
-	// and non-collaborators, so a failure here must not fail the sync).
-	if (ownersCsv) {
-		try {
-			gh(['pr', 'edit', prUrl, '--add-reviewer', ownersCsv]);
-		} catch {
-			log(`::warning::could not request some reviewers: ${ownersCsv}`);
-		}
-	}
 
 	return { prUrl, ownersSlack: slack };
 }
@@ -576,10 +597,11 @@ export async function sync({
 			);
 		}
 
-		const { files, preResolved, lockfileDeferred } = buildConflictBranch({
+		const { files, deleteConflicts, preResolved, lockfileDeferred } = buildConflictBranch({
 			git,
 			pnpm,
 			masterSha,
+			target,
 			log,
 		});
 		const { prUrl, ownersSlack } = await openConflictPr({
@@ -592,6 +614,7 @@ export async function sync({
 			pushUrl,
 			target,
 			files,
+			deleteConflicts,
 			preResolved,
 			lockfileDeferred,
 			fetchFn,

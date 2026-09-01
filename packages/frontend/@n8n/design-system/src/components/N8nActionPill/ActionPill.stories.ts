@@ -27,7 +27,7 @@ export const Default: Story = {};
 
 export const Info: Story = {
 	args: {
-		text: 'n8n credits',
+		text: 'Gateway credits',
 		type: 'info',
 	},
 };

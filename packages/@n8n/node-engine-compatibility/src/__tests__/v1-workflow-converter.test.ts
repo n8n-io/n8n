@@ -2,9 +2,11 @@ import type { IConnection, INode, IWorkflowBase } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
 import {
+	AmbiguousTriggerError,
+	NotATriggerError,
+	UnknownTriggerError,
 	UnsupportedConnectionTypeError,
 	UnsupportedCycleError,
-	UnsupportedTriggerError,
 	UnsupportedLoopEntryError,
 	UnsupportedWorkflowError,
 } from '../errors';
@@ -55,26 +57,185 @@ function workflow(overrides: Partial<IWorkflowBase>): IWorkflowBase {
 // (back)   the loop-return edge expected to be marked `isBackEdge`
 describe('V1WorkflowConverter', () => {
 	describe('trigger nodes', () => {
-		it('maps a manual trigger to a single trigger graph node', () => {
+		const trigger = (id: string, name: string, type: string, extra: Partial<INode> = {}): INode =>
+			node(id, name, { type, ...extra });
+
+		it.each([
+			['a manual trigger', 'n8n-nodes-base.manualTrigger'],
+			['a webhook, whose type does not end in "Trigger"', 'n8n-nodes-base.webhook'],
+			['a schedule trigger', 'n8n-nodes-base.scheduleTrigger'],
+			['a form trigger', 'n8n-nodes-base.formTrigger'],
+		])('maps %s to a single trigger graph node', (_name, type) => {
+			const graph = converter.convert(workflow({ nodes: [trigger('t-uuid', 'Start', type)] }));
+
+			expect(graph.nodes).toEqual([
+				{
+					id: 't-uuid',
+					name: 'Start',
+					type: 'trigger',
+					config: { nodeType: type, typeVersion: 1, parameters: {} },
+				},
+			]);
+			expect(graph.edges).toEqual([]);
+		});
+
+		it('keeps the trigger v1 identity, which expressions read back', () => {
 			const graph = converter.convert(
 				workflow({
 					nodes: [
-						{
-							id: 'node-uuid-1',
-							name: 'When clicking Execute',
-							type: 'n8n-nodes-base.manualTrigger',
-							typeVersion: 1,
-							position: [0, 0],
-							parameters: {},
-						},
+						trigger('t-uuid', 'Webhook', 'n8n-nodes-base.webhook', {
+							typeVersion: 2,
+							parameters: { path: 'abc', httpMethod: 'POST' },
+						}),
 					],
 				}),
 			);
 
 			expect(graph.nodes).toEqual([
-				{ id: 'node-uuid-1', name: 'When clicking Execute', type: 'trigger' },
+				{
+					id: 't-uuid',
+					name: 'Webhook',
+					type: 'trigger',
+					config: {
+						nodeType: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						parameters: { path: 'abc', httpMethod: 'POST' },
+					},
+				},
 			]);
-			expect(graph.edges).toEqual([]);
+		});
+
+		it('takes the named trigger, where guessing would give up', () => {
+			const graph = converter.convert(
+				workflow({
+					nodes: [
+						trigger('webhook-uuid', 'Webhook', 'n8n-nodes-base.webhook'),
+						trigger('sched-uuid', 'Schedule', 'n8n-nodes-base.scheduleTrigger'),
+					],
+				}),
+				'Schedule',
+			);
+
+			expect(graph.nodes).toEqual([
+				expect.objectContaining({ id: 'sched-uuid', name: 'Schedule', type: 'trigger' }),
+			]);
+		});
+
+		it('rejects a name that points at a node which is not a trigger', () => {
+			expect(() =>
+				converter.convert(workflow({ nodes: [manualTrigger, node('a-uuid', 'A')] }), 'A'),
+			).toThrow(NotATriggerError);
+		});
+
+		it('drops another trigger and the branch only it reaches', () => {
+			// ┌────────┐    ┌─┐
+			// │Webhook ├───►│A│      the fired trigger
+			// └────────┘    └─┘
+			// ┌────────┐    ┌─┐
+			// │Schedule├───►│B│      reachable from Schedule only
+			// └────────┘    └─┘
+			const graph = converter.convert(
+				workflow({
+					nodes: [
+						trigger('webhook-uuid', 'Webhook', 'n8n-nodes-base.webhook'),
+						node('a-uuid', 'A'),
+						trigger('sched-uuid', 'Schedule', 'n8n-nodes-base.scheduleTrigger'),
+						node('b-uuid', 'B'),
+					],
+					connections: {
+						Webhook: { main: [[main('A')]] },
+						Schedule: { main: [[main('B')]] },
+					},
+				}),
+				'Webhook',
+			);
+
+			expect(graph.nodes).toEqual([
+				expect.objectContaining({ id: 'webhook-uuid', name: 'Webhook', type: 'trigger' }),
+				expect.objectContaining({ id: 'a-uuid', type: 'v1-node' }),
+			]);
+			expect(graph.edges).toEqual([
+				{ from: 'webhook-uuid', to: 'a-uuid', outputIndex: 0, inputIndex: 0 },
+			]);
+		});
+
+		it('keeps a node both triggers reach, minus the other trigger edge', () => {
+			// ┌────────┐    ┌─┐
+			// │Webhook ├───►│ │
+			// └────────┘    │A│
+			// ┌────────┐    │ │
+			// │Schedule├───►│ │
+			// └────────┘    └─┘
+			const graph = converter.convert(
+				workflow({
+					nodes: [
+						trigger('webhook-uuid', 'Webhook', 'n8n-nodes-base.webhook'),
+						trigger('sched-uuid', 'Schedule', 'n8n-nodes-base.scheduleTrigger'),
+						node('a-uuid', 'A'),
+					],
+					connections: {
+						Webhook: { main: [[main('A')]] },
+						Schedule: { main: [[main('A')]] },
+					},
+				}),
+				'Webhook',
+			);
+
+			expect(graph.nodes.map((n) => n.id)).toEqual(['webhook-uuid', 'a-uuid']);
+			expect(graph.edges).toEqual([
+				{ from: 'webhook-uuid', to: 'a-uuid', outputIndex: 0, inputIndex: 0 },
+			]);
+		});
+
+		it('converts a workflow whose dropped branch holds a non-main connection', () => {
+			// the ai_tool connection is out of reach, so it must not fail the conversion
+			const graph = converter.convert(
+				workflow({
+					nodes: [
+						manualTrigger,
+						node('a-uuid', 'A'),
+						node('tool-uuid', 'Tool'),
+						node('agent-uuid', 'Agent'),
+					],
+					connections: {
+						'When clicking Execute': { main: [[main('A')]] },
+						Tool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+					},
+				}),
+				'When clicking Execute',
+			);
+
+			expect(graph.nodes.map((n) => n.id)).toEqual(['trigger-uuid', 'a-uuid']);
+		});
+
+		it('rejects a workflow with several triggers when none is named', () => {
+			expect(() =>
+				converter.convert(
+					workflow({
+						nodes: [
+							trigger('webhook-uuid', 'Webhook', 'n8n-nodes-base.webhook'),
+							trigger('sched-uuid', 'Schedule', 'n8n-nodes-base.scheduleTrigger'),
+						],
+					}),
+				),
+			).toThrow(AmbiguousTriggerError);
+		});
+
+		it('rejects a name that matches no node', () => {
+			expect(() => converter.convert(workflow({ nodes: [manualTrigger] }), 'Ghost')).toThrow(
+				UnknownTriggerError,
+			);
+		});
+
+		it('rejects a named trigger that is disabled, since it cannot fire', () => {
+			expect(() =>
+				converter.convert(
+					workflow({
+						nodes: [trigger('t-uuid', 'Webhook', 'n8n-nodes-base.webhook', { disabled: true })],
+					}),
+					'Webhook',
+				),
+			).toThrow(UnknownTriggerError);
 		});
 	});
 
@@ -94,6 +255,7 @@ describe('V1WorkflowConverter', () => {
 							continueOnFail: true,
 						},
 					],
+					connections: { 'When clicking Execute': { main: [[main('Edit Fields')]] } },
 				}),
 			);
 
@@ -124,6 +286,7 @@ describe('V1WorkflowConverter', () => {
 							parameters: {},
 						},
 					],
+					connections: { 'When clicking Execute': { main: [[main('No Operation')]] } },
 				}),
 			);
 
@@ -133,51 +296,18 @@ describe('V1WorkflowConverter', () => {
 	});
 
 	describe('unsupported constructs', () => {
-		it('rejects a non-manual trigger with a clear error', () => {
-			expect(() =>
-				converter.convert(
-					workflow({
-						nodes: [
-							{
-								id: 'webhook-uuid',
-								name: 'Webhook',
-								type: 'n8n-nodes-base.webhook',
-								typeVersion: 2,
-								position: [0, 0],
-								parameters: {},
-							},
-						],
-					}),
-				),
-			).toThrow(UnsupportedTriggerError);
-		});
-
-		it('rejects a schedule trigger (type ending in "Trigger")', () => {
-			expect(() =>
-				converter.convert(
-					workflow({
-						nodes: [
-							{
-								id: 'sched-uuid',
-								name: 'Schedule Trigger',
-								type: 'n8n-nodes-base.scheduleTrigger',
-								typeVersion: 1,
-								position: [0, 0],
-								parameters: {},
-							},
-						],
-					}),
-				),
-			).toThrow(UnsupportedTriggerError);
-		});
-
 		const mergeNode = (parameters: INode['parameters']): INode =>
 			node('merge-uuid', 'Merge', { type: 'n8n-nodes-base.merge', typeVersion: 3.2, parameters });
+
+		const toMerge = { 'When clicking Execute': { main: [[main('Merge')]] } };
 
 		it('rejects a Merge in chooseBranch mode', () => {
 			expect(() =>
 				converter.convert(
-					workflow({ nodes: [manualTrigger, mergeNode({ mode: 'chooseBranch' })] }),
+					workflow({
+						nodes: [manualTrigger, mergeNode({ mode: 'chooseBranch' })],
+						connections: toMerge,
+					}),
 				),
 			).toThrow(UnsupportedWorkflowError);
 		});
@@ -189,6 +319,7 @@ describe('V1WorkflowConverter', () => {
 				converter.convert(
 					workflow({
 						nodes: [manualTrigger, { ...mergeNode({ mode: '={{ $json.mode }}' }), typeVersion }],
+						connections: toMerge,
 					}),
 				),
 			).toThrow(UnsupportedWorkflowError);
@@ -196,7 +327,12 @@ describe('V1WorkflowConverter', () => {
 
 		it('accepts a Merge in a literal non-chooseBranch mode', () => {
 			expect(() =>
-				converter.convert(workflow({ nodes: [manualTrigger, mergeNode({ mode: 'append' })] })),
+				converter.convert(
+					workflow({
+						nodes: [manualTrigger, mergeNode({ mode: 'append' })],
+						connections: toMerge,
+					}),
+				),
 			).not.toThrow();
 		});
 
@@ -205,6 +341,7 @@ describe('V1WorkflowConverter', () => {
 				converter.convert(
 					workflow({
 						nodes: [manualTrigger, { ...mergeNode({ mode: "={{ 'append' }}" }), typeVersion: 1 }],
+						connections: toMerge,
 					}),
 				),
 			).not.toThrow();
@@ -282,18 +419,18 @@ describe('V1WorkflowConverter', () => {
 			]);
 		});
 
-		it('leaves rootless nodes unconnected', () => {
+		it('drops nodes the trigger cannot reach', () => {
 			const graph = converter.convert(
 				workflow({ nodes: [manualTrigger, node('orphan-uuid', 'Orphan')], connections: {} }),
 			);
 
-			expect(graph.nodes).toHaveLength(2);
+			expect(graph.nodes.map((n) => n.id)).toEqual(['trigger-uuid']);
 			expect(graph.edges).toEqual([]);
 		});
 
 		it('drops connections referencing missing nodes', () => {
 			// ┌─────┐    ┌─┐     ┌───────┐    ┌─────────────┐
-			// │Ghost├───►│A│     │trigger├───►│Another Ghost│
+			// │Ghost├───►│A│◄────┤trigger├───►│Another Ghost│
 			// └─────┘    └─┘     └───────┘    └─────────────┘
 			// neither ghost exists as a node
 			const graph = converter.convert(
@@ -301,12 +438,14 @@ describe('V1WorkflowConverter', () => {
 					nodes: [manualTrigger, node('a-uuid', 'A')],
 					connections: {
 						Ghost: { main: [[main('A')]] },
-						'When clicking Execute': { main: [[main('Another Ghost')]] },
+						'When clicking Execute': { main: [[main('A'), main('Another Ghost')]] },
 					},
 				}),
 			);
 
-			expect(graph.edges).toEqual([]);
+			expect(graph.edges).toEqual([
+				{ from: 'trigger-uuid', to: 'a-uuid', outputIndex: 0, inputIndex: 0 },
+			]);
 		});
 
 		it('rejects non-main connection types', () => {
@@ -473,10 +612,10 @@ describe('V1WorkflowConverter', () => {
 			]);
 		});
 
-		it('ignores unsupported constructs on disabled nodes', () => {
+		it('does not take a disabled trigger as the one that fired', () => {
 			//    XX
 			// ┌───────┐    ┌─┐
-			// │Webhook├───►│A│    an unsupported trigger, but disabled
+			// │Webhook├───►│A│    a trigger, but disabled
 			// └───────┘    └─┘
 			const graph = converter.convert(
 				workflow({
@@ -518,16 +657,13 @@ describe('V1WorkflowConverter', () => {
 				}),
 			);
 
+			// the engine runs a batch node itself, so its config is the batch size, not
+			// the v1 node identity the shim carries for every other type
 			expect(graph.nodes).toContainEqual({
 				id: 'loop-uuid',
 				name: 'Loop',
 				type: 'batch',
-				config: {
-					nodeType: 'n8n-nodes-base.splitInBatches',
-					typeVersion: 3,
-					parameters: {},
-					continueOnFail: false,
-				},
+				config: { batchSize: 1 },
 			});
 			expect(graph.edges).toEqual([
 				{ from: 'trigger-uuid', to: 'loop-uuid', outputIndex: 0, inputIndex: 0 },
@@ -607,28 +743,27 @@ describe('V1WorkflowConverter', () => {
 		});
 
 		it('rejects a loop entered mid-body, regardless of node order', () => {
-			// ┌──┐    ┌────┐ o1    ┌────┐    ┌──┐
-			// │T1├───►│Loop├──────►│Body│◄───┤T2│
-			// └──┘    └─▲──┘       └──┬─┘    └──┘
-			//           └─────────────┘
-			// two ways into the loop: through Loop (T1) and mid-body (T2)
-			const t1 = node('t1-uuid', 'T1', { type: 'n8n-nodes-base.manualTrigger' });
-			const t2 = node('t2-uuid', 'T2', { type: 'n8n-nodes-base.manualTrigger' });
+			// ┌─┐ o0    ┌────┐ o1    ┌────┐
+			// │T├──────►│Loop├──────►│Body│◄─┐
+			// └┬┘       └──▲─┘       └──┬─┘  │
+			//  │           └────────────┘    │
+			//  └──────────────── o1 ─────────┘
+			// two ways into the loop: through Loop and mid-body
+			const trigger = node('t-uuid', 'T', { type: 'n8n-nodes-base.manualTrigger' });
 			const loop = node('loop-uuid', 'Loop', {
 				type: 'n8n-nodes-base.splitInBatches',
 				typeVersion: 3,
 			});
 			const body = node('body-uuid', 'Body');
 			const connections = {
-				T1: { main: [[main('Loop')]] },
-				T2: { main: [[main('Body')]] },
+				T: { main: [[main('Loop')], [main('Body')]] },
 				Loop: { main: [[], [main('Body')]] },
 				Body: { main: [[main('Loop')]] },
 			};
 
 			for (const nodes of [
-				[t1, t2, loop, body],
-				[t2, t1, loop, body],
+				[trigger, loop, body],
+				[loop, body, trigger],
 			]) {
 				expect(() => converter.convert(workflow({ nodes, connections }))).toThrow(
 					UnsupportedLoopEntryError,
@@ -636,24 +771,27 @@ describe('V1WorkflowConverter', () => {
 			}
 		});
 
-		it('converts a loop fed by multiple triggers through its batch node', () => {
-			// ┌──┐    ┌────┐ o1    ┌────┐
-			// │T1├───►│    ├──────►│Body│
-			// └──┘    │Loop│       └──┬─┘
-			// ┌──┐    │    │          │
-			// │T2├───►│    │◄─(back)──┘
-			// └──┘    └────┘    one way in, used by both triggers
+		it('converts a loop fed by two paths that both arrive at its batch node', () => {
+			// ┌───────┐    ┌──┐    ┌────┐ o1    ┌────┐
+			// │trigger├───►│P1├───►│    ├──────►│Body│
+			// └───┬───┘    └──┘    │Loop│       └──┬─┘
+			//     │        ┌──┐    │    │          │
+			//     └───────►│P2├───►│    │◄─(back)──┘
+			//              └──┘    └────┘
+			// one way in, used by both paths
 			const graph = converter.convert(
 				workflow({
 					nodes: [
-						node('t1-uuid', 'T1', { type: 'n8n-nodes-base.manualTrigger' }),
-						node('t2-uuid', 'T2', { type: 'n8n-nodes-base.manualTrigger' }),
+						manualTrigger,
+						node('p1-uuid', 'P1'),
+						node('p2-uuid', 'P2'),
 						node('loop-uuid', 'Loop', { type: 'n8n-nodes-base.splitInBatches', typeVersion: 3 }),
 						node('body-uuid', 'Body'),
 					],
 					connections: {
-						T1: { main: [[main('Loop')]] },
-						T2: { main: [[main('Loop')]] },
+						'When clicking Execute': { main: [[main('P1'), main('P2')]] },
+						P1: { main: [[main('Loop')]] },
+						P2: { main: [[main('Loop')]] },
 						Loop: { main: [[], [main('Body')]] },
 						Body: { main: [[main('Loop')]] },
 					},

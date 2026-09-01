@@ -175,6 +175,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
+		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
 		expect(result.restoreWorkflowVersion).toBe('require_approval');
 
@@ -198,6 +199,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const permissions: InstanceAiPermissions = {
 			...DEFAULT_INSTANCE_AI_PERMISSIONS,
 			publishWorkflow: 'always_allow',
+			createCredential: 'always_allow',
 			deleteCredential: 'always_allow',
 			readFilesystem: 'always_allow',
 		};
@@ -205,6 +207,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const result = applyBranchReadOnlyOverrides(permissions);
 
 		expect(result.publishWorkflow).toBe('always_allow');
+		expect(result.createCredential).toBe('always_allow');
 		expect(result.deleteCredential).toBe('always_allow');
 		expect(result.readFilesystem).toBe('always_allow');
 	});
@@ -597,7 +600,7 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('Duplicate seed agent id');
 	});
 
-	it('rejects sub-agent delegation outright — seeded agents restore unpublished', () => {
+	it('accepts a sub-agent relationship backed by another seeded agent', () => {
 		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
 			threadId: '11111111-1111-4111-8111-111111111111',
 			messages: [],
@@ -606,8 +609,34 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
 			],
 		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{
+			name: 'self reference',
+			referencedAgentId: 'AgEnT12345678901',
+			expectedError: 'cannot use itself as a sub-agent',
+		},
+		{
+			name: 'unbacked reference',
+			referencedAgentId: 'AgEnT99999999999',
+			expectedError: 'is not included in the seed',
+		},
+	])('rejects a $name', ({ referencedAgentId, expectedError }) => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: referencedAgentId }] } },
+				}),
+			],
+		});
+
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('unpublished draft');
+		expect(errorOf(result)).toContain(expectedError);
 	});
 
 	it('rejects an inherited property name as a backed skill body', () => {

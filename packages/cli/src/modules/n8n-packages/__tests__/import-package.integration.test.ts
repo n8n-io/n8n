@@ -1242,8 +1242,7 @@ describe('Package import event emission', () => {
 			);
 			expect(importedPayload.credentialIds.matched).toHaveLength(2);
 			expect(importedPayload.credentialIds.created).toHaveLength(1);
-			expect(importedPayload.credentialIds.created[0]).toEqual(expect.any(String));
-			expect(importedPayload.credentialIds.created[0]).not.toBe('missing-cred');
+			expect(importedPayload.credentialIds.created[0]).toBe('missing-cred');
 			expect(importedPayload.credentialIds.updated).toEqual([]);
 			expect(importedPayload.counts).toEqual({
 				workflows: {
@@ -2088,8 +2087,7 @@ describe('credential-missing-mode: create-stub', () => {
 		});
 
 		expect(result.credentials).toEqual({ matched: [], stubbed: ['missing-cred'] });
-		expect(result.bindings.credentials['missing-cred']).toEqual(expect.any(String));
-		expect(result.bindings.credentials['missing-cred']).not.toBe('missing-cred');
+		expect(result.bindings.credentials['missing-cred']).toBe('missing-cred');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
 			where: { name: 'Stubbed cred workflow' },

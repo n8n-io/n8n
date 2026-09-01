@@ -2,7 +2,6 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
@@ -20,10 +19,10 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
-	ResolvedImportPackageRequest,
-	ImportResult,
+	ResolvedImportRequest,
 	ImportTagSummary,
 	PackageImportBindings,
+	PackageImportSource,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
@@ -45,7 +44,7 @@ import {
 	toTagSummary,
 	unionTagSummaries,
 } from './import-result';
-import { emitPackageImportedEvent, type PackageImportScope } from './import-telemetry';
+import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import type { SerializedVariable } from '../spec/serialized/variable.schema';
@@ -57,15 +56,15 @@ export class ProjectPackageImporter {
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly workflowPublisher: WorkflowPublisher,
-		private readonly eventService: EventService,
 		private readonly licenseState: LicenseState,
 	) {}
 
 	async import(
-		request: ResolvedImportPackageRequest,
+		request: ResolvedImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
-	): Promise<ImportResult> {
+		importSource: PackageImportSource,
+	): Promise<ImportOutcome> {
 		this.assertAdequatePermissions(request, manifest);
 
 		const projects = await this.packageParser.getProjects(reader);
@@ -109,6 +108,7 @@ export class ProjectPackageImporter {
 				project,
 				pendingCreateIds.has(project.id),
 				bundledVariables,
+				importSource,
 			);
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
@@ -163,6 +163,8 @@ export class ProjectPackageImporter {
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
 		const stubbed: string[] = [];
+		let dataTablesMatched = 0;
+		let dataTablesCreated = 0;
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -182,6 +184,8 @@ export class ProjectPackageImporter {
 			scopedBindings.push(content.bindings);
 			matched.push(...content.credentialResult.matched);
 			stubbed.push(...content.credentialResult.stubbed);
+			dataTablesMatched += content.dataTablePlan.matchedCount;
+			dataTablesCreated += content.dataTablePlan.creations.length;
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -199,9 +203,7 @@ export class ProjectPackageImporter {
 			});
 		}
 
-		emitPackageImportedEvent(this.eventService, { request, manifest, scopes });
-
-		return buildImportResult({
+		const result = buildImportResult({
 			package: toPackageSummary(manifest),
 			workflows,
 			removedWorkflows,
@@ -210,6 +212,7 @@ export class ProjectPackageImporter {
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
 			credentials: { matched, stubbed },
+			dataTables: { matched: dataTablesMatched, created: dataTablesCreated },
 			variables: reconcileVariableSummary({
 				matched: variablesMatched,
 				missing: variablesMissing,
@@ -220,15 +223,18 @@ export class ProjectPackageImporter {
 			}),
 			tags: unionTagSummaries(tagSummaries),
 		});
+
+		return { result, scopes };
 	}
 
 	private async buildImportContextForProject(
-		request: ResolvedImportPackageRequest,
+		request: ResolvedImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
 		bundledVariables: Map<string, SerializedVariable> | undefined,
+		importSource: PackageImportSource,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
@@ -288,6 +294,7 @@ export class ProjectPackageImporter {
 			tagRequest,
 			options: request,
 			projectPendingCreation,
+			importSource,
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
@@ -295,7 +302,7 @@ export class ProjectPackageImporter {
 	}
 
 	private assertAdequatePermissions(
-		request: ResolvedImportPackageRequest,
+		request: ResolvedImportRequest,
 		manifest: PackageManifest,
 	): void {
 		// A project package can create new projects or update matched ones (by source id), so require both —
