@@ -298,6 +298,21 @@ describe('ExecuteNodeService', () => {
 			});
 		});
 
+		it('returns an error result when the execution entered a wait state', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue({
+				status: 'waiting',
+				...successExecution([{ data: { main: [[{ json: {} }]] } }]),
+			} as never);
+
+			const result = await service.run(user, baseRequest());
+
+			expect(result).toEqual({
+				status: 'error',
+				error: { message: expect.stringContaining('wait state') },
+			});
+			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
+		});
+
 		it('returns an error result when the node produced no output', async () => {
 			executionPersistence.findSingleExecution.mockResolvedValue(
 				successExecution(undefined) as never,

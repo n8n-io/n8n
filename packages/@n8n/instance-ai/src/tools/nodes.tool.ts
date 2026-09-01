@@ -438,7 +438,7 @@ async function handleExploreResources(
 
 async function handleExecute(
 	context: InstanceAiContext,
-	input: ExecuteInput,
+	rawInput: ExecuteInput,
 	resumeData: z.infer<typeof instanceAiApprovalResumeSchema> | undefined | null,
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
 ) {
@@ -449,6 +449,21 @@ async function handleExecute(
 			error: { message: 'Node execution is not available on this instance' },
 		};
 	}
+
+	// The flattened runtime schema makes every variant field optional — re-assert
+	// the variant contract so a missing field returns a structured error.
+	const parsedInput = executeAction.safeParse(rawInput);
+	if (!parsedInput.success) {
+		return {
+			status: 'error' as const,
+			error: {
+				message: parsedInput.error.issues
+					.map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+					.join('; '),
+			},
+		};
+	}
+	const input = parsedInput.data;
 
 	const validation = validateNodeConfig(input.type, input.version, input.config);
 	// Missing discriminators fall back to node defaults at runtime, so they don't block.

@@ -96,7 +96,10 @@ Pass the node the same shape as in SDK code — `{ type, version, config:
 node runs alone, so expressions referencing other nodes cannot resolve —
 inline literal test values; side effects are real, so do not test write
 operations unless the write itself is wanted; output is the returned items
-(binary as metadata only), capped at 60s.
+(binary as metadata only), capped at 60s. Credentials must be resolved
+`{ id, name }` references (or the n8n Connect managed form) — an unresolved
+`newCredential('...')` placeholder is rejected, so defer node testing until
+the credential exists.
 
 This never substitutes for `verify-built-workflow` or a live run: it proves
 one node's config and output shape, not the wiring between nodes.

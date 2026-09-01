@@ -469,7 +469,12 @@ export interface ExecuteNodeOutputItem {
 }
 
 export type ExecuteNodeResult =
-	| { status: 'success'; output: ExecuteNodeOutputItem[][] }
+	| {
+			status: 'success';
+			output: ExecuteNodeOutputItem[][];
+			truncated?: { totalItems: number; shownItems: number; message: string };
+			outputSuppressed?: string;
+	  }
 	| { status: 'error'; error: { message: string; description?: string; nodeErrorType?: string } };
 
 /** Executes a single node standalone through the regular execution engine.

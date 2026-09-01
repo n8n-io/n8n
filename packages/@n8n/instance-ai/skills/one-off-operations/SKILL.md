@@ -66,10 +66,17 @@ Direct execution is sufficient when ALL of these hold:
   in the conversation — so you can pass them literally as `input` items.
   Parameters must not use expressions referencing other nodes; they cannot
   resolve (the node runs alone).
+- The node runs standalone on `main` input alone — no required sub-node
+  connections (e.g. an AI Agent needs a language model attached; such nodes
+  need a workflow).
 - A usable credential already exists (`credentials(action="list")`); the
   action takes resolved `{ id, name }` references. If credentials must be
   created first, route that through the credentials setup as usual.
 - The run fits the 60s cap and the input volume is modest.
+
+The run executes from the user's personal project. If it fails because the
+credential is not accessible there (e.g. shared only with a team project),
+fall back to the one-off workflow flow below.
 
 Call it with the same shape as a workflow-sdk node — `{ type, version,
 config: { parameters, credentials } }` plus `input` items. Read

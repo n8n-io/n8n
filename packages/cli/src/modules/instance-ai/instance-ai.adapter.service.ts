@@ -67,6 +67,7 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
+	ExecuteNodeResult as InstanceAiExecuteNodeResult,
 	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
@@ -143,6 +144,7 @@ import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mc
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { ExecuteNodeService } from '@/node-execution';
+import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PostHogClient } from '@/posthog';
@@ -538,7 +540,7 @@ export class InstanceAiAdapterService {
 		return {
 			execute: async (request) => {
 				this.assertInstanceNotReadOnly('executions');
-				return await executeNodeService.run(user, {
+				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
 					config: {
@@ -548,6 +550,7 @@ export class InstanceAiAdapterService {
 					input: request.input as Array<{ json: IDataObject }> | undefined,
 					timeoutMs: request.timeoutMs,
 				});
+				return redactExecuteNodeResult(result, this.allowSendingParameterValues);
 			},
 		};
 	}
@@ -3705,19 +3708,8 @@ export function formatExecutionError(
 const MAX_NODE_OUTPUT_BYTES = 5_000;
 
 export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
-	const serialized = JSON.stringify(items);
-	if (serialized.length <= MAX_NODE_OUTPUT_BYTES) return items;
-
-	// Binary search for the number of items that fit within the limit
-	const truncated: unknown[] = [];
-	let size = 2; // account for "[]"
-	for (const item of items) {
-		const itemStr = JSON.stringify(item);
-		// +1 for comma separator, +1 margin
-		if (size + itemStr.length + 2 > MAX_NODE_OUTPUT_BYTES) break;
-		truncated.push(item);
-		size += itemStr.length + 1;
-	}
+	const truncated = capItemsBySerializedSize(items, MAX_NODE_OUTPUT_BYTES);
+	if (truncated === items) return items;
 
 	return {
 		items: truncated,
@@ -3725,6 +3717,84 @@ export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
 		totalItems: items.length,
 		shownItems: truncated.length,
 		message: `Output truncated: showing ${truncated.length} of ${items.length} items. Use get-node-output to retrieve full data for this node.`,
+	};
+}
+
+/** Returns the input array itself when it fits, so callers can detect truncation by identity. */
+function capItemsBySerializedSize<T>(items: T[], maxBytes: number): T[] {
+	if (JSON.stringify(items).length <= maxBytes) return items;
+
+	const kept: T[] = [];
+	let size = 2; // account for "[]"
+	for (const item of items) {
+		const itemStr = JSON.stringify(item);
+		// +1 for comma separator, +1 margin
+		if (size + itemStr.length + 2 > maxBytes) break;
+		kept.push(item);
+		size += itemStr.length + 1;
+	}
+	return kept;
+}
+
+const EXECUTE_NODE_DETAILS_SUPPRESSED =
+	'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)';
+
+/**
+ * The standalone execution row is deleted after the result is read, so unlike
+ * workflow runs there is no get-node-output fallback for truncated or
+ * suppressed output.
+ */
+export function redactExecuteNodeResult(
+	result: ExecuteNodeResult,
+	allowSendingParameterValues: boolean,
+): InstanceAiExecuteNodeResult {
+	if (result.status === 'error') {
+		const { message, description, nodeErrorType } = result.error;
+		const cappedDescription =
+			description && description.length > MAX_ERROR_CHARS
+				? `${description.slice(0, MAX_ERROR_CHARS)}…`
+				: description;
+		return {
+			status: 'error',
+			error: {
+				message,
+				description: allowSendingParameterValues
+					? cappedDescription
+					: description
+						? EXECUTE_NODE_DETAILS_SUPPRESSED
+						: undefined,
+				nodeErrorType,
+			},
+		};
+	}
+
+	if (!allowSendingParameterValues) {
+		return {
+			status: 'success',
+			output: [],
+			outputSuppressed:
+				'The node executed successfully, but its output items are suppressed by the instance AI privacy setting.',
+		};
+	}
+
+	let totalItems = 0;
+	let shownItems = 0;
+	const output = result.output.map((branch) => {
+		totalItems += branch.length;
+		const kept = capItemsBySerializedSize(branch, MAX_NODE_OUTPUT_BYTES);
+		shownItems += kept.length;
+		return kept;
+	});
+	if (shownItems === totalItems) return { status: 'success', output };
+
+	return {
+		status: 'success',
+		output,
+		truncated: {
+			totalItems,
+			shownItems,
+			message: `Output truncated: showing ${shownItems} of ${totalItems} items. Re-run with fewer input items or a narrower operation to see more.`,
+		},
 	};
 }
 

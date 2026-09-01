@@ -81,6 +81,7 @@ import {
 	resolveDataTableByIdOrName,
 	resolveMetricProviders,
 	truncateNodeOutput,
+	redactExecuteNodeResult,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
@@ -551,6 +552,77 @@ describe('formatExecutionError', () => {
 			expect(result).not.toContain('sensitive upstream payload');
 			expect(result).toContain('instance AI privacy setting');
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// redactExecuteNodeResult
+// ---------------------------------------------------------------------------
+
+describe('redactExecuteNodeResult', () => {
+	const successResult = (items: Array<{ json: Record<string, unknown> }>) =>
+		({ status: 'success', output: [items] }) as Parameters<typeof redactExecuteNodeResult>[0];
+
+	it('passes small output through unchanged when sending values is allowed', () => {
+		const result = redactExecuteNodeResult(successResult([{ json: { id: 1 } }]), true);
+
+		expect(result).toEqual({ status: 'success', output: [[{ json: { id: 1 } }]] });
+	});
+
+	it('caps oversized output and reports shown vs total items', () => {
+		const items = Array.from({ length: 100 }, (_, i) => ({
+			json: { id: i, payload: 'x'.repeat(80) },
+		}));
+
+		const result = redactExecuteNodeResult(successResult(items), true);
+
+		expect(result.status).toBe('success');
+		if (result.status !== 'success') return;
+		expect(result.truncated).toEqual(
+			expect.objectContaining({ totalItems: 100, shownItems: expect.any(Number) }),
+		);
+		expect(result.output[0].length).toBe(result.truncated?.shownItems);
+		expect(result.output[0].length).toBeLessThan(100);
+	});
+
+	it('suppresses output items when sending values is disabled', () => {
+		const result = redactExecuteNodeResult(successResult([{ json: { secret: 'x' } }]), false);
+
+		expect(result).toEqual({
+			status: 'success',
+			output: [],
+			outputSuppressed: expect.stringContaining('privacy setting'),
+		});
+	});
+
+	it('suppresses upstream error details when sending values is disabled', () => {
+		const result = redactExecuteNodeResult(
+			{
+				status: 'error',
+				error: { message: 'boom', description: 'api key leaked', nodeErrorType: 'NodeApiError' },
+			},
+			false,
+		);
+
+		expect(result).toEqual({
+			status: 'error',
+			error: {
+				message: 'boom',
+				description: expect.stringContaining('suppressed'),
+				nodeErrorType: 'NodeApiError',
+			},
+		});
+	});
+
+	it('caps an oversized error description when sending values is allowed', () => {
+		const result = redactExecuteNodeResult(
+			{ status: 'error', error: { message: 'boom', description: 'y'.repeat(10_000) } },
+			true,
+		);
+
+		expect(result.status).toBe('error');
+		if (result.status !== 'error') return;
+		expect(result.error.description?.length).toBeLessThanOrEqual(4_001);
 	});
 });
 

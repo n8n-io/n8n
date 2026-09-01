@@ -314,6 +314,17 @@ export class ExecuteNodeService {
 			unflattenData: true,
 		});
 
+		// The temp workflow is deleted after this read, so a waiting execution
+		// could never be resumed — report it instead of a false success.
+		if (execution?.status === 'waiting' || execution?.waitTill) {
+			return {
+				status: 'error',
+				error: {
+					message: `Node type "${nodeTypeName}" entered a wait state; standalone node execution does not support waiting or resuming (e.g. Wait nodes or send-and-wait operations)`,
+				},
+			};
+		}
+
 		const executionError = execution?.data?.resultData?.error;
 		if (executionError) {
 			return { status: 'error', error: this.toErrorResponse(executionError) };

@@ -508,6 +508,23 @@ describe('nodes tool', () => {
 			config: { parameters: { mode: 'manual' } },
 		};
 
+		it('should return a structured error when required execute fields are missing', async () => {
+			const executeNodeService = { execute: vi.fn() };
+			const tool = createNodesTool(createMockContext({ executeNodeService }), 'full');
+
+			const result = await executeTool(
+				tool,
+				{ action: 'execute', type: 'n8n-nodes-base.set' } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				status: 'error',
+				error: { message: expect.stringContaining('version') },
+			});
+			expect(executeNodeService.execute).not.toHaveBeenCalled();
+		});
+
 		it('should reject a config that fails schema validation before suspending', async () => {
 			const executeNodeService = { execute: vi.fn() };
 			const suspendFn = vi.fn();
