@@ -171,7 +171,7 @@ describe('PostHog', () => {
 			});
 		});
 
-		it('returns remote config payloads from the same flag evaluation', async () => {
+		it('returns and caches remote config payloads from the same flag evaluation', async () => {
 			const flags = { 'config-form-url': true };
 			const payloads = { 'config-form-url': 'https://example.com/form' };
 			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
@@ -181,10 +181,17 @@ describe('PostHog', () => {
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
 
-			await expect(ph.getFeatureFlagsAndPayloads({ id: userId, createdAt })).resolves.toEqual({
+			const expected = {
 				featureFlags: flags,
 				featureFlagPayloads: payloads,
-			});
+			};
+
+			await expect(ph.getFeatureFlagsAndPayloads({ id: userId, createdAt })).resolves.toEqual(
+				expected,
+			);
+			await expect(ph.getFeatureFlagsAndPayloads({ id: userId, createdAt })).resolves.toEqual(
+				expected,
+			);
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
 		});
 
