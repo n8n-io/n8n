@@ -16,7 +16,6 @@ import {
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
-import { connect } from 'node:net';
 
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
@@ -30,17 +29,6 @@ export type OtelTestTraceResult = { success: true } | { success: false; error: s
 
 /** What the startup connectivity check dials, and how. */
 type OtlpProbeTarget = { protocol: OtlpProtocol; url: string };
-
-/**
- * Conventional OTLP/gRPC port, used by the startup probe when the endpoint URL
- * carries none. This deliberately diverges from the exporter, which hands
- * grpc-js `URL.host` and lets its resolver default to 443 — and since `URL.host`
- * elides a scheme's default port, `http://host:80` and `https://host:443` also
- * reach the probe port-less. The probe is advisory (an open port is not proof of
- * an OTLP service); the test trace is the real check, so don't align one side of
- * this divergence without the other.
- */
-const DEFAULT_OTLP_GRPC_PORT = 4317;
 
 @Service()
 export class OtelService {
@@ -307,7 +295,7 @@ export class OtelService {
 	): Promise<void> {
 		try {
 			if (target.protocol === 'grpc') {
-				await this.probeTcpPort(target.url, timeoutMs);
+				await this.probeGrpcEndpoint(target.url, timeoutMs);
 			} else {
 				await this.probeHttpEndpoint(target.url, timeoutMs);
 			}
@@ -335,29 +323,34 @@ export class OtelService {
 	}
 
 	/**
-	 * Opens and immediately closes a TCP connection to the collector. An HTTP HEAD
-	 * request is useless against a gRPC server (fetch speaks HTTP/1.1, gRPC needs
-	 * HTTP/2), so we only check that the port accepts connections. This does not
-	 * prove OTLP/gRPC is served there — "Send test trace" remains the real check.
+	 * Waits until a grpc-js channel to the collector reports READY. Readiness
+	 * proves TCP, the TLS handshake for `https://`, and an HTTP/2 connection. The
+	 * channel uses the exporter's target and credentials. The probe stays advisory:
+	 * use "Send test trace" to prove that the endpoint serves OTLP.
 	 */
-	private async probeTcpPort(endpoint: string, timeoutMs: number): Promise<void> {
-		const { hostname, port } = new URL(endpoint);
-		const socket = connect({
-			host: hostname,
-			port: port ? Number(port) : DEFAULT_OTLP_GRPC_PORT,
-		});
-		socket.setTimeout(timeoutMs);
+	private async probeGrpcEndpoint(endpoint: string, timeoutMs: number): Promise<void> {
+		const { host, protocol } = new URL(endpoint);
+		const { Client, credentials } = await import('@grpc/grpc-js');
+		const client = new Client(
+			host,
+			protocol === 'https:' ? credentials.createSsl() : credentials.createInsecure(),
+			{},
+		);
 
 		try {
 			await new Promise<void>((resolve, reject) => {
-				socket.once('connect', () => resolve());
-				socket.once('error', (error: Error) => reject(error));
-				socket.once('timeout', () =>
-					reject(new OperationalError(`Connection timed out after ${timeoutMs}ms`)),
-				);
+				client.waitForReady(Date.now() + timeoutMs, (error) => {
+					if (!error) return resolve();
+
+					reject(
+						new OperationalError(
+							`gRPC channel was not ready after ${timeoutMs}ms (${error.message}). Either nothing listens on the endpoint, or the endpoint does not speak gRPC, or its TLS mode does not match the "${protocol}" scheme.`,
+						),
+					);
+				});
 			});
 		} finally {
-			socket.destroy();
+			client.close();
 		}
 	}
 }

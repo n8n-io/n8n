@@ -170,8 +170,10 @@ Notes:
 - `N8N_OTEL_EXPORTER_OTLP_HEADERS` entries are sent as gRPC metadata. Keys are
   lowercased (gRPC metadata keys are lowercase ASCII); an entry grpc-js rejects is
   skipped with a warning instead of failing startup.
-- The startup connectivity check is a plain TCP connect for `grpc` (an HTTP `HEAD`
-  request is meaningless against an HTTP/2-only server). It proves the port is
-  open, not that OTLP/gRPC is served there — use "Send test trace" in
-  Settings → OpenTelemetry for the real check.
+- The startup connectivity check waits for a grpc-js channel to become ready for
+  `grpc` (an HTTP `HEAD` request is meaningless against an HTTP/2-only server).
+  The channel uses the exporter's target and credentials, so readiness proves TCP,
+  the TLS handshake for `https://`, and an HTTP/2 connection. It is not proof that
+  OTLP/gRPC is served there — use "Send test trace" in Settings → OpenTelemetry
+  for the real check.
 - Custom CAs and mTLS are not configurable beyond `NODE_EXTRA_CA_CERTS`.

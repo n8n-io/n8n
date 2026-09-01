@@ -22,34 +22,19 @@ const outboundHttp = {
 	transport: () => ({ asCustomFetch: () => fetchMock }),
 } as unknown as OutboundHttp;
 
-// The TCP connectivity check for gRPC endpoints, obtained via net.connect().
-// Hoisted because `node:net` is imported statically by the service under test.
-const { netConnect } = vi.hoisted(() => ({ netConnect: vi.fn() }));
-
-type SocketListener = (arg?: unknown) => void;
-
-/** Fake `net.Socket` whose `connect`/`error`/`timeout` events the test drives. */
-function createFakeSocket() {
-	const listeners = new Map<string, SocketListener[]>();
-	const socket = {
-		once: vi.fn((event: string, listener: SocketListener) => {
-			listeners.set(event, [...(listeners.get(event) ?? []), listener]);
-			return socket;
-		}),
-		setTimeout: vi.fn(),
-		destroy: vi.fn(),
-	};
-	return {
-		socket,
-		emit(event: string, arg?: unknown) {
-			const registered = listeners.get(event) ?? [];
-			listeners.set(event, []); // `once` semantics: fire at most once
-			for (const listener of registered) listener(arg);
-		},
-	};
-}
-
-const { metadataEntries, MetadataMock } = vi.hoisted(() => {
+// The channel-readiness check for gRPC endpoints, plus the metadata stand-in.
+// Hoisted because the service imports grpc-js lazily inside the probe.
+const {
+	metadataEntries,
+	MetadataMock,
+	ClientMock,
+	newClient,
+	waitForReady,
+	clientClose,
+	credentialsMock,
+	SSL_CREDS,
+	INSECURE_CREDS,
+} = vi.hoisted(() => {
 	const entries = new Map<string, string>();
 	const legalKey = /^[:0-9a-z_.-]+$/;
 
@@ -63,7 +48,41 @@ const { metadataEntries, MetadataMock } = vi.hoisted(() => {
 		}
 	}
 
-	return { metadataEntries: entries, MetadataMock };
+	const sslCreds = { kind: 'ssl' };
+	const insecureCreds = { kind: 'insecure' };
+	const newClient = vi.fn();
+	const waitForReady = vi.fn();
+	const clientClose = vi.fn();
+
+	/** Stand-in for the grpc-js `Client` the probe builds a channel with. */
+	class ClientMock {
+		constructor(target: string, credentials: unknown, options: unknown) {
+			newClient(target, credentials, options);
+		}
+
+		waitForReady(deadline: number, callback: (error?: Error) => void) {
+			waitForReady(deadline, callback);
+		}
+
+		close() {
+			clientClose();
+		}
+	}
+
+	return {
+		metadataEntries: entries,
+		MetadataMock,
+		ClientMock,
+		newClient,
+		waitForReady,
+		clientClose,
+		credentialsMock: {
+			createSsl: vi.fn(() => sslCreds),
+			createInsecure: vi.fn(() => insecureCreds),
+		},
+		SSL_CREDS: sslCreds,
+		INSECURE_CREDS: insecureCreds,
+	};
 });
 
 // Per-test control of what the throwaway exporter reports back, plus span/shutdown spies.
@@ -104,9 +123,11 @@ vi.mock('@opentelemetry/exporter-trace-otlp-grpc', () => ({
 	}),
 }));
 
-vi.mock('@grpc/grpc-js', () => ({ Metadata: MetadataMock }));
-
-vi.mock('node:net', () => ({ connect: netConnect }));
+vi.mock('@grpc/grpc-js', () => ({
+	Metadata: MetadataMock,
+	Client: ClientMock,
+	credentials: credentialsMock,
+}));
 
 vi.mock('@opentelemetry/sdk-trace-base', () => ({
 	BasicTracerProvider: vi.fn().mockImplementation(function (config: {
@@ -173,7 +194,6 @@ describe('OtelService', () => {
 	let instanceSettings: ReturnType<typeof mock<InstanceSettings>>;
 	let logger: ReturnType<typeof mock<Logger>>;
 	let service: OtelService;
-	let fakeSocket: ReturnType<typeof createFakeSocket>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -182,8 +202,10 @@ describe('OtelService', () => {
 		instanceSettings = mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' });
 		logger = mock<Logger>();
 		fetchMock.mockResolvedValue({ ok: true });
-		fakeSocket = createFakeSocket();
-		netConnect.mockReturnValue(fakeSocket.socket);
+		// By default the channel reports READY right away.
+		waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) =>
+			callback(),
+		);
 		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp);
 	});
 
@@ -295,60 +317,95 @@ describe('OtelService', () => {
 			expect(start).toHaveBeenCalledTimes(1);
 		});
 
-		it('probes the endpoint over TCP instead of HTTP', async () => {
+		it('probes channel readiness instead of sending an HTTP request', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+			const startedAt = Date.now();
 
 			await service.init();
-			fakeSocket.emit('connect');
 			await flushPromises();
 
-			expect(netConnect).toHaveBeenCalledWith({ host: 'collector.example.com', port: 4317 });
-			expect(fakeSocket.socket.setTimeout).toHaveBeenCalledWith(2_000);
+			expect(newClient).toHaveBeenCalledWith('collector.example.com:4317', INSECURE_CREDS, {});
+			const [deadline] = waitForReady.mock.calls[0] as [number];
+			expect(deadline).toBeGreaterThanOrEqual(startedAt + 2_000);
+			expect(deadline).toBeLessThanOrEqual(Date.now() + 2_000);
 			expect(fetchMock).not.toHaveBeenCalled();
-			expect(fakeSocket.socket.destroy).toHaveBeenCalledTimes(1);
+			expect(clientClose).toHaveBeenCalledTimes(1);
 			expect(logger.error).not.toHaveBeenCalled();
 		});
 
-		it('defaults to port 4317 when the endpoint carries no port', async () => {
+		it('uses SSL credentials for an https endpoint', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...grpcSettings,
+				exporterEndpoint: 'https://collector.example.com:4317',
+			});
+
+			await service.init();
+			await flushPromises();
+
+			expect(newClient).toHaveBeenCalledWith('collector.example.com:4317', SSL_CREDS, {});
+		});
+
+		it('leaves the target port-less so grpc-js applies its own default port', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue({
 				...grpcSettings,
 				exporterEndpoint: 'https://collector.example.com',
 			});
 
 			await service.init();
-			fakeSocket.emit('connect');
 			await flushPromises();
 
-			expect(netConnect).toHaveBeenCalledWith({ host: 'collector.example.com', port: 4317 });
+			expect(newClient).toHaveBeenCalledWith('collector.example.com', SSL_CREDS, {});
 		});
 
-		it('logs a single connectivity failure when the TCP connect is refused', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+		it('keeps the brackets of an IPv6 host in the channel target', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...grpcSettings,
+				exporterEndpoint: 'http://[::1]:4317',
+			});
 
 			await service.init();
-			fakeSocket.emit('error', new Error('connect ECONNREFUSED'));
-			fakeSocket.emit('timeout');
+			await flushPromises();
+
+			expect(newClient).toHaveBeenCalledWith('[::1]:4317', INSECURE_CREDS, {});
+		});
+
+		it('logs a single connectivity failure when the channel does not become ready', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+			waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) => {
+				callback(new Error('Failed to connect before the deadline'));
+				callback(new Error('Failed to connect before the deadline'));
+			});
+
+			await service.init();
 			await flushPromises();
 
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
-				{ endpoint: 'http://collector.example.com:4317', error: 'connect ECONNREFUSED' },
+				{
+					endpoint: 'http://collector.example.com:4317',
+					error: expect.stringContaining('gRPC channel was not ready after 2000ms'),
+				},
 			);
-			expect(fakeSocket.socket.destroy).toHaveBeenCalledTimes(1);
+			expect(clientClose).toHaveBeenCalledTimes(1);
 		});
 
-		it('logs a connectivity failure when the TCP connect times out', async () => {
+		it('logs a connectivity failure when the readiness check throws', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(grpcSettings);
+			waitForReady.mockImplementation(() => {
+				throw new Error('The channel has been closed');
+			});
 
 			await service.init();
-			fakeSocket.emit('timeout');
 			await flushPromises();
 
+			expect(start).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
-				expect.objectContaining({ error: expect.stringContaining('timed out') }),
+				expect.objectContaining({ error: 'The channel has been closed' }),
 			);
+			expect(clientClose).toHaveBeenCalledTimes(1);
 		});
 
 		it('logs a connectivity failure instead of throwing when the endpoint is unparseable', async () => {
@@ -360,7 +417,7 @@ describe('OtelService', () => {
 			await service.init();
 			await flushPromises();
 
-			expect(netConnect).not.toHaveBeenCalled();
+			expect(newClient).not.toHaveBeenCalled();
 			expect(start).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to connect to OpenTelemetry OTLP endpoint during startup',
