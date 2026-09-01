@@ -1441,46 +1441,40 @@ describe('WorkflowCard', () => {
 		const renderCard = (overrides: Partial<WorkflowResource> = {}) =>
 			renderComponent({ props: { data: createWorkflow(overrides) } });
 
-		// The tooltip content is teleported and only mounted on hover with a positioned popper,
-		// which the jsdom harness can't render cleanly, so this asserts the visible indicator only.
-		it('shows an amber "Partial publish" indicator when publicationStatus is partial', async () => {
+		it.each([
+			['partial', 'Partial publish'],
+			['failed', 'Failed publish'],
+		] as const)('shows the %s indicator with its label and state', (status, label) => {
 			const { getByTestId, getByText } = renderCard({
-				publicationStatus: 'partial',
+				publicationStatus: status,
 				activeVersionId: 'v1',
 			});
-			expect(getByTestId('workflow-card-publish-indicator')).toBeVisible();
-			expect(getByText('Partial publish')).toBeVisible();
+			const indicator = getByTestId('workflow-card-publish-indicator');
+			expect(indicator).toBeVisible();
+			expect(indicator).toHaveAttribute('data-state', status);
+			expect(getByText(label)).toBeVisible();
+			// The explanation lives in a focus-openable tooltip; the trigger must be tabbable.
+			expect(indicator).toHaveAttribute('tabindex', '0');
 		});
 
-		it('shows a red "Failed publish" indicator when publicationStatus is failed', async () => {
-			const { getByText } = renderCard({ publicationStatus: 'failed', activeVersionId: 'v1' });
-			expect(getByText('Failed publish')).toBeVisible();
+		it('lets the server status win over activeVersionId', () => {
+			const { getByTestId } = renderCard({ publicationStatus: 'failed', activeVersionId: null });
+			expect(getByTestId('workflow-card-publish-indicator')).toHaveAttribute(
+				'data-state',
+				'failed',
+			);
 		});
 
-		it('shows the "Failed publish" indicator for a fully-failed publish with no active version', async () => {
-			const { getByTestId, getByText } = renderCard({
-				publicationStatus: 'failed',
-				activeVersionId: null,
-			});
-			expect(getByTestId('workflow-card-publish-indicator')).toBeVisible();
-			expect(getByText('Failed publish')).toBeVisible();
-		});
-
-		it('shows the "Partial publish" indicator for a partial publish with no active version', async () => {
-			const { getByTestId, getByText } = renderCard({
-				publicationStatus: 'partial',
-				activeVersionId: null,
-			});
-			expect(getByTestId('workflow-card-publish-indicator')).toBeVisible();
-			expect(getByText('Partial publish')).toBeVisible();
-		});
-
-		it('falls back to the legacy "Published" indicator when publicationStatus is absent', async () => {
-			const { getByText } = renderCard({ activeVersionId: 'v1' });
+		it('falls back to the legacy "Published" indicator when publicationStatus is absent', () => {
+			const { getByTestId, getByText } = renderCard({ activeVersionId: 'v1' });
+			const indicator = getByTestId('workflow-card-publish-indicator');
+			expect(indicator).toHaveAttribute('data-state', 'published');
 			expect(getByText('Published')).toBeVisible();
+			// The published state has no tooltip, so it must not be a focus stop.
+			expect(indicator).not.toHaveAttribute('tabindex');
 		});
 
-		it('shows no indicator when not published and no publicationStatus', async () => {
+		it('shows no indicator when not published and no publicationStatus', () => {
 			const { queryByTestId } = renderCard({ activeVersionId: null });
 			expect(queryByTestId('workflow-card-publish-indicator')).toBeNull();
 		});

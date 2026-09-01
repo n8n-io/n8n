@@ -19,7 +19,9 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { StatusDotVariant } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
@@ -40,6 +42,7 @@ import {
 	N8nBreadcrumbs,
 	N8nCard,
 	N8nIcon,
+	N8nStatusDot,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
@@ -324,35 +327,37 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
-// Authoritative publication status when the publication service is on; otherwise
-// undefined and we fall back to the legacy activeVersionId-based indicator.
-const cardPublicationState = computed<'published' | 'partial' | 'failed' | null>(() => {
-	const status = props.data.publicationStatus;
-	if (status === 'partial' || status === 'failed') return status;
-	if (status === 'published' || isWorkflowPublished.value) return 'published';
-	return null;
-});
+// Keyed by the full status union so a new backend status is a compile error
+// here instead of silently rendering as the green 'Published' dot.
+const publicationIndicators: Record<
+	WorkflowListPublicationStatus,
+	{ variant: StatusDotVariant; labelKey: BaseTextKey; tooltipKey?: BaseTextKey }
+> = {
+	published: { variant: 'success', labelKey: 'workflows.published' },
+	partial: {
+		variant: 'warning',
+		labelKey: 'workflows.publicationStatus.partial',
+		tooltipKey: 'workflows.publish.partial.tooltip',
+	},
+	failed: {
+		variant: 'danger',
+		labelKey: 'workflows.publicationStatus.failed',
+		tooltipKey: 'workflows.publish.failed.tooltip',
+	},
+};
 
-const publicationIndicatorLabel = computed(() => {
-	switch (cardPublicationState.value) {
-		case 'partial':
-			return locale.baseText('workflows.publicationStatus.partial');
-		case 'failed':
-			return locale.baseText('workflows.publicationStatus.failed');
-		default:
-			return locale.baseText('workflows.published');
-	}
-});
-
-const publicationIndicatorTooltip = computed(() => {
-	switch (cardPublicationState.value) {
-		case 'partial':
-			return locale.baseText('workflows.publicationStatus.partial.tooltip');
-		case 'failed':
-			return locale.baseText('workflows.publicationStatus.failed.tooltip');
-		default:
-			return '';
-	}
+// The server-derived status is authoritative when present; workflows with no
+// settled trigger rows omit it and fall back to the legacy activeVersionId indicator.
+const publicationIndicator = computed(() => {
+	const state = props.data.publicationStatus ?? (isWorkflowPublished.value ? 'published' : null);
+	if (state === null) return null;
+	const { variant, labelKey, tooltipKey } = publicationIndicators[state];
+	return {
+		state,
+		variant,
+		label: locale.baseText(labelKey),
+		tooltip: tooltipKey ? locale.baseText(tooltipKey) : null,
+	};
 });
 
 const hasDynamicCredentials = computed(() => {
@@ -753,27 +758,32 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div
-					v-else-if="cardPublicationState"
-					:class="$style.publishIndicator"
-					data-test-id="workflow-card-publish-indicator"
-				>
-					<N8nTooltip placement="top" :disabled="cardPublicationState === 'published'">
-						<template #content>{{ publicationIndicatorTooltip }}</template>
-						<div :class="$style.publishIndicatorInner">
-							<span
-								:class="[
-									$style.publishIndicatorDot,
-									{
-										[$style.publishIndicatorDotPartial]: cardPublicationState === 'partial',
-										[$style.publishIndicatorDotFailed]: cardPublicationState === 'failed',
-									},
-								]"
-							/>
-							<N8nText size="small" color="text-base">{{ publicationIndicatorLabel }}</N8nText>
+				<!-- The tooltip is only mounted for the rare partial/failed states; the
+					common published case keeps the plain markup. -->
+				<template v-else-if="publicationIndicator">
+					<div
+						v-if="!publicationIndicator.tooltip"
+						:class="$style.publishIndicator"
+						:data-state="publicationIndicator.state"
+						data-test-id="workflow-card-publish-indicator"
+					>
+						<N8nStatusDot :variant="publicationIndicator.variant" />
+						<N8nText size="small" color="text-base">{{ publicationIndicator.label }}</N8nText>
+					</div>
+					<N8nTooltip v-else placement="top" as-child>
+						<template #content>{{ publicationIndicator.tooltip }}</template>
+						<!-- tabindex makes the explanation keyboard-reachable: the tooltip opens on focus. -->
+						<div
+							:class="$style.publishIndicator"
+							:data-state="publicationIndicator.state"
+							data-test-id="workflow-card-publish-indicator"
+							tabindex="0"
+						>
+							<N8nStatusDot :variant="publicationIndicator.variant" />
+							<N8nText size="small" color="text-base">{{ publicationIndicator.label }}</N8nText>
 						</div>
 					</N8nTooltip>
-				</div>
+				</template>
 				<WorkflowCardMcpToggle
 					v-if="props.isWorkflowCardMcpToggleEnabled"
 					:workflow-id="data.id"
@@ -897,27 +907,6 @@ const tags = computed(
 		// This is needed to line height up with ownership badge
 		line-height: calc(var(--font-size--sm) + 1px);
 	}
-}
-
-.publishIndicatorInner {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.publishIndicatorDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--icon-color--success);
-}
-
-.publishIndicatorDotPartial {
-	background-color: var(--icon-color--warning);
-}
-
-.publishIndicatorDotFailed {
-	background-color: var(--icon-color--danger);
 }
 
 @include mixins.breakpoint('sm-and-down') {
