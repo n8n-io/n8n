@@ -1,0 +1,51 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5158f126d15c7b::t_4461b1328ceea9 6997
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_5158f126d15c7b::t_bc78b7c7f438a6 132-145,147-148
+  ai_agent 146
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useBuildingArtifactIds.ts
+  s_5158f126d15c7b::t_0411d991d638c7 1-26,28-39
+  s_5158f126d15c7b::t_8c8188f4860841 27
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_5158f126d15c7b::t_6b2ad5eeddd873 172-180,188,193-246
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_5158f126d15c7b::t_6170f1b2d7d732 7
+  s_5158f126d15c7b::t_35b9ad1fe18a3c 15-19
+  s_5158f126d15c7b::t_67e6823e9f067e 435-482
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_5158f126d15c7b::t_26726bdc2558a8 3-4
+  s_5158f126d15c7b::t_079359f2f7ca5f 41
+  s_5158f126d15c7b::t_6f146040a1daa1 81-96
+  s_5158f126d15c7b::t_f69d763c09e430 113-114,120-166
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_5158f126d15c7b::t_12ad0564c72561 4,14
+  s_5158f126d15c7b::t_e49bcd676fcb4b 38,43-47,50-76,85
+  s_5158f126d15c7b::t_a6892821a2900b 48-49
+  s_5158f126d15c7b::t_d1887eda5d1aed 118-125,132-141,148-149
+  ai_agent 126-131,142-147
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_5158f126d15c7b::t_d8c2444452d5d3 13
+  s_5158f126d15c7b::t_d1d762cbbe96fe 106-107
+  s_5158f126d15c7b::t_f01487c224e839 285-293
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_5158f126d15c7b::t_bb4ba78365cf79 154-161
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_5158f126d15c7b::t_234d645cf8f881 16,27-28
+  s_5158f126d15c7b::t_4b4a2af3a07cbb 48-49,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bedf5cfc8133859c37594dabc3d39d962403ad4c",
+  "prompts": {},
+  "sessions": {
+    "s_5158f126d15c7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfaa4a09-6b08-4bfa-9f39-9157eae6238e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
