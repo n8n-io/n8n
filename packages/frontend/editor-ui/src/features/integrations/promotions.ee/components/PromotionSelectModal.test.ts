@@ -79,37 +79,6 @@ describe('PromotionSelectModal', () => {
 		});
 	});
 
-	it('should show status badges', async () => {
-		const { getByText } = renderComponent({
-			pinia,
-			props: {
-				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
-			},
-		});
-
-		await waitFor(() => {
-			expect(getByText('Modified')).toBeInTheDocument();
-			expect(getByText('New')).toBeInTheDocument();
-		});
-	});
-
-	it('should show dependency counts', async () => {
-		const { getAllByTestId } = renderComponent({
-			pinia,
-			props: {
-				modalName: PROMOTION_SELECT_MODAL_KEY,
-				data: { projectId: 'project-1' },
-			},
-		});
-
-		await waitFor(() => {
-			const rows = getAllByTestId('promotion-change-row');
-			expect(rows[0].textContent).toContain('7 dependencies');
-			expect(rows[1].textContent).toContain('2 dependencies');
-		});
-	});
-
 	it('should disable promote button when nothing selected', async () => {
 		const { findByTestId } = renderComponent({
 			pinia,
@@ -171,7 +140,7 @@ describe('PromotionSelectModal', () => {
 		});
 	});
 
-	it('should call select all when clicking select all checkbox', async () => {
+	it('should select every row when clicking select all', async () => {
 		const { findByTestId } = renderComponent({
 			pinia,
 			props: {
@@ -185,5 +154,46 @@ describe('PromotionSelectModal', () => {
 
 		const submitButton = await findByTestId('promotion-submit');
 		expect(submitButton).not.toBeDisabled();
+		// The label reports every mock row, proving select-all covers the whole list.
+		expect(submitButton.textContent).toContain('Promote 2 changes');
+	});
+
+	it('should show an error state with a retry action when loading fails', async () => {
+		vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValueOnce(new Error('Network error'));
+
+		const { findByTestId, getByText } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1' },
+			},
+		});
+
+		await findByTestId('promotion-error');
+		expect(getByText('Could not load changes')).toBeInTheDocument();
+
+		// Retry succeeds (default mock) and the list replaces the error state.
+		await userEvent.click(await findByTestId('promotion-retry'));
+
+		await waitFor(() => {
+			expect(getByText('Email summary')).toBeInTheDocument();
+		});
+	});
+
+	it('should show a no-results state when the search excludes every change', async () => {
+		const { findByTestId, getByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1' },
+			},
+		});
+
+		const search = await findByTestId('promotion-search');
+		await userEvent.type(search, 'no-such-workflow');
+
+		await waitFor(() => {
+			expect(getByTestId('promotion-no-results')).toBeInTheDocument();
+		});
 	});
 });

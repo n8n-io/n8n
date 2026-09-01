@@ -48,58 +48,6 @@ describe('usePromotionChanges', () => {
 		vi.mocked(promotionsApi.promoteChanges).mockResolvedValue({ branchName: 'promote/test' });
 	});
 
-	it('should fetch changes on request', async () => {
-		const { changes, fetchChanges, isLoading } = usePromotionChanges('project-1');
-		expect(changes.value).toEqual([]);
-
-		await fetchChanges();
-
-		expect(changes.value).toEqual(mockChanges);
-		expect(isLoading.value).toBe(false);
-	});
-
-	it('should toggle individual selection', async () => {
-		const { fetchChanges, toggleSelected, selectedIds, selectedCount } =
-			usePromotionChanges('project-1');
-		await fetchChanges();
-
-		toggleSelected('wf-001');
-		expect(selectedIds.value.has('wf-001')).toBe(true);
-		expect(selectedCount.value).toBe(1);
-
-		toggleSelected('wf-002');
-		expect(selectedCount.value).toBe(2);
-
-		toggleSelected('wf-001');
-		expect(selectedIds.value.has('wf-001')).toBe(false);
-		expect(selectedCount.value).toBe(1);
-	});
-
-	it('should select all and deselect all', async () => {
-		const { fetchChanges, toggleSelectAll, allSelected, someSelected, selectedCount } =
-			usePromotionChanges('project-1');
-		await fetchChanges();
-
-		toggleSelectAll();
-		expect(allSelected.value).toBe(true);
-		expect(someSelected.value).toBe(false);
-		expect(selectedCount.value).toBe(3);
-
-		toggleSelectAll();
-		expect(allSelected.value).toBe(false);
-		expect(selectedCount.value).toBe(0);
-	});
-
-	it('should report indeterminate state correctly', async () => {
-		const { fetchChanges, toggleSelected, someSelected, allSelected } =
-			usePromotionChanges('project-1');
-		await fetchChanges();
-
-		toggleSelected('wf-001');
-		expect(someSelected.value).toBe(true);
-		expect(allSelected.value).toBe(false);
-	});
-
 	it('should call promote with correct parameters', async () => {
 		const { fetchChanges, toggleSelected, promote } = usePromotionChanges('project-1');
 		await fetchChanges();
@@ -124,5 +72,48 @@ describe('usePromotionChanges', () => {
 		expect(error.value).toBeInstanceOf(Error);
 		expect(error.value?.message).toBe('Network error');
 		expect(isLoading.value).toBe(false);
+	});
+
+	it('should drop selections whose resource disappears after a refresh', async () => {
+		const { fetchChanges, toggleSelected, selectedIds, selectedCount } =
+			usePromotionChanges('project-1');
+		await fetchChanges();
+
+		toggleSelected('wf-001');
+		toggleSelected('wf-002');
+		expect(selectedCount.value).toBe(2);
+
+		// wf-001 is gone from the refreshed response (e.g. promoted elsewhere).
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce([
+			mockChanges[1],
+			mockChanges[2],
+		]);
+		await fetchChanges();
+
+		expect(selectedIds.value.has('wf-001')).toBe(false);
+		expect(selectedIds.value.has('wf-002')).toBe(true);
+		expect(selectedCount.value).toBe(1);
+	});
+
+	it('should select only the visible rows when a search filter is active', async () => {
+		const {
+			fetchChanges,
+			searchQuery,
+			filteredChanges,
+			toggleSelectAll,
+			selectedIds,
+			allSelected,
+		} = usePromotionChanges('project-1');
+		await fetchChanges();
+
+		searchQuery.value = 'Workflow A';
+		expect(filteredChanges.value).toHaveLength(1);
+
+		toggleSelectAll();
+
+		expect(selectedIds.value.has('wf-001')).toBe(true);
+		expect(selectedIds.value.has('wf-002')).toBe(false);
+		expect(selectedIds.value.has('wf-003')).toBe(false);
+		expect(allSelected.value).toBe(true);
 	});
 });

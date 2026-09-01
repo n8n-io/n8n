@@ -66,14 +66,19 @@ const promotableChangeCount = ref(0);
 const showPromoteButton = computed(() => isPromotionsEnabled.value && isTeamProject.value);
 
 async function fetchPromotableChangeCount() {
-	if (!showPromoteButton.value || !currentProjectId.value) {
-		promotableChangeCount.value = 0;
+	// Capture the project this request is for, so a slow response for a project the
+	// user already navigated away from cannot overwrite the current count.
+	const requestedProjectId = currentProjectId.value;
+	promotableChangeCount.value = 0;
+	if (!showPromoteButton.value || !requestedProjectId) {
 		return;
 	}
 	try {
-		const changes = await getPromotableChanges(rootStore.restApiContext, currentProjectId.value);
+		const changes = await getPromotableChanges(rootStore.restApiContext, requestedProjectId);
+		if (currentProjectId.value !== requestedProjectId) return;
 		promotableChangeCount.value = changes.length;
 	} catch {
+		if (currentProjectId.value !== requestedProjectId) return;
 		promotableChangeCount.value = 0;
 	}
 }
@@ -505,8 +510,12 @@ const promotionBannerText = computed(() => {
 	});
 });
 
-watch(currentProjectId, () => void fetchPromotableChangeCount());
-onMounted(() => void fetchPromotableChangeCount());
+watch(currentProjectId, () => {
+	fetchPromotableChangeCount().catch(() => {});
+});
+onMounted(() => {
+	fetchPromotableChangeCount().catch(() => {});
+});
 
 function onOpenPromotionModal() {
 	if (!currentProjectId.value) return;

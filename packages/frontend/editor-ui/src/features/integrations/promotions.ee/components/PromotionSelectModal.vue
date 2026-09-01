@@ -26,13 +26,15 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const modalBus = createEventBus();
 
-const searchQuery = ref('');
 const createBranch = ref(false);
 const isPromoting = ref(false);
 
 const {
 	changes,
+	filteredChanges,
 	isLoading,
+	error,
+	searchQuery,
 	selectedIds,
 	selectedCount,
 	allSelected,
@@ -43,11 +45,14 @@ const {
 	promote,
 } = usePromotionChanges(props.data.projectId);
 
-const filteredChanges = computed(() => {
-	if (!searchQuery.value) return changes.value;
-	const term = searchQuery.value.toLowerCase();
-	return changes.value.filter((c) => c.name.toLowerCase().includes(term));
-});
+// No visible rows despite a loaded, non-empty change set means the search excluded everything.
+const hasNoSearchResults = computed(
+	() =>
+		!isLoading.value &&
+		!error.value &&
+		changes.value.length > 0 &&
+		filteredChanges.value.length === 0,
+);
 
 function getStatusLabel(status: PromotableResourceStatus): string {
 	return i18n.baseText(`promotions.modal.status.${status}`);
@@ -159,6 +164,25 @@ onMounted(async () => {
 					<N8nText color="text-light">Loading...</N8nText>
 				</div>
 
+				<template v-else-if="error">
+					<div :class="$style.empty" data-test-id="promotion-error">
+						<N8nText size="medium" bold>
+							{{ i18n.baseText('promotions.modal.error') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('promotions.modal.error.description') }}
+						</N8nText>
+						<N8nButton
+							variant="subtle"
+							size="small"
+							data-test-id="promotion-retry"
+							@click="onRefresh"
+						>
+							{{ i18n.baseText('promotions.modal.retry') }}
+						</N8nButton>
+					</div>
+				</template>
+
 				<template v-else-if="changes.length === 0">
 					<div :class="$style.empty">
 						<N8nText size="medium" bold>
@@ -166,6 +190,14 @@ onMounted(async () => {
 						</N8nText>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('promotions.modal.empty.description') }}
+						</N8nText>
+					</div>
+				</template>
+
+				<template v-else-if="hasNoSearchResults">
+					<div :class="$style.empty" data-test-id="promotion-no-results">
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('promotions.modal.noResults') }}
 						</N8nText>
 					</div>
 				</template>
@@ -305,7 +337,7 @@ onMounted(async () => {
 
 .searchInput {
 	flex: 1;
-	margin-inline: calc(var(--input--padding) * -1) 0 0 0;
+	margin-inline: calc(var(--input--padding) * -1) 0 0;
 }
 
 .loading {
