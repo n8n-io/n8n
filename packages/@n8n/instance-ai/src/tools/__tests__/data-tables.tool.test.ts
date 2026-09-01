@@ -279,21 +279,79 @@ describe('data-tables tool', () => {
 			expect(result.hint).toContain('fullCellValues: true');
 		});
 
-		it('should return full cell values when fullCellValues is set', async () => {
+		it('should return full cell values for a filtered query, defaulting the limit to 1', async () => {
+			const blob = 'x'.repeat(5000);
+			const queryResult = { count: 1, data: [{ image_url: blob }] };
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
+
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: 'name', condition: 'eq' as const, value: 'vivo y17' }],
+			};
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1', filter, fullCellValues: true },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.queryRows).toHaveBeenCalledWith('dt-1', {
+				filter,
+				limit: 1,
+				offset: undefined,
+				projectId: undefined,
+			});
+			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
+			expect(result).not.toHaveProperty('hint');
+		});
+
+		it('should cap the limit when full cell values are requested', async () => {
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue({ count: 0, data: [] });
+
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: 'name', condition: 'like' as const, value: '%vivo%' }],
+			};
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1', filter, fullCellValues: true, limit: 20 },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.queryRows).toHaveBeenCalledWith('dt-1', {
+				filter,
+				limit: 5,
+				offset: undefined,
+				projectId: undefined,
+			});
+		});
+
+		it('should ignore fullCellValues and keep truncating when the query has no filter', async () => {
 			const blob = 'x'.repeat(5000);
 			const queryResult = { count: 1, data: [{ image_url: blob }] };
 			const context = createMockContext();
 			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
 			const tool = createDataTablesTool(context);
-			const result = await executeTool(
+			const result = await executeTool<{ data: Array<Record<string, unknown>>; hint?: string }>(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', fullCellValues: true },
 				noSuspendCtx(),
 			);
 
-			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
-			expect(result).not.toHaveProperty('hint');
+			expect(context.dataTableService.queryRows).toHaveBeenCalledWith('dt-1', {
+				filter: undefined,
+				limit: undefined,
+				offset: undefined,
+				projectId: undefined,
+			});
+			expect(result.data[0].image_url).toBe(`${'x'.repeat(1024)}… [truncated, 5000 chars total]`);
+			expect(result.hint).toContain('fullCellValues was ignored');
 		});
 
 		it('should combine truncation and pagination hints', async () => {

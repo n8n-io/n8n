@@ -94,6 +94,10 @@ function isNameConflictError(error: unknown): boolean {
  *  query feeds back to the model so one broad query cannot flood the conversation. */
 const MAX_CELL_CHARS = 1024;
 
+/** When full cell values are requested, cap rows per call — a few intact blob
+ *  cells are useful; dozens re-create the flood truncation exists to prevent. */
+const MAX_FULL_VALUE_ROWS = 5;
+
 const projectIdDescribe =
 	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
 
@@ -155,8 +159,9 @@ const queryAction = z.object({
 		.optional()
 		.describe(
 			`Return cell values untruncated. By default values longer than ${MAX_CELL_CHARS} characters ` +
-				'(e.g. inline base64 images) are truncated. Only set together with a filter that matches ' +
-				'the specific row(s) whose full values are needed.',
+				'(e.g. inline base64 images) are truncated. Requires a filter matching the specific ' +
+				`row(s) whose full values are needed (ignored without one) and returns at most ${MAX_FULL_VALUE_ROWS} ` +
+				'rows per call (default 1) — paginate for more.',
 		),
 });
 
@@ -361,9 +366,15 @@ async function handleQuery(
 	input: Extract<FullInput, { action: 'query' }>,
 ) {
 	const table = await resolveDataTableReference(context, input, 'readRow');
+	// Honor fullCellValues only for filtered queries, and bound how many intact
+	// rows one call can return — an unfiltered "give me everything untruncated"
+	// is the exact flood shape truncation exists to prevent.
+	const hasFilter = (input.filter?.filters.length ?? 0) > 0;
+	const returnFullValues = input.fullCellValues === true && hasFilter;
+	const limit = returnFullValues ? Math.min(input.limit ?? 1, MAX_FULL_VALUE_ROWS) : input.limit;
 	const result = await context.dataTableService.queryRows(input.dataTableId, {
 		filter: input.filter,
-		limit: input.limit,
+		limit,
 		offset: input.offset,
 		projectId: input.projectId,
 	});
@@ -373,12 +384,14 @@ async function handleQuery(
 
 	const hints: string[] = [];
 	let data = result.data;
-	if (input.fullCellValues !== true) {
+	if (!returnFullValues) {
 		const truncation = truncateOversizedCells(result.data);
 		if (truncation.truncatedColumns.length > 0) {
 			data = truncation.rows;
 			hints.push(
-				`Values in column(s) ${truncation.truncatedColumns.join(', ')} were truncated to ${String(MAX_CELL_CHARS)} characters. If a full value is needed, re-query with fullCellValues: true and a filter matching only the specific row(s).`,
+				input.fullCellValues === true
+					? `fullCellValues was ignored because the query has no filter. Values in column(s) ${truncation.truncatedColumns.join(', ')} were truncated to ${String(MAX_CELL_CHARS)} characters. Re-query with a filter matching only the specific row(s) to get full values.`
+					: `Values in column(s) ${truncation.truncatedColumns.join(', ')} were truncated to ${String(MAX_CELL_CHARS)} characters. If a full value is needed, re-query with fullCellValues: true and a filter matching only the specific row(s).`,
 			);
 		}
 	}
