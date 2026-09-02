@@ -2,9 +2,17 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { readExportTree } from '../export-tree';
+import { DirectoryPackageReader } from '../../io/directory/directory-package-reader';
+import { readPackageEntries } from '../package-entries';
 
-describe('readExportTree', () => {
+const limits = {
+	maxUncompressedBytes: 10 * 1024 * 1024,
+	maxEntryBytes: 1024 * 1024,
+	maxEntries: 1000,
+	maxPathLength: 1024,
+};
+
+describe('readPackageEntries', () => {
 	let root: string;
 
 	const writeTree = async (files: Record<string, string>) => {
@@ -15,9 +23,11 @@ describe('readExportTree', () => {
 		}
 	};
 	const entity = (id: string, name: string) => JSON.stringify({ id, name });
+	const readEntries = async () =>
+		await readPackageEntries(new DirectoryPackageReader(root, limits));
 
 	beforeEach(async () => {
-		root = await mkdtemp(path.join(tmpdir(), 'n8n-export-tree-'));
+		root = await mkdtemp(path.join(tmpdir(), 'n8n-package-entries-'));
 	});
 
 	afterEach(async () => {
@@ -35,9 +45,7 @@ describe('readExportTree', () => {
 			'tags/urgent/tag.json': entity('t1', 'Urgent'),
 		});
 
-		const tree = await readExportTree(root);
-
-		expect(tree).toEqual({
+		expect(await readEntries()).toEqual({
 			projects: [{ id: 'p1', name: 'Alpha', target: 'projects/alpha' }],
 			folders: [{ id: 'f1', name: 'Sales', target: 'projects/alpha/folders/sales' }],
 			workflows: [
@@ -58,9 +66,7 @@ describe('readExportTree', () => {
 			}),
 		});
 
-		const tree = await readExportTree(root);
-
-		expect(tree.variables).toEqual([
+		expect((await readEntries()).variables).toEqual([
 			{
 				id: 'projects/alpha/variables/api-key',
 				name: 'API_KEY',
@@ -69,45 +75,37 @@ describe('readExportTree', () => {
 		]);
 	});
 
-	it('sorts entries by target, so the same tree always yields the same order', async () => {
+	it('sorts entries by target, so the same package always yields the same order', async () => {
 		await writeTree({
 			'projects/alpha/workflows/c/workflow.json': entity('w3', 'C'),
 			'projects/alpha/workflows/a/workflow.json': entity('w1', 'A'),
 			'projects/alpha/workflows/b/workflow.json': entity('w2', 'B'),
 		});
 
-		const tree = await readExportTree(root);
-
-		expect(tree.workflows?.map((w) => w.id)).toEqual(['w1', 'w2', 'w3']);
+		expect((await readEntries()).workflows.map((w) => w.id)).toEqual(['w1', 'w2', 'w3']);
 	});
 
-	it('ignores files that do not mark an entity', async () => {
+	it('ignores files that do not hold an entity', async () => {
 		await writeTree({
-			'projects/alpha/project.json': entity('p1', 'Alpha'),
 			'projects/alpha/README.md': '# Alpha',
 			'projects/alpha/workflows/invoice/workflow.json': entity('w1', 'Invoice'),
-			'projects/alpha/workflows/invoice/notes.json': '{"id":"nope","name":"Nope"}',
+			'projects/alpha/workflows/invoice/notes.json': entity('nope', 'Nope'),
 		});
 
-		const tree = await readExportTree(root);
-
-		expect(tree.workflows).toEqual([
+		expect((await readEntries()).workflows).toEqual([
 			{ id: 'w1', name: 'Invoice', target: 'projects/alpha/workflows/invoice' },
 		]);
 	});
 
-	it('does not follow a symbolic link out of the working copy', async () => {
-		const outside = path.join(root, '..', path.basename(root) + '-outside');
-		await mkdir(path.join(outside, 'workflows/secret'), { recursive: true });
-		await writeFile(
-			path.join(outside, 'workflows/secret/workflow.json'),
-			entity('w-secret', 'Secret'),
-		);
+	it('rejects a symbolic link instead of reading through it', async () => {
+		const outside = await mkdtemp(path.join(tmpdir(), 'n8n-package-outside-'));
+		await mkdir(path.join(outside, 'secret'), { recursive: true });
+		await writeFile(path.join(outside, 'secret/workflow.json'), entity('w-secret', 'Secret'));
 		await mkdir(path.join(root, 'projects/alpha'), { recursive: true });
-		await symlink(path.join(outside, 'workflows'), path.join(root, 'projects/alpha/workflows'));
+		await symlink(outside, path.join(root, 'projects/alpha/workflows'));
 
 		try {
-			expect((await readExportTree(root)).workflows).toEqual([]);
+			await expect(readEntries()).rejects.toThrow('disallowed entry type');
 		} finally {
 			await rm(outside, { recursive: true, force: true });
 		}
@@ -116,8 +114,8 @@ describe('readExportTree', () => {
 	it('rejects an entity file it cannot read an identity from', async () => {
 		await writeTree({ 'projects/alpha/workflows/broken/workflow.json': '{ not json' });
 
-		await expect(readExportTree(root)).rejects.toThrow(
-			'The branch holds an unreadable export file at "projects/alpha/workflows/broken"',
+		await expect(readEntries()).rejects.toThrow(
+			'Package holds an entity without an id or a name at "projects/alpha/workflows/broken"',
 		);
 	});
 
@@ -126,8 +124,8 @@ describe('readExportTree', () => {
 			'projects/alpha/workflows/nameless/workflow.json': JSON.stringify({ name: 'Nameless' }),
 		});
 
-		await expect(readExportTree(root)).rejects.toThrow(
-			'The branch holds an unreadable export file at "projects/alpha/workflows/nameless"',
+		await expect(readEntries()).rejects.toThrow(
+			'Package holds an entity without an id or a name at "projects/alpha/workflows/nameless"',
 		);
 	});
 });

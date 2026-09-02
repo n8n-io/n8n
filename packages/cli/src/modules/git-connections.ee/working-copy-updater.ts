@@ -18,10 +18,13 @@ import { z } from 'zod';
 
 import { N8N_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { readPackageEntries } from '@/modules/n8n-packages/engine/package-entries';
+import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
+import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { readExportTree } from './export-tree';
 import { entryRelocations, mergeManifests, staleTargets } from './manifest-merge';
 import type { BranchState, Relocation } from './manifest-merge';
 
@@ -41,7 +44,10 @@ export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
  */
 @Service()
 export class WorkingCopyUpdater {
-	constructor(private readonly instanceSettings: InstanceSettings) {}
+	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		private readonly packageImportConfig: PackageImportConfig,
+	) {}
 
 	validateSelection(selection: SelectivePushOptions): void {
 		const parsed = selectivePushOptionsSchema.safeParse(selection);
@@ -96,11 +102,11 @@ export class WorkingCopyUpdater {
 	 * dependency of an unselected workflow as an orphan and drop it.
 	 */
 	async readBranchState(exportFolder: string): Promise<BranchState> {
-		// A linked export root would make the scan read a tree outside the
-		// working copy, so check it before walking.
-		await this.resolveContained(exportFolder, '.');
-
-		const tree = await readExportTree(exportFolder);
+		// The same reader a pull uses, so a branch this push accepts is a branch
+		// an import can read: it rejects symbolic links and applies the package
+		// limits.
+		const reader = new DirectoryPackageReader(exportFolder, this.packageImportConfig);
+		const tree = await readPackageEntries(reader);
 		const manifest = await this.readManifestIfPresent(exportFolder);
 		if (!manifest) return tree;
 
@@ -113,7 +119,7 @@ export class WorkingCopyUpdater {
 	}
 
 	private async readManifestIfPresent(packageDir: string): Promise<PackageManifest | undefined> {
-		const file = await this.resolveContained(packageDir, 'manifest.json');
+		const file = await this.resolveContained(packageDir, MANIFEST_FILE);
 		const raw = await readFile(file, 'utf-8').catch((error: NodeJS.ErrnoException) => {
 			if (error.code === 'ENOENT') return undefined;
 			throw error;
@@ -184,7 +190,7 @@ export class WorkingCopyUpdater {
 		}
 
 		await writeFile(
-			await this.resolveContained(exportFolder, 'manifest.json'),
+			await this.resolveContained(exportFolder, MANIFEST_FILE),
 			JSON.stringify(merged, null, '\t'),
 		);
 
@@ -252,7 +258,7 @@ export class WorkingCopyUpdater {
 
 				const fullPath = path.join(dir, entry.name);
 				const relative = path.relative(src, fullPath).split(path.sep).join('/');
-				if (relative === 'manifest.json') continue;
+				if (relative === MANIFEST_FILE) continue;
 
 				const destPath = await this.resolveContained(dest, relative, verified);
 				if (entry.isDirectory()) {

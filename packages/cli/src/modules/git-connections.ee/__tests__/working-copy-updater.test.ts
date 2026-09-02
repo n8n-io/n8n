@@ -4,11 +4,19 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import type { BranchState } from '../manifest-merge';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import type { SelectivePushOptions } from '../working-copy-updater';
+
+const packageImportConfig = mock<PackageImportConfig>({
+	maxUncompressedBytes: 300 * 1024 * 1024,
+	maxEntryBytes: 5 * 1024 * 1024,
+	maxEntries: 5_000,
+	maxPathLength: 1024,
+});
 
 const baseMetadata = {
 	packageFormatVersion: '1' as const,
@@ -65,7 +73,10 @@ describe('WorkingCopyUpdater', () => {
 	let root: string;
 	let exportFolder: string;
 	let stagingFolder: string;
-	const updater = new WorkingCopyUpdater(mock<InstanceSettings>({ instanceId: 'inst-1' }));
+	const updater = new WorkingCopyUpdater(
+		mock<InstanceSettings>({ instanceId: 'inst-1' }),
+		packageImportConfig,
+	);
 
 	const writeTree = async (base: string, files: Record<string, string>) => {
 		for (const [filePath, content] of Object.entries(files)) {
@@ -405,7 +416,19 @@ describe('WorkingCopyUpdater', () => {
 			await mkdir(outside, { recursive: true });
 		});
 
-		it('rejects a directory that is a symbolic link and writes nothing through it', async () => {
+		it('refuses to read a branch that holds a symbolic link', async () => {
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(makeManifest()),
+				'projects/alpha/project.json': projectFile,
+			});
+			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
+
+			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+				'disallowed entry type for "projects/alpha/workflows"',
+			);
+		});
+
+		it('writes nothing through a symbolic link, whatever state the caller hands over', async () => {
 			await writeTree(exportFolder, {
 				'manifest.json': manifestFile(makeManifest()),
 				'projects/alpha/project.json': projectFile,
@@ -416,21 +439,19 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
-			const branch = await updater.readBranchState(exportFolder);
-
 			await expect(
-				updater.applySelection(exportFolder, stagingFolder, branch, new Set()),
+				updater.applySelection(exportFolder, stagingFolder, { projects: [alpha] }, new Set()),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
 			expect(await readdir(outside)).toEqual([]);
 		});
 
-		it('rejects an export root that is a symbolic link before reading anything', async () => {
+		it('refuses an export root that is a symbolic link', async () => {
 			await writeTree(outside, { 'manifest.json': manifestFile(makeManifest()) });
 			await mkdir(path.dirname(exportFolder), { recursive: true });
 			await symlink(outside, exportFolder);
 
 			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
-				/"\." on the branch is a symbolic link/,
+				'disallowed entry type for "."',
 			);
 		});
 

@@ -13,6 +13,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -27,6 +28,13 @@ import type { GitConnectionRepository } from '../database/repositories/git-conne
 import type { GitConnectionsGitService } from '../git-connections-git.service';
 import { GitConnectionsService } from '../git-connections.service';
 import { WorkingCopyUpdater } from '../working-copy-updater';
+
+const packageImportConfig = mock<PackageImportConfig>({
+	maxUncompressedBytes: 300 * 1024 * 1024,
+	maxEntryBytes: 5 * 1024 * 1024,
+	maxEntries: 5_000,
+	maxPathLength: 1024,
+});
 
 vi.mock('@/permissions.ee/check-access');
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
@@ -52,7 +60,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		n8nPackagesService,
 		cipher,
 		instanceSettings,
-		new WorkingCopyUpdater(instanceSettings),
+		new WorkingCopyUpdater(instanceSettings, packageImportConfig),
 		logger,
 	);
 
@@ -271,7 +279,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				settings,
-				new WorkingCopyUpdater(settings),
+				new WorkingCopyUpdater(settings, packageImportConfig),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -537,7 +545,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				selectiveInstanceSettings,
-				new WorkingCopyUpdater(selectiveInstanceSettings),
+				new WorkingCopyUpdater(selectiveInstanceSettings, packageImportConfig),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -834,7 +842,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				n8nPackagesService,
 				cipher,
 				settings,
-				new WorkingCopyUpdater(settings),
+				new WorkingCopyUpdater(settings, packageImportConfig),
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());

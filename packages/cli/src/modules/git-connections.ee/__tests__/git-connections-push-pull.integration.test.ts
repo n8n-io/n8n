@@ -20,6 +20,7 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -45,6 +46,8 @@ type TestRemote = {
 	workingDir: string;
 	git: SimpleGit;
 };
+
+const packageImportConfig = Container.get(PackageImportConfig);
 
 const licenseMocker = new LicenseMocker();
 
@@ -112,7 +115,7 @@ beforeEach(async () => {
 		packagesService,
 		cipher,
 		instanceSettings,
-		new WorkingCopyUpdater(instanceSettings),
+		new WorkingCopyUpdater(instanceSettings, packageImportConfig),
 		logger,
 	);
 });
