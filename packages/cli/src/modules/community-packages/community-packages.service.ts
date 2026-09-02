@@ -7,7 +7,7 @@ import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	getNodesApiVersion,
+	checkNodesApiVersion,
 	jsonParse,
 	N8N_NODES_API_VERSION,
 	UnexpectedError,
@@ -320,7 +320,7 @@ export class CommunityPackagesService {
 			// An unreadable package.json stays "missing" — that is the repair path for
 			// partial or corrupt installs.
 			const packageJson = await this.readInstalledPackageJson(installedPackage.packageName);
-			const apiVersionCheck = packageJson && getNodesApiVersion(packageJson);
+			const apiVersionCheck = packageJson && checkNodesApiVersion(packageJson);
 			if (apiVersionCheck && !apiVersionCheck.compatible) {
 				const requirement =
 					apiVersionCheck.reason === 'malformed'
