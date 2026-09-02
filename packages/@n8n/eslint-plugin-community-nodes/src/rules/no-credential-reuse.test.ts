@@ -195,9 +195,6 @@ ruleTester.run('no-credential-reuse', NoCredentialReuseRule, {
 	],
 	invalid: [
 		{
-			// The rule only reads a `description` class property initializer, so a
-			// versioned node that builds its description in the constructor keeps
-			// its credential references unchecked.
 			name: 'SECURITY: versioned node assigning description in its constructor uses credential not in package',
 			filename: versionedNodeFilePath,
 			code: createVersionedNodeCode("'ExternalApi'"),

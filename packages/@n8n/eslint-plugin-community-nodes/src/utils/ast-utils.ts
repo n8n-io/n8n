@@ -68,6 +68,24 @@ export function findClassProperty(
 	return property?.type === AST_NODE_TYPES.PropertyDefinition ? property : null;
 }
 
+/**
+ * Returns the object literal behind an expression, and looks through the type
+ * assertions node authors write, e.g. `{ … } as INodeTypeDescription`.
+ */
+function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+	let current = node;
+	while (
+		current?.type === AST_NODE_TYPES.TSAsExpression ||
+		current?.type === AST_NODE_TYPES.TSSatisfiesExpression ||
+		current?.type === AST_NODE_TYPES.TSTypeAssertion ||
+		current?.type === AST_NODE_TYPES.TSNonNullExpression
+	) {
+		current = current.expression;
+	}
+
+	return current?.type === AST_NODE_TYPES.ObjectExpression ? current : null;
+}
+
 function findConstructorAssignedDescription(
 	node: TSESTree.ClassDeclaration,
 ): TSESTree.ObjectExpression | null {
@@ -88,10 +106,12 @@ function findConstructorAssignedDescription(
 			expression.left.type === AST_NODE_TYPES.MemberExpression &&
 			expression.left.object.type === AST_NODE_TYPES.ThisExpression &&
 			expression.left.property.type === AST_NODE_TYPES.Identifier &&
-			expression.left.property.name === 'description' &&
-			expression.right.type === AST_NODE_TYPES.ObjectExpression
+			expression.left.property.name === 'description'
 		) {
-			return expression.right;
+			const description = asObjectExpression(expression.right);
+			if (description) {
+				return description;
+			}
 		}
 	}
 
@@ -107,8 +127,9 @@ export function findNodeDescriptionObject(
 	node: TSESTree.ClassDeclaration,
 ): TSESTree.ObjectExpression | null {
 	const property = findClassProperty(node, 'description');
-	if (property?.value?.type === AST_NODE_TYPES.ObjectExpression) {
-		return property.value;
+	const propertyValue = asObjectExpression(property?.value ?? null);
+	if (propertyValue) {
+		return propertyValue;
 	}
 
 	return findConstructorAssignedDescription(node);

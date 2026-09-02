@@ -97,9 +97,6 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 	],
 	invalid: [
 		{
-			// Same gap as `no-credential-reuse`: the traversal starts at the
-			// `description` property initializer, so a constructor-assigned
-			// description is never visited.
 			name: 'emoji in option name of a versioned node assigning description in its constructor',
 			filename: '/tmp/v1/TestNodeV1.node.ts',
 			code: createVersionedNodeCode(`
@@ -118,6 +115,42 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 				],
 			`),
 			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
+		{
+			name: 'emoji in a description that is cast with `as`',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description = {
+						displayName: '🚀 Rocket Node',
+						name: 'testNode',
+						properties: [],
+					} as INodeTypeDescription;
+				}
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'emoji in a constructor-assigned description that is cast with `as`',
+			filename: '/tmp/v1/TestNodeV1.node.ts',
+			code: `
+				import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNodeV1 implements INodeType {
+					description: INodeTypeDescription;
+
+					constructor(baseDescription: INodeTypeBaseDescription) {
+						this.description = {
+							...baseDescription,
+							displayName: '🚀 Rocket Node',
+							properties: [],
+						} as INodeTypeDescription;
+					}
+				}
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
 		},
 		{
 			name: 'emoji in node displayName',
