@@ -75,6 +75,8 @@ jobs:
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
               !scripts/cloud-session.mjs
+              !scripts/preview.mjs
+              !scripts/preview-serve.mjs
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -90,6 +92,8 @@ jobs:
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
               !scripts/cloud-session.mjs
+              !scripts/preview.mjs
+              !scripts/preview-serve.mjs
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -116,6 +120,9 @@ jobs:
             workflow-scripts:
               .github/scripts/**
               OWNERS
+              scripts/*.test.mjs
+              scripts/codespace-env.mjs
+              scripts/serve-ready.mjs
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
