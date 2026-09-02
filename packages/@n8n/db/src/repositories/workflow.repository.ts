@@ -178,7 +178,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		await this.managerFor(ctx).update(WorkflowEntity, id, content);
 	}
 
-
 	/** Creates the workflow together with its `workflow:owner` share in one transaction. */
 	async createWorkflowWithOwner(
 		workflow: WorkflowEntity,
