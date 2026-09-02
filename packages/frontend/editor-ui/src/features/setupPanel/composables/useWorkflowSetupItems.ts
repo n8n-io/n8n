@@ -1,11 +1,14 @@
-import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { getActivePinia } from 'pinia';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
 import {
 	createWorkflowDocumentId,
 	getWorkflowDocumentStoreId,
@@ -57,30 +60,63 @@ export function useWorkflowSetupItems(
 		return useWorkflowDocumentStore(createWorkflowDocumentId(id));
 	});
 
+	/**
+	 * The id whose saved workflow this composable fetched to completion. The
+	 * workflows-list cache alone can't prove availability: list pages seed
+	 * `workflowsById` entries with a `nodes: []` placeholder, which would read
+	 * as an empty (but "available") workflow and suppress the event feed.
+	 */
+	const fetchedWorkflowId = ref<string>();
+
 	// (Re)load the derivation's inputs while not paused, and again when an
-	// agent edit settles: the saved workflow for node state (skipped while a
-	// hydrated canvas store is the source) and the usable-credentials slice
-	// scoped to this workflow (see `isItemDone`). Failures stay silent by
-	// design — rows fall back to the thread's event feed until a later pass
-	// succeeds.
+	// agent edit settles or a canvas host's document store goes away: the
+	// saved workflow for node state (skipped while a hydrated canvas store is
+	// the source) and the usable-credentials slice scoped to this workflow
+	// (see `isItemDone`). Failures stay silent by design — rows fall back to
+	// the thread's event feed until a later pass succeeds.
 	watch(
-		() => [toValue(workflowId), toValue(options.paused) === true] as const,
-		([id, paused]) => {
+		() =>
+			[
+				toValue(workflowId),
+				toValue(options.paused) === true,
+				documentStore.value?.hydrated === true,
+			] as const,
+		([id, paused, hydrated]) => {
 			if (!id || paused) return;
 			void credentialsStore.fetchUsableCredentials({ workflowId: id }).catch(() => {});
-			if (!documentStore.value?.hydrated) {
-				void workflowsListStore.fetchWorkflow(id).catch(() => {});
+			if (!hydrated) {
+				void workflowsListStore
+					.fetchWorkflow(id)
+					.then(() => {
+						if (toValue(workflowId) === id) fetchedWorkflowId.value = id;
+					})
+					.catch(() => {});
 			}
 		},
 		{ immediate: true },
 	);
+
+	// The usable slice is only written by its fetch, so a credential created,
+	// edited, or deleted elsewhere in the app (credential modal, credentials
+	// page) would leave done-ness stale while this derivation stays mounted.
+	listenForCredentialChanges({
+		store: credentialsStore,
+		onCredentialCreated: refreshUsableSlice,
+		onCredentialUpdated: refreshUsableSlice,
+		onCredentialDeleted: refreshUsableSlice,
+	});
+
+	function refreshUsableSlice() {
+		void credentialsStore.refreshUsableCredentials().catch(() => {});
+	}
 
 	/** Live canvas nodes when a host hydrated a document store, else the saved workflow's. */
 	const workflowNodes = computed<INodeUi[] | undefined>(() => {
 		const docStore = documentStore.value;
 		if (docStore?.hydrated) return docStore.allNodes;
 		const id = toValue(workflowId);
-		return id ? workflowsListStore.workflowsById[id]?.nodes : undefined;
+		if (!id || fetchedWorkflowId.value !== id) return undefined;
+		return workflowsListStore.workflowsById[id]?.nodes;
 	});
 
 	/** Node state is available from a hydrated canvas store or the fetched workflow. */
@@ -118,7 +154,10 @@ export function useWorkflowSetupItems(
 	>();
 	watch(
 		() => toValue(workflowId),
-		() => settledParameterItems.clear(),
+		() => {
+			settledParameterItems.clear();
+			fetchedWorkflowId.value = undefined;
+		},
 	);
 
 	/**

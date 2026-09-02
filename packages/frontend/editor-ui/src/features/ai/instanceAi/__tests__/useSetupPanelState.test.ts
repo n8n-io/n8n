@@ -3,10 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
-import {
-	useSetupPanelState,
-	type SetupPanelThreadSource,
-} from '../composables/useSetupPanelState';
+import { useSetupPanelState, type SetupPanelThreadSource } from '../composables/useSetupPanelState';
 
 vi.mock('@/features/setupPanel/composables/useWorkflowSetupItems', () => ({
 	useWorkflowSetupItems: vi.fn(),

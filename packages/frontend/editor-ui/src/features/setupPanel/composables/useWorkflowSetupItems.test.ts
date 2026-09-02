@@ -26,6 +26,14 @@ vi.mock('@/features/setupPanel/setupPanel.utils', () => ({
 	getNodeParametersIssues: vi.fn().mockReturnValue({}),
 }));
 
+// The credential-change test runs the real `deleteCredential` action (a
+// reassigned `vi.fn()` would bypass pinia's wrapper, so `$onAction` — what
+// `listenForCredentialChanges` subscribes through — would never fire).
+vi.mock('@/features/credentials/credentials.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	deleteCredential: vi.fn().mockResolvedValue(true),
+}));
+
 const WORKFLOW_ID = 'wf-1';
 
 const mockGetNodeCredentialTypes = vi.mocked(getNodeCredentialTypes);
@@ -118,7 +126,7 @@ describe('useWorkflowSetupItems', () => {
 		]);
 	});
 
-	it('derives from the saved workflow when no canvas host has a document store', () => {
+	it('derives from the saved workflow when no canvas host has a document store', async () => {
 		mockGetNodeCredentialTypes.mockReturnValue(['slackApi']);
 		workflowsListStore.workflowsById = {
 			[WORKFLOW_ID]: createTestWorkflow({
@@ -129,7 +137,10 @@ describe('useWorkflowSetupItems', () => {
 
 		const { isWorkflowAvailable, derivedItems } = useWorkflowSetupItems(() => WORKFLOW_ID);
 
-		expect(isWorkflowAvailable.value).toBe(true);
+		// A cached entry alone is not enough — availability waits for this
+		// composable's own fetch (the cache may hold a list-page placeholder).
+		expect(isWorkflowAvailable.value).toBe(false);
+		await vi.waitFor(() => expect(isWorkflowAvailable.value).toBe(true));
 		expect(derivedItems.value).toEqual([credentialItem()]);
 		// It attaches to a host's store but never creates one itself.
 		expect(
@@ -138,6 +149,67 @@ describe('useWorkflowSetupItems', () => {
 		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(WORKFLOW_ID);
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			workflowId: WORKFLOW_ID,
+		});
+	});
+
+	it('does not read a list-page placeholder entry as an empty workflow', async () => {
+		mockGetNodeCredentialTypes.mockReturnValue(['slackApi']);
+		// What a workflows-list page seeds into the cache: real metadata, `nodes: []`.
+		workflowsListStore.workflowsById = {
+			[WORKFLOW_ID]: createTestWorkflow({ id: WORKFLOW_ID, nodes: [] }),
+		};
+		let resolveFetch!: (workflow: ReturnType<typeof createTestWorkflow>) => void;
+		workflowsListStore.fetchWorkflow = vi.fn().mockImplementation(
+			async () =>
+				await new Promise<ReturnType<typeof createTestWorkflow>>((resolve) => {
+					resolveFetch = resolve;
+				}),
+		);
+
+		const { isWorkflowAvailable, derivedItems } = useWorkflowSetupItems(() => WORKFLOW_ID);
+
+		expect(isWorkflowAvailable.value).toBe(false);
+		expect(derivedItems.value).toEqual([]);
+
+		workflowsListStore.workflowsById = {
+			[WORKFLOW_ID]: createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack' })],
+			}),
+		};
+		resolveFetch(workflowsListStore.workflowsById[WORKFLOW_ID]);
+		await vi.waitFor(() => expect(isWorkflowAvailable.value).toBe(true));
+		expect(derivedItems.value).toEqual([credentialItem()]);
+	});
+
+	it('stays unavailable when the saved-workflow fetch fails', async () => {
+		workflowsListStore.workflowsById = {
+			[WORKFLOW_ID]: createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack' })],
+			}),
+		};
+		workflowsListStore.fetchWorkflow = vi.fn().mockRejectedValue(new Error('offline'));
+
+		const { isWorkflowAvailable } = useWorkflowSetupItems(() => WORKFLOW_ID);
+
+		await vi.waitFor(() => expect(workflowsListStore.fetchWorkflow).toHaveBeenCalled());
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(isWorkflowAvailable.value).toBe(false);
+	});
+
+	it('refreshes the usable-credentials slice when a credential changes elsewhere', async () => {
+		credentialsStore.refreshUsableCredentials = vi.fn().mockResolvedValue(undefined);
+
+		useWorkflowSetupItems(() => WORKFLOW_ID);
+		expect(credentialsStore.refreshUsableCredentials).not.toHaveBeenCalled();
+
+		// A deletion from e.g. the credentials page, not through this composable.
+		await credentialsStore.deleteCredential({ id: 'cred-1' });
+
+		await vi.waitFor(() => {
+			expect(credentialsStore.refreshUsableCredentials).toHaveBeenCalled();
 		});
 	});
 
@@ -240,7 +312,9 @@ describe('useWorkflowSetupItems', () => {
 		expect(isItemDone(credentialItem())).toBe(true);
 		expect(isItemDone(credentialItem({ nodeBindings: [{ nodeName: 'Unbound' }] }))).toBe(false);
 		expect(
-			isItemDone(credentialItem({ nodeBindings: [{ nodeName: 'Slack' }, { nodeName: 'Unbound' }] })),
+			isItemDone(
+				credentialItem({ nodeBindings: [{ nodeName: 'Slack' }, { nodeName: 'Unbound' }] }),
+			),
 		).toBe(false);
 	});
 

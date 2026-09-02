@@ -677,6 +677,193 @@ describe('parseStoredMessages', () => {
 			expect(assistant?.agentTree?.setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
 		});
 
+		it('should keep setup items when the assistant row has no text or tool calls', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },
+				// A row whose only durable trace was the setup-items event: no text,
+				// no tool calls. Without a carrier tree the items would vanish.
+				{ id: 'msg-a', role: 'assistant', content: [], createdAt: makeDate(1) },
+			];
+			const setupOnlyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				setupItemsByWorkflowId: {
+					['wf-1']: [
+						{
+							id: 'wf-1:credential:slackApi',
+							kind: 'credential',
+							credentialType: 'slackApi',
+						},
+					],
+				},
+			};
+			const snapshots = [
+				{
+					tree: setupOnlyTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree).toBeDefined();
+			expect(assistant?.agentTree?.setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+		});
+
+		it('should keep setup items through the group collapse of flat trees', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Setting up' }],
+					createdAt: makeDate(1),
+				},
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'All done' }],
+					createdAt: makeDate(2),
+				},
+			];
+			// The degenerate snapshot pairs with the earlier row, so its setup items
+			// land on that row's flat tree; the later unpaired row inherits the
+			// group id and the dedup pass merges the two flat trees.
+			const setupOnlyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				setupItemsByWorkflowId: {
+					['wf-1']: [
+						{
+							id: 'wf-1:credential:slackApi',
+							kind: 'credential',
+							credentialType: 'slackApi',
+						},
+					],
+				},
+			};
+			const snapshots = [
+				{
+					tree: setupOnlyTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistants = result.filter((m) => m.role === 'assistant');
+			expect(assistants).toHaveLength(1);
+			expect(assistants[0].agentTree?.textContent).toBe('Setting up\n\nAll done');
+			expect(assistants[0].agentTree?.setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+		});
+
+		it('should keep the kept row setup items when it adopts an earlier snapshot tree', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Building' }],
+					createdAt: makeDate(1),
+				},
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'All done' }],
+					createdAt: makeDate(2),
+				},
+			];
+			// The earlier row pairs with the renderable snapshot (older setup items);
+			// the later, kept row pairs with a degenerate one carrying newer items.
+			// Adopting the snapshot tree must not roll the items back.
+			const renderableTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'Tree text',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				setupItemsByWorkflowId: {
+					['wf-1']: [
+						{
+							id: 'wf-1:credential:slackApi',
+							kind: 'credential',
+							credentialType: 'slackApi',
+						},
+					],
+				},
+			};
+			const newerItemsTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				setupItemsByWorkflowId: {
+					['wf-1']: [
+						{
+							id: 'wf-1:credential:notionApi',
+							kind: 'credential',
+							credentialType: 'notionApi',
+						},
+					],
+				},
+			};
+			const snapshots = [
+				{
+					tree: renderableTree,
+					runId: 'run_1',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+				{
+					tree: newerItemsTree,
+					runId: 'run_2',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(2),
+					updatedAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistants = result.filter((m) => m.role === 'assistant');
+			expect(assistants).toHaveLength(1);
+			expect(assistants[0].agentTree?.textContent).toBe('Tree text');
+			expect(assistants[0].agentTree?.setupItemsByWorkflowId?.['wf-1']).toEqual([
+				{
+					id: 'wf-1:credential:notionApi',
+					kind: 'credential',
+					credentialType: 'notionApi',
+				},
+			]);
+		});
+
 		it('should normalize a non-terminal (running) snapshot status to completed', () => {
 			const messages: StoredAgentMessage[] = [
 				{ id: 'msg-u', role: 'user', content: 'do it', createdAt: makeDate() },

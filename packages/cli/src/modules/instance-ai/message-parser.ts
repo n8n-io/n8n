@@ -311,8 +311,15 @@ function mergeFlatAgentTrees(
 	earlier: InstanceAiAgentNode,
 	later: InstanceAiAgentNode,
 ): InstanceAiAgentNode {
+	// Later row wins per workflow key — same recency rule as the FE's
+	// `findLatestSetupItemsFromMessages`.
+	const setupItemsByWorkflowId =
+		earlier.setupItemsByWorkflowId || later.setupItemsByWorkflowId
+			? { ...earlier.setupItemsByWorkflowId, ...later.setupItemsByWorkflowId }
+			: undefined;
 	return {
 		...later,
+		...(setupItemsByWorkflowId ? { setupItemsByWorkflowId } : {}),
 		textContent: [earlier.textContent, later.textContent].filter(Boolean).join('\n\n'),
 		reasoning: [earlier.reasoning, later.reasoning].filter(Boolean).join('\n\n'),
 		toolCalls: [...earlier.toolCalls, ...later.toolCalls],
@@ -495,8 +502,11 @@ export function parseStoredMessages(
 			// assistant row = one LLM response, and unlike `runId` (which falls
 			// back to the user-message id shared by the whole turn) it is unique
 			// per row, so response grouping survives the flat-tree merge.
+			// Setup items alone also warrant a fallback tree: for a row with no text
+			// or tool calls the (non-renderable) snapshot loses below, so without a
+			// carrier tree the items would vanish from history.
 			const messageFlatTree =
-				toolCalls.length > 0 || text || reasoning
+				toolCalls.length > 0 || text || reasoning || snapshot?.tree.setupItemsByWorkflowId
 					? buildFlatAgentTree(
 							runId,
 							text,
@@ -596,8 +606,17 @@ export function parseStoredMessages(
 		const candidate = messages[i];
 		if (!messagesWithSnapshotTree.has(kept)) {
 			if (messagesWithSnapshotTree.has(candidate)) {
+				// The kept (later) row's setup items outrank the transferred
+				// snapshot's: keep them on top of the adopted tree.
+				const keptSetupItems = kept.agentTree?.setupItemsByWorkflowId;
 				kept.agentTree = candidate.agentTree;
 				kept.runIds = candidate.runIds;
+				if (keptSetupItems && kept.agentTree) {
+					kept.agentTree.setupItemsByWorkflowId = {
+						...kept.agentTree.setupItemsByWorkflowId,
+						...keptSetupItems,
+					};
+				}
 				messagesWithSnapshotTree.add(kept);
 			} else if (candidate.agentTree) {
 				// Neither row is snapshot-backed (degenerate-snapshot turn): aggregate the
