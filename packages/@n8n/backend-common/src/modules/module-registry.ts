@@ -9,6 +9,7 @@ import { pathToFileURL } from 'url';
 
 import { MissingModuleError } from './errors/missing-module.error';
 import { ModuleConfusionError } from './errors/module-confusion.error';
+import { ModuleLoadError } from './errors/module-load.error';
 import { ModulesConfig } from './modules.config';
 import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
@@ -22,6 +23,20 @@ export const getModuleEntryUrl = (modulesDir: string, moduleName: string, isEnte
 			`${moduleName}.module.js`,
 		),
 	).href;
+
+/**
+ * Whether the import failed because `entryUrl` itself is absent, as opposed to
+ * an error thrown while evaluating an entrypoint that is present. Node reports
+ * the absent entrypoint as `ERR_MODULE_NOT_FOUND` for `entryUrl`, but a
+ * dependency the entrypoint fails to resolve as `MODULE_NOT_FOUND`.
+ */
+const isEntryUrlMissing = (error: unknown, entryUrl: string) => {
+	if (!(error instanceof Error) || !('code' in error) || error.code !== 'ERR_MODULE_NOT_FOUND') {
+		return false;
+	}
+
+	return 'url' in error ? error.url === entryUrl : true;
+};
 
 @Service()
 export class ModuleRegistry {
@@ -115,21 +130,33 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
+			const entryUrl = getModuleEntryUrl(modulesDir, moduleName);
+
 			try {
-				await import(getModuleEntryUrl(modulesDir, moduleName));
+				await import(entryUrl);
 			} catch (primaryError) {
+				// Only an absent entrypoint means the module may live in the enterprise
+				// directory instead. Any other failure comes from the entrypoint's own
+				// code, so surface it - retrying with the enterprise path would replace
+				// it with a "cannot find module" error for a directory that never
+				// existed, and send the reader looking for a naming mistake.
+				if (!isEntryUrlMissing(primaryError, entryUrl)) {
+					throw new ModuleLoadError(moduleName, primaryError);
+				}
+
+				const enterpriseEntryUrl = getModuleEntryUrl(modulesDir, moduleName, true);
+
 				try {
-					await import(getModuleEntryUrl(modulesDir, moduleName, true));
-				} catch (error) {
-					const loggedError =
-						primaryError instanceof Error &&
-						'code' in primaryError &&
-						primaryError.code !== 'MODULE_NOT_FOUND'
-							? primaryError
-							: error;
+					await import(enterpriseEntryUrl);
+				} catch (enterpriseError) {
+					if (!isEntryUrlMissing(enterpriseError, enterpriseEntryUrl)) {
+						throw new ModuleLoadError(moduleName, enterpriseError);
+					}
+
+					// Neither entrypoint is on disk.
 					throw new MissingModuleError(
 						moduleName,
-						loggedError instanceof Error ? loggedError.message : '',
+						enterpriseError instanceof Error ? enterpriseError.message : '',
 					);
 				}
 			}
