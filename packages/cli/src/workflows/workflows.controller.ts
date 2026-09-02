@@ -132,9 +132,13 @@ export class WorkflowsController {
 			const { workflows: data, count } = await this.workflowService.getMany(
 				req.user,
 				req.listQueryOptions,
-				!!req.query.includeScopes,
-				userCanListProjectFolders && !!req.query.includeFolders,
-				!!req.query.onlySharedWithMe,
+				{
+					includeScopes: !!req.query.includeScopes,
+					includeFolders: userCanListProjectFolders && !!req.query.includeFolders,
+					onlySharedWithMe: !!req.query.onlySharedWithMe,
+					// The list UI renders the publication badge
+					includePublicationStatus: true,
+				},
 			);
 
 			res.json({ count, data });

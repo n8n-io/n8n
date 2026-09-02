@@ -157,6 +157,20 @@ export class InstanceAiController {
 		}
 	}
 
+	/**
+	 * Without a model the run starts and then dies inside the provider call, with
+	 * nothing to tell the user why. The frontend routes an unconfigured instance
+	 * to setup rather than the composer, but that is one gate per entry point and
+	 * the endpoint is reachable on its own, so refuse the run here too.
+	 */
+	private async requireModelConfigured(): Promise<void> {
+		if (!(await this.settingsService.isModelConfigured())) {
+			throw new BadRequestError(
+				'The AI Assistant has no model configured. An instance owner can add one in Settings > AI Assistant.',
+			);
+		}
+	}
+
 	private requireRunDebugEnabled(): void {
 		if (!this.instanceAiService.isRunDebugEnabled()) {
 			throw new NotFoundError('Run debug is not enabled');
@@ -184,6 +198,7 @@ export class InstanceAiController {
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
 		this.requireInstanceAiEnabled();
+		await this.requireModelConfigured();
 		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
 			throw new BadRequestError('Either message or attachments must be provided');
 		}

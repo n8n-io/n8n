@@ -7,6 +7,7 @@ export * from './execution';
 export * from './logstreaming';
 export * from './nodes';
 export * from './scheduler';
+export * from './uuid';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',

@@ -7,15 +7,21 @@ import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system/icons/
 import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';
 import { setup } from '@storybook/vue3';
+import { DARK_MODE_EVENT_NAME } from '@vueless/storybook-dark-mode';
 import ElementPlus from 'element-plus';
 // @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
 import { createPinia } from 'pinia';
+import { addons } from 'storybook/preview-api';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
+import { applyN8nTheme, isDarkModeStored } from './applyN8nTheme';
+import { ThemedDocsContainer } from './ThemedDocsContainer';
 import './storybook.scss';
-import { withThemePreview } from './withThemePreview';
-// import '../src/css/tailwind/index.css';
+
+const channel = addons.getChannel();
+applyN8nTheme(isDarkModeStored());
+channel.on(DARK_MODE_EVENT_NAME, applyN8nTheme);
 
 setup((app) => {
 	app.provide(IconBodyLoaderKey, loadLucideIconBody);
@@ -51,17 +57,22 @@ export const parameters = {
 	themes: {
 		disable: true,
 	},
+	darkMode: {
+		stylePreview: true,
+	},
 	options: {
 		storySort: {
 			method: 'alphabetical',
-			order: ['Style guide', 'Core', 'Areas', 'Experimental'],
+			order: ['Style Guide', 'Core', 'Areas', 'Experimental'],
+			includeNames: false,
 		},
+	},
+	docs: {
+		container: ThemedDocsContainer,
 	},
 	chromatic: {
 		disableSnapshot: false,
 	},
 };
-
-export const decorators = [withThemePreview];
 
 export const tags = ['autodocs'];

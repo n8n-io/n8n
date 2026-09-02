@@ -1,4 +1,5 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+import { passthroughEgressFilter } from '@n8n/backend-network';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { Consumer } from 'kafkajs';
@@ -1018,7 +1019,9 @@ describe('Kafka Utils', () => {
 			ctx.logger = mock<Logger>();
 			ctx.helpers = {
 				...ctx.helpers,
-				getSecureEgressFilter: vi.fn().mockReturnValue(secureEgressFilter),
+				getSecureEgressFilter: vi
+					.fn()
+					.mockReturnValue(secureEgressFilter ?? passthroughEgressFilter),
 			};
 			return ctx;
 		};
@@ -1307,14 +1310,16 @@ describe('Kafka Utils', () => {
 				expect(agentLookup(arg.agent)).toBe(lookup);
 			});
 
-			it('constructs the registry without an agent or pre-flight when egress filtering is not configured', async () => {
+			it('constructs the registry with the plain system lookup when egress filtering is not configured', async () => {
 				const ctx = createRegistryContext();
+				const input = 'https://schema-registry.local:8081';
 
-				await createSchemaRegistry(ctx, 'http://169.254.169.254:80 /v');
+				await createSchemaRegistry(ctx, input);
 
 				const arg = lastConstructorArg();
-				expect(arg).toEqual({ host: 'http://169.254.169.254:80 /v' });
-				expect(arg).not.toHaveProperty('agent');
+				expect(arg.host).toBe(new URL(input).href);
+				expect(arg.agent).toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(passthroughEgressFilter.createSecureLookup());
 			});
 
 			it('throws a NodeOperationError surfaced as the continueOnFail item message', async () => {
@@ -1356,10 +1361,15 @@ describe('Kafka Utils', () => {
 
 				const result = await setSchemaRegistry(ctx);
 
-				expect(SchemaRegistry).toHaveBeenCalledWith({
-					host: 'https://schema-registry.local:8081',
-					auth: { username: 'registry-user', password: 'registry-password' },
-				});
+				const arg = (SchemaRegistry as Mock).mock.calls[0][0] as {
+					host: string;
+					auth?: { username: string; password: string };
+					agent?: https.Agent;
+				};
+				expect(arg.host).toBe('https://schema-registry.local:8081/');
+				expect(arg.auth).toEqual({ username: 'registry-user', password: 'registry-password' });
+				expect(arg.agent).toBeInstanceOf(https.Agent);
+				expect(agentLookup(arg.agent)).toBe(passthroughEgressFilter.createSecureLookup());
 				expect(result).toBeDefined();
 			});
 

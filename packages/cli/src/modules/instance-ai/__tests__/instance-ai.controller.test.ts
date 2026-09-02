@@ -170,6 +170,7 @@ describe('InstanceAiController', () => {
 		eventLog.getEventsForRuns.mockResolvedValue([]);
 		eventLog.getOpenSegments.mockReturnValue([]);
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
+		settingsService.isModelConfigured.mockResolvedValue(true);
 	});
 
 	describe('chat', () => {
@@ -279,6 +280,17 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should refuse the run when no model is configured', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+
+			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toMatchObject({
+				message: expect.stringContaining('no model configured'),
+			});
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 
 		it('should reject unsupported attachment types before starting a run', async () => {

@@ -9,6 +9,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "email": {
                         "type": "string"
                     },
@@ -274,5 +277,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }

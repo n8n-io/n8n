@@ -22,6 +22,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
+import { logAiEvent } from '@n8n/ai-utilities';
+
 import { versionDescription } from './versionDescription';
 import type { DynamicZodObject } from '../../../../types/zod.types';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '../../../../utils/schemaParsing';
@@ -197,6 +199,7 @@ export class ToolWorkflowV1 implements INodeType {
 				const json = jsonParse<IDataObject>(response, { fallbackValue: { response } });
 				void this.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json }]], metadata);
 			}
+			logAiEvent(this, 'ai-tool-called', { query, response });
 			return response;
 		};
 

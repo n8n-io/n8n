@@ -105,8 +105,10 @@ export {
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
+	PushGitConnectionDto,
 	UpdateGitConnectionDto,
 	gitConnectionTypeSchema,
 	gitKeyGeneratorTypeSchema,
@@ -151,6 +153,8 @@ export { GetResourceDependenciesDto } from './workflows/get-resource-dependencie
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
 export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
+export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
+export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
@@ -164,6 +168,8 @@ export {
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 	workflowParentFolderPublicSchema,
+	DeletedWorkflowPublicDto,
+	UpdatedWorkflowPublicDto,
 } from './workflows/workflow-public.dto';
 export {
 	ActivateWorkflowPublicDto,
@@ -175,6 +181,10 @@ export {
 	WorkflowPublishBlockedErrorPublicDto,
 	workflowPublishBlockedErrorPublicSchema,
 } from './workflows/workflow-publish-blocked-error-public.dto';
+export {
+	WorkflowPublishForbiddenErrorPublicDto,
+	workflowPublishForbiddenErrorPublicSchema,
+} from './workflows/workflow-publish-forbidden-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -337,6 +347,10 @@ export {
 	WorkflowVersionHistoryListPublicDto,
 	workflowVersionListItemPublicSchema,
 } from './workflow-history/workflow-version-history-public.dto';
+export {
+	WorkflowVersionPublicDto,
+	workflowVersionPublicSchema,
+} from './workflow-history/workflow-version-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
@@ -351,6 +365,13 @@ export {
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
 export { DeleteExecutionsDto } from './executions/delete-executions.dto';
+export { GetExecutionQueryDto } from './executions/get-execution-query.dto';
+export {
+	ExecutionPublicDto,
+	DeletedExecutionPublicDto,
+	executionPublicSchema,
+	deletedExecutionPublicSchema,
+} from './executions/execution-public.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';

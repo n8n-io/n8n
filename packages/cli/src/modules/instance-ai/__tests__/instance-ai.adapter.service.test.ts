@@ -2188,7 +2188,7 @@ describe('createWorkflowAdapter', () => {
 					credentials: {
 						googlePalmApi: {
 							id: null,
-							name: 'n8n credits',
+							name: 'Gateway credits',
 							__aiGatewayManaged: true,
 						},
 					},
@@ -2207,13 +2207,13 @@ describe('createWorkflowAdapter', () => {
 		expect(workflow.nodes[1].credentials).toEqual({
 			googlePalmApi: {
 				id: null,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				__aiGatewayManaged: true,
 			},
 		});
 		const code = generateWorkflowCode(workflow);
-		expect(code).toContain("newCredential('n8n credits')");
-		expect(code).not.toContain("newCredential('n8n credits', 'null')");
+		expect(code).toContain("newCredential('Gateway credits')");
+		expect(code).not.toContain("newCredential('Gateway credits', 'null')");
 	});
 
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {

@@ -187,7 +187,8 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
 		!!node.statusMessage ||
 		!!node.result ||
 		!!node.error ||
-		!!node.tasks
+		!!node.tasks ||
+		!!node.setupItemsByWorkflowId
 	);
 }
 
@@ -470,29 +471,13 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
-				tc.confirmation = {
-					requestId: event.payload.requestId,
-					inputThreadId: event.payload.inputThreadId,
-					severity: event.payload.severity,
-					message: event.payload.message,
-					targetApproval: event.payload.targetApproval,
-					credentialRequests: event.payload.credentialRequests,
-					requireUserSelection: event.payload.requireUserSelection,
-					projectId: event.payload.projectId,
-					inputType: event.payload.inputType,
-					domainAccess: event.payload.domainAccess,
-					webSearch: event.payload.webSearch,
-					credentialFlow: event.payload.credentialFlow,
-					setupRequests: event.payload.setupRequests,
-					workflowId: event.payload.workflowId,
-					planItems: event.payload.planItems,
-					questions: event.payload.questions,
-					introMessage: event.payload.introMessage,
-					tasks: event.payload.tasks,
-					resourceDecision: event.payload.resourceDecision,
-					channelConfig: event.payload.channelConfig,
-					mcpConnectRequest: event.payload.mcpConnectRequest,
-				};
+				const {
+					toolCallId: _toolCallId,
+					toolName: _toolName,
+					args: _args,
+					...confirmation
+				} = event.payload;
+				tc.confirmation = confirmation;
 			}
 			break;
 		}
@@ -504,6 +489,20 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				if (event.payload.planItems) {
 					agent.planItems = event.payload.planItems;
 				}
+			}
+			break;
+		}
+
+		case 'setup-items': {
+			// Thread-level state, so it folds onto the ROOT node regardless of the
+			// emitting agent — history restore reads only the tree root. Full-snapshot
+			// semantics: last event wins per workflowId.
+			const root = ensureAgent(state, state.rootAgentId);
+			if (root && isSafeObjectKey(event.payload.workflowId)) {
+				root.setupItemsByWorkflowId = {
+					...root.setupItemsByWorkflowId,
+					[event.payload.workflowId]: event.payload.items,
+				};
 			}
 			break;
 		}

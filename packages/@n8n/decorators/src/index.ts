@@ -14,6 +14,7 @@ export * from './policy-check';
 export * from './pubsub';
 export { Redactable } from './redactable';
 export * from './shutdown';
+export * from './system-task';
 export * from './module/module-metadata';
 export type { TimedOptions } from './timed';
 export { Timed } from './timed';
