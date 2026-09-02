@@ -48,8 +48,8 @@ const UPDATE_ONLY_KEY_SCOPES = ['workflow:list', 'workflow:read', 'workflow:upda
 
 const changedNodes = (workflow: { nodes: unknown[] }) =>
 	(workflow.nodes as Array<Record<string, unknown>>).map((node) =>
-		node.type === 'n8n-nodes-base.cron'
-			? { ...node, parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } } }
+		node.type === 'n8n-nodes-base.scheduleTrigger'
+			? { ...node, parameters: { rule: { interval: [{ field: 'months' }] } } }
 			: node,
 	);
 

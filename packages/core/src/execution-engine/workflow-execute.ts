@@ -1963,7 +1963,9 @@ export class WorkflowExecute {
 		nodeSuccessData: INodeExecutionData[][] | null | undefined,
 		executionData: IExecuteData,
 	): INodeExecutionData[][] | null | undefined {
-		if (nodeSuccessData?.[0]?.[0]) return nodeSuccessData;
+		const hasOutputData =
+			!!nodeSuccessData && nodeSuccessData.some((outputData) => !!outputData?.length);
+		if (hasOutputData) return nodeSuccessData;
 		if (executionData.node.alwaysOutputData !== true) return nodeSuccessData;
 
 		// Get pairedItem from all input items
@@ -2393,35 +2395,7 @@ export class WorkflowExecute {
 								this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 							}
 
-							const noOutputData =
-								!nodeSuccessData || nodeSuccessData.every((outputData) => !outputData?.length);
-
-							if (noOutputData) {
-								if (executionData.node.alwaysOutputData === true) {
-									const pairedItem: IPairedItemData[] = [];
-
-									// Get pairedItem from all input items
-									executionData.data.main.forEach((inputData, inputIndex) => {
-										if (!inputData) {
-											return;
-										}
-										inputData.forEach((_item, itemIndex) => {
-											pairedItem.push({
-												item: itemIndex,
-												input: inputIndex,
-											});
-										});
-									});
-
-									nodeSuccessData ??= [];
-									nodeSuccessData[0] = [
-										{
-											json: {},
-											pairedItem,
-										},
-									];
-								}
-							}
+							nodeSuccessData = this.ensureAlwaysOutputData(nodeSuccessData, executionData);
 
 							if (nodeSuccessData === null && !this.runExecutionData.waitTill) {
 								// If null gets returned it means that the node did succeed
