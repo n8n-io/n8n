@@ -42,7 +42,37 @@ const properties: INodeProperties[] = [
 		description: 'The model to use for generating the response',
 		displayOptions: {
 			show: {
-				'@version': [{ _cnd: { gte: 1.1 } }],
+				'@version': [1.1],
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: 'MiniMax-M2.7' },
+		required: true,
+		description: 'The model to use for generating the response',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'modelSearch',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. MiniMax-M3',
+			},
+		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.2 } }],
 			},
 		},
 	},
@@ -195,7 +225,7 @@ interface MessageOptions {
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = this.getNodeParameter('modelId', i) as string;
+	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const rawMessages = this.getNodeParameter('messages.values', i, []) as Array<{
 		content: string;
 		role: string;

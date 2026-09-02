@@ -66,8 +66,8 @@ describe('LmChatMinimax', () => {
 				displayName: 'MiniMax Chat Model',
 				name: 'lmChatMinimax',
 				group: ['transform'],
-				version: [1, 1.1],
-				defaultVersion: 1.1,
+				version: [1, 1.1, 1.2],
+				defaultVersion: 1.2,
 			});
 		});
 
@@ -84,7 +84,7 @@ describe('LmChatMinimax', () => {
 			const legacyModelProperty = node.description.properties.find(
 				(property) => property?.name === 'model' && property.default === 'MiniMax-M2.7',
 			);
-			const currentModelProperty = node.description.properties.find(
+			const staticModelProperty = node.description.properties.find(
 				(property) => property?.name === 'model' && property.default === 'MiniMax-M3',
 			);
 
@@ -96,11 +96,33 @@ describe('LmChatMinimax', () => {
 				name: 'MiniMax-M3',
 				value: 'MiniMax-M3',
 			});
-			expect(currentModelProperty).toMatchObject({
+			expect(staticModelProperty).toMatchObject({
 				default: 'MiniMax-M3',
 				options: expect.arrayContaining([{ name: 'MiniMax-M3', value: 'MiniMax-M3' }]),
-				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
+				displayOptions: { show: { '@version': [1.1] } },
 			});
+		});
+
+		it('should use a searchable resourceLocator for version 1.2 and later', () => {
+			const currentModelProperty = node.description.properties.find(
+				(property) => property?.name === 'model' && property.type === 'resourceLocator',
+			);
+
+			expect(currentModelProperty).toMatchObject({
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'MiniMax-M2.7' },
+				modes: expect.arrayContaining([
+					expect.objectContaining({
+						name: 'list',
+						typeOptions: { searchListMethod: 'modelSearch', searchable: true },
+					}),
+				]),
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+			});
+		});
+
+		it('should expose modelSearch via listSearch methods', () => {
+			expect(node.methods?.listSearch).toHaveProperty('modelSearch');
 		});
 	});
 
