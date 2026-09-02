@@ -1,17 +1,31 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 import {
 	buildNoTestsSummary,
+	buildStrykerArgs,
 	buildSummary,
 	classifyRun,
+	cleanUpAfterRun,
 	coverageFromCounts,
 	formatMutateArg,
+	formatTestFilesArg,
+	ineligibleReasonFor,
+	isGlobPattern,
 	isMutableSource,
+	isStrykerSetupFile,
 	mergeRanges,
+	normalizeTestFiles,
 	parseHunkRanges,
+	removeStrykerSetupFiles,
 	scoreFromCounts,
+	snapshotFiles,
 	splitRange,
+	testFilesForPackage,
+	unsafeConfigReason,
 } from './mutate.mjs';
 
 // A minimal Stryker Mutation Testing Elements report for one source file. Mix
@@ -346,5 +360,290 @@ describe('splitRange', () => {
 
 	it('does not mistake a Windows drive letter or a colon in a dirname for a range', () => {
 		assert.deepEqual(splitRange('src/a:b/cron.ts'), { file: 'src/a:b/cron.ts', range: null });
+	});
+});
+
+// --- explicit test-file scope (DEVP-1038) ---
+
+describe('toPackageRelativeTestFile / normalizeTestFiles', () => {
+	const PKG = 'packages/cli';
+
+	it('strips the package prefix off a repo-relative path', () => {
+		assert.deepEqual(normalizeTestFiles([`${PKG}/src/a/__tests__/b.test.ts`], PKG), [
+			'src/a/__tests__/b.test.ts',
+		]);
+	});
+
+	it('leaves an already package-relative path alone', () => {
+		assert.deepEqual(normalizeTestFiles(['src/a/__tests__/b.test.ts'], PKG), [
+			'src/a/__tests__/b.test.ts',
+		]);
+	});
+
+	it('splits a comma-separated value and keeps the caller order', () => {
+		assert.deepEqual(normalizeTestFiles([`${PKG}/src/b.test.ts,src/a.test.ts`], PKG), [
+			'src/b.test.ts',
+			'src/a.test.ts',
+		]);
+	});
+
+	// The same file can arrive package-relative from one flag and repo-relative
+	// from another. Stryker would then run it twice.
+	it('dedupes across repeated flags and drops empty values', () => {
+		assert.deepEqual(normalizeTestFiles(['src/a.test.ts', `${PKG}/src/a.test.ts`, '  ', ''], PKG), [
+			'src/a.test.ts',
+		]);
+	});
+
+	it('keeps a glob pattern intact', () => {
+		assert.deepEqual(normalizeTestFiles([`${PKG}/src/**/__tests__/*.test.ts`], PKG), [
+			'src/**/__tests__/*.test.ts',
+		]);
+	});
+
+	// A prefix match has to stop at a path separator, or `packages/cli-x` loses
+	// its first ten characters.
+	it('only strips the prefix at a path boundary', () => {
+		assert.deepEqual(normalizeTestFiles(['packages/cli-x/src/a.test.ts'], PKG), [
+			'packages/cli-x/src/a.test.ts',
+		]);
+	});
+});
+
+describe('testFilesForPackage (--diff shares one global --test-file flag)', () => {
+	const values = [
+		'packages/cli/src/credentials/__tests__/utils.test.ts',
+		'packages/workflow/test/cron.test.ts',
+	];
+
+	it('gives each package only the test files that live inside it', () => {
+		assert.deepEqual(testFilesForPackage(values, 'packages/cli'), [
+			'src/credentials/__tests__/utils.test.ts',
+		]);
+		assert.deepEqual(testFilesForPackage(values, 'packages/workflow'), ['test/cron.test.ts']);
+	});
+
+	// Forwarding another package's test file would match nothing there and turn
+	// that whole package red.
+	it('gives an unrelated package no scope at all', () => {
+		assert.deepEqual(testFilesForPackage(values, 'packages/@n8n/scheduler'), []);
+	});
+
+	// `packages/cli` must not claim `packages/cli-x`.
+	it('only claims a value at a path boundary', () => {
+		assert.deepEqual(testFilesForPackage(['packages/cli-x/src/a.test.ts'], 'packages/cli'), []);
+	});
+});
+
+describe('isGlobPattern', () => {
+	it('recognises the patterns Stryker resolves itself', () => {
+		assert.ok(isGlobPattern('src/**/*.test.ts'));
+		assert.ok(isGlobPattern('src/a?.test.ts'));
+		assert.ok(isGlobPattern('src/{a,b}.test.ts'));
+	});
+
+	it('treats a plain path as a path, so the caller can check it exists', () => {
+		assert.equal(isGlobPattern('src/credentials/__tests__/utils.test.ts'), false);
+	});
+});
+
+describe('formatTestFilesArg', () => {
+	it('comma-joins every test file into one flag value', () => {
+		assert.equal(
+			formatTestFilesArg(['src/a.test.ts', 'src/b.test.ts']),
+			'src/a.test.ts,src/b.test.ts',
+		);
+	});
+});
+
+describe('buildStrykerArgs', () => {
+	const BASE = { strykerBin: '/bin/stryker.js', configPath: '/cfg.mjs', mutateArg: 'src/a.ts:1-4' };
+
+	it('always runs in place with the mutate target', () => {
+		assert.deepEqual(buildStrykerArgs(BASE), [
+			'/bin/stryker.js',
+			'run',
+			'/cfg.mjs',
+			'--inPlace',
+			'--mutate',
+			'src/a.ts:1-4',
+		]);
+	});
+
+	it('forwards an explicit test scope through --testFiles', () => {
+		assert.deepEqual(buildStrykerArgs({ ...BASE, testFiles: ['src/a.test.ts', 'src/b.test.ts'] }), [
+			'/bin/stryker.js',
+			'run',
+			'/cfg.mjs',
+			'--inPlace',
+			'--mutate',
+			'src/a.ts:1-4',
+			'--testFiles',
+			'src/a.test.ts,src/b.test.ts',
+		]);
+	});
+
+	// Without a scope Stryker has to fall back to vitest related-test discovery.
+	// An empty `--testFiles` would instead select nothing.
+	it('adds no --testFiles flag for an empty scope', () => {
+		assert.equal(buildStrykerArgs({ ...BASE, testFiles: [] }).includes('--testFiles'), false);
+	});
+});
+
+describe('ineligibleReasonFor', () => {
+	const vitestPkg = (over) => ({ packageName: 'n8n', usesVitest: true, testFiles: [], ...over });
+
+	it('refuses a package-wide cli run: one Stryker worker cannot finish it', () => {
+		const reason = ineligibleReasonFor(vitestPkg());
+		assert.match(reason, /--test-file/);
+	});
+
+	it('accepts a cli run that names its covering tests', () => {
+		assert.equal(ineligibleReasonFor(vitestPkg({ testFiles: ['src/a.test.ts'] })), null);
+	});
+
+	it('accepts any other vitest package with no explicit scope', () => {
+		assert.equal(ineligibleReasonFor(vitestPkg({ packageName: 'n8n-workflow' })), null);
+	});
+
+	it('still refuses the blocked isolated-vm package', () => {
+		const reason = ineligibleReasonFor(vitestPkg({ packageName: '@n8n/expression-runtime' }));
+		assert.match(reason, /DEVP-257/);
+	});
+
+	it('still refuses a non-vitest package', () => {
+		const reason = ineligibleReasonFor(
+			vitestPkg({ packageName: 'n8n-design-system', usesVitest: false }),
+		);
+		assert.match(reason, /not a vitest package/);
+	});
+
+	// --diff has no package.json name for a stray directory; the reason must
+	// still name something the reader can act on.
+	it('falls back to the display name when the package has no name', () => {
+		const reason = ineligibleReasonFor({
+			packageName: '',
+			displayName: 'packages/stray',
+			usesVitest: false,
+		});
+		assert.match(reason, /^packages\/stray /);
+	});
+});
+
+describe('unsafeConfigReason', () => {
+	// `--inPlace` plus type-check preprocessing rewrites every matched file in
+	// the package on disk. An interrupted run then leaves `// @ts-nocheck` behind.
+	it('refuses a config that leaves type-check preprocessing on', () => {
+		assert.match(unsafeConfigReason({}), /disableTypeChecks/);
+		assert.match(unsafeConfigReason({ disableTypeChecks: true }), /disableTypeChecks/);
+		assert.match(unsafeConfigReason({ disableTypeChecks: 'src/**/*.ts' }), /disableTypeChecks/);
+		assert.match(unsafeConfigReason(undefined), /disableTypeChecks/);
+	});
+
+	it('accepts a config that turns it off', () => {
+		assert.equal(unsafeConfigReason({ disableTypeChecks: false }), null);
+	});
+});
+
+describe('buildSummary / buildNoTestsSummary record the test scope', () => {
+	it('writes the explicit test files onto the summary', () => {
+		const summary = buildSummary(RAW_FIXTURE, { ...RUN_META, testFiles: ['src/cron.test.ts'] });
+		assert.deepEqual(summary.testFiles, ['src/cron.test.ts']);
+	});
+
+	it('defaults to an empty scope, meaning related-test discovery', () => {
+		assert.deepEqual(buildSummary(RAW_FIXTURE, RUN_META).testFiles, []);
+		assert.deepEqual(buildNoTestsSummary({ ...RUN_META, noCoverage: 1 }).testFiles, []);
+	});
+});
+
+// --- interrupted-run cleanup (DEVP-1038) ---
+
+describe('isStrykerSetupFile', () => {
+	it('matches the per-worker setup files the vitest runner writes', () => {
+		assert.ok(isStrykerSetupFile('stryker-setup-0.js'));
+		assert.ok(isStrykerSetupFile('stryker-setup-12.js'));
+	});
+
+	it('leaves everything else alone', () => {
+		assert.equal(isStrykerSetupFile('stryker.config.mjs'), false);
+		assert.equal(isStrykerSetupFile('stryker-setup.ts'), false);
+		assert.equal(isStrykerSetupFile('setup-0.js'), false);
+		assert.equal(isStrykerSetupFile('vitest.config.ts'), false);
+	});
+});
+
+describe('cleanUpAfterRun (a stopped run leaves nothing behind)', () => {
+	function makePackage() {
+		const dir = mkdtempSync(path.join(os.tmpdir(), 'mutate-cleanup-'));
+		mkdirSync(path.join(dir, 'src'), { recursive: true });
+		return dir;
+	}
+
+	it('restores mutated sources and removes the generated setup files', () => {
+		const dir = makePackage();
+		try {
+			const source = path.join(dir, 'src/cron.ts');
+			const test = path.join(dir, 'src/cron.test.ts');
+			writeFileSync(source, 'export const a = 1;\n');
+			writeFileSync(test, "it('works', () => {});\n");
+			const snap = snapshotFiles([source, test]);
+
+			// What an interrupted in-place run leaves: an active mutant in the
+			// source, `// @ts-nocheck` atop the test, and one setup file per worker.
+			writeFileSync(source, 'export const a = 2;\n');
+			writeFileSync(test, "// @ts-nocheck\nit('works', () => {});\n");
+			writeFileSync(path.join(dir, 'stryker-setup-0.js'), '// generated\n');
+			writeFileSync(path.join(dir, 'stryker-setup-1.js'), '// generated\n');
+
+			const { restored, removed } = cleanUpAfterRun(snap, dir);
+
+			assert.equal(readFileSync(source, 'utf8'), 'export const a = 1;\n');
+			assert.equal(readFileSync(test, 'utf8'), "it('works', () => {});\n");
+			assert.equal(restored.length, 2);
+			assert.deepEqual(removed.sort(), ['stryker-setup-0.js', 'stryker-setup-1.js']);
+			assert.equal(existsSync(path.join(dir, 'stryker-setup-0.js')), false);
+			assert.equal(existsSync(path.join(dir, 'stryker-setup-1.js')), false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('reports nothing after a clean run, and rewrites no file', () => {
+		const dir = makePackage();
+		try {
+			const source = path.join(dir, 'src/cron.ts');
+			writeFileSync(source, 'export const a = 1;\n');
+			const snap = snapshotFiles([source]);
+
+			assert.deepEqual(cleanUpAfterRun(snap, dir), { restored: [], removed: [] });
+			assert.equal(readFileSync(source, 'utf8'), 'export const a = 1;\n');
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('keeps going when a snapshotted file is gone', () => {
+		const dir = makePackage();
+		try {
+			const gone = path.join(dir, 'src/gone.ts');
+			const kept = path.join(dir, 'src/kept.ts');
+			writeFileSync(gone, 'export const a = 1;\n');
+			writeFileSync(kept, 'export const b = 1;\n');
+			const snap = snapshotFiles([gone, kept]);
+			rmSync(gone);
+			writeFileSync(kept, 'export const b = 2;\n');
+
+			assert.equal(cleanUpAfterRun(snap, dir).restored.length, 1);
+			assert.equal(readFileSync(kept, 'utf8'), 'export const b = 1;\n');
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('does not fail when the package dir is gone', () => {
+		const dir = makePackage();
+		rmSync(dir, { recursive: true, force: true });
+		assert.deepEqual(removeStrykerSetupFiles(dir), []);
 	});
 });

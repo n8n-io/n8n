@@ -17,6 +17,10 @@ export default {
 	incrementalFile: 'reports/mutation/stryker-incremental.json',
 	// Skip module-level (static) mutants: each forces a full re-instrument.
 	ignoreStatic: true,
+	// Required by mutate.mjs: runs are `--inPlace`, thus the type-check
+	// preprocessing would write `// @ts-nocheck` into every matched file of the
+	// package on disk. Vitest transpiles without type checking. See DEVP-1038.
+	disableTypeChecks: false,
 	// Default empty: the `mutate` npm script always passes --mutate <file>.
 	// Direct invocation with no --mutate will fail fast (allowEmpty: false).
 	mutate: [],

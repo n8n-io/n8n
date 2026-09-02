@@ -26,6 +26,11 @@ export default {
 	// static ones is an acceptable trade. Scores tick up slightly on
 	// static-heavy files (smaller denominator) — expected, not a regression.
 	ignoreStatic: true,
+	// Required by mutate.mjs: runs are `--inPlace`, thus the type-check
+	// preprocessing would write `// @ts-nocheck` into every matched file of the
+	// package on disk, and an interrupted run would leave those edits behind.
+	// Vitest transpiles without type checking, so nothing needs it. See DEVP-1038.
+	disableTypeChecks: false,
 	// Empty — mutate.mjs always passes --mutate <file>.
 	mutate: [],
 	htmlReporter: { fileName: 'reports/mutation/raw.html' },
