@@ -128,5 +128,25 @@ describe('AzureOpenAIEmbeddings', () => {
 			);
 			expect(MockedAzureOpenAIEmbeddings).not.toHaveBeenCalled();
 		});
+
+		it('should reject a Foundry credential that has no endpoint', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				endpointType: 'foundry',
+				foundryEndpoint: '   ',
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'text-embedding-3-large';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
+				'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+			);
+		});
 	});
 });

@@ -2,6 +2,7 @@ import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
 import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -143,14 +144,20 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		}
 
 		if (credentials.endpointType === 'foundry') {
-			const foundryURL = credentials.foundryEndpoint;
+			const foundryURL = credentials.foundryEndpoint?.trim();
+			if (!foundryURL) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+				);
+			}
 			const embeddings = new OpenAIEmbeddings({
 				apiKey: credentials.apiKey,
 				model: modelName,
 				configuration: {
 					baseURL: foundryURL,
 					fetchOptions: {
-						dispatcher: getProxyAgent(foundryURL ?? '', {}),
+						dispatcher: getProxyAgent(foundryURL, {}),
 					},
 				},
 				...options,
