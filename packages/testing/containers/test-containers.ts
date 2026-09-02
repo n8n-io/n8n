@@ -45,11 +45,9 @@ const DEFAULT_IMAGES = {
 	localstack: 'localstack/localstack:4.13.1',
 	postgresExporter: 'prometheuscommunity/postgres-exporter:v0.17.1',
 	cadvisor: 'gcr.io/cadvisor/cadvisor:v0.49.1',
-	// Pinned: from 1.3.0 the runner rejects a non-https SANDBOX_RUNNER_HTTP_BASE_URL,
-	// which the local stack in services/sandbox.ts still sets.
-	sandboxApi: 'n8nio/n8n-sandbox-service-api:1.2.0',
-	sandboxRunner: 'n8nio/n8n-sandbox-service-runner-dind:1.2.0',
-	sandboxSandbox: 'n8nio/n8n-sandbox-service-sandbox:1.1.0',
+	sandboxApi: 'n8nio/n8n-sandbox-service-api:1.3.0',
+	sandboxRunner: 'n8nio/n8n-sandbox-service-runner-dind:1.3.0',
+	sandboxSandbox: 'n8nio/n8n-sandbox-service-sandbox:1.3.0',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
