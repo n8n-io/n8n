@@ -644,7 +644,7 @@ describe('GET /executions', () => {
 		expect(response.body.data[0].id).toBe(first.id);
 	});
 
-	test('should accept both supported cursor shapes', async () => {
+	test('should accept a cursor in either the lastId or the offset form', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await createSuccessfulExecution(workflow);
 		await createSuccessfulExecution(workflow);
