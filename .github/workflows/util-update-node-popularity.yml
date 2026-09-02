@@ -6,12 +6,13 @@ on:
     - cron: '0 0 * * 1'
   workflow_dispatch: # Allow manual trigger for testing
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   update-popularity:
+    permissions:
+      contents: write
+      pull-requests: write
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'n8n-io/n8n')
@@ -79,6 +80,9 @@ jobs:
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
 
   approve-and-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [update-popularity]
     if: |
       needs.update-popularity.outputs.pull-request-number != '' &&
