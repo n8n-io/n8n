@@ -106,6 +106,57 @@ When changing directories, use `pushd` to navigate into the directory and
 `popd` to return to the previous directory. When in doubt, use `pwd` to check
 your current directory.
 
+### Seeding a local instance
+
+An empty instance is a bad place to test anything that reasons about a user's
+work. These commands fill one. They are dev tooling only: the root package is
+private, so they never reach a user.
+
+```bash
+# Estate profile (default): ~500 diverse workflows across 30 projects.
+# Built to stress the workflow dependency graph.
+N8N_API_KEY="<public-api JWT>" pnpm seed:account
+
+# Preference profile: 10 hand-written workflows that all follow one house style.
+# Small enough to fit an agent's context, consistent enough to be gradeable.
+N8N_API_KEY="<public-api JWT>" PROFILE=preference pnpm seed:account
+
+# Execution history, AI threads, and activity entries. Run after seed:account,
+# with the instance STOPPED. Talks to SQLite, because none of these have a
+# public-API create route.
+node scripts/instance-seeding/seedHistory.mjs
+
+# Check that every parameter the preference workflows emit is real.
+pnpm seed:account:check
+```
+
+Both profiles tag everything `[seed] ` (or `seed_` for data tables) and delete
+their own prior output first, so re-running replaces rather than accumulates.
+Set `SEED` for a reproducible estate; `PROFILE=preference` fixes it by default.
+
+**Do not point either at a shared instance.** The clear step deletes anything
+prefixed `[seed]` plus empty team projects, whoever created them.
+
+### Inspecting the activity feed
+
+```bash
+pnpm inspect:activity          # http://127.0.0.1:5699
+```
+
+One page showing every column of `activity_event`, paginated, sortable on any
+column, with a free-text filter that also searches the JSON `data` column — so
+a run id or a failing node name finds its entry without knowing which field
+holds it.
+
+Read-only three ways: the connection is opened `readOnly` so SQLite rejects
+writes itself, every query is a SELECT, and the sort column comes from an
+allowlist because a column name cannot be a bound parameter.
+
+Loopback-only and unauthenticated by design. It serves the whole table,
+including who did what in which project. **Do not tunnel or port-forward it.**
+
+See [scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md).
+
 ### Code Quality
 - `pnpm lint` - Lint code
 - `pnpm typecheck` - Run type checks
