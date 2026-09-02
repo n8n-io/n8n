@@ -190,10 +190,9 @@ describe('scheduled job owner teardown', () => {
 			new Date(),
 			new Date(Date.now() + 60_000),
 		);
-		expect(await jobRepo.findOneByOrFail({ id: jobId })).toMatchObject({
-			enabled: false,
-			nextRunAt: null,
-		});
+		const quarantined = await jobRepo.findOneByOrFail({ id: jobId });
+		expect(quarantined).toMatchObject({ enabled: true, nextRunAt: null });
+		expect(quarantined.orphanedAt).not.toBeNull();
 
 		// Same schedule as before. Only the quarantine changed, so an unchanged plan
 		// has to be enough to bring it back.
