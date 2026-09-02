@@ -60,8 +60,9 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 				// A set-but-blank var (common in .env templates) must mean "unset" for
 				// a numeric field: both `Number('')` and `z.coerce.number()` turn it
 				// into 0, and 0 is a meaningful value for many of them (e.g. "disable"
-				// or "wait indefinitely"). Checked before the schema branch, which
-				// would otherwise coerce it first.
+				// or "wait indefinitely"). Normalized first, so a quoted blank (`""`
+				// from a compose env_file) counts too, and checked before the schema
+				// branch, which would otherwise coerce it.
 				if (type === Number && normalizeEnvValue(value).trim() === '') continue;
 
 				if (schema) {

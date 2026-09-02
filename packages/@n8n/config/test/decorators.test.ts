@@ -38,6 +38,10 @@ describe('decorators', () => {
 		process.env.OPTIONAL_NUMBER_VALUE = '   ';
 		// A coercing schema turns '' into 0 too, so the guard must run before it.
 		process.env.SCHEMA_NUMBER_VALUE = '';
+		// A blank often arrives quoted (e.g. from a compose env_file), and
+		// stripping the quotes can leave inner padding behind.
+		process.env.QUOTED_BLANK_NUMBER_VALUE = '""';
+		process.env.QUOTED_BLANK_SCHEMA_VALUE = "'  '";
 
 		@Config
 		class TestConfig {
@@ -49,12 +53,32 @@ describe('decorators', () => {
 
 			@Env('SCHEMA_NUMBER_VALUE', z.coerce.number().int().gte(0))
 			schemaValue: number = 30_000;
+
+			@Env('QUOTED_BLANK_NUMBER_VALUE')
+			quotedValue: number = 7;
+
+			@Env('QUOTED_BLANK_SCHEMA_VALUE', z.coerce.number().int().gte(0))
+			quotedSchemaValue: number = 5_000;
 		}
 
 		const config = Container.get(TestConfig);
 		expect(config.value).toBe(42);
 		expect(config.optionalValue).toBeUndefined();
 		expect(config.schemaValue).toBe(30_000);
+		expect(config.quotedValue).toBe(7);
+		expect(config.quotedSchemaValue).toBe(5_000);
+	});
+
+	it('should still parse a quoted number env value', () => {
+		process.env.QUOTED_NUMBER_VALUE = '"30"';
+
+		@Config
+		class TestConfig {
+			@Env('QUOTED_NUMBER_VALUE', z.coerce.number())
+			value: number = 1;
+		}
+
+		expect(Container.get(TestConfig).value).toBe(30);
 	});
 
 	it('should still parse a blank env value for a non-numeric schema field', () => {
