@@ -36,7 +36,6 @@ const noopTelemetry: Telemetry = {
 	reset() {},
 	flushPageEvents() {},
 	trackAskAI() {},
-	trackAiTransform() {},
 	trackNodeParametersValuesChange() {},
 };
 

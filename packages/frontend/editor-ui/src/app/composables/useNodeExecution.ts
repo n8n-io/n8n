@@ -3,13 +3,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
 
-import {
-	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
-	AI_TRANSFORM_JS_CODE,
-	AI_TRANSFORM_NODE_TYPE,
-} from 'n8n-workflow';
-
-import type { INodeUi, IUpdateInformation } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -24,11 +18,9 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
-import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 
 import {
 	WEBHOOK_NODE_TYPE,
@@ -52,7 +44,6 @@ export type UseNodeExecutionOptions = {
 	telemetrySource?: string;
 	executionMode?: MaybeRef<'inclusive' | 'exclusive'>;
 	source?: string;
-	onCodeGenerated?: (update: IUpdateInformation) => void;
 };
 
 export type NodeExecutionState = {
@@ -64,7 +55,6 @@ export type NodeExecutionState = {
 	disabledReason: ComputedRef<string>;
 	isTriggerNode: ComputedRef<boolean>;
 	hasIssues: ComputedRef<boolean>;
-	shouldGenerateCode: ComputedRef<boolean>;
 };
 
 export type NodeExecutionActions = {
@@ -94,7 +84,6 @@ export function useNodeExecution(
 	const toast = useToast();
 	const message = useMessage();
 	const externalHooks = useExternalHooks();
-	const { askAi } = useEditorContext();
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -106,8 +95,6 @@ export function useNodeExecution(
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();
-
-	const codeGenerationInProgress = ref(false);
 
 	const nodeRef = computed(() => toValue(node) ?? null);
 
@@ -142,8 +129,7 @@ export function useNodeExecution(
 	const isWebhookNode = computed(() => nodeType.value?.name === WEBHOOK_NODE_TYPE);
 
 	const isNodeRunning = computed(() => {
-		if (!workflowExecutionStateStore.value.isWorkflowRunning || codeGenerationInProgress.value)
-			return false;
+		if (!workflowExecutionStateStore.value.isWorkflowRunning) return false;
 		const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 		return (
 			workflowExecutionStateStore.value.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
@@ -173,9 +159,7 @@ export function useNodeExecution(
 	);
 
 	const isExecuting = computed(
-		() =>
-			codeGenerationInProgress.value ||
-			(isNodeRunning.value && !isListening.value && !isListeningForWorkflowEvents.value),
+		() => isNodeRunning.value && !isListening.value && !isListeningForWorkflowEvents.value,
 	);
 
 	const hasIssues = computed(() =>
@@ -188,10 +172,6 @@ export function useNodeExecution(
 	const disabledReason = computed(() => {
 		if (isListening.value) {
 			return '';
-		}
-
-		if (codeGenerationInProgress.value) {
-			return i18n.baseText('ndv.execute.generatingCode');
 		}
 
 		if (nodeRef.value?.disabled) {
@@ -214,10 +194,6 @@ export function useNodeExecution(
 			return i18n.baseText('ndv.execute.stopListening');
 		}
 
-		if (shouldGenerateCode.value) {
-			return i18n.baseText('ndv.execute.generateCodeAndTestNode.description');
-		}
-
 		if (isChatNode.value) {
 			return i18n.baseText('chat.open');
 		}
@@ -238,29 +214,8 @@ export function useNodeExecution(
 	});
 
 	const buttonIcon = computed((): IconName | undefined => {
-		if (shouldGenerateCode.value) return 'terminal';
 		if (!isListening.value) return 'flask-conical';
 		return undefined;
-	});
-
-	const shouldGenerateCode = computed(() => {
-		if (nodeRef.value?.type !== AI_TRANSFORM_NODE_TYPE) {
-			return false;
-		}
-		if (!nodeRef.value?.parameters?.instructions) {
-			return false;
-		}
-		if (!nodeRef.value?.parameters?.jsCode) {
-			return true;
-		}
-		if (
-			nodeRef.value?.parameters[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] &&
-			(nodeRef.value?.parameters?.instructions as string).trim() !==
-				(nodeRef.value?.parameters?.[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT] as string).trim()
-		) {
-			return true;
-		}
-		return false;
 	});
 
 	async function stopWaitingForWebhook() {
@@ -271,97 +226,10 @@ export function useNodeExecution(
 		}
 	}
 
-	async function handleCodeGeneration(): Promise<boolean> {
-		if (!shouldGenerateCode.value || !nodeRef.value) return true;
-
-		codeGenerationInProgress.value = true;
-		try {
-			toast.showMessage({
-				title: i18n.baseText('ndv.execute.generateCode.title'),
-				message: i18n.baseText('ndv.execute.generateCode.message', {
-					interpolate: { nodeName: nodeRef.value.name },
-				}),
-				type: 'success',
-			});
-
-			const prompt = nodeRef.value.parameters?.instructions as string;
-			const updateInformation = await generateCodeForAiTransform(
-				prompt,
-				`parameters.${AI_TRANSFORM_JS_CODE}`,
-				workflowDocumentStore.value.documentId,
-				ndvStore.value.activeNode,
-				ndvStore.value.pushRef,
-				askAi.value,
-				5,
-			);
-
-			if (!updateInformation) {
-				codeGenerationInProgress.value = false;
-				return false;
-			}
-
-			// Update node with generated code
-			workflowDocumentStore.value.updateNodeProperties({
-				name: nodeRef.value.name,
-				properties: {
-					parameters: {
-						...nodeRef.value.parameters,
-						[AI_TRANSFORM_JS_CODE]: updateInformation.value,
-						[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]: prompt,
-					},
-				},
-			});
-
-			options.onCodeGenerated?.({
-				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
-				value: updateInformation.value,
-			});
-			options.onCodeGenerated?.({
-				name: `parameters.${AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT}`,
-				value: prompt,
-			});
-
-			telemetry.trackAiTransform('generationFinished', ndvStore.value.pushRef, {
-				prompt,
-				code: updateInformation.value,
-			});
-		} catch (error) {
-			telemetry.trackAiTransform('generationFinished', ndvStore.value.pushRef, {
-				prompt: nodeRef.value?.parameters?.instructions as string,
-				code: '',
-				hasError: true,
-			});
-			toast.showMessage({
-				type: 'error',
-				title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
-				message: (error as Error).message,
-			});
-			codeGenerationInProgress.value = false;
-			return false;
-		}
-		codeGenerationInProgress.value = false;
-		return true;
-	}
-
-	function chatTriggerHasInputData(): boolean {
-		if (!nodeRef.value) return false;
-		const startNode = workflowDocumentStore.value.getStartNode(nodeRef.value.name);
-		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
-		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
-		const hasPinData = !!workflowDocumentStore.value.pinnedDataByNodeName?.[startNode.name];
-		return hasRunData || hasPinData;
-	}
-
 	async function execute(): Promise<ExecuteAction> {
 		if (!nodeRef.value) return 'noop';
 
 		const nodeName = nodeRef.value.name;
-
-		// AI Transform code generation
-		if (shouldGenerateCode.value) {
-			const success = await handleCodeGeneration();
-			if (!success) return 'cancelled';
-		}
 
 		// Chat nodes — open chat when: it's a chat trigger itself, or it's a child of
 		// a chat trigger that has no execution/pin data yet (needs chat input first).
@@ -456,7 +324,6 @@ export function useNodeExecution(
 		disabledReason,
 		isTriggerNode,
 		hasIssues,
-		shouldGenerateCode,
 		execute,
 		stopExecution,
 	};

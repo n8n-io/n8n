@@ -8,11 +8,6 @@ import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import {
-	AI_TRANSFORM_NODE_TYPE,
-	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
-	AI_TRANSFORM_JS_CODE,
-} from 'n8n-workflow';
-import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
@@ -33,7 +28,6 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
-import * as buttonParameterUtils from '@/features/ndv/parameters/utils/buttonParameter.utils';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -429,41 +423,5 @@ describe('NodeExecuteButton', () => {
 		expect(message.confirm).toHaveBeenCalledTimes(1);
 		expect(mockUnsetData).toHaveBeenCalledWith('unpin-and-execute-modal');
 		expect(runWorkflow.runWorkflow).toHaveBeenCalledTimes(1);
-	});
-
-	it('generates code for AI Transform node', async () => {
-		const generateCodeForAiTransformSpy = vi
-			.spyOn(buttonParameterUtils, 'generateCodeForAiTransform')
-			.mockImplementation(async () => ({
-				name: 'test',
-				value: 'Test',
-			}));
-		const updateNodePropertiesSpy = vi.spyOn(workflowDocumentStore, 'updateNodeProperties');
-		const node = mockNode({
-			name: 'test-node',
-			type: AI_TRANSFORM_NODE_TYPE,
-			parameters: {
-				instructions: 'Test instructions',
-				[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]: 'Test prompt',
-			},
-		});
-		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
-
-		const { getByRole } = renderComponent();
-
-		await userEvent.click(getByRole('button'));
-
-		expect(generateCodeForAiTransformSpy).toHaveBeenCalledTimes(1);
-		expect(toast.showMessage).toHaveBeenCalledTimes(1);
-		expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
-			name: 'test-node',
-			properties: {
-				parameters: expect.objectContaining({
-					instructions: 'Test instructions',
-					[AI_TRANSFORM_JS_CODE]: 'Test',
-					[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]: 'Test instructions',
-				}),
-			},
-		});
 	});
 });
