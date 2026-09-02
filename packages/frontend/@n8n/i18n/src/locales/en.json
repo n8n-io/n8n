@@ -5599,6 +5599,8 @@
 	"settings.security.workflowReviews.error": "Failed to update workflow reviews settings",
 	"settings.security.workflowReviews.confirmDisable.headline": "Disable workflow reviews",
 	"settings.security.workflowReviews.confirmDisable.message": "Workflow reviews will no longer be available on this instance. Existing project-level review settings will be ignored.",
+	"settings.security.executionQuota.title": "Execution quota",
+	"settings.security.executionQuota.description": "Limit the number of executions each project can run in a given period.",
 	"settings.security.executionQuota.columns.project": "Project",
 	"settings.security.executionQuota.columns.limit": "Limit",
 	"settings.security.executionQuota.columns.period": "Period",
