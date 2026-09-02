@@ -377,6 +377,126 @@ describe('OAuthServerService', () => {
 					'Database error',
 				);
 			});
+
+			describe('validation', () => {
+				const baseClientInfo = {
+					client_id: 'new-client-123',
+					client_name: 'New Client',
+					redirect_uris: ['https://example.com/callback'],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+					response_types: ['code'],
+					scope: 'read',
+					logo_uri: undefined,
+					tos_uri: undefined,
+				};
+
+				beforeEach(() => {
+					oauthClientRepository.insert.mockResolvedValue({} as any);
+				});
+
+				it('accepts a client_name at the maximum length', async () => {
+					const clientInfo = { ...baseClientInfo, client_name: 'a'.repeat(255) };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
+						clientInfo,
+					);
+				});
+
+				it('accepts a client_name at the maximum length containing supplementary-plane characters', async () => {
+					// Each 🚀 is one code point but two UTF-16 code units — 255 of them
+					// must still be accepted, not treated as 510 characters.
+					const clientInfo = { ...baseClientInfo, client_name: '🚀'.repeat(255) };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
+						clientInfo,
+					);
+				});
+
+				it('rejects a client_name over the maximum length', async () => {
+					const clientInfo = { ...baseClientInfo, client_name: 'a'.repeat(256) };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'client_name exceeds maximum length',
+					);
+				});
+
+				it('rejects grant_types containing an unsupported value', async () => {
+					const clientInfo = { ...baseClientInfo, grant_types: ['client_credentials'] };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'grant_types contains an unsupported value',
+					);
+				});
+
+				it('rejects grant_types containing an oversized entry', async () => {
+					const clientInfo = { ...baseClientInfo, grant_types: ['a'.repeat(10_000)] };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'grant_types contains an unsupported value',
+					);
+				});
+
+				it('rejects grant_types exceeding the maximum count', async () => {
+					const clientInfo = {
+						...baseClientInfo,
+						grant_types: ['authorization_code', 'refresh_token', 'authorization_code'],
+					};
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'grant_types exceeds maximum count',
+					);
+				});
+
+				it('rejects redirect_uris exceeding the maximum count', async () => {
+					const clientInfo = {
+						...baseClientInfo,
+						redirect_uris: Array.from({ length: 11 }, (_, i) => `https://example.com/callback${i}`),
+					};
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'redirect_uris exceeds maximum count',
+					);
+				});
+
+				it('rejects a redirect_uri over the maximum length', async () => {
+					const clientInfo = {
+						...baseClientInfo,
+						redirect_uris: [`https://example.com/${'a'.repeat(2048)}`],
+					};
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'redirect_uri exceeds maximum length',
+					);
+				});
+
+				it('accepts a supported token_endpoint_auth_method', async () => {
+					const clientInfo = {
+						...baseClientInfo,
+						token_endpoint_auth_method: 'client_secret_post',
+					};
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
+						clientInfo,
+					);
+				});
+
+				it('accepts a missing token_endpoint_auth_method', async () => {
+					const clientInfo = { ...baseClientInfo, token_endpoint_auth_method: undefined };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).resolves.toEqual(
+						clientInfo,
+					);
+				});
+
+				it('rejects an oversized token_endpoint_auth_method', async () => {
+					const clientInfo = { ...baseClientInfo, token_endpoint_auth_method: 'a'.repeat(10_000) };
+
+					await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+						'token_endpoint_auth_method contains an unsupported value',
+					);
+				});
+			});
 		});
 	});
 

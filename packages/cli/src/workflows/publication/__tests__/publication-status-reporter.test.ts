@@ -5,14 +5,16 @@ import type {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
+import type { ErrorReporter } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('PublicationStatusReporter', () => {
 	const logger = mock<Logger>();
@@ -27,15 +29,17 @@ describe('PublicationStatusReporter', () => {
 	const publisher = mock<Publisher>();
 	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
 	const entityManager = mock<EntityManager>();
+	const workflowSharingService = mock<WorkflowSharingService>();
+	const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 
 	const reporter = new PublicationStatusReporter(
 		logger,
 		errorReporter,
 		outboxRepository,
 		activationErrorsService,
-		push,
 		publisher,
 		triggerStatusRepository,
+		workflowPushNotifier,
 	);
 
 	function makeRecord(
@@ -53,6 +57,8 @@ describe('PublicationStatusReporter', () => {
 		} as WorkflowPublicationOutbox;
 	}
 
+	const userIds = ['user-1', 'user-2'];
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
@@ -62,6 +68,7 @@ describe('PublicationStatusReporter', () => {
 		activationErrorsService.register.mockResolvedValue(undefined);
 		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
 		publisher.publishCommand.mockResolvedValue(undefined);
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(userIds);
 		(outboxRepository.manager.transaction as unknown as Mock).mockImplementation(
 			async (runInTransaction: (trx: EntityManager) => Promise<unknown>) =>
 				await runInTransaction(entityManager),
@@ -100,10 +107,14 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowActivated',
-			data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
-		});
+		expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith('wf-1');
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowActivated',
+				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: {
@@ -124,10 +135,13 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowDeactivated',
-			data: { workflowId: 'wf-1' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowDeactivated',
+				data: { workflowId: 'wf-1' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
@@ -146,7 +160,7 @@ describe('PublicationStatusReporter', () => {
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-			expect(push.broadcast).not.toHaveBeenCalled();
+			expect(push.sendToUsers).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining(message),
@@ -161,10 +175,13 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'Published version not found');
 		expect(errorReporter.error).not.toHaveBeenCalled();
 		expect(activationErrorsService.deregister).not.toHaveBeenCalled();
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowFailedToActivate',
-			data: { workflowId: 'wf-1', errorMessage: 'Published version not found' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'Published version not found' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: {
@@ -187,10 +204,13 @@ describe('PublicationStatusReporter', () => {
 			entityManager,
 		);
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowFailedToActivate',
-			data: { workflowId: 'wf-1', errorMessage: 'registration failed' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'registration failed' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: {
@@ -316,7 +336,7 @@ describe('PublicationStatusReporter', () => {
 				],
 			},
 		};
-		expect(push.broadcast).toHaveBeenCalledWith(expectedPushMsg);
+		expect(push.sendToUsers).toHaveBeenCalledWith(expectedPushMsg, userIds);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: expectedPushMsg,
@@ -331,26 +351,62 @@ describe('PublicationStatusReporter', () => {
 
 		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).resolves.toBeUndefined();
 
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowDeactivated',
-			data: { workflowId: 'wf-1' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowDeactivated',
+				data: { workflowId: 'wf-1' },
+			},
+			userIds,
+		);
 		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
 		// The rejection is handled asynchronously; flush the microtask queue.
 		await new Promise(process.nextTick);
 		expect(errorReporter.error).toHaveBeenCalledWith(publishError, { shouldBeLogged: true });
 	});
 
-	test('a relayed publication status is broadcast to local clients', () => {
-		reporter.handleDisplayWorkflowPublicationStatus({
+	test('a failed recipient lookup does not suppress the pubsub relay', async () => {
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValueOnce([]);
+
+		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).resolves.toBeUndefined();
+
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+			[],
+		);
+	});
+
+	test('the pubsub relay still fires even if the recipient lookup itself throws', async () => {
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockRejectedValueOnce(
+			new Error('db unavailable'),
+		);
+
+		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).rejects.toThrow(
+			'db unavailable',
+		);
+
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+		});
+	});
+
+	test('a relayed publication status is delivered to clients with access', async () => {
+		await reporter.handleDisplayWorkflowPublicationStatus({
 			type: 'workflowActivated',
 			data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
 		});
 
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowActivated',
-			data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowActivated',
+				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 });

@@ -30,6 +30,7 @@ import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
+import * as requestPath from '@/utils/request-path';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -327,25 +328,7 @@ export class Server extends AbstractServer {
 		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
-		// Protect type files with authentication regardless of UI availability
-		const authService = Container.get(AuthService);
-		const protectedTypeFiles = [
-			'/types/nodes.json',
-			'/types/credentials.json',
-			'/types/node-versions.json',
-		];
-		protectedTypeFiles.forEach((path) => {
-			this.app.get(
-				path,
-				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
-				async (_, res: express.Response) => {
-					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-					res.sendFile(path.substring(1), {
-						root: staticCacheDir,
-					});
-				},
-			);
-		});
+		this.protectTypeFiles(staticCacheDir);
 
 		if (frontendService) {
 			this.app.use(
@@ -442,7 +425,10 @@ export class Server extends AbstractServer {
 				this.endpointPresetCredentials,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
-			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
+			// Matched against the normalised path, so a non-UI asset requested in another
+			// case or spelling reaches the static handler rather than the editor page.
+			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`, 'i');
+
 			const historyApiHandler: express.RequestHandler = (req, res, next) => {
 				const {
 					method,
@@ -453,7 +439,7 @@ export class Server extends AbstractServer {
 					accept &&
 					(accept.includes('text/html') || accept.includes('*/*')) &&
 					!req.path.endsWith('.wasm') &&
-					!nonUIRoutesRegex.test(req.path)
+					!nonUIRoutesRegex.test(requestPath.normalize(req.path))
 				) {
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
 					securityHeadersMiddleware(req, res, () => {
@@ -463,19 +449,10 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
-			const setCustomCacheHeader = (res: express.Response) => {
-				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
-					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-				}
-			};
-
 			this.app.use(
 				'/',
 				historyApiHandler,
-				express.static(staticCacheDir, {
-					...cacheOptions,
-					setHeaders: setCustomCacheHeader,
-				}),
+				express.static(staticCacheDir, cacheOptions),
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
@@ -483,6 +460,35 @@ export class Server extends AbstractServer {
 		}
 
 		installGlobalProxyAgent();
+	}
+
+	/** Authenticates every request that can reach a type file, whether or not the editor is served. */
+	private protectTypeFiles(staticCacheDir: string) {
+		const authMiddleware = Container.get(AuthService).createAuthMiddleware({
+			allowSkipMFA: true,
+			allowSkipPreviewAuth: true,
+		});
+
+		// Match exact urls. We always expect them in this form, and only a matched route
+		// path can skip AuthService's browser-id check, which the editor's fetch needs.
+		const typeFiles = ['/types/nodes.json', '/types/credentials.json', '/types/node-versions.json'];
+		typeFiles.forEach((typeFile) => {
+			this.app.get(typeFile, authMiddleware, async (_, res: express.Response) => {
+				res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				res.sendFile(typeFile.substring(1), { root: staticCacheDir });
+			});
+		});
+
+		// Deny any request that can reach /types/* that isn't caught above, rather than
+		// authenticating it: no client asks for those forms, and authenticating here would
+		// clear the session cookie of a signed-in caller, since this matches no route.
+		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+			if (requestPath.mayReachDirectory(req.path, 'types')) {
+				res.status(401).end();
+				return;
+			}
+			next();
+		});
 	}
 
 	private configureSettingsRoute() {

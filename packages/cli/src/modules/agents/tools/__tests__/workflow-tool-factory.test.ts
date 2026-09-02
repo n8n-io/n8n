@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -37,6 +38,7 @@ function buildContext(run: ReturnType<typeof vi.fn>, extras: Partial<WorkflowToo
 	return {
 		workflowLoader: {} as never,
 		workflowRunner: { run } as unknown as WorkflowRunner,
+		subworkflowPolicyChecker: mock<SubworkflowPolicyChecker>(),
 		activeExecutions: { has: vi.fn().mockReturnValue(false) } as unknown as ActiveExecutions,
 		projectId: 'p1',
 		executionMode: 'manual',
@@ -78,6 +80,20 @@ describe('executeWorkflow → execution classification', () => {
 			).toMatchObject({ executionMode: publicMode });
 		},
 	);
+
+	it('checks the caller policy before starting the workflow', async () => {
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const subworkflowPolicyChecker = mock<SubworkflowPolicyChecker>();
+		subworkflowPolicyChecker.checkForProject.mockRejectedValue(new Error('denied'));
+		const context = buildContext(run, { subworkflowPolicyChecker });
+
+		await expect(executeWorkflow(workflow, triggerNode, 'manual', {}, context)).rejects.toThrow(
+			'denied',
+		);
+
+		expect(subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(workflow, 'p1');
+		expect(run).not.toHaveBeenCalled();
+	});
 
 	it('does not execute saved editor pin data', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');

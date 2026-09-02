@@ -933,7 +933,7 @@ describe('credentials tool', () => {
 			);
 		});
 
-		it('should include setupHint in credentialRequests when provided', async () => {
+		it('should omit automatic test destinations from standalone setup', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
@@ -971,12 +971,17 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// The service identity is stamped from the recipe's test endpoint —
-			// this card has no node context to derive it from.
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					credentialRequests: [
-						expect.objectContaining({ setupHint: { ...setupHint, serviceHost: 'fal.run' } }),
+						expect.objectContaining({
+							setupHint: {
+								template: setupHint.template,
+								placeholders: setupHint.placeholders,
+								docsUrl: setupHint.docsUrl,
+								suggestedName: setupHint.suggestedName,
+							},
+						}),
 					],
 				}),
 			);

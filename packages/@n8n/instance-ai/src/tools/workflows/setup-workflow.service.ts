@@ -28,6 +28,7 @@ import {
 	N8N_CONNECT_DISPLAY_NAME,
 	assignCredentialToNode,
 	extractServiceHost,
+	extractServiceOrigin,
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
 	serviceHostsMatch,
@@ -860,13 +861,15 @@ export function applyCredentialHints(
 			hints.find((h) => h.nodeName === request.node.name) ?? hints.find((h) => !h.nodeName);
 		if (!hint) continue;
 		const { nodeName: _nodeName, ...setupHint } = hint;
-		// Service identity is derived from the node being set up (falling back
-		// to the recipe's own test endpoint), never model-supplied. It is
-		// stamped into the created credential so setup surfaces only offer it
-		// to same-service nodes later.
-		const serviceHost =
-			extractServiceHost(request.node.parameters?.url) ?? extractServiceHost(setupHint.testUrl);
-		request.setupHint = { ...setupHint, ...(serviceHost ? { serviceHost } : {}) };
+		// The workflow node is the authority for service identity. The recipe's
+		// own destinations cannot establish or replace it.
+		const serviceHost = extractServiceHost(request.node.parameters?.url);
+		const serviceOrigin = extractServiceOrigin(request.node.parameters?.url);
+		request.setupHint = {
+			...setupHint,
+			...(serviceHost ? { serviceHost } : {}),
+			...(serviceOrigin ? { serviceOrigin } : {}),
+		};
 	}
 }
 

@@ -158,6 +158,7 @@ export class OidcController {
 			throw error;
 		}
 
+		this.oidcService.assertOidcLoginEnabled();
 		this.authService.issueCookie(res, user, true, req.browserId);
 
 		// Persist the encrypted ID token so a later sign-out can perform OIDC

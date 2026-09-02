@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import {
@@ -97,6 +98,7 @@ function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext 
 	return {
 		workflowLoader,
 		workflowRunner,
+		subworkflowPolicyChecker: mock<SubworkflowPolicyChecker>(),
 		activeExecutions,
 		projectId: 'project-1',
 		executionMode: 'manual',
