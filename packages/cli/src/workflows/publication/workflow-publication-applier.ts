@@ -365,8 +365,10 @@ export class WorkflowPublicationApplier {
 
 		// Before the mapping goes, not after. The mapping is what makes the workflow an
 		// owner of scheduled jobs, so removing it first would turn any job this misses
-		// into an orphan only the reconciliation sweep could find. A crash between the
-		// two leaves no jobs and an intact mapping, which this record retries.
+		// into an orphan only the reconciliation sweep could find. The two are not one
+		// transaction: a crash between them, or a failing mapping removal, leaves no
+		// jobs and an intact mapping. The reconciler re-enqueues that unpublish, and
+		// the retry deprovisions nothing before it removes the mapping.
 		//
 		// Keyed by the workflow alone, not by the nodes deactivated above, so a job
 		// whose node is gone from the version goes too.
