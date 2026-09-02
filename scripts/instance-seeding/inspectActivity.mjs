@@ -64,8 +64,13 @@ function query({ q, sort, dir, limit, offset }) {
 	// The free-text filter spans every column including `data`, so a run id or a
 	// failing node name finds its entry without the reader knowing which field holds
 	// it. That is the whole reason to search the JSON blob rather than parse it.
-	const where = q ? `WHERE ${COLUMNS.map((c) => `IFNULL("${c}", '') LIKE ?`).join(' OR ')}` : '';
-	const params = q ? COLUMNS.map(() => `%${q}%`) : [];
+	// `%` and `_` are LIKE wildcards, so an unescaped filter for either matches every
+	// row instead of the rows containing that character.
+	const escaped = q.replace(/[\\%_]/g, (c) => `\\${c}`);
+	const where = q
+		? `WHERE ${COLUMNS.map((c) => `IFNULL("${c}", '') LIKE ? ESCAPE '\\'`).join(' OR ')}`
+		: '';
+	const params = q ? COLUMNS.map(() => `%${escaped}%`) : [];
 
 	const total = db.prepare(`SELECT COUNT(*) AS n FROM activity_event ${where}`).get(...params).n;
 	// `sort` and `dir` are allowlisted above; everything else is bound.
@@ -181,8 +186,14 @@ const server = http.createServer((req, res) => {
 	// Only loopback can reach the socket, but a browser pointed at a hostname that
 	// resolves to 127.0.0.1 would still be served. Requiring a loopback Host closes
 	// that, which matters because there is no authentication behind it.
-	const host = (req.headers.host ?? '').split(':')[0];
-	if (!['127.0.0.1', 'localhost', '[::1]', '::1'].includes(host)) {
+	// Strip the port without breaking IPv6. Splitting on ':' turns `[::1]:5699` into
+	// `[`, which silently rejects IPv6 loopback and makes the allowlist entries for it
+	// dead code.
+	const rawHost = req.headers.host ?? '';
+	const host = rawHost.startsWith('[')
+		? rawHost.slice(0, rawHost.indexOf(']') + 1)
+		: rawHost.split(':')[0];
+	if (!['127.0.0.1', 'localhost', '[::1]'].includes(host)) {
 		res.writeHead(403, { 'content-type': 'text/plain' });
 		return res.end('Loopback host required.\n');
 	}

@@ -159,7 +159,10 @@ export const PREFERENCE_CREDENTIALS = [
 	},
 ];
 
-const LINEAR_TEAM_ID = 'seed-team-automation';
+// A real Linear team id if the developer supplies one, otherwise a value that says
+// what it is. The workflows are openable either way; only a real id makes the Linear
+// nodes runnable, which matches how the credentials behave.
+const LINEAR_TEAM_ID = process.env.SEED_LINEAR_TEAM_ID || 'seed-placeholder-team-id';
 
 // --- node builders -----------------------------------------------------------
 // Small helpers only. Each workflow spells out its own graph below, because a

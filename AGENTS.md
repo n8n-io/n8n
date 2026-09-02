@@ -121,17 +121,23 @@ N8N_API_KEY="<public-api JWT>" pnpm seed:account
 # Small enough to fit an agent's context, consistent enough to be gradeable.
 N8N_API_KEY="<public-api JWT>" PROFILE=preference pnpm seed:account
 
-# Execution history, AI threads, and activity entries. Run after seed:account,
-# with the instance STOPPED. Talks to SQLite, because none of these have a
-# public-API create route.
-node scripts/instance-seeding/seedHistory.mjs
+# Preference profile plus its history, in one command.
+N8N_API_KEY="<public-api JWT>" pnpm seed:preference
 
-# Check that every parameter the preference workflows emit is real.
+# Or the history on its own, after a seed:account run. Talks to SQLite,
+# because none of these have a public-API create route.
+pnpm seed:history
+
+# Check the top-level parameter names against the node definitions.
+# One level deep only: nested shapes and values are not checked.
 pnpm seed:account:check
 ```
 
-Both profiles tag everything `[seed] ` (or `seed_` for data tables) and delete
+Both profiles tag everything `[seed] ` (or `seed_` for data tables) and clear
 their own prior output first, so re-running replaces rather than accumulates.
+They clear different amounts: `estate` removes every seeded entity, while
+`preference` removes only the workflows and reuses the project, data tables and
+credentials, so credential ids survive and the nodes pointing at them stay wired.
 Set `SEED` for a reproducible estate; `PROFILE=preference` fixes it by default.
 
 **Do not point either at a shared instance.** The clear step deletes anything

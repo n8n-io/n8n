@@ -39,6 +39,8 @@
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
 		"seed:account": "node scripts/instance-seeding/seedInstance.mjs",
+		"seed:history": "node scripts/instance-seeding/seedHistory.mjs",
+		"seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",
 		"seed:account:check": "node scripts/instance-seeding/checkPreferenceProfile.mjs",
 		"nathan": "node scripts/nathan.mjs",
     "agent:setup": "node scripts/agent-setup.mjs",

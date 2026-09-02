@@ -816,15 +816,21 @@ async function seedPreferenceCredentials(projectId, existingByName) {
 	for (const spec of PREFERENCE_CREDENTIALS) {
 		const token = process.env[spec.env];
 		const real = typeof token === 'string' && token.length > 0;
-		const name = `${SEED_PREFIX}${spec.name}${real ? '' : ' (seed, fake key)'}`;
+		const placeholderName = `${SEED_PREFIX}${spec.name} (seed, fake key)`;
+		const realName = `${SEED_PREFIX}${spec.name}`;
+		const name = real ? realName : placeholderName;
 		const data = { [spec.field]: real ? token : `seed-placeholder-${spec.key}` };
 
 		// Upgrade in place when the credential already exists, so its id survives and
-		// the workflows pointing at it keep resolving.
-		const prior = existingByName.get(name) ?? existingByName.get(`${SEED_PREFIX}${spec.name}`);
+		// the workflows pointing at it keep resolving. Both names have to be tried:
+		// supplying a token drops the "(seed, fake key)" suffix, so looking up only the
+		// new name misses the placeholder this run is meant to replace.
+		const prior = existingByName.get(name) ?? existingByName.get(real ? placeholderName : realName);
 		try {
 			if (prior) {
-				await api('PUT', `/credentials/${prior.id}`, { name, type: spec.type, data });
+				// PATCH, not PUT — the public API exposes no PUT for credentials and
+				// answers 405, which fails quietly enough to look like a working upgrade.
+				await api('PATCH', `/credentials/${prior.id}`, { name, type: spec.type, data });
 				out[spec.key] = { id: prior.id, name };
 			} else {
 				const created = await api('POST', '/credentials', {
@@ -850,6 +856,25 @@ async function seedPreferenceCredentials(projectId, existingByName) {
 async function seedPreferenceProfile() {
 	log('Seeding preference profile at', BASE);
 	log(`Seed: ${SEED} (fixed — re-running produces the same estate)`);
+
+	// Deliberately NOT `clearSeeded()`. That deletes credentials, which defeats the
+	// point of upgrading them in place: the ids would change on every run and every
+	// node pointing at them would be rewired. Only the workflows are removed, because
+	// they are the one thing this function recreates unconditionally. Credentials, data
+	// tables and the project are looked up and reused below.
+	const priorWorkflows = (await listAll('/workflows')).filter((w) =>
+		w.name.startsWith(SEED_PREFIX),
+	);
+	if (priorWorkflows.length > 0) {
+		log(`Removing ${priorWorkflows.length} prior seeded workflows...`);
+		for (const w of priorWorkflows) {
+			try {
+				await api('DELETE', `/workflows/${w.id}`);
+			} catch (e) {
+				log('  workflow delete failed:', w.name, String(e).slice(0, 200));
+			}
+		}
+	}
 
 	const projects = await listAll('/projects');
 	const projectName = `${SEED_PREFIX}${PREFERENCE_PROJECT}`;
@@ -932,9 +957,6 @@ async function main() {
 		return;
 	}
 	if (PROFILE === 'preference') {
-		// Same clear step as the estate profile — both tag with SEED_PREFIX, so a
-		// re-run replaces its own output rather than stacking a second copy on top.
-		await clearSeeded();
 		await seedPreferenceProfile();
 		return;
 	}

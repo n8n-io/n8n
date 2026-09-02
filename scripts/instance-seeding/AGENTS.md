@@ -5,9 +5,9 @@ Four scripts, all dev tooling, none of them product code:
 | Script | Command | What it does |
 | --- | --- | --- |
 | `seedInstance.mjs` | `pnpm seed:account` | Builds the estate via the **public API**. Two profiles, below. |
-| `seedHistory.mjs` | `node scripts/instance-seeding/seedHistory.mjs` | Execution history, AI threads, activity entries via **SQLite**. |
+| `seedHistory.mjs` | `pnpm seed:history` | Execution history, AI threads, activity entries via **SQLite**. |
 | `inspectActivity.mjs` | `pnpm inspect:activity` | Read-only one-page viewer of `activity_event`. |
-| `checkPreferenceProfile.mjs` | `pnpm seed:account:check` | Checks the preference workflows against real node definitions. |
+| `checkPreferenceProfile.mjs` | `pnpm seed:account:check` | Checks top-level parameter names against real node definitions. |
 
 ## Two profiles
 
@@ -73,12 +73,24 @@ Secrets go through the public API, which means **n8n does the encryption** — t
 tooling never touches the instance encryption key. Token lengths are logged,
 never values.
 
+The upgrade is a `PATCH`. The public API exposes no `PUT` for credentials and
+answers 405, which fails quietly enough to look like a working upgrade. The
+preference profile also deliberately avoids `clearSeeded()` for the same reason:
+that helper deletes credentials, which would change every id on every run and
+rewire every node pointing at them. Only the workflows are removed and rebuilt.
+
 ## `seedHistory.mjs`
 
 Writes what the public API cannot: executions have no create route, and threads
-and activity entries have no route at all. Run it **after** `seed:account`, with
-the instance **stopped** — writing under a live server races its own inserts on
-the autoincrement id.
+and activity entries have no route at all. Run it **after** `seed:account`.
+
+A running instance is fine. SQLite serialises writers, so n8n's own inserts queue
+behind this script rather than interleaving with it. Prefer an idle instance
+anyway: one that is actively executing workflows can hold the write lock long
+enough to time this out.
+
+`pnpm seed:preference` chains the estate and the history, which is the single
+command that leaves a usable instance.
 
 A default run produces 175 executions over 14 days, 10 AI threads with 22
 messages, and 35 activity entries. `[seed] Invoice Dunning` is made to fail its

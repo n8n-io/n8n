@@ -1,6 +1,11 @@
 #!/usr/bin/env node
-// Check every parameter the preference workflows emit against the parameter names
+// Check the top-level parameter names the preference workflows emit against the names
 // the target node actually declares.
+//
+// Scope worth being precise about: this walks `node.parameters` one level deep. Nested
+// structures — `filters.conditions[]`, `columns.value`, `additionalFields` — are not
+// checked, and neither are values. A green run means no parameter is misspelled at the
+// top level. It does not mean the parameters are correct.
 //
 // Worth having because the failure it catches is silent: n8n accepts a workflow with
 // a misspelled parameter, stores it, and the node then renders with an empty field.

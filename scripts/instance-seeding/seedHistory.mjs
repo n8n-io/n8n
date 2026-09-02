@@ -7,9 +7,10 @@
 // history, so `startedAt` has to be set directly. Threads and activity entries have
 // no API route at all.
 //
-// So this script talks to SQLite. Run it after `seed:account`, against a stopped
-// instance: n8n caches nothing that matters here, but writing under a live server
-// races its own inserts on the autoincrement id.
+// So this script talks to SQLite. Run it after `seed:account`. A running instance is
+// fine — SQLite serialises writers, so n8n's own inserts queue behind this one rather
+// than interleaving. Prefer an idle instance anyway: one that is actively executing
+// workflows can hold the write lock long enough to time this out.
 
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
@@ -195,64 +196,12 @@ function main() {
 
 	// Clearing first is what makes a re-run replace its own history rather than stack
 	// a second fortnight on top of the first.
-	const wfIds = workflows.map((w) => w.id);
-	const placeholders = wfIds.map(() => '?').join(',');
-	const priorExec = db
-		.prepare(`SELECT id FROM execution_entity WHERE workflowId IN (${placeholders})`)
-		.all(...wfIds)
-		.map((r) => r.id);
-	if (priorExec.length > 0) {
-		const p = priorExec.map(() => '?').join(',');
-		db.prepare(`DELETE FROM execution_data WHERE executionId IN (${p})`).run(...priorExec);
-		db.prepare(`DELETE FROM execution_entity WHERE id IN (${p})`).run(...priorExec);
-	}
-	const priorThreads = db
-		.prepare(`SELECT id FROM instance_ai_threads WHERE resourceId IN (${placeholders})`)
-		.all(...wfIds)
-		.map((r) => r.id);
-	if (priorThreads.length > 0) {
-		const p = priorThreads.map(() => '?').join(',');
-		db.prepare(`DELETE FROM instance_ai_messages WHERE threadId IN (${p})`).run(...priorThreads);
-		db.prepare(`DELETE FROM instance_ai_threads WHERE id IN (${p})`).run(...priorThreads);
-	}
-	// Activity covers credentials as well as workflows, so clearing by workflow id
-	// alone leaves the credential entries behind to accumulate on every re-run.
-	const credIds = db
-		.prepare('SELECT id FROM credentials_entity WHERE name LIKE ?')
-		.all(`${SEED_PREFIX}%`)
-		.map((r) => r.id);
-	const actIds = [...wfIds, ...credIds];
-	const actPlaceholders = actIds.map(() => '?').join(',');
-	const clearedActivity = db
-		.prepare(`DELETE FROM activity_event WHERE resourceId IN (${actPlaceholders})`)
-		.run(...actIds);
-	console.log(
-		`Cleared prior: ${priorExec.length} executions, ${priorThreads.length} threads, ${clearedActivity.changes} activity entries`,
-	);
-
-	const insExec = db.prepare(`
-		INSERT INTO execution_entity
-			(workflowId, finished, mode, startedAt, stoppedAt, status, createdAt,
-			 storedAt, jsonSizeBytes, binaryDataSizeBytes, usedPrivateCredentials)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'db', ?, 0, 0)
-	`);
-	const insExecData = db.prepare(
-		'INSERT INTO execution_data (executionId, workflowData, data) VALUES (?, ?, ?)',
-	);
-	const insThread = db.prepare(`
-		INSERT INTO instance_ai_threads (id, resourceId, projectId, title, metadata, createdAt, updatedAt)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`);
-	const insMessage = db.prepare(`
-		INSERT INTO instance_ai_messages (id, threadId, content, role, type, resourceId, createdAt, updatedAt)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`);
-	const insActivity = db.prepare(`
-		INSERT INTO activity_event
-			(category, action, typeVersion, userId, projectId, resourceType, resourceId, resourceName, data, createdAt)
-		VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
-	`);
-
+	//
+	// Clear and rewrite are one transaction on purpose. Split apart, a failure part way
+	// through the inserts rolls back the new history while the deletes stay committed,
+	// and the developer is left with nothing and no way back.
+	// Declared outside the transaction block so the summary below the catch can read
+	// them.
 	let execCount = 0;
 	let failCount = 0;
 	let threadCount = 0;
@@ -261,6 +210,64 @@ function main() {
 
 	db.exec('BEGIN');
 	try {
+		const wfIds = workflows.map((w) => w.id);
+		const placeholders = wfIds.map(() => '?').join(',');
+		const priorExec = db
+			.prepare(`SELECT id FROM execution_entity WHERE workflowId IN (${placeholders})`)
+			.all(...wfIds)
+			.map((r) => r.id);
+		if (priorExec.length > 0) {
+			const p = priorExec.map(() => '?').join(',');
+			db.prepare(`DELETE FROM execution_data WHERE executionId IN (${p})`).run(...priorExec);
+			db.prepare(`DELETE FROM execution_entity WHERE id IN (${p})`).run(...priorExec);
+		}
+		// Threads and activity are cleared by project, not by workflow id.
+		//
+		// Re-seeding the estate replaces the workflows, and the replacements get fresh
+		// ids. Anything keyed on the *current* ids then matches nothing, leaving the
+		// previous run's rows orphaned rather than deleted — and because the ids here are
+		// generated from the fixed seed, the next insert collides on the primary key. The
+		// project id is reused across runs, so it is the stable handle. Executions need no
+		// equivalent: deleting a workflow cascades them.
+		const priorThreads = db
+			.prepare('SELECT id FROM instance_ai_threads WHERE projectId = ?')
+			.all(project.id)
+			.map((r) => r.id);
+		if (priorThreads.length > 0) {
+			const p = priorThreads.map(() => '?').join(',');
+			db.prepare(`DELETE FROM instance_ai_messages WHERE threadId IN (${p})`).run(...priorThreads);
+			db.prepare(`DELETE FROM instance_ai_threads WHERE id IN (${p})`).run(...priorThreads);
+		}
+		const clearedActivity = db
+			.prepare('DELETE FROM activity_event WHERE projectId = ?')
+			.run(project.id);
+		console.log(
+			`Cleared prior: ${priorExec.length} executions, ${priorThreads.length} threads, ${clearedActivity.changes} activity entries`,
+		);
+
+		const insExec = db.prepare(`
+		INSERT INTO execution_entity
+			(workflowId, finished, mode, startedAt, stoppedAt, status, createdAt,
+			 storedAt, jsonSizeBytes, binaryDataSizeBytes, usedPrivateCredentials)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'db', ?, 0, 0)
+	`);
+		const insExecData = db.prepare(
+			'INSERT INTO execution_data (executionId, workflowData, data) VALUES (?, ?, ?)',
+		);
+		const insThread = db.prepare(`
+		INSERT INTO instance_ai_threads (id, resourceId, projectId, title, metadata, createdAt, updatedAt)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`);
+		const insMessage = db.prepare(`
+		INSERT INTO instance_ai_messages (id, threadId, content, role, type, resourceId, createdAt, updatedAt)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`);
+		const insActivity = db.prepare(`
+		INSERT INTO activity_event
+			(category, action, typeVersion, userId, projectId, resourceType, resourceId, resourceName, data, createdAt)
+		VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+	`);
+
 		for (const wf of workflows) {
 			const short = wf.name.replace(SEED_PREFIX, '');
 			const isFailing = short === FAILING_WORKFLOW;
