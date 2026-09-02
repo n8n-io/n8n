@@ -2,6 +2,8 @@ import type { Request } from 'express';
 
 import {
 	AUTH_COOKIE_NAME,
+	CHAT_OAUTH_COOKIE_NAME,
+	CHAT_OAUTH_REFRESH_COOKIE_NAME,
 	FORM_AUTH_COOKIE_PREFIX,
 	FORM_OAUTH_COOKIE_NAME,
 	OIDC_NONCE_COOKIE_NAME,
@@ -15,11 +17,12 @@ const BROWSER_ID_COOKIE_NAME = 'n8n-browserId';
 
 /**
  * Cookies n8n issues for its own UI and sign-in flows. They are set without a `path`, so
- * browsers send them to `/webhook/*` too.
+ * browsers send them to `/webhook/*` too. Hence an explicit list of names rather than an
+ * `n8n-` prefix rule, which would take unrelated cookies with it.
  *
- * `n8n-form-oauth` is excluded: the form OAuth2 flow reads it back off the raw header on the
- * redirect hop, so it has to keep flowing. Hence an explicit list of names rather than an
- * `n8n-` prefix rule, which would take that cookie with it.
+ * The form and chat cookies belong to their own endpoints, which skip sanitizing entirely
+ * for their own node types (see `authAllowlistedNodes`), so those pages still receive
+ * them. Every other webhook has no use for them.
  */
 const DISALLOWED_COOKIES = new Set([
 	AUTH_COOKIE_NAME,
@@ -30,6 +33,8 @@ const DISALLOWED_COOKIES = new Set([
 	OIDC_STATE_COOKIE_NAME,
 	OIDC_NONCE_COOKIE_NAME,
 	FORM_OAUTH_COOKIE_NAME,
+	CHAT_OAUTH_COOKIE_NAME,
+	CHAT_OAUTH_REFRESH_COOKIE_NAME,
 ]);
 
 // The form auth cookie's name appends the workflow or execution it was minted

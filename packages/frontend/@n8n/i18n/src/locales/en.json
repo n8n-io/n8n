@@ -7000,6 +7000,7 @@
 	"instanceAi.projectSelect.search": "Search projects",
 	"instanceAi.projectSelect.noResults": "No results",
 	"instanceAi.projectSelect.personalSpace": "Personal space",
+	"instanceAi.agentPreview.building": "AI Assistant is making changes…",
 	"instanceAi.previewTabBar.expand": "Expand panel",
 	"instanceAi.previewTabBar.collapse": "Collapse panel",
 	"instanceAi.previewTabBar.openInEditor": "Open in editor",

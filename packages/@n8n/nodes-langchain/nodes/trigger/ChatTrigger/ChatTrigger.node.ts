@@ -28,19 +28,23 @@ import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
+import { buildChatShellViewModel, connectBarText } from './connect-panel';
 import { cssVariables } from './constants';
 import {
 	establishChatSessionIdentity,
+	handleChatTokenRefresh,
 	resolveInnerFrameIdentity,
 	validateAuth,
 } from './GenericFunctions';
 import {
+	buildChatRefreshUrl,
 	buildInnerFrameSrc,
 	CHAT_FRAME_SANDBOX,
 	isChatOAuth2Enabled,
+	isChatRefreshRequest,
 	isShellInnerRequest,
 } from './shell';
-import { createPage, createShellPage } from './templates';
+import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption, type ChatFrameIdentity } from './types';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
@@ -943,21 +947,56 @@ export class ChatTrigger extends Node {
 						throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
 					}
 
+					// The shell's token-refresh leg, ahead of any render: it answers with JSON,
+					// not a page, and authenticates itself from its own httpOnly cookie rather
+					// than from the handshake below. A GET because a POST to this path reaches
+					// the `default` webhook — the chat message endpoint — instead.
+					if (isChatRefreshRequest(req)) {
+						await handleChatTokenRefresh(ctx, resourceUrl);
+						return { noWebhookResponse: true };
+					}
+
 					if (!isShellInnerRequest(req)) {
 						// Outer shell: the AS handshake runs here — a normal top-level document with
 						// real cookies, unlike the sandboxed, opaque-origin frame this shell is about
 						// to create. It is the only gate: a visitor without an editor session is
 						// authenticated by the flow rather than bounced to sign-in ahead of it.
-						const ready = await establishChatSessionIdentity(ctx, resourceUrl);
-						if (!ready) {
+						const outerIdentity = await establishChatSessionIdentity(ctx, resourceUrl);
+						if (!outerIdentity) {
 							return { noWebhookResponse: true };
 						}
 
+						let credentialStatus: CredentialCheckResult | undefined;
+						try {
+							credentialStatus = await ctx.checkTriggerCredentialStatus();
+						} catch {
+							// No error object: may carry decrypted credential context.
+							ctx.logger.error('Chat trigger credential readiness check failed');
+							// `send` ends the response itself.
+							res.status(503).send('Chat is unavailable right now. Please try again later.');
+							return { noWebhookResponse: true };
+						}
+
+						const connect = credentialStatus?.credentials.length
+							? buildChatShellViewModel(credentialStatus.credentials, outerIdentity.visitor.email)
+							: undefined;
+
 						res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
-						res
-							.status(200)
-							.send(createShellPage({ iframeSrc: buildInnerFrameSrc(req) }))
-							.end();
+						// Express defaults to 200 for `render`; stated so the success status is
+						// not implicit next to the 503 branch above.
+						res.status(200).render('chat-shell', {
+							iframeSrc: buildInnerFrameSrc(req),
+							sandbox: CHAT_FRAME_SANDBOX,
+							refreshUrl: buildChatRefreshUrl(req),
+							refreshExpiresIn: Math.max(0, Math.round(outerIdentity.expiresIn)),
+							testMode: mode === 'test',
+							visitorEmail: outerIdentity.visitor.email,
+							hasCredentials: !!connect,
+							// Not forced in test mode: the send gate refuses builders too.
+							ready: connect ? connect.connectedCount >= connect.total : false,
+							barText: connect ? connectBarText(connect, mode === 'test') : '',
+							...connect,
+						});
 						return { noWebhookResponse: true };
 					}
 
@@ -1024,8 +1063,9 @@ export class ChatTrigger extends Node {
 			let readiness: CredentialCheckResult | undefined;
 			try {
 				readiness = await ctx.checkTriggerCredentialStatus();
-			} catch (error) {
-				ctx.logger.error('Chat trigger credential readiness check failed', { error });
+			} catch {
+				// No error object: may carry decrypted credential context.
+				ctx.logger.error('Chat trigger credential readiness check failed');
 				res.status(503).json({ status: 'credential_readiness_check_failed' });
 				return { noWebhookResponse: true };
 			}
