@@ -1,6 +1,5 @@
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
-import { FocusVisibleStyleRule } from './focus-visible-style.js';
 import { LabelHasForRule } from './label-has-for.js';
 import { NoAccessKeyRule } from './no-access-key.js';
 import { NoAriaHiddenOnFocusableRule } from './no-aria-hidden-on-focusable.js';
@@ -15,7 +14,6 @@ import { RequireTeleportedTooltipInDropdownRule } from './require-teleported-too
 import { RoleHasRequiredAriaPropsRule } from './role-has-required-aria-props.js';
 
 export const rules = {
-	'focus-visible-style': FocusVisibleStyleRule,
 	'label-has-for': LabelHasForRule,
 	'no-access-key': NoAccessKeyRule,
 	'no-aria-hidden-on-focusable': NoAriaHiddenOnFocusableRule,

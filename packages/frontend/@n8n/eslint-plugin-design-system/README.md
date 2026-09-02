@@ -18,10 +18,6 @@ Add accessibility and web guideline rules to `src/rules`. Export each rule from 
 
 Base accessibility rules on W3C specifications and WAI-ARIA Authoring Practices. Keep attribute-name, attribute-value, and role compatibility checks in separate rules so each diagnostic has one clear action.
 
-### `focus-visible-style`
-
-Requires each statically focusable element to have a matching `:focus-visible` or `:focus` selector in an SFC style block. The rule matches tag, class, ID, `href`, and `tabindex` selectors.
-
 ### `label-has-for`
 
 Requires each native `label` to contain a labelable form control or to use a `for` value that matches a control ID. The rule accepts dynamic `for` bindings because it cannot resolve their runtime values.
