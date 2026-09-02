@@ -198,6 +198,10 @@ export const setupTestServer = ({
 		if (endpointGroups.length) {
 			for (const group of endpointGroups) {
 				switch (group) {
+					case 'activeWorkflows':
+						await import('@/controllers/active-workflows.controller.js');
+						break;
+
 					case 'annotationTags':
 						await import('@/controllers/annotation-tags.controller.ee.js');
 						break;

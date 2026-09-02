@@ -33,6 +33,8 @@
 			],
 			"@n8n/frontend-module-otel": ["../../modules/otel/frontend/src/index.ts"],
 			"@n8n/frontend-module-otel/*": ["../../modules/otel/frontend/src/*"],
+			"@n8n/frontend-test-utils": ["../@n8n/frontend-test-utils/src/index.ts"],
+			"@n8n/frontend-test-utils/*": ["../@n8n/frontend-test-utils/src/*"],
 			"@n8n/frontend-utils*": ["../@n8n/frontend-utils/src*"],
 			"@n8n/frontend-constants*": ["../@n8n/frontend-constants/src*"],
 			"@n8n/chat*": ["../@n8n/chat/src*"],

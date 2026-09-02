@@ -4,6 +4,7 @@ export { AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
 // Utils
 export { logWrapper } from './utils/log-wrapper';
 export { logAiEvent } from './utils/log-ai-event';
+export { redactSecrets } from './utils/redact-secrets';
 export { parseSSEStream } from './utils/sse';
 export {
 	validateEmbedQueryInput,
@@ -14,6 +15,7 @@ export { N8nBinaryLoader } from './utils/n8n-binary-loader';
 export { N8nJsonLoader } from './utils/n8n-json-loader';
 export { N8nPdfLoader } from './utils/loaders/n8n-pdf-loader';
 export { N8nLlmTracing } from './utils/n8n-llm-tracing';
+export { redactHeaderValues } from './utils/redact-headers';
 export {
 	TextEditorDocument,
 	NoMatchFoundError,
@@ -54,6 +56,7 @@ export {
 	getNodeProxyAgent,
 	proxyFetch,
 	type AgentTimeoutOptions,
+	type ProxyFetchOptions,
 } from './utils/http-proxy-agent';
 export { braveSearch, searxngSearch, type BraveSearchOptions } from './web-search';
 export type { WebSearchOptions, WebSearchResponse, WebSearchResult } from './web-search';
@@ -61,6 +64,10 @@ export {
 	fetchFollowingRedirects,
 	type FollowRedirectsOptions,
 } from './utils/follow-redirects';
+export {
+	createRefreshingAuthFetch,
+	type RefreshingAuthFetchOptions,
+} from './utils/refreshing-auth-fetch';
 export {
 	getConnectionHintNoticeField,
 	metadataFilterField,

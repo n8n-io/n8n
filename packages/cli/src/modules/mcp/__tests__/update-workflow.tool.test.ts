@@ -1958,7 +1958,7 @@ describe('update-workflow MCP tool', () => {
 					},
 					{
 						nodeName: 'D',
-						credentialName: 'n8n credits',
+						credentialName: 'Gateway credits',
 						credentialType: 'openAiApi',
 						source: 'aiGateway',
 					},
@@ -1983,7 +1983,7 @@ describe('update-workflow MCP tool', () => {
 				{ nodeName: 'C', credentialName: 'My Slack', credentialType: 'slackApi', source: 'user' },
 				{
 					nodeName: 'D',
-					credentialName: 'n8n credits',
+					credentialName: 'Gateway credits',
 					credentialType: 'openAiApi',
 					source: 'aiGateway',
 				},

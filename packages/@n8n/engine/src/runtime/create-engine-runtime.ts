@@ -17,6 +17,7 @@ import {
 } from '../execution';
 import { BatchingLifecycleEventPublisher, noopLifecycleEventPublisher } from '../lifecycle-events';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
+import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
 import { createEngineServer } from '../server';
@@ -27,6 +28,8 @@ export interface EngineRuntimeOptions {
 	admittance: AdmittanceService;
 	/** Verifies the identity token on every `/api` request. No default: an unauthenticated engine must never boot by omission. */
 	identityVerifier: IdentityVerifier;
+	/** Where the engine writes its own messages. Defaults to the console. */
+	logger?: EngineLogger;
 	/**
 	 * Builds the capabilities the engine does not own. It receives the engine's
 	 * stores, because a `v1-node` executor reads step data through them and the
@@ -61,10 +64,11 @@ export function createEngineRuntime({
 	dataSource,
 	admittance,
 	identityVerifier,
+	logger = createConsoleLogger(),
 	externalDependencies,
 }: EngineRuntimeOptions): EngineRuntime {
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-	const stepQueue = new InMemoryWorkQueue<StepMessage>();
+	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
+	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger);
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
@@ -104,6 +108,7 @@ export function createEngineRuntime({
 		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier,
+		logger,
 	});
 
 	return {

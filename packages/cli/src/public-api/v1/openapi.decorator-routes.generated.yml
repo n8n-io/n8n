@@ -3,6 +3,16 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /executions/{executionId}:
+    get:
+      $ref: ./handlers/executions/spec/paths/getExecution.generated.yml
+    delete:
+      $ref: ./handlers/executions/spec/paths/deleteExecution.generated.yml
+  /executions/{executionId}/tags:
+    get:
+      $ref: ./handlers/executions/spec/paths/getExecutionTags.generated.yml
+    put:
+      $ref: ./handlers/executions/spec/paths/updateExecutionTags.generated.yml
   /git-connections:
     post:
       $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml
@@ -32,6 +42,9 @@ paths:
       $ref: ./handlers/git-connections/spec/paths/addProjectToGitConnection.generated.yml
     delete:
       $ref: ./handlers/git-connections/spec/paths/removeProjectFromGitConnection.generated.yml
+  /git-connections/{id}/pull:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
@@ -68,6 +81,10 @@ paths:
   /workflows/{workflowId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflow.generated.yml
+    put:
+      $ref: ./handlers/workflows/spec/paths/updateWorkflow.generated.yml
+    delete:
+      $ref: ./handlers/workflows/spec/paths/deleteWorkflow.generated.yml
   /workflows/{workflowId}/archive:
     post:
       $ref: ./handlers/workflows/spec/paths/archiveWorkflow.generated.yml
@@ -92,6 +109,9 @@ paths:
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  /workflows/{workflowId}/versions/{versionId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
   /workflows/{workflowId}/tags:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml

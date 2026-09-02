@@ -1,6 +1,8 @@
 export { createEngineRuntime } from './runtime';
 export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
+export type { EngineLogger } from './logging';
+
 export {
 	ACTION_TOKEN,
 	IDENTITY_TOKEN,

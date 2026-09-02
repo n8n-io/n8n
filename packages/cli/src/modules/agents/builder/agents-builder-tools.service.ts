@@ -70,6 +70,7 @@ import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -608,9 +609,9 @@ export class AgentsBuilderToolsService {
 
 		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
 			.description(
-				'List published agents in the same project that can be added to the target agent as subagents. ' +
-					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
-					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
+				'List agents in the same project that can be added to the target agent as subagents. ' +
+					'Excludes the target agent itself. Use before asking the user which subagents to add. ' +
+					'Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`; ' +
 					'write parent-owned routing guidance into `subAgents.agents[].useWhen`; ask a follow-up first when it is unclear when that parent should use the subagent.',
 			)
 			.input(z.object({}))
@@ -618,7 +619,7 @@ export class AgentsBuilderToolsService {
 				const agents = await this.agentsService.findByProjectId(projectId);
 				return {
 					agents: agents
-						.filter((agent) => agent.id !== agentId && agent.activeVersionId !== null)
+						.filter((agent) => agent.id !== agentId)
 						.map((agent) => ({
 							agentId: agent.id,
 							name: agent.name,
@@ -825,11 +826,10 @@ export class AgentsBuilderToolsService {
 								message: error.message,
 							};
 						}
-						return {
-							status: 'error',
-							code: 'execution_failed',
-							message: error instanceof Error ? error.message : 'Agent test run failed.',
-						};
+						const { code, message } = describeCallAgentFailure(
+							error instanceof Error ? error.message : 'Agent test run failed.',
+						);
+						return { status: 'error', code, message };
 					}
 				},
 			)
@@ -944,6 +944,8 @@ export class AgentsBuilderToolsService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: createAiMcpFetch(this.outboundHttp),
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 				applyCredentialToMcpServer: async (serverName, credentialId) =>
 					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 			}),

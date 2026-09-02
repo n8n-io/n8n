@@ -486,6 +486,8 @@ export class TestWebhooks implements IWebhookManager {
 				) {
 					// Generate predictable path using workflowId and sessionId (without leading slash to match lookup format)
 					webhook.path = `${workflow.id}/${chatSessionId}`;
+					// Only this session-scoped canvas route may skip the Chat Trigger's configured auth
+					webhook.isChatSessionTest = true;
 				}
 
 				const key = this.registrations.toKey(webhook);

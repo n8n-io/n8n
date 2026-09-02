@@ -28,9 +28,15 @@
                                             "items": {
                                                 "type": "object",
                                                 "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
                                                     "style": {
                                                         "type": "object",
                                                         "properties": {
+                                                            "bold": {
+                                                                "type": "boolean"
+                                                            },
                                                             "italic": {
                                                                 "type": "boolean"
                                                             }
@@ -124,5 +130,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }
