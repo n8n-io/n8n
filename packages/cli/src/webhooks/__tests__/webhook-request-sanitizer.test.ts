@@ -1,6 +1,10 @@
 import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { OAUTH_SESSION_COOKIE_NAME } from '@/modules/oauth-server/oauth-session.service';
+import { OIDC_ID_TOKEN_COOKIE_NAME } from '@/modules/sso-oidc/constants';
+import { OAUTH_BINDING_COOKIE_NAME } from '@/oauth/oauth-browser-binding.service';
 import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
 
 describe('webhookRequestSanitizer', () => {
@@ -330,6 +334,32 @@ describe('webhookRequestSanitizer', () => {
 			sanitizeWebhookRequest(mockRequest);
 
 			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+	});
+
+	describe('cookies n8n issues for its own flows', () => {
+		const N8N_ISSUED_COOKIES = [
+			OAUTH_SESSION_COOKIE_NAME,
+			OAUTH_BINDING_COOKIE_NAME,
+			OIDC_ID_TOKEN_COOKIE_NAME,
+			OIDC_STATE_COOKIE_NAME,
+			OIDC_NONCE_COOKIE_NAME,
+		];
+
+		it.each(N8N_ISSUED_COOKIES)('should remove %s from the cookie header', (name) => {
+			mockRequest.headers = { cookie: `${name}=abc123; other-cookie=value` };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+		});
+
+		it.each(N8N_ISSUED_COOKIES)('should remove %s from the parsed cookies', (name) => {
+			mockRequest.cookies = { [name]: 'abc123', 'other-cookie': 'value' };
+
+			sanitizeWebhookRequest(mockRequest);
+
 			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
 		});
 	});

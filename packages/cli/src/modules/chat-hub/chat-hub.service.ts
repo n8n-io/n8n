@@ -26,6 +26,7 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
+import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -69,6 +70,7 @@ export class ChatHubService {
 		private readonly chatHubToolService: ChatHubToolService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly executionManager: ChatExecutionManager,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -140,6 +142,21 @@ export class ChatHubService {
 		if (!execution) {
 			throw new OperationalError('Chat session has expired.');
 		}
+
+		// Only resume nodes a chat message is meant to drive (see
+		// ChatExecutionManager.canResumeOverChat) — the same allowlist the chat
+		// websocket uses. A workflow parked on, e.g., a Send-and-Wait approval gate
+		// must not be advanced by the next chat message; refuse before any state
+		// changes so the gate stays waiting for its real responder.
+		if (!this.executionManager.canResumeOverChat(execution)) {
+			this.logger.warn(
+				`Refused chat-hub resume for execution ${execution.id}: suspended node is not resumable over chat`,
+			);
+			throw new BadRequestError(
+				'This conversation is waiting for a response that cannot be provided from chat.',
+			);
+		}
+
 		this.logger.debug(
 			`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
 		);
