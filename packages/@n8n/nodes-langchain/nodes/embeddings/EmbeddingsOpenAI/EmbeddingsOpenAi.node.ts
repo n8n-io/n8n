@@ -14,6 +14,8 @@ import { logWrapper } from '@utils/logWrapper';
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
+
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
 	name: 'model',
@@ -247,6 +249,7 @@ export class EmbeddingsOpenAi implements INodeType {
 
 		const configuration: ClientOptions = {};
 		if (options.baseURL) {
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;

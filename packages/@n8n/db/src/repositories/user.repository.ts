@@ -1,7 +1,12 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import type {
+	DeepPartial,
+	EntityManager,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
@@ -140,6 +145,35 @@ export class UserRepository extends Repository<User> {
 		// TODO: use a transactions
 		// This is blocked by TypeORM having concurrency issues with transactions
 		return await createInner(this.manager);
+	}
+
+	/**
+	 * IDs of enabled users who either hold one of `globalRoleSlugs` globally,
+	 * or hold one of `projectRoleSlugs` in one of `projectIds`.
+	 */
+	async findIdsWithGlobalOrProjectRoles({
+		projectIds,
+		projectRoleSlugs,
+		globalRoleSlugs,
+	}: {
+		projectIds: string[];
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+	}): Promise<string[]> {
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectIds.length > 0 && projectRoleSlugs.length > 0) {
+			where.push({
+				disabled: false,
+				projectRelations: { projectId: In(projectIds), role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) return [];
+
+		const users = await this.find({ where, select: ['id'] });
+		return [...new Set(users.map(({ id }) => id))];
 	}
 
 	/**

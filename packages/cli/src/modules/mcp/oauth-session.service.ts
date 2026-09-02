@@ -11,7 +11,7 @@ export interface OAuthSessionPayload {
 	state: string | null;
 }
 
-const COOKIE_NAME = 'n8n-oauth-session';
+export const OAUTH_SESSION_COOKIE_NAME = 'n8n-oauth-session';
 const SESSION_EXPIRY_MS = 10 * Time.minutes.toMilliseconds; // 10 minutes
 
 /**
@@ -30,7 +30,7 @@ export class OAuthSessionService {
 			expiresIn: '10m',
 		});
 
-		res.cookie(COOKIE_NAME, sessionToken, {
+		res.cookie(OAUTH_SESSION_COOKIE_NAME, sessionToken, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
@@ -49,13 +49,13 @@ export class OAuthSessionService {
 	 * Clear OAuth session cookie
 	 */
 	clearSession(res: Response): void {
-		res.clearCookie(COOKIE_NAME);
+		res.clearCookie(OAUTH_SESSION_COOKIE_NAME);
 	}
 
 	/**
 	 * Extract session token from request cookies
 	 */
 	getSessionToken(cookies: Record<string, string | undefined>): string | undefined {
-		return cookies[COOKIE_NAME];
+		return cookies[OAUTH_SESSION_COOKIE_NAME];
 	}
 }

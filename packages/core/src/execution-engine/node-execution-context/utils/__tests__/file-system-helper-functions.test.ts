@@ -215,6 +215,24 @@ describe('isFilePathBlocked', () => {
 		},
 	);
 
+	it.each(['/tmp/foo.git', '/tmp/.github', '/tmp/.git-credentials', '/tmp/a.git/b'])(
+		'should per default allow access to %s',
+		async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(false);
+		},
+	);
+
+	it('should evaluate the default pattern without degradation on paths with many segments', async () => {
+		const manySegments = `/tmp/${'a/'.repeat(2000)}x`;
+
+		const start = performance.now();
+		const blocked = isFilePathBlocked(await resolvePath(manySegments));
+		const elapsed = performance.now() - start;
+
+		expect(blocked).toBe(false);
+		expect(elapsed).toBeLessThan(1000);
+	});
+
 	it('should allow access when pattern matching is disabled', async () => {
 		securityConfig.blockFilePatterns = '';
 		expect(isFilePathBlocked(await resolvePath('/tmp/.git'))).toBe(false);
@@ -228,7 +246,7 @@ describe('isFilePathBlocked', () => {
 	describe('cross-platform path handling', () => {
 		beforeEach(() => {
 			// Use default .git blocking pattern
-			securityConfig.blockFilePatterns = '^(.*\\/)*\\.git(\\/.*)*$';
+			securityConfig.blockFilePatterns = originalBlockedFilePatterns;
 		});
 
 		it('should handle Windows-style paths for .git directory', async () => {

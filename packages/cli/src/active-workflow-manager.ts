@@ -50,7 +50,6 @@ import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workfl
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
@@ -58,6 +57,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
@@ -89,7 +89,7 @@ export class ActiveWorkflowManager {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
-		private readonly push: Push,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -691,24 +691,32 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })
-	handleDisplayWorkflowActivation({ workflowId }: PubSubCommandMap['display-workflow-activation']) {
-		this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
+	async handleDisplayWorkflowActivation({
+		workflowId,
+	}: PubSubCommandMap['display-workflow-activation']) {
+		await this.workflowPushNotifier.notify(workflowId, {
+			type: 'workflowActivated',
+			data: { workflowId },
+		});
 	}
 
 	@OnPubSubEvent('display-workflow-deactivation', { instanceType: 'main' })
-	handleDisplayWorkflowDeactivation({ workflowId }: { workflowId: string }) {
-		this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
+	async handleDisplayWorkflowDeactivation({ workflowId }: { workflowId: string }) {
+		await this.workflowPushNotifier.notify(workflowId, {
+			type: 'workflowDeactivated',
+			data: { workflowId },
+		});
 	}
 
 	@OnPubSubEvent('display-workflow-activation-error', { instanceType: 'main' })
-	handleDisplayWorkflowActivationError({
+	async handleDisplayWorkflowActivationError({
 		workflowId,
 		errorMessage,
 	}: {
 		workflowId: string;
 		errorMessage: string;
 	}) {
-		this.push.broadcast({
+		await this.workflowPushNotifier.notify(workflowId, {
 			type: 'workflowFailedToActivate',
 			data: { workflowId, errorMessage },
 		});
@@ -725,20 +733,13 @@ export class ActiveWorkflowManager {
 			await this.add(workflowId, 'activate', undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
 			});
-
-			this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
-
-			await this.publisher.publishCommand({
-				command: 'display-workflow-activation',
-				payload: { workflowId },
-			}); // instruct followers to show activation in UI
 		} catch (e) {
 			const error = ensureError(e);
 			const { message } = error;
 
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
-			this.push.broadcast({
+			await this.workflowPushNotifier.notify(workflowId, {
 				type: 'workflowFailedToActivate',
 				data: { workflowId, errorMessage: message },
 			});
@@ -747,7 +748,24 @@ export class ActiveWorkflowManager {
 				command: 'display-workflow-activation-error',
 				payload: { workflowId, errorMessage: message },
 			}); // instruct followers to show activation error in UI
+
+			return;
 		}
+
+		// Activation already succeeded above; notifying about it happens
+		// outside the try/catch so it can't be mistaken for an activation failure.
+		await this.workflowPushNotifier.notify(workflowId, {
+			type: 'workflowActivated',
+			data: { workflowId },
+		});
+
+		// Not awaited: a relay failure must not fail this pubsub handler.
+		void this.publisher
+			.publishCommand({
+				command: 'display-workflow-activation',
+				payload: { workflowId },
+			}) // instruct followers to show activation in UI
+			.catch((error) => this.errorReporter.error(ensureError(error), { shouldBeLogged: true }));
 	}
 
 	/**
@@ -950,7 +968,10 @@ export class ActiveWorkflowManager {
 		await this.removeActivationError(workflowId);
 		await this.removeWorkflowTriggersAndPollers(workflowId);
 
-		this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
+		await this.workflowPushNotifier.notify(workflowId, {
+			type: 'workflowDeactivated',
+			data: { workflowId },
+		});
 
 		// instruct followers to show workflow deactivation in UI
 		await this.publisher.publishCommand({

@@ -8,7 +8,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { toPathSegment } from '@utils/url';
+
 import type { Connector, ElasticSecurityApiCredentials } from './types';
+
+export function buildDeleteCasesEndpoint(caseId: unknown): string {
+	return `/cases?ids=${encodeURIComponent(JSON.stringify([String(caseId)]))}`;
+}
 
 export function tolerateTrailingSlash(baseUrl: string) {
 	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
@@ -109,7 +115,7 @@ export async function handleListing(
  * https://www.elastic.co/guide/en/kibana/master/get-connector-api.html
  */
 export async function getConnector(this: IExecuteFunctions, connectorId: string) {
-	const endpoint = `/actions/connector/${connectorId}`;
+	const endpoint = `/actions/connector/${toPathSegment(connectorId)}`;
 	const {
 		id,
 		name,

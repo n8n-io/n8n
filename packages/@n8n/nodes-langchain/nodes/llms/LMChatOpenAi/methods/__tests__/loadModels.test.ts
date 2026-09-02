@@ -1,4 +1,5 @@
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import OpenAI from 'openai';
 
 import { searchModels } from '../loadModels';
@@ -15,6 +16,14 @@ describe('searchModels', () => {
 				apiKey: 'test-api-key',
 			}),
 			getNodeParameter: jest.fn().mockReturnValue(''),
+			getNode: jest.fn().mockReturnValue({
+				id: '1',
+				name: 'Test Node',
+				type: 'test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode),
 		} as unknown as jest.Mocked<ILoadOptionsFunctions>;
 
 		// Setup OpenAI mock with required properties
@@ -154,6 +163,75 @@ describe('searchModels', () => {
 			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
 			{ name: 'gpt-4', value: 'gpt-4' },
 		]);
+	});
+
+	it('should reject a base URL override that the credential does not allow', async () => {
+		mockContext.getCredentials.mockResolvedValueOnce({
+			apiKey: 'test-api-key',
+			url: 'https://api.openai.com/v1',
+			allowedHttpRequestDomains: 'none',
+		});
+		mockContext.getNodeParameter = jest.fn().mockReturnValue('https://custom-api.com/v1');
+
+		await expect(searchModels.call(mockContext)).rejects.toThrow(NodeOperationError);
+		expect(mockOpenAI).not.toHaveBeenCalled();
+	});
+
+	it('should allow a base URL override matching the credential URL', async () => {
+		mockContext.getCredentials.mockResolvedValueOnce({
+			apiKey: 'test-api-key',
+			url: 'https://api.openai.com/v1',
+			allowedHttpRequestDomains: 'none',
+		});
+		mockContext.getNodeParameter = jest.fn().mockReturnValue('https://api.openai.com/v1');
+
+		await searchModels.call(mockContext);
+
+		expect(mockOpenAI).toHaveBeenCalledWith(
+			expect.objectContaining({ baseURL: 'https://api.openai.com/v1' }),
+		);
+	});
+
+	it('should reject a base URL override outside the allowed domains list', async () => {
+		mockContext.getCredentials.mockResolvedValueOnce({
+			apiKey: 'test-api-key',
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'example.com',
+		});
+		mockContext.getNodeParameter = jest.fn().mockReturnValue('https://custom-api.com/v1');
+
+		await expect(searchModels.call(mockContext)).rejects.toThrow(NodeOperationError);
+		expect(mockOpenAI).not.toHaveBeenCalled();
+	});
+
+	it('should allow a base URL override within the allowed domains list', async () => {
+		mockContext.getCredentials.mockResolvedValueOnce({
+			apiKey: 'test-api-key',
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'example.com',
+		});
+		mockContext.getNodeParameter = jest.fn().mockReturnValue('https://example.com/v1');
+
+		await searchModels.call(mockContext);
+
+		expect(mockOpenAI).toHaveBeenCalledWith(
+			expect.objectContaining({ baseURL: 'https://example.com/v1' }),
+		);
+	});
+
+	it('should not restrict the credential URL when no override is set', async () => {
+		mockContext.getCredentials.mockResolvedValueOnce({
+			apiKey: 'test-api-key',
+			url: 'https://my-proxy.internal/v1',
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'example.com',
+		});
+
+		await searchModels.call(mockContext);
+
+		expect(mockOpenAI).toHaveBeenCalledWith(
+			expect.objectContaining({ baseURL: 'https://my-proxy.internal/v1' }),
+		);
 	});
 
 	it('should return models sorted alphabetically by id', async () => {

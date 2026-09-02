@@ -109,8 +109,9 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 
 	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
 		const { connections } = this;
+		const userIdSet = new Set(userIds);
 		const userPushRefs = Object.keys(connections).filter((pushRef) =>
-			userIds.includes(this.userIdByPushRef[pushRef]),
+			userIdSet.has(this.userIdByPushRef[pushRef]),
 		);
 
 		this.sendTo(pushMsg, userPushRefs);

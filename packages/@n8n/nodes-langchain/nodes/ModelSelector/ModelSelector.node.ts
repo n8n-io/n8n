@@ -16,6 +16,7 @@ import {
 import { numberInputsProperty, configuredInputs } from './helpers';
 import { N8nLlmTracing } from '../llms/N8nLlmTracing';
 import { N8nNonEstimatingTracing } from '../llms/N8nNonEstimatingTracing';
+import { isRecord } from '../llms/redact-headers';
 
 interface ModeleSelectionRule {
 	modelIndex: number;
@@ -38,6 +39,20 @@ interface ModeleSelectionRule {
 		}>;
 		combinator: 'and' | 'or';
 	};
+}
+
+/**
+ * Read the header names a tracer declares as redacted. Duck-typed on purpose: a model may
+ * attach any tracer implementation, so match on the declared list, not on a tracer class.
+ */
+function getDeclaredRedactedHeaders(tracer: unknown): string[] {
+	if (!isRecord(tracer) || !isRecord(tracer.options)) return [];
+
+	const { redactedHeaders } = tracer.options;
+
+	return Array.isArray(redactedHeaders)
+		? redactedHeaders.filter((name) => typeof name === 'string')
+		: [];
 }
 
 function getCallbacksArray(
@@ -200,7 +215,11 @@ export class ModelSelector implements INodeType {
 						currentCallback.setParentRunIndex(this.getNextRunIndex());
 					}
 				}
-				const modelSelectorTracing = new N8nNonEstimatingTracing(this);
+
+				// This node records the same serialized model as the model's own tracer,
+				// so it masks whatever header names that tracer declares.
+				const redactedHeaders = originalCallbacks.flatMap(getDeclaredRedactedHeaders);
+				const modelSelectorTracing = new N8nNonEstimatingTracing(this, { redactedHeaders });
 				selectedModel.callbacks = [...originalCallbacks, modelSelectorTracing];
 
 				return {

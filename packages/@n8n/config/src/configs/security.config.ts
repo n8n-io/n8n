@@ -25,7 +25,7 @@ export class SecurityConfig {
 	 * Set to empty to not block based on file patterns.
 	 */
 	@Env('N8N_BLOCK_FILE_PATTERNS')
-	blockFilePatterns: string = '^(.*\\/)*\\.git(\\/.*)*$';
+	blockFilePatterns: string = '^(?:[^/]*/)*\\.git(?:/.*)?$';
 
 	/**
 	 * In a [security audit](https://docs.n8n.io/hosting/securing/security-audit/), how many days for a workflow to be considered abandoned if not executed.

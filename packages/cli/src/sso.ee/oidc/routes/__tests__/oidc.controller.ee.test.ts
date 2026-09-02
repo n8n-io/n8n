@@ -7,6 +7,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
@@ -144,6 +145,30 @@ describe('OidcController', () => {
 			await expect(controller.callbackHandler(req, res)).rejects.toThrow('OIDC login failed');
 
 			// Verify that issueCookie was not called when login fails
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		test('Should not issue a session when OIDC is disabled during the login flow', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+
+			// loginUser resolves, but OIDC is disabled while it was awaiting: the
+			// pre-issue re-check must reject before a cookie is minted.
+			oidcService.loginUser.mockResolvedValueOnce(user);
+			oidcService.assertOidcLoginEnabled.mockImplementationOnce(() => {
+				throw new ForbiddenError('OIDC login is not enabled');
+			});
+
+			await expect(controller.callbackHandler(req, res)).rejects.toThrow(ForbiddenError);
+
 			expect(authService.issueCookie).not.toHaveBeenCalled();
 			expect(res.redirect).not.toHaveBeenCalled();
 		});

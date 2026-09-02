@@ -24,6 +24,8 @@ import { EventMessageNode } from '@/eventbus/event-message-classes/event-message
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
@@ -34,6 +36,8 @@ describe('ExecutionRecoveryService', () => {
 	const instanceSettings = Container.get(InstanceSettings);
 	const ownershipService = mockInstance(OwnershipService);
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
+	const workflowSharingService = mockInstance(WorkflowSharingService);
+	const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
@@ -56,11 +60,13 @@ describe('ExecutionRecoveryService', () => {
 			mock(),
 			ownershipService,
 			projectRelationRepository,
+			workflowPushNotifier,
 		);
 	});
 
 	beforeEach(() => {
 		instanceSettings.markAsLeader();
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue([]);
 	});
 
 	afterEach(async () => {
@@ -143,6 +149,44 @@ describe('ExecutionRecoveryService', () => {
 
 				expect(amendedExecution.status).toBe('crashed');
 				expect(amendedExecution.stoppedAt).not.toBe(execution.stoppedAt);
+			});
+
+			test('pushes `executionRecovered` only to users with workflow access, once a client connects', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const execution = await createExecution(
+					{
+						status: 'running',
+						data: stringify(IN_PROGRESS_EXECUTION_DATA),
+					},
+					workflow,
+				);
+				workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(['user-1']);
+				let editorUiConnectedCallback: (() => Promise<void>) | undefined;
+				push.once.mockImplementation((event: string, callback: () => Promise<void>) => {
+					if (event === 'editorUiConnected') editorUiConnectedCallback = callback;
+					return push;
+				});
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.recoverFromLogs(execution.id, []);
+				expect(editorUiConnectedCallback).toBeDefined();
+				await editorUiConnectedCallback?.();
+
+				/**
+				 * Assert
+				 */
+				expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+					workflow.id,
+				);
+				expect(push.sendToUsers).toHaveBeenCalledWith(
+					{ type: 'executionRecovered', data: { executionId: execution.id } },
+					['user-1'],
+				);
 			});
 		});
 
@@ -448,6 +492,50 @@ describe('ExecutionRecoveryService', () => {
 				const updatedWorkflow = await getWorkflowById(workflow.id);
 				if (!updatedWorkflow) fail('Expected `updatedWorkflow` to be defined');
 				expect(updatedWorkflow.activeVersionId).toBeNull();
+			});
+
+			test('pushes `workflowAutoDeactivated` only to users with workflow access, once a client connects', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
+
+				const workflow = await createActiveWorkflow({
+					...OOM_WORKFLOW,
+				});
+				await createExecution({ status: 'crashed' }, workflow);
+				await createExecution({ status: 'crashed' }, workflow);
+				await createExecution({ status: 'crashed' }, workflow);
+
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: uuid(), type: 'personal' }),
+				);
+				ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: uuid() }));
+				projectRelationRepository.find.mockResolvedValue([]);
+				workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(['user-1']);
+				let editorUiConnectedCallback: (() => Promise<void>) | undefined;
+				push.once.mockImplementation((event: string, callback: () => Promise<void>) => {
+					if (event === 'editorUiConnected') editorUiConnectedCallback = callback;
+					return push;
+				});
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.autoDeactivateWorkflowsIfNeeded(new Set([workflow.id]));
+				expect(editorUiConnectedCallback).toBeDefined();
+				await editorUiConnectedCallback?.();
+
+				/**
+				 * Assert
+				 */
+				expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith(
+					workflow.id,
+				);
+				expect(push.sendToUsers).toHaveBeenCalledWith(
+					{ type: 'workflowAutoDeactivated', data: { workflowId: workflow.id } },
+					['user-1'],
+				);
 			});
 		});
 	});

@@ -22,6 +22,7 @@ import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -40,6 +41,7 @@ export class ExecutionRecoveryService {
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly ownershipService: OwnershipService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
 	) {}
 
 	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
@@ -80,7 +82,10 @@ export class ExecutionRecoveryService {
 
 					this.push.once('editorUiConnected', async () => {
 						await sleep(1000);
-						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+						await this.workflowPushNotifier.notify(workflowId, {
+							type: 'workflowAutoDeactivated',
+							data: { workflowId },
+						});
 					});
 				}
 
@@ -110,9 +115,14 @@ export class ExecutionRecoveryService {
 
 		await this.runHooks(amendedExecution);
 
+		const { workflowId } = amendedExecution;
+
 		this.push.once('editorUiConnected', async () => {
 			await sleep(1000);
-			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
+			await this.workflowPushNotifier.notify(workflowId, {
+				type: 'executionRecovered',
+				data: { executionId },
+			});
 		});
 
 		return amendedExecution;

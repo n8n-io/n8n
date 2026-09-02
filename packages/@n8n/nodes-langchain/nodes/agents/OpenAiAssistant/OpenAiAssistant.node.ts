@@ -14,6 +14,7 @@ import { getConnectedTools } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
@@ -337,6 +338,10 @@ export class OpenAiAssistant implements INodeType {
 
 				if (input === undefined) {
 					throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
+				}
+
+				if (options.baseURL) {
+					assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 				}
 
 				const client = new OpenAIClient({

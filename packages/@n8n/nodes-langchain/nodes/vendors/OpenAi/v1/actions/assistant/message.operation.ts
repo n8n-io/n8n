@@ -22,6 +22,7 @@ import { promptTypeOptions } from '@utils/descriptions';
 import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
+import { assertOpenAiCredentialAllowsUrl } from '../../../helpers/credentials';
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
 import { getProxyAgent } from '@utils/httpProxyAgent';
@@ -177,6 +178,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		timeout: number;
 		preserveOriginalTools?: boolean;
 	};
+
+	if (options.baseURL) {
+		assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
+	}
 
 	const baseURL = (options.baseURL ?? credentials.url) as string;
 
