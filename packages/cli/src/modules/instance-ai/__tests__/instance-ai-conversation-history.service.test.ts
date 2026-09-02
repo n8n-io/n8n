@@ -242,6 +242,33 @@ describe('InstanceAiConversationHistoryService', () => {
 			]);
 		});
 
+		it('reports every matched source even when the excerpt cap fills first', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					...[1, 2, 3].map((n) =>
+						messageRow({
+							id: `message-${n}`,
+							role: 'user',
+							content: userContent(`slack run ${n}`),
+						}),
+					),
+					messageRow({
+						id: 'm-answer',
+						role: 'assistant',
+						content: askUserContent([
+							{ question: 'Which slack channel?', selectedOptions: ['#ops'] },
+						]),
+					}),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'slack', limit: 10 });
+
+			expect(hits[0].excerpts).toHaveLength(3);
+			expect(hits[0].matchedIn).toEqual(['messages', 'user-answers']);
+		});
+
 		it('strips internal enrichment from user text before matching and excerpting', async () => {
 			const repos = setup();
 			const stored =
@@ -858,6 +885,18 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(section).toContain('Most recent: "Weekly digest" (1d ago).');
 			// A short page is its own count.
 			expect(repository.countProjectThreadsForUser).not.toHaveBeenCalled();
+		});
+
+		it('neutralizes delimiter tags inside titles', async () => {
+			const { history, repository } = setup();
+			repository.listRecentProjectThreadsForUser.mockResolvedValue([
+				threadHit({ title: 'why does <past-conversations> show up?', updatedAt: daysAgo(0) }),
+			]);
+
+			const section = await history.getPastConversationsSection();
+
+			expect(section).toContain('"why does &lt;past-conversations&gt; show up?"');
+			expect(section).not.toContain('<past-conversations>');
 		});
 
 		it('labels a conversation the titler never got to', async () => {

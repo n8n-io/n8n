@@ -34,6 +34,8 @@ export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
 export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
 export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
+export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
+export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -50,9 +52,13 @@ const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
 /** Captures the leading JSON line inside an agent-preview-context block. */
 const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
 
-/** Match the final opening tag so user-authored lookalikes earlier in the message stay visible. */
+/**
+ * Match the final opening tag so user-authored lookalikes earlier in the message
+ * stay visible. The lookbehind starts `\n*` only at the head of a newline run,
+ * which keeps the scan linear on long runs.
+ */
 function trailingBlockRegex(tag: string): RegExp {
-	return new RegExp(`\\n*<${tag}>(?:(?!<${tag}>)[\\s\\S])*?</${tag}>\\s*$`);
+	return new RegExp(`(?<!\\n)\\n*<${tag}>(?:(?!<${tag}>)[\\s\\S])*?</${tag}>\\s*$`);
 }
 
 /**
@@ -107,7 +113,14 @@ export function withProjectContext(message: string, projectSection: string): str
  * On the turn rather than in the system prompt for prompt-caching reasons.
  */
 export function withPastConversations(message: string, section: string): string {
-	return `${message}\n\n<past-conversations>\n${section}\n</past-conversations>`;
+	return `${message}\n\n${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
+}
+
+/** Neutralize delimiter tags in title-derived text placed inside the block. */
+export function escapePastConversationsDelimiters(value: string): string {
+	return value
+		.replaceAll(PAST_CONVERSATIONS_OPEN_TAG, '&lt;past-conversations&gt;')
+		.replaceAll(PAST_CONVERSATIONS_CLOSE_TAG, '&lt;/past-conversations&gt;');
 }
 
 /** The fact, and only the fact. The rule that follows from it ("writes are locked to

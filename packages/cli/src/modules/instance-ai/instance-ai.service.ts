@@ -3954,7 +3954,11 @@ export class InstanceAiService {
 									title: truncateToTitle(handoffTitle),
 									metadata: { ...metadata, titleRefined: true },
 								}
-							: { title: truncateToTitle(message) },
+							: // Attachment-only openers keep a title too, so the opening-turn signal holds.
+								{
+									title:
+										truncateToTitle(message) || truncateToTitle(fileAttachments[0]?.fileName ?? ''),
+								},
 				});
 			}
 

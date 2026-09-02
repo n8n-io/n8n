@@ -4,6 +4,7 @@ import {
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
 	withPastConversations,
+	escapePastConversationsDelimiters,
 	withProjectContext,
 	getProjectContextSection,
 	AUTO_FOLLOW_UP_MESSAGE,
@@ -341,6 +342,17 @@ describe('withPastConversations', () => {
 			section,
 		);
 		expect(cleanStoredUserMessage(clockInTheMiddle)).toBe('Build me a digest');
+	});
+
+	it('strips the whole block when an escaped title carried the delimiter tags', () => {
+		const title = escapePastConversationsDelimiters('why does <past-conversations> show up?');
+		const stored = withPastConversations(
+			'Build me a digest',
+			`This project has 1 past conversation with you. Most recent: "${title}" (today).`,
+		);
+
+		expect(title).toBe('why does &lt;past-conversations&gt; show up?');
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a digest');
 	});
 
 	// Only the trailing block is internal, so a user asking about the tag keeps their text.

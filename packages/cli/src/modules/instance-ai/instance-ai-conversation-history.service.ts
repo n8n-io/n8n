@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 import { ASK_USER_TOOL_NAME, TOOL_CALL_PART_TYPES } from './conversation-history-content';
 import type { InstanceAiMessage } from './entities/instance-ai-message.entity';
-import { cleanStoredUserMessage } from './internal-messages';
+import { cleanStoredUserMessage, escapePastConversationsDelimiters } from './internal-messages';
 import { extractTextFromContent } from './message-parser';
 import {
 	InstanceAiConversationHistoryRepository,
@@ -281,7 +281,7 @@ export class InstanceAiConversationHistoryService {
 			const recent = rows
 				.map(
 					(row) =>
-						`"${row.title.trim() || '(untitled)'}" (${formatConversationAge(row.updatedAt, nowMs)})`,
+						`"${escapePastConversationsDelimiters(row.title.trim()) || '(untitled)'}" (${formatConversationAge(row.updatedAt, nowMs)})`,
 				)
 				.join(', ');
 			const count = total === 1 ? '1 past conversation' : `${total} past conversations`;
@@ -406,8 +406,6 @@ export class InstanceAiConversationHistoryService {
 		let matchedInAnswers = false;
 
 		for (const row of candidates) {
-			if (excerpts.length >= MAX_EXCERPTS_PER_THREAD) break;
-
 			const parsed = parseStoredContent(row.content);
 			if (!parsed) continue;
 
@@ -422,11 +420,13 @@ export class InstanceAiConversationHistoryService {
 			if (isUserRow) matchedInMessages = true;
 			else matchedInAnswers = true;
 
-			excerpts.push({
-				messageId: row.id,
-				text: centerExcerpt(text, matchIndex, needle.length),
-				createdAt: row.createdAt.toISOString(),
-			});
+			if (excerpts.length < MAX_EXCERPTS_PER_THREAD) {
+				excerpts.push({
+					messageId: row.id,
+					text: centerExcerpt(text, matchIndex, needle.length),
+					createdAt: row.createdAt.toISOString(),
+				});
+			}
 		}
 
 		return { excerpts, matchedInMessages, matchedInAnswers };
