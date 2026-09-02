@@ -27,7 +27,7 @@ export default defineConfig(
 			'@n8n/community-nodes/node-class-description-icon-missing': 'warn',
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'warn',
 			'n8n-local-rules/no-dynamic-regexp': 'error',
-			'n8n-local-rules/require-escaped-query-values': 'warn',
+			'n8n-local-rules/require-escaped-query-values': 'error',
 
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
