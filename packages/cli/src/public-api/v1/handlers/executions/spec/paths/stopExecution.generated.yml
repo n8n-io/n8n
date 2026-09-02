@@ -46,7 +46,9 @@ responses:
               description: The time at which the execution stopped. Absent when no stop time was recorded.
             finished:
               type: boolean
+              description: Whether the execution ran to completion. Use `status` instead.
               example: false
+              deprecated: true
             status:
               type: string
               enum:
