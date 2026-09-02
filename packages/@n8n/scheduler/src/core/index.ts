@@ -53,17 +53,27 @@ export type {
 	DispatchDecision,
 	BackoffOptions,
 } from './executor';
-export { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
+export {
+	DEFAULT_MATERIALIZER_OPTIONS,
+	materialize,
+	totalDiscarded,
+	ownerKeyFor,
+	withOwnerKeys,
+} from './materializer';
 export type {
 	MaterializerOptions,
 	MaterializerSummary,
 	MisfireCount,
 	NewOccurrence,
 	RunInTransaction,
+	ScheduledJobOwner,
 } from './materializer';
 export { pollLookaheadSeconds } from './lifecycle';
 export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
 export type { ReaperOptions, ReapResult } from './reaper';
+export { ScheduledJobOwnerRegistry } from './reconciliation';
+export type { ScheduledJobOwnerResolver } from './reconciliation';
+export { DuplicateOwnerResolverError, InvalidOwnerTypeError } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 
 export { SpanStatus, noopTracer } from '../observability/tracer';

@@ -58,3 +58,29 @@ export class CorruptStorageRowError extends Error {
 		this.name = 'CorruptStorageRowError';
 	}
 }
+
+/**
+ * Raised when an owner type is registered with an unusable name: empty, or
+ * too long to store.
+ */
+export class InvalidOwnerTypeError extends Error {
+	constructor(
+		readonly ownerType: string,
+		readonly maxLength: number,
+	) {
+		super('Scheduled job owner type must be non-empty and fit its length limit');
+		this.name = 'InvalidOwnerTypeError';
+	}
+}
+
+/**
+ * Raised when a second resolver is registered for an owner type that already
+ * has one: a wiring bug at the callsite, caught at registration so the losing
+ * resolver doesn't silently shadow the other.
+ */
+export class DuplicateOwnerResolverError extends Error {
+	constructor(readonly ownerType: string) {
+		super('A resolver for this scheduled job owner type is already registered');
+		this.name = 'DuplicateOwnerResolverError';
+	}
+}
