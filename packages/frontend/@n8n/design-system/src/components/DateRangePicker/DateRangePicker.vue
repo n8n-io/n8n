@@ -359,4 +359,13 @@ const forwarded = useForwardPropsEmits(props, emit);
 		transform: translateX(0);
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.PopoverContent[data-state='open'][data-side='top'],
+	.PopoverContent[data-state='open'][data-side='right'],
+	.PopoverContent[data-state='open'][data-side='bottom'],
+	.PopoverContent[data-state='open'][data-side='left'] {
+		animation: none;
+	}
+}
 </style>

@@ -25,23 +25,23 @@ exports[`TableHeaderControlsButton > should render correctly with all columns hi
       <div style="display: flex; flex-direction: column; gap: 2;" data-testid="hidden-columns-section">
         <h4 class="header">Hidden columns</h4>
         <fieldset class="column hidden" data-testid="hidden-column" data-column-key="col1">
-          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><label>Column 1</label>
+          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><span>Column 1</span>
           <n8n-icon-stub icon="eye-off" spin="false" class="visibilityToggle" data-testid="visibility-toggle-hidden"></n8n-icon-stub>
         </fieldset>
         <fieldset class="column hidden" data-testid="hidden-column" data-column-key="col2">
-          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><label>Column 2</label>
+          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><span>Column 2</span>
           <n8n-icon-stub icon="eye-off" spin="false" class="visibilityToggle" data-testid="visibility-toggle-hidden"></n8n-icon-stub>
         </fieldset>
         <fieldset class="column hidden" data-testid="hidden-column" data-column-key="col3">
-          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><label>Column 3</label>
+          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><span>Column 3</span>
           <n8n-icon-stub icon="eye-off" spin="false" class="visibilityToggle" data-testid="visibility-toggle-hidden"></n8n-icon-stub>
         </fieldset>
         <fieldset class="column hidden" data-testid="hidden-column" data-column-key="col4">
-          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><label>Column 4</label>
+          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><span>Column 4</span>
           <n8n-icon-stub icon="eye-off" spin="false" class="visibilityToggle" data-testid="visibility-toggle-hidden"></n8n-icon-stub>
         </fieldset>
         <fieldset class="column hidden" data-testid="hidden-column" data-column-key="col5">
-          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><label>Column 5</label>
+          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><span>Column 5</span>
           <n8n-icon-stub icon="eye-off" spin="false" class="visibilityToggle" data-testid="visibility-toggle-hidden"></n8n-icon-stub>
         </fieldset>
       </div>
@@ -62,35 +62,35 @@ exports[`TableHeaderControlsButton > should render correctly with all columns vi
         <div class="columnWrapper">
           <!--v-if-->
           <fieldset class="column draggable" draggable="true" data-testid="visible-column" data-column-key="col1">
-            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><label>Column 1</label>
+            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><span>Column 1</span>
             <n8n-icon-stub icon="eye" spin="false" class="visibilityToggle" data-testid="visibility-toggle-visible"></n8n-icon-stub>
           </fieldset>
         </div>
         <div class="columnWrapper">
           <!--v-if-->
           <fieldset class="column draggable" draggable="true" data-testid="visible-column" data-column-key="col2">
-            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><label>Column 2</label>
+            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><span>Column 2</span>
             <n8n-icon-stub icon="eye" spin="false" class="visibilityToggle" data-testid="visibility-toggle-visible"></n8n-icon-stub>
           </fieldset>
         </div>
         <div class="columnWrapper">
           <!--v-if-->
           <fieldset class="column draggable" draggable="true" data-testid="visible-column" data-column-key="col3">
-            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><label>Column 3</label>
+            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><span>Column 3</span>
             <n8n-icon-stub icon="eye" spin="false" class="visibilityToggle" data-testid="visibility-toggle-visible"></n8n-icon-stub>
           </fieldset>
         </div>
         <div class="columnWrapper">
           <!--v-if-->
           <fieldset class="column draggable" draggable="true" data-testid="visible-column" data-column-key="col4">
-            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><label>Column 4</label>
+            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><span>Column 4</span>
             <n8n-icon-stub icon="eye" spin="false" class="visibilityToggle" data-testid="visibility-toggle-visible"></n8n-icon-stub>
           </fieldset>
         </div>
         <div class="columnWrapper">
           <!--v-if-->
           <fieldset class="column draggable" draggable="true" data-testid="visible-column" data-column-key="col5">
-            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><label>Column 5</label>
+            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><span>Column 5</span>
             <n8n-icon-stub icon="eye" spin="false" class="visibilityToggle" data-testid="visibility-toggle-visible"></n8n-icon-stub>
           </fieldset>
         </div><!-- Drop zone at the end -->
@@ -116,21 +116,21 @@ exports[`TableHeaderControlsButton > should render correctly with mixed visible 
         <div class="columnWrapper">
           <!--v-if-->
           <fieldset class="column draggable" draggable="true" data-testid="visible-column" data-column-key="col1">
-            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><label>Column 1</label>
+            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><span>Column 1</span>
             <n8n-icon-stub icon="eye" spin="false" class="visibilityToggle" data-testid="visibility-toggle-visible"></n8n-icon-stub>
           </fieldset>
         </div>
         <div class="columnWrapper">
           <!--v-if-->
           <fieldset class="column draggable" draggable="true" data-testid="visible-column" data-column-key="col2">
-            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><label>Column 2</label>
+            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><span>Column 2</span>
             <n8n-icon-stub icon="eye" spin="false" class="visibilityToggle" data-testid="visibility-toggle-visible"></n8n-icon-stub>
           </fieldset>
         </div>
         <div class="columnWrapper">
           <!--v-if-->
           <fieldset class="column draggable" draggable="true" data-testid="visible-column" data-column-key="col4">
-            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><label>Column 4</label>
+            <n8n-icon-stub icon="grip-vertical" spin="false" class="grip"></n8n-icon-stub><span>Column 4</span>
             <n8n-icon-stub icon="eye" spin="false" class="visibilityToggle" data-testid="visibility-toggle-visible"></n8n-icon-stub>
           </fieldset>
         </div><!-- Drop zone at the end -->
@@ -141,11 +141,11 @@ exports[`TableHeaderControlsButton > should render correctly with mixed visible 
       <div style="display: flex; flex-direction: column; gap: 2;" data-testid="hidden-columns-section">
         <h4 class="header">Hidden columns</h4>
         <fieldset class="column hidden" data-testid="hidden-column" data-column-key="col3">
-          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><label>Column 3</label>
+          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><span>Column 3</span>
           <n8n-icon-stub icon="eye-off" spin="false" class="visibilityToggle" data-testid="visibility-toggle-hidden"></n8n-icon-stub>
         </fieldset>
         <fieldset class="column hidden" data-testid="hidden-column" data-column-key="col5">
-          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><label>Column 5</label>
+          <n8n-icon-stub icon="grip-vertical" spin="false" class="grip hidden"></n8n-icon-stub><span>Column 5</span>
           <n8n-icon-stub icon="eye-off" spin="false" class="visibilityToggle" data-testid="visibility-toggle-hidden"></n8n-icon-stub>
         </fieldset>
       </div>

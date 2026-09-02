@@ -7,7 +7,7 @@ exports[`N8nEmptyState > should render correctly with emoji 1`] = `
     <div class="heading">
       <n8n-heading-stub align="center" tag="span" bold="false" size="xlarge"></n8n-heading-stub>
     </div>
-    <div class="description">
+    <div class="description" role="button" tabindex="0">
       <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
     </div>
   </div>
@@ -26,7 +26,7 @@ exports[`N8nEmptyState > should render correctly with icon 1`] = `
     <div class="heading">
       <n8n-heading-stub align="center" tag="span" bold="false" size="xlarge"></n8n-heading-stub>
     </div>
-    <div class="description">
+    <div class="description" role="button" tabindex="0">
       <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
     </div>
   </div>

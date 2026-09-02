@@ -60,11 +60,12 @@ watch(
 );
 
 const emit = defineEmits<{
-	tooltipClick: [tab: Value, e: MouseEvent];
+	tooltipClick: [tab: Value, e: MouseEvent | KeyboardEvent];
 	'update:modelValue': [tab: Value];
 }>();
 
-const handleTooltipClick = (tab: Value, event: MouseEvent) => emit('tooltipClick', tab, event);
+const handleTooltipClick = (tab: Value, event: MouseEvent | KeyboardEvent) =>
+	emit('tooltipClick', tab, event);
 const handleTabClick = (option: TabOptions<Value>) => {
 	if (option.disabled) return;
 	emit('update:modelValue', option.value);
@@ -90,12 +91,12 @@ const scrollRight = () => scroll(50);
 			justified ? $style.justified : '',
 		]"
 	>
-		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
+		<button v-if="scrollPosition > 0" type="button" :class="$style.back" @click="scrollLeft">
 			<N8nIcon :class="$style.positionIcon" icon="chevron-left" size="small" />
-		</div>
-		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
+		</button>
+		<button v-if="canScrollRight" type="button" :class="$style.next" @click="scrollRight">
 			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
-		</div>
+		</button>
 		<div ref="tabs" role="tablist" :class="$style.tabs">
 			<div
 				v-for="option in options"
@@ -106,7 +107,14 @@ const scrollRight = () => scroll(50);
 			>
 				<N8nTooltip :disabled="!option.tooltip" placement="bottom" :show-after="100">
 					<template #content>
-						<div v-n8n-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
+						<div
+							v-n8n-html="option.tooltip"
+							role="button"
+							tabindex="0"
+							@click="handleTooltipClick(option.value, $event)"
+							@keydown.enter="handleTooltipClick(option.value, $event)"
+							@keydown.space.prevent="handleTooltipClick(option.value, $event)"
+						/>
 					</template>
 					<!-- Disabled link/router tabs fall through to the inert plain-tab branch
 					     below so they can't navigate and get consistent disabled styling. -->
@@ -365,6 +373,8 @@ const scrollRight = () => scroll(50);
 
 .button {
 	position: absolute;
+	border: 0;
+	font: inherit;
 	background-color: var(--tabs--arrow-buttons--color, var(--color--foreground--tint-2));
 	z-index: 1;
 	height: 24px;

@@ -11,6 +11,7 @@ exports[`component > Text overflow behavior > displays ellipsis with options 1`]
     >
       <label
         class="n8n-input-label inputLabel heading medium"
+        role="presentation"
       >
         <div
           class="main-content"
@@ -56,6 +57,7 @@ exports[`component > Text overflow behavior > displays full text without options
     >
       <label
         class="n8n-input-label inputLabel heading medium"
+        role="presentation"
       >
         <div
           class="main-content"

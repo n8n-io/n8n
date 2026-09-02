@@ -108,4 +108,10 @@ const classes = computed(() => ({
 	cursor: default;
 	width: var(--card--append--width, unset);
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.hoverable {
+		transition: none;
+	}
+}
 </style>

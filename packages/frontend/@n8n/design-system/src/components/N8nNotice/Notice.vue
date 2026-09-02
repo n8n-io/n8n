@@ -69,9 +69,9 @@ const onClick = (event: MouseEvent) => {
 </script>
 
 <template>
-	<div :id="id" :class="classes" role="alert" @click="onClick">
+	<div :id="id" :class="classes" role="alert">
 		<div class="notice-content">
-			<N8nText size="small" :compact="compact">
+			<N8nText size="small" :compact="compact" @click="onClick">
 				<slot>
 					<span
 						:id="`${id}-content`"

@@ -45,6 +45,7 @@ let dragOffsetY = 0;
 
 // --- Resize state ---
 type ResizeEdge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+const resizeHandleRole = 'separator';
 const isResizing = ref(false);
 let resizeEdge: ResizeEdge = 's';
 let resizeStartX = 0;
@@ -205,6 +206,64 @@ function onResizeMouseMove(event: MouseEvent) {
 	currentHeight.value = newH;
 }
 
+function resizeWithKeyboard(edge: ResizeEdge, event: KeyboardEvent) {
+	const horizontalDelta = event.key === 'ArrowRight' ? 10 : event.key === 'ArrowLeft' ? -10 : 0;
+	const verticalDelta = event.key === 'ArrowDown' ? 10 : event.key === 'ArrowUp' ? -10 : 0;
+	if (horizontalDelta === 0 && verticalDelta === 0) return;
+
+	event.preventDefault();
+	let newX = x.value;
+	let newY = y.value;
+	let newWidth = currentWidth.value;
+	let newHeight = currentHeight.value;
+
+	if (edge.includes('e')) newWidth += horizontalDelta;
+	if (edge.includes('w')) {
+		newWidth -= horizontalDelta;
+		newX += horizontalDelta;
+	}
+	if (edge.includes('s')) newHeight += verticalDelta;
+	if (edge.includes('n')) {
+		newHeight -= verticalDelta;
+		newY += verticalDelta;
+	}
+
+	if (newWidth < props.minWidth) {
+		if (edge.includes('w')) newX -= props.minWidth - newWidth;
+		newWidth = props.minWidth;
+	}
+	if (newHeight < props.minHeight) {
+		if (edge.includes('n')) newY -= props.minHeight - newHeight;
+		newHeight = props.minHeight;
+	}
+	newWidth = Math.min(newWidth, window.innerWidth - newX);
+	newHeight = Math.min(newHeight, window.innerHeight - newY);
+
+	x.value = Math.max(0, newX);
+	y.value = Math.max(0, newY);
+	currentWidth.value = newWidth;
+	currentHeight.value = newHeight;
+	emit('resize', { width: currentWidth.value, height: currentHeight.value });
+	emit('move', { x: x.value, y: y.value });
+}
+
+function moveWithKeyboard(event: KeyboardEvent) {
+	const horizontalDelta = event.key === 'ArrowRight' ? 10 : event.key === 'ArrowLeft' ? -10 : 0;
+	const verticalDelta = event.key === 'ArrowDown' ? 10 : event.key === 'ArrowUp' ? -10 : 0;
+	if (horizontalDelta === 0 && verticalDelta === 0) return;
+
+	event.preventDefault();
+	const position = clampPosition(
+		x.value + horizontalDelta,
+		y.value + verticalDelta,
+		currentWidth.value,
+		currentHeight.value,
+	);
+	x.value = position.x;
+	y.value = position.y;
+	emit('move', { x: x.value, y: y.value });
+}
+
 function onResizeMouseUp() {
 	isResizing.value = false;
 	isInteracting.value = false;
@@ -259,38 +318,70 @@ defineExpose({ resetPosition });
 		<!-- Resize handles -->
 		<div
 			:class="[$style.resizeHandle, $style.resizeN]"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="onResizeMouseDown('n', $event)"
+			@keydown="resizeWithKeyboard('n', $event)"
 		/>
 		<div
 			:class="[$style.resizeHandle, $style.resizeS]"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="onResizeMouseDown('s', $event)"
+			@keydown="resizeWithKeyboard('s', $event)"
 		/>
 		<div
 			:class="[$style.resizeHandle, $style.resizeE]"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="onResizeMouseDown('e', $event)"
+			@keydown="resizeWithKeyboard('e', $event)"
 		/>
 		<div
 			:class="[$style.resizeHandle, $style.resizeW]"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="onResizeMouseDown('w', $event)"
+			@keydown="resizeWithKeyboard('w', $event)"
 		/>
 		<div
 			:class="[$style.resizeHandle, $style.resizeNE]"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="onResizeMouseDown('ne', $event)"
+			@keydown="resizeWithKeyboard('ne', $event)"
 		/>
 		<div
 			:class="[$style.resizeHandle, $style.resizeNW]"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="onResizeMouseDown('nw', $event)"
+			@keydown="resizeWithKeyboard('nw', $event)"
 		/>
 		<div
 			:class="[$style.resizeHandle, $style.resizeSE]"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="onResizeMouseDown('se', $event)"
+			@keydown="resizeWithKeyboard('se', $event)"
 		/>
 		<div
 			:class="[$style.resizeHandle, $style.resizeSW]"
+			:role="resizeHandleRole"
+			tabindex="0"
 			@mousedown="onResizeMouseDown('sw', $event)"
+			@keydown="resizeWithKeyboard('sw', $event)"
 		/>
 
-		<div :class="$style.header" @mousedown="onHeaderMouseDown" @dblclick="onHeaderDoubleClick">
+		<div
+			:class="$style.header"
+			role="button"
+			tabindex="0"
+			@mousedown="onHeaderMouseDown"
+			@dblclick="onHeaderDoubleClick"
+			@keydown="moveWithKeyboard"
+			@keydown.enter="onHeaderDoubleClick"
+		>
 			<div :class="$style.headerLeft">
 				<slot name="header-icon" />
 				<slot name="header" />

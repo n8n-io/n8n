@@ -481,4 +481,11 @@ onUnmounted(() => {
 	opacity: 1;
 	transform: translateX(-50%) translateY(0) scale(1);
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.command-bar-enter-active,
+	.command-bar-leave-active {
+		transition: none;
+	}
+}
 </style>
