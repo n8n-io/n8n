@@ -299,7 +299,14 @@ export function createDeepLazyProxy(
 				return arrayLength;
 			}
 
-			// Check cache - if already fetched, return cached value
+			if (Object.prototype.hasOwnProperty.call(targetObj, prop)) {
+				return targetObj[prop];
+			}
+
+			if (!isArray && objectKeys?.includes(prop)) {
+				return fetchAndCacheObjectValue(prop);
+			}
+
 			if (prop in targetObj) {
 				return targetObj[prop];
 			}
