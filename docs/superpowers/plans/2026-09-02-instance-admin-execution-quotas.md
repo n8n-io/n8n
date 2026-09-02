@@ -185,7 +185,7 @@ In `packages/cli/src/controllers/project.controller.ts`, add near the existing t
 
 Add `GlobalScope` to the existing `@n8n/decorators` import at the top of the file if it isn't already imported (check first — `ProjectController` may already import other decorators from that module).
 
-Note the route path is `/projects/execution-quota` (one segment after `/projects`), which does not collide with `/projects/:projectId/execution-quota` (two segments) — no routing ambiguity, declaration order doesn't matter here, but keep it grouped with the other execution-quota endpoints for readability.
+**Correction from implementation:** this note originally claimed `/projects/execution-quota` doesn't collide with anything and declaration order doesn't matter. That was wrong — it collides with `@Get('/:projectId')` (both are one segment after `/projects`), and this router resolves same-segment-count collisions by declaration order, not specificity. The real fix (applied in commit `928bee4512`) is to declare `/execution-quota` before `/:projectId` in the class body, grouped with the other literal single-segment routes like `/count`. Also note: this codebase's `@n8n/i18n` package's typecheck resolution can read a stale gitignored `dist/` build for newly-added i18n keys — a manual `pnpm --filter=@n8n/i18n run build` was needed in Tasks 4 and 5 before `vue-tsc` would see new keys.
 
 - [ ] **Step 3: Verify and test per whatever convention Step 1 found**
 
