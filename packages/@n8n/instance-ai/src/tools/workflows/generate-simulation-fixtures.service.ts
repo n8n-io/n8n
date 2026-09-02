@@ -161,14 +161,16 @@ function buildUpstreamContext(
  * needed: a node with no shape of its own contributes nothing and the walk
  * simply continues to its own parents.
  */
-const PASS_THROUGH_NODE_TYPES = new Set([
-	'n8n-nodes-base.wait',
-	// Both are AI roots, so a credentialless language-model sub-node can flip
-	// them to `simulate` (see withSimulatedCredentiallessAiRootVerdicts).
+const PASS_THROUGH_NODE_TYPES = new Map<string, readonly string[]>([
+	// Value = the keys the node adds ON TOP of its input. Empty means a pure
+	// pass-through, whose output is the input and nothing else.
+	['n8n-nodes-base.wait', []],
+	// Both AI roots below can be flipped to `simulate` by a credentialless
+	// language-model sub-node (see withSimulatedCredentiallessAiRootVerdicts).
 	// textClassifier routes its input onward untouched; sentimentAnalysis adds
 	// a `sentimentAnalysis` object to it.
-	'@n8n/n8n-nodes-langchain.textClassifier',
-	'@n8n/n8n-nodes-langchain.sentimentAnalysis',
+	['@n8n/n8n-nodes-langchain.textClassifier', []],
+	['@n8n/n8n-nodes-langchain.sentimentAnalysis', ['sentimentAnalysis']],
 ]);
 
 /** Hops to walk up before giving up on finding an upstream shape. */
@@ -178,6 +180,14 @@ type NamedNode = WorkflowJSON['nodes'][number] & { name: string };
 
 function hasFields(items: Array<Record<string, unknown>> | undefined): boolean {
 	return Boolean(items?.some((item) => Object.keys(item).length > 0));
+}
+
+function pickKeys(
+	item: Record<string, unknown> | undefined,
+	keys: readonly string[],
+): Record<string, unknown> {
+	if (!item || keys.length === 0) return {};
+	return Object.fromEntries(keys.filter((key) => key in item).map((key) => [key, item[key]]));
 }
 
 /**
@@ -238,7 +248,8 @@ function withPassThroughFloor(
 
 	for (const nodeName of Object.keys(fixtures)) {
 		const nodeType = typeByName.get(nodeName);
-		if (!nodeType || !PASS_THROUGH_NODE_TYPES.has(nodeType)) continue;
+		const addedKeys = nodeType ? PASS_THROUGH_NODE_TYPES.get(nodeType) : undefined;
+		if (!addedKeys) continue;
 		const borrowed = findUpstreamShape(
 			nodeName,
 			result,
@@ -248,10 +259,13 @@ function withPassThroughFloor(
 		);
 		if (!borrowed) continue;
 		const own = result[nodeName] ?? [];
-		const items = own.length > borrowed.length ? own : borrowed;
-		result[nodeName] = items.map((_, index) => ({
-			...(borrowed[index] ?? borrowed[0]),
-			...(own[index] ?? own[0]),
+		const ownShape = buildSchemaPlaceholderItem(resolveContext(nodeName), { now });
+		result[nodeName] = borrowed.map((item, index) => ({
+			...item,
+			// The node's own added keys, from its schema shape first so the key
+			// exists at all, then from its fixture where the model filled it in.
+			...pickKeys(ownShape, addedKeys),
+			...pickKeys(own[index] ?? own[0], addedKeys),
 		}));
 	}
 

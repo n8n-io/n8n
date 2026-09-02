@@ -461,10 +461,10 @@ describe('generateSimulationFixtures', () => {
 		]);
 	});
 
-	it('layers the upstream shape under a thin model-produced pass-through item', async () => {
-		// Every field the model leaves out of a pass-through item is a downstream
-		// expression that resolves to undefined.
-		setupAgentMock(JSON.stringify({ 'Wait 2 Days': [{ json: { onlyField: 'kept' } }] }));
+	it('drops a field the model invented for a pure pass-through node', async () => {
+		// A Wait emits its input and nothing else, so an extra field is wrong by
+		// construction — downstream would read something the real run never sees.
+		setupAgentMock(JSON.stringify({ 'Wait 2 Days': [{ json: { onlyField: 'invented' } }] }));
 		const workflow = wf([
 			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
 			{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
@@ -479,7 +479,7 @@ describe('generateSimulationFixtures', () => {
 			outputSchemaLookup: () => ({ type: 'object', properties: { email: { type: 'string' } } }),
 		});
 
-		expect(result['Wait 2 Days']).toEqual([{ email: 'sample', onlyField: 'kept' }]);
+		expect(result['Wait 2 Days']).toEqual([{ email: 'sample' }]);
 	});
 
 	it('does not borrow upstream data for a node that has its own output shape', async () => {
@@ -506,9 +506,9 @@ describe('generateSimulationFixtures', () => {
 		expect(result['Send Slack']).toEqual([{ ok: true }]);
 	});
 
-	it('layers the upstream shape under a partial fixture for a pass-through AI root', async () => {
-		// The model answers "what does this node emit" without knowing the run's
-		// data, so a classifier fixture routinely arrives missing the input.
+	it('rebuilds a pass-through AI root from its input', async () => {
+		// textClassifier routes items to a branch without reshaping them, so the
+		// `category` the model invented is not a field the real node emits.
 		setupAgentMock(JSON.stringify({ 'Route Ticket': [{ json: { category: 'billing' } }] }));
 		const workflow = wf([
 			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
@@ -527,7 +527,7 @@ describe('generateSimulationFixtures', () => {
 					: undefined,
 		});
 
-		expect(result['Route Ticket']).toEqual([{ email: 'sample', category: 'billing' }]);
+		expect(result['Route Ticket']).toEqual([{ email: 'sample' }]);
 	});
 
 	it('gives pass-through AI roots the upstream context their prompt block needs', async () => {
@@ -578,7 +578,10 @@ describe('generateSimulationFixtures', () => {
 		expect(result['Wait 2 Days']).toEqual([{ email: 'a@example.com' }, { email: 'b@example.com' }]);
 	});
 
-	it("keeps the model's own value when it conflicts with the borrowed shape", async () => {
+	it("prefers the upstream value over the model's inconsistent copy", async () => {
+		// Observed in a real run: the model invented a second Slack response for
+		// the Wait, with a different channel id and message text than the Slack
+		// node one hop up. The node cannot emit anything but its input.
 		setupAgentMock(JSON.stringify({ 'Wait 2 Days': [{ json: { email: 'real@example.com' } }] }));
 		const workflow = wf([
 			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
@@ -594,7 +597,32 @@ describe('generateSimulationFixtures', () => {
 			outputSchemaLookup: () => ({ type: 'object', properties: { email: { type: 'string' } } }),
 		});
 
-		expect(result['Wait 2 Days']).toEqual([{ email: 'real@example.com' }]);
+		expect(result['Wait 2 Days']).toEqual([{ email: 'sample' }]);
+	});
+
+	it("keeps the model's value for a key the node genuinely adds", async () => {
+		setupAgentMock(
+			JSON.stringify({
+				'Score Mood': [{ json: { sentimentAnalysis: { category: 'positive' } } }],
+			}),
+		);
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Score Mood', type: '@n8n/n8n-nodes-langchain.sentimentAnalysis' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Score Mood', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Score Mood')],
+			outputSchemaLookup: () => ({ type: 'object', properties: { email: { type: 'string' } } }),
+		});
+
+		expect(result['Score Mood']).toEqual([
+			{ email: 'sample', sentimentAnalysis: { category: 'positive' } },
+		]);
 	});
 
 	it('leaves a Wait empty rather than looping when its upstream cycles back', async () => {
