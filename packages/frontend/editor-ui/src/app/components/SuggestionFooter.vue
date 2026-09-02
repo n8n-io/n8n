@@ -1,27 +1,18 @@
 <script setup lang="ts">
 import { N8nText } from '@n8n/design-system';
 import { computed } from 'vue';
-import { usePostHog } from '@/app/stores/posthog.store';
-
-export type SuggestionLinkSource = { type: 'url'; url: string } | { type: 'posthog'; key: string };
 
 const props = defineProps<{
 	prompt: string;
 	action: string;
-	linkSource: SuggestionLinkSource;
+	url?: string;
 }>();
 
-const posthogStore = usePostHog();
-
 const suggestionUrl = computed(() => {
-	const url =
-		props.linkSource.type === 'url'
-			? props.linkSource.url
-			: posthogStore.getFeatureFlagPayload(props.linkSource.key);
-	if (typeof url !== 'string') return undefined;
+	if (!props.url) return undefined;
 
 	try {
-		return ['http:', 'https:'].includes(new URL(url).protocol) ? url : undefined;
+		return new URL(props.url).protocol === 'https:' ? props.url : undefined;
 	} catch {
 		return undefined;
 	}

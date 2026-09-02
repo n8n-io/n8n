@@ -12,6 +12,13 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 
 const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
+const getFeatureFlagPayloadMock = vi.hoisted(() =>
+	vi.fn(() => 'https://example.com/suggest-service'),
+);
+
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({ getFeatureFlagPayload: getFeatureFlagPayloadMock }),
+}));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -209,7 +216,7 @@ const ToolsConnectionModalStub = defineComponent({
 		'items',
 		'suggestionPrompt',
 		'suggestionAction',
-		'suggestionLinkSource',
+		'suggestionUrl',
 	],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
@@ -293,10 +300,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 
 		expect(modalProps.suggestionPrompt).toBe('instanceAi.connections.modal.suggestion.prompt');
 		expect(modalProps.suggestionAction).toBe('instanceAi.connections.modal.suggestion.action');
-		expect(modalProps.suggestionLinkSource).toEqual({
-			type: 'posthog',
-			key: 'config_suggest_service_form_url',
-		});
+		expect(modalProps.suggestionUrl).toBe('https://example.com/suggest-service');
+		expect(getFeatureFlagPayloadMock).toHaveBeenCalledWith('config_suggest_service_form_url');
 	});
 
 	it('keeps the modal open after saving settings opened from the tools list', async () => {

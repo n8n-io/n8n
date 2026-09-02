@@ -23,6 +23,7 @@ import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -39,7 +40,6 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import type { SuggestionLinkSource } from '@/app/components/SuggestionFooter.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDITS_LABEL_KEY,
@@ -73,10 +73,6 @@ import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
 const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
-const suggestionLinkSource: SuggestionLinkSource = {
-	type: 'posthog',
-	key: SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
-};
 /** Prefix for the synthetic ids of gateway-backed rows in the n8n Connect section. */
 const N8N_CONNECT_ID_PREFIX = 'n8n-connect:';
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
@@ -106,6 +102,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const posthogStore = usePostHog();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -135,6 +132,10 @@ const usersStore = useUsersStore();
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
 const isCreatingWorkflow = ref(false);
+const suggestionUrl = computed(() => {
+	const payload = posthogStore.getFeatureFlagPayload(SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY);
+	return typeof payload === 'string' ? payload : undefined;
+});
 
 const canCreateWorkflow = computed(() => {
 	if (!props.data.projectId || sourceControlStore.preferences.branchReadOnly) return false;
@@ -889,7 +890,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:workflow-creation-loading="isCreatingWorkflow"
 		:suggestion-prompt="i18n.baseText('agents.tools.suggestion.prompt')"
 		:suggestion-action="i18n.baseText('agents.tools.suggestion.action')"
-		:suggestion-link-source="suggestionLinkSource"
+		:suggestion-url="suggestionUrl"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"

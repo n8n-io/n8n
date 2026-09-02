@@ -22,7 +22,6 @@ import {
 	REQUEST_NODE_FORM_URL,
 	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
 } from '@/app/constants';
-import type { SuggestionLinkSource } from '@/app/components/SuggestionFooter.vue';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -52,6 +51,7 @@ import { useActions } from '../../composables/useActions';
 import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -75,11 +75,13 @@ const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
-const suggestionLinkSource = computed<SuggestionLinkSource>(() =>
-	isMcpCategory.value
-		? { type: 'posthog', key: SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY }
-		: { type: 'url', url: REQUEST_NODE_FORM_URL },
-);
+const posthogStore = usePostHog();
+const suggestionUrl = computed(() => {
+	if (!isMcpCategory.value) return REQUEST_NODE_FORM_URL;
+
+	const payload = posthogStore.getFeatureFlagPayload(SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY);
+	return typeof payload === 'string' ? payload : undefined;
+});
 
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -437,7 +439,7 @@ registerKeyHook('MainViewArrowLeft', {
 					isMcpCategory ? 'nodeCreator.noResults.suggestTool' : 'nodeCreator.noResults.suggestNode',
 				)
 			"
-			:link-source="suggestionLinkSource"
+			:url="suggestionUrl"
 			:class="[$style.suggestionFooter, { [$style.insetSuggestionFooter]: !isMcpCategory }]"
 		/>
 	</span>

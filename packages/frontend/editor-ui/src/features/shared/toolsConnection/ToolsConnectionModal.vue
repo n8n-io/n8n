@@ -14,7 +14,6 @@ import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import SuggestionFooter from '@/app/components/SuggestionFooter.vue';
-import type { SuggestionLinkSource } from '@/app/components/SuggestionFooter.vue';
 
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
@@ -45,7 +44,7 @@ const props = withDefaults(
 		workflowCreationLoading?: boolean;
 		suggestionPrompt: string;
 		suggestionAction: string;
-		suggestionLinkSource: SuggestionLinkSource;
+		suggestionUrl?: string;
 	}>(),
 	{
 		open: false,
@@ -401,7 +400,7 @@ function handleOpenChange(value: boolean) {
 							:class="$style.suggestionRow"
 							:prompt="suggestionPrompt"
 							:action="suggestionAction"
-							:link-source="suggestionLinkSource"
+							:url="suggestionUrl"
 						/>
 					</template>
 					<N8nRecycleScroller
@@ -431,7 +430,7 @@ function handleOpenChange(value: boolean) {
 								:class="$style.suggestionRow"
 								:prompt="suggestionPrompt"
 								:action="suggestionAction"
-								:link-source="suggestionLinkSource"
+								:url="suggestionUrl"
 							/>
 						</template>
 					</N8nRecycleScroller>

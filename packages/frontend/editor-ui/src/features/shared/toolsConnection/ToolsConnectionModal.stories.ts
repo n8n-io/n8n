@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { provide, ref } from 'vue';
 import { N8nButton } from '@n8n/design-system';
-import { REQUEST_NODE_FORM_URL } from '@/app/constants';
 
 import ToolsConnectionModal from './ToolsConnectionModal.vue';
 import McpToolSettingsContent from './McpToolSettingsContent.vue';
@@ -55,7 +54,7 @@ const meta = {
 	args: {
 		suggestionPrompt: 'Need another capability?',
 		suggestionAction: 'Suggest a tool',
-		suggestionLinkSource: { type: 'url', url: REQUEST_NODE_FORM_URL },
+		suggestionUrl: 'https://example.com/suggest-tool',
 	},
 	parameters: {
 		docs: {

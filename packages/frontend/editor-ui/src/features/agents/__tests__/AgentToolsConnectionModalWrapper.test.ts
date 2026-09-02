@@ -27,7 +27,15 @@ import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const getFeatureFlagPayloadMock = vi.hoisted(() =>
+	vi.fn(() => 'https://example.com/suggest-service'),
+);
 const routerResolveMock = vi.hoisted(() => vi.fn(() => ({ href: '/workflow/new-workflow-id' })));
+
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({ getFeatureFlagPayload: getFeatureFlagPayloadMock }),
+}));
+
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: showErrorMock,
@@ -272,10 +280,8 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 		expect(modalAttrs['suggestion-prompt']).toBe('Need another capability?');
 		expect(modalAttrs['suggestion-action']).toBe('Suggest a tool');
-		expect(modalAttrs['suggestion-link-source']).toEqual({
-			type: 'posthog',
-			key: 'config_suggest_service_form_url',
-		});
+		expect(modalAttrs['suggestion-url']).toBe('https://example.com/suggest-service');
+		expect(getFeatureFlagPayloadMock).toHaveBeenCalledWith('config_suggest_service_form_url');
 	});
 
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the

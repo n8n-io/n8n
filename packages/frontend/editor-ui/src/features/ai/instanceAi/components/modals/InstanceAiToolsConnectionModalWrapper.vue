@@ -10,8 +10,8 @@ import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBo
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import type { SuggestionLinkSource } from '@/app/components/SuggestionFooter.vue';
 import { SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
@@ -43,11 +43,6 @@ import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComp
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { BROWSER_USE_CONNECTION_TYPE, COMPUTER_USE_CONNECTION_TYPE } from '../../constants';
 
-const suggestionLinkSource: SuggestionLinkSource = {
-	type: 'posthog',
-	key: SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
-};
-
 interface ServiceConnectionDefinition {
 	id: string;
 	titleKey: BaseTextKey;
@@ -67,6 +62,7 @@ const props = defineProps<{
 }>();
 
 const uiStore = useUIStore();
+const posthogStore = usePostHog();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
@@ -87,6 +83,10 @@ const isComputerUseEnabled = computed(
 const isBrowserUseEnabled = computed(
 	() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
 );
+const suggestionUrl = computed(() => {
+	const payload = posthogStore.getFeatureFlagPayload(SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY);
+	return typeof payload === 'string' ? payload : undefined;
+});
 
 function readConnectionIdPayload(data: unknown): string | null {
 	if (data === null || typeof data !== 'object') return null;
@@ -425,7 +425,7 @@ async function handleConnect(item: ToolConnectionItem) {
 		:hide-back-button="isDirectConnectionOpen"
 		:suggestion-prompt="i18n.baseText('instanceAi.connections.modal.suggestion.prompt')"
 		:suggestion-action="i18n.baseText('instanceAi.connections.modal.suggestion.action')"
-		:suggestion-link-source="suggestionLinkSource"
+		:suggestion-url="suggestionUrl"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"
