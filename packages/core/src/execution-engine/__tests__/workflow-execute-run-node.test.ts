@@ -266,7 +266,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				...mockExecutionData,
 				node: disabledNode,
 				data: { main: outputBranches },
-				forwardAllOutputs: true,
+				metadata: { forwardAllOutputs: true },
 			};
 
 			const result = await workflowExecute.runNode(

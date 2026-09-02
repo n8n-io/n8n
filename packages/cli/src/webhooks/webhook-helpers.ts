@@ -396,9 +396,12 @@ export function prepareExecutionData(
 		// so mark it to forward every output branch (not just the first). Otherwise items
 		// routed to outputs other than 0 are silently dropped.
 		// See https://github.com/n8n-io/n8n/issues/12823
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main =
-			webhookResultData.workflowData ?? [];
-		runExecutionData.executionData!.nodeExecutionStack[0].forwardAllOutputs = true;
+		const resumingNodeExecutionData = runExecutionData.executionData!.nodeExecutionStack[0];
+		resumingNodeExecutionData.data.main = webhookResultData.workflowData ?? [];
+		resumingNodeExecutionData.metadata = {
+			...resumingNodeExecutionData.metadata,
+			forwardAllOutputs: true,
+		};
 	}
 
 	if (Object.keys(runExecutionDataMerge).length !== 0) {

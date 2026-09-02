@@ -1296,7 +1296,7 @@ export class WorkflowExecute {
 		let inputData = executionData.data;
 
 		if (node.disabled === true) {
-			return this.handleDisabledNode(inputData, executionData.forwardAllOutputs);
+			return this.handleDisabledNode(inputData, executionData.metadata?.forwardAllOutputs);
 		}
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);

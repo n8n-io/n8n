@@ -438,7 +438,7 @@ describe('prepareExecutionData', () => {
 		// On resume the node is disabled to stop the wait restarting; flag it so the
 		// engine forwards every output branch instead of only the first.
 		// See https://github.com/n8n-io/n8n/issues/12823
-		expect(nodeExecutionStack[0]?.forwardAllOutputs).toBe(true);
+		expect(nodeExecutionStack[0]?.metadata?.forwardAllOutputs).toBe(true);
 	});
 
 	test('should set destination node when provided', () => {
