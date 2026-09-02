@@ -3,8 +3,14 @@
  * Run Stryker over a workspace package and write an actionable summary. This
  * script works for any package. Run it as `pnpm mutate` from the repo root.
  *
- *   pnpm mutate <file>[:<start>-<end>] [--package-dir <dir>] [--config <path>]
- *   pnpm mutate --diff [--base <ref>] [--config <path>]
+ *   pnpm mutate <file>[:<start>-<end>] [--package-dir <dir>] [--test-file <path>] [--config <path>]
+ *   pnpm mutate --diff [--base <ref>] [--test-file <path>] [--config <path>]
+ *
+ * Use `--test-file` to name the test files that must kill the mutants. Stryker
+ * then runs only those files (its `testFiles` option) instead of everything
+ * vitest considers "related" to the target. Repeat the flag or pass a
+ * comma-separated list. Some packages require it — see
+ * `REQUIRES_EXPLICIT_TEST_FILES`.
  *
  * Use `--diff` before you merge. It reads the changed line ranges from
  * `git diff -U0 $(git merge-base <base> HEAD)`, which covers committed branch
@@ -47,9 +53,9 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -141,7 +147,7 @@ export function gatePassed(score, counts, threshold) {
  * report. Pure: takes the parsed report plus run metadata, returns the summary
  * object written to summary.json.
  */
-export function buildSummary(raw, { threshold, target, generatedAt }) {
+export function buildSummary(raw, { threshold, target, generatedAt, testFiles = [] }) {
 	// test-id → test-name lookup so survivors can name the tests that covered
 	// the mutated line without killing the mutant.
 	const testIdToName = {};
@@ -226,6 +232,9 @@ export function buildSummary(raw, { threshold, target, generatedAt }) {
 		generatedAt,
 		threshold,
 		target,
+		// Which tests had to kill the mutants. Empty means Stryker used vitest
+		// related-test discovery.
+		testFiles,
 		overall: {
 			score: overallScore,
 			coverage: coverageFromCounts(overallCounts),
@@ -240,13 +249,20 @@ export function buildSummary(raw, { threshold, target, generatedAt }) {
  * Synthesise a score-0 red summary for the "No tests were executed" case —
  * every mutant is no-coverage, so coverage is 0 too. See DEVP-414.
  */
-export function buildNoTestsSummary({ threshold, target, noCoverage, generatedAt }) {
+export function buildNoTestsSummary({
+	threshold,
+	target,
+	noCoverage,
+	generatedAt,
+	testFiles = [],
+}) {
 	const counts = { ...emptyCounts(), noCoverage };
 	const coverage = coverageFromCounts(counts);
 	return {
 		generatedAt,
 		threshold,
 		target,
+		testFiles,
 		overall: { score: 0, coverage, counts, thresholdMet: false },
 		files: [
 			{
@@ -278,6 +294,14 @@ function findPackageRoot(fromAbs) {
 
 // Stryker's dry run stops with SIGABRT on the isolated-vm engine. See DEVP-257.
 const BLOCKED_PACKAGES = new Set(['@n8n/expression-runtime']);
+
+// Packages whose vitest related-test discovery selects effectively the whole
+// suite: `n8n` picks 326 test files (8,414 tests) for one utility file. The
+// Stryker vitest runner replaces the package's parallel `forks` pool with a
+// single thread worker, thus that selection never finishes the five-minute dry
+// run. These packages must name their covering tests with --test-file.
+// See DEVP-1038.
+const REQUIRES_EXPLICIT_TEST_FILES = new Set(['n8n']);
 
 const NON_SOURCE = [
 	/\.d\.ts$/,
@@ -332,6 +356,93 @@ export function formatMutateArg(targets) {
 	return targets.join(',');
 }
 
+// `--testFiles` uses the same comma-separated list parser as `--mutate`.
+export function formatTestFilesArg(testFiles) {
+	return testFiles.join(',');
+}
+
+/**
+ * Normalise one `--test-file` value to a package-relative path. Stryker matches
+ * the pattern from its run cwd, which is the package dir, thus a repo-relative
+ * path has to lose the package prefix. Glob patterns pass through unchanged.
+ */
+export function toPackageRelativeTestFile(value, packageDir) {
+	const normalized = value.replaceAll('\\', '/').replace(/^\.\//, '');
+	const prefix = `${packageDir.replaceAll('\\', '/').replace(/\/$/, '')}/`;
+	return prefix === '/' || !normalized.startsWith(prefix)
+		? normalized
+		: normalized.slice(prefix.length);
+}
+
+/**
+ * Flatten the repeated and comma-separated `--test-file` values into a deduped
+ * list of package-relative patterns, in the order the caller gave them.
+ */
+export function normalizeTestFiles(values, packageDir) {
+	const out = [];
+	for (const value of values) {
+		for (const part of value.split(',')) {
+			const trimmed = part.trim();
+			if (!trimmed) continue;
+			const rel = toPackageRelativeTestFile(trimmed, packageDir);
+			if (!out.includes(rel)) out.push(rel);
+		}
+	}
+	return out;
+}
+
+/**
+ * Pick the `--test-file` values that belong to one package. `--diff` batches
+ * several packages behind one global flag, thus a value for `packages/cli` must
+ * not reach the `packages/workflow` run, where it matches nothing and turns the
+ * whole package red. A value therefore has to be repo-relative in diff mode.
+ */
+export function testFilesForPackage(values, packageDir) {
+	const prefix = `${packageDir.replaceAll('\\', '/').replace(/\/$/, '')}/`;
+	const mine = values
+		.flatMap((value) => value.split(','))
+		.map((value) => value.trim().replaceAll('\\', '/').replace(/^\.\//, ''))
+		.filter((value) => value.startsWith(prefix));
+	return normalizeTestFiles(mine, packageDir);
+}
+
+// A glob needs no existence check — Stryker resolves it against the project
+// files and warns when it matches nothing.
+export function isGlobPattern(value) {
+	return /[*?[\]{}]/.test(value);
+}
+
+/**
+ * Build the Stryker argv. Pure, so the tests can assert that an explicit test
+ * scope reaches Stryker and that an empty one adds no flag.
+ */
+export function buildStrykerArgs({ strykerBin, configPath, mutateArg, testFiles = [] }) {
+	const args = [strykerBin, 'run', configPath, '--inPlace', '--mutate', mutateArg];
+	if (testFiles.length > 0) args.push('--testFiles', formatTestFilesArg(testFiles));
+	return args;
+}
+
+/**
+ * Why a package cannot be scored, or null when it can. Pure: it takes the facts
+ * read from disk. Both planners go through it, so a named target and a --diff
+ * target always get the same answer.
+ */
+export function ineligibleReasonFor({ packageName, displayName, usesVitest, testFiles = [] }) {
+	const label = displayName || packageName;
+	if (BLOCKED_PACKAGES.has(packageName)) {
+		return `${label} is blocked: the isolated-vm engine crashes Stryker's dry run (DEVP-257)`;
+	}
+	if (!usesVitest) return `${label} is not a vitest package`;
+	if (REQUIRES_EXPLICIT_TEST_FILES.has(packageName) && testFiles.length === 0) {
+		return (
+			`${label} needs an explicit test scope: vitest related-test discovery selects ` +
+			'almost the whole package and Stryker runs it with one worker. Pass ' +
+			'--test-file <path> with the tests that cover the target (DEVP-1038)'
+		);
+	}
+	return null;
+}
+
 export function splitRange(target) {
 	const m = /^(.*):(\d+)-(\d+)$/.exec(target);
 	return m ? { file: m[1], range: `${m[2]}-${m[3]}` } : { file: target, range: null };
@@ -366,18 +477,17 @@ function packageUsesVitest(pkgRoot) {
 	}
 }
 
-// Why a package cannot be scored, or null when it can. Both planners call this,
-// so a named target and a --diff target always get the same answer.
-function ineligibleReason(pkgRoot) {
-	const pkgName = packageNameOf(pkgRoot) || path.relative(repoRoot, pkgRoot);
-	if (BLOCKED_PACKAGES.has(packageNameOf(pkgRoot))) {
-		return `${pkgName} is blocked: the isolated-vm engine crashes Stryker's dry run (DEVP-257)`;
-	}
-	if (!packageUsesVitest(pkgRoot)) return `${pkgName} is not a vitest package`;
-	return null;
+function ineligibleReason(pkgRoot, testFiles = []) {
+	const packageName = packageNameOf(pkgRoot);
+	return ineligibleReasonFor({
+		packageName,
+		displayName: packageName || path.relative(repoRoot, pkgRoot),
+		usesVitest: packageUsesVitest(pkgRoot),
+		testFiles,
+	});
 }
 
-function planFromDiff(base) {
+function planFromDiff(base, testFiles) {
 	// Diff the merge base against the working tree, not against HEAD. This also
 	// scores uncommitted edits. On a PR checkout the tree is clean, thus the
 	// result is the same as the branch diff.
@@ -407,7 +517,11 @@ function planFromDiff(base) {
 			skipped.push([file, 'no enclosing package']);
 			continue;
 		}
-		const reason = ineligibleReason(pkgRoot);
+		const packageDir = path.relative(repoRoot, pkgRoot);
+		// A --diff run cannot guess the covering tests, thus a package that needs
+		// an explicit scope is skipped unless the caller passed --test-file for it.
+		const jobTestFiles = testFilesForPackage(testFiles, packageDir);
+		const reason = ineligibleReason(pkgRoot, jobTestFiles);
 		if (reason) {
 			skipped.push([file, reason]);
 			continue;
@@ -417,8 +531,12 @@ function planFromDiff(base) {
 		if (ranges.length === 0) continue;
 
 		const rel = path.relative(pkgRoot, abs);
-		const packageDir = path.relative(repoRoot, pkgRoot);
-		const job = byPackage.get(pkgRoot) ?? { pkgRoot, packageDir, targets: [] };
+		const job = byPackage.get(pkgRoot) ?? {
+			pkgRoot,
+			packageDir,
+			targets: [],
+			testFiles: jobTestFiles,
+		};
 		for (const r of ranges) job.targets.push(`${rel}:${r.start}-${r.end}`);
 		byPackage.set(pkgRoot, job);
 	}
@@ -431,6 +549,34 @@ function resolveConfig(pkgRoot, configArg) {
 	if (configArg) return path.resolve(repoRoot, configArg);
 	const local = path.join(pkgRoot, 'stryker.config.mjs');
 	return existsSync(local) ? local : path.join(__dirname, 'stryker.default.mjs');
+}
+
+/**
+ * Why an `--inPlace` run must not start with this config, or null when it can.
+ *
+ * Stryker's type-check preprocessing writes `// @ts-nocheck` into every file the
+ * `disableTypeChecks` pattern matches. In place that rewrites the package on
+ * disk — 3,368 tracked files for `packages/cli` — and an interrupted run leaves
+ * those edits behind. Vitest transpiles without type checking, thus the
+ * preprocessing buys nothing here. See DEVP-1038.
+ */
+export function unsafeConfigReason(config) {
+	return config?.disableTypeChecks === false
+		? null
+		: 'it does not set `disableTypeChecks: false`. Stryker would rewrite every ' +
+				'matched file in the package with `// @ts-nocheck`, and an interrupted ' +
+				'run would leave those edits in the working tree';
+}
+
+// Read the resolved config so the wrapper can check the invariants an in-place
+// run depends on.
+async function loadConfig(configPath) {
+	try {
+		if (configPath.endsWith('.json')) return JSON.parse(readFileSync(configPath, 'utf8'));
+		return (await import(pathToFileURL(configPath).href)).default ?? {};
+	} catch (err) {
+		return die(2, `Could not read ${path.relative(repoRoot, configPath)}: ${err.message}`);
+	}
 }
 
 // Try the package's own copy first, then the root devDep. A package that pins
@@ -459,7 +605,7 @@ function resolveStrykerBin(pkgRoot, packageDir) {
 // Stryker restores the files after a usual exit and after SIGINT, but not after
 // a crash. In diff mode the files hold uncommitted work, thus `git checkout --`
 // is not a safe undo. Keep a copy of the bytes and write them back instead.
-function snapshotFiles(absPaths) {
+export function snapshotFiles(absPaths) {
 	const snap = new Map();
 	for (const p of absPaths) {
 		try {
@@ -471,7 +617,7 @@ function snapshotFiles(absPaths) {
 	return snap;
 }
 
-function restoreFiles(snap) {
+export function restoreFiles(snap) {
 	const restored = [];
 	for (const [p, original] of snap) {
 		try {
@@ -486,8 +632,48 @@ function restoreFiles(snap) {
 	return restored;
 }
 
-async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
+// The vitest runner writes one `stryker-setup-<worker>.js` into the run cwd per
+// worker and deletes it only when the runner disposes. A crash or a stop during
+// cleanup leaves them in the package dir, where they are not gitignored.
+export function isStrykerSetupFile(name) {
+	return /^stryker-setup-.+\.js$/.test(name);
+}
+
+export function removeStrykerSetupFiles(dir) {
+	let entries;
+	try {
+		entries = readdirSync(dir);
+	} catch {
+		return []; // The dir is gone. There is nothing to remove.
+	}
+	const removed = [];
+	for (const name of entries) {
+		if (!isStrykerSetupFile(name)) continue;
+		try {
+			rmSync(path.join(dir, name), { force: true });
+			removed.push(name);
+		} catch {
+			// Another process removed it first.
+		}
+	}
+	return removed;
+}
+
+/**
+ * Undo everything an in-place run can leave behind, whatever the outcome:
+ * a pass, a failure, a timeout, or an external stop during Stryker's own
+ * cleanup. Restores the snapshotted bytes and drops the generated setup files.
+ */
+export function cleanUpAfterRun(snap, pkgRoot) {
+	return { restored: restoreFiles(snap), removed: removeStrykerSetupFiles(pkgRoot) };
+}
+
+async function runJob({ pkgRoot, packageDir, targets, testFiles = [] }, { configArg }) {
 	const configPath = resolveConfig(pkgRoot, configArg);
+	const unsafe = unsafeConfigReason(await loadConfig(configPath));
+	if (unsafe) {
+		die(2, `Cannot run ${path.relative(repoRoot, configPath)} in place: ${unsafe}.`);
+	}
 	const strykerBin = resolveStrykerBin(pkgRoot, packageDir);
 	const mutateArg = formatMutateArg(targets);
 
@@ -503,12 +689,18 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 	await Promise.all([rm(rawJsonPath, { force: true }), rm(summaryJsonPath, { force: true })]);
 
 	process.stderr.write(
-		`\nRunning Stryker on ${packageDir} — ${targets.length} target(s) ` +
+		`\nRunning Stryker on ${packageDir} — ${targets.length} target(s)` +
+			`${testFiles.length > 0 ? `, ${testFiles.length} test file(s)` : ''} ` +
 			`(config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
 	);
 
+	// Snapshot the targets and the explicit test files: with `disableTypeChecks`
+	// off these are the only files an in-place run writes to.
 	const snap = snapshotFiles([
-		...new Set(targets.map((t) => path.join(pkgRoot, splitRange(t).file))),
+		...new Set([
+			...targets.map((t) => path.join(pkgRoot, splitRange(t).file)),
+			...testFiles.filter((f) => !isGlobPattern(f)).map((f) => path.join(pkgRoot, f)),
+		]),
 	]);
 
 	const strykerOutputChunks = [];
@@ -523,7 +715,7 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 		strykerExitCode = await new Promise((resolve) => {
 			child = spawn(
 				process.execPath,
-				[strykerBin, 'run', configPath, '--inPlace', '--mutate', mutateArg],
+				buildStrykerArgs({ strykerBin, configPath, mutateArg, testFiles }),
 				{ cwd: pkgRoot, stdio: ['inherit', 'pipe', 'pipe'] },
 			);
 			child.stdout.on('data', (chunk) => {
@@ -540,10 +732,15 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 	} finally {
 		process.off('SIGINT', onSignal);
 		process.off('SIGTERM', onSignal);
-		const restored = restoreFiles(snap);
+		const { restored, removed } = cleanUpAfterRun(snap, pkgRoot);
 		if (restored.length > 0) {
 			process.stderr.write(
 				`⚠ Stryker left mutants behind; restored ${restored.length} file(s): ${restored.join(', ')}\n`,
+			);
+		}
+		if (removed.length > 0) {
+			process.stderr.write(
+				`  removed ${removed.length} generated setup file(s) in ${packageDir}\n`,
 			);
 		}
 	}
@@ -573,6 +770,7 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 			target,
 			noCoverage: mutantMatch ? Number(mutantMatch[1]) : 0,
 			generatedAt: new Date().toISOString(),
+			testFiles,
 		});
 		await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
 		return { packageDir, summaryJsonPath, summary, noTests: true };
@@ -583,6 +781,7 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 		threshold: THRESHOLD,
 		target,
 		generatedAt: new Date().toISOString(),
+		testFiles,
 	});
 	if (outcome === 'partial') summary.partial = true;
 
@@ -629,8 +828,8 @@ function reportJob({ packageDir, summaryJsonPath, summary, noTests, failed }) {
 // --- entry point ---
 
 const USAGE = `Usage:
-  node scripts/mutation-health/mutate.mjs <file>[:<start>-<end>] [--package-dir <dir>] [--config <path>]
-  node scripts/mutation-health/mutate.mjs --diff [--base <ref>] [--config <path>]
+  node scripts/mutation-health/mutate.mjs <file>[:<start>-<end>] [--package-dir <dir>] [--test-file <path>] [--config <path>]
+  node scripts/mutation-health/mutate.mjs --diff [--base <ref>] [--test-file <path>] [--config <path>]
 
   # one file, whole
   node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts
@@ -638,10 +837,13 @@ const USAGE = `Usage:
   node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts:40-75
   # package-relative target
   node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow
+  # only the named tests have to kill the mutants (required for packages/cli)
+  node scripts/mutation-health/mutate.mjs packages/cli/src/credentials/external-secrets.utils.ts:32-68 \\
+    --test-file packages/cli/src/credentials/__tests__/external-secrets.utils.test.ts
   # every line this branch changed, batched one Stryker run per package
   node scripts/mutation-health/mutate.mjs --diff --base origin/master`;
 
-function planFromTarget(targetArg, packageDirArg) {
+function planFromTarget(targetArg, packageDirArg, testFileArgs) {
 	const { file, range } = splitRange(targetArg);
 
 	let pkgRoot;
@@ -667,16 +869,22 @@ function planFromTarget(targetArg, packageDirArg) {
 	if (!isMutableSource(rel)) {
 		die(2, `Not a mutable source file (test/declaration/config/build output): ${rel}`);
 	}
+
+	const packageDir = path.relative(repoRoot, pkgRoot);
+	const testFiles = normalizeTestFiles(testFileArgs, packageDir);
+	for (const testFile of testFiles) {
+		if (isGlobPattern(testFile)) continue; // Stryker resolves and warns on a miss
+		if (!existsSync(path.join(pkgRoot, testFile))) {
+			die(2, `Test file not found: ${path.join(packageDir, testFile)}`);
+		}
+	}
+
 	// --diff skips an ineligible package. A named target must refuse for the same
 	// reason, or it starts a run that is known to crash.
-	const reason = ineligibleReason(pkgRoot);
+	const reason = ineligibleReason(pkgRoot, testFiles);
 	if (reason) die(2, `Cannot mutate ${rel}: ${reason}`);
 
-	return {
-		pkgRoot,
-		packageDir: path.relative(repoRoot, pkgRoot),
-		targets: [range ? `${rel}:${range}` : rel],
-	};
+	return { pkgRoot, packageDir, targets: [range ? `${rel}:${range}` : rel], testFiles };
 }
 
 async function main() {
@@ -686,11 +894,13 @@ async function main() {
 	let targetArg;
 	let baseArg = 'origin/master';
 	let diffMode = false;
+	const testFileArgs = [];
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i];
 		if (a === '--package-dir') packageDirArg = argv[++i];
 		else if (a === '--config') configArg = argv[++i];
 		else if (a === '--base') baseArg = argv[++i];
+		else if (a === '--test-file') testFileArgs.push(argv[++i] ?? '');
 		else if (a === '--diff') diffMode = true;
 		else if (!a.startsWith('--') && targetArg === undefined) targetArg = a;
 	}
@@ -701,7 +911,7 @@ async function main() {
 	let jobs;
 	let skipped = [];
 	if (diffMode) {
-		({ jobs, skipped } = planFromDiff(baseArg));
+		({ jobs, skipped } = planFromDiff(baseArg, testFileArgs));
 		for (const [file, why] of skipped) process.stderr.write(`  skipped ${file} — ${why}\n`);
 		if (jobs.length === 0) {
 			process.stderr.write(`\nNothing mutable changed vs ${baseArg}.\n`);
@@ -712,7 +922,7 @@ async function main() {
 			`\nMutating ${files} changed range(s) across ${jobs.length} package(s) vs ${baseArg}.\n`,
 		);
 	} else {
-		jobs = [planFromTarget(targetArg, packageDirArg)];
+		jobs = [planFromTarget(targetArg, packageDirArg, testFileArgs)];
 	}
 
 	const results = [];
