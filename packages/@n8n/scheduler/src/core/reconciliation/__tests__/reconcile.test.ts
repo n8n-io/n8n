@@ -341,7 +341,7 @@ describe('reconcile', () => {
 			expect(store.quarantineByOwnerIds).not.toHaveBeenCalled();
 			expect(store.deleteQuarantinedByOwnerIds).not.toHaveBeenCalled();
 			expect(onUnclaimedOwnerType).toHaveBeenCalledWith('agent');
-			expect(summary.skippedOwnerTypes).toEqual(['agent']);
+			expect(summary).toMatchObject({ skippedOwnerTypes: ['agent'], drained: false });
 		});
 
 		it('leaves an owner type whose resolver threw entirely alone', async () => {
@@ -415,7 +415,11 @@ describe('reconcile', () => {
 				NOW,
 				SETTLED_BEFORE,
 			);
-			expect(summary).toMatchObject({ quarantined: 1, skippedOwnerTypes: ['workflow'] });
+			expect(summary).toMatchObject({
+				quarantined: 1,
+				skippedOwnerTypes: ['workflow'],
+				drained: false,
+			});
 		});
 	});
 
@@ -610,7 +614,7 @@ describe('reconcile', () => {
 			const summary = await run({ onUnclaimedOwnerType: thrower });
 
 			expect(store.findOwnerIds).not.toHaveBeenCalled();
-			expect(summary.skippedOwnerTypes).toEqual(['agent']);
+			expect(summary).toMatchObject({ skippedOwnerTypes: ['agent'], drained: false });
 		});
 
 		it('lifts every quarantine of the page even when the per-job hooks throw', async () => {

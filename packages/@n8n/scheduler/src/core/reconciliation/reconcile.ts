@@ -32,7 +32,8 @@ export interface ReconciliationSummary {
 	skippedOwnerTypes: string[];
 	/**
 	 * Whether every settled owner was covered. `false` when the pass spent its
-	 * page budget, was cancelled, or lost an owner type to a resolver failure.
+	 * page budget, was cancelled, skipped an unclaimed owner type, or lost an
+	 * owner type to a resolver failure.
 	 */
 	drained: boolean;
 	/** Where the next pass should resume. Set whenever the walk stopped short. */
@@ -119,6 +120,7 @@ export async function reconcile(
 		const resolver = owners.resolverFor(ownerType);
 		if (resolver === undefined) {
 			summary.skippedOwnerTypes.push(ownerType);
+			summary.drained = false;
 			notify(() => hooks.onUnclaimedOwnerType?.(ownerType));
 			continue;
 		}
