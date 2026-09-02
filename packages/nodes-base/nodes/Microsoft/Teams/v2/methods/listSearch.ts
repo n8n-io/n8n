@@ -334,8 +334,13 @@ export async function getUsers(
 		$orderby: 'displayName',
 	};
 
-	// A stray `"` makes Graph reject the whole $search expression with a 400.
-	const term = (filter ?? '').replace(/"/g, '').trim();
+	// Graph rejects the whole $search expression for four characters, so drop them rather than
+	// let the picker error: `"` unterminates the quoted term, `\` starts a KQL escape sequence,
+	// and `&`/`#` split the query string because Graph re-splits it AFTER percent-decoding (so
+	// encoding them is not enough). Verified against a live tenant 2026-09-02. Dropping them
+	// degrades to a broader match instead of "Could not load list"; $search is word-prefix
+	// anyway, so "Jones & Co" still finds the user by "Jones".
+	const term = (filter ?? '').replace(/["\\&#]/g, '').trim();
 	if (term) {
 		qs.$search = `"displayName:${term}" OR "mail:${term}" OR "userPrincipalName:${term}"`;
 	}

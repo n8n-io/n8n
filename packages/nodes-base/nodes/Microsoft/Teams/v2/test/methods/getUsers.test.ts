@@ -60,9 +60,15 @@ describe('Microsoft Teams v2, getUsers', () => {
 		});
 	});
 
+	// Graph rejects the whole $search expression for `"` `\` `&` `#`, so each is dropped and the
+	// search still runs. `&`/`#` matter because Graph re-splits the query string after
+	// percent-decoding, so encoding them is not enough (live-tenant verified 2026-09-02).
 	it.each([
 		['jan', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
 		['"jan"', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
+		['j&an', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
+		['j#an', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
+		['j\\an', '"displayName:jan" OR "mail:jan" OR "userPrincipalName:jan"'],
 	])('searches display name, mail and UPN for the filter %j', async (filter, search) => {
 		apiRequest.mockResolvedValue({ value: [] });
 
@@ -78,7 +84,7 @@ describe('Microsoft Teams v2, getUsers', () => {
 		);
 	});
 
-	it.each(['"""', '   '])(
+	it.each(['"""', '   ', '&#\\'])(
 		'omits $search when the filter %j has nothing left to search for',
 		async (filter) => {
 			apiRequest.mockResolvedValue({ value: [] });
