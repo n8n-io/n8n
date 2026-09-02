@@ -66,7 +66,7 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
 const agentId = 'agent-1';
@@ -125,6 +125,7 @@ function makeRuntimeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
+		mock(),
 		mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,
@@ -300,7 +301,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentTaskRepository,
 			agentCustomToolsService,
 			runtimeCacheService,
-			mock<SubAgentCleanupService>(),
 			agentValidationService,
 			credentialsService,
 			telemetry,
@@ -345,7 +345,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 	describe('integration runtime tools', () => {
 		beforeEach(() => {
-			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+			Container.set(SubAgentRunner, mock<SubAgentRunner>());
 		});
 
 		it('injects each credential integration context/action tool only once', async () => {

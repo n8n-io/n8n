@@ -365,9 +365,6 @@ export class AgentConfigService {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
 			}
-			if (!agent.activeVersionId) {
-				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
-			}
 		}
 	}
 }

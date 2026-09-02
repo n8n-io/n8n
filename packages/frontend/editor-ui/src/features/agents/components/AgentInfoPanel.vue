@@ -45,7 +45,6 @@ const props = withDefaults(
 		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
-		showInstructionsToolbar?: boolean;
 		/**
 		 * Emit instructions edits per keystroke instead of debounced. For hosts
 		 * whose updates are cheap local writes (inline agent → node parameter);
@@ -142,10 +141,6 @@ const panelTestId = computed(() => {
 	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
 	return 'agent-info-panel';
 });
-
-const instructionsToolbarMode = computed(() =>
-	props.showInstructionsToolbar ? 'always' : 'never',
-);
 
 function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
 	const credentialId = effectiveCredentials.value?.[selection.provider];
@@ -324,8 +319,8 @@ function onInstructionsInput(value: string) {
 				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:disabled="props.disabled"
-				:show-toolbar="instructionsToolbarMode"
 				:max-height="props.instructionsMaxHeight"
+				show-toolbar="floating"
 				variant="contained"
 				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"

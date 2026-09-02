@@ -5,6 +5,7 @@ import { ErrorReporter } from 'n8n-core';
 import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
+import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 
@@ -55,6 +56,11 @@ export function executeErrorWorkflow(
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
+		// An administrative refusal, not a workflow failure — and where a workflow is
+		// its own error handler, this would run the graph policy just refused.
+		// Not `instanceof`: a failed execution arrives here with its error flattened.
+		if (isPolicyRefusal(fullRunData.data.resultData.error)) return;
+
 		let workflowErrorData: IWorkflowErrorData;
 		const workflowId = workflowData.id;
 

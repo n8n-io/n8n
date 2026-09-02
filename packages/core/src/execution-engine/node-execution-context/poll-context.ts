@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
@@ -45,6 +46,11 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		// staging scope (e.g. a manual test run).
 		private readonly resolveNodeStaticData: () => IDataObject = () =>
 			this.workflow.getStaticData('node', this.node),
+		// Generous fallback for polls that run outside the durable scheduler (e.g. a
+		// manual test run): no lease bounds them, but nodes still size their fetch
+		// loop from a finite budget.
+		readonly getPollBudgetMs: IPollFunctions['getPollBudgetMs'] = () =>
+			5 * Time.minutes.toMilliseconds,
 	) {
 		super(workflow, node, additionalData, mode);
 

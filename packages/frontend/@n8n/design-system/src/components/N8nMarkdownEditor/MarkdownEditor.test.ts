@@ -3,6 +3,15 @@ import type { Editor } from '@tiptap/core';
 
 import N8nMarkdownEditor from './MarkdownEditor.vue';
 
+vi.mock('@tiptap/vue-3/menus', function mockTiptapMenus() {
+	return {
+		BubbleMenu: {
+			name: 'BubbleMenu',
+			template: '<div data-test-id="markdown-editor-bubble-menu"><slot /></div>',
+		},
+	};
+});
+
 describe('components/N8nMarkdownEditorToolbar', () => {
 	it('renders the toolbar from toggle groups by default', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
@@ -84,6 +93,37 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 
 		await waitFor(() => expect(wrapper.getByTestId('markdown-editor-toolbar')).toBeInTheDocument());
 		expect(wrapper.getByRole('button', { name: 'Text' })).toBeInTheDocument();
+	});
+
+	it('renders the floating toolbar in a TipTap bubble menu', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				showToolbar: 'floating',
+			},
+		});
+
+		await waitFor(() =>
+			expect(wrapper.getByTestId('markdown-editor-bubble-menu')).toBeInTheDocument(),
+		);
+		expect(wrapper.getByTestId('markdown-editor-toolbar')).toHaveClass('floating');
+		expect(wrapper.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+	});
+
+	it('does not add fixed-toolbar padding for the floating toolbar', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				showToolbar: 'floating',
+			},
+		});
+
+		await waitFor(() =>
+			expect(wrapper.getByTestId('n8n-markdown-editor-content')).toBeInTheDocument(),
+		);
+		expect(wrapper.getByTestId('n8n-markdown-editor-content').parentElement).not.toHaveClass(
+			'padTop',
+		);
 	});
 
 	it('disables toolbar controls when editor is disabled', async () => {

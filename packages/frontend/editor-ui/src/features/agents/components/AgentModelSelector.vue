@@ -414,20 +414,58 @@ function isAggregatorProvider(provider: AgentModelProvider): boolean {
 	return 'isAggregator' in AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
 }
 
+function isAiGatewayProvider(provider: AgentModelProvider): boolean {
+	return (
+		aiGateway.isEnabled.value &&
+		getProviderCredentialTypes(provider).some((credentialType) =>
+			aiGateway.canServeCredentialType(credentialType),
+		)
+	);
+}
+
+// Order: the currently selected provider (pinned to the top and marked as
+// connected), then providers the n8n gateway can serve, then everything else
+// (aggregators last). A single divider separates the n8n Connect group from
+// the rest.
 const menu = computed(() => {
-	const providers = AGENT_MODEL_PROVIDERS.toSorted((a, b) => {
-		const aIsAggregator = isAggregatorProvider(a) ? 1 : -1;
-		const bIsAggregator = isAggregatorProvider(b) ? 1 : -1;
-		return aIsAggregator - bIsAggregator;
+	const selectedProvider = selectedModel?.provider ?? null;
+	const aiGatewayProviders: AgentModelProvider[] = [];
+	const aggregatorProviders: AgentModelProvider[] = [];
+	const regularProviders: AgentModelProvider[] = [];
+
+	for (const provider of AGENT_MODEL_PROVIDERS) {
+		if (provider === selectedProvider) continue;
+		if (isAiGatewayProvider(provider)) aiGatewayProviders.push(provider);
+		else if (isAggregatorProvider(provider)) aggregatorProviders.push(provider);
+		else regularProviders.push(provider);
+	}
+
+	const menuItems: MenuItem[] = [];
+
+	if (selectedProvider) {
+		const item = providerToMenuItem(selectedProvider);
+		menuItems.push({
+			...item,
+			data: { ...item.data, connectedLabel: i18n.baseText('agents.modelSelector.connected') },
+		});
+	}
+
+	if (aiGatewayProviders.length) {
+		menuItems.push({
+			id: 'n8nConnect::header',
+			label: i18n.baseText('agents.modelSelector.includedInN8n'),
+			header: true,
+			disabled: true,
+		});
+		menuItems.push(...aiGatewayProviders.map(providerToMenuItem));
+	}
+
+	[...regularProviders, ...aggregatorProviders].forEach((provider, index) => {
+		const item = providerToMenuItem(provider);
+		menuItems.push(index === 0 && aiGatewayProviders.length ? { ...item, divided: true } : item);
 	});
 
-	let dividerInserted = false;
-	return providers.map<MenuItem>((provider) => {
-		const item = providerToMenuItem(provider);
-		if (dividerInserted) return item;
-		dividerInserted = true;
-		return { ...item, divided: true };
-	});
+	return menuItems;
 });
 
 function isSearchableItem(item: MenuItem): boolean {

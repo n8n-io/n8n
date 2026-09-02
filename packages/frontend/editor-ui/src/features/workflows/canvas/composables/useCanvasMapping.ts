@@ -65,32 +65,19 @@ export function useCanvasMapping({
 }) {
 	const i18n = useI18n();
 
-	// `executionIssuesByNodeName` is keyed by name; groups address nodes by id.
-	const nodeNameById = computed(() => {
-		const map = new Map<string, string>();
-		for (const node of nodes.value) map.set(node.id, node.name);
-		return map;
-	});
-
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
-		if (!tasks) return 0;
-		let count = 0;
-		for (const task of tasks) {
-			if (task.executionStatus !== 'canceled') count++;
-		}
-		return count;
+		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
 	}
 
 	// Per-node execution projection feeding the group-status aggregation.
 	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
 		const rd = renderData.value;
 		const render = rd.renderTypeByNodeId.get(id)?.value;
-		const name = nodeNameById.value.get(id);
 		const status = rd.executionStatusByNodeId.get(id)?.value;
 		const tasks = rd.executionRunDataByNodeId.get(id)?.value;
 
 		// Mirror the single-node `computeHasIssues`
-		const executionIssues = name ? rd.executionIssuesByNodeName.get(name)?.value : undefined;
+		const executionIssues = rd.executionIssuesByNodeId.get(id)?.value;
 		const hasExecutionError =
 			status === 'error' ||
 			status === 'crashed' ||
@@ -145,9 +132,8 @@ export function useCanvasMapping({
 
 	function getVisiblePinDataByNodeId(id: string) {
 		const rd = renderData.value;
-		const nodeName = nodeNameById.value.get(id);
 		if (rd.isExecutionDataDisplayed) {
-			return nodeName ? rd.executionPinDataByNodeName[nodeName] : undefined;
+			return rd.executionPinDataByNodeId.get(id)?.value;
 		}
 		return rd.pinnedDataByNodeId.get(id)?.value;
 	}

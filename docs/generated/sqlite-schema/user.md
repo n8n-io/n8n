@@ -272,6 +272,7 @@ erDiagram
   varchar clientId FK
   datetime_3_ createdAt
   bigint expiresAt
+  varchar resource
   TEXT scope
   varchar_255_ token PK
   datetime_3_ updatedAt

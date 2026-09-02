@@ -404,7 +404,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(description).toContain('never use `ask_credential` for chat-channel credentials');
 		});
 
-		it('list_sub_agents returns published same-project agents except the target agent', async () => {
+		it('list_sub_agents returns saved same-project agents except the target agent', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findByProjectId.mockResolvedValue([
 				{
@@ -437,6 +437,10 @@ describe('AgentsBuilderToolsService', () => {
 					{
 						agentId: 'agent-research',
 						name: 'Research Agent',
+					},
+					{
+						agentId: 'agent-draft',
+						name: 'Draft Agent',
 					},
 					{
 						agentId: 'agent-risk',

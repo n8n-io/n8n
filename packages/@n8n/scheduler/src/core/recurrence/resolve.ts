@@ -1,3 +1,6 @@
+import type { ScheduleDefinition } from '@n8n/constants';
+import type { CronExpression } from 'n8n-workflow';
+
 import { CorruptStorageRowError } from '../errors';
 import type { Schedule, ScheduledJob } from '../types';
 import { resolveCron } from './kinds/cron';
@@ -34,5 +37,30 @@ export function resolveSchedule(job: ScheduledJob, defaultTimezone: string): Sch
 				`scheduled_job ${job.id} has unknown kind '${String(exhaustive)}'`,
 			);
 		}
+	}
+}
+
+/**
+ * Builds the schedule a definition describes, filling a missing timezone with
+ * the instance default.
+ * @param definition The schedule definition.
+ * @param defaultTimezone Instance default for a definition with no timezone.
+ * @returns The schedule for that definition.
+ */
+export function scheduleFromDefinition(
+	definition: ScheduleDefinition,
+	defaultTimezone: string,
+): Schedule {
+	switch (definition.kind) {
+		case 'interval':
+		case 'one_off':
+			return definition;
+		case 'cron':
+		case 'recurring_cron':
+			return {
+				...definition,
+				cronExpression: definition.cronExpression as CronExpression,
+				timezone: definition.timezone ?? defaultTimezone,
+			};
 	}
 }

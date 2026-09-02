@@ -697,6 +697,10 @@ export interface NewCredentialsModal extends ModalState {
 	onCredentialCreated?: (credential: { id: string }) => void;
 	projectId?: string;
 	suggestedName?: string;
+	/** Workflow the credential is being set up for, supplied by workflow-scoped
+	 * surfaces (NDV, Instance AI workflow setup) for telemetry attribution — the
+	 * modal itself can open where no workflow document is loaded. */
+	workflowId?: string;
 	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
 	 * template fields so the modal opens on the guided simple view. */
 	credentialSetupHint?: InstanceAiCredentialSetupHint;

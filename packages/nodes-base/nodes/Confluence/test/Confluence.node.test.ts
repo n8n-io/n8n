@@ -55,6 +55,18 @@ describe('Confluence Node', () => {
 		]);
 	});
 
+	it('carries the top-level Site selector on every resource', () => {
+		for (const resource of ['attachment', 'page', 'search', 'space']) {
+			const site = node.description.properties.find(
+				(p) => p.name === 'site' && p.displayOptions?.show?.resource?.includes(resource),
+			);
+			expect(site?.type).toBe('resourceLocator');
+			expect(site?.required).toBeUndefined();
+			expect(site?.modes?.map((mode) => mode.name)).toEqual(['list', 'url']);
+			expect(site?.modes?.[0].typeOptions?.searchListMethod).toBe('getSites');
+		}
+	});
+
 	it('exposes the getLabels fields on the node description', () => {
 		const forGetLabels = node.description.properties.filter((p) =>
 			p.displayOptions?.show?.operation?.includes('getLabels'),

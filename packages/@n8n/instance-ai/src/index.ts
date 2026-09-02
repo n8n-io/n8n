@@ -187,6 +187,8 @@ const loadValidateAttachments = lazyModule(
 
 export { MAX_STEPS } from './constants/max-steps';
 export { parseModelHeadersJson } from './utils/parse-model-headers';
+export { modelConfigId } from './utils/model-config-id';
+export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
@@ -248,6 +250,10 @@ export type {
 	AgentSnapshotArtifact,
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
+
+// Plain re-export, not a lazyFunction: this is a pure mapping with no imports,
+// so it costs nothing to load eagerly.
+export { threadProvenanceMetadata } from './tracing/thread-provenance';
 
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
