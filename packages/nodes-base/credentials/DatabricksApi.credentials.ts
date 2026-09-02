@@ -5,6 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { databricksUserAgent } from '../nodes/Databricks/constants';
+
 export class DatabricksApi implements ICredentialType {
 	name = 'databricksApi';
 	displayName = 'Databricks';
@@ -34,6 +36,10 @@ export class DatabricksApi implements ICredentialType {
 		},
 	];
 
+	// The partner User-Agent is deliberately not set here: `authenticate` is bound
+	// to the credential rather than to a host, so it would also apply to arbitrary
+	// URLs called with the HTTP Request node. Node requests get it from
+	// databricksApiRequest() instead.
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -48,6 +54,7 @@ export class DatabricksApi implements ICredentialType {
 			baseURL: '={{$credentials.host}}',
 			url: '/api/2.0/preview/scim/v2/Me',
 			method: 'GET',
+			headers: { 'User-Agent': databricksUserAgent() },
 		},
 	};
 }

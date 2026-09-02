@@ -12,12 +12,14 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { ProjectService } from '@/services/project.service.ee';
 
 import type { GitConnection } from '../database/entities/git-connection.entity';
 import type { GitConnectionProjectRepository } from '../database/repositories/git-connection-project.repository';
@@ -32,6 +34,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 	const repository = mock<GitConnectionRepository>();
 	const gitConnectionProjectRepository = mock<GitConnectionProjectRepository>();
 	const projectRepository = mock<ProjectRepository>();
+	const projectService = mock<ProjectService>();
 	const gitService = mock<GitConnectionsGitService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const cipher = mock<Cipher>();
@@ -43,6 +46,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		repository,
 		gitConnectionProjectRepository,
 		projectRepository,
+		projectService,
 		gitService,
 		n8nPackagesService,
 		cipher,
@@ -246,7 +250,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 	describe('push export', () => {
 		let n8nFolder: string;
 		let exportService: GitConnectionsService;
-		const actor = mock<User>({ id: 'actor' });
+		const actor = mock<User>({
+			id: 'actor',
+			firstName: 'Ada',
+			lastName: 'Lovelace',
+			email: 'ada@example.com',
+		});
 
 		beforeEach(async () => {
 			n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-git-connection-export-'));
@@ -254,6 +263,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				repository,
 				gitConnectionProjectRepository,
 				projectRepository,
+				projectService,
 				gitService,
 				n8nPackagesService,
 				cipher,
@@ -262,6 +272,9 @@ describe('GitConnectionsService (credential state machine)', () => {
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
 			projectRepository.findTeamProjectIds.mockResolvedValue(['project-a', 'project-b']);
+			gitService.hasWorkingCopy.mockResolvedValue(true);
+			gitService.commitAndPush.mockResolvedValue({ commitSha: 'newsha', head: 'newsha' });
+			cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 			n8nPackagesService.exportPackageToDirectory.mockImplementation(
 				async (_request, { targetDir }) => {
 					await mkdir(path.join(targetDir, 'projects', 'alpha'), { recursive: true });
@@ -296,7 +309,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await mkdir(exportFolder, { recursive: true });
 			await writeFile(path.join(exportFolder, 'stale.json'), '{}');
 
-			const result = await exportService.push('1', actor);
+			const result = await exportService.push('1', actor, { commitMessage: 'sync projects' });
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
 			expect(projectRepository.findTeamProjectIds).toHaveBeenCalled();
@@ -332,7 +345,20 @@ describe('GitConnectionsService (credential state machine)', () => {
 					variables: 0,
 					tags: 0,
 				},
+				commitSha: 'newsha',
 			});
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					rootFolder: path.join(n8nFolder, 'git-connections', '1'),
+					branchName: 'main',
+					author: { name: 'Ada Lovelace', email: 'ada@example.com' },
+					commitMessage: 'sync projects',
+					force: false,
+					stagePathspec: 'n8n-export',
+					credentials: { type: 'ssh', privateKey: 'PRIV' },
+				}),
+			);
+			expect((repository.save.mock.calls.at(-1)?.[0] as GitConnection).baseCommit).toBe('newsha');
 			// The stale export is gone; only the freshly written package remains.
 			await expect(stat(path.join(exportFolder, 'stale.json'))).rejects.toThrow();
 			await expect(stat(stagingFolder)).rejects.toThrow();
@@ -350,7 +376,9 @@ describe('GitConnectionsService (credential state machine)', () => {
 				new BadRequestError('A project dependency is missing'),
 			);
 
-			await expect(exportService.push('1', actor)).rejects.toThrow(BadRequestError);
+			await expect(exportService.push('1', actor, { commitMessage: 'm' })).rejects.toThrow(
+				BadRequestError,
+			);
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
@@ -366,11 +394,61 @@ describe('GitConnectionsService (credential state machine)', () => {
 		it('does not query projects or write files for a missing connection', async () => {
 			repository.findOneBy.mockResolvedValueOnce(null);
 
-			await expect(exportService.push('missing', actor)).rejects.toThrow(
+			await expect(exportService.push('missing', actor, { commitMessage: 'm' })).rejects.toThrow(
 				'Git connection not found',
 			);
 			expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+
+		it('refuses to push when the repository is not cloned, before exporting', async () => {
+			gitService.hasWorkingCopy.mockResolvedValueOnce(false);
+
+			await expect(exportService.push('1', actor, { commitMessage: 'm' })).rejects.toThrow(
+				'not cloned',
+			);
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
+		it('refuses to push a connection with no branch', async () => {
+			repository.findOneBy.mockResolvedValueOnce({
+				...sshEntity(),
+				branchName: null,
+			} as GitConnection);
+
+			await expect(exportService.push('1', actor, { commitMessage: 'm' })).rejects.toThrow(
+				'branch name is required',
+			);
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+
+		it('forwards the force flag to the git service', async () => {
+			await exportService.push('1', actor, { commitMessage: 'm', force: true });
+
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({ force: true }),
+			);
+		});
+
+		it('falls back to the n8n identity when the actor has no profile', async () => {
+			const bareActor = mock<User>({ id: 'x', firstName: '', lastName: '', email: undefined });
+
+			await exportService.push('1', bareActor, { commitMessage: 'm' });
+
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					author: { name: 'n8n user', email: 'n8n@example.com' },
+				}),
+			);
+		});
+
+		it('propagates a timeout from the git service as a 503', async () => {
+			gitService.commitAndPush.mockRejectedValueOnce(new ServiceUnavailableError('timed out'));
+
+			await expect(exportService.push('1', actor, { commitMessage: 'm' })).rejects.toThrow(
+				ServiceUnavailableError,
+			);
 		});
 	});
 
@@ -535,7 +613,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		let n8nFolder: string;
 		let importService: GitConnectionsService;
 		let exportFolder: string;
-		const actor = mock<User>({ id: 'actor' });
+		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 
 		const importResult = () =>
 			({
@@ -570,6 +648,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 				repository,
 				gitConnectionProjectRepository,
 				projectRepository,
+				projectService,
 				gitService,
 				n8nPackagesService,
 				cipher,
@@ -577,7 +656,11 @@ describe('GitConnectionsService (credential state machine)', () => {
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
+			gitService.hasWorkingCopy.mockResolvedValue(true);
+			gitService.refreshWorkingCopy.mockResolvedValue({ head: 'remotesha' });
+			cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 			n8nPackagesService.importPackageFromDirectory.mockResolvedValue(importResult());
+			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2']);
 		});
 
 		afterEach(async () => {
@@ -603,7 +686,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
-					dataTableSchemaConflictPolicy: 'keep-existing',
+					dataTableSchemaConflictPolicy: 'fail',
 					variableMissingMode: 'create-with-value',
 					variableConflictPolicy: 'overwrite',
 					tagMissingMode: 'create',
@@ -611,10 +694,20 @@ describe('GitConnectionsService (credential state machine)', () => {
 				},
 				{ sourceDir: exportFolder },
 			);
+			expect(gitService.refreshWorkingCopy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					rootFolder: path.join(n8nFolder, 'git-connections', '1'),
+					branchName: 'main',
+					credentials: { type: 'ssh', privateKey: 'PRIV' },
+				}),
+			);
+			expect((repository.save.mock.calls.at(-1)?.[0] as GitConnection).baseCommit).toBe(
+				'remotesha',
+			);
 			expect(result).toEqual({
 				connectionId: '1',
 				counts: {
-					projects: { created: 1, updated: 1, skipped: 0 },
+					projects: { created: 1, updated: 1, skipped: 0, deleted: 0 },
 					folders: { created: 2, skipped: 1, removed: 2 },
 					workflows: {
 						created: 2,
@@ -629,18 +722,18 @@ describe('GitConnectionsService (credential state machine)', () => {
 					variables: { matched: 1, created: 1, updated: 1, stubbed: 0, missing: 0 },
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
 				},
+				commitSha: 'remotesha',
 			});
 		});
 
-		it('reconciles the connection links to every imported project', async () => {
+		it('deletes team projects missing from the import', async () => {
 			await mkdir(exportFolder, { recursive: true });
+			projectRepository.findTeamProjectIds.mockResolvedValueOnce(['p1', 'p2', 'removed']);
 
-			await importService.pull('1', actor);
+			const result = await importService.pull('1', actor);
 
-			expect(gitConnectionProjectRepository.syncConnectionProjects).toHaveBeenCalledWith('1', [
-				'p1',
-				'p2',
-			]);
+			expect(projectService.deleteProject).toHaveBeenCalledWith(actor, 'removed');
+			expect(result.counts.projects.deleted).toBe(1);
 		});
 
 		it('fails with a clear error when there is no exported working copy', async () => {
@@ -656,6 +749,22 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await expect(importService.pull('missing', actor)).rejects.toThrow(
 				'Git connection not found',
 			);
+			expect(gitService.refreshWorkingCopy).not.toHaveBeenCalled();
+			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+		});
+
+		it('refuses to pull when the repository is not cloned, before fetching', async () => {
+			gitService.hasWorkingCopy.mockResolvedValueOnce(false);
+
+			await expect(importService.pull('1', actor)).rejects.toThrow('not cloned');
+			expect(gitService.refreshWorkingCopy).not.toHaveBeenCalled();
+			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+		});
+
+		it('propagates a timeout from the git service as a 503', async () => {
+			gitService.refreshWorkingCopy.mockRejectedValueOnce(new ServiceUnavailableError('timed out'));
+
+			await expect(importService.pull('1', actor)).rejects.toThrow(ServiceUnavailableError);
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 		});
 	});

@@ -317,7 +317,7 @@ describe('PollerStateRepository', () => {
 				).resolves.toBe(true);
 
 				// The same call deactivation's deprovision makes.
-				await jobRepository.deleteByOwner(jobRepository.manager, owner);
+				await jobRepository.deleteByOwnerMember(jobRepository.manager, owner);
 
 				// The running task row is gone with its job, not orphaned.
 				await expect(taskRepository.findOneBy({ id: task.id })).resolves.toBeNull();

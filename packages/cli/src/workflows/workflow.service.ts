@@ -1,4 +1,5 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
@@ -16,7 +17,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, QueryFailedError } from '@n8n/typeorm';
@@ -29,6 +30,7 @@ import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-w
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
+import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -41,9 +43,11 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
+import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
@@ -73,6 +77,19 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 /** Internal rollback vehicle for `publishAsSystem`'s guarded transaction; never escapes it. */
 class SystemPublishSupersededError extends Error {}
+
+/** The API-key scope a caller needs to put a version live, whether directly or by saving. */
+const PUBLISH_API_KEY_SCOPE: ApiKeyScope = 'workflow:activate';
+
+/** What `getMany` should enrich or scope beyond the plain list query. */
+export type GetManyOptions = {
+	includeScopes?: boolean;
+	includeFolders?: boolean;
+	onlySharedWithMe?: boolean;
+	/** Attach the list publication badge; only the workflow list UI wants this. */
+	includePublicationStatus?: boolean;
+	requiredScopes?: Scope[];
+};
 
 @Service()
 export class WorkflowService {
@@ -111,15 +128,19 @@ export class WorkflowService {
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	async getMany(
 		user: User,
 		options?: ListQuery.Options,
-		includeScopes?: boolean,
-		includeFolders?: boolean,
-		onlySharedWithMe?: boolean,
-		requiredScopes: Scope[] = ['workflow:read'],
+		{
+			includeScopes = false,
+			includeFolders = false,
+			onlySharedWithMe = false,
+			includePublicationStatus = false,
+			requiredScopes = ['workflow:read'],
+		}: GetManyOptions = {},
 	) {
 		let count;
 		let workflows;
@@ -207,16 +228,30 @@ export class WorkflowService {
 
 		this.cleanupSharedField(workflows);
 
+		// Kicked off before the folder merge — `workflows` holds only workflow rows
+		// here — and awaited last, so it overlaps the resolvable-credentials lookup.
+		const publicationStatuses =
+			includePublicationStatus && this.globalConfig.workflows.useWorkflowPublicationService
+				? this.getListPublicationStatuses(workflows.map((w) => w.id))
+				: null;
+
 		if (includeFolders) {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
 
 		// Add hasResolvableCredentials if dynamic credentials feature is licensed
 		if (this.licenseState.isDynamicCredentialsLicensed()) {
-			return {
-				workflows: await this.addResolvableCredentialsFlag(workflows),
-				count,
-			};
+			workflows = await this.addResolvableCredentialsFlag(workflows);
+		}
+
+		if (publicationStatuses) {
+			const statuses = await publicationStatuses;
+			// Only attach when set: workflows with no trigger rows (and folder rows,
+			// whose ids never match) keep the legacy card indicator.
+			workflows = workflows.map((workflow) => {
+				const publicationStatus = statuses.get(workflow.id);
+				return publicationStatus ? { ...workflow, publicationStatus } : workflow;
+			});
 		}
 
 		return {
@@ -244,6 +279,23 @@ export class WorkflowService {
 		);
 
 		return parentWorkflow ? parentWorkflowId : undefined;
+	}
+
+	/**
+	 * The badge is decorative, so a failure of the aggregate must degrade to an
+	 * unbadged list instead of failing the whole request.
+	 */
+	private async getListPublicationStatuses(
+		workflowIds: string[],
+	): Promise<Map<string, WorkflowListPublicationStatus>> {
+		try {
+			return await this.workflowPublicationStatusService.getListStatusesByWorkflowIds(workflowIds);
+		} catch (error) {
+			this.logger.warn('Failed to resolve publication statuses for the workflow list', {
+				error: ensureError(error),
+			});
+			return new Map();
+		}
 	}
 
 	private async addResolvableCredentialsFlag<
@@ -350,6 +402,8 @@ export class WorkflowService {
 			forceSave?: boolean;
 			publicApi?: boolean;
 			publishIfActive?: boolean;
+			/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
+			apiKeyScopes?: readonly string[];
 			aiBuilderAssisted?: boolean;
 			expectedChecksum?: string;
 			autosaved?: boolean;
@@ -365,6 +419,7 @@ export class WorkflowService {
 			forceSave = false,
 			publicApi = false,
 			publishIfActive = false,
+			apiKeyScopes,
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
@@ -661,6 +716,14 @@ export class WorkflowService {
 		});
 
 		if (versionIdToPublish) {
+			// Putting a different version live is a publication, so it has to clear the same bars as an
+			// explicit publish. A caller who may write but not publish keeps the draft they just saved,
+			// and the refusal names it. Re-applying the version that is already live publishes nothing
+			// new, so it stays a plain update.
+			if (versionIdToPublish !== workflow.activeVersionId) {
+				await this.assertMayPublishOnSave(user, workflowId, apiKeyScopes, versionIdToPublish);
+			}
+
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
 				versionId: versionIdToPublish,
 				source,
@@ -677,12 +740,47 @@ export class WorkflowService {
 		return updatedWorkflow;
 	}
 
+	/**
+	 * Both bars a save-triggered publication has to clear: the API key's own publish scope (a key can
+	 * be scoped more narrowly than its owner) and the caller's publish permission on the project.
+	 * Refused rather than rolled back: the draft the caller was allowed to write stays saved, and the
+	 * error carries its version so the caller does not have to read it back.
+	 */
+	private async assertMayPublishOnSave(
+		user: User,
+		workflowId: string,
+		apiKeyScopes: readonly string[] | undefined,
+		savedVersionId: string,
+	): Promise<void> {
+		if (apiKeyScopes && !apiKeyScopes.includes(PUBLISH_API_KEY_SCOPE)) {
+			throw new WorkflowPublishForbiddenError({
+				reason: 'insufficient_api_key_scope',
+				versionId: savedVersionId,
+			});
+		}
+
+		// Scoped to the workflow rather than its project, so a role granted by sharing the workflow
+		// counts the same way it does on the publish endpoint.
+		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { workflowId });
+
+		if (!canPublish) {
+			this.logger.warn('User saved a draft but may not publish it', {
+				workflowId,
+				userId: user.id,
+			});
+			throw new WorkflowPublishForbiddenError({
+				reason: 'insufficient_permissions',
+				versionId: savedVersionId,
+			});
+		}
+	}
+
 	private async _addToActiveWorkflowManager(
 		user: User,
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		tracking: { source: WorkflowActionSource } = { source: 'ui' },
+		options: { source: WorkflowActionSource } = { source: 'ui' },
 	): Promise<void> {
 		let didPublish = false;
 		try {
@@ -742,8 +840,8 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow,
-					publicApi: tracking.source === 'api',
-					source: tracking.source,
+					publicApi: options.source === 'api',
+					source: options.source,
 				});
 			}
 		}
@@ -815,9 +913,21 @@ export class WorkflowService {
 		const source = options?.source ?? 'ui';
 		const publicApi = source === 'api';
 
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
 		]);
+
+		// Re-applying the version that is already live publishes nothing new. It only re-registers the
+		// triggers so a settings change takes effect, so an editor's own scopes are enough. Resolved as
+		// a fallback, leaving the publish path above untouched. `workflow:read` joins the update scope
+		// because this path reads the live version back out of history below.
+		const resolvedWithEditorScopes = workflow === null;
+		if (resolvedWithEditorScopes) {
+			workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+				'workflow:read',
+				'workflow:update',
+			]);
+		}
 
 		if (!workflow) {
 			this.logger.warn('User attempted to activate a workflow without permissions', {
@@ -835,6 +945,18 @@ export class WorkflowService {
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
+
+		// Reached with access to the workflow but not the right to release a version, so there is no
+		// existence to hide behind a 404 here.
+		if (resolvedWithEditorScopes && versionIdToActivate !== previousActiveVersionId) {
+			this.logger.warn('User attempted to publish a workflow without permissions', {
+				workflowId,
+				userId: user.id,
+			});
+			throw new ForbiddenError(
+				'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
+			);
+		}
 
 		let versionToActivate: WorkflowHistory;
 		try {

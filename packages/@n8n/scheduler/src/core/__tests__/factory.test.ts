@@ -533,6 +533,47 @@ describe('createScheduler lifecycle', () => {
 		await scheduler.stop();
 	});
 
+	it('start drives owner reconciliation on its cadence when reconciliation is composed', async () => {
+		const jobStore = mock<ReconciliationJobStore>();
+		jobStore.findOwnerTypes.mockResolvedValue([]);
+		const { scheduler } = makeScheduler({
+			reconciliation: { jobStore, owners: new ScheduledJobOwnerRegistry() },
+			now: async () => await Promise.resolve(new Date()),
+			lifecycle: { reconciliationIntervalSeconds: 2 },
+		});
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(jobStore.findOwnerTypes).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(jobStore.findOwnerTypes).toHaveBeenCalledTimes(2);
+
+		await scheduler.stop();
+	});
+
+	it('composes no reconciliation loop without reconciliation deps', async () => {
+		const { scheduler, onEvent } = makeScheduler({
+			lifecycle: { reconciliationIntervalSeconds: 2 },
+		});
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(10_000);
+
+		await expect(scheduler.reconcile()).resolves.toEqual({
+			ownersChecked: 0,
+			quarantined: 0,
+			deleted: 0,
+			revived: 0,
+			skippedOwnerTypes: [],
+			drained: true,
+		});
+		// The pass-level sink never saw the reconciliation loop run or fail.
+		const passes = onEvent.mock.calls.map(([event]) => event.context.pass);
+		expect(passes).not.toContain('owner reconciliation');
+
+		await scheduler.stop();
+	});
+
 	it('reports start as an info milestone and starts the loops only once', () => {
 		const { scheduler, onEvent } = makeScheduler();
 
