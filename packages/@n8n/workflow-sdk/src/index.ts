@@ -188,6 +188,7 @@ export type { CodeExecutionMode } from './lint/code-node/extract-snippets';
 export { generateWorkflowCode } from './codegen/index';
 export {
 	emitInstanceAi,
+	buildImports,
 	SDK_IMPORTABLE_FUNCTIONS,
 	type EmitInstanceAiOptions,
 } from './codegen/index';

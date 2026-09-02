@@ -19,6 +19,51 @@ export function escapeString(str: string): string {
 }
 
 /**
+ * Escape a string for use inside a template literal. Newlines stay raw so the
+ * generated source keeps the value's own line structure.
+ */
+export function escapeTemplateLiteral(str: string): string {
+	return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+}
+
+/**
+ * Format a string value as a code literal. Values with line breaks become template
+ * literals so each line of a JSON body, prompt, or script lands on its own source
+ * line — a scoped text edit can then target one line instead of a single escaped
+ * line that holds the whole value. Everything else stays a single-quoted string.
+ */
+export function formatStringLiteral(str: string): string {
+	if (str.includes('\n') || str.includes('\r')) {
+		return `\`${escapeTemplateLiteral(str)}\``;
+	}
+	return `'${escapeString(str)}'`;
+}
+
+/**
+ * Indent every line after the first, except lines that sit inside a template
+ * literal — indenting those would change the string value.
+ */
+export function indentContinuationLines(text: string, indent: string): string {
+	const lines = text.split('\n');
+	if (lines.length === 1) return text;
+
+	let inTemplate = false;
+	return lines
+		.map((line, index) => {
+			const result = index === 0 || inTemplate ? line : `${indent}${line}`;
+			for (let i = 0; i < line.length; i++) {
+				if (line[i] === '\\') {
+					i++;
+				} else if (line[i] === '`') {
+					inTemplate = !inTemplate;
+				}
+			}
+			return result;
+		})
+		.join('\n');
+}
+
+/**
  * Check if a key needs to be quoted to be a valid JS identifier
  */
 export function needsQuoting(key: string): boolean {

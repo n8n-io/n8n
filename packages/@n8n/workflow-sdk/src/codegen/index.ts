@@ -63,6 +63,7 @@ export { buildCompositeTree } from './composite-builder';
 export { generateCode } from './code-generator';
 export {
 	emitInstanceAi,
+	buildImports,
 	SDK_IMPORTABLE_FUNCTIONS,
 	type EmitInstanceAiOptions,
 } from './emit-instance-ai';

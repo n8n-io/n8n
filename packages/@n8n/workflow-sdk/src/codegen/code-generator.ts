@@ -34,7 +34,7 @@ import {
 	isMergeType,
 	generateDefaultNodeName,
 } from './node-type-utils';
-import { escapeString, escapeRegexChars } from './string-utils';
+import { escapeString, escapeRegexChars, formatStringLiteral } from './string-utils';
 import { formatValue, formatCredentials } from './subnode-generator';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 import { getVarName, getUniqueVarName } from './variable-names';
@@ -615,7 +615,7 @@ function getNodesInsideSticky(stickyNode: SemanticNode, ctx: GenerationContext):
  * New signature: sticky(content, nodes, config?)
  */
 function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string {
-	const content = escapeString((node.json.parameters?.content as string) ?? '');
+	const content = formatStringLiteral((node.json.parameters?.content as string) ?? '');
 
 	// Get nodes inside this sticky's bounds
 	const nodesInside = getNodesInsideSticky(node, ctx);
@@ -652,7 +652,7 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	const optionsStr = options.length > 0 ? `, { ${options.join(', ')} }` : '';
-	return `sticky('${content}', ${nodesStr}${optionsStr})`;
+	return `sticky(${content}, ${nodesStr}${optionsStr})`;
 }
 
 /**

@@ -223,7 +223,7 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		expect(code).toContain("sticky('## Documentation\\n\\nThis is a note.'");
+		expect(code).toContain('sticky(`## Documentation\n\nThis is a note.`');
 		expect(code).toContain('color: 4');
 	});
 
@@ -415,9 +415,10 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should properly escape
+		// Single-line strings keep escaped quotes; multi-line strings become template
+		// literals with real line breaks so each line stays editable on its own.
 		expect(code).toContain("\\'quotes\\'");
-		expect(code).toContain('\\n');
+		expect(code).toContain("jsCode: `const x = 'hello';\nreturn x;`");
 	});
 
 	it('should generate code with variables-first format', () => {
@@ -3141,5 +3142,45 @@ describe('Sequential polling loops', () => {
 
 		// Retry Wait 2 → Check Job 2 (cycle back)
 		expect(parsed.connections['Retry Wait 2']?.main[0]?.[0]?.node).toBe('Check Job 2');
+	});
+
+	it('should emit multi-line strings as template literals and round-trip them exactly', () => {
+		const jsonBody =
+			'{\n  "orderId": "={{ $json.order_id }}",\n  "note": "a `tick` and ${not_an_expr} and a \\ backslash",\n  "quote": "it\'s"\n}';
+		const jsCode = 'const msg = `Hello ${name}`;\nreturn [{ json: { msg, when: $now.toISO() } }];';
+		const json: WorkflowJSON = {
+			name: 'Multi-line strings',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Send',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0],
+					parameters: { method: 'POST', specifyBody: 'json', jsonBody: `=${jsonBody}` },
+				},
+				{
+					id: 'n2',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: { jsCode },
+				},
+			],
+			connections: { Send: { main: [[{ node: 'Code', type: 'main', index: 0 }]] } },
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Each body line is its own source line, so a scoped edit can target one key.
+		expect(code).toContain('jsonBody: expr(`{\n  "orderId": "={{ $json.order_id }}",\n');
+		expect(code).toContain('jsCode: `const msg = \\`Hello \\${name}\\`;\n');
+
+		const parsed = parseWorkflowCode(code);
+		const send = parsed.nodes.find((n) => n.name === 'Send');
+		const codeNode = parsed.nodes.find((n) => n.name === 'Code');
+		expect(send?.parameters?.jsonBody).toBe(`=${jsonBody}`);
+		expect(codeNode?.parameters?.jsCode).toBe(jsCode);
 	});
 });
