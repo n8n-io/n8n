@@ -151,4 +151,13 @@ export class ScalingModeConfig {
 
 	@Nested
 	bull: BullConfig;
+
+	/**
+	 * Whether a worker that receives a shutdown signal suspends in-flight
+	 * production executions at the next node boundary. Suspended executions are
+	 * persisted as 'waiting' and resumed on another worker, instead of running
+	 * to completion (or force-kill) on the exiting worker.
+	 */
+	@Env('N8N_WORKER_SUSPEND_EXECUTIONS_ON_SHUTDOWN')
+	suspendExecutionsOnShutdown: boolean = false;
 }

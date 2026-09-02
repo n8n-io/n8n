@@ -145,6 +145,8 @@ export type AbortJobMessage = {
 
 export type RunningJob = RunningJobSummary & {
 	run: PCancelable<IRun>;
+	/** Present only when the job may be suspended at worker shutdown. */
+	suspend?: () => void;
 };
 
 export type QueueRecoveryContext = {
