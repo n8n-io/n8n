@@ -21,8 +21,9 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
+import { readExportTree } from './export-tree';
 import { entryRelocations, mergeManifests, staleTargets } from './manifest-merge';
-import type { Relocation } from './manifest-merge';
+import type { BranchState, Relocation } from './manifest-merge';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -33,10 +34,10 @@ const selectivePushOptionsSchema = z.object({
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
 
 /**
- * Applies a selective export to the exported working copy of a branch. It
- * only knows directories and manifests; the caller resolves the connection,
- * runs the exporter and commits. This keeps the reconciliation independent
- * of how connections are modelled.
+ * Applies a selective export to the exported working copy of a branch. It only
+ * knows directories; the caller resolves the connection, runs the exporter and
+ * commits. This keeps the reconciliation independent of how connections are
+ * modelled.
  */
 @Service()
 export class WorkingCopyUpdater {
@@ -78,25 +79,63 @@ export class WorkingCopyUpdater {
 	}
 
 	async readManifest(packageDir: string): Promise<PackageManifest> {
-		const raw = await readFile(await this.resolveContained(packageDir, 'manifest.json'), 'utf-8');
-		return packageManifestSchema.parse(jsonParse(raw));
+		const manifest = await this.readManifestIfPresent(packageDir);
+		if (!manifest) throw new BadRequestError('The export has no manifest.json');
+		return manifest;
+	}
+
+	/**
+	 * What the branch holds. The entries come from the directories on disk, so
+	 * a manifest that drifted from the tree cannot steer the push.
+	 *
+	 * Two things no directory carries still come from the manifest: the
+	 * requirements, which record who uses a dependency, and the variable ids,
+	 * which the package format leaves out on purpose. Both go away with the
+	 * manifest. A manifest that is present but unreadable is an error rather
+	 * than an empty bridge: without the requirements the merge would read every
+	 * dependency of an unselected workflow as an orphan and drop it.
+	 */
+	async readBranchState(exportFolder: string): Promise<BranchState> {
+		// A linked export root would make the scan read a tree outside the
+		// working copy, so check it before walking.
+		await this.resolveContained(exportFolder, '.');
+
+		const tree = await readExportTree(exportFolder);
+		const manifest = await this.readManifestIfPresent(exportFolder);
+		if (!manifest) return tree;
+
+		const idByTarget = new Map((manifest.variables ?? []).map((v) => [v.target, v.id]));
+		return {
+			...tree,
+			variables: tree.variables?.map((v) => ({ ...v, id: idByTarget.get(v.target) ?? v.id })),
+			requirements: manifest.requirements,
+		};
+	}
+
+	private async readManifestIfPresent(packageDir: string): Promise<PackageManifest | undefined> {
+		const file = await this.resolveContained(packageDir, 'manifest.json');
+		const raw = await readFile(file, 'utf-8').catch((error: NodeJS.ErrnoException) => {
+			if (error.code === 'ENOENT') return undefined;
+			throw error;
+		});
+		return raw === undefined ? undefined : packageManifestSchema.parse(jsonParse(raw));
 	}
 
 	/**
 	 * Every deleted workflow must be on the branch and belong to the selected
 	 * project. Membership is judged by the project's directory on the branch,
-	 * the only place the manifest records it.
+	 * the only place that records it.
 	 */
-	assertDeletionsOnBranch(manifest: PackageManifest, selection: SelectivePushOptions): void {
+	assertDeletionsOnBranch(branch: BranchState, selection: SelectivePushOptions): void {
 		if (selection.deletedWorkflowIds.length === 0) return;
 
-		const targetById = new Map((manifest.workflows ?? []).map((w) => [w.id, w.target]));
+		const targetById = new Map((branch.workflows ?? []).map((w) => [w.id, w.target]));
 		const unknown = selection.deletedWorkflowIds.filter((id) => !targetById.has(id));
 		if (unknown.length > 0) {
 			throw new BadRequestError(`Deleted workflows not found on the branch: ${unknown.join(', ')}`);
 		}
 
-		const projectTarget = manifest.projects?.find((p) => p.id === selection.projectId)?.target;
+		const projectTarget = branch.projects?.find((p) => p.id === selection.projectId)?.target;
 		const foreign = selection.deletedWorkflowIds.filter(
 			(id) => !projectTarget || !targetById.get(id)?.startsWith(`${projectTarget}/`),
 		);
@@ -108,16 +147,16 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * Merge the staging export into `exportFolder` and write the merged
-	 * manifest. Unselected entries under a renamed container are copied to a
-	 * scratch tree first, so removing the stale directories and placing the
-	 * copies cannot collide even when two containers swap names. The staging
-	 * export is overlaid last. Returns the merged manifest.
+	 * Merge the staging export into `exportFolder`. Unselected entries under a
+	 * renamed container are copied to a scratch tree first, so removing the
+	 * stale directories and placing the copies cannot collide even when two
+	 * containers swap names. The staging export is overlaid last, then
+	 * `manifest.json` is rewritten to restate the resulting directories.
 	 */
 	async applySelection(
 		exportFolder: string,
 		stagingFolder: string,
-		existing: PackageManifest,
+		existing: BranchState,
 		deletedWorkflowIds: Set<string>,
 	): Promise<PackageManifest> {
 		const staging = await this.readManifest(stagingFolder);
@@ -154,7 +193,7 @@ export class WorkingCopyUpdater {
 
 	/** Entities the push added to or removed from the branch, not the export size. */
 	deltaCounts(
-		before: PackageManifest,
+		before: BranchState,
 		after: PackageManifest,
 		selection: SelectivePushOptions,
 	): GitConnectionPushResultDto['counts'] {
@@ -189,9 +228,7 @@ export class WorkingCopyUpdater {
 
 		const srcStat = await stat(src).catch(() => null);
 		if (!srcStat?.isDirectory()) {
-			throw new BadRequestError(
-				`The branch manifest lists "${move.from}" but the directory is missing. Push the whole project to repair the branch.`,
-			);
+			throw new BadRequestError(`The branch no longer holds "${move.from}". Retry the push.`);
 		}
 
 		if (kind === 'leaf') {

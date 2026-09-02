@@ -399,6 +399,56 @@ describe('Selective push', () => {
 		);
 	});
 
+	it('keeps a workflow the committed manifest lost, because the directories decide', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const { project, workflows } = await setupProjectWithWorkflows(
+			'Orders',
+			['w1', 'w2'],
+			connection.id,
+		);
+
+		await service.push(connection.id, owner, { commitMessage: 'Full push' });
+		const before = await inspectBranch(remote.bareDir);
+		const w1Target = (await readBranchManifest(before.dir)).workflows!.find(
+			(w) => w.id === workflows[0].id,
+		)!.target;
+
+		// A merge that went wrong drops the entries from the manifest, while the
+		// directories on the branch stay intact.
+		const workingCopy = path.join(
+			testRoot,
+			'instance',
+			'git-connections',
+			connection.id,
+			'repository',
+		);
+		const { workflows: _lost, ...withoutEntries } = await readBranchManifest(workingCopy);
+		await writeFile(
+			path.join(workingCopy, 'n8n-export', 'manifest.json'),
+			JSON.stringify(withoutEntries, null, '\t'),
+		);
+
+		await service.pushSelection(
+			connection.id,
+			owner,
+			{ commitMessage: 'Update w2' },
+			{ projectId: project.id, workflowIds: [workflows[1].id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const manifest = await readBranchManifest(dir);
+
+		expect(manifest.workflows).toEqual(
+			expect.arrayContaining([{ id: workflows[0].id, name: 'w1', target: w1Target }]),
+		);
+		await expect(
+			stat(path.join(dir, 'n8n-export', w1Target, 'workflow.json')),
+		).resolves.toBeDefined();
+	});
+
 	it('deletes the selected workflow from the branch', async () => {
 		const remote = await createRemote();
 		const connection = await createConnection(remote.bareDir);

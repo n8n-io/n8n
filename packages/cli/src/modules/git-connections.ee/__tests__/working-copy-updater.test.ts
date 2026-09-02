@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
+import type { BranchState } from '../manifest-merge';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import type { SelectivePushOptions } from '../working-copy-updater';
 
@@ -45,6 +46,14 @@ const credReq = (id: string, usedByWorkflows: string[]) => ({
 	usedByWorkflows,
 });
 
+// The files an export writes. Their ids and names are what the branch state is
+// read from, so they must agree with the entry helpers above.
+const projectFile = JSON.stringify({ id: alpha.id, name: alpha.name });
+const folderFile = (id: string, name: string) => JSON.stringify({ id, name });
+const workflowFile = (id: string, extra: Record<string, unknown> = {}) =>
+	JSON.stringify({ id, name: id.toUpperCase(), ...extra });
+const credentialFile = (id: string) => JSON.stringify({ id, name: id });
+
 const selection = (overrides: Partial<SelectivePushOptions> = {}): SelectivePushOptions => ({
 	projectId: 'p1',
 	workflowIds: [],
@@ -71,22 +80,26 @@ describe('WorkingCopyUpdater', () => {
 	const expectAbsent = async (relative: string) =>
 		await expect(stat(path.join(exportFolder, relative))).rejects.toThrow();
 
-	/** Write the branch and the staging export, then apply the selection. */
+	/**
+	 * Write the branch and the staging export, then apply the selection. The
+	 * branch manifest carries no entries: they are read from the directories.
+	 */
 	const apply = async (
-		existing: PackageManifest,
 		branchFiles: Record<string, string>,
 		staging: PackageManifest,
 		stagingFiles: Record<string, string>,
-		deletedWorkflowIds: string[] = [],
+		{
+			deleted = [],
+			branchManifest = makeManifest(),
+		}: { deleted?: string[]; branchManifest?: PackageManifest } = {},
 	) => {
-		await writeTree(exportFolder, { 'manifest.json': manifestFile(existing), ...branchFiles });
+		await writeTree(exportFolder, {
+			'manifest.json': manifestFile(branchManifest),
+			...branchFiles,
+		});
 		await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging), ...stagingFiles });
-		return await updater.applySelection(
-			exportFolder,
-			stagingFolder,
-			existing,
-			new Set(deletedWorkflowIds),
-		);
+		const branch = await updater.readBranchState(exportFolder);
+		return await updater.applySelection(exportFolder, stagingFolder, branch, new Set(deleted));
 	};
 
 	beforeEach(async () => {
@@ -125,32 +138,78 @@ describe('WorkingCopyUpdater', () => {
 		});
 	});
 
+	describe('readBranchState', () => {
+		it('reads the entries from the directories and the requirements from the manifest', async () => {
+			const requirements = { credentials: [credReq('c1', ['w1'])] };
+			await writeTree(exportFolder, {
+				// The manifest lists no entry, and w1 is still on the branch.
+				'manifest.json': manifestFile(makeManifest({ requirements })),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
+			});
+
+			const branch = await updater.readBranchState(exportFolder);
+
+			expect(branch.projects).toEqual([alpha]);
+			expect(branch.workflows).toEqual([wf('w1')]);
+			expect(branch.credentials).toEqual([cred('c1')]);
+			expect(branch.requirements).toEqual(requirements);
+		});
+
+		it('keeps the variable ids the manifest knows, because the files omit them', async () => {
+			const target = 'projects/alpha/variables/api-key';
+			await writeTree(exportFolder, {
+				'manifest.json': manifestFile(
+					makeManifest({ variables: [{ id: 'v1', name: 'API_KEY', target }] }),
+				),
+				[`${target}/variable.json`]: JSON.stringify({ name: 'API_KEY', type: 'string' }),
+			});
+
+			const branch = await updater.readBranchState(exportFolder);
+
+			expect(branch.variables).toEqual([{ id: 'v1', name: 'API_KEY', target }]);
+		});
+
+		it('works on a branch that has no manifest at all', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+
+			const branch = await updater.readBranchState(exportFolder);
+
+			expect(branch.workflows).toEqual([wf('w1')]);
+			expect(branch.requirements).toBeUndefined();
+		});
+	});
+
 	describe('assertDeletionsOnBranch', () => {
 		it('rejects deletes of workflows that are not on the branch', () => {
-			const manifest = makeManifest({ workflows: [wf('w1')], projects: [alpha] });
+			const branch: BranchState = { workflows: [wf('w1')], projects: [alpha] };
 
 			expect(() =>
-				updater.assertDeletionsOnBranch(manifest, selection({ deletedWorkflowIds: ['w-unknown'] })),
+				updater.assertDeletionsOnBranch(branch, selection({ deletedWorkflowIds: ['w-unknown'] })),
 			).toThrow('Deleted workflows not found on the branch: w-unknown');
 		});
 
 		it('rejects deletes of workflows that belong to another project', () => {
 			const other = { id: 'w-other', name: 'WOther', target: 'projects/beta/workflows/w-other' };
-			const manifest = makeManifest({
+			const branch: BranchState = {
 				workflows: [wf('w1'), other],
 				projects: [alpha, { id: 'p2', name: 'Beta', target: 'projects/beta' }],
-			});
+			};
 
 			expect(() =>
-				updater.assertDeletionsOnBranch(manifest, selection({ deletedWorkflowIds: ['w-other'] })),
+				updater.assertDeletionsOnBranch(branch, selection({ deletedWorkflowIds: ['w-other'] })),
 			).toThrow('Deleted workflows do not belong to the selected project: w-other');
 		});
 
 		it('accepts deletes of workflows under the selected project', () => {
-			const manifest = makeManifest({ workflows: [wf('w1')], projects: [alpha] });
+			const branch: BranchState = { workflows: [wf('w1')], projects: [alpha] };
 
 			expect(() =>
-				updater.assertDeletionsOnBranch(manifest, selection({ deletedWorkflowIds: ['w1'] })),
+				updater.assertDeletionsOnBranch(branch, selection({ deletedWorkflowIds: ['w1'] })),
 			).not.toThrow();
 		});
 	});
@@ -159,17 +218,12 @@ describe('WorkingCopyUpdater', () => {
 		it('moves unselected workflows along with their renamed folder and drops deleted ones', async () => {
 			const revenue = folder('f1', 'Revenue', 'revenue');
 			await apply(
-				makeManifest({
-					projects: [alpha],
-					folders: [folder('f1', 'Sales', 'sales')],
-					workflows: [inFolder('w1', 'sales'), inFolder('w2', 'sales'), inFolder('w3', 'sales')],
-				}),
 				{
-					'projects/alpha/project.json': '{}',
-					'projects/alpha/folders/sales/folder.json': '{"name":"Sales"}',
-					'projects/alpha/folders/sales/workflows/w1/workflow.json': '{"id":"w1","v":1}',
-					'projects/alpha/folders/sales/workflows/w2/workflow.json': '{"id":"w2"}',
-					'projects/alpha/folders/sales/workflows/w3/workflow.json': '{"id":"w3"}',
+					'projects/alpha/project.json': projectFile,
+					'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
+					'projects/alpha/folders/sales/workflows/w1/workflow.json': workflowFile('w1', { v: 1 }),
+					'projects/alpha/folders/sales/workflows/w2/workflow.json': workflowFile('w2'),
+					'projects/alpha/folders/sales/workflows/w3/workflow.json': workflowFile('w3'),
 				},
 				makeManifest({
 					projects: [alpha],
@@ -177,23 +231,23 @@ describe('WorkingCopyUpdater', () => {
 					workflows: [inFolder('w1', 'revenue')],
 				}),
 				{
-					'projects/alpha/project.json': '{}',
-					'projects/alpha/folders/revenue/folder.json': '{"name":"Revenue"}',
-					'projects/alpha/folders/revenue/workflows/w1/workflow.json': '{"id":"w1","v":2}',
+					'projects/alpha/project.json': projectFile,
+					'projects/alpha/folders/revenue/folder.json': folderFile('f1', 'Revenue'),
+					'projects/alpha/folders/revenue/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
 				},
-				['w3'],
+				{ deleted: ['w3'] },
 			);
 
 			await expectAbsent('projects/alpha/folders/sales');
 			await expectAbsent('projects/alpha/folders/revenue/workflows/w3');
 			expect(await readExported('projects/alpha/folders/revenue/folder.json')).toBe(
-				'{"name":"Revenue"}',
+				folderFile('f1', 'Revenue'),
 			);
 			expect(await readExported('projects/alpha/folders/revenue/workflows/w1/workflow.json')).toBe(
-				'{"id":"w1","v":2}',
+				workflowFile('w1', { v: 2 }),
 			);
 			expect(await readExported('projects/alpha/folders/revenue/workflows/w2/workflow.json')).toBe(
-				'{"id":"w2"}',
+				workflowFile('w2'),
 			);
 			const manifest = await updater.readManifest(exportFolder);
 			expect(manifest.folders).toEqual([revenue]);
@@ -203,23 +257,13 @@ describe('WorkingCopyUpdater', () => {
 		it('handles two folders swapping names without losing unselected workflows', async () => {
 			// f1 is now named B (slug b) and f2 is named A (slug a); w1 and w3 are selected.
 			await apply(
-				makeManifest({
-					projects: [alpha],
-					folders: [folder('f1', 'A', 'a'), folder('f2', 'B', 'b')],
-					workflows: [
-						inFolder('w1', 'a'),
-						inFolder('w2', 'a'),
-						inFolder('w3', 'b'),
-						inFolder('w4', 'b'),
-					],
-				}),
 				{
-					'projects/alpha/folders/a/folder.json': '{"name":"A"}',
-					'projects/alpha/folders/b/folder.json': '{"name":"B"}',
-					'projects/alpha/folders/a/workflows/w1/workflow.json': '{"id":"w1"}',
-					'projects/alpha/folders/a/workflows/w2/workflow.json': '{"id":"w2"}',
-					'projects/alpha/folders/b/workflows/w3/workflow.json': '{"id":"w3"}',
-					'projects/alpha/folders/b/workflows/w4/workflow.json': '{"id":"w4"}',
+					'projects/alpha/folders/a/folder.json': folderFile('f1', 'A'),
+					'projects/alpha/folders/b/folder.json': folderFile('f2', 'B'),
+					'projects/alpha/folders/a/workflows/w1/workflow.json': workflowFile('w1'),
+					'projects/alpha/folders/a/workflows/w2/workflow.json': workflowFile('w2'),
+					'projects/alpha/folders/b/workflows/w3/workflow.json': workflowFile('w3'),
+					'projects/alpha/folders/b/workflows/w4/workflow.json': workflowFile('w4'),
 				},
 				makeManifest({
 					projects: [alpha],
@@ -227,20 +271,24 @@ describe('WorkingCopyUpdater', () => {
 					workflows: [inFolder('w1', 'b'), inFolder('w3', 'a')],
 				}),
 				{
-					'projects/alpha/folders/b/folder.json': '{"name":"B","id":"f1"}',
-					'projects/alpha/folders/a/folder.json': '{"name":"A","id":"f2"}',
-					'projects/alpha/folders/b/workflows/w1/workflow.json': '{"id":"w1","moved":true}',
-					'projects/alpha/folders/a/workflows/w3/workflow.json': '{"id":"w3","moved":true}',
+					'projects/alpha/folders/b/folder.json': folderFile('f1', 'B'),
+					'projects/alpha/folders/a/folder.json': folderFile('f2', 'A'),
+					'projects/alpha/folders/b/workflows/w1/workflow.json': workflowFile('w1', {
+						moved: true,
+					}),
+					'projects/alpha/folders/a/workflows/w3/workflow.json': workflowFile('w3', {
+						moved: true,
+					}),
 				},
 			);
 
 			const tree: Record<string, string> = {
-				'projects/alpha/folders/b/folder.json': '{"name":"B","id":"f1"}',
-				'projects/alpha/folders/a/folder.json': '{"name":"A","id":"f2"}',
-				'projects/alpha/folders/b/workflows/w1/workflow.json': '{"id":"w1","moved":true}',
-				'projects/alpha/folders/b/workflows/w2/workflow.json': '{"id":"w2"}',
-				'projects/alpha/folders/a/workflows/w3/workflow.json': '{"id":"w3","moved":true}',
-				'projects/alpha/folders/a/workflows/w4/workflow.json': '{"id":"w4"}',
+				'projects/alpha/folders/b/folder.json': folderFile('f1', 'B'),
+				'projects/alpha/folders/a/folder.json': folderFile('f2', 'A'),
+				'projects/alpha/folders/b/workflows/w1/workflow.json': workflowFile('w1', { moved: true }),
+				'projects/alpha/folders/b/workflows/w2/workflow.json': workflowFile('w2'),
+				'projects/alpha/folders/a/workflows/w3/workflow.json': workflowFile('w3', { moved: true }),
+				'projects/alpha/folders/a/workflows/w4/workflow.json': workflowFile('w4'),
 			};
 			for (const [file, content] of Object.entries(tree)) {
 				expect(await readExported(file), file).toBe(content);
@@ -254,47 +302,44 @@ describe('WorkingCopyUpdater', () => {
 			);
 		});
 
-		it('rejects a relocation when the branch is missing the listed directory', async () => {
-			const sales = folder('f1', 'Sales', 'sales');
-			await expect(
-				apply(
-					makeManifest({
-						projects: [alpha],
-						folders: [sales],
+		it('ignores a workflow that the manifest lists but the branch no longer holds', async () => {
+			// The old behaviour aborted the push here, because the manifest drove
+			// the relocation. The directories decide now, so w2 is simply not on
+			// the branch and the renamed folder still moves w1.
+			const merged = await apply(
+				{
+					'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
+					'projects/alpha/folders/sales/workflows/w1/workflow.json': workflowFile('w1'),
+				},
+				makeManifest({
+					projects: [alpha],
+					folders: [folder('f1', 'Revenue', 'revenue')],
+					workflows: [inFolder('w1', 'revenue')],
+				}),
+				{
+					'projects/alpha/folders/revenue/folder.json': folderFile('f1', 'Revenue'),
+					'projects/alpha/folders/revenue/workflows/w1/workflow.json': workflowFile('w1'),
+				},
+				{
+					branchManifest: makeManifest({
+						folders: [folder('f1', 'Sales', 'sales')],
 						workflows: [inFolder('w1', 'sales'), inFolder('w2', 'sales')],
 					}),
-					{
-						'projects/alpha/folders/sales/folder.json': '{}',
-						'projects/alpha/folders/sales/workflows/w1/workflow.json': '{}',
-					},
-					makeManifest({
-						projects: [alpha],
-						folders: [folder('f1', 'Revenue', 'revenue')],
-						workflows: [inFolder('w1', 'revenue')],
-					}),
-					{
-						'projects/alpha/folders/revenue/folder.json': '{}',
-						'projects/alpha/folders/revenue/workflows/w1/workflow.json': '{}',
-					},
-				),
-			).rejects.toThrow(
-				/lists "projects\/alpha\/folders\/sales\/workflows\/w2" but the directory is missing/,
+				},
 			);
+
+			expect(merged.workflows).toEqual([inFolder('w1', 'revenue')]);
+			await expectAbsent('projects/alpha/folders/sales');
 		});
 
 		it('removes a dependency directory once its last user dropped it', async () => {
 			const merged = await apply(
-				makeManifest({
-					workflows: [wf('w1'), wf('w2')],
-					projects: [alpha],
-					credentials: [cred('c1'), cred('c-old')],
-					requirements: { credentials: [credReq('c1', ['w1']), credReq('c-old', ['w1'])] },
-				}),
 				{
-					'projects/alpha/workflows/w1/workflow.json': '{"id":"w1"}',
-					'projects/alpha/workflows/w2/workflow.json': '{"id":"w2"}',
-					'projects/alpha/credentials/c1/credential.json': '{}',
-					'projects/alpha/credentials/c-old/credential.json': '{}',
+					'projects/alpha/project.json': projectFile,
+					'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+					'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+					'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
+					'projects/alpha/credentials/c-old/credential.json': credentialFile('c-old'),
 				},
 				makeManifest({
 					workflows: [wf('w1')],
@@ -303,24 +348,31 @@ describe('WorkingCopyUpdater', () => {
 					requirements: { credentials: [credReq('c1', ['w1'])] },
 				}),
 				{
-					'projects/alpha/workflows/w1/workflow.json': '{"id":"w1"}',
-					'projects/alpha/credentials/c1/credential.json': '{}',
+					'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+					'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
+				},
+				{
+					branchManifest: makeManifest({
+						requirements: { credentials: [credReq('c1', ['w1']), credReq('c-old', ['w1'])] },
+					}),
 				},
 			);
 
 			await expectAbsent('projects/alpha/credentials/c-old');
-			expect(await readExported('projects/alpha/credentials/c1/credential.json')).toBe('{}');
+			expect(await readExported('projects/alpha/credentials/c1/credential.json')).toBe(
+				credentialFile('c1'),
+			);
 			expect(merged.credentials).toEqual([cred('c1')]);
 		});
 	});
 
 	describe('deltaCounts', () => {
 		it('reports entities added to or removed from the branch, not the export size', () => {
-			const before = makeManifest({
+			const before: BranchState = {
 				workflows: [wf('w1'), wf('w2')],
 				credentials: [cred('c1'), cred('c-old')],
 				tags: [{ id: 't1', name: 'Tag1', target: 'tags/t1' }],
-			});
+			};
 			// c-new added, c-old removed, c1 and t1 unchanged.
 			const after = makeManifest({
 				workflows: [wf('w1'), wf('w2')],
@@ -354,47 +406,50 @@ describe('WorkingCopyUpdater', () => {
 		});
 
 		it('rejects a directory that is a symbolic link and writes nothing through it', async () => {
-			const existing = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
 			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(existing),
-				'projects/alpha/project.json': '{}',
+				'manifest.json': manifestFile(makeManifest()),
+				'projects/alpha/project.json': projectFile,
 			});
 			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
 			await writeTree(stagingFolder, {
 				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),
-				'projects/alpha/workflows/w1/workflow.json': '{"id":"w1"}',
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
+			const branch = await updater.readBranchState(exportFolder);
+
 			await expect(
-				updater.applySelection(exportFolder, stagingFolder, existing, new Set()),
+				updater.applySelection(exportFolder, stagingFolder, branch, new Set()),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
 			expect(await readdir(outside)).toEqual([]);
 		});
 
-		it('rejects an export root that is a symbolic link before reading the manifest', async () => {
+		it('rejects an export root that is a symbolic link before reading anything', async () => {
 			await writeTree(outside, { 'manifest.json': manifestFile(makeManifest()) });
 			await mkdir(path.dirname(exportFolder), { recursive: true });
 			await symlink(outside, exportFolder);
 
-			await expect(updater.readManifest(exportFolder)).rejects.toThrow(
+			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
 				/"\." on the branch is a symbolic link/,
 			);
 		});
 
 		it('rejects a stale target whose parent is a symbolic link instead of deleting through it', async () => {
-			await writeTree(outside, { 'w1/workflow.json': '{"id":"w1"}' });
-			const existing = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
+			// The scan skips a link, so this state cannot come from the tree. The
+			// guard has to hold for any state the caller hands over.
+			await writeTree(outside, { 'w1/workflow.json': workflowFile('w1') });
 			await writeTree(exportFolder, {
-				'manifest.json': manifestFile(existing),
-				'projects/alpha/project.json': '{}',
+				'manifest.json': manifestFile(makeManifest()),
+				'projects/alpha/project.json': projectFile,
 			});
 			await symlink(outside, path.join(exportFolder, 'projects/alpha/workflows'));
 			await writeTree(stagingFolder, {
 				'manifest.json': manifestFile(makeManifest({ projects: [alpha] })),
 			});
+			const branch: BranchState = { projects: [alpha], workflows: [wf('w1')] };
 
 			await expect(
-				updater.applySelection(exportFolder, stagingFolder, existing, new Set(['w1'])),
+				updater.applySelection(exportFolder, stagingFolder, branch, new Set(['w1'])),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
 			expect(await readdir(path.join(outside, 'w1'))).toEqual(['workflow.json']);
 		});

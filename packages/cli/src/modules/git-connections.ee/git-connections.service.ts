@@ -301,17 +301,15 @@ export class GitConnectionsService {
 		const repositoryFolder = path.join(rootFolder, 'repository');
 		const exportFolder = path.join(repositoryFolder, EXPORT_SUBFOLDER);
 
-		// No prior export: bootstrap from an empty manifest.
+		// No prior export: bootstrap from an empty branch.
 		const isFirstPush = !(await this.exportedWorkingCopyExists(exportFolder));
 		if (isFirstPush) {
 			await mkdir(exportFolder, { recursive: true });
 		}
 
-		const existingManifest = isFirstPush
-			? this.workingCopy.emptyManifest()
-			: await this.workingCopy.readManifest(exportFolder);
+		const branchState = isFirstPush ? {} : await this.workingCopy.readBranchState(exportFolder);
 
-		this.workingCopy.assertDeletionsOnBranch(existingManifest, selection);
+		this.workingCopy.assertDeletionsOnBranch(branchState, selection);
 
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${EXPORT_SUBFOLDER}-`));
 
@@ -336,7 +334,7 @@ export class GitConnectionsService {
 			const mergedManifest = await this.workingCopy.applySelection(
 				exportFolder,
 				stagingFolder,
-				existingManifest,
+				branchState,
 				new Set(selection.deletedWorkflowIds),
 			);
 
@@ -357,7 +355,7 @@ export class GitConnectionsService {
 
 			return {
 				connectionId,
-				counts: this.workingCopy.deltaCounts(existingManifest, mergedManifest, selection),
+				counts: this.workingCopy.deltaCounts(branchState, mergedManifest, selection),
 				commitSha,
 			};
 		} finally {

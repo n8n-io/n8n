@@ -7,6 +7,20 @@ import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec
 type Requirements = NonNullable<PackageManifest['requirements']>;
 type RequirementItem = { usedByWorkflows: string[] };
 
+/**
+ * What the branch holds, as read from the directories on disk by
+ * `readExportTree`. It is a manifest without the metadata, which always comes
+ * from the staging export.
+ *
+ * `requirements` is the one part no directory carries: only the manifest
+ * records which workflows use a dependency. It is passed in until the manifest
+ * goes away and a pull derives that from the workflow files.
+ */
+export type BranchState = Omit<
+	PackageManifest,
+	'packageFormatVersion' | 'exportedAt' | 'sourceN8nVersion' | 'sourceId'
+>;
+
 /** Entry kinds whose target is a directory that holds other entries. */
 const CONTAINER_KINDS = ['projects', 'folders'] as const;
 /** Entry kinds whose target holds only their own files. */
@@ -22,12 +36,11 @@ export interface Relocation {
 	kind: 'container' | 'leaf';
 }
 
-const entriesOf = (manifest: PackageManifest, kind: EntryKind): ManifestEntry[] =>
-	manifest[kind] ?? [];
+const entriesOf = (state: BranchState, kind: EntryKind): ManifestEntry[] => state[kind] ?? [];
 
-const allEntries = (manifest: PackageManifest): Array<[EntryKind, ManifestEntry]> =>
+const allEntries = (state: BranchState): Array<[EntryKind, ManifestEntry]> =>
 	ENTRY_KINDS.flatMap((kind) =>
-		entriesOf(manifest, kind).map((e): [EntryKind, ManifestEntry] => [kind, e]),
+		entriesOf(state, kind).map((e): [EntryKind, ManifestEntry] => [kind, e]),
 	);
 
 const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}/`);
@@ -38,7 +51,7 @@ const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}
  * coordinates, so one longest-prefix rewrite maps any branch path to its new
  * place even when a parent and a child move together.
  */
-function containerMoves(existing: PackageManifest, staging: PackageManifest) {
+function containerMoves(existing: BranchState, staging: PackageManifest) {
 	const moves: Array<{ from: string; to: string }> = [];
 	for (const kind of CONTAINER_KINDS) {
 		const before = new Map(entriesOf(existing, kind).map((e) => [e.id, e.target]));
@@ -190,9 +203,9 @@ const keysOf = <T>(items: T[] | undefined, keyOf: (item: T) => string) =>
  * happens when a same-named sibling was removed and the exporter's suffixes
  * shifted under an unselected branch workflow.
  */
-function assertUniqueTargets(manifest: PackageManifest): void {
+function assertUniqueTargets(state: BranchState): void {
 	const seen = new Map<string, ManifestEntry>();
-	for (const [, entry] of allEntries(manifest)) {
+	for (const [, entry] of allEntries(state)) {
 		const other = seen.get(entry.target);
 		if (other && other.id !== entry.id) {
 			throw new UserError(
@@ -204,16 +217,19 @@ function assertUniqueTargets(manifest: PackageManifest): void {
 }
 
 /**
- * Merge the branch manifest with a staging manifest that holds only the
- * selected workflows and what they need. Selected workflows replace their
- * branch entry, deleted ones are removed, folders and projects upsert by id.
- * Unselected entries under a renamed project or folder move with it.
- * Dependency entries upsert by id and are then pruned to what the merged
- * requirements still reference, so a dependency leaves the manifest with its
- * last user.
+ * Merge the branch state with a staging manifest that holds only the selected
+ * workflows and what they need. Selected workflows replace their branch entry,
+ * deleted ones are removed, folders and projects upsert by id. Unselected
+ * entries under a renamed project or folder move with it. Dependency entries
+ * upsert by id and are then pruned to what the merged requirements still
+ * reference, so a dependency leaves the branch with its last user.
+ *
+ * The result describes the tree the push is about to produce. The caller
+ * writes it back as `manifest.json`, so that file always restates the
+ * directories rather than steering them.
  */
 export function mergeManifests(
-	existing: PackageManifest,
+	existing: BranchState,
 	staging: PackageManifest,
 	deletedWorkflowIds: Set<string>,
 ): PackageManifest {
@@ -281,7 +297,7 @@ export function mergeManifests(
  * the container's own files; the entries beneath it relocate on their own.
  */
 export function entryRelocations(
-	before: PackageManifest,
+	before: BranchState,
 	staging: PackageManifest,
 	merged: PackageManifest,
 ): Relocation[] {
@@ -308,7 +324,7 @@ export function entryRelocations(
  * every container that `after` no longer lists and that holds no live entry.
  */
 export function staleTargets(
-	before: PackageManifest,
+	before: BranchState,
 	after: PackageManifest,
 	staging: PackageManifest,
 ): string[] {

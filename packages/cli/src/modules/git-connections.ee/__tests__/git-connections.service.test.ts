@@ -575,7 +575,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			);
 		});
 
-		it('bootstraps from an empty manifest when no prior export exists', async () => {
+		it('bootstraps from an empty branch when no prior export exists', async () => {
 			await mkdir(repositoryFolder, { recursive: true });
 			mockExport({
 				'manifest.json': buildManifest({ workflows: [wf('w1')], projects: [alpha] }),
@@ -614,7 +614,9 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 		it('validates the selection against the branch before running the export', async () => {
 			await writeExportTree(exportFolder, {
-				'manifest.json': buildManifest({ workflows: [wf('w1')], projects: [alpha] }),
+				'manifest.json': buildManifest(),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
 			});
 
 			await expect(
