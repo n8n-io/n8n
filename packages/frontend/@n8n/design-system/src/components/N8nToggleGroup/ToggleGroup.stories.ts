@@ -40,34 +40,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Toggle: Story = {
-	render: (args) => ({
-		components: { N8nToggle },
-		setup() {
-			const pressed = ref(false);
-			return { args, pressed };
-		},
-		template: `
-			<div style="display: grid; place-items: center;">
-				<N8nToggle
-					v-model="pressed"
-					label="Toggle bold"
-					icon="text"
-					:variant="args.variant"
-					:size="args.size"
-					:disabled="args.disabled"
-				/>
-			</div>
-		`,
-	}),
-	args: {
-		variant: 'solid',
-		size: 'medium',
-		disabled: false,
-	},
-};
-
-export const SingleSelection: Story = {
+export const Default: Story = {
 	render: (args) => ({
 		components: { N8nToggleGroup, N8nToggle },
 		setup() {
@@ -75,48 +48,18 @@ export const SingleSelection: Story = {
 			return { args, value };
 		},
 		template: `
-			<div style="display: grid; place-items: center;">
-				<N8nToggleGroup v-model="value" v-bind="args">
-					<template #default="{ variant, size, disabled }">
-						<N8nToggle value="left" label="Align left" icon="align-right" :variant="variant" :size="size" :disabled="disabled" />
-						<N8nToggle value="center" label="Align center" icon="stream" :variant="variant" :size="size" :disabled="disabled" />
-						<N8nToggle value="right" label="Align right" icon="align-right" :variant="variant" :size="size" :disabled="disabled" />
-					</template>
-				</N8nToggleGroup>
-			</div>
+			<N8nToggleGroup v-model="value" v-bind="args">
+				<template #default="{ variant, size, disabled }">
+					<N8nToggle value="left" label="Align left" icon="align-right" :variant="variant" :size="size" :disabled="disabled" />
+					<N8nToggle value="center" label="Align center" icon="stream" :variant="variant" :size="size" :disabled="disabled" />
+					<N8nToggle value="right" label="Align right" icon="align-right" :variant="variant" :size="size" :disabled="disabled" />
+				</template>
+			</N8nToggleGroup>
 		`,
 	}),
 	args: {
 		type: 'single',
 		variant: 'subtle',
-		size: 'medium',
-		orientation: 'horizontal',
-		disabled: false,
-	},
-};
-
-export const MultipleSelection: Story = {
-	render: (args) => ({
-		components: { N8nToggleGroup, N8nToggle },
-		setup() {
-			const value = ref(['bold']);
-			return { args, value };
-		},
-		template: `
-			<div style="display: grid; place-items: center;">
-				<N8nToggleGroup v-model="value" v-bind="args">
-					<template #default="{ variant, size, disabled }">
-						<N8nToggle value="bold" label="Bold" icon="text" :variant="variant" :size="size" :disabled="disabled" />
-						<N8nToggle value="italic" label="Italic" icon="case-upper" :variant="variant" :size="size" :disabled="disabled" />
-						<N8nToggle value="underline" label="Underline" icon="text" :variant="variant" :size="size" :disabled="disabled" />
-					</template>
-				</N8nToggleGroup>
-			</div>
-		`,
-	}),
-	args: {
-		type: 'multiple',
-		variant: 'outline',
 		size: 'medium',
 		orientation: 'horizontal',
 		disabled: false,
@@ -132,8 +75,30 @@ export const Variants: Story = {
 			};
 		},
 		template: `
-			<div style="display: grid; gap: 12px; place-items: center;">
+			<div style="display: grid; gap: 12px;">
 				<N8nToggleGroup v-for="variant in variants" :key="variant" :default-value="'left'" :variant="variant">
+					<template #default="slotProps">
+						<N8nToggle value="left" label="Align left" icon="align-right" v-bind="slotProps" />
+						<N8nToggle value="center" label="Align center" icon="stream" v-bind="slotProps" />
+						<N8nToggle value="right" label="Align right" icon="align-right" v-bind="slotProps" />
+					</template>
+				</N8nToggleGroup>
+			</div>
+		`,
+	}),
+};
+
+export const Sizes: Story = {
+	render: () => ({
+		components: { N8nToggleGroup, N8nToggle },
+		setup() {
+			return {
+				sizes: ['xsmall', 'small', 'medium', 'large', 'xlarge'],
+			};
+		},
+		template: `
+			<div style="display: grid; gap: 12px;">
+				<N8nToggleGroup v-for="size in sizes" :key="size" :default-value="'left'" :size="size">
 					<template #default="slotProps">
 						<N8nToggle value="left" label="Align left" icon="align-right" v-bind="slotProps" />
 						<N8nToggle value="center" label="Align center" icon="stream" v-bind="slotProps" />

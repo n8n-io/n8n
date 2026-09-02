@@ -40,40 +40,33 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<N8nLogo v-bind="args" />',
 });
 
-export const Large = Template.bind({});
-Large.args = {
+export const Default = Template.bind({});
+Default.args = {
 	size: 'large',
 	releaseChannel: 'stable',
 };
 
-export const SmallExpanded = Template.bind({});
-SmallExpanded.args = {
-	size: 'small',
-	collapsed: false,
-	releaseChannel: 'stable',
-};
+export const Sizes: StoryFn = () => ({
+	components: { N8nLogo },
+	template: `
+		<div style="display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing--xl); padding: var(--spacing--2xl);">
+			<div style="min-width: var(--spacing--5xl); display: flex; align-items: center;">
+				<N8nLogo size="large" release-channel="stable" />
+			</div>
+			<N8nLogo size="small" :collapsed="false" release-channel="stable" />
+			<N8nLogo size="small" :collapsed="true" release-channel="stable" />
+		</div>
+	`,
+});
 
-export const SmallCollapsed = Template.bind({});
-SmallCollapsed.args = {
-	size: 'small',
-	collapsed: true,
-	releaseChannel: 'stable',
-};
-
-export const DevChannel = Template.bind({});
-DevChannel.args = {
-	size: 'large',
-	releaseChannel: 'dev',
-};
-
-export const BetaChannel = Template.bind({});
-BetaChannel.args = {
-	size: 'large',
-	releaseChannel: 'beta',
-};
-
-export const NightlyChannel = Template.bind({});
-NightlyChannel.args = {
-	size: 'large',
-	releaseChannel: 'nightly',
-};
+export const Variants: StoryFn = () => ({
+	components: { N8nLogo },
+	template: `
+		<div style="display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing--2xl); padding: var(--spacing--2xl);">
+			<N8nLogo size="large" release-channel="stable" />
+			<N8nLogo size="large" release-channel="dev" />
+			<N8nLogo size="large" release-channel="beta" />
+			<N8nLogo size="large" release-channel="nightly" />
+		</div>
+	`,
+});

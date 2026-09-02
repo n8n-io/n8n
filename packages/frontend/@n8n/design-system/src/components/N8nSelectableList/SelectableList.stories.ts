@@ -28,8 +28,8 @@ const Template: StoryFn = (args) => ({
 		'<n8n-selectable-list v-bind="args" v-model="model"><template #displayItem="{ name }">Slot content for {{name}}</template></n8n-selectable-list>',
 });
 
-export const SelectableList = Template.bind({});
-SelectableList.args = {
+export const Default = Template.bind({});
+Default.args = {
 	modelValue: {
 		propC: 'propC pre-existing initial value',
 	},
