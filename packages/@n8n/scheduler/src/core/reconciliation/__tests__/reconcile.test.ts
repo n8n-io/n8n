@@ -292,6 +292,59 @@ describe('reconcile', () => {
 			expect(summary.resumeFrom).toEqual({ ownerType: 'workflow', after: 'wf-2' });
 		});
 
+		it('finishes an unfinished page on the next pass and moves past it', async () => {
+			registry.register('workflow', {
+				findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+			});
+			store.findOwnerTypes.mockResolvedValue(['workflow']);
+			// The first pass re-reads nothing past the page: a full batch of
+			// quarantines leaves it unfinished. The second pass lifts the one left
+			// behind, then walks on.
+			store.findOwnerIds
+				.mockResolvedValueOnce(['wf-1', 'wf-2'])
+				.mockResolvedValueOnce(['wf-1', 'wf-2'])
+				.mockResolvedValueOnce(['wf-3'])
+				.mockResolvedValue([]);
+			store.findQuarantinedByOwnerIds
+				.mockResolvedValueOnce([quarantinedJob({ id: 42 }), quarantinedJob({ id: 43 })])
+				.mockResolvedValueOnce([quarantinedJob({ id: 44 })])
+				.mockResolvedValue([]);
+
+			const first = await run();
+			const second = await reconcile(
+				store,
+				registry,
+				now,
+				options,
+				{},
+				undefined,
+				first.resumeFrom,
+			);
+
+			expect(first).toMatchObject({
+				revived: 2,
+				drained: false,
+				resumeFrom: { ownerType: 'workflow' },
+			});
+			expect(store.findOwnerIds).toHaveBeenCalledTimes(3);
+			expect(store.findOwnerIds).toHaveBeenNthCalledWith(
+				2,
+				'workflow',
+				SETTLED_BEFORE,
+				BATCH_SIZE,
+				undefined,
+			);
+			expect(store.findOwnerIds).toHaveBeenNthCalledWith(
+				3,
+				'workflow',
+				SETTLED_BEFORE,
+				BATCH_SIZE,
+				'wf-2',
+			);
+			expect(second).toMatchObject({ revived: 1, drained: true });
+			expect(second.resumeFrom).toBeUndefined();
+		});
+
 		it('resumes at the first unfinished page when a later owner type also leaves one', async () => {
 			const aliveResolver = {
 				findExisting: async (ownerIds: string[]) => await Promise.resolve(new Set(ownerIds)),
