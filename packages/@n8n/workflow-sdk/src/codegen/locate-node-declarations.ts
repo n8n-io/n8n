@@ -44,13 +44,14 @@ export function locateNodeDeclarations(source: string): NodeDeclarationLocation[
 /**
  * The object that names the node a builder call declares. Node builders take
  * `{ type, version, config: { id, name, ... } }`; `sticky(content, nodes, options)`
- * names the note in its trailing options. A `config` key nested deeper, such as a
- * parameter that happens to be called `config`, is not a node head.
+ * names the note in its trailing options, also in the older `sticky(content, options)`
+ * form the builder still accepts. A `config` key nested deeper, such as a parameter
+ * that happens to be called `config`, is not a node head.
  */
 function declaredNodeHead(call: CallExpression): ObjectExpression | undefined {
 	const args = call.arguments;
 	if (call.callee.type === 'Identifier' && call.callee.name === 'sticky') {
-		const options = args.length >= 3 ? args[args.length - 1] : undefined;
+		const options = args.length >= 2 ? args[args.length - 1] : undefined;
 		return options?.type === 'ObjectExpression' ? options : undefined;
 	}
 

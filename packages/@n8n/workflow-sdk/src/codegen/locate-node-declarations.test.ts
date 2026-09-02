@@ -86,6 +86,20 @@ describe('locateNodeDeclarations', () => {
 		]);
 	});
 
+	it('reads the options of both sticky signatures', () => {
+		const code = [
+			"const a = sticky('## A', { name: 'Note A', id: 'sa' });",
+			"const b = sticky('## B', [a], { name: 'Note B' });",
+			"const c = sticky('## C', [a]);",
+			"const d = sticky('## D');",
+		].join('\n');
+
+		expect(locateNodeDeclarations(code)).toEqual([
+			{ name: 'Note A', id: 'sa', line: 1 },
+			{ name: 'Note B', line: 2 },
+		]);
+	});
+
 	it('reads names from template literals and quoted keys, and tolerates TypeScript annotations', () => {
 		const code = [
 			"import type { NodeInstance } from '@n8n/workflow-sdk';",
