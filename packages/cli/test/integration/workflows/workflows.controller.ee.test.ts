@@ -2367,8 +2367,8 @@ describe('PATCH /workflows/:workflowId as an editor who may not publish', () => 
 		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
 			versionId: workflow.versionId,
 			nodes: workflow.nodes.map((node) =>
-				node.type === 'n8n-nodes-base.cron'
-					? { ...node, parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } } }
+				node.type === 'n8n-nodes-base.scheduleTrigger'
+					? { ...node, parameters: { rule: { interval: [{ field: 'months' }] } } }
 					: node,
 			),
 			connections: workflow.connections,

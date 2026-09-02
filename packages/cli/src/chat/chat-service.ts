@@ -8,8 +8,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	jsonParse,
 	UnexpectedError,
-	CHAT_NODE_TYPE,
-	CHAT_TOOL_NODE_TYPE,
 	ChatNodeMessageType,
 	type ChatNodeMessageRegular,
 	type ChatNodeMessageWithButtons,
@@ -285,10 +283,12 @@ export class ChatService {
 				}
 
 				const executionId = session.executionId;
-				if (await this.shouldResumeOnMessage(executionId)) {
-					await this.resumeExecution(executionId, this.parseChatMessage(parsed), sessionKey);
-					session.nodeWaitingForChatResponse = undefined;
-				}
+				const resumed = await this.resumeExecution(
+					executionId,
+					this.parseChatMessage(parsed),
+					sessionKey,
+				);
+				if (resumed) session.nodeWaitingForChatResponse = undefined;
 			} catch (e) {
 				const error = ensureError(e);
 				this.errorReporter.error(error);

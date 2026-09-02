@@ -455,11 +455,26 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		try {
 			let budget = maxResults;
 
-			// Drain IDs listed but not fetched on previous polls before listing more
-			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
-			if (shouldLimitMessages && pendingIds.length > 0) {
-				const idsToFetch = pendingIds.slice(0, budget);
-				nodeStaticData.pendingMessageIds = pendingIds.slice(budget);
+			// A message whose fetch failed waits in its own list rather than in the
+			// queue, so it can be retried without holding up everything behind it.
+			// Retry those first, because they have waited longest. A failed fetch
+			// carries no message, so it costs no budget; only a success does.
+			const setAside = nodeStaticData.failedFetches ?? [];
+			// An id that used up its attempts stays in the list with no attempts left.
+			// That is what makes giving up outlast the poll: the scan below skips every
+			// id in this list, while the boundary set is replaced whenever the cursor
+			// advances. The message was never fetched, so its date is unknown and the
+			// poll cannot tell when the cursor passed it.
+			const retryable = setAside.filter(([, attempts]) => attempts < MAX_PENDING_FETCH_ATTEMPTS);
+			const givenUp = setAside.filter(([, attempts]) => attempts >= MAX_PENDING_FETCH_ATTEMPTS);
+
+			if (shouldLimitMessages && retryable.length > 0) {
+				// Bounded per tick, and the untried tail moves to the front, so a long
+				// list cannot spend the whole poll on doomed requests or starve its own
+				// later entries.
+				const retryNow = retryable.slice(0, maxResults);
+				const retryLater = retryable.slice(maxResults);
+				const stillFailing: Array<[string, number]> = [];
 				const fetchQs = buildFetchQs();
 
 				for (const [id, attempts] of retryNow) {
@@ -483,8 +498,55 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				nodeStaticData.failedFetches = [...retryLater, ...stillFailing, ...givenUp];
 			}
 
-				// Track drained IDs as boundary duplicates now — the early-return below
-				// skips the state update at the end of poll()
+			// Process pending messages from a previous poll next. These are IDs a scan
+			// found but no poll fetched: beyond the maxResults budget, or left over when
+			// a fetch failed mid-poll.
+			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
+			if (shouldLimitMessages && pendingIds.length > 0 && budget > 0) {
+				const fetchQs = buildFetchQs();
+				const newlyFailed: Array<[string, number]> = [];
+
+				for (const [index, id] of pendingIds.entries()) {
+					// A delivery costs budget, a failure costs a request. Stop on either
+					// count, so a queue full of failures cannot spend the whole poll on
+					// doomed requests.
+					if (budget <= 0 || newlyFailed.length >= maxResults) break;
+
+					try {
+						await fetchAndProcessMessage(id, fetchQs);
+						budget -= 1;
+					} catch (error) {
+						// Set the message aside instead of ending the tick: the rest of the
+						// queue, and the scan below, must still run. The error is logged
+						// here, because this error never reaches the catch at the end of poll().
+						this.logger.warn(`Gmail Trigger could not fetch message ${id}; will retry it`, {
+							node: node.name,
+							error,
+						});
+						newlyFailed.push([id, 1]);
+					}
+
+					// Trim per iteration so every id this loop has not handled yet stays
+					// stored: a later throw is swallowed while the cursor can still
+					// advance. A failed id leaves the queue for the set-aside list, which
+					// is written once the loop ends.
+					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
+				}
+
+				if (newlyFailed.length > 0) {
+					nodeStaticData.failedFetches = [...(nodeStaticData.failedFetches ?? []), ...newlyFailed];
+				}
+			}
+
+			// While queued ids remain, do not scan: the queue write after a scan replaces
+			// the whole queue, so scanning now would drop the ids this poll could not
+			// reach.
+			if (shouldLimitMessages && (nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
+				await simplifyResponseData();
+
+				// This path returns before the state update at the end of poll(), so it
+				// records the boundary itself: Gmail's boundary-inclusive `after:` query
+				// would otherwise return again what this poll just delivered.
 				if (allFetchedMessages.length > 0) {
 					const merged = new Set([
 						...(nodeStaticData.possibleDuplicates ?? []),
@@ -496,86 +558,54 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				return responseData.length > 0 ? [responseData] : null;
 			}
 
-			const buildListQs = (receivedAfter: number): IDataObject => {
-				const listFilters: GmailTriggerFilters = { ...filters, receivedAfter };
-				const listQs: IDataObject = {};
+			// Scan Gmail for new messages.
+			const qs: IDataObject = {};
+			const allFilters: GmailTriggerFilters = { ...filters, receivedAfter: startDate };
 
-				if (this.getMode() === 'manual') {
-					listQs.maxResults = 1;
-					delete listFilters.receivedAfter;
-				}
+			if (this.getMode() === 'manual') {
+				qs.maxResults = 1;
+				delete allFilters.receivedAfter;
+			}
 
-				Object.assign(listQs, prepareQuery.call(this, listFilters, 0));
+			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
 
-				if (listQs.q) {
-					listQs.q += ' -in:scheduled';
-				} else {
-					listQs.q = '-in:scheduled';
-				}
-				return listQs;
-			};
-
-			// List only as many pages as the budget needs. A leftover cursor is stored
-			// with its query boundary (tokens are only valid for their original query)
-			// and resumed once pending IDs have drained.
-			let messages: ListMessage[];
-			if (shouldLimitMessages) {
-				const listPages = async (listQs: IDataObject, initialPageToken?: string) => {
-					const collected: ListMessage[] = [];
-					let pageToken = initialPageToken;
-					do {
-						const response: MessageListResponse = await googleApiRequest.call(
-							this,
-							'GET',
-							'/gmail/v1/users/me/messages',
-							{},
-							{ ...listQs, ...(pageToken ? { pageToken } : {}) },
-						);
-						collected.push.apply(collected, response.messages ?? []);
-						pageToken = response.nextPageToken;
-					} while (pageToken && collected.length < budget);
-					return { messages: collected, nextPageToken: pageToken };
-				};
-
-				const cursor = nodeStaticData.backlogCursor;
-				let listResult: Awaited<ReturnType<typeof listPages>> | undefined;
-				let listBoundary = startDate;
-				if (cursor) {
-					try {
-						listResult = await listPages(buildListQs(cursor.receivedAfter), cursor.pageToken);
-						listBoundary = cursor.receivedAfter;
-					} catch {
-						// Stored page token no longer valid (expired or filters changed)
-					}
-				}
-				listResult ??= await listPages(buildListQs(startDate));
-
-				if (listResult.nextPageToken) {
-					nodeStaticData.backlogCursor = {
-						pageToken: listResult.nextPageToken,
-						receivedAfter: listBoundary,
-					};
-				} else {
-					delete nodeStaticData.backlogCursor;
-				}
-				messages = listResult.messages;
+			if (qs.q) {
+				qs.q += ' -in:scheduled';
 			} else {
+				qs.q = '-in:scheduled';
+			}
+
+			let messages: ListMessage[] = [];
+			let pageToken: string | undefined;
+			let pagesScanned = 0;
+			do {
 				const messagesResponse: MessageListResponse = await googleApiRequest.call(
 					this,
 					'GET',
 					'/gmail/v1/users/me/messages',
 					{},
-					buildListQs(startDate),
+					pageToken ? { ...qs, pageToken } : qs,
 				);
-				messages = messagesResponse.messages ?? [];
-			}
+				messages.push(...(messagesResponse.messages ?? []));
+				pageToken = messagesResponse.nextPageToken;
+				pagesScanned++;
+			} while (shouldLimitMessages && pageToken && pagesScanned < MAX_SCAN_PAGES);
+			// A leftover token means the cap stopped the scan short. Gmail returns
+			// newest first, so the remainder is older mail; a cursor moved past it
+			// would never reach it again.
+			windowFullyScanned = !pageToken;
+
+			// Pagination can repeat an id across pages when the mailbox shifts
+			// between page fetches; one id must map to one delivery.
+			messages = Array.from(new Map(messages.map((m) => [m.id, m])).values());
 
 			if (!messages.length && !allFetchedMessages.length) {
 				return null;
 			}
 
-			// Gmail's `after:` query is inclusive at the second boundary, so messages at
-			// the lastTimeChecked timestamp can re-list; skip them before fetching
+			// Filter out already-handled messages before fetching to save API calls.
+			// Gmail's `after:` query is inclusive at the second boundary, and a held
+			// cursor re-scans its whole window, so handled messages can reappear.
 			if (shouldLimitMessages) {
 				// Set-aside ids are dropped along with the handled ones: that list
 				// already owns them and retries them every poll, so queueing them here
@@ -602,7 +632,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							'Gmail Trigger backlog cannot progress past the page cap; advancing past older messages it could not scan',
 							{ node: node.name },
 						);
-						nodeStaticData.lastTimeChecked = +now;
+						nodeStaticData.lastTimeChecked = now;
 						// The cursor jumped to now, so ids from the old window are no longer
 						// at the boundary. Keeping them would grow the stored-id count for
 						// nothing — every other path merges the set instead.
@@ -612,6 +642,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				}
 			}
 
+			// Take only what fits in the remaining budget, store the rest as pending.
 			let messagesToProcess = messages;
 			let beyondBudgetIds: string[] = [];
 			if (shouldLimitMessages && messages.length > budget) {
@@ -621,9 +652,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 			// Queue every scanned id before fetching any of them, so a throw on the
 			// first fetch cannot leave ids in no stored state: the loop below trims
-			// this back down as each fetch succeeds. Stays gated on the version
-			// check, or a pre-1.4 node would store a queue its own drain path
-			// ignores until someone bumps its version.
+			// this back down as each fetch succeeds. Stays gated on the same check as
+			// the drain path, so manual runs never store a queue nothing drains.
 			if (shouldLimitMessages) {
 				nodeStaticData.pendingMessageIds = [
 					...messagesToProcess.map((m) => m.id),
@@ -633,10 +663,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 			if (messagesToProcess.length > 0) {
 				const fetchQs = buildFetchQs();
-				for (const message of messagesToProcess) {
-					await fetchAndProcessMessage(message.id, fetchQs);
-				}
-			}
+				Object.assign(fetchQs, options);
+				delete fetchQs.includeDrafts;
+
+				const scannedButFailed: Array<[string, number]> = [];
 
 				for (const [index, message] of messagesToProcess.entries()) {
 					try {
@@ -711,10 +741,31 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			}
 		}
 
-		const effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, startDate)) || startDate;
+		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, startDate)) || startDate;
+		if (shouldLimitMessages && !windowFullyScanned) {
+			const trackedIds =
+				(nodeStaticData.pendingMessageIds?.length ?? 0) +
+				(nodeStaticData.possibleDuplicates?.length ?? 0) +
+				(nodeStaticData.failedFetches?.length ?? 0);
+			if (trackedIds < MAX_TRACKED_BACKLOG_IDS) {
+				// Older mail sits beyond the page cap, unscanned. Hold the cursor so later
+				// polls can still reach it. The possibleDuplicates update below keeps every
+				// handled id filterable, so a re-scan under a held cursor cannot re-emit
+				// them.
+				effectiveLastTimeChecked = startDate;
+			} else {
+				// Give-up valve: holding again would grow the tracked-id state without
+				// bound. Advance and accept skipping the unscanned older mail instead.
+				this.logger.warn(
+					`Gmail Trigger backlog exceeds ${MAX_TRACKED_BACKLOG_IDS} tracked ids; advancing past older messages it could not scan`,
+					{ node: node.name },
+				);
+			}
+		}
 
-		// When lastTimeChecked didn't advance (e.g. only older pending messages were
-		// processed), existing possibleDuplicates are still at the query boundary
+		// When lastTimeChecked didn't advance (only older pending messages were
+		// processed, or the cursor is held), preserve existing possibleDuplicates —
+		// they're still at the query boundary.
 		if (effectiveLastTimeChecked === startDate && nodeStaticData.possibleDuplicates?.length) {
 			const merged = new Set([...nodeStaticData.possibleDuplicates, ...nextPollPossibleDuplicates]);
 			nodeStaticData.possibleDuplicates = Array.from(merged);
