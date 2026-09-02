@@ -67,7 +67,7 @@ export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('Chat
  * it `false` to keep the legacy AI builder/assistant entry points for that
  * editor instead.
  */
-export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi' | 'instanceAi';
+export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'instanceAi';
 /**
  * Per-editor host overrides. The AI features use enablement semantics
  * (`false` = superseded/off; omitted or `true` falls back to the editor's own
