@@ -1,4 +1,5 @@
 import type { VerifyBuiltWorkflowOutput, VerifyToolInput } from './types';
+import { itemsForNode } from '../../../utils/node-keyed-items';
 import { createRemediation } from '../../../workflow-loop/remediation';
 import type {
 	WaitGateScript,
@@ -43,7 +44,10 @@ function buildVerificationPinData(
 	buildOutcome: WorkflowBuildOutcome,
 	fixtureOverrides: VerifyToolInput['fixtureOverrides'],
 ): PreparedVerificationRun {
-	const merged: Record<string, unknown[]> = { ...(buildOutcome.verificationPinData ?? {}) };
+	// Keyed by Map, not by object literal: node names are free-form, and a few
+	// of them do not survive being assigned as a plain object key — the entry
+	// is dropped and the node it belongs to goes into the run unpinned.
+	const merged = new Map<string, unknown[]>(Object.entries(buildOutcome.verificationPinData ?? {}));
 	const fixtures = buildOutcome.simulationFixtures ?? {};
 	const simulatedNodes: Array<{ nodeName: string; reason: string }> = [];
 	const haltedGateNames: string[] = [];
@@ -54,17 +58,17 @@ function buildVerificationPinData(
 		if (verdict.haltBranch) {
 			// Zero items halt the branch at the gate; a fixture would loop forever.
 			haltedGateNames.push(verdict.nodeName);
-			merged[verdict.nodeName] = [];
+			merged.set(verdict.nodeName, []);
 			continue;
 		}
-		const items = fixtures[verdict.nodeName];
-		merged[verdict.nodeName] = items?.length ? items : [{}];
+		const items = itemsForNode(fixtures, verdict.nodeName);
+		merged.set(verdict.nodeName, items?.length ? items : [{}]);
 	}
 
 	if (fixtureOverrides) {
 		for (const [nodeName, items] of Object.entries(fixtureOverrides)) {
 			if (haltedGateNames.includes(nodeName)) continue;
-			merged[nodeName] = items;
+			merged.set(nodeName, items);
 		}
 	}
 
@@ -73,7 +77,7 @@ function buildVerificationPinData(
 	);
 
 	return {
-		verificationPinData: Object.keys(merged).length > 0 ? merged : undefined,
+		verificationPinData: merged.size > 0 ? Object.fromEntries(merged) : undefined,
 		simulatedNodes,
 		haltedGateNames,
 		...(gateScript ? { gateScript } : {}),

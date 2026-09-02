@@ -34,6 +34,7 @@ import {
 } from './workflow-json-utils';
 import type { Logger } from '../../logger';
 import type { ModelConfig } from '../../types';
+import { itemsForNode } from '../../utils/node-keyed-items';
 import type {
 	NodeSimulationVerdict,
 	WaitGateScript,
@@ -323,7 +324,7 @@ function withFixtureFloor(
 			(verdict) =>
 				verdict.verdict === 'simulate' &&
 				!verdict.haltBranch &&
-				!fixtures[verdict.nodeName]?.length,
+				!itemsForNode(fixtures, verdict.nodeName)?.length,
 		)
 		.map((verdict) => verdict.nodeName);
 	const floored =
@@ -370,7 +371,7 @@ export async function planVerificationSimulation({
 				(verdict) =>
 					verdict.verdict === 'simulate' &&
 					!verdict.haltBranch &&
-					!declaredFixtures?.[verdict.nodeName]?.length,
+					!itemsForNode(declaredFixtures, verdict.nodeName)?.length,
 			);
 			const generatedFixtures =
 				planNeedingGeneratedFixtures.length > 0

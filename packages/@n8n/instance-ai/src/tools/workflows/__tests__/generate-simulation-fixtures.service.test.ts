@@ -732,6 +732,28 @@ describe('withPassThroughFloor', () => {
 		expect(result.Hold).toEqual([{}]);
 	});
 
+	// An upstream node with no fixture of its own is looked up by name in the
+	// fixture map, so a name shared with a built-in object property has to miss
+	// rather than resolve to whatever that property holds.
+	it.each(['toString', 'valueOf'])(
+		'borrows the schema shape of an upstream node named %s',
+		(upstreamName) => {
+			const result = withPassThroughFloor(
+				{ Hold: [{}] },
+				connected(
+					[
+						{ name: upstreamName, type: 'n8n-nodes-base.brevo' },
+						{ name: 'Hold', type: 'n8n-nodes-base.wait' },
+					],
+					{ [upstreamName]: 'Hold' },
+				),
+				{ outputSchemaLookup: lookupBrevoOnly },
+			);
+
+			expect(result.Hold).toEqual([{ email: 'sample' }]);
+		},
+	);
+
 	it('never touches a node that has its own output shape', () => {
 		// A Slack post emits an API response, not its input.
 		const result = withPassThroughFloor(

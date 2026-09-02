@@ -167,3 +167,45 @@ describe('prepareVerificationRun — zero-item fixture overrides', () => {
 		expect(result.result.guidance).not.toContain('Send Message');
 	});
 });
+
+describe('prepareVerificationRun — node names that collide with object properties', () => {
+	// Pinning is what keeps a destructive node from running for real, so every
+	// simulated node must get an entry of its own whatever it is called.
+	it.each(['__proto__', 'constructor', 'prototype', 'toString', 'valueOf'])(
+		'pins a simulated node named %s',
+		(nodeName) => {
+			const result = prepareVerificationRun(
+				makeBuildOutcome({
+					nodeSimulationPlan: [{ ...plainVerdict, nodeName }, otherVerdict],
+					simulationFixtures: { [nodeName]: [{ ok: true }] },
+				}),
+				{},
+			);
+
+			expect(result.kind).toBe('ready');
+			if (result.kind !== 'ready') return;
+			const pinData = result.prepared.verificationPinData ?? {};
+			// Object.entries reads own enumerable keys only — the same set that
+			// survives serialization on the way to the execution.
+			expect(Object.keys(pinData)).toContain(nodeName);
+			expect(Object.entries(pinData)).toContainEqual([nodeName, [{ ok: true }]]);
+		},
+	);
+
+	// The last gate before execution: whatever an upstream fixture map did with
+	// the name, a simulated node still leaves here pinned.
+	it.each(['__proto__', 'constructor', 'toString', 'valueOf'])(
+		'falls back to one empty item for a node named %s with no stored fixture',
+		(nodeName) => {
+			const result = prepareVerificationRun(
+				makeBuildOutcome({ nodeSimulationPlan: [{ ...plainVerdict, nodeName }] }),
+				{},
+			);
+
+			expect(result.kind).toBe('ready');
+			if (result.kind !== 'ready') return;
+			const pinData = result.prepared.verificationPinData ?? {};
+			expect(Object.entries(pinData)).toContainEqual([nodeName, [{}]]);
+		},
+	);
+});

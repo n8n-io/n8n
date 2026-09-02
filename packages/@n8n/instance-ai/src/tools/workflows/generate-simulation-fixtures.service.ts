@@ -41,6 +41,7 @@ import type { Logger } from '../../logger';
 import type { ModelConfig } from '../../types';
 import { SONNET_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
+import { itemsForNode } from '../../utils/node-keyed-items';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
 /**
@@ -196,7 +197,7 @@ const MAX_UPSTREAM_HOPS = 5;
 type NamedNode = WorkflowJSON['nodes'][number] & { name: string };
 
 function hasFields(items: Array<Record<string, unknown>> | undefined): boolean {
-	return Boolean(items?.some((item) => Object.keys(item).length > 0));
+	return Array.isArray(items) && items.some((item) => Object.keys(item).length > 0);
 }
 
 function pickKeys(
@@ -294,7 +295,7 @@ export function withPassThroughFloor(
 			resolveContext,
 			now,
 		);
-		const own = result[nodeName] ?? [];
+		const own = itemsForNode(result, nodeName) ?? [];
 		if (!upstream) continue;
 		if (upstream.source === 'placeholder' && hasFields(own)) continue;
 
@@ -334,8 +335,10 @@ function findUpstreamShape(
 			visited.add(parent);
 			// A parent that is itself simulated already carries the shape the
 			// pass-through node would have seen.
-			const parentFixture = fixtures[parent];
-			if (hasFields(parentFixture)) return { items: parentFixture, source: 'fixture' };
+			const parentFixture = itemsForNode(fixtures, parent);
+			if (parentFixture && hasFields(parentFixture)) {
+				return { items: parentFixture, source: 'fixture' };
+			}
 			const placeholder = buildSchemaPlaceholderItem(resolveContext(parent), { now });
 			if (Object.keys(placeholder).length > 0) {
 				return { items: [placeholder], source: 'placeholder' };
