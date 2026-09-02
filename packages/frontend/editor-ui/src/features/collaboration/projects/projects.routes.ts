@@ -149,7 +149,7 @@ export const projectsRoutes: RouteRecordRaw[] = [
 							},
 						},
 						{
-							path: 'settings',
+							path: 'settings/:section?',
 							name: VIEWS.PROJECT_SETTINGS,
 							component: ProjectSettings,
 							meta: {

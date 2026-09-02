@@ -466,7 +466,7 @@ const onSelect = (action: string) => {
 			</div>
 		</div>
 		<slot></slot>
-		<div :class="$style.actions">
+		<div v-if="!route?.params?.projectId" :class="$style.actions">
 			<ProjectTabs
 				:page-type="pageType"
 				:show-executions="!projectPages.isSharedSubPage"

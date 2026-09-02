@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
 import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
@@ -23,6 +23,7 @@ import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
+import ProjectSideNav from '@/features/collaboration/projects/components/ProjectSideNav.vue';
 import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants';
@@ -41,6 +42,9 @@ const i18n = useI18n();
 const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const currentRoute = useRoute();
+// PoC (Project Home & IA): drill-down sidebar while inside a project
+const isProjectContext = computed(() => !!currentRoute.params?.projectId);
 const { getReportingURL } = useBugReporting();
 
 const { applyExperiment: applySidebarExpandedExperiment } = useSidebarExpandedExperiment();
@@ -355,7 +359,9 @@ useKeybindings({
 			}"
 		>
 			<N8nScrollArea ref="scrollAreaRef" @scroll-capture="checkOverflow">
+				<ProjectSideNav v-if="isProjectContext" :collapsed="isCollapsed" />
 				<ProjectNavigation
+					v-else
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
 				/>

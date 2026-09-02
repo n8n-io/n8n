@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -13,6 +13,7 @@ import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
+import ProjectSettingStub from '../components/ProjectSettingStub.vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
@@ -53,6 +54,11 @@ const cloudPlanStore = useCloudPlanStore();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
 const toast = useToast();
 const router = useRouter();
+const route = useRoute();
+// PoC (Project Home & IA): layered settings sections driven by the sidebar
+const settingsSection = computed(() => (route.params.section as string) || 'info');
+const REAL_SECTIONS = ['info', 'members', 'external-secrets'];
+const isStubSection = computed(() => !REAL_SECTIONS.includes(settingsSection.value));
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
 
@@ -544,7 +550,7 @@ onMounted(async () => {
 	<div :class="$style.projectSettings" data-test-id="project-settings-container">
 		<div :class="$style.header">
 			<ProjectHeader />
-			<div v-if="canUpdateProject" :class="$style.headerRow">
+			<div v-if="canUpdateProject && settingsSection === 'info'" :class="$style.headerRow">
 				<N8nText tag="h1" size="xlarge" class="pt-xs pb-m">
 					{{ i18n.baseText('projects.settings.info') }}
 				</N8nText>
@@ -570,7 +576,7 @@ onMounted(async () => {
 		</div>
 		<form @submit.prevent="onSubmit">
 			<template v-if="canUpdateProject">
-				<fieldset>
+				<fieldset v-show="settingsSection === 'info'">
 					<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
 					<div :class="$style.projectName">
 						<N8nIconPicker
@@ -594,7 +600,7 @@ onMounted(async () => {
 						/>
 					</div>
 				</fieldset>
-				<fieldset>
+				<fieldset v-show="settingsSection === 'info'">
 					<label for="projectDescription">{{
 						i18n.baseText('projects.settings.description')
 					}}</label>
@@ -615,10 +621,13 @@ onMounted(async () => {
 				</fieldset>
 			</template>
 
-			<ProjectExternalSecrets :class="$style.externalSecrets" />
+			<ProjectExternalSecrets
+				v-if="settingsSection === 'external-secrets'"
+				:class="$style.externalSecrets"
+			/>
 
 			<template v-if="canUpdateProject">
-				<fieldset id="projectMembers">
+				<fieldset v-show="settingsSection === 'members'" id="projectMembers">
 					<h3>
 						<label for="projectMembers">{{
 							i18n.baseText('projects.settings.projectMembers')
@@ -680,7 +689,7 @@ onMounted(async () => {
 						/>
 					</div>
 				</fieldset>
-				<fieldset>
+				<fieldset v-show="settingsSection === 'info'">
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 					<small :class="$style.danger">{{
 						i18n.baseText('projects.settings.danger.message')
@@ -696,6 +705,11 @@ onMounted(async () => {
 				</fieldset>
 			</template>
 		</form>
+		<ProjectSettingStub
+			v-if="isStubSection"
+			:section="settingsSection"
+			:class="$style.stubSection"
+		/>
 		<ProjectDeleteDialog
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
@@ -711,6 +725,10 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+.stubSection {
+	padding: 0 var(--spacing--2xl);
+}
+
 .projectSettings {
 	--project-field--width: 560px;
 
