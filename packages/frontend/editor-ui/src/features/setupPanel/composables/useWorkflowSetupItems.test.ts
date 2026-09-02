@@ -84,8 +84,9 @@ describe('useWorkflowSetupItems', () => {
 			if (node.name === 'Sheets') return ['googleSheetsOAuth2Api'];
 			return [];
 		});
-		mockGetNodeParametersIssues.mockImplementation((_provider, node) =>
-			node.name === 'Sheets' ? { documentId: ['Parameter "documentId" is required.'] } : {},
+		mockGetNodeParametersIssues.mockImplementation(
+			(_provider, node): Record<string, string[]> =>
+				node.name === 'Sheets' ? { documentId: ['Parameter "documentId" is required.'] } : {},
 		);
 		credentialsStore.getCredentialTypeByName = vi
 			.fn()
@@ -341,10 +342,11 @@ describe('useWorkflowSetupItems', () => {
 	});
 
 	it('keeps a parameters item listed as done once its issues resolve', () => {
-		mockGetNodeParametersIssues.mockImplementation((_provider, node) =>
-			node.name === 'Sheets' && !node.parameters?.documentId
-				? { documentId: ['Parameter "documentId" is required.'] }
-				: {},
+		mockGetNodeParametersIssues.mockImplementation(
+			(_provider, node): Record<string, string[]> =>
+				node.name === 'Sheets' && !node.parameters?.documentId
+					? { documentId: ['Parameter "documentId" is required.'] }
+					: {},
 		);
 		hydrateWorkflow([createTestNode({ name: 'Sheets', parameters: {} })]);
 

@@ -2,6 +2,7 @@ import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { getActivePinia } from 'pinia';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
+import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -18,6 +19,15 @@ import {
 	getNodeCredentialTypes,
 	getNodeParametersIssues,
 } from '@/features/setupPanel/setupPanel.utils';
+
+/**
+ * Whether a node's credential slot holds a binding. Legacy workflow JSON may
+ * still carry a plain credential name, which `INodeCredentials`' value type
+ * doesn't admit (`useNodeHelpers` hedges against the same case).
+ */
+function isBoundCredential(assigned: INodeCredentialsDetails | string | undefined): boolean {
+	return typeof assigned === 'string' ? assigned.length > 0 : Boolean(assigned?.id);
+}
 
 /**
  * Derives service-keyed setup items (`InstanceAiSetupItem`) for a workflow.
@@ -239,10 +249,9 @@ export function useWorkflowSetupItems(
 	): boolean {
 		const nodeNames = (item.nodeBindings ?? []).map((binding) => binding.nodeName);
 		if (nodeNames.length === 0) return false;
-		return nodeNames.every((nodeName) => {
-			const assigned = nodesByName.value.get(nodeName)?.credentials?.[item.credentialType];
-			return typeof assigned === 'string' ? assigned.length > 0 : Boolean(assigned?.id);
-		});
+		return nodeNames.every((nodeName) =>
+			isBoundCredential(nodesByName.value.get(nodeName)?.credentials?.[item.credentialType]),
+		);
 	}
 
 	/** The usable-credentials slice only answers for this workflow once fetched for it. */
