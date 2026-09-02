@@ -3,7 +3,13 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary, type PushMessage } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiThreadSummary,
+	type InstanceAiAttachment,
+	type InstanceAiNodesAttachment,
+	type PushMessage,
+} from '@n8n/api-types';
 import {
 	ensureThread,
 	getInstanceAiCredits,
@@ -18,6 +24,7 @@ import {
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
+import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
 
@@ -289,6 +296,38 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	const pendingComposerAttachments = ref<InstanceAiAttachment[]>([]);
+
+	function stageNodeSets(workflowId: string, newSets: InstanceAiNodesAttachment['sets']): void {
+		const existing = pendingComposerAttachments.value.find(
+			(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
+		);
+		if (existing) {
+			existing.sets = mergeNodeSets(existing.sets, newSets);
+		} else {
+			pendingComposerAttachments.value = [
+				...pendingComposerAttachments.value,
+				{ type: 'nodes', workflowId, sets: newSets },
+			];
+		}
+	}
+
+	function consumePendingAttachments(): InstanceAiAttachment[] {
+		const staged = pendingComposerAttachments.value;
+		pendingComposerAttachments.value = [];
+		return staged;
+	}
+
+	const composerFocusRequest = ref(0);
+	function requestComposerFocus(): void {
+		composerFocusRequest.value++;
+	}
+
+	const clearCanvasSelectionRequest = ref(0);
+	function requestClearCanvasSelection(): void {
+		clearCanvasSelectionRequest.value++;
+	}
+
 	return {
 		// Instance-level state
 		threads,
@@ -319,6 +358,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getRuntime,
 		disposeRuntime,
 		syncThread,
+		pendingComposerAttachments,
+		stageNodeSets,
+		consumePendingAttachments,
+		composerFocusRequest,
+		requestComposerFocus,
+		clearCanvasSelectionRequest,
+		requestClearCanvasSelection,
 	};
 });
 

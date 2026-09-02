@@ -1,4 +1,7 @@
-import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
+import type {
+	InstanceAiCredentialDestinationDecision,
+	InstanceAiThreadStatusResponse,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
@@ -86,6 +89,7 @@ export interface ConfirmationData {
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';
 	autoSetup?: { credentialType: string; attemptId?: string };
+	credentialDestination?: InstanceAiCredentialDestinationDecision;
 	connectedSlugs?: string[];
 }
 

@@ -510,7 +510,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
+			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
