@@ -274,8 +274,10 @@ export class GitConnectionsService {
 	}
 
 	/**
-	 * Push selected workflows of one project and their dependencies to the branch.
-	 * Unselected workflows stay as-is.
+	 * Push selected workflows of one project and their dependencies to the
+	 * branch. Unselected workflows stay as-is, and so do the projects and
+	 * folders the branch already holds: a selective push creates a container,
+	 * never renames one, so nothing moves that the user did not select.
 	 */
 	async pushSelection(
 		connectionId: string,

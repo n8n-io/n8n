@@ -2,17 +2,7 @@ import type { GitConnectionPushResultDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import {
-	copyFile,
-	lstat,
-	mkdir,
-	mkdtemp,
-	readdir,
-	readFile,
-	rm,
-	stat,
-	writeFile,
-} from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -25,8 +15,8 @@ import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { entryRelocations, mergeManifests, staleTargets } from './manifest-merge';
-import type { BranchState, Relocation } from './manifest-merge';
+import { containerPlacement, mergeManifests, pinPath, staleTargets } from './manifest-merge';
+import type { BranchState, Placement } from './manifest-merge';
 
 const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
@@ -153,11 +143,10 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * Merge the staging export into `exportFolder`. Unselected entries under a
-	 * renamed container are copied to a scratch tree first, so removing the
-	 * stale directories and placing the copies cannot collide even when two
-	 * containers swap names. The staging export is overlaid last, then
-	 * `manifest.json` is rewritten to restate the resulting directories.
+	 * Merge the staging export into `exportFolder`: remove the directories the
+	 * selection replaces or drops, then overlay the staging files at the place
+	 * the branch keeps for them. `manifest.json` is rewritten last, to restate
+	 * the resulting directories.
 	 */
 	async applySelection(
 		exportFolder: string,
@@ -168,26 +157,13 @@ export class WorkingCopyUpdater {
 		const staging = await this.readManifest(stagingFolder);
 		const merged = mergeManifests(existing, staging, deletedWorkflowIds);
 
-		const relocations = entryRelocations(existing, staging, merged);
-		const scratch = await mkdtemp(
-			path.join(path.dirname(exportFolder), `.${path.basename(exportFolder)}-move-`),
-		);
-
-		try {
-			for (const relocation of relocations) {
-				await this.copyEntry(exportFolder, scratch, relocation);
-			}
-			for (const target of staleTargets(existing, merged, staging)) {
-				await rm(await this.resolveContained(exportFolder, target), {
-					recursive: true,
-					force: true,
-				});
-			}
-			await this.overlayDirectory(scratch, exportFolder);
-			await this.overlayDirectory(stagingFolder, exportFolder);
-		} finally {
-			await rm(scratch, { recursive: true, force: true });
+		for (const target of staleTargets(existing, merged, staging)) {
+			await rm(await this.resolveContained(exportFolder, target), {
+				recursive: true,
+				force: true,
+			});
 		}
+		await this.overlayDirectory(stagingFolder, exportFolder, containerPlacement(existing, staging));
 
 		await writeFile(
 			await this.resolveContained(exportFolder, MANIFEST_FILE),
@@ -224,32 +200,12 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * Copy one relocated entry into the scratch tree at its new path. A
-	 * container brings only its own files; the entries beneath it are
-	 * relocated on their own, so a deleted workflow inside it is not carried.
+	 * Copy the staging export into `dest`, each file at the path `placement`
+	 * gives it. `manifest.json` is merged separately, and a file the branch
+	 * keeps — the own file of a project or folder it already holds — is not
+	 * written, so a rename on the instance leaves the branch directory alone.
 	 */
-	private async copyEntry(from: string, to: string, { kind, ...move }: Relocation): Promise<void> {
-		const src = await this.resolveContained(from, move.from);
-		const dest = await this.resolveContained(to, move.to);
-
-		const srcStat = await stat(src).catch(() => null);
-		if (!srcStat?.isDirectory()) {
-			throw new BadRequestError(`The branch no longer holds "${move.from}". Retry the push.`);
-		}
-
-		if (kind === 'leaf') {
-			await this.overlayDirectory(src, dest);
-			return;
-		}
-
-		await mkdir(dest, { recursive: true });
-		for (const entry of await readdir(src, { withFileTypes: true })) {
-			if (entry.isFile()) await copyFile(path.join(src, entry.name), path.join(dest, entry.name));
-		}
-	}
-
-	/** Copy `src` into `dest`, except `manifest.json`, which is merged separately. */
-	private async overlayDirectory(src: string, dest: string): Promise<void> {
+	private async overlayDirectory(src: string, dest: string, placement: Placement): Promise<void> {
 		const verified = new Set<string>();
 		const walk = async (dir: string): Promise<void> => {
 			const entries = await readdir(dir, { withFileTypes: true });
@@ -258,9 +214,13 @@ export class WorkingCopyUpdater {
 
 				const fullPath = path.join(dir, entry.name);
 				const relative = path.relative(src, fullPath).split(path.sep).join('/');
-				if (relative === MANIFEST_FILE) continue;
+				if (relative === MANIFEST_FILE || placement.keptFiles.has(relative)) continue;
 
-				const destPath = await this.resolveContained(dest, relative, verified);
+				const destPath = await this.resolveContained(
+					dest,
+					pinPath(relative, placement.pins),
+					verified,
+				);
 				if (entry.isDirectory()) {
 					await mkdir(destPath, { recursive: true });
 					await walk(fullPath);

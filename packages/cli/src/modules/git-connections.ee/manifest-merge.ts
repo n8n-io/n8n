@@ -1,6 +1,7 @@
 import { UserError } from 'n8n-workflow';
 import path from 'node:path';
 
+import { ENTITY_FILES } from '@/modules/n8n-packages/spec/constants';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
@@ -9,8 +10,8 @@ type RequirementItem = { usedByWorkflows: string[] };
 
 /**
  * What the branch holds, as read from the directories on disk by
- * `readExportTree`. It is a manifest without the metadata, which always comes
- * from the staging export.
+ * `readPackageEntries`. It is a manifest without the metadata, which always
+ * comes from the staging export.
  *
  * `requirements` is the one part no directory carries: only the manifest
  * records which workflows use a dependency. It is passed in until the manifest
@@ -29,11 +30,18 @@ const ENTRY_KINDS = [...CONTAINER_KINDS, ...LEAF_KINDS];
 
 type EntryKind = (typeof ENTRY_KINDS)[number];
 
-/** A path change of one entry's directory on the branch. */
-export interface Relocation {
+/** A staging directory and the branch directory it lands in. */
+interface Pin {
 	from: string;
 	to: string;
-	kind: 'container' | 'leaf';
+}
+
+/** Where the staging files land on the branch. */
+export interface Placement {
+	/** Staging paths that land elsewhere, longest first. */
+	pins: Pin[];
+	/** Staging files the branch already holds and keeps unchanged. */
+	keptFiles: Set<string>;
 }
 
 const entriesOf = (state: BranchState, kind: EntryKind): ManifestEntry[] => state[kind] ?? [];
@@ -46,27 +54,38 @@ const allEntries = (state: BranchState): Array<[EntryKind, ManifestEntry]> =>
 const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}/`);
 
 /**
- * Container entries whose directory moved between branch and staging (a
- * renamed project or folder). `from` is in branch coordinates, `to` in staging
- * coordinates, so one longest-prefix rewrite maps any branch path to its new
- * place even when a parent and a child move together.
+ * Where the staging files land on the branch.
+ *
+ * A selective push updates the selected workflows and nothing else. A project
+ * or folder the branch already holds therefore keeps its directory and its own
+ * file, even after a rename on the instance: renaming the directory would move
+ * every unselected workflow inside it. Staging paths under such a container
+ * are pinned back to the directory the branch uses, so a selected workflow
+ * lands next to its unselected siblings. Containers are created, never
+ * updated, until a folder change is selectable in its own right.
  */
-function containerMoves(existing: BranchState, staging: PackageManifest) {
-	const moves: Array<{ from: string; to: string }> = [];
+export function containerPlacement(existing: BranchState, staging: PackageManifest): Placement {
+	const pins: Pin[] = [];
+	const keptFiles = new Set<string>();
+
 	for (const kind of CONTAINER_KINDS) {
-		const before = new Map(entriesOf(existing, kind).map((e) => [e.id, e.target]));
+		const onBranch = new Map(entriesOf(existing, kind).map((e) => [e.id, e.target]));
 		for (const entry of entriesOf(staging, kind)) {
-			const from = before.get(entry.id);
-			if (from !== undefined && from !== entry.target) moves.push({ from, to: entry.target });
+			const to = onBranch.get(entry.id);
+			if (to === undefined) continue;
+			keptFiles.add(`${entry.target}/${ENTITY_FILES[kind]}`);
+			if (to !== entry.target) pins.push({ from: entry.target, to });
 		}
 	}
-	return moves.sort((a, b) => b.from.length - a.from.length);
+
+	// Longest first, so a pinned folder wins over its pinned project.
+	return { pins: pins.sort((a, b) => b.from.length - a.from.length), keptFiles };
 }
 
-/** Rewrite `target` through the longest matching container move, if any. */
-function relocateTarget(target: string, moves: ReadonlyArray<{ from: string; to: string }>) {
-	const move = moves.find((m) => isUnder(target, m.from));
-	return move ? `${move.to}${target.slice(move.from.length)}` : target;
+/** Rewrite a staging path through the longest pin that covers it. */
+export function pinPath(target: string, pins: readonly Pin[]): string {
+	const pin = pins.find((p) => target === p.from || isUnder(target, p.from));
+	return pin ? `${pin.to}${target.slice(pin.from.length)}` : target;
 }
 
 /**
@@ -81,16 +100,17 @@ function entryKeys(kind: EntryKind, entry: ManifestEntry): string[] {
 }
 
 /**
- * Merge entries of one kind; staging wins. Branch entries that survive are
- * moved along with a renamed container so every path stays resolvable on pull.
+ * Merge entries of one kind. Staging wins for a leaf, the branch wins for a
+ * container it already holds: that container keeps its name and its directory.
  */
 function mergeEntries(
 	kind: EntryKind,
 	existingEntries: ManifestEntry[] | undefined,
 	stagingEntries: ManifestEntry[] | undefined,
-	moves: ReadonlyArray<{ from: string; to: string }>,
+	{ pins }: Placement,
 ): ManifestEntry[] | undefined {
-	const staging = stagingEntries ?? [];
+	const isContainer = CONTAINER_KINDS.some((c) => c === kind);
+	const staging = (stagingEntries ?? []).map((e) => ({ ...e, target: pinPath(e.target, pins) }));
 	const stagingByKey = new Map(
 		staging.flatMap((e) => entryKeys(kind, e).map((key) => [key, e] as const)),
 	);
@@ -100,13 +120,16 @@ function mergeEntries(
 			.find((e) => e !== undefined);
 
 	// Map keeps insertion order, so a replaced entry stays at its branch position.
+	// A replacement is keyed by its own id, because a recreated variable
+	// replaces the branch entry under a new id.
 	const merged = new Map<string, ManifestEntry>();
 	for (const entry of existingEntries ?? []) {
-		const relocated = { ...entry, target: relocateTarget(entry.target, moves) };
-		const kept = replacementFor(relocated) ?? relocated;
+		const kept = isContainer ? entry : (replacementFor(entry) ?? entry);
 		merged.set(kept.id, kept);
 	}
-	for (const entry of staging) merged.set(entry.id, entry);
+	for (const entry of staging) {
+		if (!isContainer || !merged.has(entry.id)) merged.set(entry.id, entry);
+	}
 
 	return merged.size > 0 ? [...merged.values()] : undefined;
 }
@@ -218,11 +241,12 @@ function assertUniqueTargets(state: BranchState): void {
 
 /**
  * Merge the branch state with a staging manifest that holds only the selected
- * workflows and what they need. Selected workflows replace their branch entry,
- * deleted ones are removed, folders and projects upsert by id. Unselected
- * entries under a renamed project or folder move with it. Dependency entries
- * upsert by id and are then pruned to what the merged requirements still
- * reference, so a dependency leaves the branch with its last user.
+ * workflows and what they need. Selected workflows replace their branch entry
+ * and deleted ones are removed. Projects and folders are added when the branch
+ * lacks them and left alone when it has them, so nothing the user did not
+ * select moves. Dependency entries upsert by id and are then pruned to what
+ * the merged requirements still reference, so a dependency leaves the branch
+ * with its last user.
  *
  * The result describes the tree the push is about to produce. The caller
  * writes it back as `manifest.json`, so that file always restates the
@@ -233,7 +257,7 @@ export function mergeManifests(
 	staging: PackageManifest,
 	deletedWorkflowIds: Set<string>,
 ): PackageManifest {
-	const moves = containerMoves(existing, staging);
+	const placement = containerPlacement(existing, staging);
 	const stagingWorkflows = staging.workflows ?? [];
 	const replacedWorkflowIds = new Set([
 		...stagingWorkflows.map((w) => w.id),
@@ -243,7 +267,7 @@ export function mergeManifests(
 		'workflows',
 		(existing.workflows ?? []).filter((w) => !replacedWorkflowIds.has(w.id)),
 		stagingWorkflows,
-		moves,
+		placement,
 	);
 
 	const requirements = mergeRequirements(
@@ -262,25 +286,25 @@ export function mergeManifests(
 		sourceN8nVersion: staging.sourceN8nVersion,
 		sourceId: staging.sourceId,
 		workflows,
-		folders: mergeEntries('folders', existing.folders, staging.folders, moves),
-		projects: mergeEntries('projects', existing.projects, staging.projects, moves),
+		folders: mergeEntries('folders', existing.folders, staging.folders, placement),
+		projects: mergeEntries('projects', existing.projects, staging.projects, placement),
 		credentials: pruneEntries(
-			mergeEntries('credentials', existing.credentials, staging.credentials, moves),
+			mergeEntries('credentials', existing.credentials, staging.credentials, placement),
 			byId,
 			keysOf(requirements.credentials, (c) => c.id),
 		),
 		dataTables: pruneEntries(
-			mergeEntries('dataTables', existing.dataTables, staging.dataTables, moves),
+			mergeEntries('dataTables', existing.dataTables, staging.dataTables, placement),
 			byId,
 			keysOf(requirements.dataTables, (d) => d.id),
 		),
 		variables: pruneEntries(
-			mergeEntries('variables', existing.variables, staging.variables, moves),
+			mergeEntries('variables', existing.variables, staging.variables, placement),
 			byName,
 			keysOf(requirements.variables, (v) => v.name),
 		),
 		tags: pruneEntries(
-			mergeEntries('tags', existing.tags, staging.tags, moves),
+			mergeEntries('tags', existing.tags, staging.tags, placement),
 			byId,
 			keysOf(requirements.tags, (t) => t.id),
 		),
@@ -292,56 +316,25 @@ export function mergeManifests(
 }
 
 /**
- * Branch entries that `merged` keeps at a new path and that staging did not
- * write: their files must move on disk. A container relocation covers only
- * the container's own files; the entries beneath it relocate on their own.
- */
-export function entryRelocations(
-	before: BranchState,
-	staging: PackageManifest,
-	merged: PackageManifest,
-): Relocation[] {
-	const relocations: Relocation[] = [];
-	for (const kind of ENTRY_KINDS) {
-		const written = new Set(entriesOf(staging, kind).map((e) => e.id));
-		const after = new Map(entriesOf(merged, kind).map((e) => [e.id, e.target]));
-		for (const entry of entriesOf(before, kind)) {
-			const to = after.get(entry.id);
-			if (to === undefined || to === entry.target || written.has(entry.id)) continue;
-			relocations.push({
-				from: entry.target,
-				to,
-				kind: CONTAINER_KINDS.some((c) => c === kind) ? 'container' : 'leaf',
-			});
-		}
-	}
-	return relocations;
-}
-
-/**
- * Branch directories to remove before the overlay writes the new files:
- * every leaf entry that staging replaces or that `after` drops or moves, and
- * every container that `after` no longer lists and that holds no live entry.
+ * Branch directories to remove before the overlay writes the new files: every
+ * leaf entry that staging replaces, or that `after` drops or moves. Projects
+ * and folders are never removed, because the branch keeps the ones it holds
+ * and an emptied folder still exists on the instance.
  */
 export function staleTargets(
 	before: BranchState,
 	after: PackageManifest,
 	staging: PackageManifest,
 ): string[] {
-	const live = new Set(allEntries(after).map(([, e]) => e.target));
-	const holdsLive = (target: string) => [...live].some((t) => isUnder(t, target));
 	const stale = new Set<string>();
 
 	for (const kind of LEAF_KINDS) {
 		const written = new Set(entriesOf(staging, kind).map((e) => e.id));
-		const after_ = new Map(entriesOf(after, kind).map((e) => [e.id, e.target]));
+		const afterTargets = new Map(entriesOf(after, kind).map((e) => [e.id, e.target]));
 		for (const entry of entriesOf(before, kind)) {
-			if (written.has(entry.id) || after_.get(entry.id) !== entry.target) stale.add(entry.target);
-		}
-	}
-	for (const kind of CONTAINER_KINDS) {
-		for (const entry of entriesOf(before, kind)) {
-			if (!live.has(entry.target) && !holdsLive(entry.target)) stale.add(entry.target);
+			if (written.has(entry.id) || afterTargets.get(entry.id) !== entry.target) {
+				stale.add(entry.target);
+			}
 		}
 	}
 

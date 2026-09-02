@@ -226,8 +226,7 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('applySelection', () => {
-		it('moves unselected workflows along with their renamed folder and drops deleted ones', async () => {
-			const revenue = folder('f1', 'Revenue', 'revenue');
+		it('keeps a renamed folder where the branch has it, so unselected workflows stay put', async () => {
 			await apply(
 				{
 					'projects/alpha/project.json': projectFile,
@@ -238,7 +237,7 @@ describe('WorkingCopyUpdater', () => {
 				},
 				makeManifest({
 					projects: [alpha],
-					folders: [revenue],
+					folders: [folder('f1', 'Revenue', 'revenue')],
 					workflows: [inFolder('w1', 'revenue')],
 				}),
 				{
@@ -249,23 +248,24 @@ describe('WorkingCopyUpdater', () => {
 				{ deleted: ['w3'] },
 			);
 
-			await expectAbsent('projects/alpha/folders/sales');
-			await expectAbsent('projects/alpha/folders/revenue/workflows/w3');
-			expect(await readExported('projects/alpha/folders/revenue/folder.json')).toBe(
-				folderFile('f1', 'Revenue'),
+			await expectAbsent('projects/alpha/folders/revenue');
+			await expectAbsent('projects/alpha/folders/sales/workflows/w3');
+			// The folder was renamed on the instance, but nobody selected that change.
+			expect(await readExported('projects/alpha/folders/sales/folder.json')).toBe(
+				folderFile('f1', 'Sales'),
 			);
-			expect(await readExported('projects/alpha/folders/revenue/workflows/w1/workflow.json')).toBe(
+			expect(await readExported('projects/alpha/folders/sales/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1', { v: 2 }),
 			);
-			expect(await readExported('projects/alpha/folders/revenue/workflows/w2/workflow.json')).toBe(
+			expect(await readExported('projects/alpha/folders/sales/workflows/w2/workflow.json')).toBe(
 				workflowFile('w2'),
 			);
 			const manifest = await updater.readManifest(exportFolder);
-			expect(manifest.folders).toEqual([revenue]);
-			expect(manifest.workflows).toEqual([inFolder('w2', 'revenue'), inFolder('w1', 'revenue')]);
+			expect(manifest.folders).toEqual([folder('f1', 'Sales', 'sales')]);
+			expect(manifest.workflows).toEqual([inFolder('w2', 'sales'), inFolder('w1', 'sales')]);
 		});
 
-		it('handles two folders swapping names without losing unselected workflows', async () => {
+		it('keeps both folders where the branch has them when their names swap', async () => {
 			// f1 is now named B (slug b) and f2 is named A (slug a); w1 and w3 are selected.
 			await apply(
 				{
@@ -293,13 +293,15 @@ describe('WorkingCopyUpdater', () => {
 				},
 			);
 
+			// Each selected workflow lands in the directory its folder has on the
+			// branch, next to the siblings nobody selected.
 			const tree: Record<string, string> = {
-				'projects/alpha/folders/b/folder.json': folderFile('f1', 'B'),
-				'projects/alpha/folders/a/folder.json': folderFile('f2', 'A'),
-				'projects/alpha/folders/b/workflows/w1/workflow.json': workflowFile('w1', { moved: true }),
-				'projects/alpha/folders/b/workflows/w2/workflow.json': workflowFile('w2'),
-				'projects/alpha/folders/a/workflows/w3/workflow.json': workflowFile('w3', { moved: true }),
-				'projects/alpha/folders/a/workflows/w4/workflow.json': workflowFile('w4'),
+				'projects/alpha/folders/a/folder.json': folderFile('f1', 'A'),
+				'projects/alpha/folders/b/folder.json': folderFile('f2', 'B'),
+				'projects/alpha/folders/a/workflows/w1/workflow.json': workflowFile('w1', { moved: true }),
+				'projects/alpha/folders/a/workflows/w2/workflow.json': workflowFile('w2'),
+				'projects/alpha/folders/b/workflows/w3/workflow.json': workflowFile('w3', { moved: true }),
+				'projects/alpha/folders/b/workflows/w4/workflow.json': workflowFile('w4'),
 			};
 			for (const [file, content] of Object.entries(tree)) {
 				expect(await readExported(file), file).toBe(content);
@@ -315,8 +317,8 @@ describe('WorkingCopyUpdater', () => {
 
 		it('ignores a workflow that the manifest lists but the branch no longer holds', async () => {
 			// The old behaviour aborted the push here, because the manifest drove
-			// the relocation. The directories decide now, so w2 is simply not on
-			// the branch and the renamed folder still moves w1.
+			// the reconciliation. The directories decide now, so w2 is simply not
+			// on the branch.
 			const merged = await apply(
 				{
 					'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
@@ -339,8 +341,8 @@ describe('WorkingCopyUpdater', () => {
 				},
 			);
 
-			expect(merged.workflows).toEqual([inFolder('w1', 'revenue')]);
-			await expectAbsent('projects/alpha/folders/sales');
+			expect(merged.workflows).toEqual([inFolder('w1', 'sales')]);
+			await expectAbsent('projects/alpha/folders/revenue');
 		});
 
 		it('removes a dependency directory once its last user dropped it', async () => {

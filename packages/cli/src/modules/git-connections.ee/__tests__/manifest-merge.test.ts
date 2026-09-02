@@ -1,6 +1,6 @@
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { entryRelocations, mergeManifests, staleTargets } from '../manifest-merge';
+import { mergeManifests, staleTargets } from '../manifest-merge';
 
 const baseMetadata = {
 	packageFormatVersion: '1' as const,
@@ -36,7 +36,7 @@ describe('mergeManifests', () => {
 	});
 
 	describe('renamed containers', () => {
-		it('moves everything under a renamed project, including dependencies', () => {
+		it('leaves a renamed project where the branch has it and lands the selection inside', () => {
 			const existing = makeManifest({
 				projects: [entry('p1', 'Acme', 'projects/acme')],
 				folders: [entry('f1', 'Sales', 'projects/acme/folders/sales')],
@@ -49,33 +49,24 @@ describe('mergeManifests', () => {
 			});
 			const staging = makeManifest({
 				projects: [entry('p1', 'Acme Corp', 'projects/acme-corp')],
-				workflows: [entry('w1', 'W1', 'projects/acme-corp/workflows/w1')],
+				workflows: [entry('w1', 'W1 renamed', 'projects/acme-corp/workflows/w1')],
 			});
 
 			const result = mergeManifests(existing, staging, noDeletes);
 
-			expect(result.folders).toEqual([entry('f1', 'Sales', 'projects/acme-corp/folders/sales')]);
+			expect(result.projects).toEqual([entry('p1', 'Acme', 'projects/acme')]);
+			expect(result.folders).toEqual([entry('f1', 'Sales', 'projects/acme/folders/sales')]);
 			expect(result.workflows).toEqual([
-				entry('w2', 'W2', 'projects/acme-corp/folders/sales/workflows/w2'),
-				entry('w1', 'W1', 'projects/acme-corp/workflows/w1'),
+				entry('w2', 'W2', 'projects/acme/folders/sales/workflows/w2'),
+				entry('w1', 'W1 renamed', 'projects/acme/workflows/w1'),
 			]);
-			expect(result.credentials).toEqual([
-				entry('c1', 'Cred', 'projects/acme-corp/credentials/cred'),
-			]);
+			expect(result.credentials).toEqual([entry('c1', 'Cred', 'projects/acme/credentials/cred')]);
 		});
 
-		it('applies the deepest matching move when a parent and a child are both renamed', () => {
+		it('applies the deepest pin when a parent and a child were both renamed', () => {
 			const existing = makeManifest({
-				folders: [
-					entry('f1', 'A', `${P}/folders/a`),
-					entry('f2', 'C', `${P}/folders/a/c`),
-					entry('f3', 'E', `${P}/folders/a/e`),
-				],
-				workflows: [
-					entry('w1', 'W1', `${P}/folders/a/c/workflows/w1`),
-					entry('w2', 'W2', `${P}/folders/a/c/workflows/w2`),
-					entry('w3', 'W3', `${P}/folders/a/e/workflows/w3`),
-				],
+				folders: [entry('f1', 'A', `${P}/folders/a`), entry('f2', 'C', `${P}/folders/a/c`)],
+				workflows: [entry('w2', 'W2', `${P}/folders/a/c/workflows/w2`)],
 			});
 			const staging = makeManifest({
 				folders: [entry('f1', 'B', `${P}/folders/b`), entry('f2', 'D', `${P}/folders/b/d`)],
@@ -84,42 +75,29 @@ describe('mergeManifests', () => {
 
 			const result = mergeManifests(existing, staging, noDeletes);
 
-			expect(result.folders!.map((f) => f.target)).toEqual([
-				`${P}/folders/b`,
-				`${P}/folders/b/d`,
-				`${P}/folders/b/e`,
-			]);
+			expect(result.folders!.map((f) => f.target)).toEqual([`${P}/folders/a`, `${P}/folders/a/c`]);
 			expect(result.workflows!.map((w) => w.target)).toEqual([
-				`${P}/folders/b/d/workflows/w2`,
-				`${P}/folders/b/e/workflows/w3`,
-				`${P}/folders/b/d/workflows/w1`,
+				`${P}/folders/a/c/workflows/w2`,
+				`${P}/folders/a/c/workflows/w1`,
 			]);
 		});
 
-		it('lists relocations for moved entries that staging did not write', () => {
+		it('creates a folder the branch lacks, inside the directory the branch keeps', () => {
 			const existing = makeManifest({
-				folders: [entry('f1', 'A', `${P}/folders/a`), entry('f2', 'E', `${P}/folders/a/e`)],
-				workflows: [
-					entry('w1', 'W1', `${P}/folders/a/workflows/w1`),
-					entry('w2', 'W2', `${P}/folders/a/workflows/w2`),
-					entry('w3', 'W3', `${P}/folders/a/e/workflows/w3`),
-				],
+				folders: [entry('f1', 'A', `${P}/folders/a`)],
 			});
 			const staging = makeManifest({
-				folders: [entry('f1', 'B', `${P}/folders/b`)],
-				workflows: [entry('w1', 'W1', `${P}/folders/b/workflows/w1`)],
+				folders: [entry('f1', 'B', `${P}/folders/b`), entry('f2', 'New', `${P}/folders/b/new`)],
+				workflows: [entry('w1', 'W1', `${P}/folders/b/new/workflows/w1`)],
 			});
-			const merged = mergeManifests(existing, staging, noDeletes);
 
-			expect(entryRelocations(existing, staging, merged)).toEqual([
-				{ from: `${P}/folders/a/e`, to: `${P}/folders/b/e`, kind: 'container' },
-				{ from: `${P}/folders/a/workflows/w2`, to: `${P}/folders/b/workflows/w2`, kind: 'leaf' },
-				{
-					from: `${P}/folders/a/e/workflows/w3`,
-					to: `${P}/folders/b/e/workflows/w3`,
-					kind: 'leaf',
-				},
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.folders).toEqual([
+				entry('f1', 'A', `${P}/folders/a`),
+				entry('f2', 'New', `${P}/folders/a/new`),
 			]);
+			expect(result.workflows).toEqual([entry('w1', 'W1', `${P}/folders/a/new/workflows/w1`)]);
 		});
 
 		it('rejects a merge that puts two entries in one directory', () => {
@@ -332,7 +310,7 @@ describe('staleTargets', () => {
 		]);
 	});
 
-	it('removes the old directory of a renamed folder once its entries have moved', () => {
+	it('leaves a renamed folder in place and only replaces the selected workflow', () => {
 		const before = makeManifest({
 			folders: [entry('f1', 'sales', 'projects/p/folders/sales')],
 			workflows: [
@@ -346,22 +324,18 @@ describe('staleTargets', () => {
 		});
 		const after = mergeManifests(before, staging, noDeletes);
 
-		expect(staleTargets(before, after, staging).sort()).toEqual([
-			'projects/p/folders/sales',
-			'projects/p/folders/sales/workflows/w1',
-			'projects/p/folders/sales/workflows/w2',
-		]);
+		expect(staleTargets(before, after, staging)).toEqual(['projects/p/folders/sales/workflows/w1']);
 	});
 
-	it('keeps a container that still holds a live entry', () => {
+	it('never removes a folder, even when nothing live is left under it', () => {
 		const before = makeManifest({
 			folders: [entry('f1', 'sales', 'projects/p/folders/sales')],
 			workflows: [entry('w1', 'W1', 'projects/p/folders/sales/workflows/w1')],
 		});
-		const after = makeManifest({
-			workflows: [entry('w1', 'W1', 'projects/p/folders/sales/workflows/w1')],
-		});
+		const after = makeManifest({ folders: [entry('f1', 'sales', 'projects/p/folders/sales')] });
 
-		expect(staleTargets(before, after, makeManifest())).toEqual([]);
+		expect(staleTargets(before, after, makeManifest())).toEqual([
+			'projects/p/folders/sales/workflows/w1',
+		]);
 	});
 });

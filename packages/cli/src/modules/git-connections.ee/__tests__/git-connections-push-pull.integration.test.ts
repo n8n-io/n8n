@@ -672,7 +672,7 @@ describe('Selective push', () => {
 		expect(manifest.workflows).toHaveLength(2);
 	});
 
-	it('moves unselected workflows with their renamed folder so the branch still pulls', async () => {
+	it('leaves a renamed folder alone, so unselected workflows keep their place', async () => {
 		const remote = await createRemote();
 		const connection = await createConnection(remote.bareDir);
 		await service.clone(connection.id);
@@ -702,19 +702,23 @@ describe('Selective push', () => {
 		const { dir } = await inspectBranch(remote.bareDir);
 		const manifest = await readBranchManifest(dir);
 		const folderEntry = manifest.folders!.find((f) => f.id === folder.id)!;
+		const selectedEntry = manifest.workflows!.find((w) => w.id === selected.id)!;
 		const unselectedEntry = manifest.workflows!.find((w) => w.id === unselected.id)!;
 
-		expect(folderEntry.target).toMatch(/\/folders\/revenue$/);
+		// Nobody selected the rename, so the branch keeps the folder it has and
+		// the selected workflow lands next to its unselected sibling.
+		expect(folderEntry).toMatchObject({ name: 'Sales', target: expect.stringMatching(/sales$/) });
+		expect(selectedEntry.target).toBe(`${folderEntry.target}/workflows/selected`);
 		expect(unselectedEntry.target).toBe(`${folderEntry.target}/workflows/unselected`);
 		await expect(
 			stat(path.join(dir, 'n8n-export', unselectedEntry.target, 'workflow.json')),
 		).resolves.toBeDefined();
 		await expect(
-			stat(path.join(dir, 'n8n-export', folderEntry.target.replace(/revenue$/, 'sales'))),
+			stat(path.join(dir, 'n8n-export', folderEntry.target.replace(/sales$/, 'revenue'))),
 		).rejects.toThrow();
 
-		// The importer resolves a workflow's folder from its path, so the moved
-		// workflow must come back into the renamed folder on pull.
+		// The importer resolves a workflow's folder from its path, so both
+		// workflows must come back into the same folder on pull.
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.delete(unselected.id);
 		await service.pull(connection.id, owner);
