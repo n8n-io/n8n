@@ -135,6 +135,16 @@ export class ProjectController {
 		};
 	}
 
+	// Must be declared before `/:projectId` below — this router matches routes in
+	// declaration order, and `/:projectId` would otherwise swallow this literal
+	// segment (treating "execution-quota" as a projectId). See `/count` above for
+	// the same pattern.
+	@Get('/execution-quota')
+	@GlobalScope('project:manageExecutionQuota')
+	async getAllProjectsExecutionQuota(_req: AuthenticatedRequest, _res: Response) {
+		return await this.projectExecutionQuotaService.getAllProjectsConsumption();
+	}
+
 	@Get('/:projectId')
 	@ProjectScope('project:read')
 	async getProject(
@@ -303,11 +313,5 @@ export class ProjectController {
 		@Param('projectId') projectId: string,
 	) {
 		return await this.projectExecutionQuotaService.getSpikes(projectId);
-	}
-
-	@Get('/execution-quota')
-	@GlobalScope('project:manageExecutionQuota')
-	async getAllProjectsExecutionQuota(_req: AuthenticatedRequest, _res: Response) {
-		return await this.projectExecutionQuotaService.getAllProjectsConsumption();
 	}
 }
