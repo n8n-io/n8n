@@ -708,6 +708,69 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect((block as { output: unknown }).output).toEqual({ result: 3 });
 	});
 
+	it('round-trips provider-executed tool results inside the assistant message', () => {
+		// Native web search: the AI SDK places the result in the assistant message,
+		// never in a role:tool message.
+		const results = [{ url: 'https://n8n.io', title: 'n8n', type: 'web_search_result' }];
+		const searchError = { type: 'web_search_tool_result_error', errorCode: 'max_uses_exceeded' };
+		const error = JSON.stringify(searchError);
+		const aiMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu_1',
+						toolName: 'web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'srvtoolu_1',
+						toolName: 'web_search',
+						output: { type: 'json', value: results },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu_2',
+						toolName: 'web_search',
+						input: { query: 'more' },
+						providerExecuted: true,
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'srvtoolu_2',
+						toolName: 'web_search',
+						output: { type: 'error-json', value: searchError },
+					},
+					{ type: 'text', text: 'Here is what I found.' },
+				],
+			},
+		];
+
+		const persisted = fromAiMessages(aiMessages) as Message[];
+		expect(persisted[0].content).toMatchObject([
+			{ type: 'tool-call', state: 'resolved', output: results },
+			{ type: 'tool-call', state: 'rejected', error },
+			{ type: 'text' },
+		]);
+
+		const replayed = toAiMessages(persisted);
+		expect(replayed).toHaveLength(1);
+		expect(replayed[0].content).toMatchObject([
+			{ type: 'tool-call', toolCallId: 'srvtoolu_1', providerExecuted: true },
+			{ type: 'tool-result', toolCallId: 'srvtoolu_1', output: { type: 'json', value: results } },
+			{ type: 'tool-call', toolCallId: 'srvtoolu_2', providerExecuted: true },
+			{
+				type: 'tool-result',
+				toolCallId: 'srvtoolu_2',
+				output: { type: 'error-json', value: error },
+			},
+			{ type: 'text', text: 'Here is what I found.' },
+		]);
+	});
+
 	it('round-trip is structurally equivalent for a resolved tool-call', () => {
 		const original: Message[] = [
 			{
