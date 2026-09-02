@@ -422,6 +422,90 @@ describe('Ldap', () => {
 				);
 			});
 		});
+
+		describe('object class', () => {
+			it('should pass a selected object class through unescaped', async () => {
+				mockParameters({ searchText: 'johndoe' });
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&(objectclass=person)(cn=johndoe))',
+					}),
+				);
+			});
+
+			it('should escape filter special characters resolved from an expression', async () => {
+				mockParameters({ searchFor: '={{ $json.objectClass }}', searchText: 'johndoe' });
+
+				executeFunctions.evaluateExpression.mockImplementation((expr) => {
+					if (expr === '{{ $json.objectClass }}') return '*)(|(';
+					return expr;
+				});
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&\\2a\\29\\28|\\28(cn=johndoe))',
+					}),
+				);
+			});
+
+			it('should escape only the expression output in a hand-written object class', async () => {
+				mockParameters({
+					searchFor: '=(objectclass={{ $json.objectClass }})',
+					searchText: 'johndoe',
+				});
+
+				executeFunctions.evaluateExpression.mockImplementation((expr) => {
+					if (expr === '{{ $json.objectClass }}') return 'per*son';
+					return expr;
+				});
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&(objectclass=per\\2ason)(cn=johndoe))',
+					}),
+				);
+			});
+		});
+
+		describe('raw parameter reads', () => {
+			// Escaping only works on the template, so a dropped `rawExpressions` would
+			// silently hand back a filter n8n has already interpolated
+			it('should read the object class and search text before they are interpolated', async () => {
+				mockParameters({ searchText: 'johndoe' });
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith('searchFor', 0, undefined, {
+					rawExpressions: true,
+				});
+				expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith('searchText', 0, undefined, {
+					rawExpressions: true,
+				});
+			});
+
+			it('should read the custom filter before it is interpolated', async () => {
+				mockParameters({ searchFor: 'custom', customFilter: '(objectclass=*)' });
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith(
+					'customFilter',
+					0,
+					undefined,
+					{ rawExpressions: true },
+				);
+			});
+		});
 	});
 
 	describe('rename', () => {

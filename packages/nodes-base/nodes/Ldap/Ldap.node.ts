@@ -355,7 +355,17 @@ export class Ldap implements INodeType {
 					});
 				} else if (operation === 'search') {
 					const baseDN = this.getNodeParameter('baseDN', itemIndex) as string;
-					let searchFor = this.getNodeParameter('searchFor', itemIndex) as string;
+					const evaluate = (resolvable: string) =>
+						this.evaluateExpression(`${resolvable}`, itemIndex);
+
+					// The object class is spliced into the filter as a fragment, so an
+					// expression in it needs the same per-expression escaping as the filter
+					const rawSearchFor = this.getNodeParameter('searchFor', itemIndex, undefined, {
+						rawExpressions: true,
+					});
+					let searchFor =
+						typeof rawSearchFor === 'string' ? escapeResolvables(rawSearchFor, evaluate) : '';
+
 					const returnAll = this.getNodeParameter('returnAll', itemIndex);
 					const limit = this.getNodeParameter('limit', itemIndex, 0);
 					const options = this.getNodeParameter('options', itemIndex);
@@ -377,9 +387,6 @@ export class Ldap implements INodeType {
 						options.attributes = options.attributes.split(',').map((attribute) => attribute.trim());
 					}
 					options.explicitBufferAttributes = BINARY_AD_ATTRIBUTES;
-
-					const evaluate = (resolvable: string) =>
-						this.evaluateExpression(`${resolvable}`, itemIndex);
 
 					if (searchFor === 'custom') {
 						// Read the filter before expressions are interpolated, so only the
