@@ -1,7 +1,11 @@
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
-import type { INodeExecutionData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { isTriggerNodeType, MANUAL_TRIGGER_NODE_TYPE, UserError } from 'n8n-workflow';
+import type {
+	INodeExecutionData,
+	IWorkflowExecutionDataProcess,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import { isTriggerNodeType, UserError } from 'n8n-workflow';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -11,8 +15,25 @@ import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service
 
 type ToStepOutputs = (outputs: INodeExecutionData[][]) => StepSlots;
 
+/** The trigger that fired and the payload it produced. */
+type FiredTrigger = {
+	/** Absent when no trigger is named; the converter then takes the sole one. */
+	name?: string;
+	outputs: INodeExecutionData[][];
+};
+
+/** Execution modes the v2 path serves today. */
+const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook']);
+
 /** v1's payload for a manual run with no trigger data: one slot, one empty item. */
 const DEFAULT_MAIN_OUTPUT: INodeExecutionData[][] = [[{ json: {} }]];
+
+/**
+ * v1 uses `null` for a slot it has no data for; an empty slot says the same
+ * thing to the engine, which `toStepOutputs` collapses back to a dead edge.
+ */
+const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecutionData[][] =>
+	main.map((slot) => slot ?? []);
 
 /**
  * Routes a run to the engine 2.0 data plane and starts it there.
@@ -36,9 +57,9 @@ export class EngineV2Dispatcher {
 	) {}
 
 	/**
-	 * Manual runs only for now: webhook (CAT-2920) and trigger (CAT-2921) entry
-	 * paths reuse this seam later. A resume must not start a fresh data-plane
-	 * execution, hence the `existingExecution` check.
+	 * Manual and webhook runs for now; the trigger entry path (CAT-2921) reuses
+	 * this seam later. A resume must not start a fresh data-plane execution,
+	 * hence the `existingExecution` check.
 	 */
 	routesToEngineV2(
 		data: IWorkflowExecutionDataProcess,
@@ -46,14 +67,16 @@ export class EngineV2Dispatcher {
 	): boolean {
 		return (
 			data.workflowData.settings?.engineType === 'v2' &&
-			data.executionMode === 'manual' &&
+			ROUTED_MODES.has(data.executionMode) &&
 			existingExecution === undefined
 		);
 	}
 
 	/** Returns the execution id this dispatch minted. */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
-		this.assertSupported(data);
+		const trigger = this.firedTrigger(data);
+
+		this.assertSupported(data, trigger);
 
 		const { workflowData } = data;
 
@@ -63,20 +86,20 @@ export class EngineV2Dispatcher {
 		// its dependencies into every n8n process, including ones with the module off.
 		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
 
-		const graph = new V1WorkflowConverter().convert(workflowData, data.triggerToStartFrom?.name);
-		const triggerMain = this.triggerMainOutputs(data);
+		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
 
 		const executionId = createExecutionIdV2();
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
-		this.registerPushSession(executionId, data, triggerMain);
+		this.registerPushSession(executionId, data, trigger);
 
 		try {
 			await this.proxy.startExecution({
 				executionId,
 				workflowId: workflowData.id,
 				graph,
-				triggerOutputs: this.toTriggerOutputs(triggerMain, toStepOutputs),
-				mode: 'manual',
+				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
+				// Only manual and webhook route here, so anything else is a production run.
+				mode: data.executionMode === 'manual' ? 'manual' : 'production',
 			});
 		} catch (error) {
 			// Assumes rejection: a dropped success response also releases a still-live session.
@@ -94,9 +117,9 @@ export class EngineV2Dispatcher {
 	private registerPushSession(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
-		triggerMain: INodeExecutionData[][],
+		trigger: FiredTrigger,
 	): void {
-		const { pushRef, workflowData, triggerToStartFrom } = data;
+		const { pushRef, workflowData } = data;
 		// No push ref means nothing is watching this run.
 		if (!pushRef) return;
 
@@ -104,10 +127,10 @@ export class EngineV2Dispatcher {
 			pushRef,
 			workflowId: workflowData.id,
 			// The engine never announces the trigger, so save its outputs for the relay.
-			trigger: triggerToStartFrom && {
-				nodeName: triggerToStartFrom.name,
-				outputs: triggerMain,
-			},
+			trigger:
+				trigger.name === undefined
+					? undefined
+					: { nodeName: trigger.name, outputs: trigger.outputs },
 		});
 	}
 
@@ -117,7 +140,7 @@ export class EngineV2Dispatcher {
 	 * fail conversion does not report the conversion problem and hide the real
 	 * cause.
 	 */
-	private assertSupported(data: IWorkflowExecutionDataProcess): void {
+	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
 		if (!this.proxy.isAvailable()) {
 			throw new UserError(
 				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
@@ -148,26 +171,33 @@ export class EngineV2Dispatcher {
 			throw new UserError('Engine 2.0 cannot run a workflow as an AI tool yet.');
 		}
 
-		const triggerName = data.triggerToStartFrom?.name;
-
-		// TODO(CAT-2920, CAT-2921): the webhook and scheduler paths deliver the real
-		// trigger payload. Until then only the Manual Trigger's payload is built here.
-		const liveNodes = data.workflowData.nodes.filter((node) => node.disabled !== true);
-		const firedTrigger = triggerName
-			? liveNodes.find((node) => node.name === triggerName)
-			: liveNodes.find((node) => isTriggerNodeType(node.type));
-		if (firedTrigger !== undefined && firedTrigger.type !== MANUAL_TRIGGER_NODE_TYPE) {
-			throw new UserError(
-				`Engine 2.0 cannot run the "${firedTrigger.name}" trigger yet. Only the Manual Trigger is supported.`,
-			);
-		}
-
-		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== triggerName);
+		// The trigger's own pinned data is the payload, so only the other nodes count.
+		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== trigger.name);
 		if (pinnedNode !== undefined) {
 			throw new UserError(
 				`Engine 2.0 does not support pinned data on "${pinnedNode}" yet. Unpin it to run this workflow.`,
 			);
 		}
+	}
+
+	/**
+	 * Resolves the trigger that fired and the payload it produced.
+	 *
+	 * A manual run names it in `triggerToStartFrom`. A webhook run does not: the
+	 * webhook node already ran control-plane-side, and `prepareExecutionData`
+	 * seeded its output as the first entry of the node execution stack.
+	 */
+	private firedTrigger(data: IWorkflowExecutionDataProcess): FiredTrigger {
+		const seeded = data.triggerToStartFrom
+			? undefined
+			: data.executionData?.executionData?.nodeExecutionStack[0];
+
+		// A seeded node that is not a trigger is a v1 partial run, not a fired trigger.
+		if (seeded !== undefined && isTriggerNodeType(seeded.node.type)) {
+			return { name: seeded.node.name, outputs: withoutNullSlots(seeded.data.main) };
+		}
+
+		return { name: data.triggerToStartFrom?.name, outputs: this.triggerMainOutputs(data) };
 	}
 
 	/**
@@ -184,9 +214,7 @@ export class EngineV2Dispatcher {
 			(pinned ? [pinned] : undefined) ??
 			DEFAULT_MAIN_OUTPUT;
 
-		// v1 uses `null` for a slot it has no data for; an empty slot says the same
-		// thing to the engine, which `toStepOutputs` collapses back to a dead edge.
-		return main.map((slot) => slot ?? []);
+		return withoutNullSlots(main);
 	}
 
 	private toTriggerOutputs(

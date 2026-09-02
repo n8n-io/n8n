@@ -53,8 +53,8 @@ import {
 	OperationalError,
 	tryToParseUrl,
 	UnexpectedError,
+	UserError,
 	WAIT_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
 import { Readable } from 'node:stream';
@@ -64,6 +64,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -89,11 +90,13 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { EngineV2Webhooks } from './engine-v2-webhooks';
 import { applySandboxCSP } from './webhook-response-headers';
 import {
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
+import { shouldEstablishTriggerIdentity } from './webhook-trigger-identity';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
@@ -409,23 +412,6 @@ export function setupResponseNodePromise(
 			);
 			responseCallback(error, {});
 		});
-}
-
-/**
- * Predicate (not an action): checks whether the start node will establish a
- * triggering-user identity from within its `webhook()` method (via
- * `context.establishTriggerIdentity`). Such nodes need their `runExecutionData`
- * created before the webhook runs, and the webhook output merged into the seeded
- * execution stack afterwards.
- *
- * The Webhook node does this only when its opt-in "n8n User Auth (OAuth2)" mode
- * (`n8nOAuth2`) is selected; the MCP / chat / Agent365 triggers always do.
- */
-function shouldEstablishTriggerIdentity(workflowStartNode: INode): boolean {
-	return (
-		workflowStartNode.type === WEBHOOK_NODE_TYPE &&
-		workflowStartNode.parameters?.authentication === 'n8nOAuth2'
-	);
 }
 
 /**
@@ -752,6 +738,8 @@ export async function executeWebhook(
 	};
 
 	let didSendResponse = false;
+	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
+	let routesToEngineV2 = false;
 	let runExecutionDataMerge = {};
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
 	try {
@@ -953,6 +941,18 @@ export async function executeWebhook(
 			runData.pushRef = runExecutionData.pushRef;
 		}
 
+		// Decided here, before the blocks below mutate `runData` or send headers.
+		const engineV2Webhooks = Container.get(EngineV2Webhooks);
+		routesToEngineV2 = engineV2Webhooks.handles(runData);
+		if (routesToEngineV2) {
+			engineV2Webhooks.assertSupported({
+				workflowStartNode,
+				responseMode,
+				webhookResultData,
+				executionId,
+			});
+		}
+
 		const executionsConfig = Container.get(ExecutionsConfig);
 		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
 			const querySessionId = req.query?.sessionId;
@@ -1063,8 +1063,13 @@ export async function executeWebhook(
 		/**
 		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
+		 *
+		 * A v2 run has no control-plane execution to record it against, and the
+		 * `engine-v2` module refuses queue mode, so there is nothing to track.
 		 */
-		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+		if (!routesToEngineV2) {
+			Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+		}
 
 		if (shouldDeferOnReceivedResponse) {
 			additionalKeys.$executionId = executionId;
@@ -1120,6 +1125,10 @@ export async function executeWebhook(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 			{ executionId },
 		);
+
+		// Engine 2.0 serves `onReceived` only, so the response is already out. Nothing
+		// below applies: the run has no control-plane execution to wait on.
+		if (routesToEngineV2) return executionId;
 
 		const activeExecutions = Container.get(ActiveExecutions);
 
@@ -1257,6 +1266,10 @@ export async function executeWebhook(
 		let error: Error;
 		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;
+		} else if (routesToEngineV2 && e instanceof UserError) {
+			// The v2 path never falls back to v1, so its reason is the answer. The
+			// branch below would replace it with a generic 500 and report it as a bug.
+			error = new BadRequestError(e.message);
 		} else {
 			Container.get(ErrorReporter).error(e, { executionId });
 			error = new OperationalError('There was a problem executing the workflow', { cause: e });
