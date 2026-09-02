@@ -1,5 +1,5 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
-import type { ExternalDependencies, IStepExecutor } from '../dependencies';
+import type { ExternalDependencies, IStepExecutor, StepExecutionResult } from '../dependencies';
 import {
 	deriveLoops,
 	isBatchStepConfig,
@@ -14,10 +14,12 @@ import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
 	isSettledStatus,
+	hasResumeCondition,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
+	type WaitDeclaration,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
@@ -27,8 +29,13 @@ import { validateStepContext } from './validate-step-context';
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued -> running`),
- * runs it through the executor for its step type, records the outcome, and
+ * runs it through the executor for its step type, records what came back, and
  * reports back to the orchestration worker with `step:settled`.
+ *
+ * What comes back is an outcome or a wait. An outcome — outputs or an error —
+ * settles the step, and is announced. A wait suspends it instead
+ * (`running -> waiting`): the step still owes the execution a settlement, so
+ * nothing is announced and no successor is planned until it resumes.
  *
  * A step that cannot run — no executor, an input shape we don't support yet —
  * makes the handler throw, leaving the step `running` for reconciliation
@@ -77,21 +84,29 @@ export class StepReadyHandler {
 
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
-		let run: { ok: true; outputs: StepSlots } | { ok: false; error: unknown };
+		let run:
+			| { kind: 'outputs'; outputs: StepSlots }
+			| { kind: 'wait'; wait: WaitDeclaration }
+			| { kind: 'error'; error: unknown };
 		try {
-			run = {
-				ok: true,
-				outputs: executor
-					? await this.runStep(step, execution, node, inputs, executor)
-					: await this.runBatchNode(step, execution, node),
-			};
+			const result: StepExecutionResult = executor
+				? await this.runStep(step, execution, node, inputs, executor)
+				: { outputs: await this.runBatchNode(step, execution, node) };
+			run = result.wait
+				? { kind: 'wait', wait: result.wait }
+				: { kind: 'outputs', outputs: result.outputs };
 		} catch (error) {
-			run = { ok: false, error };
+			run = { kind: 'error', error };
 		}
 
-		const recorded = run.ok
-			? await this.stepStore.completeStep(event.stepId, run.outputs)
-			: await this.stepStore.failStep(event.stepId, toStepError(run.error));
+		let recorded: boolean;
+		if (run.kind === 'outputs') {
+			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
+		} else if (run.kind === 'wait') {
+			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
+		} else {
+			recorded = await this.stepStore.failStep(event.stepId, toStepError(run.error));
+		}
 
 		// Recording is a CAS on `running`, so losing it means something else took the
 		// step over while we ran — announce only outcomes we actually wrote, and let
@@ -99,10 +114,14 @@ export class StepReadyHandler {
 		// only thing that can take a step over, and it doesn't exist yet.
 		if (!recorded) return;
 
+		// A wait is no outcome: nothing settled, so nothing is announced and no
+		// planning follows. TODO(CAT-2928): `step:waiting` surfaces it to the UI.
+		if (run.kind === 'wait') return;
+
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
 		this.lifecycleEventPublisher.publish(
-			run.ok
+			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
 				: { type: 'step:failed', ...stepEventFields(step, node) },
 		);
@@ -120,10 +139,11 @@ export class StepReadyHandler {
 		node: GraphNode,
 		inputs: StepSlots,
 		executor: IStepExecutor,
-	): Promise<StepSlots> {
-		// Outputs are stored without inspection. Which slots fired (including
-		// none) is the settlement handler's concern when it plans successors.
-		const { outputs } = await executor.execute({
+	): Promise<StepExecutionResult> {
+		// The result is stored without inspection - which slots fired, or what a
+		// wait means to the node, is not this handler's concern. The one exception
+		// is a wait nothing could ever end, which would strand the execution.
+		const result = await executor.execute({
 			node,
 			inputs,
 			context: {
@@ -134,7 +154,14 @@ export class StepReadyHandler {
 				iteration: step.iteration,
 			},
 		});
-		return outputs;
+
+		if (result.wait && !hasResumeCondition(result.wait)) {
+			throw new UnexpectedError(
+				`step ${step.id} declares a wait that can never resume: it names neither a deadline nor a resume request`,
+			);
+		}
+
+		return result;
 	}
 
 	/** Runs one pass of a batch node, in place of an executor. */

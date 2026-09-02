@@ -372,6 +372,73 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toBeNull();
 	});
 
+	it('TypeOrmStepStore.suspendStep records the declaration and its deadline, marking the step waiting', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+		const wait = {
+			resumeAt: '2026-09-02T12:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+
+		expect(await store.suspendStep(id, wait)).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('waiting');
+		expect(found.wait).toEqual(wait);
+		// the deadline is lifted out of the declaration so the sweep can index it
+		expect(found.waitTill).toEqual(new Date(wait.resumeAt));
+		// a suspension is not an outcome
+		expect(found.outputs).toBeNull();
+		expect(found.error).toBeNull();
+	});
+
+	it('TypeOrmStepStore.suspendStep leaves the deadline null for a wait that has none', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+
+		expect(await store.suspendStep(id, { acceptsResumeRequest: true })).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('waiting');
+		// nothing for the sweep to fire: only a resume request ends this wait
+		expect(found.waitTill).toBeNull();
+	});
+
+	it('TypeOrmStepStore.suspendStep only suspends a step that is running', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await createStep(store, executionId, {
+			nodeId: 'a',
+			iteration: 0,
+			status: 'queued',
+		});
+
+		expect(await store.suspendStep(id, { acceptsResumeRequest: true })).toBe(false);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('queued');
+		expect(found.wait).toBeNull();
+	});
+
+	it('TypeOrmStepStore.countSettledSteps does not count a waiting step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+		await store.suspendStep(id, { acceptsResumeRequest: true });
+
+		// expected but pending: the execution stays open until the wait resolves
+		expect(await store.countSettledSteps(executionId)).toBe(0);
+	});
+
 	it('TypeOrmStepStore.cancelQueuedSteps cancels queued steps and nothing else', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
@@ -712,7 +779,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.loadLatestStepSummaries(executionId, [])).toEqual({});
 	});
 
-	it('carries the unique key and the failed-rows partial index in the schema', async () => {
+	it('carries the unique key and the partial indexes in the schema', async () => {
 		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
 			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_step_execution'",
 		);
@@ -725,6 +792,11 @@ describe('workflow_step_execution table (integration)', () => {
 			'(execution_id, node_id, iteration)',
 		);
 		expect(byName.idx_workflow_step_execution_failed).toContain("WHERE ((status)::text = 'failed'");
+		// the sweep's index: due waits only, so it must not cover settled rows
+		expect(byName.idx_workflow_step_execution_wait_till).toContain('(wait_till)');
+		expect(byName.idx_workflow_step_execution_wait_till).toContain(
+			"WHERE ((status)::text = 'waiting'",
+		);
 
 		const [column]: Array<{ is_nullable: string; column_default: string }> = await dataSource.query(
 			`SELECT is_nullable, column_default FROM information_schema.columns

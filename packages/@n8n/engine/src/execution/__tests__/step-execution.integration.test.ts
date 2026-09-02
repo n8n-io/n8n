@@ -81,10 +81,18 @@ describe('step execution (integration)', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			// also how the test reaches the stores the runtime owns
-			externalDependencies: ({ executionStore }) => {
+			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
 					const recorded = await finishExecution(id, status);
+					done();
+					return recorded;
+				});
+				// An execution that suspends never finishes, so a suspension is
+				// the other signal that the engine has gone quiet.
+				const suspendStep = stepStore.suspendStep.bind(stepStore);
+				vi.spyOn(stepStore, 'suspendStep').mockImplementation(async (id, wait) => {
+					const recorded = await suspendStep(id, wait);
 					done();
 					return recorded;
 				});
@@ -207,6 +215,48 @@ describe('step execution (integration)', () => {
 			stack: expect.stringContaining('TypeError: credentials missing') as string,
 		});
 		expect(step?.outputs).toBeNull();
+	});
+
+	it('suspends a step that declares a wait, leaving the execution running and its successor unplanned', async () => {
+		const waitGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const wait = {
+			resumeAt: '2026-09-02T12:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+		const executor: IStepExecutor = {
+			execute: async () => {
+				await Promise.resolve();
+				return { wait };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-wait',
+			graph: waitGraph,
+		});
+
+		// nothing settled the step, so the execution has no outcome to record
+		expect(execution.status).toBe('running');
+		expect(execution.finishedAt).toBeNull();
+
+		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');
+		expect(waiting?.status).toBe('waiting');
+		expect(waiting?.wait).toEqual(wait);
+		expect(waiting?.waitTill).toEqual(new Date(wait.resumeAt));
+		expect(waiting?.outputs).toBeNull();
+		// planning stalls behind the wait: node-b has no row at all
+		expect(steps.map(({ nodeId }) => nodeId).sort()).toEqual(['node-a', 'trigger']);
 	});
 
 	it('runs the execution to completion even when every status batch is refused', async () => {

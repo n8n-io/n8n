@@ -43,6 +43,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		loadStep: vi.fn(),
 		claimStep: vi.fn(),
 		completeStep: vi.fn(),
+		suspendStep: vi.fn(),
 		failStep: vi.fn(),
 		cancelQueuedSteps: vi.fn(),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),

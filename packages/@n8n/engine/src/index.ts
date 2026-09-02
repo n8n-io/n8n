@@ -87,6 +87,7 @@ export type {
 	StepStore,
 	StepView,
 	TriggerOutputs,
+	WaitDeclaration,
 } from './execution';
 
 export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';
