@@ -110,6 +110,24 @@
       font-weight: 500;
     }
 
+    .caveat {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border: 1px solid rgba(245, 166, 35, 0.45);
+      border-radius: 8px;
+      background: rgba(245, 166, 35, 0.08);
+      color: #e6c07b;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .caveat strong { color: var(--amber); font-weight: 600; }
+    .caveat code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      color: #f0d9a8;
+    }
+
     .meta-row {
       display: flex;
       flex-wrap: wrap;
@@ -335,6 +353,14 @@
           <span>N=3</span>
           <span>reasoning=high</span>
         </div>
+        <p class="caveat">
+          <strong>Caveat — GLM effort setting likely not applied.</strong>
+          These GLM runs sent the effort as a <code>reasoningEffort</code> key that the OpenRouter
+          request path does not recognise (fixed to <code>reasoning.effort</code> on this branch).
+          Both GLM rows therefore most likely reflect the model's <em>default</em> reasoning, not
+          <code>high</code>. Opus numbers are unaffected. Treat GLM vs GLM-effort differences as noise
+          until the re-runs land.
+        </p>
       </div>
 
       <div class="table-wrap">

@@ -60,6 +60,18 @@
       color: var(--muted);
     }
     footer { font-size: 0.8rem; color: var(--muted); margin-top: 1rem; }
+    .caveat {
+      margin: 1rem 0 0;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid rgba(245, 166, 35, 0.45);
+      border-radius: 8px;
+      background: rgba(245, 166, 35, 0.08);
+      color: #e6c07b;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .caveat strong { color: #f5a623; }
+    .caveat code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; color: #f0d9a8; }
     footer a { color: #8eb4e3; }
     .cost-summary {
       display: grid;
@@ -88,6 +100,13 @@
         <strong>Suite:</strong> model-comparison · 31 cases × 3 iterations ·
         <strong>Opus:</strong> anthropic/claude-opus-4-8 (master, 17 Aug) ·
         <strong>GLM:</strong> openrouter/z-ai/glm-5.3-flash:nitro, reasoning=low (27 Aug)
+      </p>
+      <p class="caveat">
+        <strong>Caveat — GLM effort setting likely not applied.</strong>
+        This run sent the effort as a <code>reasoningEffort</code> key that the OpenRouter request
+        path does not recognise (fixed to <code>reasoning.effort</code> on this branch). The GLM
+        numbers most likely reflect the model's <em>default</em> reasoning rather than
+        <code>low</code>. Opus numbers are unaffected.
       </p>
     </header>
 
