@@ -134,7 +134,6 @@ async function handleSearch(
 	} catch (error) {
 		return {
 			hits: [],
-			totalThreadsMatched: 0,
 			error: toSafeErrorMessage(context, error, 'Failed to search conversation history.'),
 		};
 	}

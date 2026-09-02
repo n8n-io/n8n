@@ -111,17 +111,16 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			await createThread({ title: 'Slack alerts', resourceId: OTHER_USER_ID });
 			await createThread({ title: 'Slack reports', projectId: otherProject.id });
 
-			const { rows, total } = await search('slack');
+			const rows = await search('slack');
 
 			expect(rows.map((row) => row.id)).toEqual([mine]);
-			expect(total).toBe(1);
 		});
 
 		it('excludes the thread the user is currently in', async () => {
 			await threadRepository.update({ id: currentThreadId }, { title: 'Slack digest' });
 			const other = await createThread({ title: 'Slack archive' });
 
-			const { rows } = await search('slack');
+			const rows = await search('slack');
 
 			expect(rows.map((row) => row.id)).toEqual([other]);
 		});
@@ -137,10 +136,9 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				content: userContent('post to slack'),
 			});
 
-			const { rows, total } = await search('slack');
+			const rows = await search('slack');
 
 			expect(rows).toEqual([]);
-			expect(total).toBe(0);
 		});
 
 		it('matches on the title', async () => {
@@ -151,7 +149,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				content: userContent('summarize my inbox'),
 			});
 
-			const { rows } = await search('slack');
+			const rows = await search('slack');
 
 			expect(rows).toEqual([
 				expect.objectContaining({ id: threadId, title: 'Weekly Slack digest' }),
@@ -166,7 +164,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				content: userContent('post the summary to Slack every Monday'),
 			});
 
-			const { rows } = await search('slack');
+			const rows = await search('slack');
 
 			expect(rows).toEqual([expect.objectContaining({ id: threadId })]);
 		});
@@ -188,7 +186,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				content: assistantTextContent('I set the timezone to Europe/Berlin for you.'),
 			});
 
-			const { rows } = await search('berlin');
+			const rows = await search('berlin');
 
 			expect(rows.map((row) => row.id)).toEqual([answered]);
 		});
@@ -198,13 +196,13 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			await createThread({ title: 'Discount 5012 off campaign' });
 
 			const percentMatches = await search('50%');
-			expect(percentMatches.rows.map((row) => row.id)).toEqual([literal]);
+			expect(percentMatches.map((row) => row.id)).toEqual([literal]);
 
 			const underscore = await createThread({ title: 'Export report_v2 nightly' });
 			await createThread({ title: 'Export reportXv2 nightly' });
 
 			const underscoreMatches = await search('report_v2');
-			expect(underscoreMatches.rows.map((row) => row.id)).toEqual([underscore]);
+			expect(underscoreMatches.map((row) => row.id)).toEqual([underscore]);
 		});
 
 		it('returns the most recently updated threads first', async () => {
@@ -212,20 +210,19 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			const newest = await createThread({ title: 'Slack B', updatedAt: at(2000) });
 			const middle = await createThread({ title: 'Slack C', updatedAt: at(1000) });
 
-			const { rows } = await search('slack');
+			const rows = await search('slack');
 
 			expect(rows.map((row) => row.id)).toEqual([newest, middle, oldest]);
 		});
 
-		it('applies the limit but counts every match', async () => {
+		it('applies the limit', async () => {
 			await createThread({ title: 'Slack A', updatedAt: at(0) });
 			const second = await createThread({ title: 'Slack B', updatedAt: at(1000) });
 			const first = await createThread({ title: 'Slack C', updatedAt: at(2000) });
 
-			const { rows, total } = await search('slack', 2);
+			const rows = await search('slack', 2);
 
 			expect(rows.map((row) => row.id)).toEqual([first, second]);
-			expect(total).toBe(3);
 		});
 	});
 
@@ -315,41 +312,6 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			await createMessage({ threadId, role: 'user', content: userContent('hello') });
 
 			await expect(repository.threadHasMessages(otherThreadId)).resolves.toBe(false);
-		});
-	});
-
-	describe('countSearchMatchesByThread', () => {
-		it('counts matching rows per thread', async () => {
-			const first = await createThread({ title: 'Deploys' });
-			await createMessage({
-				threadId: first,
-				role: 'user',
-				content: userContent('deploy to prod'),
-			});
-			await createMessage({
-				threadId: first,
-				role: 'user',
-				content: userContent('deploy again please'),
-			});
-			await createMessage({ threadId: first, role: 'user', content: userContent('thanks') });
-
-			const second = await createThread({ title: 'Releases' });
-			await createMessage({
-				threadId: second,
-				role: 'assistant',
-				content: askUserContent([{ question: 'Which env?', selectedOptions: ['deploy-staging'] }]),
-			});
-
-			const counts = await repository.countSearchMatchesByThread([first, second], 'deploy');
-
-			expect(counts.get(first)).toBe(2);
-			expect(counts.get(second)).toBe(1);
-		});
-
-		it('is empty when no thread ids are given', async () => {
-			const counts = await repository.countSearchMatchesByThread([], 'deploy');
-
-			expect(counts.size).toBe(0);
 		});
 	});
 

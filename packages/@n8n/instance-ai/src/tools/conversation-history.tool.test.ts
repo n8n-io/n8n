@@ -21,10 +21,8 @@ const searchResult: ConversationHistorySearchResult = {
 			updatedAt: '2026-08-20T12:00:00.000Z',
 			matchedIn: ['title'],
 			excerpts: [],
-			totalMatches: 0,
 		},
 	],
-	totalThreadsMatched: 1,
 };
 
 const messagesResult: ConversationHistoryMessagesResult = {
@@ -101,7 +99,7 @@ describe('conversation-history tool', () => {
 				query: 'timezone',
 			});
 
-			expect(output).toEqual({ hits: [], totalThreadsMatched: 0, error: UNAVAILABLE_ERROR });
+			expect(output).toEqual({ hits: [], error: UNAVAILABLE_ERROR });
 		});
 
 		it('passes an omitted query through — the service handles listing mode', async () => {
@@ -158,7 +156,6 @@ describe('conversation-history tool', () => {
 
 			expect(output).toEqual({
 				hits: [],
-				totalThreadsMatched: 0,
 				error: 'Conversation not found',
 			});
 		});
@@ -176,7 +173,6 @@ describe('conversation-history tool', () => {
 
 			expect(output).toEqual({
 				hits: [],
-				totalThreadsMatched: 0,
 				error: 'Failed to search conversation history.',
 			});
 		});

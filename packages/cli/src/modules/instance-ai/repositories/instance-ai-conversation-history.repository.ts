@@ -67,20 +67,29 @@ export class InstanceAiConversationHistoryRepository {
 
 	/**
 	 * Threads of one user in one project whose title, user messages, or ask-user
-	 * answers match the query, most recently updated first. `total` is the match
-	 * count before the limit.
+	 * answers match the query, most recently updated first. No total: the caller
+	 * verifies these rows and drops the false positives, so any count taken here
+	 * would be wrong by the time it is read.
 	 */
 	async searchProjectThreadsForUser(
 		params: ConversationThreadScope & { query: string; limit: number },
-	): Promise<{ rows: ConversationThreadSearchRow[]; total: number }> {
+	): Promise<ConversationThreadSearchRow[]> {
 		return await this.pageByRecency(() => this.buildSearchQuery(params), params.limit);
 	}
 
-	/** The user's most recently updated threads in one project, no match filter. */
+	/**
+	 * The user's most recently updated threads in one project, no match filter.
+	 * `total` is exact — nothing verifies or drops these rows — and pays for the
+	 * count query only when the page comes back full.
+	 */
 	async listRecentProjectThreadsForUser(
 		params: ConversationThreadScope & { limit: number },
 	): Promise<{ rows: ConversationThreadSearchRow[]; total: number }> {
-		return await this.pageByRecency(() => this.scopedThreads(params), params.limit);
+		const scope = () => this.scopedThreads(params);
+		const rows = await this.pageByRecency(scope, params.limit);
+		const total = rows.length < params.limit ? rows.length : await scope().getCount();
+
+		return { rows, total };
 	}
 
 	async threadHasMessages(threadId: string): Promise<boolean> {
@@ -98,33 +107,6 @@ export class InstanceAiConversationHistoryRepository {
 			.andWhere('t.resourceId = :userId', { userId })
 			.andWhere('t.projectId = :projectId', { projectId })
 			.getOne();
-	}
-
-	/**
-	 * Approximate by design: it counts `LIKE`-over-JSON hits, taken before the
-	 * caller's JSON-level re-check.
-	 */
-	async countSearchMatchesByThread(
-		threadIds: string[],
-		query: string,
-	): Promise<Map<string, number>> {
-		const counts = new Map<string, number>();
-		if (threadIds.length === 0) return counts;
-
-		const rows = await this.messages()
-			.select('m.threadId', 'threadId')
-			.addSelect('COUNT(*)', 'matchCount')
-			.where('m.threadId IN (:...threadIds)', { threadIds })
-			.andWhere(buildMessageMatchCondition('m'), {
-				pattern: buildSearchLikePattern(query),
-				askUserMarker: ASK_USER_CONTENT_MARKER,
-			})
-			.groupBy('m.threadId')
-			.getRawMany<{ threadId: string; matchCount: number | string }>();
-
-		for (const row of rows) counts.set(row.threadId, Number(row.matchCount));
-
-		return counts;
 	}
 
 	/**
@@ -247,29 +229,23 @@ export class InstanceAiConversationHistoryRepository {
 		};
 	}
 
-	/** One page of threads plus the pre-limit total. */
+	/** One page of threads, most recently updated first. */
 	private async pageByRecency(
 		scope: () => SelectQueryBuilder<InstanceAiThread>,
 		limit: number,
-	): Promise<{ rows: ConversationThreadSearchRow[]; total: number }> {
+	): Promise<ConversationThreadSearchRow[]> {
 		const threads = await scope()
 			.orderBy('t.updatedAt', 'DESC')
 			// Tiebreak so equal timestamps still page deterministically.
 			.addOrderBy('t.id', 'DESC')
 			.limit(limit)
 			.getMany();
-		// A partial page already proves the total; the count query — for a search,
-		// a re-run of the unindexable match scan — only runs when the page is full.
-		const total = threads.length < limit ? threads.length : await scope().getCount();
 
-		return {
-			rows: threads.map((thread) => ({
-				id: thread.id,
-				title: thread.title,
-				updatedAt: thread.updatedAt,
-			})),
-			total,
-		};
+		return threads.map((thread) => ({
+			id: thread.id,
+			title: thread.title,
+			updatedAt: thread.updatedAt,
+		}));
 	}
 
 	/**

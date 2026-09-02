@@ -312,20 +312,20 @@ export class InstanceAiConversationHistoryService {
 		}
 
 		const pageLimit = clampSearchLimit(limit ?? DEFAULT_SEARCH_LIMIT);
-		const { rows, total } = await this.repository.searchProjectThreadsForUser({
+		const rows = await this.repository.searchProjectThreadsForUser({
 			userId,
 			projectId,
 			excludeThreadId: currentThreadId,
 			query: trimmedQuery,
 			limit: pageLimit * THREAD_PAGE_OVERFETCH_FACTOR,
 		});
-		if (rows.length === 0) return { hits: [], totalThreadsMatched: total };
+		if (rows.length === 0) return { hits: [] };
 
-		const threadIds = rows.map((row) => row.id);
-		const [matchCounts, candidatesByThread] = await Promise.all([
-			this.repository.countSearchMatchesByThread(threadIds, trimmedQuery),
-			this.repository.findSearchMatchRows(threadIds, trimmedQuery, EXCERPT_CANDIDATES_PER_THREAD),
-		]);
+		const candidatesByThread = await this.repository.findSearchMatchRows(
+			rows.map((row) => row.id),
+			trimmedQuery,
+			EXCERPT_CANDIDATES_PER_THREAD,
+		);
 
 		const needle = trimmedQuery.toLowerCase();
 		const matched = rows.flatMap((row) => {
@@ -348,15 +348,15 @@ export class InstanceAiConversationHistoryService {
 		const firstUserMessages = await this.repository.findFirstUserMessages(
 			page.map((hit) => hit.row.id),
 		);
-		const hits = page.map((hit) => buildHit(hit, matchCounts, firstUserMessages));
+		const hits = page.map((hit) => buildHit(hit, firstUserMessages));
 
-		return { hits, totalThreadsMatched: total };
+		return { hits };
 	}
 
 	/**
 	 * Query-less listing: the most recently updated conversations, no match
-	 * work at all. Hits keep the search shape — empty `matchedIn`/`excerpts`
-	 * and a zero `totalMatches` are what tell the reader this was a listing.
+	 * work at all. Hits keep the search shape — empty `matchedIn` and `excerpts`
+	 * are what tell the reader this was a listing.
 	 */
 	private async listRecent(
 		userId: string,
@@ -364,7 +364,7 @@ export class InstanceAiConversationHistoryService {
 		currentThreadId: string,
 		limit: number,
 	): Promise<ConversationHistorySearchResult> {
-		const { rows, total } = await this.repository.listRecentProjectThreadsForUser({
+		const { rows } = await this.repository.listRecentProjectThreadsForUser({
 			userId,
 			projectId,
 			excludeThreadId: currentThreadId,
@@ -376,7 +376,7 @@ export class InstanceAiConversationHistoryService {
 		);
 		const hits = rows.map((row) => baseHit(row, firstUserMessages));
 
-		return { hits, totalThreadsMatched: total };
+		return { hits };
 	}
 
 	/**
@@ -496,13 +496,11 @@ function baseHit(
 		matchedIn: [],
 		...(openingExcerpt ? { firstMessageExcerpt: openingExcerpt } : {}),
 		excerpts: [],
-		totalMatches: 0,
 	};
 }
 
 function buildHit(
 	hit: ExtractedThreadMatch,
-	matchCounts: Map<string, number>,
 	firstUserMessages: Map<string, InstanceAiMessage>,
 ): ConversationHistorySearchHit {
 	const { row, titleMatched, excerpts, matchedInMessages, matchedInAnswers } = hit;
@@ -516,9 +514,6 @@ function buildHit(
 		...baseHit(row, firstUserMessages),
 		matchedIn,
 		excerpts,
-		// Approximate on purpose: the SQL-level count of LIKE matches, taken
-		// before the JSON-level re-check that filters the excerpts.
-		totalMatches: matchCounts.get(row.id) ?? 0,
 	};
 }
 

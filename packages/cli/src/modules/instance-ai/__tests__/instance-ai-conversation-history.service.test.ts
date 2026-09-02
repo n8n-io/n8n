@@ -31,10 +31,9 @@ function setup() {
 	const repository = mock<InstanceAiConversationHistoryRepository>();
 
 	// Nothing matches and no thread exists unless a test says otherwise.
-	repository.searchProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
+	repository.searchProjectThreadsForUser.mockResolvedValue([]);
 	repository.listRecentProjectThreadsForUser.mockResolvedValue({ rows: [], total: 0 });
 	repository.findOwnedThread.mockResolvedValue(null);
-	repository.countSearchMatchesByThread.mockResolvedValue(new Map());
 	repository.findSearchMatchRows.mockResolvedValue(new Map());
 	repository.findFirstUserMessages.mockResolvedValue(new Map());
 	repository.findMessageInThread.mockResolvedValue(null);
@@ -88,21 +87,13 @@ function givenSearchHit(
 	options: {
 		row?: ConversationThreadSearchRow;
 		candidates?: InstanceAiMessage[];
-		total?: number;
-		matchCount?: number;
 		firstUserMessage?: InstanceAiMessage | null;
 	} = {},
 ) {
 	const row = options.row ?? threadHit();
-	repos.repository.searchProjectThreadsForUser.mockResolvedValue({
-		rows: [row],
-		total: options.total ?? 1,
-	});
+	repos.repository.searchProjectThreadsForUser.mockResolvedValue([row]);
 	repos.repository.findSearchMatchRows.mockResolvedValue(
 		new Map([[row.id, options.candidates ?? []]]),
-	);
-	repos.repository.countSearchMatchesByThread.mockResolvedValue(
-		new Map([[row.id, options.matchCount ?? 1]]),
 	);
 	repos.repository.findFirstUserMessages.mockResolvedValue(
 		options.firstUserMessage ? new Map([[row.id, options.firstUserMessage]]) : new Map(),
@@ -193,13 +184,10 @@ describe('InstanceAiConversationHistoryService', () => {
 						matchedIn: [],
 						firstMessageExcerpt: 'Build me a weekly digest workflow',
 						excerpts: [],
-						totalMatches: 0,
 					},
 				],
-				totalThreadsMatched: 7,
 			});
 			expect(repository.findSearchMatchRows).not.toHaveBeenCalled();
-			expect(repository.countSearchMatchesByThread).not.toHaveBeenCalled();
 		});
 
 		it('centers each excerpt on the match and elides both open ends', async () => {
@@ -207,7 +195,6 @@ describe('InstanceAiConversationHistoryService', () => {
 			const text = `${'x'.repeat(300)} needle ${'y'.repeat(300)}`;
 			givenSearchHit(repos, {
 				candidates: [messageRow({ id: 'message-7', role: 'user', content: userContent(text) })],
-				matchCount: 4,
 			});
 
 			const { hits } = await repos.history.search({ query: 'needle', limit: 10 });
@@ -222,7 +209,6 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(excerpt.text.endsWith('…')).toBe(true);
 			// 200 characters of context plus the two ellipses.
 			expect(excerpt.text).toHaveLength(202);
-			expect(hits[0].totalMatches).toBe(4);
 		});
 
 		it('keeps short matches whole', async () => {
@@ -293,7 +279,6 @@ describe('InstanceAiConversationHistoryService', () => {
 		it('drops a thread whose match was only in the serialized JSON', async () => {
 			const repos = setup();
 			givenSearchHit(repos, {
-				total: 3,
 				candidates: [
 					messageRow({
 						role: 'user',
@@ -306,8 +291,6 @@ describe('InstanceAiConversationHistoryService', () => {
 			const result = await repos.history.search({ query: 'timezone', limit: 10 });
 
 			expect(result.hits).toEqual([]);
-			// The thread-level count is unaffected — it reports what SQL matched.
-			expect(result.totalThreadsMatched).toBe(3);
 		});
 
 		it('keeps a title-only hit even when no message excerpt survives', async () => {
@@ -315,7 +298,6 @@ describe('InstanceAiConversationHistoryService', () => {
 			givenSearchHit(repos, {
 				row: threadHit({ title: 'Timezone setup' }),
 				candidates: [messageRow({ role: 'user', content: userContent('hello there') })],
-				matchCount: 0,
 			});
 
 			const { hits } = await repos.history.search({ query: 'timezone', limit: 10 });
@@ -323,7 +305,6 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(hits).toHaveLength(1);
 			expect(hits[0].matchedIn).toEqual(['title']);
 			expect(hits[0].excerpts).toEqual([]);
-			expect(hits[0].totalMatches).toBe(0);
 		});
 
 		it('renders resolved ask-user answers as question/answer pairs', async () => {
@@ -432,33 +413,25 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(hits[0].firstMessageExcerpt?.endsWith('…')).toBe(true);
 		});
 
-		it('reports the thread total and the recency order the repository returned', async () => {
+		it('keeps the recency order the repository returned', async () => {
 			const { history, repository } = setup();
-			repository.searchProjectThreadsForUser.mockResolvedValue({
-				rows: [
-					threadHit({ id: 'thread-new', title: 'Slack new' }),
-					threadHit({ id: 'thread-old', title: 'Slack old' }),
-				],
-				total: 7,
-			});
-			repository.countSearchMatchesByThread.mockResolvedValue(new Map());
+			repository.searchProjectThreadsForUser.mockResolvedValue([
+				threadHit({ id: 'thread-new', title: 'Slack new' }),
+				threadHit({ id: 'thread-old', title: 'Slack old' }),
+			]);
 
 			const result = await history.search({ query: 'slack', limit: 2 });
 
 			expect(result.hits.map((hit) => hit.threadId)).toEqual(['thread-new', 'thread-old']);
 			expect(result.hits[0].updatedAt).toBe(UPDATED_AT.toISOString());
-			expect(result.totalThreadsMatched).toBe(7);
 		});
 
 		it('does not let a false-positive thread cost a hit', async () => {
 			const { history, repository } = setup();
-			repository.searchProjectThreadsForUser.mockResolvedValue({
-				rows: [
-					threadHit({ id: 'thread-false', title: 'Recent work' }),
-					threadHit({ id: 'thread-real', title: 'Older work' }),
-				],
-				total: 2,
-			});
+			repository.searchProjectThreadsForUser.mockResolvedValue([
+				threadHit({ id: 'thread-false', title: 'Recent work' }),
+				threadHit({ id: 'thread-real', title: 'Older work' }),
+			]);
 			repository.findSearchMatchRows.mockResolvedValue(
 				new Map([
 					// Matches only in a sibling JSON field, not in the text the user wrote.
@@ -481,14 +454,11 @@ describe('InstanceAiConversationHistoryService', () => {
 
 		it('trims verified hits to the requested limit', async () => {
 			const { history, repository } = setup();
-			repository.searchProjectThreadsForUser.mockResolvedValue({
-				rows: [
-					threadHit({ id: 'thread-1', title: 'Slack one' }),
-					threadHit({ id: 'thread-2', title: 'Slack two' }),
-					threadHit({ id: 'thread-3', title: 'Slack three' }),
-				],
-				total: 3,
-			});
+			repository.searchProjectThreadsForUser.mockResolvedValue([
+				threadHit({ id: 'thread-1', title: 'Slack one' }),
+				threadHit({ id: 'thread-2', title: 'Slack two' }),
+				threadHit({ id: 'thread-3', title: 'Slack three' }),
+			]);
 
 			const result = await history.search({ query: 'slack', limit: 2 });
 

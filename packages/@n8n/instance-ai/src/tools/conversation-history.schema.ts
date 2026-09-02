@@ -23,15 +23,10 @@ export const conversationHistorySearchHitSchema = z.object({
 	/** Opening user message of the conversation — the original ask. */
 	firstMessageExcerpt: z.string().optional(),
 	excerpts: z.array(conversationHistoryExcerptSchema),
-	/** Matching message rows in the thread (0 for title-only hits). */
-	totalMatches: z.number(),
 });
 
 export const conversationHistorySearchResultSchema = z.object({
 	hits: z.array(conversationHistorySearchHitSchema),
-	/** Threads matched before the limit was applied. Approximate: counted at the
-	 *  SQL prefilter, so it can include threads the excerpt re-check would drop. */
-	totalThreadsMatched: z.number(),
 });
 
 export const conversationHistoryMessageSchema = z.object({
