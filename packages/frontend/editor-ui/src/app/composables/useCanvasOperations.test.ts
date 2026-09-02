@@ -4665,6 +4665,29 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.setConnections).toHaveBeenCalled();
 		});
 
+		it('marks the document hydrated after nodes and connections are set', async () => {
+			const workflow = createTestWorkflow({
+				id: workflowId,
+				nodes: [createTestNode()],
+				connections: {},
+			});
+
+			const setNodesSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodes');
+			const setConnectionsSpy = vi.spyOn(workflowDocumentStoreInstance, 'setConnections');
+			const setHydratedSpy = vi.spyOn(workflowDocumentStoreInstance, 'setHydrated');
+			const { initializeWorkspace } = useCanvasOperations();
+
+			await initializeWorkspace(workflow);
+
+			expect(setHydratedSpy).toHaveBeenCalledWith(true);
+			expect(setHydratedSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				setNodesSpy.mock.invocationCallOrder[0],
+			);
+			expect(setHydratedSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				setConnectionsSpy.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('should set connections even when workflowId is initially empty', async () => {
 			const workflowsStore = useWorkflowsStore();
 			// Simulate the state after resetWorkspace() — workflowId is cleared

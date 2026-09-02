@@ -708,6 +708,8 @@ describe('DurableJobProvisioner', () => {
 			// in the future, so the executor fires them on time rather than discovering
 			// the first one only after it has already passed.
 			expect(jobs.findManyByIds).toHaveBeenCalledWith(manager, [100]);
+			// On the transaction's manager: a second pooled connection would deadlock here.
+			expect(tasks.readDbTime).toHaveBeenCalledWith(manager);
 			expect(tasks.insertIgnoringDuplicates.mock.calls[0]?.[1]).toEqual(firstWindowOf(100));
 			// The first recorded fire is still in the future when it is queued.
 			expect(at(30).getTime()).toBeGreaterThan(SEED_NOW.getTime());

@@ -4,7 +4,11 @@ import path from 'node:path';
 import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
+import {
+	DEFAULT_CONTENT_SECURITY_POLICY,
+	GlobalConfig,
+	SSRF_DEFAULT_BLOCKED_IP_RANGES,
+} from '../src/index';
 
 const { readFileSyncMock } = vi.hoisted(() => ({
 	readFileSyncMock: vi.fn(),
@@ -359,13 +363,8 @@ describe('GlobalConfig', () => {
 			snapshotRetention: 86_400_000,
 			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
-			outputRedactionEnabled: true,
-			outputRedactionSecrets: true,
-			outputRedactionPii: 'credit-card',
-			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			durableLog: true,
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
 			activationCapped: false,
@@ -482,12 +481,12 @@ describe('GlobalConfig', () => {
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'legacy',
 			enabledForPollTriggers: false,
+			pollTimeoutSeconds: 45,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
-		},
-		poller: {
 			durableCursorsEnabled: false,
+			enabledForSystemTasks: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -513,8 +512,8 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
 			daysAbandonedWorkflow: 90,
-			contentSecurityPolicy: '{}',
-			contentSecurityPolicyReportOnly: false,
+			contentSecurityPolicy: undefined,
+			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			crossOriginOpenerPolicy: 'same-origin-allow-popups',
 			disableWebhookHtmlSandboxing: false,
 			disableFormHtmlSandboxing: false,
@@ -624,6 +623,9 @@ describe('GlobalConfig', () => {
 			globalUserAgentValue: '',
 			responseBodyReadTimeout: 300000,
 		},
+		outboundProxy: {
+			mode: 'all',
+		},
 		redis: {
 			prefix: 'n8n',
 		},
@@ -698,6 +700,7 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
+			channelReconcileIntervalSeconds: 60,
 		},
 	} satisfies GlobalConfigShape;
 
@@ -718,6 +721,15 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingEnabled).toBe(false);
+	});
+
+	it('should parse N8N_POLLER_DURABLE_CURSORS_ENABLED from env variables', () => {
+		process.env = {
+			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.scheduler.durableCursorsEnabled).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {

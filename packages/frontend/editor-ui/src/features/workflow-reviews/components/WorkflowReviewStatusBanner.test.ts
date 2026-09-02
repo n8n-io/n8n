@@ -7,7 +7,9 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowReviewStatusBanner from './WorkflowReviewStatusBanner.vue';
 
 const PINNED_VERSION = 'aabbccdd-1111-2222-3333-444455556666';
-const PINNED_LABEL = 'aabbccdd';
+/** What {@link getVersionLabel} falls back to for an unnamed version. */
+const PINNED_LABEL = 'Version aabbccdd';
+const PINNED_NAME = 'Release candidate';
 
 const review = (
 	overrides: Partial<WorkflowReviewRequestForWorkflow> = {},
@@ -16,6 +18,7 @@ const review = (
 	state: 'open',
 	decision: 'pending',
 	workflowVersionId: PINNED_VERSION,
+	workflowVersionName: null,
 	description: null,
 	createdAt: '2026-07-20T10:00:00.000Z',
 	updatedAt: '2026-07-20T10:00:00.000Z',
@@ -58,7 +61,7 @@ describe('WorkflowReviewStatusBanner', () => {
 				props: { review: review(), savedVersionId: PINNED_VERSION },
 				pill: 'Waiting for review',
 				title: 'Waiting for review',
-				body: `Version ${PINNED_LABEL} is waiting for review.`,
+				body: `${PINNED_LABEL} is waiting for review.`,
 				support: 'You can keep editing while the review is open.',
 				// The review already covers the saved version, so no action is offered
 				secondaryAction: null,
@@ -82,7 +85,7 @@ describe('WorkflowReviewStatusBanner', () => {
 				},
 				pill: 'Changes requested',
 				title: 'Changes requested',
-				body: `Rey Viewer requested changes on version ${PINNED_LABEL}.`,
+				body: `Rey Viewer requested changes on ${PINNED_LABEL}.`,
 				support:
 					'Make your edits on this canvas, then submit the latest changes back to the review.',
 				secondaryAction: 'workflow-review-submit-changes-button',
@@ -94,9 +97,9 @@ describe('WorkflowReviewStatusBanner', () => {
 					review: review({ decision: 'changes_requested', decisionBy: actor }),
 					savedVersionId: 'newer-version',
 				},
-				pill: 'Changes requested',
+				pill: 'Update review',
 				title: 'Changes requested',
-				body: `Rey Viewer requested changes on version ${PINNED_LABEL}.`,
+				body: `Rey Viewer requested changes on ${PINNED_LABEL}.`,
 				support:
 					'Make your edits on this canvas, then submit the latest changes back to the review.',
 				secondaryAction: 'workflow-review-submit-changes-button',
@@ -108,9 +111,9 @@ describe('WorkflowReviewStatusBanner', () => {
 					review: review({ decision: 'changes_requested' }),
 					savedVersionId: 'newer-version',
 				},
-				pill: 'Changes requested',
+				pill: 'Update review',
 				title: 'Changes requested',
-				body: `Changes were requested on version ${PINNED_LABEL}.`,
+				body: `Changes were requested on ${PINNED_LABEL}.`,
 				support:
 					'Make your edits on this canvas, then submit the latest changes back to the review.',
 				secondaryAction: 'workflow-review-submit-changes-button',
@@ -143,6 +146,31 @@ describe('WorkflowReviewStatusBanner', () => {
 				}
 			},
 		);
+
+		it.each([
+			{
+				name: 'a pending review',
+				review: review({ workflowVersionName: PINNED_NAME }),
+				body: `${PINNED_NAME} is waiting for review.`,
+			},
+			{
+				name: 'a review with changes requested',
+				review: review({
+					workflowVersionName: PINNED_NAME,
+					decision: 'changes_requested',
+					decisionBy: actor,
+				}),
+				body: `Rey Viewer requested changes on ${PINNED_NAME}.`,
+			},
+		])('names the pinned version instead of its id for $name', async ({ review: named, body }) => {
+			const { getByTestId } = await openPopover({
+				review: named,
+				savedVersionId: PINNED_VERSION,
+			});
+
+			const popover = within(getByTestId('workflow-review-status-popover'));
+			expect(popover.getByText(body)).toBeInTheDocument();
+		});
 
 		it.each([
 			{ name: 'no review at all', review: null },

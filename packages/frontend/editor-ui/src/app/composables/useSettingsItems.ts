@@ -120,6 +120,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
+				id: 'settings-git-connections',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.gitConnections.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.GIT_CONNECTIONS_SETTINGS),
+				route: { to: { name: VIEWS.GIT_CONNECTIONS_SETTINGS } },
+			},
+			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),
@@ -172,17 +180,6 @@ export function useSettingsItems() {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
 			route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
-		});
-
-		menuItems.push({
-			id: 'settings-opentelemetry',
-			icon: 'telescope',
-			label: i18n.baseText('settings.opentelemetry'),
-			position: 'top',
-			available:
-				settingsStore.isModuleActive('otel') &&
-				hasPermission(['rbac'], { rbac: { scope: 'otel:manage' } }),
-			route: { to: { name: VIEWS.OPENTELEMETRY_SETTINGS } },
 		});
 
 		menuItems.push({

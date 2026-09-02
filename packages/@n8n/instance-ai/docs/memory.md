@@ -7,10 +7,12 @@ The memory system serves two purposes:
 - **Operational context management** — observational memory that compresses
   the agent's operational history during long autonomous loops to prevent
   context degradation (thread-scoped)
-- **Conversation history** — recent messages for the current thread
+- **Conversation history** — the stored messages for the current thread
   (thread-scoped)
 
-Sub-agents are stateless — context is passed via the briefing only.
+The eval-setup background agent does not share the orchestrator's observational
+memory. It receives a briefing and uses a dedicated persistence wrapper for
+checkpoint and suspension state.
 
 ## Tiers
 
@@ -19,23 +21,15 @@ Sub-agents are stateless — context is passed via the briefing only.
 The persistence layer. Stores all messages, observational memory, plan state,
 and event history.
 
-| Backend | When Used | Connection |
-|---------|-----------|------------|
-| PostgreSQL | n8n is configured with `postgresdb` | Built from n8n's DB config |
-| LibSQL/SQLite | All other cases (default) | `file:instance-ai-memory.db` |
+Memory persists in the main n8n database via TypeORM — the same PostgreSQL or
+SQLite instance n8n already uses, selected automatically from n8n's own database
+configuration.
 
-The storage backend is selected automatically based on n8n's database
-configuration — no separate config needed.
+That backend holds message history, observational memory (observation log,
+cursors and task locks), plan state in thread metadata, and run snapshots and
+checkpoints in their own tables.
 
-### Tier 2: Recent Messages
-
-A sliding window of the most recent N messages in the conversation, sent as
-context to the LLM on every request.
-
-- **Default**: 20 messages
-- **Config**: `N8N_INSTANCE_AI_LAST_MESSAGES`
-
-### Tier 3: Observational Memory
+### Tier 2: Observational Memory
 
 Automatic context compression for long-running autonomous loops. Two background
 agents manage the orchestrator's context size:
@@ -60,22 +54,14 @@ Context window layout during autonomous loop:
 └──────────────────────────────────────────┘
 ```
 
-**Why this matters for the autonomous loop**:
-
-- Tool-heavy workloads (workflow definitions, execution results, node
-  descriptions) get **5–40x compression** — a 50-step loop that would blow
-  out the context window stays manageable
-- The observation block is **append-only** until reflection runs, enabling
-  high prompt cache hit rates (4–10x cost reduction)
-- **Async buffering** pre-computes observations in the background — no
-  user-visible pause when the threshold is hit
-- Uses the orchestrator agent's model for compression — same credentials and
-  provider as the main conversation
+Observer and Reflector jobs run through the `@n8n/agents` memory system. The
+CLI tracks in-flight memory jobs per thread and records their model usage.
+Both jobs use the configured Instance AI model.
 
 Observational memory is **thread-scoped** — it tracks the operational history
 of the current task.
 
-### Tier 4: Plan Storage
+### Tier 3: Plan Storage
 
 The `create-tasks` tool stores execution plans in thread-scoped storage. Plans
 are structured task graphs that persist across reconnects within a conversation.
@@ -85,18 +71,20 @@ See the [tools](./tools.md) documentation for the task graph schema.
 
 All memory is thread-scoped (isolated per conversation):
 
-- **Recent messages** — the sliding window of N messages
+- **Message history** — the stored conversation
 - **Observational memory** — compressed operational history
 - **Plan** — the current execution plan
 
 ### Sub-agent memory
 
-The eval-setup background agent is fully stateless — context is passed via its
-task briefing and optional `conversationContext` on `eval-setup-with-agent`.
+The eval-setup background agent receives its task briefing and optional
+`conversationContext` from `eval-setup-with-agent`. It does not read or write
+the orchestrator's observational memory. Its agent persistence stores the
+checkpoint data needed for resume and HITL handling.
 
-Past failed attempts are tracked via the `IterationLog` (stored in thread
-metadata) and appended to background-agent briefings on retry, providing
-cross-attempt context without persistent memory.
+An `IterationLog` database adapter is available through the dedicated
+`instance_ai_iteration_logs` table. The briefing builder can include these
+entries when supplied by a caller.
 
 ### Cross-user isolation
 
@@ -107,8 +95,8 @@ conversations.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_LAST_MESSAGES` | number | 20 | Recent message window |
 | `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | 30000 | Observer trigger threshold |
 | `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | 40000 | Reflector trigger threshold |
+| `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | 30 | Thread TTL. Threads older than this expire, taking their memory with them. `0` disables expiry. |
 
 Observer and Reflector use the orchestrator agent's model.

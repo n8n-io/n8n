@@ -694,6 +694,7 @@ export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;
+	onCredentialCreated?: (credential: { id: string }) => void;
 	projectId?: string;
 	suggestedName?: string;
 	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's

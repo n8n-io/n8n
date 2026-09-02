@@ -82,3 +82,17 @@ properties:
       the latest version.
     example: latest
     default: latest
+  credentialExportPolicy:
+    type: string
+    enum:
+      - expression-values-only
+      - no-values
+    description: >-
+      Whether expression values from credential data are bundled into the
+      package. `expression-values-only` includes credential fields whose value
+      is an n8n expression (for example `={{ $secrets.apiKey }}`); literal
+      values never travel either way. `no-values` keeps credential data out of
+      the package entirely, so each credential file carries only its id, name
+      and type.
+    example: expression-values-only
+    default: expression-values-only

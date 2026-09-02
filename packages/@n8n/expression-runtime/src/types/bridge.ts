@@ -71,7 +71,9 @@ export interface BridgeConfig {
 	memoryLimit?: number;
 
 	/**
-	 * Timeout in milliseconds for expression execution.
+	 * Timeout in milliseconds for one expression evaluation. A chain of nested
+	 * evaluations (`$evaluateExpression`) shares this limit; a nested call does
+	 * not get a new one.
 	 * Default: 5000ms
 	 */
 	timeout?: number;
@@ -101,4 +103,11 @@ export interface ExecuteOptions {
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
 	timezone?: string;
+
+	/**
+	 * Milliseconds already spent by the chain of evaluations this call belongs
+	 * to. Subtracted from the configured timeout so a chain shares one budget
+	 * instead of each call starting a fresh one. Omit for a standalone call.
+	 */
+	elapsedMs?: number;
 }

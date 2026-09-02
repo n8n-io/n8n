@@ -736,6 +736,8 @@
 			const url = new URL(window.location.href);
 			let formSignature = url.searchParams.get('signature');
 
+			{{> formHostNavigation path=hostNavigationPath withRedirect=true}}
+
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {
 					errorElement.textContent = message;
@@ -999,7 +1001,7 @@
 						if (formSignature) {
 							redirectUrl.searchParams.set('signature', formSignature);
 						}
-						window.location.replace(redirectUrl.toString());
+						navigateTo(redirectUrl.toString());
 						return;
 					}
 
@@ -1143,7 +1145,9 @@
 								}
 
 								if (json?.redirectURL) {
-									window.location.replace(json.redirectURL);
+									// The author's end-of-form redirect leaves the form, so inside the
+									// hosting shell it must take the whole tab, not the sandboxed frame.
+									redirectTo(json.redirectURL);
 									return;
 								}
 
@@ -1169,12 +1173,15 @@
 
 							if (response.status === 200) {
 								if(response.redirected) {
-									window.location.replace(response.url);
+									// Another page of this form moves the frame; anything else is a
+									// redirect out of the form and takes the tab.
+									if (isHostNavigable(response.url)) navigateTo(response.url);
+									else redirectTo(response.url);
 									return;
 								}
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {
-									window.location.replace(redirectUrl.href);
+									redirectTo(redirectUrl.href);
 								} else {
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';

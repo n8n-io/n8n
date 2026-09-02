@@ -15,13 +15,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -38,7 +32,10 @@ import type { AgentChatAttachmentService } from '../agent-chat-attachment.servic
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
-import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
+import type {
+	AgentSandboxRuntime,
+	AgentSandboxRuntimeService,
+} from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -108,7 +105,10 @@ function makeReconstructionService(
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	const defaultAgentWorkspaceService = mock<AgentWorkspaceService>();
-	defaultAgentWorkspaceService.getAgentWorkspace.mockResolvedValue(new Workspace({}));
+	defaultAgentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+		workspace: new Workspace({}),
+		handle: mock<AgentSandboxRuntime>(),
+	});
 	const agentWorkspaceService = overrides.agentWorkspaceService ?? defaultAgentWorkspaceService;
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
@@ -127,8 +127,6 @@ function makeReconstructionService(
 		outboundHttp,
 		agentWorkspaceService,
 		overrides.agentKnowledgeMirrorService ?? mock<AgentKnowledgeMirrorService>(),
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
@@ -285,7 +283,10 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		const workspace = new Workspace({});
 		agentFileRepository.hasFilesForAgent.mockResolvedValue(false);
-		agentWorkspaceService.getAgentWorkspace.mockResolvedValue(workspace);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace,
+			handle: mock<AgentSandboxRuntime>(),
+		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
 			agentFileRepository,
@@ -310,7 +311,10 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
-		agentWorkspaceService.getAgentWorkspace.mockResolvedValue(new Workspace({}));
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace: new Workspace({}),
+			handle: mock<AgentSandboxRuntime>(),
+		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
 			agentFileRepository,
@@ -601,7 +605,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		]);
 	});
 
-	it('references a published sub-agent by id only, with no versionId pin', async () => {
+	it('references a saved sub-agent by id only, with no versionId pin', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: 'agent-billing',
@@ -621,7 +625,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		expect(sourcesById).toEqual({ 'agent-billing': { agentId: 'agent-billing' } });
 	});
 
-	it('omits an unpublished sub-agent from sourcesById and availableSubAgents', async () => {
+	it('includes an unpublished sub-agent in sourcesById and availableSubAgents', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: 'agent-billing',
@@ -641,8 +645,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			'project-1',
 		);
 
-		expect(sourcesById).toEqual({});
-		expect(availableSubAgents).toEqual([]);
+		expect(sourcesById).toEqual({ 'agent-billing': { agentId: 'agent-billing' } });
+		expect(availableSubAgents).toEqual([{ id: 'agent-billing', name: 'Billing Agent' }]);
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {

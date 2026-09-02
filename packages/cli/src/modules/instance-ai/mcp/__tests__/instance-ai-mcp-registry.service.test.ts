@@ -1,12 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -116,8 +110,6 @@ describe('InstanceAiMcpRegistryService', () => {
 			oauthService,
 			eventService,
 			outboundHttp,
-			mock<SsrfProtectionConfig>({ enabled: true }),
-			mock<SsrfProtectionService>(),
 		);
 
 		return {
@@ -261,7 +253,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		await service.getRegistryMcpServers(user);
 
 		expect(outboundHttp.transport).toHaveBeenCalledWith(
-			expect.not.objectContaining({ ssrf: 'disabled' }),
+			expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
 		);
 	});
 

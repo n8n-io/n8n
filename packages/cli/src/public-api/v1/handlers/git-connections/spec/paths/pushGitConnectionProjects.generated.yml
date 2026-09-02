@@ -1,0 +1,66 @@
+operationId: pushGitConnectionProjects
+tags:
+  - GitConnections
+summary: Push all team projects to a Git connection
+description: Work in progress. Exports all team projects to the local repository working copy; personal projects are ignored. It does not commit or push changes to the selected branch yet.
+x-required-scope: gitConnection:push
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: id
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            connectionId:
+              type: string
+            counts:
+              type: object
+              properties:
+                workflows:
+                  type: integer
+                  minimum: 0
+                folders:
+                  type: integer
+                  minimum: 0
+                credentials:
+                  type: integer
+                  minimum: 0
+                dataTables:
+                  type: integer
+                  minimum: 0
+                variables:
+                  type: integer
+                  minimum: 0
+                tags:
+                  type: integer
+                  minimum: 0
+              required:
+                - workflows
+                - folders
+                - credentials
+                - dataTables
+                - variables
+                - tags
+          required:
+            - connectionId
+            - counts
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

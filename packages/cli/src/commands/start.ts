@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
 	DeploymentKeyRepository,
@@ -73,6 +73,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	override needsTaskRunner = true;
 
 	override seedsInstanceIdentity = true;
+
+	override readonly isMainServer = true;
 
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
 
@@ -161,8 +163,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		let scriptsString = '';
 		if (hooksUrls) {
+			// The placeholder takes the request's nonce, so `script-src` allows these scripts.
 			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
-				return `${acc}<script src="${curr}"></script>`;
+				return `${acc}<script nonce="${HTML_NONCE_PLACEHOLDER}" src="${curr}"></script>`;
 			}, '');
 		}
 
@@ -252,6 +255,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initCommunityPackages();
 
+		// Rewire: pick up @OnPubSubEvent handlers initCommunityPackages() just registered.
+		// The Subscriber is already live, so without this the window where incoming
+		// community-package-* commands have no listener stays open until server.ts's
+		// later PubSubRegistry.init() instead of closing here.
+		Container.get(PubSubRegistry).init();
+
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		// Only run on main instance - workers should not modify auth roles/scopes as they may have
 		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
@@ -295,6 +304,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
+
+			// Catches leadership already taken over before this instance had a
+			// takeover listener subscribed, whose one-shot event would otherwise
+			// be lost for the process lifetime.
+			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled)
+				this.license.enableAutoRenewals();
 		}
 
 		await this.executionContextHookRegistry.init();

@@ -245,4 +245,64 @@ describe('N8NCheckpointStorage', () => {
 			CHECKPOINT_RECONCILIATION_OVERFLOW,
 		);
 	});
+
+	describe('findSuspendedForThread', () => {
+		const row = (runId: string, state: SerializableAgentState) =>
+			({
+				runId,
+				agentId: 'agent-1',
+				expired: false,
+				state: JSON.stringify(state),
+			}) as AgentCheckpoint;
+
+		const suspendedFor = (threadId: string, overrides: Record<string, unknown> = {}) =>
+			({
+				...suspendedState,
+				persistence: { threadId, resourceId: 'resource-1', ...overrides },
+			}) as SerializableAgentState;
+
+		// Every active checkpoint is scanned, not just the newest few — a busy
+		// agent's other threads must not hide this thread's suspension.
+		it('returns the checkpoint parked on the requested thread', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForAgent.mockResolvedValue([
+				row('run-1', suspendedFor('thread-other-1')),
+				row('run-2', suspendedFor('thread-other-2')),
+				row('run-3', suspendedFor('thread-other-3')),
+				row('run-4', suspendedFor('thread-other-4')),
+				row('run-5', suspendedFor('thread-other-5')),
+				row('run-target', suspendedFor('thread-target')),
+			]);
+
+			const result = await service.findSuspendedForThread('agent-1', 'thread-target');
+
+			expect(result?.persistence?.threadId).toBe('thread-target');
+		});
+
+		// A delegated child suspends under its parent's thread; the parent run
+		// owns the conversation, so the child must not surface as its suspension.
+		it('ignores delegated child checkpoints', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForAgent.mockResolvedValue([
+				row('child-run', suspendedFor('thread-target', { delegated: true })),
+			]);
+
+			await expect(service.findSuspendedForThread('agent-1', 'thread-target')).resolves.toBeNull();
+		});
+
+		it('ignores checkpoints that are no longer suspended, and malformed state', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForAgent.mockResolvedValue([
+				row('run-running', { ...suspendedFor('thread-target'), status: 'running' }),
+				{
+					runId: 'run-malformed',
+					agentId: 'agent-1',
+					expired: false,
+					state: '{',
+				} as AgentCheckpoint,
+			]);
+
+			await expect(service.findSuspendedForThread('agent-1', 'thread-target')).resolves.toBeNull();
+		});
+	});
 });

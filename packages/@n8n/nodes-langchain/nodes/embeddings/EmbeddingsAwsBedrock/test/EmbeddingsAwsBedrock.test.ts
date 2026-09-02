@@ -376,12 +376,42 @@ describe('EmbeddingsAwsBedrock', () => {
 				logger: { warn: vi.fn() },
 			}) as unknown as ILoadOptionsFunctions;
 
+		const applicationProfilesResponse = {
+			inferenceProfileSummaries: [
+				{
+					inferenceProfileId: 'kqtghn90uu4g',
+					inferenceProfileName: 'Cost Centre Embeddings',
+					inferenceProfileArn:
+						'arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/kqtghn90uu4g',
+					models: [
+						{ modelArn: 'arn:aws:bedrock:eu-central-1::foundation-model/cohere.embed-v4:0' },
+					],
+				},
+				{
+					inferenceProfileId: 'zzchatprofile',
+					inferenceProfileName: 'Cost Centre Chat',
+					inferenceProfileArn:
+						'arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/zzchatprofile',
+					models: [
+						{
+							modelArn:
+								'arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-sonnet-4-6-v1:0',
+						},
+					],
+				},
+			],
+		};
+
 		const httpMockFor = (
 			foundation: Promise<unknown> | unknown,
 			profiles: Promise<unknown> | unknown,
+			applicationProfiles: Promise<unknown> | unknown = { inferenceProfileSummaries: [] },
 		) =>
 			vi.fn().mockImplementation(async (_credentialsType: string, options: { url: string }) => {
-				return options.url.startsWith('/foundation-models') ? await foundation : await profiles;
+				if (options.url.startsWith('/foundation-models')) return await foundation;
+				return options.url.includes('type=APPLICATION')
+					? await applicationProfiles
+					: await profiles;
 			});
 
 		it('lists on-demand embedding models and embedding inference profiles, sorted by name', async () => {
@@ -434,16 +464,32 @@ describe('EmbeddingsAwsBedrock', () => {
 			expect(httpMock).toHaveBeenCalledWith('awsAssumeRole', expect.any(Object));
 		});
 
-		it('returns only foundation models when the profiles request fails', async () => {
+		it('returns only foundation models when the profile requests fail', async () => {
+			const failure = new Error('AccessDenied: ListInferenceProfiles');
 			const httpMock = httpMockFor(
 				foundationResponse,
-				Promise.reject(new Error('AccessDenied: ListInferenceProfiles')),
+				Promise.reject(failure),
+				Promise.reject(failure),
 			);
 			const ctx = createLoadOptionsContext('iam', httpMock);
 
 			const options = await node.methods.loadOptions.listModels.call(ctx);
 
 			expect(options.map((o) => o.value)).toEqual(['amazon.titan-embed-text-v2:0']);
+		});
+
+		it('lists application profiles that wrap embedding models and drops chat ones', async () => {
+			const httpMock = httpMockFor(
+				foundationResponse,
+				profilesResponse,
+				applicationProfilesResponse,
+			);
+			const ctx = createLoadOptionsContext('iam', httpMock);
+
+			const options = await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(options.map((o) => o.value)).toContain('kqtghn90uu4g');
+			expect(options.map((o) => o.value)).not.toContain('zzchatprofile');
 		});
 
 		it('returns all profiles unfiltered when the foundation-models request fails', async () => {
@@ -463,6 +509,7 @@ describe('EmbeddingsAwsBedrock', () => {
 
 		it('throws when both requests fail', async () => {
 			const httpMock = httpMockFor(
+				Promise.reject(new Error('AccessDenied')),
 				Promise.reject(new Error('AccessDenied')),
 				Promise.reject(new Error('AccessDenied')),
 			);

@@ -2,7 +2,7 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { clearSpaceKeyCache } from '../../actions/common';
-import { getPages, searchSpaces, searchSpacesWithAll } from '../../methods/listSearch';
+import { getLabels, getPages, searchSpaces, searchSpacesWithAll } from '../../methods/listSearch';
 import { confluenceApiRequest } from '../../transport';
 
 vi.mock('../../transport', () => ({
@@ -314,6 +314,128 @@ describe('Confluence listSearch.searchSpaces', () => {
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/wiki/api/v2/spaces',
+			{},
+			expect.objectContaining({ cursor: 'abc==' }),
+		);
+		expect(result.paginationToken).toBe('xyz==');
+	});
+});
+
+describe('Confluence listSearch.getLabels', () => {
+	let ctx: ILoadOptionsFunctions;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		ctx = mockDeep<ILoadOptionsFunctions>();
+	});
+
+	it('lists labels sorted by name, marking non-global prefixes', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [
+				{ id: 1, name: 'runbook', prefix: 'global' },
+				{ name: 'entry without id is skipped' },
+				{ id: 2, name: 'favourite', prefix: 'my' },
+			],
+		});
+
+		const result = await getLabels.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/labels',
+			{},
+			{ limit: 50, sort: 'name' },
+		);
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([
+			['runbook', '1'],
+			['favourite (my)', '2'],
+		]);
+		expect(result.paginationToken).toBeUndefined();
+	});
+
+	it('filters the typed text client-side, case-insensitively', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [
+				{ id: 1, name: 'runbook', prefix: 'global' },
+				{ id: 2, name: 'qa-docs', prefix: 'global' },
+			],
+		});
+
+		const result = await getLabels.call(ctx, 'RUN');
+
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([['runbook', '1']]);
+	});
+
+	it('scans past a partial match while an exact match may lie ahead in the name sort', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: [{ id: 1, name: 'aqua-qa', prefix: 'global' }],
+				_links: { next: '/wiki/api/v2/labels?cursor=c2' },
+			})
+			.mockResolvedValueOnce({
+				results: [{ id: 2, name: 'qa', prefix: 'global' }],
+				_links: { next: '/wiki/api/v2/labels?cursor=c3' },
+			});
+
+		const result = await getLabels.call(ctx, 'qa');
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([
+			['aqua-qa', '1'],
+			['qa', '2'],
+		]);
+	});
+
+	it('stops scanning once the name sort has passed the typed text', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [{ id: 1, name: 'runbook', prefix: 'global' }],
+			_links: { next: '/wiki/api/v2/labels?cursor=c2' },
+		});
+
+		const result = await getLabels.call(ctx, 'run');
+
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([['runbook', '1']]);
+		expect(result.paginationToken).toBe('c2');
+	});
+
+	it('keeps fetching pages while a typed filter has no match yet', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: [{ id: 1, name: 'runbook', prefix: 'global' }],
+				_links: { next: '/wiki/api/v2/labels?cursor=c2' },
+			})
+			.mockResolvedValueOnce({
+				results: [{ id: 3, name: 'qa-seed', prefix: 'global' }],
+			});
+
+		const result = await getLabels.call(ctx, 'qa-seed');
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/wiki/api/v2/labels',
+			{},
+			expect.objectContaining({ cursor: 'c2' }),
+		);
+		expect(result).toEqual({
+			results: [{ name: 'qa-seed', value: '3' }],
+			paginationToken: undefined,
+		});
+	});
+
+	it('resumes from the pagination cursor and returns the next one', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [{ id: 3, name: 'qa-seed', prefix: 'global' }],
+			_links: { next: '/wiki/api/v2/labels?cursor=xyz%3D%3D' },
+		});
+
+		const result = await getLabels.call(ctx, undefined, 'abc==');
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/labels',
 			{},
 			expect.objectContaining({ cursor: 'abc==' }),
 		);

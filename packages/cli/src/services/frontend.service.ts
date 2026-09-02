@@ -17,7 +17,6 @@ import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -25,7 +24,6 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
@@ -115,8 +113,6 @@ export type PublicFrontendSettings = {
 export class FrontendService {
 	private settings: FrontendSettings;
 
-	private communityPackagesService?: CommunityPackagesService;
-
 	private publishedWorkflowCountCache?: { value: number; expiresAt: number };
 
 	private publishedWorkflowCountRequest?: Promise<number>;
@@ -145,14 +141,6 @@ export class FrontendService {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
 		void this.generateTypes();
-		// @TODO: Move to community-packages module
-		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service.js').then(
-				({ CommunityPackagesService }) => {
-					this.communityPackagesService = Container.get(CommunityPackagesService);
-				},
-			);
-		}
 	}
 
 	private collectEnvFeatureFlags(): N8nEnvFeatFlags {
@@ -583,10 +571,6 @@ export class FrontendService {
 			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
-		if (this.communityPackagesService) {
-			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
-		}
-
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 			this.settings.aiAssistant.setup =
@@ -626,7 +610,7 @@ export class FrontendService {
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
-		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
+		if (this.licenseState.isWorkflowReviewsLicensed()) {
 			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
 		} else {
 			delete this.settings.workflowReviews;

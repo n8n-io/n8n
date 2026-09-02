@@ -8,6 +8,7 @@
  */
 import { computed, onMounted } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
 	N8nActionDropdown,
 	N8nBreadcrumbs,
@@ -26,6 +27,7 @@ import { PROJECT_AGENTS } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
+import AgentValidationTooltip from './AgentValidationTooltip.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
@@ -43,6 +45,7 @@ const props = defineProps<{
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
+	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
 }>();
 
@@ -194,7 +197,12 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
-			<N8nTooltip :disabled="!isPreviewDisabled" :content="previewDisabledTooltip">
+			<AgentValidationTooltip
+				:disabled="!isPreviewDisabled"
+				:fallback="previewDisabledTooltip"
+				action="preview"
+				:issues="props.configValidationIssues ?? []"
+			>
 				<N8nToggle
 					:model-value="props.isPreviewOpen"
 					variant="ghost"
@@ -205,7 +213,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 					data-testid="agent-header-preview-btn"
 					@click="onPreviewClick"
 				/>
-			</N8nTooltip>
+			</AgentValidationTooltip>
 			<AgentPublishButton
 				:agent="agent"
 				:project-id="projectId"
@@ -213,6 +221,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				:is-saving="saveStatus === 'saving' || editingLocked"
 				:before-revert-to-published="beforeRevertToPublished"
 				:config-validation-status="configValidationStatus"
+				:config-validation-issues="props.configValidationIssues ?? []"
 				:before-publish="beforePublish"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"

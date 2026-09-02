@@ -1,5 +1,6 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
@@ -9,7 +10,7 @@ import {
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -21,6 +22,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
+import { redactTelemetryText } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiContext,
@@ -205,6 +207,53 @@ function resolveDisplayedDefaults(
 	return resolved ?? (parameters as INodeParameters);
 }
 
+/**
+ * A credential type's own properties plus every property it inherits, with
+ * hidden ones dropped and a child's override winning over its parent's.
+ */
+function collectCredentialProperties(
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+	credentialType: string,
+): INodeProperties[] {
+	// `allTypes` grows while it is iterated, which walks the whole extends chain.
+	const allTypes = [credentialType];
+	const { knownCredentials } = loadNodesAndCredentials;
+	for (const typeName of allTypes) {
+		allTypes.push(...(knownCredentials[typeName]?.extends ?? []));
+	}
+
+	const properties: INodeProperties[] = [];
+	const seen = new Set<string>();
+	for (const typeName of allTypes) {
+		try {
+			for (const prop of loadNodesAndCredentials.getCredential(typeName).type.properties) {
+				if (prop.type === 'hidden' || seen.has(prop.name)) continue;
+				seen.add(prop.name);
+				properties.push(prop);
+			}
+		} catch {
+			// Type not loadable — skip
+		}
+	}
+	return properties;
+}
+
+/**
+ * Whether a decrypted credential field holds anything the service could
+ * authenticate with. Structured fields count as empty while they hold no
+ * entries, so a credential the user never filled in reads as blank.
+ */
+function hasCredentialValue(value: unknown): boolean {
+	if (value === undefined || value === null) return false;
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		return trimmed !== '' && trimmed !== '{}' && trimmed !== '[]';
+	}
+	if (Array.isArray(value)) return value.length > 0;
+	if (typeof value === 'object') return Object.keys(value).length > 0;
+	return true;
+}
+
 // Credential types are loaded once at boot, so the derived host index is
 // process-global and safe to memoize across users.
 let httpCredentialHostsCache: CredentialHostInfo[] | undefined;
@@ -277,7 +326,6 @@ export class InstanceAiAdapterService {
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly workflowTemplatesService: WorkflowTemplatesService,
@@ -339,20 +387,20 @@ export class InstanceAiAdapterService {
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
-
 		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
+		const credentialService = this.createCredentialAdapter(
+			user,
+			projectId,
+			credentialIdAllowlist,
+			shouldBypassCredentialTest,
+		);
 		return {
 			userId: user.id,
 			projectId,
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(
-				user,
-				projectId,
-				credentialIdAllowlist,
-				shouldBypassCredentialTest,
-			),
+			credentialService,
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
@@ -384,6 +432,7 @@ export class InstanceAiAdapterService {
 							user,
 							projectId,
 							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							credentialService,
 						),
 					}
 				: {}),
@@ -867,10 +916,7 @@ export class InstanceAiAdapterService {
 				return execution?.data?.resultData?.runData ?? null;
 			},
 
-			async createFromWorkflowJSON(
-				json: WorkflowJSON,
-				options?: { projectId?: string; markAsAiTemporary?: boolean },
-			) {
+			async createFromWorkflowJSON(json: WorkflowJSON, options?: { markAsAiTemporary?: boolean }) {
 				assertNotReadOnly();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
@@ -988,7 +1034,7 @@ export class InstanceAiAdapterService {
 			async updateFromWorkflowJSON(
 				workflowId: string,
 				json: WorkflowJSON,
-				options?: { projectId?: string; expectedChecksum?: string },
+				options?: { expectedChecksum?: string },
 			) {
 				assertNotReadOnly();
 				await assertNotLockedByEditor(workflowId);
@@ -1280,9 +1326,12 @@ export class InstanceAiAdapterService {
 
 				// Use the explicitly requested trigger node when provided — the only way to
 				// pick a branch in a multi-trigger workflow — otherwise auto-detect.
-				const triggerNode = options?.triggerNodeName
-					? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
-					: findTriggerNode(nodes);
+				// Checked against undefined, not truthiness: an empty name is a caller
+				// mistake, and auto-detecting there would run a branch nobody asked for.
+				const triggerNode =
+					options?.triggerNodeName !== undefined
+						? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
+						: findTriggerNode(nodes);
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
@@ -1407,7 +1456,7 @@ export class InstanceAiAdapterService {
 						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
 						exec_type: runData.executionMode,
 						status,
-						...(error ? { error } : {}),
+						...(error ? { error: redactTelemetryText(error) } : {}),
 					});
 				};
 
@@ -1503,9 +1552,12 @@ export class InstanceAiAdapterService {
 						}
 					}
 
-					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
+					const { result, telemetryError } = await extractExecutionOutcome(
+						executionId,
+						allowSendingParameterValues,
+					);
 					await pruneVerificationPins(result.executedNodeNames);
-					trackBuilderExecutedWorkflow(result.status, result.error);
+					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.
 					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
@@ -1617,7 +1669,12 @@ export class InstanceAiAdapterService {
 		credentialIdAllowlist?: string[],
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
-		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const {
+			credentialsService,
+			credentialsFinderService,
+			loadNodesAndCredentials,
+			aiGatewayService,
+		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 
 		const adapter: InstanceAiCredentialService = {
@@ -1815,46 +1872,55 @@ export class InstanceAiAdapterService {
 
 			getCredentialFields(credentialType: string) {
 				try {
-					// Walk the extends chain to collect all properties
-					const allTypes = [credentialType];
-					const known = loadNodesAndCredentials.knownCredentials;
-					for (const typeName of allTypes) {
-						const extendsArr = known[typeName]?.extends ?? [];
-						allTypes.push(...extendsArr);
-					}
-
-					const fields: Array<{
-						name: string;
-						displayName: string;
-						type: string;
-						required: boolean;
-						description?: string;
-					}> = [];
-					const seen = new Set<string>();
-
-					for (const typeName of allTypes) {
-						try {
-							const credClass = loadNodesAndCredentials.getCredential(typeName);
-							for (const prop of credClass.type.properties) {
-								// Skip hidden fields and already-seen fields (child overrides parent)
-								if (prop.type === 'hidden' || seen.has(prop.name)) continue;
-								seen.add(prop.name);
-								fields.push({
-									name: prop.name,
-									displayName: prop.displayName,
-									type: prop.type,
-									required: prop.required ?? false,
-									description: prop.description,
-								});
-							}
-						} catch {
-							// Type not loadable — skip
-						}
-					}
-
-					return fields;
+					return collectCredentialProperties(loadNodesAndCredentials, credentialType).map(
+						(prop) => ({
+							name: prop.name,
+							displayName: prop.displayName,
+							type: prop.type,
+							required: prop.required ?? false,
+							description: prop.description,
+						}),
+					);
 				} catch {
 					return [];
+				}
+			},
+
+			async getCredentialFillState(credentialId: string) {
+				try {
+					const credential = await credentialsFinderService.findCredentialForUser(
+						credentialId,
+						user,
+						['credential:read'],
+					);
+					if (!credential) return 'unknown' as const;
+
+					// Notices render copy and hold no credential data, so they can never
+					// make a credential "filled".
+					const valueFields = collectCredentialProperties(
+						loadNodesAndCredentials,
+						credential.type,
+					).filter((prop) => prop.type !== 'notice');
+					if (valueFields.length === 0) return 'unknown' as const;
+
+					// Decryption stays on this side of the boundary — only the verdict crosses.
+					const data = await credentialsService.decrypt(credential, true);
+					const filled = valueFields.some((prop) => hasCredentialValue(data[prop.name]));
+					return filled ? ('filled' as const) : ('blank' as const);
+				} catch {
+					return 'unknown' as const;
+				}
+			},
+
+			async credentialTypeExists(credentialType: string): Promise<boolean> {
+				if (credentialType in loadNodesAndCredentials.knownCredentials) return true;
+				// Runtime-registered types (e.g. MCP registry loaders) may not appear
+				// in knownCredentials — fall back to resolving the credential class.
+				try {
+					loadNodesAndCredentials.getCredential(credentialType);
+					return true;
+				} catch {
+					return false;
 				}
 			},
 
@@ -1993,6 +2059,15 @@ export class InstanceAiAdapterService {
 				// type check is a best-effort validation, not a security gate.
 				const config = await getGatewayConfig();
 				return config?.credentialTypes.includes(credType) ?? false;
+			},
+
+			async getAiGatewayWallet(): Promise<{ balance: number } | null> {
+				if (!aiGatewayService.isEnabled()) return null;
+				try {
+					return await aiGatewayService.getWallet(user.id);
+				} catch {
+					return null;
+				}
 			},
 
 			async listAiGatewayCredentialTypes(): Promise<string[]> {
@@ -2388,10 +2463,9 @@ export class InstanceAiAdapterService {
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
 
-		const { outboundHttp, ssrfProtectionService } = this;
-		const sharedTransport = outboundHttp.transport({
-			ssrf: this.ssrfProtectionService, // LLM/user-chosen URLs
-		});
+		const { outboundHttp } = this;
+		// LLM/user-chosen URLs, guarded even when the instance leaves protection off
+		const sharedTransport = outboundHttp.transport({ useDefaultSsrfPolicy: 'enforced' });
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -2448,7 +2522,7 @@ export class InstanceAiAdapterService {
 				const authorizeUrl = options?.authorizeUrl;
 				const transport = authorizeUrl
 					? outboundHttp.transport({
-							ssrf: ssrfProtectionService,
+							useDefaultSsrfPolicy: 'enforced',
 							authorize: async (target: URL) => await authorizeUrl(target.href),
 						})
 					: sharedTransport;
@@ -2589,7 +2663,7 @@ export class InstanceAiAdapterService {
 			async listAvailable(options) {
 				const [nodes, gatewayConfig] = await Promise.all([
 					getNodes(),
-					options?.n8nConnectOnly ? getGatewayConfig() : Promise.resolve(null),
+					options?.gatewayCreditsOnly ? getGatewayConfig() : Promise.resolve(null),
 				]);
 				let filtered = nodes;
 
@@ -2616,9 +2690,9 @@ export class InstanceAiAdapterService {
 					return summary;
 				});
 
-				// n8nConnectOnly answers "which nodes support n8n Connect?" — keep only
+				// gatewayCreditsOnly answers "which nodes support Gateway credits?" — keep only
 				// nodes the gateway covers (meta present).
-				return options?.n8nConnectOnly ? summaries.filter((s) => s.aiGateway) : summaries;
+				return options?.gatewayCreditsOnly ? summaries.filter((s) => s.aiGateway) : summaries;
 			},
 
 			async listSearchable() {
@@ -3468,13 +3542,28 @@ export async function extractExecutionResult(
 	executionId: string,
 	includeOutputData = true,
 ): Promise<ExecutionResult> {
+	return (await extractExecutionOutcome(executionId, includeOutputData)).result;
+}
+
+/**
+ * The execution result the agent sees, plus the error string telemetry may use.
+ * They differ when `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is on: that setting
+ * opts the operator into sending upstream response content (`error.description`
+ * / `.messages`, which routinely echo API keys and record-level PII) *to the
+ * model*, not into n8n's product analytics. So the telemetry copy is always
+ * formatted with upstream details suppressed.
+ */
+export async function extractExecutionOutcome(
+	executionId: string,
+	includeOutputData = true,
+): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
 
 	if (!execution) {
-		return { executionId, status: 'unknown' };
+		return { result: { executionId, status: 'unknown' } };
 	}
 
 	const status =
@@ -3518,18 +3607,21 @@ export async function extractExecutionResult(
 	const nodeErrors = extractNodeErrors(runData, includeOutputData, execution.workflowData?.nodes);
 
 	return {
-		executionId,
-		status,
-		data:
-			Object.keys(resultData).length > 0
-				? wrapResultDataEntries(truncateResultData(resultData))
-				: undefined,
-		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
-		nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
-		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
-		error: errorMessage,
-		startedAt: execution.startedAt?.toISOString(),
-		finishedAt: execution.stoppedAt?.toISOString(),
+		result: {
+			executionId,
+			status,
+			data:
+				Object.keys(resultData).length > 0
+					? wrapResultDataEntries(truncateResultData(resultData))
+					: undefined,
+			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
+			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			error: errorMessage,
+			startedAt: execution.startedAt?.toISOString(),
+			finishedAt: execution.stoppedAt?.toISOString(),
+		},
+		telemetryError: error ? formatExecutionError(error, false) : undefined,
 	};
 }
 
@@ -3925,20 +4017,42 @@ function hasCredentialId(value: unknown): boolean {
 	return typeof id === 'string' && id.trim() !== '';
 }
 
+/**
+ * Convert the n8n credits managed tag, when written as a credential id, to the
+ * runtime sentinel. Build-time resolve already does this; normalizing at save
+ * also covers direct saves (e.g. workflows update) so the tag never persists as
+ * a real id the runtime would fail to resolve.
+ */
+function normalizeManagedCredentialForSave(value: unknown): unknown {
+	if (typeof value !== 'object' || value === null) return value;
+	if (Reflect.get(value, 'id') !== AI_GATEWAY_MANAGED_TAG) return value;
+	const name = Reflect.get(value, 'name');
+	return {
+		id: null,
+		name: typeof name === 'string' && name !== '' ? name : 'Gateway credits',
+		__aiGatewayManaged: true,
+	};
+}
+
 function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): WorkflowJSON['nodes'] {
 	return nodes.map((node) => {
 		if (!node.credentials) return node;
 
+		let changed = false;
 		const credentials = Object.entries(node.credentials).reduce<
 			NonNullable<typeof node.credentials>
-		>((acc, [type, value]) => {
+		>((acc, [type, rawValue]) => {
+			const value = normalizeManagedCredentialForSave(rawValue);
+			if (value !== rawValue) changed = true;
 			if (hasCredentialId(value)) {
-				acc[type] = value;
+				acc[type] = value as NonNullable<typeof node.credentials>[string];
+			} else {
+				changed = true;
 			}
 			return acc;
 		}, {});
 
-		if (Object.keys(credentials).length === Object.keys(node.credentials).length) return node;
+		if (!changed) return node;
 
 		const sanitized = { ...node };
 		if (Object.keys(credentials).length > 0) {

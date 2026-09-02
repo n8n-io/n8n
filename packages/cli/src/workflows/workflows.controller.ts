@@ -11,8 +11,8 @@ import {
 	type WorkflowPublicationStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
+import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
 	ProjectRelationRepository,
@@ -89,8 +89,6 @@ export class WorkflowsController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
 		private readonly collaborationService: CollaborationService,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly ownershipService: OwnershipService,
@@ -730,10 +728,8 @@ export class WorkflowsController {
 	}
 
 	private async fetchWorkflowFromUrl(url: string) {
-		const client = this.outboundHttp.requests({
-			// user-supplied URL
-			ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
-		});
+		// user-supplied URL, so the default safe mode applies
+		const client = this.outboundHttp.requests();
 
 		try {
 			return await client.request<IWorkflowResponse>({ method: 'GET', url });

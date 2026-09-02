@@ -26,6 +26,11 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 			if (descriptor.meta?.issues !== undefined) {
 				body.issues = descriptor.meta.issues;
 			}
+			// Same reasoning for policy violations: the caller is the one who has to fix
+			// them, so the whole list travels with the response rather than the message alone.
+			if (descriptor.meta?.violations !== undefined) {
+				body.violations = descriptor.meta.violations;
+			}
 			const workflowPublishBlockedDetails = {
 				reason: descriptor.meta?.reason,
 				workflowReviewRequestId: descriptor.meta?.workflowReviewRequestId,

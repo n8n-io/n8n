@@ -19,8 +19,10 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_VIEW,
 } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiReady } from './useInstanceAiAvailability';
 
 /** The existing credential id, when known, so the agent can act on it directly. */
 function existingCredentialNote(credential: InstanceAiCredentialContext): string {
@@ -280,6 +282,18 @@ export function useInstanceAiHandoff() {
 	const router = useRouter();
 	const toast = useToast();
 	const i18n = useI18n();
+	const instanceAiReady = useInstanceAiReady();
+
+	/**
+	 * Setup isn't finished yet. An admin reaches these entry points before it is
+	 * (they need the way in to complete it), so opening a thread here would send
+	 * a turn no model can answer. Take them to the assistant instead, where
+	 * onboarding takes over. Every hand-off funnels through here, so a new entry
+	 * point inherits the gate instead of having to remember it.
+	 */
+	async function routeToSetup(): Promise<void> {
+		await router.push({ name: INSTANCE_AI_VIEW });
+	}
 
 	function showOpenFailed() {
 		toast.showError(
@@ -296,6 +310,10 @@ export function useInstanceAiHandoff() {
 			initialDraft?: string;
 		},
 	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
@@ -357,6 +375,10 @@ export function useInstanceAiHandoff() {
 			initialDraft?: string;
 		},
 	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
@@ -395,6 +417,10 @@ export function useInstanceAiHandoff() {
 			context?: InstanceAiHandoffContext;
 		},
 	): Promise<void> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return;
+		}
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
 		handoffInFlight = true;

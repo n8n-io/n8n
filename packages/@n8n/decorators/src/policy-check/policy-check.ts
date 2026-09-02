@@ -1,5 +1,8 @@
+import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
+
+export type { PolicyViolation, PolicyCheckFailure };
 
 /**
  * The points in n8n where a policy can block an action.
@@ -88,48 +91,11 @@ export type ContentImportContext = {
 	readonly projectId: string | null;
 };
 
-/**
- * One reason something was blocked.
- *
- * The same shape is used by the UI, API errors, import reports and the audit log.
- * `kind`, `subjectType` and `scope` are plain strings rather than enums, so later policy
- * features can add values without breaking existing readers — which also means readers
- * must cope with values they don't recognise.
- */
-export type PolicyViolation = {
-	/** e.g. `'node-type-unavailable'`. Don't assume you know every value. */
-	kind: string;
-
-	/** Id of the check that objected. */
-	checkId: string;
-
-	/** Readable on its own. Don't parse details out of it — use the fields below. */
-	message: string;
-
-	/** What was blocked: a node type name, a credential type name, … */
-	subject?: string;
-
-	/** What kind of name `subject` is — node and credential type names can look alike. */
-	subjectType?: string;
-
-	/** Which level objected. Usually `'instance'` or `'project'`, but treat it as open. */
-	scope?: string;
-
-	/** The rule that decided, if a rule did rather than a fallback default. */
-	matchedRuleId?: string;
-};
-
 /** A policy version a check read, recorded on the audit log. */
 export type PolicyVersionRef = {
 	/** Usually `'instance'` or `'project'`. Open, like {@link PolicyViolation.scope}. */
 	scope: string;
 	version: number;
-};
-
-/** A check that failed to run. Deliberately vague — error details stay server-side. */
-export type PolicyCheckFailure = {
-	checkId: string;
-	correlationId: string;
 };
 
 /**
@@ -177,6 +143,10 @@ export type PolicyDecision = {
  *   action.
  * - Only read state, never write it. That's what makes `evaluate` safe to call.
  * - Implement only the points you care about.
+ * - Pass `signal` to anything that accepts one, and check it around long steps. Every check
+ *   runs under a deadline; the signal is how a check gets to stop its own work instead of
+ *   being abandoned mid-query. Ignoring it is safe — the deadline still holds — but the work
+ *   carries on in the background.
  *
  * There's no `priority`, because every check has to pass — the order they run in can't
  * change the answer.
@@ -187,8 +157,8 @@ export type PolicyDecision = {
  * export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
  *   readonly id = 'node-type-availability';
  *
- *   async onWorkflowStart({ workflow, projectId }: WorkflowStartContext) {
- *     return { violations: await this.violationsFor(workflow, projectId) };
+ *   async onWorkflowStart({ workflow, projectId }: WorkflowStartContext, signal: AbortSignal) {
+ *     return { violations: await this.violationsFor(workflow, projectId, signal) };
  *   }
  * }
  * ```
@@ -197,12 +167,18 @@ export interface RegisteredPolicyCheck {
 	/** Stable id, shown on every violation and on the audit log. */
 	id: string;
 
-	onWorkflowSave?(ctx: WorkflowSaveContext): Promise<PolicyCheckResult>;
-	onWorkflowPublish?(ctx: WorkflowPublishContext): Promise<PolicyCheckResult>;
-	onWorkflowStart?(ctx: WorkflowStartContext): Promise<PolicyCheckResult>;
-	onWorkflowTransfer?(ctx: WorkflowTransferContext): Promise<PolicyCheckResult>;
-	onCredentialDecrypt?(ctx: CredentialDecryptContext): Promise<PolicyCheckResult>;
-	onContentImport?(ctx: ContentImportContext): Promise<PolicyCheckResult>;
+	onWorkflowSave?(ctx: WorkflowSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onWorkflowPublish?(ctx: WorkflowPublishContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onWorkflowStart?(ctx: WorkflowStartContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onWorkflowTransfer?(
+		ctx: WorkflowTransferContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
+	onCredentialDecrypt?(
+		ctx: CredentialDecryptContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
+	onContentImport?(ctx: ContentImportContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 }
 
 /** The {@link RegisteredPolicyCheck} method for a point, e.g. `'onWorkflowSave'`. */

@@ -166,6 +166,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -186,6 +189,9 @@
                     }
                 }
             }
+        },
+        "manifest": {
+            "type": "null"
         },
         "manualCoverAttachment": {
             "type": "boolean"
@@ -215,5 +221,5 @@
             "type": "string"
         }
     },
-    "version": 9
+    "version": 10
 }

@@ -170,6 +170,18 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
+export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+
+export {
+	policyCheckFailureSchema,
+	type PolicyCheckFailure,
+} from './schemas/policy-check-failure.schema';
+
+export {
+	contentImportPolicyResultSchema,
+	type ContentImportPolicyResult,
+} from './schemas/content-import-policy-result.schema';
+
 export {
 	insightsSummarySchema,
 	type InsightsSummaryType,
@@ -331,6 +343,7 @@ export {
 	credentialSetupHintSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	GENERIC_AUTH_CREDENTIAL_TYPES,
+	shouldAutoResolveCredential,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
@@ -599,6 +612,7 @@ export {
 	MCP_CLIENT_TYPE_FILTER_BUCKETS,
 	MCP_CLIENT_CONNECTED_PERIODS,
 	getMcpClientType,
+	getMcpClientBrand,
 	type McpScope,
 	type McpClientType,
 	type McpClientBrandName,

@@ -106,8 +106,9 @@ sentence — anything past ${GROUP_DESCRIPTION_MAX_LENGTH} characters is cut off
 When editing an existing workflow, **keep the \`.group(...)\` calls and their descriptions
 intact** unless the change is specifically about grouping.
 
-An invalid group is rejected on save, so these following rules MUST be followed when
-creating or editing groups.
+Agent save tools drop an invalid group from the saved workflow and report a warning.
+Fix the source so the invalid group is not re-emitted. These rules MUST be followed
+when creating or editing groups.
 
 Rules:
 ${renderRulesLines()}

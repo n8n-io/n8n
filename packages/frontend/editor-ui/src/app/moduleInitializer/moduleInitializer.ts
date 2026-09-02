@@ -1,5 +1,6 @@
 import { type Router } from 'vue-router';
 import {
+	assertUniqueRouteNames,
 	modalRegistry,
 	registerResource,
 	pushHandlerRegistry,
@@ -100,12 +101,16 @@ export const registerModuleModals = () => {
 };
 
 /**
- * Initialize module push handlers, done in init.ts. Handlers are consulted by
- * `usePushConnection` before its built-in switch.
+ * Initialize module push handlers, done in init.ts. `useModulePushDispatcher`
+ * dispatches to them at app scope.
+ *
+ * Only an active module registers: a claimed type also suppresses the shell's
+ * built-in handler for it, so an inactive module would silently kill it.
  */
 export const registerModulePushHandlers = () => {
+	const settingsStore = useSettingsStore();
 	modules.forEach((module) => {
-		if (module.pushHandlers) {
+		if (module.pushHandlers && settingsStore.isModuleActive(module.id)) {
 			pushHandlerRegistry.registerAll(module.pushHandlers);
 		}
 	});
@@ -126,6 +131,8 @@ export const registerModuleCommands = () => {
  * Initialize module routes, done in main.ts
  */
 export const registerModuleRoutes = (router: Router) => {
+	assertUniqueRouteNames(modules, router);
+
 	modules.forEach((module) => {
 		module.routes?.forEach((route) => {
 			// Prepare the enhanced route with module metadata and custom middleware that checks module availability

@@ -5,7 +5,7 @@ import type { HttpTransport, SsrfProtectionService } from '@n8n/backend-network'
 import { OutboundHttp } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthIdentityRepository, SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -819,7 +819,7 @@ describe('OidcService', () => {
 
 			// The discovery / token / userinfo endpoints are admin-configured and may
 			// legitimately point at an internal IdP, so SSRF protection is disabled.
-			expect(outboundHttp.transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.transport).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
 
 		it('always calls discovery with the factory customFetch (no proxy/no-proxy branch)', async () => {
@@ -868,7 +868,11 @@ describe('OidcService', () => {
 
 		beforeEach(() => {
 			idpServer.clear();
-			const realOutboundHttp = new OutboundHttp(mock<SsrfProtectionService>(), logger);
+			const realOutboundHttp = new OutboundHttp(
+				mock<SsrfProtectionService>(),
+				mock<SsrfProtectionConfig>({ enabled: true }),
+				logger,
+			);
 			realOidcService = new OidcService(
 				settingsRepository,
 				authIdentityRepository,

@@ -66,7 +66,7 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { NodeTypes } from '@/node-types';
 import type { RoleService } from '@/services/role.service';
-import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
@@ -163,7 +163,6 @@ const service = new InstanceAiAdapterService(
 	roleService,
 	telemetry,
 	aiBuilderTemporaryWorkflowRepository,
-	mock<SsrfProtectionService>(),
 	mock<OutboundHttp>(),
 	mock<AiGatewayService>(),
 	mock<WorkflowTemplatesService>(),

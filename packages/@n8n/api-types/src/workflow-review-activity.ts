@@ -3,6 +3,11 @@ import { z } from 'zod';
 import type { Iso8601DateTimeString } from './datetime';
 import type { WorkflowReviewEligibleReviewer } from './workflow-review-eligible-reviewer';
 
+export type WorkflowReviewWorkflowCauseActivityType =
+	| 'workflow.archived'
+	| 'workflow.deleted'
+	| 'workflow.moved';
+
 /**
  * Feed entry kinds, named `<model>.<event>`. Constrained only here and at the write sites — the
  * database intentionally has no CHECK on `type`, so growing this union needs no migration.
@@ -16,9 +21,7 @@ export type WorkflowReviewActivityType =
 	| 'review.changes_requested'
 	| 'review.version_updated'
 	| 'review.approved'
-	| 'workflow.archived'
-	| 'workflow.deleted'
-	| 'workflow.moved'
+	| WorkflowReviewWorkflowCauseActivityType
 	| 'workflow.published'
 	/** Closed without an approval. An approval writes `review.approved` instead, never both. */
 	| 'review.closed';
@@ -146,7 +149,7 @@ export type WorkflowReviewActivityEntry =
 			data: WorkflowReviewClosedActivityData | null;
 	  })
 	| (WorkflowReviewActivityBase & {
-			type: 'workflow.archived' | 'workflow.deleted' | 'workflow.moved';
+			type: WorkflowReviewWorkflowCauseActivityType;
 			data: WorkflowReviewWorkflowCauseActivityData | null;
 	  })
 	| (WorkflowReviewActivityBase & {

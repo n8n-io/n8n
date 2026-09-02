@@ -133,6 +133,8 @@ function handleInteractOutside(e: Event) {
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/motion';
+
 @keyframes dialogFadeIn {
 	from {
 		opacity: 0;
@@ -184,10 +186,14 @@ function handleInteractOutside(e: Event) {
 
 .content[data-state='open'] {
 	animation: dialogFadeIn var(--animation--duration--snappy) ease-out;
+
+	@include motion.reduced-motion;
 }
 
 .content[data-state='closed'] {
 	animation: dialogFadeOut var(--animation--duration--snappy) ease-out;
+
+	@include motion.reduced-motion;
 }
 
 .small {

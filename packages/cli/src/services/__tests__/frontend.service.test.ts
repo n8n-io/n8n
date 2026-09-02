@@ -337,7 +337,6 @@ describe('FrontendService', () => {
 		});
 
 		it('should refresh the workflow reviews policy on every settings fetch', async () => {
-			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 			workflowReviewPolicyService.get
 				.mockResolvedValueOnce({ enabled: true })

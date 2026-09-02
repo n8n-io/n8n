@@ -50,6 +50,12 @@
 		"POST /role-mapping-rules/{roleMappingRuleId}/move": {
 			"status": "gap"
 		},
+		"PATCH /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
+		},
+		"DELETE /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},
@@ -233,6 +239,12 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/push": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/pull": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

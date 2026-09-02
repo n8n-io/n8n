@@ -1,11 +1,19 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { useInstanceAiBrowserUseTelemetry } from '../instanceAiBrowserUse.telemetry';
 
-const track = vi.fn();
+const { isBrowserSupported, track } = vi.hoisted(() => ({
+	isBrowserSupported: vi.fn(),
+	track: vi.fn(),
+}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
+}));
+
+vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+	isBrowserUseSupportedForBrowser: isBrowserSupported,
 }));
 
 describe('instance ai browser use telemetry', () => {
@@ -16,11 +24,13 @@ describe('instance ai browser use telemetry', () => {
 	test.each([true, false])(
 		'tracks the connect modal opening with browser_supported %s',
 		(browserSupported) => {
-			useInstanceAiBrowserUseTelemetry().trackModalOpened(browserSupported);
+			isBrowserSupported.mockReturnValue(browserSupported);
+			useInstanceAiBrowserUseTelemetry().trackModalOpened('input_menu');
 
 			expect(track).toHaveBeenCalledTimes(1);
-			expect(track).toHaveBeenCalledWith('Instance AI Connect Browser Use modal opened', {
+			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_MODAL_OPENED, {
 				browser_supported: browserSupported,
+				source: 'input_menu',
 			});
 		},
 	);
@@ -30,7 +40,8 @@ describe('instance ai browser use telemetry', () => {
 
 		expect(track).toHaveBeenCalledTimes(1);
 		expect(track).toHaveBeenCalledWith(
-			'Instance AI Install Chrome Browser Extension button clicked',
+			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_INSTALL_EXTENSION_CLICKED,
+			{},
 		);
 	});
 
@@ -38,13 +49,19 @@ describe('instance ai browser use telemetry', () => {
 		useInstanceAiBrowserUseTelemetry().trackOpenExtensionClicked();
 
 		expect(track).toHaveBeenCalledTimes(1);
-		expect(track).toHaveBeenCalledWith('Instance AI Open Browser Use Extension button clicked');
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_OPEN_EXTENSION_CLICKED,
+			{},
+		);
 	});
 
 	test('tracks a direct connect request', () => {
 		useInstanceAiBrowserUseTelemetry().trackDirectConnectRequested();
 
 		expect(track).toHaveBeenCalledTimes(1);
-		expect(track).toHaveBeenCalledWith('Instance AI Browser Use direct connect requested');
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_DIRECT_CONNECT_REQUESTED,
+			{},
+		);
 	});
 });

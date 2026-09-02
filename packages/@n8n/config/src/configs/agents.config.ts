@@ -93,4 +93,13 @@ export class AgentsConfig {
 	/** When true, Daytona deletes the knowledge sandbox when it stops. */
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
+
+	/**
+	 * How often (seconds) each main checks that the channels of its published
+	 * agents are actually running, and retries the ones that are not. Set to 0 to
+	 * stop checking, which leaves a channel that failed to start down until the
+	 * agent is republished or the instance restarts.
+	 */
+	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
+	channelReconcileIntervalSeconds: number = 60;
 }

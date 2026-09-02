@@ -188,6 +188,11 @@ const connectedClientsTotal = computed(
 	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
 );
 
+const onConnectClient = () => {
+	mcp.trackConnectClientClicked('settings');
+	mcpStore.openConnectPopover();
+};
+
 const openClientsView = () => {
 	void router.push({ name: MCP_CLIENTS_VIEW });
 };
@@ -296,7 +301,7 @@ onMounted(async () => {
 								icon="mcp"
 								:label="i18n.baseText('settings.mcp.yourClient.connect')"
 								data-test-id="mcp-connect-client-button"
-								@click="mcpStore.openConnectPopover()"
+								@click="onConnectClient"
 							/>
 						</template>
 					</N8nSettingsRow>
@@ -317,20 +322,7 @@ onMounted(async () => {
 						</template>
 					</N8nSettingsRow>
 					<N8nSettingsRow
-						v-if="agentsModuleActive"
-						:title="i18n.baseText('settings.mcp.agentsExposed.title')"
-						:description="i18n.baseText('settings.mcp.agentsExposed.description')"
-						clickable
-						data-test-id="mcp-agents-exposed-row"
-						@click="openAgentsView"
-					>
-						<template #action>
-							<N8nSettingsRowConfigure :value="agentsExposedValue" />
-						</template>
-					</N8nSettingsRow>
-				</N8nSettingsRowGroup>
-				<N8nSettingsRowGroup v-if="canManageMcpInstance && exposeAllWorkflowsToMcpStore.isEnabled">
-					<N8nSettingsRow
+						v-if="canManageMcpInstance && exposeAllWorkflowsToMcpStore.isEnabled"
 						:title="i18n.baseText('settings.mcp.autoExpose.title')"
 						:description="i18n.baseText('settings.mcp.autoExpose.description')"
 					>
@@ -342,6 +334,19 @@ onMounted(async () => {
 								:loading="autoExposeSaving"
 								@update:model-value="onAutoExposeSwitchUpdate"
 							/>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="agentsModuleActive">
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.mcp.agentsExposed.title')"
+						:description="i18n.baseText('settings.mcp.agentsExposed.description')"
+						clickable
+						data-test-id="mcp-agents-exposed-row"
+						@click="openAgentsView"
+					>
+						<template #action>
+							<N8nSettingsRowConfigure :value="agentsExposedValue" />
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>

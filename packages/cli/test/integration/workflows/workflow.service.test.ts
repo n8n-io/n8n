@@ -29,6 +29,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -113,6 +114,9 @@ beforeAll(async () => {
 		Container.get(WorkflowHookContextService), // workflowHookContextService
 		workflowPublishGuard,
 		mock(), // workflowMutationHooks
+		// Real service on purpose: with no backend registered it clears every save and
+		// publish, so these tests also prove behavior is unchanged with the module off.
+		Container.get(PolicyEnforcementService), // policyEnforcementService
 	);
 });
 
@@ -338,6 +342,29 @@ describe('update()', () => {
 });
 
 describe('activateWorkflow()', () => {
+	// The rest of this suite runs with no checks registered, proving activation is
+	// unchanged when the module is off. Spied rather than registered via
+	// `setImplementation`, which is single-shot and would leak into those tests.
+	test('should enforce the publish policy with the version being activated', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const policyEnforcementService = Container.get(PolicyEnforcementService);
+		vi.spyOn(policyEnforcementService, 'hasChecksFor').mockReturnValue(true);
+		const enforceSpy = vi.spyOn(policyEnforcementService, 'enforceWorkflowPublish');
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
+
+		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith({
+			workflow: {
+				id: workflow.id,
+				name: workflow.name,
+				nodes: expect.any(Array),
+			},
+			projectId: expect.any(String),
+		});
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+	});
+
 	test('should activate current workflow version if no version provided', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);

@@ -66,8 +66,10 @@ const {
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
+	runtimeErrors,
 	isConnected: isIntegrationConnected,
 	isConfigured: isIntegrationConfigured,
+	hasRuntimeError,
 	connect,
 	disconnect,
 	clearError: clearIntegrationError,
@@ -331,6 +333,11 @@ function handleModalOpenUpdate(isOpen: boolean) {
 	emit('update:open', isOpen);
 }
 
+// Only block outside-close while the teleported credential modal is open.
+function handleInteractOutside(event: Event) {
+	if (credentialModalOpen.value) event.preventDefault();
+}
+
 async function persistAgent(): Promise<boolean> {
 	try {
 		await props.ensureAgentPersisted?.();
@@ -523,7 +530,7 @@ watch(
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		:show-close-button="false"
-		@interact-outside="(e) => e.preventDefault()"
+		@interact-outside="handleInteractOutside"
 		@update:open="handleModalOpenUpdate"
 	>
 		<FocusScope
@@ -598,6 +605,8 @@ watch(
 							:integration="integration"
 							:configured="isConfigured(integration.type)"
 							:connected="isConnected(integration.type)"
+							:not-running="hasRuntimeError(integration.type)"
+							:runtime-error="runtimeErrors[integration.type]"
 							:loading="listLoading"
 							:connect-action="connectAction(integration.type)"
 							@setup="goToSetup"

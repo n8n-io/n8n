@@ -1,29 +1,106 @@
-import type {
-	CreateGitConnectionDto,
-	GitConnectionPublicDto,
-	UpdateGitConnectionDto,
+import {
+	type CreateGitConnectionDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
+	type GitConnectionPublicDto,
+	type GitConnectionPullResultDto,
+	type GitConnectionPushResultDto,
+	type UpdateGitConnectionDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
+import { mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import {
+	DataTableMissingMode,
+	DataTableSchemaConflictPolicy,
+	FolderConflictPolicy,
+	MissingNodeTypeMode,
+	MissingWorkflowDependencyPolicy,
+	OverwriteDeletionPolicy,
+	ProjectConflictPolicy,
+	TagConflictPolicy,
+	TagMissingMode,
+	VariableConflictPolicy,
+	VariableMissingMode,
+	WorkflowConflictPolicy,
+	WorkflowIdPolicy,
+	WorkflowPublishingPolicy,
+	WorkflowVersionPolicy,
+	type ImportRequest,
+	type ImportResult,
+} from '@/modules/n8n-packages/n8n-packages.types';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { GitConnectionProject } from './database/entities/git-connection-project.entity';
 import { GitConnection } from './database/entities/git-connection.entity';
+import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from './git-connections-git.service';
+
+/**
+ * Subfolder of the working copy that holds the n8n-managed export. Keeping it
+ * separate from the repository root leaves `.git` and any files the user commits
+ * at the root untouched, and scopes the export's cleanup to a single directory.
+ */
+const EXPORT_SUBFOLDER = 'n8n-export';
+
+type ManageProjectLinkOptions = {
+	user: User;
+	connectionId: string;
+	projectId: string;
+};
+
+// Pull treats the working copy as source of truth; callers cannot override this policy.
+const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
+	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
+	workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+	workflowIdPolicy: WorkflowIdPolicy.Source,
+	workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
+	missingNodeTypeMode: MissingNodeTypeMode.Fail,
+	credentialMatchingMode: 'id-only',
+	credentialMissingMode: 'create-stub',
+	folderConflictPolicy: FolderConflictPolicy.Overwrite,
+	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
+	dataTableMatchingMode: 'by-id',
+	dataTableMissingMode: DataTableMissingMode.Create,
+	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
+	variableMissingMode: VariableMissingMode.CreateWithValue,
+	variableConflictPolicy: VariableConflictPolicy.Overwrite,
+	tagMissingMode: TagMissingMode.Create,
+	tagConflictPolicy: TagConflictPolicy.Rename,
+};
 
 @Service()
 export class GitConnectionsService {
 	constructor(
 		private readonly repository: GitConnectionRepository,
+		private readonly gitConnectionProjectRepository: GitConnectionProjectRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly gitService: GitConnectionsGitService,
+		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly cipher: Cipher,
 		private readonly instanceSettings: InstanceSettings,
-	) {}
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('git-connections');
+	}
 
 	async create(input: CreateGitConnectionDto) {
+		// First iteration: the single git connection row *is* the instance connection.
+		// Checked before any key generation so a rejected call does no work.
+		if ((await this.repository.count()) > 0) {
+			throw new ConflictError('A Git connection already exists');
+		}
 		this.gitService.validateRepositoryUrl(input.repositoryUrl, input.connectionType);
 		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
 
@@ -111,6 +188,208 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
+	async push(connectionId: string, actor: User): Promise<GitConnectionPushResultDto> {
+		// Validates the connection exists (throws NotFound otherwise) before any export work.
+		await this.getEntity(connectionId);
+		// The instance connection covers every team project; personal projects are
+		// out of scope for the first iteration.
+		const projectIds = await this.projectRepository.findTeamProjectIds();
+		const repositoryFolder = path.join(this.rootFolder(connectionId), 'repository');
+		const exportFolder = path.join(repositoryFolder, EXPORT_SUBFOLDER);
+
+		this.logger.info('Exporting projects to Git connection repository', {
+			connectionId,
+			projectCount: projectIds.length,
+		});
+
+		await mkdir(repositoryFolder, { recursive: true });
+		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${EXPORT_SUBFOLDER}-`));
+
+		try {
+			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
+				{
+					user: actor,
+					projectIds,
+					includeVariableValues: true,
+					canExportVariableValues: true,
+					includeTags: true,
+					// personal projects are excluded, so a team workflow calling a personal
+					// sub-workflow blocks the whole push; intended for now, see LIGO-1089
+					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
+					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				},
+				{ targetDir: stagingFolder },
+			);
+
+			// Replace the managed export only after the new package is complete.
+			await rm(exportFolder, { recursive: true, force: true });
+			await rename(stagingFolder, exportFolder);
+
+			// TODO: commit the working copy and push to the remote, then surface the
+			// git operation result here.
+			return {
+				connectionId,
+				counts: exportResult.counts,
+			};
+		} finally {
+			await rm(stagingFolder, { recursive: true, force: true });
+		}
+	}
+
+	async addProject({
+		user,
+		connectionId,
+		projectId,
+	}: ManageProjectLinkOptions): Promise<GitConnectionProjectPublicDto> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
+		await this.getEntity(connectionId);
+
+		await this.assertProjectAccess(user, projectId);
+		await this.assertProjectCanBeAdded(projectId);
+
+		const link = await this.gitConnectionProjectRepository.linkProject(projectId, connectionId);
+		if (link.gitConnectionId !== connectionId) {
+			throw new ConflictError('Project is already added to another Git connection');
+		}
+		return this.toLinkPublic(link);
+	}
+
+	async removeProject({ user, connectionId, projectId }: ManageProjectLinkOptions): Promise<void> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
+		await this.getEntity(connectionId);
+
+		await this.assertProjectAccess(user, projectId);
+		const existing = await this.gitConnectionProjectRepository.findByProjectId(projectId);
+		if (!existing) return;
+		if (existing.gitConnectionId !== connectionId) {
+			throw new ConflictError('Project is added to another Git connection');
+		}
+		const removed = await this.gitConnectionProjectRepository.unlinkProject(
+			projectId,
+			connectionId,
+		);
+		if (removed === 0) {
+			// The link changed between our read and the delete. Re-read: a different
+			// owner is a conflict; a missing link stays a no-op.
+			const current = await this.gitConnectionProjectRepository.findByProjectId(projectId);
+			if (current && current.gitConnectionId !== connectionId) {
+				throw new ConflictError('Project is added to another Git connection');
+			}
+		}
+	}
+
+	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
+		await this.getEntity(id);
+
+		const projectIds = await this.gitConnectionProjectRepository.findProjectIdsByConnection(id);
+		return GitConnectionProjectListPublicDto.parse({ projectIds });
+	}
+
+	// Only let the caller manage links for projects they can edit, on top of the
+	// route's global `gitConnection:manageProjects` scope.
+	private async assertProjectAccess(user: User, projectId: string) {
+		const allowed = await userHasScopes(user, ['project:update'], false, { projectId });
+		if (!allowed) throw new ForbiddenError('You do not have access to this project');
+	}
+
+	private async assertProjectCanBeAdded(projectId: string) {
+		const project = await this.projectRepository.findOneBy({ id: projectId });
+		if (!project) throw new NotFoundError('Project not found');
+		if (project.type !== 'team') {
+			throw new BadRequestError('Only team projects can be added to a Git connection');
+		}
+	}
+
+	private toLinkPublic(link: GitConnectionProject): GitConnectionProjectPublicDto {
+		return GitConnectionProjectPublicDto.parse({
+			projectId: link.projectId,
+			gitConnectionId: link.gitConnectionId,
+		});
+	}
+
+	async pull(connectionId: string, actor: User): Promise<GitConnectionPullResultDto> {
+		await this.getEntity(connectionId);
+		const importFolder = path.join(this.rootFolder(connectionId), 'repository', EXPORT_SUBFOLDER);
+
+		if (!(await this.exportedWorkingCopyExists(importFolder))) {
+			throw new BadRequestError(
+				'This Git connection has no exported working copy to import. Connect it and push projects first.',
+			);
+		}
+
+		this.logger.info('Importing projects from Git connection repository', { connectionId });
+
+		const result = await this.n8nPackagesService.importPackageFromDirectory(
+			{ user: actor, ...IMPORT_POLICY },
+			{ sourceDir: importFolder },
+		);
+
+		// Keep links aligned so later pushes preserve the pulled project set.
+		await this.gitConnectionProjectRepository.syncConnectionProjects(
+			connectionId,
+			result.projects.map((project) => project.localId),
+		);
+
+		return { connectionId, counts: this.toImportCounts(result) };
+	}
+
+	private async exportedWorkingCopyExists(folder: string): Promise<boolean> {
+		try {
+			return (await stat(folder)).isDirectory();
+		} catch {
+			return false;
+		}
+	}
+
+	private toImportCounts(result: ImportResult): GitConnectionPullResultDto['counts'] {
+		const tally = <S extends string>(rows: Array<{ status: S }>, statuses: readonly S[]) => {
+			const counts = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<S, number>;
+			for (const { status } of rows) counts[status] += 1;
+			return counts;
+		};
+
+		return {
+			projects: tally(result.projects, ['created', 'updated', 'skipped'] as const),
+			folders: {
+				...tally(result.folders, ['created', 'skipped'] as const),
+				removed: result.removedFolders.length,
+			},
+			workflows: {
+				...tally(result.workflows, ['created', 'updated', 'skipped'] as const),
+				archived: result.removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
+				deleted: result.removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
+				// Publishing happens after writes, so failures are reported without failing the pull.
+				publishing: tally(
+					result.workflows.map(({ publishing }) => ({ status: publishing.state })),
+					['published', 'unpublished', 'unchanged', 'blocked', 'failed'] as const,
+				),
+			},
+			credentials: {
+				matched: result.credentials.matched.length,
+				stubbed: result.credentials.stubbed.length,
+			},
+			dataTables: {
+				matched: result.dataTables.matched,
+				created: result.dataTables.created,
+			},
+			variables: {
+				matched: result.variables.matched.length,
+				created: result.variables.created.length,
+				updated: result.variables.updated.length,
+				stubbed: result.variables.stubbed.length,
+				missing: result.variables.missing.length,
+			},
+			tags: {
+				matched: result.tags.matched.length,
+				created: result.tags.created.length,
+				renamed: result.tags.renamed.length,
+				reconciled: result.tags.reconciled.length,
+				skipped: result.tags.skipped.length,
+			},
+		};
+	}
+
 	private async applyNewAuthentication(
 		connection: GitConnection,
 		input: Pick<
@@ -183,6 +462,9 @@ export class GitConnectionsService {
 	private validateHttpsCredentials(username?: string, password?: string, required = false) {
 		if ((username === undefined) !== (password === undefined) || (required && !username)) {
 			throw new BadRequestError('HTTPS username and password must be provided together');
+		}
+		if ([username, password].some((value) => value !== undefined && value.trim().length === 0)) {
+			throw new BadRequestError('HTTPS username and password must not be blank');
 		}
 		if ([username, password].some((value) => value && /[\r\n\0]/.test(value))) {
 			throw new BadRequestError('HTTPS credentials contain unsupported characters');
