@@ -52,11 +52,12 @@ watch(
 // genuinely server-paginated. `N8nDataTableServer` is still the right
 // component (matching the other admin tables in this section), but the
 // paging itself is done here, client-side, against the full `rows` array.
-const page = ref(1);
+// `N8nDataTableServer`'s `page` model is 0-indexed (see its `defineModel<number>('page', { default: 0 })`).
+const page = ref(0);
 const itemsPerPage = ref(10);
 
 const pagedRows = computed(() => {
-	const start = (page.value - 1) * itemsPerPage.value;
+	const start = page.value * itemsPerPage.value;
 	return rows.value.slice(start, start + itemsPerPage.value);
 });
 
