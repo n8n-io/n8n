@@ -9,6 +9,7 @@ import { validateNodeConfig } from './node-parameter-schema/schema-validator';
 import { resolveMainInputCount } from './node-port-resolvers/resolve-main-input-count';
 import { resolveMainOutputCount } from './node-port-resolvers/resolve-main-output-count';
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
+import { NODE_DEPRECATION_NOTICE } from '../node-deprecation';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 import { toEngineConnections } from '../utils/workflow-json-engine-helpers';
@@ -50,7 +51,8 @@ export type ValidationErrorCode =
 	| 'PARTIAL_EXPRESSION_PATH'
 	| 'INVALID_DATE_METHOD'
 	| 'UNKNOWN_CONFIG_KEY'
-	| 'UNKNOWN_NODE_VERSION';
+	| 'UNKNOWN_NODE_VERSION'
+	| 'DEPRECATED_NODE_TYPE';
 
 /**
  * Validation error class
@@ -462,6 +464,43 @@ function collectUnknownVersionWarnings(
 }
 
 /**
+ * Emits a `DEPRECATED_NODE_TYPE` warning for each node whose type is hidden in
+ * the node panel. A retired node still builds and still runs, so this stays
+ * informational: it never blocks a save or the CLI exit code. It only makes the
+ * retirement visible, because a synthesized type definition reads like any
+ * other one.
+ */
+function collectDeprecatedNodeWarnings(
+	json: WorkflowJSON,
+	provider: INodeTypes,
+	warnings: ValidationWarning[],
+): void {
+	for (const node of json.nodes) {
+		let hidden = false;
+		try {
+			hidden =
+				provider.getByNameAndVersion(node.type, resolveTypeVersion(node.typeVersion))?.description
+					?.hidden === true;
+		} catch {
+			// An unresolvable node type is reported by the checks that own it.
+			continue;
+		}
+		if (!hidden) continue;
+
+		warnings.push(
+			ValidationWarning.informational(
+				'DEPRECATED_NODE_TYPE',
+				`Node '${node.name}' uses the retired node type '${node.type}'. ${NODE_DEPRECATION_NOTICE}`,
+				node.name,
+				undefined,
+				undefined,
+				'major',
+			),
+		);
+	}
+}
+
+/**
  * Validate a workflow
  *
  * Checks for:
@@ -503,6 +542,9 @@ export function validateWorkflow(
 		: undefined;
 	if (options.nodeTypesProvider) {
 		collectUnknownVersionWarnings(json, options.nodeTypesProvider, warnings);
+	}
+	if (nodeTypesProvider) {
+		collectDeprecatedNodeWarnings(json, nodeTypesProvider, warnings);
 	}
 
 	// Check for trigger node
