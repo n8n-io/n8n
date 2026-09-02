@@ -113,14 +113,10 @@ export class TelemetryEventRelay extends EventRelay {
 			'team-project-created': (event) => this.teamProjectCreated(event),
 			'source-control-settings-updated': (event) => this.sourceControlSettingsUpdated(event),
 			'source-control-user-started-pull-ui': (event) => this.sourceControlUserStartedPullUi(event),
-			'source-control-user-queried-status-pull-public-api': (event) =>
-				this.sourceControlUserQueriedStatusPullPublicApi(event),
 			'source-control-user-finished-pull-ui': (event) =>
 				this.sourceControlUserFinishedPullUi(event),
 			'source-control-user-pulled-api': (event) => this.sourceControlUserPulledApi(event),
 			'source-control-user-started-push-ui': (event) => this.sourceControlUserStartedPushUi(event),
-			'source-control-user-queried-status-push-public-api': (event) =>
-				this.sourceControlUserQueriedStatusPushPublicApi(event),
 			'source-control-user-finished-push-ui': (event) =>
 				this.sourceControlUserFinishedPushUi(event),
 			'license-renewal-attempted': (event) => this.licenseRenewalAttempted(event),
@@ -339,26 +335,14 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowUpdates,
 		workflowConflicts,
 		credConflicts,
+		publicApi,
 	}: RelayEventMap['source-control-user-started-pull-ui']) {
 		this.telemetry.track('User started pull via UI', {
 			user_id: userId,
 			workflow_updates: workflowUpdates,
 			workflow_conflicts: workflowConflicts,
 			cred_conflicts: credConflicts,
-		});
-	}
-
-	private sourceControlUserQueriedStatusPullPublicApi({
-		userId,
-		workflowUpdates,
-		workflowConflicts,
-		credConflicts,
-	}: RelayEventMap['source-control-user-queried-status-pull-public-api']) {
-		this.telemetry.track('User queried pull status via Public API', {
-			user_id: userId,
-			workflow_updates: workflowUpdates,
-			workflow_conflicts: workflowConflicts,
-			cred_conflicts: credConflicts,
+			public_api: publicApi,
 		});
 	}
 
@@ -389,6 +373,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credsEligible,
 		credsEligibleWithConflicts,
 		variablesEligible,
+		publicApi,
 	}: RelayEventMap['source-control-user-started-push-ui']) {
 		this.telemetry.track('User started push via UI', {
 			user_id: userId,
@@ -397,24 +382,7 @@ export class TelemetryEventRelay extends EventRelay {
 			creds_eligible: credsEligible,
 			creds_eligible_with_conflicts: credsEligibleWithConflicts,
 			variables_eligible: variablesEligible,
-		});
-	}
-
-	private sourceControlUserQueriedStatusPushPublicApi({
-		userId,
-		workflowsEligible,
-		workflowsEligibleWithConflicts,
-		credsEligible,
-		credsEligibleWithConflicts,
-		variablesEligible,
-	}: RelayEventMap['source-control-user-queried-status-push-public-api']) {
-		this.telemetry.track('User queried push status via Public API', {
-			user_id: userId,
-			workflows_eligible: workflowsEligible,
-			workflows_eligible_with_conflicts: workflowsEligibleWithConflicts,
-			creds_eligible: credsEligible,
-			creds_eligible_with_conflicts: credsEligibleWithConflicts,
-			variables_eligible: variablesEligible,
+			public_api: publicApi,
 		});
 	}
 

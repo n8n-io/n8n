@@ -685,13 +685,7 @@ export type RelayEventMap = {
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
-	};
-
-	'source-control-user-queried-status-pull-public-api': {
-		userId?: string;
-		workflowUpdates: number;
-		workflowConflicts: number;
-		credConflicts: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-pull-ui': {
@@ -711,15 +705,7 @@ export type RelayEventMap = {
 		credsEligible: number;
 		credsEligibleWithConflicts: number;
 		variablesEligible: number;
-	};
-
-	'source-control-user-queried-status-push-public-api': {
-		userId?: string;
-		workflowsEligible: number;
-		workflowsEligibleWithConflicts: number;
-		credsEligible: number;
-		credsEligibleWithConflicts: number;
-		variablesEligible: number;
+		publicApi: boolean;
 	};
 
 	'source-control-user-finished-push-ui': {

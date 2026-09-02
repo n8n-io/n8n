@@ -367,6 +367,7 @@ describe('TelemetryEventRelay', () => {
 				workflowUpdates: 5,
 				workflowConflicts: 2,
 				credConflicts: 1,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-started-pull-ui', event);
@@ -375,22 +376,25 @@ describe('TelemetryEventRelay', () => {
 				workflow_updates: 5,
 				workflow_conflicts: 2,
 				cred_conflicts: 1,
+				public_api: false,
 			});
 		});
 
-		it('should track on `source-control-user-queried-status-pull-public-api` event', () => {
-			const event: RelayEventMap['source-control-user-queried-status-pull-public-api'] = {
+		it('should track on `source-control-user-started-pull-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-started-pull-ui'] = {
 				workflowUpdates: 5,
 				workflowConflicts: 2,
 				credConflicts: 1,
+				publicApi: true,
 			};
 
-			eventService.emit('source-control-user-queried-status-pull-public-api', event);
+			eventService.emit('source-control-user-started-pull-ui', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User queried pull status via Public API', {
+			expect(telemetry.track).toHaveBeenCalledWith('User started pull via UI', {
 				workflow_updates: 5,
 				workflow_conflicts: 2,
 				cred_conflicts: 1,
+				public_api: true,
 			});
 		});
 
@@ -430,6 +434,7 @@ describe('TelemetryEventRelay', () => {
 				credsEligible: 5,
 				credsEligibleWithConflicts: 1,
 				variablesEligible: 3,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-started-push-ui', event);
@@ -441,28 +446,31 @@ describe('TelemetryEventRelay', () => {
 				creds_eligible: 5,
 				creds_eligible_with_conflicts: 1,
 				variables_eligible: 3,
+				public_api: false,
 			});
 		});
 
-		it('should track on `source-control-user-queried-status-push-public-api` event', () => {
-			const event: RelayEventMap['source-control-user-queried-status-push-public-api'] = {
+		it('should track on `source-control-user-started-push-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-started-push-ui'] = {
 				userId: 'userId',
 				workflowsEligible: 10,
 				workflowsEligibleWithConflicts: 2,
 				credsEligible: 5,
 				credsEligibleWithConflicts: 1,
 				variablesEligible: 3,
+				publicApi: true,
 			};
 
-			eventService.emit('source-control-user-queried-status-push-public-api', event);
+			eventService.emit('source-control-user-started-push-ui', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User queried push status via Public API', {
+			expect(telemetry.track).toHaveBeenCalledWith('User started push via UI', {
 				user_id: 'userId',
 				workflows_eligible: 10,
 				workflows_eligible_with_conflicts: 2,
 				creds_eligible: 5,
 				creds_eligible_with_conflicts: 1,
 				variables_eligible: 3,
+				public_api: true,
 			});
 		});
 
