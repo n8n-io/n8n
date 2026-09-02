@@ -329,9 +329,14 @@ export class JobProcessor {
 
 		this.runningJobs[job.id] = runningJob;
 
-		const run = await workflowRun;
-
-		delete this.runningJobs[job.id];
+		let run: IRun;
+		try {
+			run = await workflowRun;
+		} finally {
+			// An entry left behind on rejection keeps the count of running jobs
+			// above zero forever, which prevents shutdown from ever completing.
+			delete this.runningJobs[job.id];
+		}
 
 		if (run?.status === 'canceled') {
 			throw new ManualExecutionCancelledError(executionId);
