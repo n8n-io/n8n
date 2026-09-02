@@ -101,7 +101,10 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
 import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
-import type { NodeContextWorkflow } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
+import {
+	buildNodesAttachment,
+	type NodeContextWorkflow,
+} from '@/features/ai/instanceAi/utils/buildNodesAttachment';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
@@ -658,11 +661,30 @@ watch(selectedNodes, (nodes) => {
 	}
 });
 
-watch(selectedNodeIds, (newIds) => {
-	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
-		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
-	}
-});
+watch(
+	selectedNodeIds,
+	(newIds) => {
+		if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
+			focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
+		}
+		// Instance AI: mirror the selection as a greyed-out "add as context" preview,
+		// built with the same buildNodesAttachment as a confirmed add so the chips
+		// bundle/group identically. Gated on the feature alone (Instance AI never sets
+		// chatPanelStore.isOpen, same gate as the Alt+I add-to-chat path). immediate:
+		// seed from an already-selected node when the editor first loads.
+		if (isNodeContextEnabled.value) {
+			const built = newIds.length
+				? buildNodesAttachment(
+						workflowDocumentStore.value.workflowId,
+						newIds,
+						buildNodeContextWorkflow(),
+					)
+				: null;
+			instanceAiStore.setUnconfirmedNodes(built?.attachment ?? null);
+		}
+	},
+	{ immediate: true },
+);
 
 // Surface a selected group so surfaces outside the canvas (logs panel) can sync to it
 const selectedCanvasGroupId = computed(() => {

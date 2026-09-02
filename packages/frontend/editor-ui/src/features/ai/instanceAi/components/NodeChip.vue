@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useTemplateRef } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -13,9 +13,12 @@ const props = defineProps<{
 	icon?: 'layers';
 	removable?: boolean;
 	expanded?: boolean | null;
+	// Greyed-out "add canvas selection as context" preview: dashed chip with a `+`
+	// prefix; a click confirms it into a real (green) attachment instead of expanding.
+	unconfirmed?: boolean;
 }>();
 
-const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': [] }>();
+const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': []; confirm: [] }>();
 
 const i18n = useI18n();
 
@@ -25,6 +28,15 @@ defineExpose({ focus: () => rootRef.value?.focus() });
 // stopPropagation prevents the canvas/logs panel's document-level
 // Arrow/Enter/Escape shortcuts from also firing (see shouldIgnoreCanvasShortcut).
 function handleKeydown(event: KeyboardEvent) {
+	if (props.unconfirmed) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			event.stopPropagation();
+			emit('confirm');
+		}
+		return;
+	}
+
 	const isExpandable = props.expanded !== null && props.expanded !== undefined;
 
 	if (event.key === 'Enter' && isExpandable) {
@@ -59,40 +71,57 @@ function handleKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-	<span
-		ref="root"
-		:class="[$style.chip, { [$style.expandable]: expanded != null }]"
-		:data-test-id="testid"
-		tabindex="0"
-		role="group"
-		:aria-label="label"
-		@keydown="handleKeydown"
-		@click="expanded != null && emit('toggle-expand')"
+	<N8nTooltip
+		as-child
+		:content="i18n.baseText('instanceAi.nodeContext.unconfirmedTooltip')"
+		:disabled="!unconfirmed"
+		placement="top"
+		:show-after="300"
 	>
-		<!-- Leading icon doubles as the remove control: node icon at rest, X on hover. -->
-		<button
-			v-if="removable"
-			type="button"
-			:class="[$style.iconBtn, $style.leadingBtn]"
-			data-test-id="nodes-chip-remove"
-			tabindex="-1"
-			:aria-label="i18n.baseText('generic.delete')"
-			@click.stop="emit('remove')"
+		<span
+			ref="root"
+			:class="[
+				$style.chip,
+				{ [$style.expandable]: expanded != null, [$style.unconfirmed]: unconfirmed },
+			]"
+			:data-test-id="testid"
+			tabindex="0"
+			role="group"
+			:aria-label="label"
+			@keydown="handleKeydown"
+			@click="unconfirmed ? emit('confirm') : expanded != null && emit('toggle-expand')"
 		>
-			<span :class="$style.leadingRemove"><N8nIcon icon="x" size="large" /></span>
-			<span :class="$style.leadingIcon">
-				<N8nIcon v-if="icon" :icon="icon" size="small" />
+			<template v-if="unconfirmed">
+				<N8nIcon icon="plus" size="medium" :class="$style.plusIcon" />
+				<N8nIcon v-if="icon" :icon="icon" size="xsmall" />
 				<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
-				<N8nIcon v-else icon="crosshair" size="small" />
-			</span>
-		</button>
-		<template v-else>
-			<N8nIcon v-if="icon" :icon="icon" size="xsmall" />
-			<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
-			<N8nIcon v-else icon="crosshair" size="xsmall" />
-		</template>
-		<span :class="$style.name" :title="label">{{ label }}</span>
-	</span>
+				<N8nIcon v-else icon="crosshair" size="xsmall" />
+			</template>
+			<!-- Leading icon doubles as the remove control: node icon at rest, X on hover. -->
+			<button
+				v-else-if="removable"
+				type="button"
+				:class="[$style.iconBtn, $style.leadingBtn]"
+				data-test-id="nodes-chip-remove"
+				tabindex="-1"
+				:aria-label="i18n.baseText('generic.delete')"
+				@click.stop="emit('remove')"
+			>
+				<span :class="$style.leadingRemove"><N8nIcon icon="x" size="large" /></span>
+				<span :class="$style.leadingIcon">
+					<N8nIcon v-if="icon" :icon="icon" size="small" />
+					<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
+					<N8nIcon v-else icon="crosshair" size="small" />
+				</span>
+			</button>
+			<template v-else>
+				<N8nIcon v-if="icon" :icon="icon" size="xsmall" />
+				<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="12" />
+				<N8nIcon v-else icon="crosshair" size="xsmall" />
+			</template>
+			<span :class="$style.name" :title="label">{{ label }}</span>
+		</span>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
@@ -116,6 +145,30 @@ function handleKeydown(event: KeyboardEvent) {
 
 .expandable {
 	cursor: pointer;
+}
+
+.unconfirmed {
+	cursor: pointer;
+	border-style: dashed;
+	border-color: var(--border-color--subtle);
+	background: transparent;
+	color: var(--color--text--secondary);
+	font-style: italic;
+
+	&:hover,
+	&:focus-visible {
+		border-color: var(--border-color--hover);
+		background: var(--color--background--hover);
+		color: var(--color--text);
+
+		.plusIcon {
+			color: var(--color--text);
+		}
+	}
+}
+
+.plusIcon {
+	color: var(--color--text--secondary);
 }
 
 .name {

@@ -22,7 +22,7 @@ export interface NodeSet {
 
 export type NodesAttachmentSet = InstanceAiNodesAttachment['sets'][number];
 
-const setSignature = (set: NodesAttachmentSet) =>
+export const setSignature = (set: NodesAttachmentSet) =>
 	set.nodes
 		.map((n) => n.id)
 		.sort()

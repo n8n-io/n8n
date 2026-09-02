@@ -6,6 +6,7 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
+import NodesAttachmentChips from './NodesAttachmentChips.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -17,7 +18,7 @@ import {
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { mergeNodeSets } from '../utils/buildNodesAttachment';
+import { mergeNodeSets, setSignature } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
 type SuggestionPromptPayload =
@@ -370,6 +371,28 @@ function removeResource(index: number) {
 	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
 }
 
+// Greyed-out canvas-selection preview, minus any set already confirmed for the same
+// workflow — confirm-only leaves the canvas selection active, so without this the grey
+// chip would reappear the instant it's confirmed.
+const unconfirmedNodesAttachment = computed(() => {
+	const attachment = instanceAiStore.unconfirmedNodesAttachment;
+	if (!attachment) return null;
+	const confirmedSignatures = new Set(
+		attachedResources.value
+			.filter(
+				(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
+					a.type === 'nodes' && a.workflowId === attachment.workflowId,
+			)
+			.flatMap((a) => a.sets.map(setSignature)),
+	);
+	const sets = attachment.sets.filter((s) => !confirmedSignatures.has(setSignature(s)));
+	return sets.length ? { ...attachment, sets } : null;
+});
+
+function confirmUnconfirmedNodes() {
+	instanceAiStore.confirmUnconfirmedNodes();
+}
+
 watch(
 	() => instanceAiStore.pendingComposerAttachments,
 	(pending) => {
@@ -623,6 +646,13 @@ const resizable = computed(() => {
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
 					@attach-files="chatInputRef?.openFilePicker()"
+				/>
+			</template>
+			<template v-if="!props.isPlanEditMode && unconfirmedNodesAttachment" #footer-end>
+				<NodesAttachmentChips
+					:attachment="unconfirmedNodesAttachment"
+					unconfirmed
+					@confirm="confirmUnconfirmedNodes"
 				/>
 			</template>
 		</ChatInputBase>
