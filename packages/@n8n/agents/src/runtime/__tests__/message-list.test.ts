@@ -280,6 +280,55 @@ describe('buildSystemMessages — volatile tool-instruction fragments', () => {
 		expect(Array.isArray(system)).toBe(false);
 		expect(system).toEqual({ role: 'system', content: 'Base instructions' });
 	});
+
+	it('folds the mcp-connection note into the uncached volatile message, leaving cached base instructions unchanged', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			undefined,
+			'<mcp-connection-status>\n- dead: fetch failed\n</mcp-connection-status>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		// Cached prefix must stay byte-identical regardless of volatile content.
+		expect(system[0]?.content).toBe('Base instructions');
+		expect(system[1]?.content).toContain('mcp-connection-status');
+		expect(system[1]?.content).toContain('dead');
+		expect(system[1]?.providerOptions).toBeUndefined();
+	});
+
+	it('combines the mcp-connection note with observation memory and volatile instructions in one uncached message', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			undefined,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+			'<mcp-connection-status>\n- dead: fetch failed\n</mcp-connection-status>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system[0]?.content).toBe('Base instructions');
+		expect(system[1]?.content).toContain('Newly loaded tool rule.');
+		expect(system[1]?.content).toContain('Some memory.');
+		expect(system[1]?.content).toContain('mcp-connection-status');
+	});
+
+	it('keeps the single-message shape when the mcp-connection note is absent', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		);
+
+		expect(Array.isArray(system)).toBe(false);
+		expect(system).toEqual({ role: 'system', content: 'Base instructions' });
+	});
 });
 
 // ---------------------------------------------------------------------------

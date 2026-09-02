@@ -28,7 +28,7 @@ jobs:
     name: Assign reviewers
     # Skipped for:
     #  - PRs from forks (no token to assign with)
-    #  - Bot-authored PRs (Dependabot, Renovate, etc.), except cat-bot which
+    #  - Bot-authored PRs (Dependabot, etc.), except cat-bot which
     #    opts in explicitly so a human-applied label can route its PRs to the
     #    owning team
     if: |

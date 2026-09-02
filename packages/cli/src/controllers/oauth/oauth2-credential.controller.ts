@@ -58,7 +58,7 @@ export class OAuth2CredentialController {
 
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
-			const isPkce = oauthCredentials.grantType === 'pkce';
+			const isPkce = oauthCredentials.grantType === 'pkce' || oauthCredentials.usePkce === true;
 			const isBodyAuth = oauthCredentials.authentication === 'body';
 
 			const body: Record<string, string> = { ...(oAuthOptions.body ?? {}) };
@@ -84,7 +84,12 @@ export class OAuth2CredentialController {
 
 			await this.externalHooks.run('oauth2.callback', [oAuthOptions]);
 
-			const oAuthObj = new ClientOAuth2(oAuthOptions);
+			// The bridge is attached here rather than in the options object so it stays out of
+			// the payload handed to external hooks.
+			const oAuthObj = new ClientOAuth2({
+				...oAuthOptions,
+				ssrfBridge: this.oauthService.getSsrfBridge(),
+			});
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
@@ -110,6 +115,11 @@ export class OAuth2CredentialController {
 				...(typeof tokenData === 'object' ? tokenData : {}),
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
+
+			const expiresInSeconds = Number(tokenResponse.expires_in);
+			if (Number.isFinite(expiresInSeconds) && expiresInSeconds > 0) {
+				oauthTokenData.n8n_expires_at = String(Date.now() + expiresInSeconds * 1000);
+			}
 
 			if (typeof state.resource === 'string') {
 				oauthTokenData.resource = state.resource;

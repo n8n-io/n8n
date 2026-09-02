@@ -117,14 +117,14 @@ vi.mock(
 	}),
 );
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
 	})),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		moduleSettings: {
 			'external-secrets': {
@@ -431,7 +431,7 @@ describe('ProjectExternalSecrets', () => {
 
 	describe('Error Handling', () => {
 		it('should show error toast when API call fails', async () => {
-			const { useToast } = await import('@/app/composables/useToast');
+			const { useToast } = await import('@n8n/composables/useToast');
 			const showErrorSpy = vi.fn();
 			vi.mocked(useToast).mockReturnValue({
 				showError: showErrorSpy,
@@ -450,7 +450,7 @@ describe('ProjectExternalSecrets', () => {
 		});
 
 		it('should not fetch data when feature is disabled', async () => {
-			const { useSettingsStore } = await import('@/app/stores/settings.store');
+			const { useSettingsStore } = await import('@n8n/stores/settings.store');
 			vi.mocked(useSettingsStore).mockReturnValue({
 				moduleSettings: {
 					'external-secrets': {

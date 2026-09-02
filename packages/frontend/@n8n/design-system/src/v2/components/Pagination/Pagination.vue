@@ -11,9 +11,6 @@ import {
 } from 'reka-ui';
 import { computed, useCssModule, ref, watch } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
-
 import type {
 	PaginationEmits,
 	PaginationProps,
@@ -21,6 +18,8 @@ import type {
 	PaginationSizes,
 	PaginationVariants,
 } from './Pagination.types';
+import Icon from '../../../components/N8nIcon/Icon.vue';
+import N8nSelect from '../Select/Select.vue';
 
 defineOptions({ inheritAttrs: false });
 

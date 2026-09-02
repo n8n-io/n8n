@@ -80,7 +80,12 @@ function onDrilldown(caseIndex: number) {
 					>
 						{{ i18n.baseText('evaluation.compare.cases.running') }}
 					</N8nText>
-					<CasesTable :versions="versions" :case-rows="caseRows" @drilldown="onDrilldown" />
+					<CasesTable
+						:versions="versions"
+						:case-rows="caseRows"
+						:is-running="isRunning"
+						@drilldown="onDrilldown"
+					/>
 				</template>
 			</template>
 

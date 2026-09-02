@@ -7,8 +7,26 @@ import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
-// eslint-disable-next-line import-x/no-cycle
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+
+/**
+ * Resolved lazily. A static import would close the cycle
+ * `workflow-runner -> execution-lifecycle-hooks -> execute-error-workflow ->
+ * workflow-execution.service -> workflow-runner`. Enter that graph at the wrong
+ * point (`workflow-runner`, `wait-tracker`, `webhook-helpers` or
+ * `test-webhooks`) and `emitDecoratorMetadata` captures an unresolved paramtype
+ * for `WorkflowExecutionService`'s `workflowRunner`, which DI silently injects
+ * as `undefined` — the next triggered execution then dies with "Cannot read
+ * properties of undefined (reading 'run')".
+ */
+const getWorkflowExecutionService = async () => {
+	// `no-cycle` counts a dynamic import as an edge. It isn't one that matters
+	// here: the import is evaluated at call time, long after every module in the
+	// chain is initialised, so it creates no evaluation-order dependency. That is
+	// the whole reason this is a dynamic import.
+	// eslint-disable-next-line import-x/no-cycle
+	const { WorkflowExecutionService } = await import('@/workflows/workflow-execution.service.js');
+	return Container.get(WorkflowExecutionService);
+};
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
@@ -93,8 +111,9 @@ export function executeErrorWorkflow(
 
 			Container.get(OwnershipService)
 				.getWorkflowProjectCached(workflowId)
-				.then((project) => {
-					void Container.get(WorkflowExecutionService).executeErrorWorkflow(
+				.then(async (project) => {
+					const workflowExecutionService = await getWorkflowExecutionService();
+					await workflowExecutionService.executeErrorWorkflow(
 						errorWorkflow,
 						workflowErrorData,
 						project,
@@ -121,12 +140,22 @@ export function executeErrorWorkflow(
 			logger.debug('Start internal error workflow', { executionId, workflowId });
 			void Container.get(OwnershipService)
 				.getWorkflowProjectCached(workflowId)
-				.then((project) => {
-					void Container.get(WorkflowExecutionService).executeErrorWorkflow(
+				.then(async (project) => {
+					const workflowExecutionService = await getWorkflowExecutionService();
+					await workflowExecutionService.executeErrorWorkflow(
 						workflowId,
 						workflowErrorData,
 						project,
 					);
+				})
+				.catch((error: Error) => {
+					Container.get(ErrorReporter).error(error);
+					logger.error(`Could not execute internal ErrorWorkflow for execution ID ${executionId}`, {
+						executionId,
+						workflowId,
+						error,
+						workflowErrorData,
+					});
 				});
 		}
 	}

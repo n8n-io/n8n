@@ -5,12 +5,12 @@ import { useRoute, useRouter } from 'vue-router';
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';

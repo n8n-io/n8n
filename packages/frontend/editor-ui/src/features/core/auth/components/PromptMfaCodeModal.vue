@@ -5,7 +5,7 @@ import { PROMPT_MFA_CODE_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { promptMfaCodeBus } from '../auth.eventBus';
 import { type IFormInput } from '@/Interface';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { createFormEventBus } from '@n8n/design-system';
 import { validate as validateUuid } from 'uuid';
 
 import { N8nButton, N8nFormInputs } from '@n8n/design-system';

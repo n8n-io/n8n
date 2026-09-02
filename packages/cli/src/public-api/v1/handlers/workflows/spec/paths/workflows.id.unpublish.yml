@@ -1,0 +1,21 @@
+post:
+  x-eov-operation-id: unpublishWorkflow
+  x-required-scope: workflow:deactivate
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Unpublish a workflow
+  description: Unpublish a workflow. In n8n v1, this action was termed deactivating a workflow.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Workflow object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflow.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

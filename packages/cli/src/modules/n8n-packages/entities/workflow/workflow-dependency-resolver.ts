@@ -3,24 +3,28 @@ import { Service } from '@n8n/di';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { WorkflowRequirementsExtractor } from './workflow-requirements.extractor';
+import { extractWorkflowRequirements } from './references/extract-workflow-requirements';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 export interface WorkflowDependencyResolveRequest {
 	user: User;
 	workflowIds: string[];
+	/**
+	 * How far to follow static sub-workflow references: `transitive` (default)
+	 * walks the whole reference graph, `direct` stops after the requested
+	 * workflows' own references.
+	 */
+	traversal?: 'transitive' | 'direct';
 }
 
 @Service()
 export class WorkflowDependencyResolver {
-	constructor(
-		private readonly workflowFinder: WorkflowFinderService,
-		private readonly workflowRequirementsExtractor: WorkflowRequirementsExtractor,
-	) {}
+	constructor(private readonly workflowFinder: WorkflowFinderService) {}
 
 	async resolve(
 		request: WorkflowDependencyResolveRequest,
 	): Promise<WorkflowSubWorkflowRequirement[]> {
+		const traverse = (request.traversal ?? 'transitive') === 'transitive';
 		const queue = [...new Set(request.workflowIds)];
 		const seenWorkflowIds = new Set(queue);
 		const requirements: WorkflowSubWorkflowRequirement[] = [];
@@ -42,8 +46,10 @@ export class WorkflowDependencyResolver {
 				// But the missing/inaccessible IDs are kept as direct requirements from their parent.
 				if (!workflow) continue;
 
-				const extractedRequirements = this.workflowRequirementsExtractor.extract(workflow);
+				const extractedRequirements = extractWorkflowRequirements(workflow);
 				requirements.push(...extractedRequirements);
+
+				if (!traverse) continue;
 
 				for (const { referencedWorkflowId } of extractedRequirements) {
 					if (seenWorkflowIds.has(referencedWorkflowId)) continue;

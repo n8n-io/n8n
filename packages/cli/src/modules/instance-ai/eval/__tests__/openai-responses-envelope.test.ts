@@ -529,3 +529,37 @@ describe('normalizeOpenAiResponsesMockResponse — structure preservation', () =
 		expect(body.output[0].content[0].text).toBe('just some text');
 	});
 });
+
+describe('object-embedded text coercion', () => {
+	it('serializes an object text part instead of dropping it (normalize path)', () => {
+		const normalized = normalizeOpenAiResponsesMockResponse(
+			{
+				body: {
+					output: [
+						{
+							type: 'message',
+							role: 'assistant',
+							content: [{ type: 'output_text', text: { quotes: ['a'] } }],
+						},
+					],
+				},
+				headers: {},
+				statusCode: 200,
+			},
+			'gpt-4o-mini',
+		);
+		const body = normalized.body as {
+			output: Array<{ content: Array<{ text: unknown }> }>;
+		};
+		expect(body.output[0].content[0].text).toBe('{"quotes":["a"]}');
+	});
+
+	it('serializes object output_text in the tolerant extractor (rebuild path)', () => {
+		const envelope = forwardTranslateToResponsesEnvelope(
+			{ body: { output_text: { quotes: ['a', 'b'] } }, headers: {}, statusCode: 200 },
+			'gpt-4o-mini',
+		);
+		const output = envelope.output as Array<{ content: Array<{ text: unknown }> }>;
+		expect(output[0].content[0].text).toBe('{"quotes":["a","b"]}');
+	});
+});

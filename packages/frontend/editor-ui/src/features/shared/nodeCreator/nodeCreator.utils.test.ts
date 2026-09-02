@@ -57,9 +57,9 @@ import {
 } from '@/app/constants';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
 }));
 
@@ -75,6 +75,13 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeVersions: vi.fn(() => []),
 		communityNodeType: vi.fn(() => null),
+	})),
+}));
+
+const inlineAgentsFlag = { enabled: false };
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: vi.fn(() => ({
+		isFeatureEnabled: vi.fn(() => inlineAgentsFlag.enabled),
 	})),
 }));
 
@@ -916,12 +923,12 @@ describe('NodeCreator - utils', () => {
 			},
 		);
 
-		it('should show Early preview badge on the AI Agent V1 node', () => {
+		it('should show Preview badge on the AI Agent V2 node', () => {
 			mockSettingsStore(true);
 			const [result] = finalizeItems([
 				makeAgentNode(MESSAGE_AN_AGENT_NODE_TYPE),
 			]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ preview: true, text: 'Early preview' });
+			expect(result.properties.tag).toEqual({ preview: true, text: 'Preview' });
 		});
 
 		it('should keep a pre-set tag', () => {
@@ -931,6 +938,37 @@ describe('NodeCreator - utils', () => {
 				makeAgentNode(AGENT_NODE_TYPE, presetTag),
 			]) as NodeCreateElement[];
 			expect(result.properties.tag).toEqual(presetTag);
+		});
+	});
+
+	describe('finalizeItems - inline agents node name', () => {
+		const makeMessageAnAgentNode = () =>
+			mockNodeCreateElement(undefined, {
+				name: MESSAGE_AN_AGENT_NODE_TYPE,
+				displayName: 'Message an Agent',
+			});
+
+		beforeEach(() => {
+			inlineAgentsFlag.enabled = false;
+		});
+
+		it('keeps the shipped Message an Agent name when the flag is off', () => {
+			const [result] = finalizeItems([makeMessageAnAgentNode()]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('Message an Agent');
+		});
+
+		it('renames the item to AI Agent V2 when the flag is on', () => {
+			inlineAgentsFlag.enabled = true;
+			const [result] = finalizeItems([makeMessageAnAgentNode()]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('AI Agent V2');
+		});
+
+		it('does not rename other nodes when the flag is on', () => {
+			inlineAgentsFlag.enabled = true;
+			const [result] = finalizeItems([
+				mockNodeCreateElement(undefined, { name: AGENT_NODE_TYPE, displayName: 'AI Agent' }),
+			]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('AI Agent');
 		});
 	});
 
@@ -1214,9 +1252,9 @@ describe('NodeCreator - utils', () => {
 		});
 
 		// The legacy node is an exact "AI Agent" match and carries the popularity factor,
-		// so the AI Agent V1 successor ranking first proves the boost outweighs both.
+		// so the AI Agent V2 successor ranking first proves the boost outweighs both.
 		const legacyAgent = makeNode(AGENT_NODE_TYPE, 'AI Agent', ['agent']);
-		const messageAnAgent = makeNode(MESSAGE_AN_AGENT_NODE_TYPE, 'AI Agent V1', [
+		const messageAnAgent = makeNode(MESSAGE_AN_AGENT_NODE_TYPE, 'AI Agent V2', [
 			'agent',
 			'ai',
 			'sdk',
@@ -1224,7 +1262,7 @@ describe('NodeCreator - utils', () => {
 		]);
 		const popularity = { [AGENT_NODE_TYPE]: 98.2 };
 
-		it('should rank the AI Agent V1 node above the legacy agent despite its popularity', () => {
+		it('should rank the AI Agent V2 node above the legacy agent despite its popularity', () => {
 			const result = searchNodes('AI Agent', [legacyAgent, messageAnAgent], { popularity });
 			expect(result.map((item) => item.key)).toEqual([MESSAGE_AN_AGENT_NODE_TYPE, AGENT_NODE_TYPE]);
 		});

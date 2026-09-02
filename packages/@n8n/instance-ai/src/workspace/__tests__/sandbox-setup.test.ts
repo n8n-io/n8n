@@ -3,6 +3,7 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 		packWorkspaceSdkMockState: {
 			isEnabled: false,
 			packWorkspaceSdk: vi.fn(),
+			packSandboxLinkedWorkspacePackages: vi.fn(),
 		},
 		resolveMockWorkspaceRoot: async (workspace: {
 			filesystem?: { basePath?: string };
@@ -34,6 +35,7 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 vi.mock('../pack-workspace-sdk', () => ({
 	isLinkWorkspaceSdkEnabled: () => packWorkspaceSdkMockState.isEnabled,
 	packWorkspaceSdk: packWorkspaceSdkMockState.packWorkspaceSdk,
+	packSandboxLinkedWorkspacePackages: packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages,
 }));
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => {
@@ -192,12 +194,14 @@ function loadSetupSandboxWorkspaceWithFsMocks(
 }
 
 async function loadLinkWorkspaceSdkWithMocks(
-	packWorkspaceSdk: Mock,
+	packSandboxLinkedWorkspacePackages: Mock,
 	runInSandbox: RunInSandboxMock,
 ): Promise<LinkWorkspaceSdkIfEnabled> {
 	packWorkspaceSdkMockState.isEnabled = true;
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockImplementation(packWorkspaceSdk);
+	packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockReset();
+	packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockImplementation(
+		packSandboxLinkedWorkspacePackages,
+	);
 	vi.resetModules();
 	vi.doMock('../sandbox-fs', () => ({
 		runInSandbox,
@@ -561,14 +565,28 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('retries packing the workspace SDK after a null pack result', async () => {
-		const tarball = Buffer.from('sdk');
-		const packWorkspaceSdk = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
-			filename: 'workflow-sdk.tgz',
-			tarball,
-			version: '1.0.0',
-			sdkPath: '/host/sdk',
-		});
+	it('retries packing linked workspace packages after a null pack result', async () => {
+		const workflowTarball = Buffer.from('workflow');
+		const sdkTarball = Buffer.from('sdk');
+		const packSandboxLinkedWorkspacePackages = vi
+			.fn()
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce([
+				{
+					filename: 'n8n-workflow.tgz',
+					tarball: workflowTarball,
+					version: '2.32.0',
+					packageName: 'n8n-workflow',
+					packagePath: '/host/workflow',
+				},
+				{
+					filename: 'workflow-sdk.tgz',
+					tarball: sdkTarball,
+					version: '1.0.0',
+					packageName: '@n8n/workflow-sdk',
+					packagePath: '/host/sdk',
+				},
+			]);
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -577,7 +595,7 @@ describe('setupSandboxWorkspace', () => {
 			>();
 		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
-			packWorkspaceSdk,
+			packSandboxLinkedWorkspacePackages,
 			runInSandbox,
 		);
 		const writeFile = vi.fn<(...args: [string, Buffer, { recursive?: boolean }?]) => Promise<void>>(
@@ -599,14 +617,24 @@ describe('setupSandboxWorkspace', () => {
 
 		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
 		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
-			'workspace SDK could not be packed',
+			'workspace packages could not be packed',
 		);
 		await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 
-		expect(packWorkspaceSdk).toHaveBeenCalledTimes(2);
-		expect(writeFile).toHaveBeenCalledWith('/workspace/workflow-sdk.tgz', tarball, {
+		expect(packSandboxLinkedWorkspacePackages).toHaveBeenCalledTimes(2);
+		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-workflow.tgz', workflowTarball, {
 			recursive: true,
 		});
+		expect(writeFile).toHaveBeenCalledWith('/workspace/workflow-sdk.tgz', sdkTarball, {
+			recursive: true,
+		});
+		expect(runInSandbox).toHaveBeenCalledWith(
+			workspace,
+			expect.stringContaining(
+				"npm install '/workspace/n8n-workflow.tgz' '/workspace/workflow-sdk.tgz'",
+			),
+			'/workspace',
+		);
 	});
 });
 describe('formatNodeCatalogLine', () => {

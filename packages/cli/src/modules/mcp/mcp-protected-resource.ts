@@ -1,8 +1,10 @@
-import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
+import { areAgentToolsAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
@@ -16,6 +18,7 @@ export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
  * mapping in `mcp-scopes.ts` when the MCP server registers tools.
  */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
+const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -36,8 +39,6 @@ const LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 export class McpProtectedResource implements ProtectedResource {
 	readonly id = INSTANCE_MCP_RESOURCE_ID;
 
-	readonly scopes = SUPPORTED_SCOPES;
-
 	/**
 	 * Fallback audience for token requests without an RFC 8707 resource
 	 * indicator — the instance MCP server predates resource indicators, so
@@ -50,7 +51,13 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly mcpConfig: McpConfig,
 		private readonly globalConfig: GlobalConfig,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
+
+	get scopes(): string[] {
+		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;
+		return SUPPORTED_SCOPES.filter((scope) => !AGENT_SCOPES.has(scope));
+	}
 
 	/**
 	 * Filtered to the tools this instance actually exposes, so the consent
@@ -59,15 +66,19 @@ export class McpProtectedResource implements ProtectedResource {
 	getScopeTools(): Record<string, string[]> {
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const tagsDisabled = this.globalConfig.tags.disabled;
+		const supportedScopes = new Set(this.scopes);
 
 		return Object.fromEntries(
-			Object.entries(TOOLS_BY_SCOPE).map(([scope, tools]) => [
-				scope,
-				tools.filter(
-					(tool) =>
-						(builderEnabled || !BUILDER_TOOLS.has(tool)) && (!tagsDisabled || tool !== 'list_tags'),
-				),
-			]),
+			Object.entries(TOOLS_BY_SCOPE)
+				.filter(([scope]) => supportedScopes.has(scope))
+				.map(([scope, tools]) => [
+					scope,
+					tools.filter(
+						(tool) =>
+							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
+							(!tagsDisabled || tool !== 'list_workflow_tags'),
+					),
+				]),
 		);
 	}
 

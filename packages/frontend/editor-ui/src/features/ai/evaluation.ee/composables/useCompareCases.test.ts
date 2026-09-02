@@ -148,6 +148,108 @@ describe('useCompareCases', () => {
 		expect(caseRows.value).toHaveLength(1);
 	});
 
+	it('silently refetches case rows on each detail refresh while a run is in progress', async () => {
+		const fetchSpy = vi.fn(async () => []);
+		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
+
+		const runningDetail = (): EvaluationCollectionDetail => ({
+			...detailWith(['run-a']),
+			runs: [{ ...run('run-a'), status: 'running' as const }],
+		});
+		const detail = ref<EvaluationCollectionDetail | null>(runningDetail());
+		const { loading, casesLoaded } = useCompareCases(detail, ref('wf-1'));
+
+		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+		await flush(); // initial (non-silent) load settles
+		expect(casesLoaded.value).toBe(true);
+		const callsAfterInitial = fetchSpy.mock.calls.length;
+
+		// A poll tick replaces the detail object while the run is still in progress.
+		detail.value = runningDetail();
+		await flush();
+
+		// Rows were refetched live, without flipping the table back into loading.
+		expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsAfterInitial);
+		expect(loading.value).toBe(false);
+	});
+
+	it('stops refetching once the runs have settled', async () => {
+		const fetchSpy = vi.fn(async () => []);
+		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
+
+		const detail = ref<EvaluationCollectionDetail | null>({
+			...detailWith(['run-a']),
+			runs: [{ ...run('run-a'), status: 'running' as const }],
+		});
+		const { casesLoaded } = useCompareCases(detail, ref('wf-1'));
+
+		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+		await flush();
+		expect(casesLoaded.value).toBe(true);
+
+		// Run settles → one final refetch captures the last cases, then polling stops.
+		detail.value = { ...detailWith(['run-a']), runs: [run('run-a')] };
+		await flush();
+		const callsAtSettle = fetchSpy.mock.calls.length;
+
+		// A later detail change (e.g. re-render) must not keep refetching.
+		detail.value = { ...detailWith(['run-a']), runs: [run('run-a')] };
+		await flush();
+		expect(fetchSpy.mock.calls.length).toBe(callsAtSettle);
+	});
+
+	it('polls only in-flight runs, not an already-completed one, on each tick', async () => {
+		const fetchSpy = vi.fn(async (_params: { workflowId: string; runId: string }) => []);
+		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
+
+		// run-a completed, run-b still running.
+		const mixed = (): EvaluationCollectionDetail => ({
+			...detailWith(['run-a', 'run-b']),
+			runs: [run('run-a'), { ...run('run-b'), status: 'running' as const }],
+		});
+		const detail = ref<EvaluationCollectionDetail | null>(mixed());
+		const { casesLoaded } = useCompareCases(detail, ref('wf-1'));
+
+		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+		await flush(); // initial full load fetches both runs
+		expect(casesLoaded.value).toBe(true);
+
+		fetchSpy.mockClear();
+		detail.value = mixed(); // a poll tick while run-b is still running
+		await flush();
+
+		const fetchedRunIds = fetchSpy.mock.calls.map((c) => c[0].runId);
+		// run-a is completed and was already fetched by the initial load → skipped;
+		// run-b is still in flight → polled.
+		expect(fetchedRunIds).toContain('run-b');
+		expect(fetchedRunIds).not.toContain('run-a');
+	});
+
+	it('runs the final refetch when a run finishes before the first poll tick', async () => {
+		const fetchSpy = vi.fn(async (_params: { workflowId: string; runId: string }) => []);
+		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
+
+		// In-flight at initial load, so the initial (full) load captures a partial snapshot.
+		const detail = ref<EvaluationCollectionDetail | null>({
+			...detailWith(['run-a']),
+			runs: [{ ...run('run-a'), status: 'running' as const }],
+		});
+		const { casesLoaded } = useCompareCases(detail, ref('wf-1'));
+
+		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+		await flush(); // initial load; `wasRunning` is seeded true from the running state
+		expect(casesLoaded.value).toBe(true);
+		fetchSpy.mockClear();
+
+		// The very first poll tick already sees the run terminal (it finished between
+		// the initial load and this tick). The seeded `wasRunning` must still trigger
+		// the final refetch — without the seed the watcher would early-return here.
+		detail.value = { ...detailWith(['run-a']), runs: [run('run-a')] };
+		await flush();
+
+		expect(fetchSpy).toHaveBeenCalledWith({ workflowId: 'wf-1', runId: 'run-a' });
+	});
+
 	it('flags casesError when a run fetch rejects (not a real mismatch)', async () => {
 		store.fetchTestCaseExecutions = vi.fn(async ({ runId }: { runId: string }) => {
 			if (runId === 'run-b') throw new Error('network');

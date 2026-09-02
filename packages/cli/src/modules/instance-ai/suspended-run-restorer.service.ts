@@ -63,8 +63,8 @@ export interface SuspendedRunRebuilder {
 /** The slice of the pending-confirmation repository the restorer reads from. */
 export type OrphanConfirmationStore = Pick<InstanceAiPendingConfirmationRepository, 'claim'>;
 
-/** The slice of the run-state registry the restorer writes to. */
-export type SuspendedRunStateRegistry = Pick<RunStateRegistry<User>, 'suspendRun'>;
+/** The slice of the run-state registry the restorer reads and writes. */
+export type SuspendedRunStateRegistry = Pick<RunStateRegistry<User>, 'suspendRun' | 'hasLiveRun'>;
 
 /** The slice of snapshot storage the restorer uses to terminalise a snapshot. */
 export type RunSnapshotCanceller = Pick<DbSnapshotStorage, 'markRunCancelled'>;
@@ -141,6 +141,16 @@ export class SuspendedRunRestorer {
 			return null;
 		}
 		if (!orphan) return null;
+
+		if (this.runState.hasLiveRun(orphan.threadId)) {
+			this.logger.warn('Rejecting stale pending confirmation: thread already has a live run', {
+				requestId,
+				threadId: orphan.threadId,
+				runId: orphan.runId,
+				kind: orphan.kind,
+			});
+			return null;
+		}
 
 		this.logger.info('Reclaiming pending confirmation orphaned by a process restart', {
 			requestId,

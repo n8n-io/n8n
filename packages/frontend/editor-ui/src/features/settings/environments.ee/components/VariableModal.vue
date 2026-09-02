@@ -4,7 +4,7 @@ import { VARIABLE_MODAL_KEY } from '../environments.constants';
 import { computed, reactive, ref, onMounted, nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nFormInput,
 	N8nInputLabel,
@@ -19,11 +19,11 @@ import type { Rule, RuleGroup } from '@/Interface';
 import type { EnvironmentVariable } from '../environments.types';
 import { useEnvironmentsStore } from '../environments.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{

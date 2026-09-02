@@ -685,7 +685,8 @@ Delegates agent building to the agents-module builder chat
 turn per call. Registered in `createOrchestrationTools` only when the host
 provides `builderDelegate` (agents module active). The builder's own prompt
 and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`) and
+`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
+`call_agent` target-tool approvals) and
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/
 activate/make-live intents to `build-agent`; never tell the user to open the
@@ -712,8 +713,9 @@ starts (agents module not configured, missing `name`/`agentId`, no project
 context to bind `agentId`, or a resume whose suspend payload has no
 checkpoint ref to carry).
 
-**Interactive questions:** when the builder suspends on one of its interactive
-tools (batched questions, a credential picker, or channel setup), this tool
+**Interactive requests:** when the builder suspends on one of its interactive
+tools (batched questions, a credential picker, channel setup, or a standard SDK
+approval requested by a target-agent test run), this tool
 cascades the suspension through its own suspend/resume so it renders as a
 chat card directly in the assistant conversation — no manual relaying, and the
 suspension survives a process restart. On resume, the tool takes the target
@@ -745,6 +747,17 @@ active + project-bound conversation, `agent:read` scope enforced in the
 adapter). Use it to answer questions about existing agents and to find the
 `agentId` for `build-agent` when editing an agent not built in this
 conversation. Creation and editing stay on `build-agent`.
+
+## MCP Registry Tool
+
+### `mcp-servers` *(domain tool — conditional)*
+
+Search the MCP registry so the orchestrator can discover a hosted MCP server for
+a service the user asked about but has not connected. One action, `search`, over
+`{ queries: string[] }`; returns
+`{ results: [{ slug, title, description, tools }], hint? }`.
+
+Only servers that the user has *not* connected come back. Results are capped at 5, most relevant first.
 
 ## Other Domain Tools
 

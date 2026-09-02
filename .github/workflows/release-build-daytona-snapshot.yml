@@ -1,4 +1,5 @@
 name: 'Release: Build Daytona snapshot'
+run-name: 'Build Daytona snapshot for n8n@${{ inputs.n8n_version }}'
 
 on:
   workflow_call:

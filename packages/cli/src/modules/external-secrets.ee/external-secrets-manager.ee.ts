@@ -10,12 +10,14 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import {
+	ExternalSecretsProviderConnectionManager,
+	type ProviderConnectionInput,
+} from './external-secrets-provider-connection-manager.ee';
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
-import { ExternalSecretsProviderConnectionManager } from './external-secrets-provider-connection-manager.ee';
 import { ExternalSecretsProviderLifecycle } from './provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
-import { ExternalSecretsRetryManager } from './retry-manager.service';
 import { ExternalSecretsSecretsCache } from './secrets-cache.service';
 import { ExternalSecretsSettingsStore } from './settings-store.service';
 import type { ExternalSecretsSettings, SecretsProvider, SecretsProviderSettings } from './types';
@@ -41,7 +43,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		private readonly settingsStore: ExternalSecretsSettingsStore,
 		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly providerLifecycle: ExternalSecretsProviderLifecycle,
-		private readonly retryManager: ExternalSecretsRetryManager,
 		private readonly providerConnectionManager: ExternalSecretsProviderConnectionManager,
 		private readonly secretsCache: ExternalSecretsSecretsCache,
 		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
@@ -79,8 +80,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	shutdown(): void {
 		this.stopSecretsRefresh();
-		this.retryManager.cancelAll();
-		void this.providerRegistry.disconnectAll();
+		this.providerConnectionManager.shutdown();
 		this.initialized = false;
 		this.logger.debug('External secrets manager shut down');
 	}
@@ -150,16 +150,11 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 				settings,
 			};
 
-			await this.providerConnectionManager.upsertProviderConnection(
+			await this.providerConnectionManager.upsertProviderConnection({
 				providerKey,
-				connection.type,
-				connectionSettings,
-			);
-
-			const provider = this.providerRegistry.get(providerKey);
-			if (provider) {
-				await this.secretsCache.refreshProvider(providerKey, provider);
-			}
+				providerType: connection.type,
+				config: connectionSettings,
+			});
 		} else {
 			await this.providerConnectionManager.removeProviderConnection(providerKey);
 		}
@@ -226,7 +221,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		await this.settingsStore.updateProvider(provider, { connected });
 
 		if (connected) {
-			await this.providerConnectionManager.connectProviderWithRetry(provider);
+			await this.reloadProvider(provider);
 		} else {
 			await this.providerConnectionManager.disconnectProvider(provider);
 		}
@@ -293,18 +288,19 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 		this.logger.debug('Reloading all external secrets providers');
 		const newSettings = await this.settingsStore.reload();
-
-		// Reload/add providers from new settings
-		for (const name of Object.keys(newSettings)) {
-			await this.reloadProvider(name);
-		}
-
-		await this.secretsCache.refreshAll();
+		await this.providerConnectionManager.upsertProviderConnections(
+			Object.entries(newSettings).map(([providerKey, config]) => ({
+				providerKey,
+				providerType: providerKey,
+				config,
+			})),
+		);
 		this.logger.debug('Reloaded all external secrets providers');
 	}
 
 	private async reloadProvidersFromConnectionsRepo(): Promise<void> {
 		const connections = await this.secretsProviderConnectionRepository.findAll();
+		const providerConnections: ProviderConnectionInput[] = [];
 
 		for (const connection of connections) {
 			if (!connection.isEnabled) {
@@ -322,14 +318,14 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 				settings,
 			};
 
-			await this.providerConnectionManager.upsertProviderConnection(
-				connection.providerKey,
-				connection.type,
-				connectionSettings,
-			);
+			providerConnections.push({
+				providerKey: connection.providerKey,
+				providerType: connection.type,
+				config: connectionSettings,
+			});
 		}
 
-		await this.secretsCache.refreshAll();
+		await this.providerConnectionManager.upsertProviderConnections(providerConnections);
 		this.logger.debug('Reloaded external secrets providers');
 	}
 
@@ -344,7 +340,11 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			return;
 		}
 
-		await this.providerConnectionManager.upsertProviderConnection(name, name, config);
+		await this.providerConnectionManager.upsertProviderConnection({
+			providerKey: name,
+			providerType: name,
+			config,
+		});
 	}
 
 	private async decryptSettings(

@@ -2,7 +2,10 @@
 
 ## Environment Variables
 
-All Instance AI configuration is done via environment variables.
+Environment variables define Instance AI defaults and fallbacks. On direct self-hosted
+deployments, admins can override the model credential and model name in Instance AI settings.
+The sandbox provider is also overridable there (via the sandbox connection); a provider
+persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 ### Core
 
@@ -63,7 +66,7 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_SANDBOX_ENABLED` | boolean | `false` | Enable sandbox-backed workflow building. When false, workflow builder capability is unavailable. |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `n8n-sandbox` | Sandbox provider: `n8n-sandbox` for the n8n sandbox service, or `daytona` for the Daytona provider. |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `n8n-sandbox` | Sandbox provider: `n8n-sandbox` for the n8n sandbox service, or `daytona` for the Daytona provider. On self-hosted, a provider selected in Instance AI settings takes precedence. |
 | `DAYTONA_API_URL` | string | `''` | Daytona API URL (e.g. `https://app.daytona.io/api`). Required when provider is `daytona`. |
 | `DAYTONA_API_KEY` | string | `''` | Daytona API key for authentication. Required when provider is `daytona`. |
 | `N8N_SANDBOX_SERVICE_URL` | string | `''` | n8n sandbox service URL. Required when provider is `n8n-sandbox`. |
@@ -76,6 +79,7 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | number | `15` | Minutes an idle Daytona sandbox waits before being stopped. `0` disables auto-stop. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | number | `60` (1 hour) | Minutes a stopped Daytona sandbox waits before being archived to cold storage. `0` uses Daytona's maximum interval. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | number | `10080` (7 days) | Minutes a stopped Daytona sandbox waits before being deleted. Negative disables auto-delete; `0` deletes on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
+| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack the workspace `n8n-workflow` and `@n8n/workflow-sdk` tarballs from the host monorepo into each sandbox after `npm install`, overriding the registry copies. Use when master is ahead of npm (e.g. unreleased exports such as `normalizeNodeShape`). Requires `pnpm build` in `packages/workflow` and `packages/@n8n/workflow-sdk`. Start a new AI thread after changing this — existing sandboxes keep their initialized `node_modules`. |
 
 When sandbox is enabled, Instance AI writes workflow source files in the runtime
 workspace and `build-workflow` runs TypeScript sources through the sandbox
@@ -121,6 +125,17 @@ and explicit `key=value`/JSON secret fields, not arbitrary opaque strings, to
 avoid mangling normal output. The `PiiDetectionType` API also reserves `phone`
 and `address`, but those have no detection pattern yet — setting them has no
 effect (they were deferred as too false-positive-prone for free-form prose).
+
+## Provider connections
+
+On self-hosted deployments, owners and admins can configure the model, sandbox, and
+web-search connections from the AI Assistant settings page. These connections are
+managed centrally and are not offered as workflow-canvas credentials.
+
+The environment variables above remain the fallback when no provider connection is
+selected. The effective model name resolves as the instance setting, then the per-user
+preference, then `N8N_INSTANCE_AI_MODEL`. Cloud and proxy-managed deployments receive
+these values from the managed service instead.
 
 ## Enabling / Disabling
 
@@ -239,6 +254,10 @@ Add `N8N_INSTANCE_AI_SEARXNG_URL` pointing to your SearXNG service:
 services:
   searxng:
     image: searxng/searxng:latest
+    environment:
+      SEARXNG_SECRET: replace-with-a-random-string
+    volumes:
+      - ./searxng-settings.yml:/etc/searxng/settings.yml:ro
     ports:
       - "8888:8080"  # optional: expose to host
   n8n:
@@ -247,13 +266,15 @@ services:
       N8N_INSTANCE_AI_SEARXNG_URL: http://searxng:8080
 ```
 
-SearXNG must have JSON format enabled in its `settings.yml`:
+The stock `searxng/searxng` image serves HTML only — `format=json` requests
+return `403 Forbidden` — so Instance AI's web search needs a mounted
+`settings.yml` that enables the JSON API:
 
 ```yaml
+# searxng-settings.yml
+use_default_settings: true
 search:
   formats:
     - html
     - json   # required for Instance AI
 ```
-
-Most SearXNG Docker images enable JSON format by default.

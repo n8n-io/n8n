@@ -789,10 +789,15 @@ export class TestRunnerService {
 			});
 
 			// Seed one row per case; `runIndex` = original dataset index so the FE
-			// maps results back even when running a subset.
+			// maps results back even when running a subset. Seed the dataset row as
+			// the case input too, so the compare view shows it while the case is still
+			// pending (the runner refines it via `resolveCaseInputs` on execution).
 			const seededCases = await this.testCaseExecutionRepository.createPendingBatch(
 				testRun.id,
-				indicesToRun,
+				indicesToRun.map((datasetIndex, position) => ({
+					runIndex: datasetIndex,
+					inputs: this.datasetRowToJsonObject(testCases[position]),
+				})),
 			);
 
 			const metrics = new EvaluationMetrics();

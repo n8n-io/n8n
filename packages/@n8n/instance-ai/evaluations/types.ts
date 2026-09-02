@@ -11,6 +11,8 @@ import type {
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
+import type { EvalAttribution } from './harness/attribution';
+import type { CaseSeed } from './harness/schema';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -196,6 +198,11 @@ export interface ExecutionScenario {
 export interface ConversationTurn {
 	role: 'user' | 'assistant';
 	text: string;
+	/** Hand the agent a seeded workflow with this turn (opening turn only), the way
+	 *  the editor does when a user opens the assistant with a workflow in front of
+	 *  them. `workflow` is the id as the seed declares it; the harness swaps in the
+	 *  per-run remapped id. See `ConversationTurnSchema`. */
+	attach?: { workflow: string };
 }
 
 export interface TestCaseCredential {
@@ -211,7 +218,7 @@ export interface WorkflowTestCase {
 	/**
 	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
 	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.
-	 * Required unless `seedThread` is set, in which case it's optional and
+	 * Required unless `seed.mode` is `replay`, in which case it's optional and
 	 * continues after the trace's live turn (`[<live turn>, ...conversation]`).
 	 */
 	conversation?: ConversationTurn[];
@@ -238,18 +245,12 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
-	/** Synthetic seed file (messages + workflows) restored before the live turn.
-	 *  Synthetic fixtures only; mutually exclusive with the other seeds. */
-	seedFile?: string;
-	/** Prose turns seeded as plain-text history (no tool calls/workflows).
-	 *  Mutually exclusive with `seedFile`. */
-	priorConversation?: ConversationTurn[];
-	/** Reproduce a real conversation from its LangSmith trace at run time: restore
-	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
-	 *  and send that live. Commits only the thread id (workspace auto-discovered;
-	 *  `project`/`endpoint` override the source project/tenant). Supplies the live
-	 *  turn, so `conversation` is optional. Transient (~14d). */
-	seedThread?: { threadId: string; project?: string; endpoint?: string; liveTurnRunId?: string };
+	/** History restored before the live turn, in one slot so the modes can't
+	 *  overlap: `mode: 'inline'` carries the messages (and the workflows/tables
+	 *  they reference) in the case body; `mode: 'replay'` reconstructs them from a
+	 *  LangSmith trace at run time and supplies the live turn itself, which is why
+	 *  `conversation` is optional for it. See `harness/schema.ts`. */
+	seed?: CaseSeed;
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -270,10 +271,15 @@ export interface ExecutionScenarioResult {
 	workflowId?: string;
 	score: number;
 	reasoning: string;
-	/** Root cause category when the scenario fails */
+	/** Root cause category when the scenario fails. Free-form on purpose: it
+	 *  carries whatever the LLM verifier picked, and older harness commits used
+	 *  a different spelling. Read `attribution` for the meaning. */
 	failureCategory?: string;
 	/** Detailed root cause explanation */
 	rootCause?: string;
+	/** Who owns this failure — the harness's own verdict, and what LangTracer
+	 *  stores. Undefined on a pass. See `harness/attribution.ts`. */
+	attribution?: EvalAttribution;
 	/** Verifier returned no verdict after all attempts (infra failure, not a
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
@@ -288,6 +294,9 @@ export interface BuildExpectationResult {
 	reason: string;
 	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
 	incomplete?: boolean;
+	/** Who owns a failed expectation. Stamped where the verdicts are attached to
+	 *  a row (the only place that also knows whether the build died on infra). */
+	attribution?: EvalAttribution;
 }
 
 export interface WorkflowTestCaseResult {
@@ -310,6 +319,10 @@ export interface WorkflowTestCaseResult {
 	workflowChecks?: CheckOutcome[];
 	/** Captured build-time sub-agent/tool activity for builder debugging. */
 	buildTrace?: BuildTrace;
+	/** `claude` build spend in USD for this iteration's build (--build-via-mcp only). */
+	buildCostUsd?: number;
+	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
+	buildTurns?: number;
 	/** Per-expectation verdicts from the build-expectations judge. Aggregated as
 	 *  scoring units alongside execution scenarios. */
 	buildExpectationResults?: BuildExpectationResult[];

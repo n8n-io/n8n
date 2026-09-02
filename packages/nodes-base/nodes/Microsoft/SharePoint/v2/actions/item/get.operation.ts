@@ -1,7 +1,12 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { assertPathSegment, ITEM_SIMPLIFY_SELECT } from '../../helpers/utils';
+import {
+	assertPathSegment,
+	ITEM_SIMPLIFY_EXPAND,
+	ITEM_SIMPLIFY_SELECT,
+	simplifyItem,
+} from '../../helpers/utils';
 import { itemRLC, untilListSelected } from '../../item';
 import { listRLC, untilSiteSelected } from '../../list';
 import { resolveSiteId, siteRLC } from '../../site';
@@ -70,7 +75,7 @@ export async function execute(
 
 	// Simplify (default on) trims the response to v1's fields; off returns raw.
 	const qs: IDataObject = simplify
-		? { $select: ITEM_SIMPLIFY_SELECT, $expand: 'fields($select=Title)' }
+		? { $select: ITEM_SIMPLIFY_SELECT, $expand: ITEM_SIMPLIFY_EXPAND }
 		: { $expand: 'fields' };
 
 	// Encode segments so user input can't escape its path segment.
@@ -83,11 +88,7 @@ export async function execute(
 	);
 
 	if (simplify) {
-		// Strip the same metadata keys v1's Simplify drops.
-		delete response['@odata.context'];
-		delete response['@odata.etag'];
-		delete response['fields@odata.navigationLink'];
-		delete (response.fields as IDataObject)?.['@odata.etag'];
+		simplifyItem(response);
 	}
 
 	return response;

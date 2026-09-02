@@ -143,6 +143,7 @@ describe('Publisher', () => {
 		});
 
 		it.each([
+			'relay-agent-execution-update',
 			'display-workflow-activation',
 			'display-workflow-deactivation',
 			'display-workflow-activation-error',

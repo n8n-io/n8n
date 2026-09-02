@@ -2927,6 +2927,75 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			},
 		]);
 	});
+
+	describe('dryRun', () => {
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'first', condition: 'eq', value: 'keep me' }],
+		});
+
+		const createTable = async () =>
+			await createDataTable(memberProject, {
+				columns: [{ name: 'first', type: 'string' }],
+				data: [{ first: 'keep me' }, { first: 'untouched' }],
+			});
+
+		test('should not delete rows when dryRun is set', async () => {
+			const dataTable = await createTable();
+
+			await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter, dryRun: true })
+				.expect(200);
+
+			const remaining = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.expect(200);
+
+			expect(remaining.body.data.count).toBe(2);
+		});
+
+		test('should return the rows that would be deleted when dryRun is set', async () => {
+			const dataTable = await createTable();
+
+			const result = await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter, dryRun: true })
+				.expect(200);
+
+			expect(result.body.data).toEqual([
+				{
+					id: expect.any(Number),
+					first: 'keep me',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+					dryRunState: 'before',
+				},
+				{
+					id: null,
+					first: null,
+					createdAt: null,
+					updatedAt: null,
+					dryRunState: 'after',
+				},
+			]);
+		});
+
+		test('should still delete rows when dryRun is not set', async () => {
+			const dataTable = await createTable();
+
+			await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter })
+				.expect(200);
+
+			const remaining = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.expect(200);
+
+			expect(remaining.body.data.count).toBe(1);
+		});
+	});
 });
 
 describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {

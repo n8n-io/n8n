@@ -1,10 +1,18 @@
 # Syncs the master branch into the long-lived 3.x branch daily.
 #
-# During the v3 development window, master carries normal feature work (behind
-# opt-in flags) and 3.x is "master + breaking-change commits". This workflow
-# fast-forwards 3.x when possible, falls back to a three-way merge when 3.x has
-# diverged, and — when a merge conflict occurs — opens a draft conflict PR and
-# posts to #alerts-v3-sync. No further syncs run until that PR is resolved and merged.
+# During the v3 development window, master carries normal feature work (behind opt-in
+# flags) and 3.x is "master + breaking-change commits". This workflow keeps that literally
+# true by REPLAYING the 3.x-only commits onto master and force-pushing 3.x — so a clean
+# sync adds no commit at all, and every replayed commit is kept as-is (nothing squashed,
+# authors preserved). The content pushed is always verified to be exactly what a merge of
+# 3.x and master would produce.
+#
+# When master genuinely conflicts with 3.x, 3.x is left untouched: a draft conflict PR
+# carrying the conflict markers is opened on the sync branch and #alerts-v3-sync is notified.
+# The resolver fixes the markers in a commit of their own and merges that PR with the normal
+# merge button. No further syncs run until it is merged. 3.x itself never has markers at its
+# tip (nightly images build from it) and the merge commit holding them drops out of its
+# history at the next replay.
 #
 # See .github/DEVELOPING_V3.md for the full v3 development model.
 
@@ -42,7 +50,7 @@ jobs:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
           # Scope the installation token to only what the sync needs.
-          permission-contents: write # push to 3.x / the conflict branch
+          permission-contents: write # force-push 3.x / push the conflict branch
           permission-pull-requests: write # open the conflict PR
           permission-issues: write # create the conflict label
 
@@ -80,7 +88,7 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-v3-sync' \
-            --text "<${PR_URL}|master→3.x sync hit a conflict — resolve this PR>. Daily syncs are paused until it is merged. ${OWNERS_TEXT}"
+            --text "<${PR_URL}|master→3.x sync hit a conflict — resolve and merge this PR>. 3.x is untouched and daily syncs are paused until it is merged. ${OWNERS_TEXT}"
 
   notify-on-failure:
     name: Notify Slack on failure

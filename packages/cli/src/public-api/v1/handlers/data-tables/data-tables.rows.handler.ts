@@ -148,11 +148,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
-				const result = dryRun
-					? await service.updateRows(dataTableId, projectId, params, returnData, true)
-					: returnData
-						? await service.updateRows(dataTableId, projectId, params, true, false)
-						: await service.updateRows(dataTableId, projectId, params, false, false);
+				const result = await service.updateRows(dataTableId, projectId, params, returnData, dryRun);
 
 				return res.json(result);
 			} catch (error) {
@@ -179,11 +175,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
-				const result = dryRun
-					? await service.upsertRow(dataTableId, projectId, params, returnData, true)
-					: returnData
-						? await service.upsertRow(dataTableId, projectId, params, true, false)
-						: await service.upsertRow(dataTableId, projectId, params, false, false);
+				const result = await service.upsertRow(dataTableId, projectId, params, returnData, dryRun);
 
 				return res.json(result);
 			} catch (error) {
@@ -229,11 +221,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, returnData = false, dryRun = false } = payload.data;
 				const params = { filter };
 
-				const result = dryRun
-					? await service.deleteRows(dataTableId, projectId, params, returnData, true)
-					: returnData
-						? await service.deleteRows(dataTableId, projectId, params, true, false)
-						: await service.deleteRows(dataTableId, projectId, params, false, false);
+				const result = await service.deleteRows(dataTableId, projectId, params, returnData, dryRun);
 
 				return res.json(result);
 			} catch (error) {

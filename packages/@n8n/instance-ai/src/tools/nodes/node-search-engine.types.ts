@@ -6,6 +6,8 @@
  * n8n-workflow, so we keep a minimal, self-contained subset here.
  */
 
+import type { AiGatewayNodeMeta } from '../../types';
+
 // ---------------------------------------------------------------------------
 // AI connection types
 // ---------------------------------------------------------------------------
@@ -61,6 +63,8 @@ export interface SearchableNodeType {
 	version: number | number[];
 	inputs: string[] | string;
 	outputs: string[] | string;
+	/** Present when the node is reachable via n8n Connect on this instance. */
+	aiGateway?: AiGatewayNodeMeta;
 	codex?: {
 		alias?: string[];
 	};
@@ -115,4 +119,6 @@ export interface NodeSearchResult {
 	builderHintMessage?: string;
 	/** Subnode requirements extracted from builderHint.inputs. */
 	subnodeRequirements?: SubnodeRequirement[];
+	/** Present when the node is reachable via n8n Connect on this instance. */
+	aiGateway?: AiGatewayNodeMeta;
 }

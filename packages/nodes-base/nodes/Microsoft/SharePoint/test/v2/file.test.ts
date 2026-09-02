@@ -40,7 +40,9 @@ describe('Microsoft SharePoint v2 — file selection', () => {
 		setParams({ site: { mode: 'id', value: SITE_ID }, folder: FOLDER_ID });
 	});
 
-	it('lists only files from the chosen folder, asking Graph for files and re-checking the reply', async () => {
+	// No $filter is sent: the children collection rejects one with "Operation not
+	// supported", so the files are filtered from the reply instead.
+	it('lists only files from the chosen folder, filtering the reply rather than the query', async () => {
 		apiRequest.mockResolvedValue({
 			value: [
 				{ id: 'file-1', name: 'report.csv', file: { mimeType: 'text/csv' } },
@@ -58,10 +60,9 @@ describe('Microsoft SharePoint v2 — file selection', () => {
 			{},
 			{
 				$select: 'id,name,file',
-				$filter: 'file ne null',
 			},
 		);
-		// Folders and ID-less entries are dropped even if Graph ignores the filter;
+		// Folders and ID-less entries are dropped from the reply;
 		// the API's order is kept (pages concatenate in the editor)
 		expect(result.results).toEqual([
 			{ name: 'report.csv', value: 'file-1' },

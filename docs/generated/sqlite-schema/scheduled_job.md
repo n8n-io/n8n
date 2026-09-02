@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "workflowId" varchar(36), "nodeId" varchar(36), "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "recurrenceUnit" varchar(16), "recurrenceSize" int, CONSTRAINT "CHK_scheduled_job_recurrence_unit" CHECK (("recurrenceUnit" IN ('hours', 'days', 'weeks', 'months'))), CONSTRAINT "CHK_scheduled_job_recurrence_size" CHECK (("recurrenceSize" >= 2)), CONSTRAINT "CHK_scheduled_job_cron_expression" CHECK (("kind" <> 'cron' OR "cronExpression" IS NOT NULL)), CONSTRAINT "CHK_scheduled_job_interval_seconds" CHECK (("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL)), CONSTRAINT "CHK_scheduled_job_fire_at" CHECK (("kind" <> 'one_off' OR "fireAt" IS NOT NULL)), CONSTRAINT "CHK_scheduled_job_kind" CHECK ("kind" IN ('cron', 'interval', 'one_off', 'recurring_cron')), CONSTRAINT "CHK_scheduled_job_recurring_cron" CHECK ("kind" <> 'recurring_cron' OR ("cronExpression" IS NOT NULL AND "recurrenceUnit" IS NOT NULL AND "recurrenceSize" IS NOT NULL)), CONSTRAINT "FK_scheduled_job_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_published_version" ("workflowId") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "workflowId" varchar(36), "nodeId" varchar(36), "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "recurrenceUnit" varchar(16), "recurrenceSize" int, "misfirePolicy" varchar(16) NOT NULL DEFAULT 'coalesce' CONSTRAINT "CHK_scheduled_job_misfirePolicy" CHECK ("misfirePolicy" IN ('coalesce', 'skip')), "misfireGraceSeconds" int NOT NULL DEFAULT 60 CONSTRAINT "CHK_scheduled_job_misfireGraceSeconds" CHECK ("misfireGraceSeconds" > 0), CONSTRAINT "CHK_scheduled_job_recurrence_unit" CHECK (("recurrenceUnit" IN ('hours', 'days', 'weeks', 'months'))), CONSTRAINT "CHK_scheduled_job_recurrence_size" CHECK (("recurrenceSize" >= 2)), CONSTRAINT "CHK_scheduled_job_cron_expression" CHECK (("kind" <> 'cron' OR "cronExpression" IS NOT NULL)), CONSTRAINT "CHK_scheduled_job_interval_seconds" CHECK (("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL)), CONSTRAINT "CHK_scheduled_job_fire_at" CHECK (("kind" <> 'one_off' OR "fireAt" IS NOT NULL)), CONSTRAINT "CHK_scheduled_job_kind" CHECK ("kind" IN ('cron', 'interval', 'one_off', 'recurring_cron')), CONSTRAINT "CHK_scheduled_job_recurring_cron" CHECK ("kind" <> 'recurring_cron' OR ("cronExpression" IS NOT NULL AND "recurrenceUnit" IS NOT NULL AND "recurrenceSize" IS NOT NULL)), CONSTRAINT "FK_scheduled_job_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_published_version" ("workflowId") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -24,6 +24,8 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 | kind | varchar(16) |  | false |  |  |  |
 | lastFiredAt | datetime(3) |  | true |  |  |  |
 | maxAttempts | INTEGER | 1 | false |  |  |  |
+| misfireGraceSeconds | INT | 60 | false |  |  |  |
+| misfirePolicy | varchar(16) | 'coalesce' | false |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | nextRunAt | datetime(3) |  | true |  |  |  |
 | nodeId | varchar(36) |  | true |  |  |  |
@@ -39,6 +41,8 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("misfirePolicy" IN ('coalesce', 'skip')) |
+| - | CHECK | CHECK ("misfireGraceSeconds" > 0) |
 | - | CHECK | CHECK (("recurrenceUnit" IN ('hours', 'days', 'weeks', 'months'))) |
 | - | CHECK | CHECK (("recurrenceSize" >= 2)) |
 | - | CHECK | CHECK (("kind" <> 'cron' OR "cronExpression" IS NOT NULL)) |
@@ -75,6 +79,8 @@ erDiagram
   varchar_16_ kind
   datetime_3_ lastFiredAt
   INTEGER maxAttempts
+  INT misfireGraceSeconds
+  varchar_16_ misfirePolicy
   varchar_255_ name
   datetime_3_ nextRunAt
   varchar_36_ nodeId
@@ -98,6 +104,7 @@ erDiagram
   INTEGER leaseEpoch
   datetime_3_ leaseExpiresAt
   INTEGER maxAttempts
+  datetime_3_ missedAfter
   TEXT payload
   datetime_3_ runAt
   datetime_3_ scheduledFor

@@ -3,9 +3,8 @@ import { reactivePick } from '@vueuse/core';
 import { CheckboxIndicator, CheckboxRoot, Label, Primitive, useForwardProps } from 'reka-ui';
 import { computed, useAttrs, useId } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { CheckboxEmits, CheckboxProps, CheckboxSlots } from './Checkbox.types';
+import Icon from '../../../components/N8nIcon/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -116,7 +115,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 .label {
 	flex: 1;
 	padding-top: 1px;
-	font-size: var(--font-size--sm);
+	font-size: var(--checkbox--label--font-size, var(--font-size--sm));
 	line-height: 1;
 	color: var(--color--text--shade-1);
 	cursor: inherit;

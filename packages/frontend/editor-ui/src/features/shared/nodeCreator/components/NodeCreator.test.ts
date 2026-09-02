@@ -60,7 +60,7 @@ vi.mock('@/features/ai/assistant/chatPanel.store', () => ({
 	useChatPanelStore: vi.fn(() => ({ isOpen: false, width: 0 })),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ isCanvasOnly: false })),
 }));
 

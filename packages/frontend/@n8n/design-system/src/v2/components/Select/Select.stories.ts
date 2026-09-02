@@ -2,10 +2,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref, computed } from 'vue';
 
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { SelectItem } from './Select.types';
 import Select from './Select.vue';
+import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;

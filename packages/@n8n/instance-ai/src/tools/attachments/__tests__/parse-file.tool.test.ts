@@ -81,6 +81,14 @@ describe('createParseFileTool', () => {
 		expect(tool.name).toBe('parse-file');
 	});
 
+	it('requires data-table-manager before tabular Data Table imports', () => {
+		const context = createMockContext();
+		const tool = createParseFileTool(context);
+
+		expect(tool.description).toContain('data-table-manager');
+		expect(tool.description).toContain('load_skill');
+	});
+
 	describe('when no attachments are present', () => {
 		it('returns error', async () => {
 			const context = createMockContext();

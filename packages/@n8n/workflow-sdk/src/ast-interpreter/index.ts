@@ -40,6 +40,7 @@ export {
 	BUILDER_BLOCKED_GLOBALS,
 	SDK_INLINE_CONSTRAINTS,
 	DANGEROUS_GLOBALS,
+	getSafeJSONMethod,
 	isAllowedSDKFunction,
 	isAllowedMethod,
 } from './validators';

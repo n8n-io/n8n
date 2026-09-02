@@ -11,9 +11,9 @@ import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import shared from '../styles/agent-panel.module.scss';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
@@ -29,6 +29,7 @@ import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
+import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
@@ -53,7 +54,7 @@ const props = withDefaults(
 	{
 		disabled: false,
 		embedded: false,
-		instructionsMaxHeight: 'none',
+		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
 		showInstructionsToolbar: false,
@@ -65,7 +66,7 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const { showError } = useToast();
-const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const { catalog, ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
 const projectId = useAgentProjectId(() => props.projectId);
 
@@ -82,8 +83,26 @@ watch(
 	{ immediate: true },
 );
 
+const configProvider = computed<AgentModelProvider | null>(() => {
+	const parsed = parseModelString(modelToString(props.config?.model));
+	return parsed && isAgentModelProvider(parsed.provider) ? parsed.provider : null;
+});
+
+// The agent's persisted `config.credential` is the source of truth for the selected
+// model's provider. `credentialsByProvider` only tracks manual (localStorage) selections,
+// so a builder-created agent — which writes `config` but not localStorage — would fall
+// back to the managed default and read as "credentials missing". Overlay the config value.
+const effectiveCredentials = computed(() => {
+	const base = credentialsByProvider.value;
+	if (!base) return base;
+	const provider = configProvider.value;
+	const credential = props.config?.credential;
+	if (!provider || !credential) return base;
+	return { ...base, [provider]: credential };
+});
+
 const filteredAgents = computed<AgentModelsByProvider>(() =>
-	getModelsForPicker(credentialsByProvider.value),
+	getModelsForPicker(effectiveCredentials.value),
 );
 
 const selectedAgent = computed<AgentModelOption | null>(() => {
@@ -121,25 +140,36 @@ const instructionsToolbarMode = computed(() =>
 );
 
 function onModelChange(selection: AgentModelSelection) {
-	const credentialId = credentialsByProvider.value?.[selection.provider];
+	const credentialId = effectiveCredentials.value?.[selection.provider];
 	if (!credentialId) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
-	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
+	const modelName = sanitizeModelId(selection.provider, selection.model);
+	const model = `${selection.provider}/${modelName}`;
 	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
 	const webSearchChanges = normalizeWebSearchForModelChange(
 		props.config,
 		capabilities?.webSearch ?? false,
 	);
+	const webSearchConfig =
+		'config' in webSearchChanges ? webSearchChanges.config : props.config?.config;
+	const promptCachingChanges = normalizePromptCachingForModelChange(
+		webSearchConfig,
+		capabilities?.promptCaching ?? false,
+	);
+	const normalizedConfig =
+		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
+	const reasoningChanges = normalizeReasoningForModelChange(
+		normalizedConfig,
+		catalog.value[selection.provider]?.models[modelName]?.reasoning,
+	);
 	emit('update:config', {
 		model,
 		credential: credentialId,
 		...webSearchChanges,
-		...normalizePromptCachingForModelChange(
-			webSearchChanges.config ?? props.config?.config,
-			capabilities?.promptCaching ?? false,
-		),
+		...promptCachingChanges,
+		...reasoningChanges,
 	});
 }
 
@@ -192,11 +222,12 @@ function onInstructionsInput(value: string) {
 			<AgentModelSelector
 				:disabled="props.disabled"
 				:selected-model="selectedAgent"
-				:credentials="credentialsByProvider"
+				:credentials="effectiveCredentials"
 				:models-by-provider="filteredAgents"
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
+				:bound-credential-id="props.config?.credential ?? null"
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
@@ -242,9 +273,7 @@ function onInstructionsInput(value: string) {
 	opacity: 0.5;
 }
 
-/* Follow the editor's max-height: unbounded hosts (the builder, which passes
-   `instructions-max-height="none"`) grow naturally, while capped hosts (the
-   NDV's 240px) scroll within the cap instead of clipping. */
+/* Follow the editor's configured max-height and scroll within the cap. */
 .instructionsDocument :global(.n8n-markdown) {
 	max-height: var(--markdown-editor-max-height);
 	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));

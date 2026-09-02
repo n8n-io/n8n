@@ -313,7 +313,12 @@ describe('AgentsListView — create agent', () => {
 		const vm = wrapper.vm as unknown as { onCreateAgentClick: () => void };
 		vm.onCreateAgentClick();
 
-		expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith('button');
-		expect(mocks.routerPush).toHaveBeenCalledWith(instanceAiCreateAgentRoute('project-1'));
+		// The same minted id is reported with the click and carried into the route,
+		// so the "clicked" and "created" events can be joined on it.
+		const [, mintedAgentId] = mocks.trackClickedNewAgent.mock.calls[0] as [string, string];
+		expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith('button', expect.any(String));
+		expect(mocks.routerPush).toHaveBeenCalledWith(
+			instanceAiCreateAgentRoute('project-1', mintedAgentId),
+		);
 	});
 });

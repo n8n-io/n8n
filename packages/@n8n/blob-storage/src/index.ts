@@ -8,6 +8,7 @@ export type {
 	Stored,
 	JsonStoreOptions,
 } from './types';
+export { ByteStoreRegistry } from './byte-store-registry';
 export { FsByteStore, type FsByteStoreOptions } from './fs-byte-store';
 export { S3ByteStore } from './s3-byte-store.ee';
 export { AzureByteStore } from './azure-byte-store.ee';

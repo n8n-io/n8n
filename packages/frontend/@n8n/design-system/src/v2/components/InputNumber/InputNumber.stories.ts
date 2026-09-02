@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import InputNumber from './InputNumber.vue';
+import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
 const meta = {
 	title: 'Experimental/InputNumber',

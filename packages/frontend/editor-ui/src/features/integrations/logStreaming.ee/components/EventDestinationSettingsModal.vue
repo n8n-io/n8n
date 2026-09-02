@@ -39,7 +39,7 @@ import { destinationToFakeINodeUi, isDestinationComplete } from '../logStreaming
 import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {

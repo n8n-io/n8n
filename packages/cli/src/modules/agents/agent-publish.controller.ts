@@ -30,6 +30,7 @@ export class AgentPublishController {
 			agentId,
 			req.params.projectId,
 			req.user,
+			{ by: 'user', trigger: 'explicit' },
 			payload?.versionId,
 		);
 		return await this.agentRunnableStateService.addRunnableState(
@@ -47,7 +48,12 @@ export class AgentPublishController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const agent = await this.agentPublishService.unpublishAgent(agentId, req.params.projectId);
+		const agent = await this.agentPublishService.unpublishAgent(
+			agentId,
+			req.params.projectId,
+			req.user,
+			'user',
+		);
 		return await this.agentRunnableStateService.addRunnableState(
 			agent,
 			req.params.projectId,
@@ -65,6 +71,8 @@ export class AgentPublishController {
 		const agent = await this.agentPublishService.revertToPublishedAgent(
 			agentId,
 			req.params.projectId,
+			req.user,
+			'user',
 		);
 		return await this.agentRunnableStateService.addRunnableState(
 			agent,
@@ -85,6 +93,8 @@ export class AgentPublishController {
 			agentId,
 			req.params.projectId,
 			payload.versionId,
+			req.user,
+			'user',
 		);
 		return await this.agentRunnableStateService.addRunnableState(
 			agent,

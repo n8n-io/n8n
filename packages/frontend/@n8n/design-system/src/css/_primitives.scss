@@ -294,9 +294,19 @@
 	--duration--slow: 1000ms;
 	--duration--slowest: 1500ms;
 
+	/* The three easings below are the "cubic" curves from Benjamin De Cock's
+	 * easing set (https://gist.github.com/bendc/ac03faac0bf2aee25b49e5fd260a1fba). */
 	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
 	--easing--ease-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
 	--easing--ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+	/* Single-overshoot spring (~10%): for small positional settles, not color/opacity fades. */
+	--easing--spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+	/* Stronger "out" siblings from the same set, for motion that should land
+	 * fast and settle softly (icon swaps, small reveals). */
+	--easing--ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+	--easing--ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+	--easing--ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
 
 	--shadow-color: var(--color--black-alpha-100);
 

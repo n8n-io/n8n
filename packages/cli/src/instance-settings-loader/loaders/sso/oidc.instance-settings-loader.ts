@@ -29,6 +29,8 @@ const oidcEnvSchema = z
 			}),
 		}),
 		oidcAcrValues: z.string(),
+		oidcAdditionalScopes: z.string(),
+		oidcRpInitiatedLogoutEnabled: z.boolean(),
 	})
 	.transform((input) => ({
 		clientId: input.oidcClientId,
@@ -42,6 +44,8 @@ const oidcEnvSchema = z
 					.map((v) => v.trim())
 					.filter(Boolean)
 			: [],
+		additionalScopes: input.oidcAdditionalScopes,
+		rpInitiatedLogoutEnabled: input.oidcRpInitiatedLogoutEnabled,
 	}));
 
 @Service()

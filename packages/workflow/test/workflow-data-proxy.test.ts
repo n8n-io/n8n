@@ -1165,6 +1165,27 @@ describe('WorkflowDataProxy', () => {
 			expect(proxy.$rawParameter.workflowId).toEqual('={{ $json.foo }}');
 		});
 
+		test('extracts resource locator parameter values with regex metadata', () => {
+			const workflow = structuredClone(fixture.workflow);
+			const node = workflow.nodes.find((workflowNode) => workflowNode.name === 'Execute Workflow');
+			if (!node) throw new Error('Missing Execute Workflow node');
+
+			node.parameters.workflowId = {
+				__rl: true,
+				value: 'workflow-id:123',
+				mode: 'url',
+				__regex: 'workflow-id:(\\d+)',
+			};
+
+			const regexProxy = getProxyFromFixture(workflow, fixture.run, 'Execute Workflow', 'manual', {
+				connectionType: NodeConnectionTypes.Main,
+				throwOnMissingExecutionData: false,
+				runIndex: 0,
+			});
+
+			expect(regexProxy.$parameter.workflowId).toBe('123');
+		});
+
 		test('returns raw parameter value when there is no run data', () => {
 			const noRunDataProxy = getProxyFromFixture(
 				fixture.workflow,

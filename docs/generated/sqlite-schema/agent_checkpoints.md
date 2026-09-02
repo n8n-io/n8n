@@ -54,12 +54,14 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
   TEXT schema
+  datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools
   datetime_3_ updatedAt

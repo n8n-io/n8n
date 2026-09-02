@@ -65,7 +65,7 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: showMessageMock,
 	}),

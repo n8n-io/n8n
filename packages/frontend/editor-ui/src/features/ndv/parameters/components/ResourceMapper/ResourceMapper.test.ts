@@ -59,6 +59,28 @@ describe('ResourceMapper.vue', () => {
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length);
 	});
 
+	it('renders an input for url fields', async () => {
+		fetchFieldsSpy.mockResolvedValueOnce({
+			fields: [
+				...MAPPING_COLUMNS_RESPONSE.fields,
+				{
+					id: 'Website',
+					displayName: 'Website',
+					required: false,
+					defaultMatch: false,
+					display: true,
+					type: 'url',
+					canBeUsedToMatch: false,
+				},
+			],
+		});
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input input').length,
+		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length + 1);
+	});
+
 	it('renders correctly in read only mode', async () => {
 		const { getByTestId } = renderComponent({ props: { isReadOnly: true } });
 		await waitAllPromises();
@@ -506,6 +528,51 @@ describe('ResourceMapper.vue', () => {
 		const mappingContainer = getByTestId('mapping-fields-container');
 		expect(mappingContainer.textContent).toContain('user_added_field');
 		expect(mappingContainer.textContent).not.toContain('First name');
+	});
+
+	it('reconciles a complete-but-drifted schema when refreshStaleSchemaOnOpen is set', async () => {
+		const completeDriftedSchema = [
+			{
+				id: 'user_added_field',
+				displayName: 'user_added_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				readOnly: false,
+				removed: false,
+			},
+		];
+
+		const { getByTestId } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: completeDriftedSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshStaleSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).not.toContain('user_added_field');
+		expect(mappingContainer.textContent).toContain('First name');
+		// Stale check and reconcile should reuse the same fetched fields (no second fetch).
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('renders initially selected matching column properly', async () => {

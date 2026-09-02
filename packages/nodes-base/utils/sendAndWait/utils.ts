@@ -7,17 +7,13 @@ import type {
 	INodeProperties,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import {
-	GMAIL_NODE_TYPE,
-	NodeOperationError,
-	SEND_AND_WAIT_OPERATION,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
 
 import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import {
 	parseFormFields,
+	parseJsonFormFields,
 	prepareFormData,
 	prepareFormFields,
 	prepareFormReturnItem,
@@ -28,7 +24,6 @@ import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
-	createConfirmationPage,
 	createEmailBodyWithN8nAttribution,
 	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
@@ -230,6 +225,8 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		// Advanced-HITL nodes (Slack, Telegram) render these as a section right before "Options".
+		...additionalProperties,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -297,7 +294,6 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...additionalProperties,
 	];
 
 	return updateDisplayOptions(
@@ -491,38 +487,6 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 	const query = req.query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
-
-	const confirmationPage = this.getNodeParameter('confirmationPage', false) as boolean;
-	if (confirmationPage && method === 'GET') {
-		const approvalOptions = this.getNodeParameter('approvalOptions.values', {}) as {
-			approveLabel?: string;
-			disapproveLabel?: string;
-		};
-		const buttonLabel = approved
-			? approvalOptions.approveLabel || 'Approve'
-			: approvalOptions.disapproveLabel || 'Decline';
-		const subject = this.getNodeParameter('subject', '') as string;
-		const message = (this.getNodeParameter('message', '') as string)
-			.replace(/\\n/g, '\n')
-			.replace(/<br>/g, '\n');
-
-		res.send(createConfirmationPage(subject || 'Confirm your response', message, buttonLabel));
-		return { noWebhookResponse: true };
-	}
-
-	// Advanced HITL telemetry for the Gmail node — fired only for the advanced
-	// toggles (confirmation page, or advanced email's one-click links.)
-	const advancedEmail = this.getNodeParameter('advancedEmail', false) as boolean;
-	const isConfirmationPagePost = confirmationPage && method === 'POST';
-	const isDirectLinkGet = !confirmationPage && method === 'GET' && advancedEmail;
-	if ((isConfirmationPagePost || isDirectLinkGet) && this.getNode().type === GMAIL_NODE_TYPE) {
-		this.logHitlResponse({
-			approved,
-			response_mode: isConfirmationPagePost ? 'confirmation_page' : 'direct_link',
-			advanced_email: advancedEmail,
-		});
-	}
-
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
 		workflowData: [[{ json: { data: { approved, respondedAt: new Date().toISOString() } } }]],
@@ -530,6 +494,22 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 }
 
 // Send and Wait Config -----------------------------------------------------------
+
+// The response form is only built when it is requested, from data that may no longer resolve
+// by then. Parse it here, exactly as the webhook will, so a form that cannot be built fails
+// the node instead of sending a message with a link that can never render.
+function validateCustomFormFields(context: IExecuteFunctions) {
+	const defineForm = context.getNodeParameter('defineForm', 0, 'fields') as 'fields' | 'json';
+	// The 'fields' branch has nothing that needs to be validated
+	if (defineForm !== 'json') return;
+
+	const getJsonOutput = () =>
+		context.getNodeParameter('jsonOutput', 0, '', {
+			rawExpressions: true,
+		}) as string;
+	parseJsonFormFields(context, getJsonOutput);
+}
+
 export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
 	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim())
 		.replace(/\\n/g, '\n')
@@ -553,6 +533,10 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 	};
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
+
+	if (responseType === 'customForm') {
+		validateCustomFormFields(context);
+	}
 
 	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
 

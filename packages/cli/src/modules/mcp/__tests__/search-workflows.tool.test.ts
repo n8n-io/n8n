@@ -70,7 +70,6 @@ describe('search-workflows MCP tool', () => {
 							nodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE } as INode],
 						}),
 					}),
-					scopes: ['workflow:read', 'workflow:execute'],
 				},
 				{
 					...createWorkflow({
@@ -88,7 +87,6 @@ describe('search-workflows MCP tool', () => {
 							nodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE } as INode],
 						}),
 					}),
-					scopes: ['workflow:read'],
 				},
 			];
 
@@ -107,8 +105,6 @@ describe('search-workflows MCP tool', () => {
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
-					scopes: ['workflow:read', 'workflow:execute'],
-					canExecute: true,
 					availableInMCP: true,
 					tags: [],
 				},
@@ -120,8 +116,6 @@ describe('search-workflows MCP tool', () => {
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
-					scopes: ['workflow:read'],
-					canExecute: false,
 					availableInMCP: true,
 					tags: [],
 				},
@@ -251,8 +245,6 @@ describe('search-workflows MCP tool', () => {
 			const result = await searchWorkflows(user, workflowService as unknown as WorkflowService, {});
 			expect(result.data[0]).toMatchObject({
 				id: 'no-nodes',
-				scopes: [],
-				canExecute: false,
 				availableInMCP: true,
 			});
 		});
@@ -283,8 +275,6 @@ describe('search-workflows MCP tool', () => {
 				createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 				updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 				triggerCount: 0,
-				scopes: [],
-				canExecute: false,
 				availableInMCP: true,
 				tags: [],
 				resource: 'workflow', // unknown field surfaced by the data layer

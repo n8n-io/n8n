@@ -177,6 +177,7 @@ export class Server extends AbstractServer {
 		}
 
 		await this.postHogClient.init();
+		this.postHogClient.setupExpressSessionContext(this.app);
 
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 

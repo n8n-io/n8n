@@ -3,14 +3,17 @@ import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import type { InstanceAiContext } from '../../../types';
+import type { SetupRequest } from '../setup-workflow.schema';
 import {
 	buildSetupRequests,
 	analyzeWorkflow,
+	applyCredentialHints,
 	applyNodeChanges,
 	applyNodeCredentials,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
+	type CredentialHintInput,
 } from '../setup-workflow.service';
 
 // ---------------------------------------------------------------------------
@@ -115,6 +118,107 @@ describe('buildSetupRequests', () => {
 		});
 		// Default: credential test passes (override in specific tests for failure cases)
 		(context.credentialService.test as Mock).mockResolvedValue({ success: true });
+	});
+
+	describe('credential-scoped parameter availability', () => {
+		function mockOpenAiNode() {
+			(context.nodeService.getDescription as Mock).mockResolvedValue({
+				group: [],
+				credentials: [{ name: 'openAiApi' }],
+				properties: [{ displayName: 'Model', name: 'model', type: 'resourceLocator' }],
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-free', name: 'n8n free OpenAI API credits' },
+			]);
+		}
+
+		function mockUnavailable() {
+			const findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([{ name: 'model', displayName: 'Model', currentValue: 'gpt-6-mini' }]);
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues =
+				findUnavailableLocatorValues;
+			return findUnavailableLocatorValues;
+		}
+
+		function makeOpenAiNode(modelValue: unknown) {
+			return makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				parameters: { model: modelValue },
+				credentials: { openAiApi: { id: 'cred-free', name: 'n8n free OpenAI API credits' } },
+			} as Partial<NodeJSON>);
+		}
+
+		it('raises an issue naming the unusable value and the credential', async () => {
+			mockOpenAiNode();
+			mockUnavailable();
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].parameterIssues?.model).toEqual([
+				'"gpt-6-mini" isn\'t available with the connected credential "n8n free OpenAI API credits". ' +
+					'Pick a value the credential offers instead.',
+			]);
+			expect(result[0].needsAction).toBe(true);
+		});
+
+		it("leaves the configured value untouched — repair is the caller's job", async () => {
+			mockOpenAiNode();
+			mockUnavailable();
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].node.parameters.model).toEqual({
+				__rl: true,
+				mode: 'id',
+				value: 'gpt-6-mini',
+			});
+		});
+
+		it('raises nothing when the host reports nothing unavailable', async () => {
+			mockOpenAiNode();
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([]);
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-5-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].parameterIssues).toBeUndefined();
+		});
+
+		it('degrades quietly when the availability lookup throws', async () => {
+			mockOpenAiNode();
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockRejectedValue(new Error('provider unreachable'));
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].parameterIssues).toBeUndefined();
+		});
+
+		it('does not probe when no credential is resolved for the slot', async () => {
+			mockOpenAiNode();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+			const probe = mockUnavailable();
+
+			const node = makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				parameters: { model: { __rl: true, mode: 'id', value: 'gpt-6-mini' } },
+			} as Partial<NodeJSON>);
+			await buildSetupRequests(context, node);
+
+			expect(probe).not.toHaveBeenCalled();
+		});
 	});
 
 	it('skips disabled nodes', async () => {
@@ -323,7 +427,7 @@ describe('buildSetupRequests', () => {
 		expect(context.credentialService.test).not.toHaveBeenCalled();
 	});
 
-	it('sets needsAction=true when credential test fails', async () => {
+	it('keeps needsAction=false when a bound stored credential fails its live test', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
 		]);
@@ -334,6 +438,24 @@ describe('buildSetupRequests', () => {
 
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].needsAction).toBe(false);
+		expect(result[0].credentialTestResult).toEqual({ success: false, message: 'Invalid token' });
+	});
+
+	it('sets needsAction=true when the bound credential id is not a stored credential', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({
+			success: false,
+			message: 'Credential not found',
+		});
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-gone', name: 'Imported Slack' } },
 		});
 		const result = await buildSetupRequests(context, node);
 
@@ -761,7 +883,7 @@ describe('analyzeWorkflow', () => {
 		expect(result).toHaveLength(0);
 	});
 
-	it('keeps credential-only requests whose credential test fails', async () => {
+	it('drops credential-only requests whose bound stored credential fails its test', async () => {
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
 		});
@@ -776,6 +898,52 @@ describe('analyzeWorkflow', () => {
 		(context.credentialService.test as Mock).mockResolvedValue({
 			success: false,
 			message: 'Invalid token',
+		});
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
+		expect(result).toHaveLength(0);
+	});
+
+	it('keeps settled failing-test requests when includeSettled is set', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(makeWorkflowJSON([node]));
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({
+			success: false,
+			message: 'Invalid token',
+		});
+
+		const result = await analyzeWorkflow(context, 'wf-1', undefined, { includeSettled: true });
+
+		expect(result).toHaveLength(1);
+		expect(result[0].needsAction).toBe(false);
+		expect(result[0].credentialTestResult).toEqual({ success: false, message: 'Invalid token' });
+	});
+
+	it('keeps credential-only requests whose bound credential id is not stored', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-gone', name: 'Imported Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(makeWorkflowJSON([node]));
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({
+			success: false,
+			message: 'Credential not found',
 		});
 
 		const result = await analyzeWorkflow(context, 'wf-1');
@@ -1834,5 +2002,201 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 				error: 'Node "GhostNode" was not found in the workflow',
 			},
 		]);
+	});
+});
+
+describe('applyCredentialHints', () => {
+	const request = (nodeName: string, credentialType?: string): SetupRequest => ({
+		node: {
+			name: nodeName,
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {},
+			position: [0, 0],
+			id: `${nodeName}-id`,
+		},
+		...(credentialType ? { credentialType } : {}),
+		isTrigger: false,
+	});
+
+	const hint = (overrides: Partial<CredentialHintInput> = {}): CredentialHintInput => ({
+		template: { headers: { Authorization: 'Key {{api_key}}' } },
+		placeholders: [{ name: 'api_key', title: 'API key' }],
+		...overrides,
+	});
+
+	it('attaches a type-wide hint to Templated Custom Auth requests only', () => {
+		const requests = [
+			request('Call fal.ai', 'httpTemplatedCustomAuth'),
+			request('Post to Slack', 'slackApi'),
+			request('No credential'),
+		];
+
+		applyCredentialHints(requests, [hint({ suggestedName: 'fal.ai API Key' })]);
+
+		expect(requests[0].setupHint).toMatchObject({ suggestedName: 'fal.ai API Key' });
+		expect(requests[0].setupHint).not.toHaveProperty('nodeName');
+		expect(requests[1].setupHint).toBeUndefined();
+		expect(requests[2].setupHint).toBeUndefined();
+	});
+
+	it('prefers a node-scoped hint over a type-wide one', () => {
+		const requests = [
+			request('Call fal.ai', 'httpTemplatedCustomAuth'),
+			request('Call replicate', 'httpTemplatedCustomAuth'),
+		];
+
+		applyCredentialHints(requests, [
+			hint({ suggestedName: 'Fallback' }),
+			hint({ nodeName: 'Call replicate', suggestedName: 'Replicate API Key' }),
+		]);
+
+		expect(requests[0].setupHint).toMatchObject({ suggestedName: 'Fallback' });
+		expect(requests[1].setupHint).toMatchObject({ suggestedName: 'Replicate API Key' });
+	});
+
+	it('stamps the service host derived from the node URL, expressions included', () => {
+		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
+		requests[0].node.parameters = { url: '=https://queue.fal.run/fal-ai/flux/{{ $json.id }}' };
+
+		applyCredentialHints(requests, [hint()]);
+
+		expect(requests[0].setupHint?.serviceHost).toBe('queue.fal.run');
+	});
+
+	it('stamps each request with its own node host from a shared type-wide hint', () => {
+		const requests = [
+			request('Call Pexels', 'httpTemplatedCustomAuth'),
+			request('Call Apify', 'httpTemplatedCustomAuth'),
+		];
+		requests[0].node.parameters = { url: 'https://api.pexels.com/v1/search' };
+		requests[1].node.parameters = { url: 'https://api.apify.com/v2/acts' };
+		const shared = hint();
+
+		applyCredentialHints(requests, [shared]);
+
+		expect(requests[0].setupHint?.serviceHost).toBe('api.pexels.com');
+		expect(requests[1].setupHint?.serviceHost).toBe('api.apify.com');
+		expect(shared).not.toHaveProperty('serviceHost');
+	});
+
+	it('omits serviceHost when the node URL is not derivable', () => {
+		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
+		requests[0].node.parameters = { url: '={{ $json.url }}' };
+
+		applyCredentialHints(requests, [hint()]);
+
+		expect(requests[0].setupHint).toBeDefined();
+		expect(requests[0].setupHint).not.toHaveProperty('serviceHost');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildSetupRequests — Templated Custom Auth service identity
+// ---------------------------------------------------------------------------
+
+describe('buildSetupRequests — Templated Custom Auth service identity', () => {
+	let context: InstanceAiContext;
+
+	const templatedNode = (url?: string) =>
+		makeNode({
+			name: 'Call API',
+			type: 'n8n-nodes-base.httpRequest',
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpTemplatedCustomAuth',
+				...(url ? { url } : {}),
+			},
+		});
+
+	const withHosts = (hosts: Record<string, string | null>) => {
+		(context.credentialService as unknown as Record<string, unknown>).getTemplatedCredentialHosts =
+			vi.fn().mockResolvedValue(hosts);
+	};
+
+	beforeEach(() => {
+		context = createMockContext();
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-pexels', name: 'Pexels API' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({ success: true });
+	});
+
+	it("drops another service's credential from the offer", async () => {
+		withHosts({ 'cred-pexels': 'api.pexels.com' });
+
+		const result = await buildSetupRequests(
+			context,
+			templatedNode('https://api.apify.com/v2/acts/run'),
+		);
+
+		expect(result[0].existingCredentials).toBeUndefined();
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].needsAction).toBe(true);
+	});
+
+	it('offers a same-service credential but never auto-applies it', async () => {
+		withHosts({ 'cred-pexels': 'api.pexels.com' });
+
+		const result = await buildSetupRequests(
+			context,
+			templatedNode('https://api.pexels.com/v1/search?query=x'),
+		);
+
+		expect(result[0].existingCredentials).toEqual([{ id: 'cred-pexels', name: 'Pexels API' }]);
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials).toBeUndefined();
+	});
+
+	it('matches subdomains of the same service', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-fal', name: 'fal.ai API Key' },
+		]);
+		withHosts({ 'cred-fal': 'fal.run' });
+
+		const result = await buildSetupRequests(
+			context,
+			templatedNode('=https://queue.fal.run/fal-ai/kling/{{ $json.id }}'),
+		);
+
+		expect(result[0].existingCredentials).toEqual([{ id: 'cred-fal', name: 'fal.ai API Key' }]);
+	});
+
+	it('drops untagged legacy credentials', async () => {
+		withHosts({ 'cred-pexels': null });
+
+		const result = await buildSetupRequests(
+			context,
+			templatedNode('https://api.pexels.com/v1/search'),
+		);
+
+		expect(result[0].existingCredentials).toBeUndefined();
+	});
+
+	it('offers nothing when the node host cannot be derived', async () => {
+		withHosts({ 'cred-pexels': 'api.pexels.com' });
+
+		const result = await buildSetupRequests(context, templatedNode('={{ $json.url }}'));
+
+		expect(result[0].existingCredentials).toBeUndefined();
+	});
+
+	it('leaves dedicated credential types unfiltered', async () => {
+		withHosts({});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-slack', name: 'My Slack' },
+		]);
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+
+		const result = await buildSetupRequests(context, makeNode());
+
+		expect(result[0].existingCredentials).toEqual([{ id: 'cred-slack', name: 'My Slack' }]);
 	});
 });

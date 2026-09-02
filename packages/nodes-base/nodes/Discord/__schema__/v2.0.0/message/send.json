@@ -15,8 +15,17 @@
                     "filename": {
                         "type": "string"
                     },
+                    "height": {
+                        "type": "integer"
+                    },
                     "id": {
                         "type": "string"
+                    },
+                    "placeholder": {
+                        "type": "string"
+                    },
+                    "placeholder_version": {
+                        "type": "integer"
                     },
                     "proxy_url": {
                         "type": "string"
@@ -29,6 +38,9 @@
                     },
                     "url": {
                         "type": "string"
+                    },
+                    "width": {
+                        "type": "integer"
                     }
                 }
             }
@@ -40,6 +52,9 @@
                     "type": "null"
                 },
                 "avatar_decoration_data": {
+                    "type": "null"
+                },
+                "banner": {
                     "type": "null"
                 },
                 "banner_color": {
@@ -56,6 +71,9 @@
                 },
                 "discriminator": {
                     "type": "string"
+                },
+                "display_name_styles": {
+                    "type": "null"
                 },
                 "flags": {
                     "type": "integer"
@@ -105,6 +123,9 @@
                     },
                     "type": {
                         "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
                     }
                 }
             }
@@ -118,12 +139,24 @@
         "mention_everyone": {
             "type": "boolean"
         },
+        "mention_roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "mentions": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "avatar": {
+                        "type": "string"
+                    },
                     "avatar_decoration_data": {
+                        "type": "null"
+                    },
+                    "banner": {
                         "type": "null"
                     },
                     "clan": {
@@ -135,8 +168,14 @@
                     "discriminator": {
                         "type": "string"
                     },
+                    "display_name_styles": {
+                        "type": "null"
+                    },
                     "flags": {
                         "type": "integer"
+                    },
+                    "global_name": {
+                        "type": "string"
                     },
                     "id": {
                         "type": "string"
@@ -166,5 +205,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

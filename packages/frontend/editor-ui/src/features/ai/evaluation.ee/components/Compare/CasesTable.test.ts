@@ -141,4 +141,37 @@ describe('CasesTable', () => {
 		expect(container.textContent).toContain('–');
 		expect(container.textContent).not.toContain('⊘');
 	});
+
+	const emptyInputRow = (best: number | null): CompareCaseRow => ({
+		index: 0,
+		displayIndex: 1,
+		inputPreview: '',
+		cells: [cell(0, best === null ? null : 0.7), cell(1, best === null ? null : 0.9)],
+		bestVersionIndex: best,
+	});
+
+	it('shows an input skeleton for an unloaded input while the run is in progress', () => {
+		const { container } = renderComponent({
+			props: { versions, caseRows: [emptyInputRow(null)], isRunning: true },
+		});
+
+		expect(container.querySelector('[data-test-id="compare-cases-input-skeleton"]')).not.toBeNull();
+	});
+
+	it('drops the input skeleton once the run has finished (empty input reads as genuinely empty)', () => {
+		const { container } = renderComponent({
+			props: { versions, caseRows: [emptyInputRow(1)], isRunning: false },
+		});
+
+		expect(container.querySelector('[data-test-id="compare-cases-input-skeleton"]')).toBeNull();
+	});
+
+	it('shows the input text and no skeleton once the input has loaded', () => {
+		const { container } = renderComponent({
+			props: { versions, caseRows: [row(0, [0.7, 0.9], 1)], isRunning: true },
+		});
+
+		expect(container.querySelector('[data-test-id="compare-cases-input-skeleton"]')).toBeNull();
+		expect(container.textContent).toContain('case 0');
+	});
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import WorkflowDiffEmptyState from '@/features/workflows/workflowDiff/WorkflowDiffEmptyState.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';

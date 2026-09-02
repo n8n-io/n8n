@@ -1,17 +1,8 @@
+import { builtTelemetry, fakeSpan, fakeTracer } from './support/fake-tracer';
 import type { BuiltTool } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
-import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
-
-function builtTelemetry(overrides: Partial<BuiltTelemetry> = {}): BuiltTelemetry {
-	return {
-		enabled: true,
-		recordInputs: true,
-		recordOutputs: true,
-		integrations: [],
-		...overrides,
-	};
-}
+import { RuntimeTelemetry, withMemorySpan } from '../telemetry/runtime-telemetry';
 
 describe('RuntimeTelemetry.resolve()', () => {
 	it('stamps own telemetry with the runtime name only when it lacks a functionId, without mutating the config', () => {
@@ -39,24 +30,6 @@ describe('RuntimeTelemetry.resolve()', () => {
 		expect(runtimeTelemetry.resolve(undefined)).toBeUndefined();
 	});
 });
-
-function fakeSpan() {
-	return {
-		end: vi.fn(),
-		recordException: vi.fn(),
-		setStatus: vi.fn(),
-		setAttributes: vi.fn(),
-	};
-}
-
-function fakeTracer(span: ReturnType<typeof fakeSpan>) {
-	return {
-		startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
-			const spanFn = fn as (spanValue: ReturnType<typeof fakeSpan>) => Promise<unknown>;
-			return await spanFn(span);
-		}),
-	};
-}
 
 describe('RuntimeTelemetry.withRootSpan()', () => {
 	it('falls through to fn() without starting a span when telemetry is disabled, root span is off, or the tracer is not active-span-capable', async () => {
@@ -125,6 +98,69 @@ describe('RuntimeTelemetry.withRootSpan()', () => {
 		});
 		expect(Object.keys(attributes).some((key) => key.startsWith('langsmith.'))).toBe(false);
 		expect(span.end).toHaveBeenCalledTimes(1);
+	});
+
+	it('omits root when rootAnchored is false, so the span nests under the ambient context', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer, rootAnchored: false });
+		const config = { name: 'sub-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withRootSpan(
+			'generate',
+			{ telemetry },
+			'run-1',
+			async () => await Promise.resolve('ok'),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(options).not.toHaveProperty('root');
+		expect((options as { attributes?: unknown }).attributes).toBeDefined();
+		expect(span.end).toHaveBeenCalledTimes(1);
+	});
+
+	it('still skips span creation entirely when runtimeRootSpanEnabled is false, even if rootAnchored is also false', async () => {
+		const tracer = fakeTracer(fakeSpan());
+		const telemetry = builtTelemetry({
+			tracer,
+			runtimeRootSpanEnabled: false,
+			rootAnchored: false,
+		});
+		const config = { name: 'sub-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await expect(
+			runtimeTelemetry.withRootSpan(
+				'generate',
+				{ telemetry },
+				'run-1',
+				async () => await Promise.resolve('ok'),
+			),
+		).resolves.toBe('ok');
+		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
+	});
+
+	it('tags sub-agent metadata (e.g. source: sub-agent) onto the span attributes like any other metadata key', async () => {
+		const tracer = fakeTracer(fakeSpan());
+		const telemetry = builtTelemetry({
+			tracer,
+			rootAnchored: false,
+			metadata: { thread_id: 'thread-abc', source: 'sub-agent' },
+		});
+		const config = { name: 'sub-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withRootSpan(
+			'generate',
+			{ telemetry },
+			'run-1',
+			async () => await Promise.resolve('ok'),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).toMatchObject({ 'ai.telemetry.metadata.source': 'sub-agent' });
 	});
 
 	it('passes links through to the tracer only when provided', async () => {
@@ -473,5 +509,217 @@ describe('RuntimeTelemetry.withToolSpan()', () => {
 		expect(span.recordException).toHaveBeenCalledWith(error);
 		expect(span.setStatus).toHaveBeenCalledWith({ code: 2, message: String(error) });
 		expect(span.end).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('withMemorySpan()', () => {
+	it('falls through to fn() without starting a span when telemetry is disabled, undefined, or the tracer is not active-span-capable', async () => {
+		const disabled = builtTelemetry({ enabled: false, tracer: fakeTracer(fakeSpan()) });
+		await expect(
+			withMemorySpan(
+				'query_memory',
+				'my-agent',
+				disabled,
+				() => ({}),
+				async () =>
+					await Promise.resolve({
+						result: 'ok',
+					}),
+			),
+		).resolves.toBe('ok');
+
+		const noTracer = builtTelemetry();
+		await expect(
+			withMemorySpan(
+				'query_memory',
+				'my-agent',
+				noTracer,
+				() => ({}),
+				async () =>
+					await Promise.resolve({
+						result: 'ok',
+					}),
+			),
+		).resolves.toBe('ok');
+
+		await expect(
+			withMemorySpan(
+				'query_memory',
+				'my-agent',
+				undefined,
+				() => ({}),
+				async () =>
+					await Promise.resolve({
+						result: 'ok',
+					}),
+			),
+		).resolves.toBe('ok');
+	});
+
+	it('never calls buildInitialAttributes when telemetry is disabled, undefined, or the tracer is not active-span-capable', async () => {
+		// Regression guard: callers build these attributes from
+		// inferMemoryStoreAttributes(memory), which calls memory.describe() — a
+		// method some BuiltMemory implementations don't implement. If this thunk
+		// were called eagerly regardless of telemetry state, any such backend
+		// would break even with telemetry fully disabled.
+		const buildInitialAttributes = vi.fn(() => ({ owners: ['resource-1'] }));
+		const fn = async () => await Promise.resolve({ result: 'ok' });
+
+		await withMemorySpan('query_memory', 'my-agent', undefined, buildInitialAttributes, fn);
+		await withMemorySpan(
+			'query_memory',
+			'my-agent',
+			builtTelemetry({ enabled: false, tracer: fakeTracer(fakeSpan()) }),
+			buildInitialAttributes,
+			fn,
+		);
+		await withMemorySpan('query_memory', 'my-agent', builtTelemetry(), buildInitialAttributes, fn);
+
+		expect(buildInitialAttributes).not.toHaveBeenCalled();
+	});
+
+	it('opens a span named query_memory with gen_ai.memory.* attributes from initialAttributes', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer });
+
+		const result = await withMemorySpan(
+			'query_memory',
+			'my-agent',
+			telemetry,
+			() => ({
+				types: ['session'],
+				owners: ['resource-1'],
+				storeTypes: ['in_memory'],
+				storeNames: ['memory'],
+			}),
+			async () => await Promise.resolve({ result: { entries: 3 } }),
+		);
+
+		expect(result).toEqual({ entries: 3 });
+		expect(tracer.startActiveSpan).toHaveBeenCalledTimes(1);
+		const [name, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('query_memory');
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).toEqual({
+			'gen_ai.operation.name': 'query_memory',
+			'gen_ai.agent.name': 'my-agent',
+			'gen_ai.memory.types': ['session'],
+			'gen_ai.memory.owners': ['resource-1'],
+			'gen_ai.memory.store.types': ['in_memory'],
+			'gen_ai.memory.store.names': ['memory'],
+		});
+		expect(span.end).toHaveBeenCalledTimes(1);
+	});
+
+	it('merges post-hoc attributes returned by fn() onto the span, named save_memory', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer });
+
+		await withMemorySpan(
+			'save_memory',
+			'my-agent',
+			telemetry,
+			() => ({ owners: ['resource-1'] }),
+			async () =>
+				await Promise.resolve({
+					result: undefined,
+					attributes: { ids: ['m1', 'm2'], operations: ['created', 'created'] },
+				}),
+		);
+
+		const [name] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('save_memory');
+		expect(span.setAttributes).toHaveBeenCalledWith({
+			'gen_ai.operation.name': 'save_memory',
+			'gen_ai.agent.name': 'my-agent',
+			'gen_ai.memory.ids': ['m1', 'm2'],
+			'gen_ai.memory.operations': ['created', 'created'],
+		});
+	});
+
+	it('does not call setAttributes when fn() returns no post-hoc attributes', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer });
+
+		await withMemorySpan(
+			'query_memory',
+			'my-agent',
+			telemetry,
+			() => ({}),
+			async () =>
+				await Promise.resolve({
+					result: 'ok',
+				}),
+		);
+
+		expect(span.setAttributes).not.toHaveBeenCalled();
+	});
+
+	it('records the exception, sets error status, ends the span, and rethrows when fn() throws', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer });
+		const error = new Error('memory boom');
+
+		await expect(
+			withMemorySpan(
+				'query_memory',
+				'my-agent',
+				telemetry,
+				() => ({}),
+				() => {
+					throw error;
+				},
+			),
+		).rejects.toThrow('memory boom');
+
+		expect(span.recordException).toHaveBeenCalledWith(error);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: 2, message: String(error) });
+		expect(span.end).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('inferMemoryStoreAttributes()', () => {
+	it("returns storeTypes: ['in_memory'] and storeNames from describe() for InMemoryMemory", async () => {
+		const { InMemoryMemory } = await import('../memory/memory-store.js');
+		const { inferMemoryStoreAttributes } = await import('../telemetry/runtime-telemetry.js');
+		const memory = new InMemoryMemory();
+
+		expect(inferMemoryStoreAttributes(memory)).toEqual({
+			storeTypes: ['in_memory'],
+			storeNames: ['memory'],
+		});
+	});
+
+	it('omits storeTypes for a backend it cannot identify, but keeps storeNames', async () => {
+		const { inferMemoryStoreAttributes } = await import('../telemetry/runtime-telemetry.js');
+		const customMemory = {
+			describe: () => ({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
+		} as unknown as import('../../types').BuiltMemory;
+
+		expect(inferMemoryStoreAttributes(customMemory)).toEqual({ storeNames: ['n8n'] });
+	});
+
+	it('omits storeNames when describe() returns an empty name, but still identifies InMemoryMemory', async () => {
+		const { inferMemoryStoreAttributes } = await import('../telemetry/runtime-telemetry.js');
+		const unnamedMemory = {
+			describe: () => ({ name: '', constructorName: 'InMemoryMemory', connectionParams: null }),
+		} as unknown as import('../../types').BuiltMemory;
+
+		expect(inferMemoryStoreAttributes(unnamedMemory)).toEqual({ storeTypes: ['in_memory'] });
+	});
+
+	it('returns {} instead of throwing when describe() is broken, so the memory operation still runs', async () => {
+		const { inferMemoryStoreAttributes } = await import('../telemetry/runtime-telemetry.js');
+		const brokenMemory = {
+			describe: () => {
+				throw new Error('Method not implemented.');
+			},
+		} as unknown as import('../../types').BuiltMemory;
+
+		expect(inferMemoryStoreAttributes(brokenMemory)).toEqual({});
 	});
 });

@@ -22,7 +22,8 @@ export default mergeConfig(
 				compiler: 'vue3',
 				autoInstall: true,
 			}),
-			dts(),
+			// The bundle pass emits the same declarations as the lib pass — skip the ~12s duplicate run.
+			...(includeVue ? [] : [dts()]),
 			{
 				name: 'rename-css-file',
 				closeBundle() {

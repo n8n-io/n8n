@@ -80,6 +80,19 @@ export class ExecuteWorkflow implements INodeType {
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
 			},
 			{
+				displayName:
+					'The "Local File" and "URL" sources are deprecated and will be removed in a future version. Import the workflow into this n8n instance and use the "Database" source, or paste its JSON into the "Parameter" source instead.',
+				name: 'sourceDeprecationNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						source: ['localFile', 'url'],
+						'@version': [{ _cnd: { lte: 1.1 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Source',
 				name: 'source',
 				type: 'options',
@@ -219,6 +232,7 @@ export class ExecuteWorkflow implements INodeType {
 						multiKeyMatch: false,
 						supportAutoMap: false,
 						showTypeConversionOptions: true,
+						refreshStaleSchemaOnOpen: true,
 					},
 				},
 				displayOptions: {

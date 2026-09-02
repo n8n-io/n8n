@@ -13,13 +13,15 @@ import {
 
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
-import { isFailedDelegateOutput } from './delegateTool';
+import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import { summariseToolCall } from './interactiveSummary';
 import type {
 	ApprovalInput,
 	ChatMessage,
+	ChatMessageAttachment,
 	ChatMessageRenderPart,
 	InteractivePayload,
+	ThinkingSegment,
 	ToolCall,
 } from './types';
 
@@ -123,16 +125,20 @@ function isDeclinedToolOutput(value: unknown): boolean {
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
 export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
-	const approvalInput = parseApprovalInput(tc.input);
+	const approvalInput = parseApprovalInput(tc.suspendPayload) ?? parseApprovalInput(tc.input);
 	if (approvalInput) {
+		const resolved = tc.output !== undefined;
 		return {
 			toolCallId: tc.toolCallId,
-			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(resolved && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
 			toolName: APPROVAL_TOOL_NAME,
 			input: approvalInput,
-			...(tc.output !== undefined && {
-				resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
-			}),
+			...(resolved &&
+				tc.canceled !== true &&
+				!isDelegateSubAgentTool(tc.tool) && {
+					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
+				}),
 		};
 	}
 
@@ -145,9 +151,10 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 		return {
 			toolCallId: tc.toolCallId,
 			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
 			toolName: N8N_CHAT_ACTION_TOOL_NAME,
 			input,
-			...(resolved?.success && { resolvedValue: resolved.data }),
+			...(tc.canceled !== true && resolved?.success && { resolvedValue: resolved.data }),
 		};
 	}
 
@@ -173,17 +180,33 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 
 		let text = '';
 		let thinking = '';
+		const thinkingSegments: ThinkingSegment[] = [];
 		const toolCalls: ToolCall[] = [];
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
-		let status: ChatMessage['status'];
+		const attachments: ChatMessageAttachment[] = [];
+		let status: ChatMessage['status'] =
+			msg.executionStatus === 'error' ? CHAT_MESSAGE_STATUS.ERROR : undefined;
 
-		for (const part of msg.content) {
+		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
 				renderParts.push({ type: 'text', text: part.text });
+			} else if (part.type === 'file' && part.fileId) {
+				attachments.push({
+					fileId: part.fileId,
+					fileName: part.fileName ?? 'attachment',
+					mimeType: part.mimeType ?? 'application/octet-stream',
+					sizeBytes: part.sizeBytes,
+				});
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
+				thinkingSegments.push({
+					id: `${msg.id}:reasoning:${partIndex}`,
+					content: part.text,
+					...(part.startTime !== undefined && { startTime: part.startTime }),
+					...(part.endTime !== undefined && { endTime: part.endTime }),
+				});
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
@@ -200,6 +223,9 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
+				} else if (msg.executionStatus === 'error') {
+					state = TOOL_CALL_STATE.ERROR;
+					output = part.error;
 				} else {
 					state = TOOL_CALL_STATE.RUNNING;
 					output = undefined;
@@ -214,13 +240,14 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					state,
 					...(part.startTime !== undefined && { startTime: part.startTime }),
 					...(part.endTime !== undefined && { endTime: part.endTime }),
+					...(part.childTrace && { childProgress: part.childTrace }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
 
 				const rebuilt = rebuildInteractiveFromHistory(toolCall);
 				if (!rebuilt) continue;
-				if (rebuilt.resolvedAt === undefined) {
+				if (rebuilt.resolvedAt === undefined && msg.executionStatus !== 'error') {
 					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
 					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
@@ -235,8 +262,11 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			content: text,
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
+			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+			...(attachments.length > 0 && { attachments }),
 			...(status && { status }),
+			...(msg.executionId ? { executionId: msg.executionId } : {}),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);
@@ -245,10 +275,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 }
 
 /**
- * Re-attach a `runId` to each interactive card whose underlying tool call is
- * still suspended on the backend. The sidecar comes from chat history
- * (`openSuspensions`) — `convertDbMessages` can't surface it on its own
- * because raw persisted messages don't carry runIds.
+ * Reconcile unfinished tool calls and interactive cards with the suspensions
+ * still open on the backend. The sidecar comes from chat history
+ * (`openSuspensions`) — raw persisted messages don't carry runIds or enough
+ * information to distinguish a live suspension from an interrupted run.
  *
  * Mutates `chat` in place (history-load happens before reactivity wraps the
  * messages, so this is safe and avoids an extra deep clone) and returns it
@@ -258,15 +288,61 @@ export function applyOpenSuspensions(
 	chat: ChatMessage[],
 	suspensions: AgentBuilderOpenSuspension[],
 ): ChatMessage[] {
-	if (suspensions.length === 0) return chat;
-	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s.runId]));
+	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s]));
 	for (const msg of chat) {
-		const interactives = getMessageInteractives(msg);
-		for (const interactive of interactives) {
-			const runId = byToolCallId.get(interactive.toolCallId);
-			if (runId) interactive.runId = runId;
+		let hasOpenToolCall = false;
+		for (const toolCall of msg.toolCalls ?? []) {
+			if (
+				toolCall.state === TOOL_CALL_STATE.DONE ||
+				toolCall.state === TOOL_CALL_STATE.ERROR ||
+				toolCall.state === TOOL_CALL_STATE.CANCELLED
+			) {
+				continue;
+			}
+
+			const suspension = byToolCallId.get(toolCall.toolCallId);
+			if (suspension) {
+				toolCall.state = TOOL_CALL_STATE.SUSPENDED;
+				toolCall.runId = suspension.runId;
+				if (suspension.suspendPayload !== undefined) {
+					toolCall.suspendPayload = suspension.suspendPayload;
+				}
+				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				if (rebuilt) {
+					rebuilt.runId = suspension.runId;
+					upsertMessageInteractive(msg, rebuilt);
+				}
+				hasOpenToolCall = true;
+			} else if (msg.status === CHAT_MESSAGE_STATUS.ERROR) {
+				toolCall.state = TOOL_CALL_STATE.ERROR;
+			} else {
+				toolCall.state = TOOL_CALL_STATE.CANCELLED;
+				toolCall.canceled = true;
+			}
 		}
-		setMessageInteractives(msg, interactives);
+
+		const interactives = getMessageInteractives(msg);
+		const retained: InteractivePayload[] = [];
+		for (const interactive of interactives) {
+			if (interactive.resolvedAt !== undefined) {
+				retained.push(interactive);
+				continue;
+			}
+
+			const suspension = byToolCallId.get(interactive.toolCallId);
+			if (suspension) {
+				interactive.runId = suspension.runId;
+				retained.push(interactive);
+			}
+		}
+		setMessageInteractives(msg, retained);
+		if (hasOpenToolCall) {
+			msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
+		} else if (msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
+			msg.status = msg.toolCalls?.some((tc) => tc.state === TOOL_CALL_STATE.ERROR)
+				? CHAT_MESSAGE_STATUS.ERROR
+				: CHAT_MESSAGE_STATUS.SUCCESS;
+		}
 	}
 	return chat;
 }

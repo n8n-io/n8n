@@ -254,7 +254,7 @@ function editCredential(credentialId: string) {
 	transition: background-color 80ms ease;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--color--background--light-1);
 
 		.rowEdit {
 			opacity: 1;
@@ -321,7 +321,7 @@ function editCredential(credentialId: string) {
 	text-align: left;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--color--background--light-1);
 	}
 }
 </style>

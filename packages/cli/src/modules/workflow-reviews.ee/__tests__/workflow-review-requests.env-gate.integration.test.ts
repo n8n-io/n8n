@@ -21,8 +21,8 @@ beforeEach(async () => {
 	ownerAgent = testServer.authAgentFor(owner);
 });
 
-describe('POST /workflow-review-requests (env flag off)', () => {
-	test('is unreachable (404) even though the license is present', async () => {
+describe('workflow-review-requests (env flag off)', () => {
+	test('POST is unreachable (404) even though the license is present', async () => {
 		await ownerAgent
 			.post('/workflow-review-requests')
 			.send({
@@ -30,6 +30,32 @@ describe('POST /workflow-review-requests (env flag off)', () => {
 				workflows: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
 			})
 			.expect(404);
+	});
+
+	test('POST update-version is unreachable (404) even though the license is present', async () => {
+		await ownerAgent
+			.post('/workflow-review-requests/some-request/update-version')
+			.send({ workflowId: 'wf-1', workflowVersionId: 'version-1' })
+			.expect(404);
+	});
+
+	test('POST decision is unreachable (404) even though the license is present', async () => {
+		await ownerAgent
+			.post('/workflow-review-requests/some-request/decision')
+			.send({ decision: 'approved' })
+			.expect(404);
+	});
+
+	test('GET inbox is unreachable (404)', async () => {
+		await ownerAgent.get('/workflow-review-requests/inbox').expect(404);
+	});
+
+	test('GET summary is unreachable (404)', async () => {
+		await ownerAgent.get('/workflow-review-requests/summary').expect(404);
+	});
+
+	test('GET detail is unreachable (404)', async () => {
+		await ownerAgent.get('/workflow-review-requests/some-id').expect(404);
 	});
 });
 

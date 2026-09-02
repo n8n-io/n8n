@@ -12,7 +12,7 @@ import {
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { DbConnection } from '@n8n/db';
+import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
@@ -25,7 +25,8 @@ import {
 	ExecutionContextHookRegistry,
 	StorageConfig,
 } from 'n8n-core';
-import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { Expression, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
@@ -86,6 +87,12 @@ export abstract class BaseCommand<F = never> {
 
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
+
+	/**
+	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
+	 * Only server processes hold the encryption key these are derived from.
+	 */
+	protected seedsInstanceIdentity = false;
 
 	async init(): Promise<void> {
 		this.dbConnection = Container.get(DbConnection);
@@ -166,6 +173,20 @@ export abstract class BaseCommand<F = never> {
 				async (error: Error) =>
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
+
+		// Apply the persisted instance identity so every command (e.g. license:info)
+		// sees the same instanceId as the running server. Non-fatal for one-off
+		// commands, which must keep working with restricted DB credentials.
+		try {
+			await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
+				canSeed: this.seedsInstanceIdentity,
+			});
+		} catch (error) {
+			if (this.seedsInstanceIdentity) throw error;
+			this.logger.warn('Could not read the instance identity from the DB, using derived values', {
+				error: ensureError(error),
+			});
+		}
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 

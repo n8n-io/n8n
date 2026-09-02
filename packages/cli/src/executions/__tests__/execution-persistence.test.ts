@@ -587,6 +587,27 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(true);
 				expect(executionRepository.update).not.toHaveBeenCalled();
 			});
+
+			it('should not overwrite startedAt', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({
+					affected: 1,
+					generatedMaps: [],
+					raw: {},
+				});
+				const startedAt = new Date();
+
+				const result = await executionPersistence.updateExistingExecution(executionId, {
+					status: 'running',
+					startedAt,
+				});
+
+				expect(result).toBe(true);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					{ status: 'running' },
+				);
+			});
 		});
 
 		describe('data updates on db-mode executions', () => {
@@ -1105,13 +1126,15 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
+				const startedAt = new Date();
+
 				await executionPersistence.updateExistingExecution(executionId, {
 					id: executionId,
 					data: runData,
 					workflowId: 'other-wf',
 					workflowVersionId: 'v-new',
 					createdAt: new Date(),
-					startedAt: new Date(),
+					startedAt,
 					customData: { foo: 'bar' },
 					status: 'success',
 				});
@@ -1671,7 +1694,7 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
-	describe('getExecutionsForPublicApi', () => {
+	describe('findManyInWorkflows', () => {
 		const wf = 'wf-1';
 		const where = { workflowId: wf };
 		const publicApiSelect = [
@@ -1688,18 +1711,19 @@ describe('ExecutionPersistence', () => {
 		];
 
 		beforeEach(() => {
-			executionRepository.getFindExecutionsForPublicApiCondition.mockReturnValue(where);
+			executionRepository.getFindManyInWorkflowsCondition.mockReturnValue(where);
 		});
 
 		it('should query per the repository where condition, without data when not requested', async () => {
 			const executionPersistence = createPersistenceService('db');
 			executionRepository.findMultipleExecutions.mockResolvedValue([]);
-			const params = { limit: 10, workflowIds: [wf] };
+			const options = { limit: 10 };
 
-			await executionPersistence.getExecutionsForPublicApi(params);
+			await executionPersistence.findManyInWorkflows([wf], options);
 
-			expect(executionRepository.getFindExecutionsForPublicApiCondition).toHaveBeenCalledWith(
-				params,
+			expect(executionRepository.getFindManyInWorkflowsCondition).toHaveBeenCalledWith(
+				[wf],
+				options,
 			);
 			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
 				{ select: publicApiSelect, where, order: { id: 'DESC' }, take: 10 },
@@ -1732,7 +1756,7 @@ describe('ExecutionPersistence', () => {
 				]),
 			);
 
-			const result = await executionPersistence.getExecutionsForPublicApi({
+			const result = await executionPersistence.findManyInWorkflows([wf], {
 				limit: 10,
 				includeData: true,
 			});

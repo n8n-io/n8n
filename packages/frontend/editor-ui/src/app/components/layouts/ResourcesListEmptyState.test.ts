@@ -12,6 +12,7 @@ describe('ResourcesListEmptyState', () => {
 		['variables', 'Create your first variable', 'Create variable'],
 		['dataTable', 'Create your first data table', 'Create data table'],
 		['workflows', 'Create your first automation', 'Create workflow'],
+		['executions', 'No executions yet', 'Create workflow'],
 		['agents', 'Create your first agent', 'Create agent'],
 	])('renders canonical heading and CTA for %s', (resourceKey, heading, cta) => {
 		const { getByText, getByRole } = renderComponent({ props: { resourceKey } });

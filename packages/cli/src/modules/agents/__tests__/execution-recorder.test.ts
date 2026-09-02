@@ -1,6 +1,6 @@
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
-import { ExecutionRecorder } from '../execution-recorder';
+import { ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
@@ -89,6 +89,64 @@ describe('ExecutionRecorder', () => {
 	});
 
 	describe('timeline ordering', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('records reasoning with timing without adding it to the assistant response', () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'reasoning-start', id: 'r1' });
+			recorder.record({ type: 'reasoning-delta', id: 'r1', delta: 'Check the inputs. ' });
+			vi.setSystemTime(1_500);
+			recorder.record({ type: 'reasoning-delta', id: 'r1', delta: 'Then answer.' });
+			vi.setSystemTime(2_000);
+			recorder.record({ type: 'reasoning-end', id: 'r1' });
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Done' });
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+
+			expect(record.timeline).toEqual([
+				{
+					type: 'reasoning',
+					content: 'Check the inputs. Then answer.',
+					timestamp: 1_000,
+					endTime: 2_000,
+				},
+				{ type: 'text', content: 'Done', timestamp: 2_000, endTime: 2_000 },
+			]);
+			expect(record.assistantResponse).toBe('Done');
+		});
+
+		it('keeps partial reasoning when the stream errors', () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'reasoning-start', id: 'r1' });
+			recorder.record({ type: 'reasoning-delta', id: 'r1', delta: 'Partial analysis' });
+			vi.setSystemTime(2_000);
+			recorder.record({ type: 'error', error: new Error('Stream failed') });
+
+			expect(recorder.getMessageRecord()).toEqual(
+				expect.objectContaining({
+					assistantResponse: '',
+					error: 'Stream failed',
+					timeline: [
+						{
+							type: 'reasoning',
+							content: 'Partial analysis',
+							timestamp: 1_000,
+							endTime: 2_000,
+						},
+					],
+				}),
+			);
+		});
+
 		it('captures text → tool call → text in order', () => {
 			const recorder = new ExecutionRecorder();
 
@@ -770,6 +828,235 @@ describe('ExecutionRecorder — node-tool {{$json.x}} resolution', () => {
 		expect(tc.nodeParameters).toEqual({
 			url: 'https://api/x',
 			body: 'hi',
+		});
+	});
+});
+
+describe('ExecutionRecorder — subagent-chunk', () => {
+	it('attaches forwarded child chunks to the open delegate tool-call entry', () => {
+		const recorder = new ExecutionRecorder();
+		recorder.record(makeToolCallChunk('delegate_subagent', { goal: 'x' }, 'tc-parent'));
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: { type: 'text-delta', id: 't-1', delta: 'hello' },
+		} as StreamChunk);
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: {
+				type: 'tool-input-start',
+				toolCallId: 'child-tc-1',
+				toolName: 'web_search',
+			},
+		} as StreamChunk);
+		recorder.record({
+			type: 'tool-execution-end',
+			toolCallId: 'tc-parent',
+			toolName: 'delegate_subagent',
+			isError: false,
+			endTime: 2_000,
+		});
+		recorder.record(makeToolResultChunk('delegate_subagent', { status: 'completed' }, 'tc-parent'));
+
+		const entry = recorder
+			.getMessageRecord()
+			.timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-parent');
+		expect(entry).toMatchObject({
+			childTrace: {
+				text: 'hello',
+				steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+			},
+		});
+	});
+
+	it('caps persisted child text at 4000 characters, trimming a delta that straddles it', () => {
+		const recorder = new ExecutionRecorder();
+		recorder.record(makeToolCallChunk('delegate_subagent', {}, 'tc-parent'));
+		// Neither delta lands on the boundary, so the second must be trimmed
+		// rather than persisted whole.
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: { type: 'text-delta', id: 't-1', delta: 'a'.repeat(3_000) },
+		} as StreamChunk);
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: { type: 'text-delta', id: 't-1', delta: 'b'.repeat(3_000) },
+		} as StreamChunk);
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: { type: 'text-delta', id: 't-1', delta: 'over budget' },
+		} as StreamChunk);
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: {
+				type: 'tool-input-start',
+				toolCallId: 'child-tc-1',
+				toolName: 'web_search',
+			},
+		} as StreamChunk);
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: {
+				type: 'tool-execution-end',
+				toolCallId: 'child-tc-1',
+				toolName: 'web_search',
+				isError: false,
+				endTime: 1,
+			},
+		} as StreamChunk);
+
+		const entry = recorder
+			.getMessageRecord()
+			.timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-parent');
+		expect(entry?.type).toBe('tool-call');
+		if (entry?.type !== 'tool-call') return;
+		expect(entry.childTrace?.text).toHaveLength(4_000);
+		expect(entry.childTrace?.steps).toEqual([
+			{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false },
+		]);
+	});
+
+	it('settles child steps when the delegation closes via tool-result alone', () => {
+		const recorder = new ExecutionRecorder();
+		recorder.record(makeToolCallChunk('delegate_subagent', {}, 'tc-parent'));
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'tc-parent',
+			chunk: {
+				type: 'tool-input-start',
+				toolCallId: 'child-tc-1',
+				toolName: 'web_search',
+			},
+		} as StreamChunk);
+		// No tool-execution-end for the parent — only the batched tool-result.
+		recorder.record(makeToolResultChunk('delegate_subagent', { status: 'completed' }, 'tc-parent'));
+
+		const entry = recorder
+			.getMessageRecord()
+			.timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-parent');
+		expect(entry?.type).toBe('tool-call');
+		if (entry?.type !== 'tool-call') return;
+		expect(entry.childTrace?.steps).toEqual([
+			{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false },
+		]);
+	});
+
+	it('ignores a subagent-chunk with no matching open tool-call entry', () => {
+		const recorder = new ExecutionRecorder();
+		recorder.record({
+			type: 'subagent-chunk',
+			taskName: 'research',
+			taskPath: '/root/research_0',
+			parentToolCallId: 'missing',
+			chunk: { type: 'text-delta', id: 't-1', delta: 'orphan' },
+		} as StreamChunk);
+
+		expect(recorder.getMessageRecord().timeline).toEqual([]);
+	});
+});
+
+describe('ExecutionRecorder — durable timeline events', () => {
+	it('emits replacing live snapshots without splitting the final response', () => {
+		vi.useFakeTimers();
+		try {
+			const snapshots: TimelineEvent[][] = [];
+			const recorder = new ExecutionRecorder(undefined, (timeline) => snapshots.push(timeline));
+			recorder.record({ type: 'text-delta', id: 'text-1', delta: 'First' });
+			vi.advanceTimersByTime(999);
+			expect(snapshots).toEqual([]);
+			vi.advanceTimersByTime(1);
+			expect(snapshots).toEqual([[expect.objectContaining({ type: 'text', content: 'First' })]]);
+
+			recorder.record({ type: 'text-delta', id: 'text-1', delta: ' second' });
+			vi.advanceTimersByTime(1_000);
+
+			expect(snapshots).toEqual([
+				[expect.objectContaining({ type: 'text', content: 'First' })],
+				[expect.objectContaining({ type: 'text', content: 'First second' })],
+			]);
+			const record = recorder.getMessageRecord();
+			expect(record.assistantResponse).toBe('First second');
+			expect(record.timeline).toEqual([
+				expect.objectContaining({ type: 'text', content: 'First second' }),
+			]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('emits a tool snapshot when execution starts and updates it on completion', () => {
+		const snapshots: TimelineEvent[][] = [];
+		const recorder = new ExecutionRecorder(undefined, (timeline) => snapshots.push(timeline));
+
+		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Checking' });
+		expect(snapshots).toEqual([]);
+
+		recorder.record({
+			type: 'tool-call',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			input: { id: 1 },
+		} as StreamChunk);
+		expect(snapshots).toEqual([[expect.objectContaining({ type: 'text', content: 'Checking' })]]);
+
+		recorder.record({
+			type: 'tool-execution-start',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			startTime: 10,
+		});
+		expect(snapshots[1]?.[1]).toMatchObject({
+			type: 'tool-call',
+			startTime: 10,
+			endTime: 0,
+		});
+
+		recorder.record({
+			type: 'tool-execution-end',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			isError: false,
+			endTime: 20,
+		});
+		recorder.record({
+			type: 'tool-result',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			output: { name: 'Ada' },
+		});
+
+		expect(snapshots).toHaveLength(4);
+		expect(snapshots[2]?.[1]).toMatchObject({
+			type: 'tool-call',
+			endTime: 20,
+			output: undefined,
+		});
+		expect(snapshots[3]?.[1]).toMatchObject({
+			type: 'tool-call',
+			endTime: 20,
+			output: { name: 'Ada' },
 		});
 	});
 });

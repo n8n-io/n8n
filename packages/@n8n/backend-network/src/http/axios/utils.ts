@@ -345,11 +345,17 @@ export function getUrlFromProxyConfig(
 	}
 }
 
-/** Resolves `url` against an optional `baseURL`, returning the absolute href. */
+/**
+ * Resolves `url` against an optional `baseURL`, returning the absolute href.
+ *
+ * Mirrors how axios composes the request target, including the case of an absent
+ * or empty `url`, where the request goes to `baseURL` on its own.
+ */
 export function buildTargetUrl(url?: string, baseURL?: string): string | undefined {
-	if (!url) return undefined;
-
 	try {
+		if (!url) {
+			return baseURL ? new URL(baseURL).href : undefined;
+		}
 		return baseURL ? new URL(url, baseURL).href : url;
 	} catch {
 		return undefined;
@@ -395,8 +401,22 @@ export async function validateUrlSsrf(
 	}
 }
 
+/**
+ * Resolves the raw target of a legacy request object, i.e. the value the axios
+ * config carries as its `url`.
+ *
+ * `url` wins over its `uri` alias whenever it is set, mirroring the precedence of
+ * the `request` library. Single source of truth for the legacy target so the
+ * pre-flight SSRF check and the dispatched request can never read different
+ * fields.
+ */
+export function resolveLegacyRequestTarget(requestObject: IRequestOptions): string | undefined {
+	return (requestObject.url ?? requestObject.uri)?.toString();
+}
+
+/** Resolves the absolute target of a legacy request object, honouring `baseURL`. */
 export function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
-	const rawUrl = requestObject.uri?.toString() ?? requestObject.url?.toString();
+	const rawUrl = resolveLegacyRequestTarget(requestObject);
 	const baseURL = requestObject.baseURL?.toString();
 	return buildTargetUrl(rawUrl, baseURL) ?? rawUrl;
 }

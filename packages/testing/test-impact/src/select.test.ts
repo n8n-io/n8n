@@ -216,6 +216,64 @@ describe('selectTests — fail-open contract', () => {
 		expect(result.mode).toBe('broad');
 	});
 
+	// A stray `paths` entry re-points every spec's imports — the regression this guards.
+	it('tsconfig resolution-key change (paths) → broad, never declared uncovered', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-tsconfig-paths.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/workflow/tsconfig.json'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+			tsconfigs: {
+				'packages/workflow/tsconfig.json': {
+					before: JSON.stringify({ compilerOptions: { paths: { 'esprima-next': ['./x'] } } }),
+					after: JSON.stringify({
+						compilerOptions: {
+							paths: { 'n8n-workflow': ['./src/index.ts'], 'esprima-next': ['./x'] },
+						},
+					}),
+				},
+			},
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+		expect(result.uncovered).toBeUndefined();
+	});
+
+	it('tsconfig resolution-neutral change (strict) → dropped, source still scopes', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-tsconfig-neutral.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/cli/tsconfig.json', 'packages/cli/src/x.ts'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+			tsconfigs: {
+				'packages/cli/tsconfig.json': {
+					before: JSON.stringify({ compilerOptions: { strict: true } }),
+					after: JSON.stringify({ compilerOptions: { strict: false } }),
+				},
+			},
+		});
+		expect(result.mode).toBe('scoped');
+		expect(result.specs).toEqual(['tests/e2e/a.spec.ts']);
+		expect(result.uncovered).toBeUndefined();
+	});
+
+	it('tsconfig change with no diff metadata → broad (cannot classify)', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-tsconfig-nometa.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/workflow/tsconfig.json'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+	});
+
 	describe('--all-specs parsing', () => {
 		const triggerBroad = (allSpecsFile: string) =>
 			selectTests({
@@ -237,5 +295,63 @@ describe('selectTests — fail-open contract', () => {
 			const file = writeAllSpecs('tests/e2e/a.spec.ts,\n,tests/e2e/b.spec.ts,\n\n');
 			expect(triggerBroad(file).specs).toEqual(['tests/e2e/a.spec.ts', 'tests/e2e/b.spec.ts']);
 		});
+	});
+});
+
+describe('selectTests — pnpm.overrides changes', () => {
+	let tempDir: string;
+
+	beforeEach(() => {
+		tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'select-ovr-')));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tempDir, { recursive: true, force: true });
+	});
+
+	const ALL_SPECS = ['tests/e2e/a.spec.ts', 'tests/e2e/b.spec.ts'];
+	const changedFiles = ['package.json', 'pnpm-lock.yaml'];
+
+	const setup = (target: string) => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapFile = path.join(tempDir, 'map.json');
+		fs.writeFileSync(mapFile, JSON.stringify(map));
+		const allSpecsFile = path.join(tempDir, 'all-specs.txt');
+		fs.writeFileSync(allSpecsFile, ALL_SPECS.join('\n'));
+		const manifests = {
+			'package.json': {
+				before: JSON.stringify({ pnpm: { overrides: {} } }),
+				after: JSON.stringify({ pnpm: { overrides: { [`${target}@<2`]: '2.0.0' } } }),
+			},
+		};
+		return { mapFile, allSpecsFile, manifests };
+	};
+
+	it('target outside the runtime closure → scoped with no specs (skip)', () => {
+		const result = selectTests({
+			changedFiles,
+			...setup('@vitest/browser'),
+			runtimeClosure: new Set(['ajv', 'fast-uri']),
+		});
+		expect(result.mode).toBe('scoped');
+		expect(result.specs).toEqual([]);
+	});
+
+	it('target inside the runtime closure → broad', () => {
+		const result = selectTests({
+			changedFiles,
+			...setup('fast-uri'),
+			runtimeClosure: new Set(['ajv', 'fast-uri']),
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+	});
+
+	it('no runtime closure supplied → broad (cannot prove dev-only)', () => {
+		const result = selectTests({
+			changedFiles,
+			...setup('@vitest/browser'),
+		});
+		expect(result.mode).toBe('broad');
 	});
 });

@@ -45,3 +45,11 @@ export function subscribe(listener: (modals: Map<string, ModalDefinition>) => vo
 		listeners.delete(listener);
 	};
 }
+
+/**
+ * Remove all registered modals. Primarily for test isolation.
+ */
+export function clear(): void {
+	modals.clear();
+	notifyListeners();
+}

@@ -68,6 +68,52 @@ describe('AgentsController route access scopes', () => {
 	});
 });
 
+describe('AgentsController create', () => {
+	const req = { params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never;
+
+	function makeCreateController(createdId: string) {
+		const agentPublishService = mock<AgentPublishService>();
+		const agentValidationService = mock<AgentValidationService>();
+		const agentsService = mock<Pick<AgentsService, 'create'>>();
+		agentsService.create.mockResolvedValue({ id: createdId, projectId: 'project-1' } as never);
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
+
+		const { controller } = makeController({
+			agentsService: agentsService as never,
+			agentPublishService,
+			agentValidationService,
+		});
+		return { controller, agentsService };
+	}
+
+	it('creates the agent under the id the client minted', async () => {
+		const { controller, agentsService } = makeCreateController('aBcDeFgHiJkLmNoP');
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Support Agent',
+			id: 'aBcDeFgHiJkLmNoP',
+		} as never);
+
+		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			id: 'aBcDeFgHiJkLmNoP',
+		});
+	});
+
+	it('lets the backend mint the id when the client did not supply one', async () => {
+		const { controller, agentsService } = makeCreateController('server-minted');
+
+		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
+
+		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			id: undefined,
+		});
+	});
+});
+
 describe('AgentsController list', () => {
 	const req = { params: { projectId: 'project-1' }, query: {}, user: { id: 'user-1' } } as never;
 

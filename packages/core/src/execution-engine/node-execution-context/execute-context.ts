@@ -61,7 +61,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
 		executeData: IExecuteData,
-		private readonly closeFunctions: CloseFunction[],
+		readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 		public subNodeExecutionResults?: EngineResponse,
 	) {
@@ -220,7 +220,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		}
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+			console.log(
+				`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`,
+				...this.redactedConsoleArgs(args),
+			);
 		}
 	}
 

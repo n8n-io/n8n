@@ -8,12 +8,12 @@ import type {
 } from './observation-log-reflector';
 import type { ModelConfig } from '../../types/sdk/agent';
 import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
+import { getModelIdString } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
-import { getModelIdString } from '../loop/runtime-context';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
-import { buildExperimentalTelemetry } from '../telemetry/telemetry-options';
+import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
 // The observer's fixed prompt is a few thousand tokens, so firing per tiny delta
 // is majority overhead. 8k keeps that overhead ratio acceptable while still firing
@@ -328,9 +328,9 @@ export function createObservationLogObserveFn(
 	return async (input) => {
 		const { text, usage, providerMetadata } = await loadAi().generateText({
 			model: createModel(model),
-			system: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
+			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
-			...buildExperimentalTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
+			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
@@ -582,9 +582,9 @@ export function createObservationLogReflectFn(
 	return async (input) => {
 		const { text, usage, providerMetadata } = await loadAi().generateText({
 			model: createModel(model),
-			system: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
+			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt(input),
-			...buildExperimentalTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),
+			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 

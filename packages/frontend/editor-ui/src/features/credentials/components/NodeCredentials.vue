@@ -5,8 +5,10 @@ import type {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
+	INodeParameters,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { resolveSupportedCredentialActivation } from 'n8n-workflow';
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -17,7 +19,7 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import {
 	useInstanceAiEditorCapability,
@@ -26,7 +28,7 @@ import {
 
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
@@ -38,13 +40,14 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
+import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
-import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
+import { SYSTEM_RESOLVER_ID, type InstanceAiCredentialSetupHint } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
@@ -79,6 +82,17 @@ type Props = {
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
+	/** Agent-supplied Templated Custom Auth recipe (Instance AI setup surfaces) —
+	 *  passed to the credential modal so a CREATE opens pre-filled on the guided
+	 *  simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
+	/** Replaces the type-derived field label ("Credential for X"). Only
+	 *  meaningful with `overrideCredType` (a single credential row). */
+	credentialsFieldLabel?: string;
+	/** Host-supplied behavior for the credential modal's Instance AI help button,
+	 *  overriding the injected editor capability. Instance AI setup cards use it —
+	 *  the capability chain doesn't reach the chat panel they render in. */
+	instanceAiCredentialHelp?: InstanceAiCredentialHelpHandler;
 	/** Skip the component's own credential fetch on mount. Hosts with a
 	 *  synthetic workflow document (e.g. the tool config modal) own the fetch
 	 *  themselves — the component's own fetch would query the synthetic
@@ -99,7 +113,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
-	valueChanged: [value: { name: string; value: string }];
+	valueChanged: [value: { name: string; value: NodeParameterValueType }];
 	blur: [source: string];
 }>();
 
@@ -112,9 +126,10 @@ const { instanceAi } = useEditorContext();
 const isToolContext = inject(ChatHubToolContextKey, false);
 
 // The host's credential-help behavior, handed to the (teleported) credential
-// modal that can't inject it. Undefined when Instance AI is off in this editor or
-// the host provides no credential action → the modal shows no Instance AI button.
-function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
+// modal that can't inject it. An explicit prop wins over the injected capability;
+// undefined when neither exists → the modal shows no Instance AI button.
+function resolveInstanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
+	if (props.instanceAiCredentialHelp) return props.instanceAiCredentialHelp;
 	const openCredential = instanceAiCapability.openCredential;
 	if (!instanceAi.value || !openCredential) return undefined;
 	return async (credential) => await openCredential(credential, 'credential_edit');
@@ -175,7 +190,7 @@ const {
 } = useNodeCredentialOptions(
 	node,
 	nodeType,
-	computed(() => props.overrideCredType),
+	() => props.overrideCredType,
 	() => props.showAll,
 );
 
@@ -318,38 +333,35 @@ watch(
 
 		if (!isEmpty(selected.value)) return;
 
-		const allOptions = types.map((type) => type.options).flat();
-
-		if (allOptions.length === 0) {
-			// No credentials configured — auto-enable AI Gateway for supported types,
-			// but only on the initial setup so a later action change doesn't redirect
-			// the user onto n8n credits. The experiment variant leaves it unselected.
-			if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
-				for (const { type } of types) {
-					if (
-						aiGateway.isCredentialTypeSupported(type.name) &&
-						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
-						isCurrentActionSupported.value
-					) {
-						onAiGatewaySelector(type.name, true, false);
-					}
-				}
-			}
+		const autoSelected = getAutoSelectedCredential(node.value, props.overrideCredType);
+		if (autoSelected) {
+			onCredentialSelected(
+				autoSelected.credentialType,
+				autoSelected.credential.id,
+				false, // showAuthOptions
+				false, // isUserAction
+			);
 			return;
 		}
 
-		const mostRecentCredential = allOptions.reduce(
-			(mostRecent, current) =>
-				mostRecent && mostRecent.updatedAt > current.updatedAt ? mostRecent : current,
-			allOptions[0],
-		);
-
-		onCredentialSelected(
-			mostRecentCredential.type,
-			mostRecentCredential.id,
-			false, // showAuthOptions
-			false, // isUserAction
-		);
+		// No credentials available to select — auto-enable AI Gateway for supported
+		// types, but only on the initial setup so a later action change doesn't
+		// redirect the user onto n8n credits. The experiment variant leaves it unselected.
+		if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
+			for (const { type } of types) {
+				// Same rule as showAiGatewaySelector: supported type, or a sibling fallback.
+				const gatewaySupported =
+					aiGateway.isCredentialTypeSupported(type.name) ||
+					resolveGatewayActivation(type.name) !== undefined;
+				if (
+					gatewaySupported &&
+					aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
+					isCurrentActionSupported.value
+				) {
+					onAiGatewaySelector(type.name, true, false);
+				}
+			}
+		}
 	},
 	{ immediate: true },
 );
@@ -525,7 +537,9 @@ function createNewCredential(
 		{
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
-			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			...(isToolContext ? { appendToBody: true } : {}),
+			instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
+			credentialSetupHint: props.credentialSetupHint,
 		},
 	);
 	telemetry.track('User opened Credential modal', {
@@ -677,23 +691,79 @@ function isAiGatewayManagedCredentials(credentialType: string): boolean {
 	return aiGateway.isEnabled.value && selected.value[credentialType]?.__aiGatewayManaged === true;
 }
 
+// Credential type + activation parameters n8n credits should use for this row:
+// the shown type if supported, else a supported sibling (whose auth the node
+// switches to). See `resolveSupportedCredentialActivation`.
+//
+// The sibling fallback is limited to hosts consuming the full `credentialSelected`
+// payload and `valueChanged` (NDV, tool config). Setup-flow hosts (setup panel,
+// Instance AI — standalone or `overrideCredType`) key the payload by this row's
+// type, so a sibling switch reads as a deselect and the auth change is lost.
+function resolveGatewayActivation(credentialType: string) {
+	if (!nodeType.value) return undefined;
+	const activation = resolveSupportedCredentialActivation(
+		nodeType.value,
+		props.node,
+		aiGateway.isCredentialTypeSupported,
+		credentialType,
+	);
+	if (!activation) return undefined;
+	const isSetupFlowHost =
+		props.standalone ||
+		(typeof props.overrideCredType === 'string' && props.overrideCredType !== '');
+	if (activation.credentialType !== credentialType && isSetupFlowHost) return undefined;
+	return activation;
+}
+
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
-	if (!aiGateway.isCredentialTypeSupported(credentialType)) return false;
-	return true;
+	// Shown type supported → toggle directly; otherwise fall back to a sibling.
+	if (aiGateway.isCredentialTypeSupported(credentialType)) return true;
+	return resolveGatewayActivation(credentialType) !== undefined;
+}
+
+// Persist the parameters that activate the chosen credential type (e.g. switch
+// `authentication`): write through the workflow document, and emit so hosts that
+// keep their own parameter copy (NDV, setup panel) stay in sync.
+function applyActivationParameters(parameters: INodeParameters): void {
+	const changed = Object.entries(parameters).filter(
+		([name, value]) => props.node.parameters[name] !== value,
+	);
+	if (changed.length === 0) return;
+
+	if (!props.standalone && workflowDocumentStore?.value) {
+		workflowDocumentStore.value.updateNodeProperties({
+			name: props.node.name,
+			properties: { parameters: { ...props.node.parameters, ...Object.fromEntries(changed) } },
+		});
+	}
+	for (const [name, value] of changed) {
+		emit('valueChanged', { name: `parameters.${name}`, value });
+	}
 }
 
 function onAiGatewaySelector(credentialType: string, enable: boolean, isUserAction = true): void {
 	const credentials = { ...(props.node.credentials ?? {}) };
+
+	// When enabling n8n credits, the managed slot goes on the supported credential
+	// type — the shown one, or a supported sibling whose auth we switch the node to.
+	const activation = enable ? resolveGatewayActivation(credentialType) : undefined;
+	const effectiveType = activation?.credentialType ?? credentialType;
 
 	// Track the credential kind actually assigned, or null when the slot is cleared
 	// (toggle-off with no credential to restore) so no false assignment is recorded.
 	let assignedKind: 'n8n_connect' | 'own' | null = null;
 
 	if (enable) {
-		credentials[credentialType] = { id: null, name: '', __aiGatewayManaged: true };
+		// Moving the managed slot to a sibling: drop a stale managed sentinel from the
+		// shown type. A user credential stays (inactive), as manual auth switches do.
+		if (effectiveType !== credentialType && credentials[credentialType]?.__aiGatewayManaged) {
+			delete credentials[credentialType];
+		}
+		if (activation) applyActivationParameters(activation.parameters);
+		credentials[effectiveType] = { id: null, name: '', __aiGatewayManaged: true };
 		assignedKind = 'n8n_connect';
 	} else {
 		// Toggle OFF: restore the most recent available credential for THIS node only.
@@ -715,7 +785,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 
 	if (isUserAction) {
 		telemetry.track('User toggled n8n connect credential', {
-			credential_type: credentialType,
+			credential_type: effectiveType,
 			node_type: props.node.type,
 			mode: enable ? 'n8n_connect' : 'own',
 			workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
@@ -724,7 +794,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 		// (Instance AI) assignments are counted by the backend as `instance-ai-*`.
 		if (!props.standalone && assignedKind) {
 			telemetry.track('Node credential assigned', {
-				credential_type: credentialType,
+				credential_type: effectiveType,
 				node_type: props.node.type,
 				workflow_id: workflowDocumentStore?.value.workflowId,
 				credential_kind: assignedKind,
@@ -759,7 +829,8 @@ function editCredential(credentialType: string): void {
 
 	uiStore.openExistingCredential(credential.id, {
 		hideAskAssistant: hideAskAssistant.value,
-		instanceAiCredentialHelp: instanceAiCredentialHelp(),
+		...(isToolContext ? { appendToBody: true } : {}),
+		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 	});
 
 	telemetry.track('User opened Credential modal', {
@@ -772,6 +843,7 @@ function editCredential(credentialType: string): void {
 }
 
 function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+	if (props.credentialsFieldLabel) return props.credentialsFieldLabel;
 	if (credentialType.displayName) return credentialType.displayName;
 	const credentialTypeName = credentialTypeNames.value[credentialType.name];
 	const isCredentialOnlyNode = props.node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
@@ -1120,12 +1192,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:credential-name="getServiceName(type.name)"
 					:is-connected="isPrivateConnected(type.name)"
 					:connected-account-name="usersStore.currentUser?.email ?? undefined"
-					:can-modify="canEditPrivateCredential(type.name)"
 					:can-connect="canConnectPrivateCredential(type.name)"
-					:readonly="readonly"
 					data-test-id="node-credential-private-row"
 					@connect="onConnectFromRow(type.name)"
-					@modify="editCredential(type.name)"
+					@switch-account="onConnectFromRow(type.name)"
 					@disconnect="onDisconnectFromRow(type.name)"
 				/>
 			</N8nInputLabel>

@@ -18,7 +18,13 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import { Workflow, WorkflowActivationError } from 'n8n-workflow';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	Workflow,
+	WorkflowActivationError,
+} from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
@@ -38,6 +44,14 @@ import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-re
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
+
+// Their trigger() is a no-op — fired by the execution engine, never the
+// registry — so reconciling them against the registry would re-enqueue forever.
+const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
+	MANUAL_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
+]);
 
 /** A single trigger node that failed to (de)register during activation. */
 export type TriggerActivationFailure = {
@@ -113,8 +127,11 @@ export class WorkflowTriggerActivator {
 	 * Maps each node to where it lives once activated, decided by which functions
 	 * its node type implements: nodes with a `poll` or `trigger` function register
 	 * `in-memory`, nodes with only a `webhook` function are `persisted` rows in
-	 * `webhook_entity`. Used by reconciliation to tell which triggers should be in
-	 * the in-memory registry.
+	 * `webhook_entity`. The pseudo triggers (manual, executeWorkflow, error) are
+	 * `persisted` despite their `trigger` function: it is a no-op fired by the
+	 * execution engine, so the registry holds nothing worth reconciling for them.
+	 * Used by reconciliation to tell which triggers should be in the in-memory
+	 * registry.
 	 */
 	getTriggerKinds(nodes: INode[]): Map<INode['id'], WorkflowPublicationTriggerKind> {
 		const workflow = new Workflow({
@@ -127,7 +144,9 @@ export class WorkflowTriggerActivator {
 		});
 
 		const inMemoryNodeIds = new Set(
-			[...workflow.getPollNodes(), ...workflow.getTriggerNodes()].map((node) => node.id),
+			[...workflow.getPollNodes(), ...workflow.getTriggerNodes()]
+				.filter((node) => !PSEUDO_TRIGGER_NODE_TYPES.has(node.type))
+				.map((node) => node.id),
 		);
 
 		const kinds = new Map<INode['id'], WorkflowPublicationTriggerKind>();

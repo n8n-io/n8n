@@ -258,6 +258,11 @@ export interface FrontendSettings {
 	};
 	security: {
 		blockFileAccessToN8nFiles: boolean;
+		/**
+		 * Origins allowed to exchange `postMessage` commands with the editor iframe.
+		 * Empty means no restriction (any origin is accepted).
+		 */
+		postMessageAllowedOrigins: string[];
 	};
 	chatTrigger?: {
 		disablePublicChat: boolean;
@@ -340,6 +345,8 @@ export type FrontendModuleSettings = {
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
+		/** Whether model, sandbox, and the explicit web-search decision are configured. */
+		setupCompleted?: boolean;
 		sandboxEnabled: boolean;
 		workflowBuilderAvailable: boolean;
 		sandboxUnavailableReason: string | null;

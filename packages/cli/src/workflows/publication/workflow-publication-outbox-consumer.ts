@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
-import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import { OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -93,8 +93,13 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Also start polling - this is idempotent, so harmless if we're already polling.
 	 */
 	@OnPubSubEvent('workflow-publish-wake-up', { instanceType: 'main', instanceRole: 'leader' })
+	@OnLeaderTakeover()
 	async wakeUp(): Promise<void> {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
+		// Direct callers (e.g. a short-lived CLI process waking its own local consumer)
+		// bypass the pubsub role filter, and a non-leader claiming a record it can never
+		// apply would strand it `in_progress` until its lease expires.
+		if (!this.instanceSettings.isLeader) return;
 
 		this.startPolling();
 		await this.drainPending();

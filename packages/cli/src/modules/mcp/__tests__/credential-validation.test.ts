@@ -257,6 +257,78 @@ describe('validateWorkflowCredentialReferences', () => {
 		expect(result.error).toContain("credential 'cred-foreign' is not usable");
 	});
 
+	test('validates every credential when nodeCredentialType is an expression', async () => {
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
+		const { credentialsService, nodeTypes } = createMocks({
+			usableCredentials: [],
+			getOneImpl: async (id) => ({ id, name: 'GitHub account', type: 'githubApi' }),
+			nodeTypeDescriptions: new Map([
+				[
+					'n8n-nodes-base.httpRequest',
+					makeNodeTypeDescription({ name: 'n8n-nodes-base.httpRequest', credentials: [] }),
+				],
+			]),
+		});
+
+		const result = await validateWorkflowCredentialReferences(
+			[
+				makeNode({
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: '={{ "githubApi" }}',
+					},
+					credentials: { githubApi: { id: 'cred-foreign', name: 'GitHub account' } },
+				}),
+			],
+			user,
+			credentialsService,
+			nodeTypes,
+			projectId,
+		);
+
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error('unreachable');
+		expect(result.error).toContain("credential 'cred-foreign' is not usable");
+	});
+
+	test('validates every credential when genericAuthType is an expression', async () => {
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
+		const { credentialsService, nodeTypes } = createMocks({
+			usableCredentials: [],
+			getOneImpl: async (id) => ({ id, name: 'Header auth', type: 'httpHeaderAuth' }),
+			nodeTypeDescriptions: new Map([
+				[
+					'n8n-nodes-base.httpRequest',
+					makeNodeTypeDescription({ name: 'n8n-nodes-base.httpRequest', credentials: [] }),
+				],
+			]),
+		});
+
+		const result = await validateWorkflowCredentialReferences(
+			[
+				makeNode({
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: {
+						authentication: 'genericCredentialType',
+						genericAuthType: '={{ "httpHeaderAuth" }}',
+					},
+					credentials: { httpHeaderAuth: { id: 'cred-foreign', name: 'Header auth' } },
+				}),
+			],
+			user,
+			credentialsService,
+			nodeTypes,
+			projectId,
+		);
+
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error('unreachable');
+		expect(result.error).toContain("credential 'cred-foreign' is not usable");
+	});
+
 	test('validates every credential when the node type cannot be resolved', async () => {
 		const { credentialsService, nodeTypes } = createMocks({
 			usableCredentials: [],

@@ -1,6 +1,9 @@
 import type * as Vue from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { defaultSettings } from '@/__tests__/defaults';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import NodeCreation from './NodeCreation.vue';
 import type { AddedNodesAndConnections } from '@/Interface';
 
@@ -34,6 +37,11 @@ vi.mock('vue', async (importOriginal) => {
 	};
 });
 
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => ({ name: 'NodeViewExisting' }),
+}));
+
 vi.mock('@/app/composables/useWorkflowId', () => ({
 	useWorkflowId: () => ({ value: 'test-workflow-id' }),
 	useRouteWorkflowId: () => ({ value: 'test-workflow-id' }),
@@ -59,7 +67,6 @@ vi.mock('../composables/useNodeCreatorShortcutCoachmark', () => ({
 }));
 
 const renderComponent = createComponentRenderer(NodeCreation, {
-	pinia: createTestingPinia(),
 	props: {
 		nodeViewScale: 1,
 		createNodeActive: true,
@@ -67,9 +74,15 @@ const renderComponent = createComponentRenderer(NodeCreation, {
 	},
 });
 
+let settingsStore: MockedStore<typeof useSettingsStore>;
+let pinia: ReturnType<typeof createTestingPinia>;
+
 describe('NodeCreation', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pinia = createTestingPinia();
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings = defaultSettings;
 	});
 
 	it('emits addNodes with the result of getAddedNodesAndConnections when a node type is selected', async () => {
@@ -79,7 +92,7 @@ describe('NodeCreation', () => {
 		};
 		mockGetAddedNodesAndConnections.mockReturnValue(addedNodesAndConnections);
 
-		const { findByTestId, emitted } = renderComponent();
+		const { findByTestId, emitted } = renderComponent({ pinia });
 		const selectButton = await findByTestId('node-creator-stub-select');
 
 		selectButton.click();
@@ -92,5 +105,25 @@ describe('NodeCreation', () => {
 			{ type: 'n8n-nodes-base.slack' },
 		]);
 		expect(emitted('addNodes')).toEqual([[addedNodesAndConnections]]);
+	});
+
+	it('renders the command bar button by default', () => {
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false },
+		});
+
+		expect(queryByTestId('command-bar-button')).toBeInTheDocument();
+	});
+
+	it('hides the command bar button in canvas-only mode', () => {
+		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
+
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false },
+		});
+
+		expect(queryByTestId('command-bar-button')).not.toBeInTheDocument();
 	});
 });

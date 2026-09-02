@@ -27,7 +27,7 @@
 			"env": ["RELEASE"]
 		},
 		"typecheck": {
-			"dependsOn": ["^typecheck", "^build"]
+			"dependsOn": ["^build"]
 		},
 		"format": {},
 		"format:check": {},

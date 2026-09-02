@@ -14,7 +14,7 @@ import {
 	mergeDisplayOptions,
 	extractDefaultsForDisplayOptions,
 } from './generate-zod-schemas';
-import * as schemaHelpers from '../validation/schema-helpers';
+import * as schemaHelpers from '../validation/node-parameter-schema/schema-helpers';
 
 describe('mapPropertyToZodSchema for resourceLocator', () => {
 	it('returns resourceLocatorValueSchema when no modes are specified', () => {

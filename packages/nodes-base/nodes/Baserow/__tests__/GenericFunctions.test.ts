@@ -4,7 +4,9 @@ import { NodeApiError } from 'n8n-workflow';
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
+	formatBaserowFilterValue,
 	getFieldNamesAndIds,
+	normalizeFilterFieldId,
 	toOptions,
 	TableFieldMapper,
 } from '../GenericFunctions';
@@ -123,6 +125,77 @@ describe('Baserow > GenericFunctions', () => {
 				field_1: 'field1',
 				field_2: 'field2',
 			});
+		});
+	});
+
+	describe('formatBaserowFilterValue', () => {
+		it('should format plain ISO date for date_is_after', () => {
+			expect(formatBaserowFilterValue('date_is_after', '2026-06-17')).toBe(
+				'UTC?2026-06-17?exact_date',
+			);
+		});
+
+		it('should use custom timezone for plain ISO date', () => {
+			expect(formatBaserowFilterValue('date_is_before', '2026-06-17', 'Europe/Berlin')).toBe(
+				'Europe/Berlin?2026-06-17?exact_date',
+			);
+		});
+
+		it('should pass through already formatted 3-part values', () => {
+			const value = 'UTC?2026-06-17?exact_date';
+			expect(formatBaserowFilterValue('date_is_after', value)).toBe(value);
+		});
+
+		it('should fix malformed UTC??YYYY-MM-DD values', () => {
+			expect(formatBaserowFilterValue('date_is_after', 'UTC??2026-06-17')).toBe(
+				'UTC?2026-06-17?exact_date',
+			);
+		});
+
+		it('should format relative date tokens', () => {
+			expect(formatBaserowFilterValue('date_is_after', 'today')).toBe('UTC??today');
+		});
+
+		it('should format date_is_within with numeric days', () => {
+			expect(formatBaserowFilterValue('date_is_within', '30')).toBe('UTC?30?nr_days_from_now');
+		});
+
+		it('should pass plain ISO for deprecated date_after_or_equal', () => {
+			expect(formatBaserowFilterValue('date_after_or_equal', '2026-06-17')).toBe('2026-06-17');
+		});
+
+		it('should use timezone only for deprecated date_equals_today', () => {
+			expect(formatBaserowFilterValue('date_equals_today', '')).toBe('UTC');
+			expect(formatBaserowFilterValue('date_equals_today', 'Europe/Berlin')).toBe('Europe/Berlin');
+		});
+
+		it('should format deprecated date_within_days as timezone?number', () => {
+			expect(formatBaserowFilterValue('date_within_days', '1', 'Asia/Calcutta')).toBe(
+				'Asia/Calcutta?1',
+			);
+		});
+
+		it('should pass number only for deprecated date_after_days_ago', () => {
+			expect(formatBaserowFilterValue('date_after_days_ago', '20')).toBe('20');
+		});
+
+		// date_equals_day_of_month expects a raw day number (1-31), not a multi-step value
+		it('should pass date_equals_day_of_month as a raw number', () => {
+			expect(formatBaserowFilterValue('date_equals_day_of_month', '15')).toBe('15');
+		});
+
+		it('should leave non-date operators unchanged', () => {
+			expect(formatBaserowFilterValue('equal', 'foo')).toBe('foo');
+		});
+	});
+
+	describe('normalizeFilterFieldId', () => {
+		it('should strip field_ prefix', () => {
+			expect(normalizeFilterFieldId('field_3799030')).toBe('3799030');
+		});
+
+		it('should return numeric ids as string', () => {
+			expect(normalizeFilterFieldId(3799030)).toBe('3799030');
 		});
 	});
 });

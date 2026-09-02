@@ -1,3 +1,5 @@
+import type { MisfireCount } from '../core/materializer/materialize';
+
 /**
  * Minimal metrics port. The scheduler stays dependency-light: it depends on this
  * interface and records counts and timings through it, while the host adapts its
@@ -16,8 +18,12 @@ export interface SchedulerMetrics {
 
 	/** Outcome of one materialization pass. */
 	recordMaterialized(occurrences: number, deferredJobs: number): void;
+	/** Occurrences a misfire policy discarded before recording them. */
+	recordMisfired(discarded: MisfireCount[]): void;
+	/** Already-recorded occurrences retired because a catch-up run superseded them. */
+	recordRetired(retired: number): void;
 	/** Outcome of one reaper sweep. */
-	recordReaped(reclaimed: number, deadLettered: number): void;
+	recordReaped(reclaimed: number, deadLettered: number, missed: number): void;
 	/**
 	 * A task became a dead-letter on the executor's terminal-failure path (attempts
 	 * exhausted). Complements the reaper's `recordReaped`, which counts the ones it
@@ -35,6 +41,8 @@ export const noopMetrics: SchedulerMetrics = {
 	recordRetry() {},
 	observeDispatchLagSeconds() {},
 	recordMaterialized() {},
+	recordMisfired() {},
+	recordRetired() {},
 	recordReaped() {},
 	recordDeadLettered() {},
 	recordPruned() {},

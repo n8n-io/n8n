@@ -15,9 +15,9 @@ import {
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';

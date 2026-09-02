@@ -22,6 +22,11 @@ describe('fetchProviderCatalog', () => {
 								name: 'GPT-5',
 								tool_call: true,
 							},
+							'gpt-4.1-mini': {
+								id: 'gpt-4.1-mini',
+								name: 'GPT-4.1 mini',
+								reasoning: false,
+							},
 						},
 					},
 					'amazon-bedrock': {
@@ -61,6 +66,8 @@ describe('fetchProviderCatalog', () => {
 		const catalog = await fetchProviderCatalog();
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
+		expect(catalog.openai.models['gpt-5']).not.toHaveProperty('reasoning');
+		expect(catalog.openai.models['gpt-4.1-mini'].reasoning).toBe(false);
 		expect(catalog['aws-bedrock'].models['anthropic.claude-sonnet-4-5-v1:0'].name).toBe(
 			'Claude Sonnet 4.5',
 		);

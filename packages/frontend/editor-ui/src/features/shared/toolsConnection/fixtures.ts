@@ -195,6 +195,7 @@ const availableHttp: McpServerConnectionItem = {
 const availableOpenAi: NodeConnectionItem = {
 	id: 'node-openai',
 	kind: 'node',
+	category: 'ai',
 	title: 'OpenAI',
 	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	iconSource: { type: 'file', src: ICON.openai },
@@ -221,6 +222,7 @@ const availableMultiCredentialHttp: NodeConnectionItem = {
 const availableGemini: NodeConnectionItem = {
 	id: 'node-gemini',
 	kind: 'node',
+	category: 'ai',
 	title: 'Google Gemini',
 	description: 'Interact with Google Gemini AI models.',
 	iconSource: { type: 'file', src: ICON.gemini },
@@ -231,6 +233,7 @@ const availableGemini: NodeConnectionItem = {
 const availableGoogleSheets: NodeConnectionItem = {
 	id: 'node-google-sheets',
 	kind: 'node',
+	category: 'n8n',
 	title: 'Google Sheets Tool',
 	description: 'Read, update and write data to Google Sheets.',
 	iconSource: { type: 'file', src: ICON.googleSheets },
@@ -242,6 +245,19 @@ const availableGoogleSheets: NodeConnectionItem = {
 		{ authType: 'googleApi', required: true },
 		{ authType: 'googleSheetsOAuth2Api', required: false },
 	],
+};
+
+const availableCommunityFirecrawl: NodeConnectionItem = {
+	id: 'node-community-firecrawl',
+	kind: 'node',
+	category: 'community',
+	title: 'Firecrawl',
+	description: 'Scrape and crawl sites into LLM-ready markdown.',
+	isConnected: false,
+	nodeTypeName: 'n8n-nodes-firecrawl.firecrawlTool',
+	verified: true,
+	communityPreview: true,
+	credentials: [{ authType: 'firecrawlApi', required: true }],
 };
 
 const availableAgentCodeReviewer: AgentConnectionItem = {
@@ -310,6 +326,7 @@ export const realisticItems: ToolConnectionItem[] = [
 	availableMultiCredentialHttp,
 	availableGemini,
 	availableGoogleSheets,
+	availableCommunityFirecrawl,
 	availableAgentCodeReviewer,
 	availableAgentDocWriter,
 	availableDataCustomers,

@@ -64,6 +64,39 @@ describe('mcp.store', () => {
 		});
 	});
 
+	describe('fetchAgentsAvailableForMCP', () => {
+		it('fetches exposed agents through the permission-aware MCP endpoint', async () => {
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchMcpAgents').mockResolvedValue({
+				data: [],
+				count: 11,
+			});
+
+			await expect(store.fetchAgentsAvailableForMCP(2, 25)).resolves.toEqual({
+				data: [],
+				count: 11,
+			});
+			expect(fetchSpy).toHaveBeenCalledWith(
+				{},
+				{
+					skip: 25,
+					take: 25,
+					availableInMCP: true,
+				},
+			);
+		});
+
+		it('keeps the eligible-agent query on the default availability filter', async () => {
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchMcpAgents').mockResolvedValue({
+				data: [],
+				count: 0,
+			});
+
+			await store.getMcpEligibleAgents({ take: 10, query: 'sales' });
+
+			expect(fetchSpy).toHaveBeenCalledWith({}, { take: 10, query: 'sales' });
+		});
+	});
+
 	describe('toggleWorkflowMcpAccess', () => {
 		it('patches the list store entry when the backend confirms the update', async () => {
 			workflowsListStore.workflowsById = {

@@ -1,11 +1,20 @@
+import { partitionValidationIssues, type IssueSeverity } from '@n8n/workflow-sdk';
+
 export interface ValidationWarning {
 	code: string;
 	message: string;
 	nodeName?: string;
+	/** Set at the creation site; `informational` never blocks save. */
+	severity?: IssueSeverity;
 }
 
 export function collectValidationIssues(
-	issues: Array<{ code: string; message: string; nodeName?: string }>,
+	issues: Array<{
+		code: string;
+		message: string;
+		nodeName?: string;
+		severity?: IssueSeverity;
+	}>,
 	allWarnings: ValidationWarning[],
 ): void {
 	for (const issue of issues) {
@@ -13,31 +22,17 @@ export function collectValidationIssues(
 			code: issue.code,
 			message: issue.message,
 			nodeName: issue.nodeName,
+			severity: issue.severity,
 		});
 	}
 }
 
 export function partitionWarnings(warnings: ValidationWarning[]): {
-	errors: ValidationWarning[];
+	blocking: ValidationWarning[];
 	informational: ValidationWarning[];
 } {
-	// auto_imported_sdk_symbols marks a recovered build; it must not fail validation.
-	const informationalCodes = new Set([
-		'MISSING_TRIGGER',
-		'DISCONNECTED_NODE',
-		'auto_imported_sdk_symbols',
-	]);
-
-	const errors: ValidationWarning[] = [];
-	const informational: ValidationWarning[] = [];
-
-	for (const warning of warnings) {
-		if (informationalCodes.has(warning.code)) {
-			informational.push(warning);
-		} else {
-			errors.push(warning);
-		}
-	}
-
-	return { errors, informational };
+	// Severity is set where each issue is created (SDK validators / lint /
+	// Instance AI host detectors). CLI validate and this save gate share
+	// {@link partitionValidationIssues}.
+	return partitionValidationIssues(warnings);
 }

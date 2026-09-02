@@ -20,18 +20,18 @@ const asyncExec = promisify(exec);
 export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 	protected readonly name = 'runner:py';
 
-	protected readonly loggerScope = 'task-runner-py';
+	protected readonly taskType = 'python';
 
 	constructor(
-		readonly logger: Logger,
-		readonly runnerConfig: TaskRunnersConfig,
-		readonly authService: TaskBrokerAuthService,
-		readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		logger: Logger,
+		runnerConfig: TaskRunnersConfig,
+		authService: TaskBrokerAuthService,
+		runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
-		super(logger, runnerConfig, authService, runnerLifecycleEvents);
+		super('task-runner-py', logger, runnerConfig, authService, runnerLifecycleEvents);
 	}
 
-	async startProcess(grantToken: string, taskBrokerUri: string) {
+	startProcess(grantToken: string, taskBrokerUri: string) {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
 		const venvPath = PyTaskRunnerProcess.getVenvPath();
 

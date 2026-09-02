@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { EVAL_ATTRIBUTIONS, type EvalAttribution } from '../harness/attribution';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type {
 	BuildTrace,
@@ -44,6 +45,9 @@ export const expectationResultsSchema = z.array(
 		pass: z.boolean(),
 		reason: z.string().default(''),
 		incomplete: z.boolean().optional(),
+		/** Stamped in case-pipeline's `stampExpectations` — zod strips unknown
+		 *  keys, so an omission here silently drops it from `eval-results.json`. */
+		attribution: z.enum(EVAL_ATTRIBUTIONS).optional(),
 	}),
 );
 
@@ -57,6 +61,10 @@ const targetOutputSchema = z.object({
 	/** Set when the scenario ran against a built first-class Agent instead of a workflow. */
 	agentId: z.string().optional(),
 	failureCategory: z.string().optional(),
+	/** The harness's own verdict on who owns the failure — what lang-tracer
+	 *  stores. `failureCategory` stays alongside it for readers on the legacy
+	 *  contract (TRUST-375). */
+	attribution: z.enum(EVAL_ATTRIBUTIONS).optional(),
 	rootCause: z.string().optional(),
 	/** Verifier returned no verdict — run is excluded from scoring but stays visible. */
 	incomplete: z.boolean().optional(),
@@ -69,6 +77,11 @@ const targetOutputSchema = z.object({
 	agentContext: z.string().optional(),
 	/** Only set on the scenario that initiated the build. */
 	buildDurationMs: z.number().optional(),
+	/** `claude` build spend in USD (--build-via-mcp only). Repeats on every row
+	 *  of the case's build — dedupe per (iteration, case) when summing. */
+	buildCostUsd: z.number().optional(),
+	/** Assistant turns across the `claude` build's attempts (--build-via-mcp only). */
+	buildTurns: z.number().optional(),
 	execDurationMs: z.number().default(0),
 	nodeCount: z.number().default(0),
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
@@ -173,6 +186,9 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 	/** Only on non-passing outcomes — without a category the feedback extractor
 	 *  files the row under 'unknown' in the LangSmith failure_category column. */
 	failureCategory?: 'expectations_failed' | 'verification_failure';
+	/** The bucket lang-tracer stores. A missed expectation is a builder miss —
+	 *  same stance the verifier prompt takes; no verdicts at all is unmeasured. */
+	attribution?: EvalAttribution;
 } {
 	const evaluated = (verdicts ?? []).filter((v) => !v.incomplete);
 	if (evaluated.length === 0) {
@@ -182,6 +198,7 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 			reasoning: 'Build-only case — no expectation verdicts (judge incomplete)',
 			incomplete: true,
 			failureCategory: 'verification_failure',
+			attribution: 'verification_gap',
 		};
 	}
 	const failed = evaluated.filter((v) => !v.pass);
@@ -192,7 +209,9 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 		reasoning: passed
 			? `Build-only case — all ${String(evaluated.length)} expectations passed`
 			: `Build-only case — failed expectations: ${failed.map((v) => v.expectation).join('; ')}`,
-		...(passed ? {} : { failureCategory: 'expectations_failed' as const }),
+		...(passed
+			? {}
+			: { failureCategory: 'expectations_failed' as const, attribution: 'builder_issue' as const }),
 	};
 }
 
@@ -253,6 +272,8 @@ export function reshapeLangSmithRuns(
 			let workflowChecks: CheckOutcome[] | undefined;
 			let workflowJson: WorkflowResponse | undefined;
 			let buildTrace: BuildTrace | undefined;
+			let buildCostUsd: number | undefined;
+			let buildTurns: number | undefined;
 
 			for (const scenario of testCase.executionScenarios ?? []) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -263,6 +284,14 @@ export function reshapeLangSmithRuns(
 						success: false,
 						score: 0,
 						reasoning: run ? 'Malformed run output — skipped' : 'No run result for this scenario',
+						// The row never produced a verdict, so nobody owns it. Without this
+						// it reaches lang-tracer category-less and defaults to a product
+						// failure.
+						attribution: 'verification_gap',
+						// …and unowned has to mean unscored too, or the row is visible as a
+						// gap while still counting against the builder. Same pairing as
+						// `sentinelOutcomeFromVerdicts` and `attributionFor`.
+						incomplete: true,
 					});
 					continue;
 				}
@@ -276,6 +305,9 @@ export function reshapeLangSmithRuns(
 				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
 				if (output.workflowJson && !workflowJson) workflowJson = output.workflowJson;
 				if (output.buildTrace && !buildTrace) buildTrace = output.buildTrace;
+				// Every row of the case repeats the build's spend — first defined wins.
+				buildCostUsd ??= output.buildCostUsd;
+				buildTurns ??= output.buildTurns;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -286,6 +318,7 @@ export function reshapeLangSmithRuns(
 					score: output.score,
 					reasoning: output.reasoning,
 					failureCategory: output.failureCategory,
+					attribution: output.attribution,
 					rootCause: output.rootCause,
 					...(output.incomplete ? { incomplete: true } : {}),
 				});
@@ -305,6 +338,8 @@ export function reshapeLangSmithRuns(
 					workflowChecks = output.workflowChecks;
 					workflowJson = output.workflowJson;
 					buildTrace = output.buildTrace;
+					buildCostUsd = output.buildCostUsd;
+					buildTurns = output.buildTurns;
 				}
 			}
 
@@ -325,6 +360,8 @@ export function reshapeLangSmithRuns(
 				workflowChecks,
 				workflowJson,
 				buildTrace,
+				buildCostUsd,
+				buildTurns,
 				n8nBaseUrl,
 				runDebug: threadId ? runDebugByThreadId.get(threadId) : undefined,
 			});

@@ -80,7 +80,7 @@ export class LoadNodesAndCredentials {
 			.filter(Boolean)
 			.join(delimiter);
 
-		// @ts-ignore
+		// @ts-expect-error Node internal _initPaths
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 

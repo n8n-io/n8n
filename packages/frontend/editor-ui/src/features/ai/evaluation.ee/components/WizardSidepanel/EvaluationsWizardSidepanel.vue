@@ -6,7 +6,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';

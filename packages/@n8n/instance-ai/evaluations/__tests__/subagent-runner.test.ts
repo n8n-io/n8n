@@ -1,5 +1,8 @@
-vi.mock('../harness/runner', () => ({
+vi.mock('../harness/build-workflow', () => ({
 	buildWorkflow: vi.fn(),
+}));
+
+vi.mock('../harness/cleanup', () => ({
 	cleanupBuild: vi.fn(),
 }));
 
@@ -9,7 +12,8 @@ vi.mock('../binaryChecks/index', () => ({
 
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
-import { buildWorkflow, cleanupBuild, type BuildResult } from '../harness/runner';
+import { buildWorkflow, type BuildResult } from '../harness/build-workflow';
+import { cleanupBuild } from '../harness/cleanup';
 import { runWorkflowBuildEval } from '../subagent/runner';
 
 const mockedBuildWorkflow = vi.mocked(buildWorkflow);

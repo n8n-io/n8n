@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import type * as AgentRuntimeModule from '../../runtime/loop/agent-runtime';
 import {
-	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
@@ -11,9 +10,10 @@ import {
 	type DelegateSubAgentRunnerHelpers,
 } from '../../runtime/tools/delegate-sub-agent-tool';
 import type {
+	AgentDbMessage,
+	AgentExecutionCounter,
 	BuiltTool,
 	GenerateResult,
-	InterruptibleToolContext,
 	SerializableAgentState,
 } from '../../types';
 import { Agent } from '../agent';
@@ -21,13 +21,62 @@ import { wrapToolForApproval } from '../tool';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
 const runtimeGenerateOptions: Array<Record<string, unknown> | undefined> = [];
+const runtimeResumeCalls: Array<{
+	method: string;
+	data: unknown;
+	options: Record<string, unknown>;
+}> = [];
 let inlineChildGenerateResult: GenerateResult | undefined;
+let inlineChildResumeResult: GenerateResult | undefined;
 
 const mockState = (): SerializableAgentState => ({
 	status: 'success',
 	messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
 	pendingToolCalls: {},
 });
+
+function chunksFromGenerateResult(result: GenerateResult): unknown[] {
+	const chunks: unknown[] = [];
+	for (const message of result.messages) {
+		if (!('content' in message) || !Array.isArray(message.content)) continue;
+		for (const part of message.content) {
+			if (part.type === 'text' && part.text) {
+				chunks.push({ type: 'text-delta', id: 't-1', delta: part.text });
+			}
+		}
+	}
+	for (const suspension of result.pendingSuspend ?? []) {
+		chunks.push({
+			type: 'tool-call-suspended',
+			runId: suspension.runId,
+			toolCallId: suspension.toolCallId,
+			toolName: suspension.toolName,
+			input: suspension.input,
+			suspendPayload: suspension.suspendPayload,
+			...(suspension.resumeSchema !== undefined ? { resumeSchema: suspension.resumeSchema } : {}),
+		});
+	}
+	if (result.error !== undefined) {
+		chunks.push({ type: 'error', error: result.error });
+	}
+	chunks.push({
+		type: 'finish',
+		finishReason: result.finishReason ?? 'stop',
+		...(result.usage !== undefined ? { usage: result.usage } : {}),
+		...(result.model !== undefined ? { model: result.model } : {}),
+		...(result.structuredOutput !== undefined ? { structuredOutput: result.structuredOutput } : {}),
+	});
+	return chunks;
+}
+
+function readableFromChunks(chunks: unknown[]): ReadableStream<unknown> {
+	return new ReadableStream({
+		start(controller) {
+			for (const chunk of chunks) controller.enqueue(chunk);
+			controller.close();
+		},
+	});
+}
 
 vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
@@ -38,23 +87,44 @@ vi.mock('../../runtime/loop/agent-runtime', async (importOriginal) => {
 				runtimeConfigs.push(config);
 			}
 
-			async generate(_input: unknown, options?: Record<string, unknown>) {
+			async stream(_input: unknown, options?: Record<string, unknown>) {
 				runtimeGenerateOptions.push(options);
-				if (inlineChildGenerateResult !== undefined) {
-					return await Promise.resolve(inlineChildGenerateResult);
-				}
+				const result =
+					inlineChildGenerateResult ??
+					({
+						runId: 'child-run',
+						finishReason: 'stop',
+						messages: [
+							{
+								role: 'assistant',
+								type: 'llm',
+								content: [{ type: 'text', text: 'inline answer' }],
+							},
+						],
+						usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+						getState: mockState,
+					} as GenerateResult);
 				return await Promise.resolve({
-					runId: 'child-run',
-					finishReason: 'stop',
-					messages: [
-						{
-							role: 'assistant',
-							type: 'llm',
-							content: [{ type: 'text', text: 'inline answer' }],
-						},
-					],
-					usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-					getState: mockState,
+					runId: result.runId,
+					stream: readableFromChunks(chunksFromGenerateResult(result)),
+					getState: result.getState ?? mockState,
+				});
+			}
+
+			async resume(method: string, data: unknown, options: Record<string, unknown>) {
+				runtimeResumeCalls.push({ method, data, options });
+				const result =
+					inlineChildResumeResult ??
+					({
+						runId: String(options.runId),
+						finishReason: 'stop',
+						messages: [],
+						getState: mockState,
+					} as GenerateResult);
+				return await Promise.resolve({
+					runId: result.runId,
+					stream: readableFromChunks(chunksFromGenerateResult(result)),
+					getState: result.getState ?? mockState,
 				});
 			}
 
@@ -90,7 +160,9 @@ describe('delegate sub-agent routing', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
 		runtimeGenerateOptions.length = 0;
+		runtimeResumeCalls.length = 0;
 		inlineChildGenerateResult = undefined;
+		inlineChildResumeResult = undefined;
 	});
 
 	it('routes inline delegations through a host runner with runInlineSubAgent helpers', async () => {
@@ -234,7 +306,7 @@ describe('delegate sub-agent routing', () => {
 		});
 	});
 
-	it('passes the parent execution counter to inline child generate options', async () => {
+	it('rolls inline child tokens and tool calls up to the parent but not its message count', async () => {
 		const executionCounter = {
 			incrementMessageCount: vi.fn(),
 			incrementToolCallCount: vi.fn(),
@@ -257,39 +329,134 @@ describe('delegate sub-agent routing', () => {
 			executionCounter,
 		});
 
-		expect(runtimeGenerateOptions[0]).toEqual(expect.objectContaining({ executionCounter }));
+		const childCounter = runtimeGenerateOptions[0]?.executionCounter as
+			| AgentExecutionCounter
+			| undefined;
+		childCounter?.incrementMessageCount();
+		childCounter?.incrementToolCallCount();
+		childCounter?.incrementTokenCount(42);
+
+		expect(executionCounter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(executionCounter.incrementToolCallCount).toHaveBeenCalledOnce();
+		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
 	});
 
-	it('preserves required approval when completing inline delegate tools', async () => {
+	it('composes delegate approval with child approval and child resume', async () => {
+		inlineChildGenerateResult = {
+			runId: 'child-run-suspended',
+			finishReason: 'tool-calls',
+			messages: [],
+			pendingSuspend: [
+				{
+					runId: 'child-run-suspended',
+					toolCallId: 'child-tool-call-1',
+					toolName: 'http_request',
+					input: { url: 'https://example.com' },
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'http_request',
+						args: { url: 'https://example.com' },
+					},
+				},
+			],
+			getState: mockState,
+		};
+		inlineChildResumeResult = {
+			runId: 'child-run-suspended',
+			finishReason: 'stop',
+			messages: [
+				{
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'child completed' }],
+				},
+			],
+			getState: mockState,
+		};
 		const agent = new Agent('parent')
 			.model('openai', 'gpt-4o-mini')
 			.instructions('Delegate when needed.')
 			.checkpoint('memory')
 			.tool(wrapToolForApproval(createDelegateSubAgentTool(), { requireApproval: true }))
-			.tool(makeTool('lookup'));
-
+			.tool(wrapToolForApproval(makeTool('http_request'), { requireApproval: true }));
 		const runtimeConfig = await buildAgentConfig(agent);
-
-		expect(runtimeConfigs).toHaveLength(0);
-		const builtTools = runtimeConfig.tools;
-		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
 		expect(delegateTool?.approval?.required).toBe(true);
-
-		const suspend = vi.fn(async (payload: unknown) => {
-			return await Promise.resolve({ suspended: payload });
-		});
-		await delegateTool?.handler?.(delegateInput, {
-			suspend: suspend as unknown as InterruptibleToolContext['suspend'],
-			resumeData: undefined,
-			runId: 'parent-run-1',
-		});
-
-		expect(suspend).toHaveBeenCalledWith({
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const outerApprovalPayload = {
 			type: 'approval',
 			toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
 			args: delegateInput,
+		};
+
+		await delegateTool?.handler?.(delegateInput, {
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			resumeData: undefined,
+			suspend,
 		});
+		expect(suspend).toHaveBeenLastCalledWith(
+			outerApprovalPayload,
+			expect.objectContaining({ resumeSchema: expect.anything() }),
+		);
 		expect(runtimeConfigs).toHaveLength(0);
+
+		await delegateTool?.handler?.(delegateInput, {
+			runId: 'parent-run-1',
+			toolCallId: 'parent-tool-call-1',
+			resumeData: { approved: true },
+			suspendPayload: outerApprovalPayload,
+			suspend,
+		});
+		const childApprovalPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com' },
+		};
+		const childContinuation = {
+			runId: 'child-run-suspended',
+			toolCallId: 'child-tool-call-1',
+			taskPath: '/root/research_api_0',
+			subAgentId: INLINE_SUB_AGENT_ID,
+			childCount: 0,
+		};
+		expect(suspend).toHaveBeenLastCalledWith(
+			childApprovalPayload,
+			expect.objectContaining({
+				continuation: childContinuation,
+				resumeSchema: inlineChildGenerateResult.pendingSuspend?.[0].resumeSchema,
+			}),
+		);
+		expect(runtimeConfig.runState).toBeDefined();
+		expect(runtimeConfigs[0]?.runState).toBe(runtimeConfig.runState);
+
+		await expect(
+			delegateTool?.handler?.(delegateInput, {
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: { approved: true },
+				suspendPayload: childApprovalPayload,
+				continuation: childContinuation,
+				suspend,
+			}),
+		).resolves.toMatchObject({ status: 'completed', answer: 'child completed' });
+		expect(runtimeResumeCalls).toEqual([
+			{
+				method: 'stream',
+				data: { approved: true },
+				options: {
+					runId: 'child-run-suspended',
+					toolCallId: 'child-tool-call-1',
+				},
+			},
+		]);
 	});
 
 	it('lets a host-style runner delegate inline through helpers from tool metadata', async () => {
@@ -323,7 +490,7 @@ describe('delegate sub-agent routing', () => {
 					taskPath: '/root/research_api_0',
 					childCount: 0,
 				},
-				{ runInlineSubAgent },
+				{ runInlineSubAgent, emitChunk: () => undefined },
 			),
 		).resolves.toMatchObject({
 			status: 'completed',
@@ -333,47 +500,54 @@ describe('delegate sub-agent routing', () => {
 		expect(runInlineSubAgent).toHaveBeenCalledOnce();
 	});
 
-	it('returns a failed delegate output when an inline child run suspends', async () => {
+	it('answers with the final assistant turn, not every text block the child streamed', async () => {
+		const responseMessages: AgentDbMessage[] = [
+			{
+				id: 'm-1',
+				createdAt: new Date(1),
+				role: 'assistant',
+				type: 'llm',
+				content: [{ type: 'text', text: 'Let me look that up.' }],
+			},
+			{
+				id: 'm-2',
+				createdAt: new Date(2),
+				role: 'assistant',
+				type: 'llm',
+				content: [{ type: 'text', text: 'The capital is Paris.' }],
+			},
+		];
 		inlineChildGenerateResult = {
-			runId: 'child-run-suspended',
-			finishReason: 'tool-calls',
-			messages: [
-				{
-					role: 'assistant',
-					type: 'llm',
-					content: [{ type: 'text', text: 'awaiting approval' }],
+			runId: 'child-run-multi-turn',
+			finishReason: 'stop',
+			messages: responseMessages,
+			getState: () => ({
+				status: 'success',
+				messageList: {
+					messages: responseMessages,
+					historyIds: [],
+					inputIds: [],
+					responseIds: ['m-1', 'm-2'],
 				},
-			],
-			pendingSuspend: [
-				{
-					runId: 'child-run-suspended',
-					toolCallId: 'tool-call-1',
-					toolName: 'delete_file',
-					input: { path: '/tmp/foo.txt' },
-					suspendPayload: { message: 'Delete file?' },
-				},
-			],
-			getState: mockState,
+				pendingToolCalls: {},
+			}),
 		};
 
 		const agent = new Agent('parent')
 			.model('openai', 'gpt-4o-mini')
 			.instructions('Delegate when needed.')
-			.tool(createDelegateSubAgentTool())
-			.tool(makeTool('lookup'));
+			.tool(createDelegateSubAgentTool());
 
 		const runtimeConfig = await buildAgentConfig(agent);
-
-		const builtTools = runtimeConfig.tools;
-		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
-		expect(delegateTool).toBeDefined();
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
 
 		await expect(
 			delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' }),
 		).resolves.toMatchObject({
-			status: 'failed',
-			answer: '',
-			error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+			status: 'completed',
+			answer: 'The capital is Paris.',
 		});
 	});
 });

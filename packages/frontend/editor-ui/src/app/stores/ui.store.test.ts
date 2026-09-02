@@ -77,4 +77,57 @@ describe('UI Store', () => {
 			expect(uiStore.hasUnsavedWorkflowChanges).toBe(false);
 		});
 	});
+
+	describe('modalStateById', () => {
+		const MODAL_KEY = 'someFeatureModal';
+
+		it('should resolve an unregistered key to a closed state instead of undefined', () => {
+			const uiStore = useUIStore();
+			uiStore.modalsById = {};
+
+			expect(uiStore.modalStateById[MODAL_KEY]).toEqual({ open: false });
+		});
+
+		it('should return the stored state for a registered key', () => {
+			const uiStore = useUIStore();
+			uiStore.modalsById = {};
+			uiStore.registerModal(MODAL_KEY, { open: false, mode: 'edit' });
+
+			expect(uiStore.modalStateById[MODAL_KEY]).toEqual({ open: false, mode: 'edit' });
+		});
+
+		it('should reflect a key registered after the first read', () => {
+			const uiStore = useUIStore();
+			uiStore.modalsById = {};
+			expect(uiStore.modalStateById[MODAL_KEY].open).toBe(false);
+
+			uiStore.registerModal(MODAL_KEY, { open: true });
+
+			expect(uiStore.modalStateById[MODAL_KEY].open).toBe(true);
+		});
+	});
+
+	describe('isModalActiveById', () => {
+		const MODAL_KEY = 'someFeatureModal';
+
+		it('should report an unregistered key as inactive instead of undefined', () => {
+			const uiStore = useUIStore();
+			uiStore.modalsById = {};
+
+			expect(uiStore.isModalActiveById[MODAL_KEY]).toBe(false);
+		});
+
+		it('should still report only the topmost open modal as active', () => {
+			const uiStore = useUIStore();
+			uiStore.modalsById = {};
+			uiStore.registerModal('first');
+			uiStore.registerModal('second');
+
+			uiStore.openModal('first');
+			uiStore.openModal('second');
+
+			expect(uiStore.isModalActiveById.second).toBe(true);
+			expect(uiStore.isModalActiveById.first).toBe(false);
+		});
+	});
 });

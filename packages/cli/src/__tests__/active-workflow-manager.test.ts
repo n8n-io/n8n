@@ -26,7 +26,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { sleep, Workflow, WorkflowActivationError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { Workflow, WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
@@ -37,6 +38,7 @@ import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type {
 	ScheduleTriggerCollectionSession,
 	ScheduleTriggerJobRegistrar,
@@ -75,6 +77,7 @@ describe('ActiveWorkflowManager', () => {
 			mock<TriggerExecutionContextFactory>(),
 			mock(),
 			mock(), // scheduleTriggerJobRegistrar
+			mock(), // pollTriggerJobRegistrar
 		);
 	});
 
@@ -200,6 +203,7 @@ describe('ActiveWorkflowManager', () => {
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
 			);
 		});
 
@@ -431,6 +435,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPublishedDataService
 				mock(), // scheduleTriggerJobRegistrar
 				ownershipService,
+				mock(), // nodeTypes
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
@@ -451,6 +456,7 @@ describe('ActiveWorkflowManager', () => {
 				factory,
 				mock(), // eventBus
 				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
 			);
 		});
 
@@ -863,6 +869,7 @@ describe('ActiveWorkflowManager', () => {
 		// called.
 		const hourly = '0 * * * *' as CronExpression;
 		const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+		const pollTriggerJobRegistrar = mock<PollTriggerJobRegistrar>();
 		const errorReporter = mock<ErrorReporter>();
 		let realScheduledTaskManager: ScheduledTaskManager;
 		let realActiveWorkflowTriggers: ActiveWorkflowTriggers;
@@ -900,6 +907,7 @@ describe('ActiveWorkflowManager', () => {
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
 				scheduleTriggerJobRegistrar,
+				pollTriggerJobRegistrar,
 			);
 		});
 
@@ -926,7 +934,7 @@ describe('ActiveWorkflowManager', () => {
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-desynced'))).toBe(false);
 		});
 
-		it('should deprovision the durable schedule jobs of the workflow on removal', async () => {
+		it('should deprovision the durable jobs of the workflow on removal', async () => {
 			// A deactivation through the legacy path (e.g. a workflow transfer with the
 			// publication flag on) must delete the durable rows its activation committed,
 			// or the durable scheduler keeps firing a workflow now marked inactive.
@@ -943,9 +951,10 @@ describe('ActiveWorkflowManager', () => {
 			await activeWorkflowManager.removeNonWebhookTriggers('wf-durable');
 
 			expect(scheduleTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-durable');
+			expect(pollTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-durable');
 		});
 
-		it('should deprovision durable schedule jobs even with no in-memory registration', async () => {
+		it('should deprovision durable jobs even with no in-memory registration', async () => {
 			// An earlier removal may have cleared the in-memory registration and then
 			// failed on the durable delete; the retry must still find and drop the rows.
 			expect(realActiveWorkflowTriggers.isActive('wf-retry')).toBe(false);
@@ -953,6 +962,7 @@ describe('ActiveWorkflowManager', () => {
 			await activeWorkflowManager.removeNonWebhookTriggers('wf-retry');
 
 			expect(scheduleTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-retry');
+			expect(pollTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-retry');
 		});
 
 		it('should not let a durable deprovision failure abort deactivation', async () => {
@@ -979,6 +989,19 @@ describe('ActiveWorkflowManager', () => {
 			// In-memory cron was still stopped, and the failure was reported.
 			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-durable-fail'))).toBe(false);
 			expect(errorReporter.error).toHaveBeenCalledWith(deprovisionError);
+			// A schedule-registrar failure must not skip the poll-registrar call.
+			expect(pollTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-durable-fail');
+		});
+
+		it('should not let a poll-registrar deprovision failure abort deactivation', async () => {
+			const deprovisionError = new Error('durable poll delete failed');
+			pollTriggerJobRegistrar.removeWorkflow.mockRejectedValueOnce(deprovisionError);
+
+			await expect(
+				activeWorkflowManager.removeNonWebhookTriggers('wf-durable-poll-fail'),
+			).resolves.not.toThrow();
+
+			expect(errorReporter.error).toHaveBeenCalledWith(deprovisionError);
 		});
 
 		it('should stop a stranded cron on leader stepdown / shutdown', async () => {
@@ -1003,6 +1026,7 @@ describe('ActiveWorkflowManager', () => {
 			// Durable jobs track the published state of a workflow, not this instance's
 			// leadership, so stepdown/shutdown must never deprovision them.
 			expect(scheduleTriggerJobRegistrar.removeWorkflow).not.toHaveBeenCalled();
+			expect(pollTriggerJobRegistrar.removeWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('does not tear down triggers under the publication service flag', async () => {
@@ -1048,6 +1072,7 @@ describe('ActiveWorkflowManager', () => {
 	describe('remove (multi-main)', () => {
 		const publisher = mock<Publisher>();
 		const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
+		const pollTriggerJobRegistrar = mock<PollTriggerJobRegistrar>();
 
 		const makeManager = () =>
 			new ActiveWorkflowManager(
@@ -1068,6 +1093,7 @@ describe('ActiveWorkflowManager', () => {
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
 				scheduleTriggerJobRegistrar,
+				pollTriggerJobRegistrar,
 			);
 
 		beforeEach(() => vi.clearAllMocks());
@@ -1079,6 +1105,7 @@ describe('ActiveWorkflowManager', () => {
 			await makeManager().remove('wf-mm');
 
 			expect(scheduleTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-mm');
+			expect(pollTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-mm');
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'remove-triggers-and-pollers',
 				payload: { workflowId: 'wf-mm' },
@@ -1095,6 +1122,21 @@ describe('ActiveWorkflowManager', () => {
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'remove-triggers-and-pollers',
 				payload: { workflowId: 'wf-mm-fail' },
+			});
+			// A schedule-registrar failure must not skip the poll-registrar call.
+			expect(pollTriggerJobRegistrar.removeWorkflow).toHaveBeenCalledWith('wf-mm-fail');
+		});
+
+		it('still forwards the teardown command when the poll-registrar deprovision fails', async () => {
+			pollTriggerJobRegistrar.removeWorkflow.mockRejectedValueOnce(
+				new Error('durable poll delete failed'),
+			);
+
+			await expect(makeManager().remove('wf-mm-poll-fail')).resolves.not.toThrow();
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'remove-triggers-and-pollers',
+				payload: { workflowId: 'wf-mm-poll-fail' },
 			});
 		});
 	});
@@ -1128,6 +1170,7 @@ describe('ActiveWorkflowManager', () => {
 				mock<TriggerExecutionContextFactory>(),
 				mock(),
 				scheduleTriggerJobRegistrar,
+				mock(), // pollTriggerJobRegistrar
 			);
 
 		const makeWorkflow = () => {

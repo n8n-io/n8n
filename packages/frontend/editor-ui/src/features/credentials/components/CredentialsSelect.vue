@@ -73,8 +73,10 @@ function isSupported(name: string): boolean {
 
 	for (const property of supported.has) {
 		if (checkedCredType[property as keyof ICredentialType] !== undefined) {
-			// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
-			if (name === 'httpHeaderAuth' && property === 'authenticate') continue;
+			// generic-auth credentials (e.g. httpHeaderAuth) may also define
+			// `authenticate`; they belong in the generic auth dropdown, not the
+			// predefined credential type list
+			if (property === 'authenticate' && checkedCredType.genericAuth === true) continue;
 
 			return true;
 		}

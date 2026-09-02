@@ -4,12 +4,11 @@
  * per invocation.
  *
  * This is the interactive contract: the delegate session includes the
- * builder's full standard toolset, so it may suspend on `ask_questions`,
- * `ask_credential`, `ask_embedding_credential`, or `configure_channel`. When
- * it does, this tool cascades the suspension through its own `ctx.suspend()`
- * — using payloads derived from the shared interaction contract in
- * `@n8n/api-types` — so the question renders as a card in the calling
- * assistant's chat and the orchestrator's own checkpoint survives a process
+ * builder's full standard toolset, so it may suspend for builder interactions
+ * or for a target-agent tool approval. This tool cascades the suspension
+ * through its own `ctx.suspend()` using the interaction contracts in
+ * `@n8n/api-types` and the SDK approval contract in `@n8n/agents`, so it renders
+ * as a card in the calling assistant's chat and the orchestrator checkpoint survives a process
  * restart. On resume, the target agent and the builder's open suspension are
  * both re-derived from persistence (no in-memory state carried across the
  * suspend boundary) and checked for identity against the `builderCheckpoint`
@@ -23,7 +22,7 @@
  * builder UI — it is a private sub-agent conversation.
  */
 import type { InterruptibleToolContext } from '@n8n/agents';
-import { Tool } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
@@ -39,18 +38,25 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import {
-	agentNamesMatch,
-	findSessionAgentByName,
+	getSessionAgentByRef,
+	normalizeAgentRef,
+	readPendingAgentTarget,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
 } from './agent-target-binding';
 import { instanceAiBuilderThreadPrefix } from './builder-thread-id';
+import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 import {
 	consumeStreamCascading,
 	type ConsumeStreamCascadingResult,
 } from '../../stream/consume-with-hitl';
 import type { WorkSummary } from '../../stream/work-summary-accumulator';
+import {
+	emitAgentSnapshotTraceEvent,
+	type AgentSnapshotArtifact,
+	type AgentSnapshotReason,
+} from '../../tracing/agent-snapshot-event';
 import type {
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
@@ -59,17 +65,26 @@ import type {
 	SessionWorkflowRef,
 } from '../../types';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
-import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
+
+const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
+const BUILDER_SUB_AGENT_KIND = 'agent-builder';
+const BUILDER_RUN_CANCELLED_MESSAGE = 'The agent builder run was cancelled.';
+
+function getErrorCode(error: unknown): string | undefined {
+	if (!isRecord(error)) return undefined;
+	const code = error.code;
+	return typeof code === 'string' ? code : undefined;
+}
 
 function isBuilderNotConfiguredError(error: unknown): boolean {
-	return isRecord(error) && error.code === BUILDER_NOT_CONFIGURED_CODE;
+	return getErrorCode(error) === BUILDER_NOT_CONFIGURED_CODE;
 }
 
 /** `AgentsBuilderService.resumeBuild` throws `BuilderCheckpointUnavailableError`
  *  (stable `code`, shared via `@n8n/api-types`) when the checkpoint being
  *  resumed has expired or no longer exists. */
 function isBuilderCheckpointUnavailableError(error: unknown): boolean {
-	return isRecord(error) && error.code === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
+	return getErrorCode(error) === BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
 }
 
 /** Either friendly-mappable failure this tool recognizes mid-stream. */
@@ -84,22 +99,6 @@ function didUpdateConfig(workSummary: WorkSummary): boolean {
 	);
 }
 
-/** One event per succeeded config-mutation call — parity with `Builder modified workflow`, which fires once per save. */
-function trackConfigMutations(
-	context: OrchestrationContext,
-	agentId: string,
-	workSummary: WorkSummary,
-): void {
-	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
-	for (const call of workSummary.toolCalls) {
-		if (!call.succeeded || !mutationToolNames.has(call.toolName)) continue;
-		context.trackTelemetry?.('Builder modified agent', {
-			thread_id: context.threadId,
-			agent_id: agentId,
-		});
-	}
-}
-
 function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): string {
 	const lines = workflowContext.map(
 		(workflow) =>
@@ -107,7 +106,7 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 	);
 	return [
 		'<session-workflows>',
-		'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
+		'Workflows built in this session (attachable with both workflowId and workflow name):',
 		...lines,
 		'</session-workflows>',
 	].join('\n');
@@ -119,10 +118,10 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
 }
 
 /** Builder sessions are keyed per assistant thread + target agent; the resume
- *  leg must reconstruct this byte-identically after a restart. */
+ *  leg must reconstruct the same `threadId` byte-identically after a restart. */
 function builderSessionFor(context: OrchestrationContext, agentId: string) {
 	const telemetry = context.tracing?.getTelemetry?.({
-		agentRole: 'agent-builder',
+		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
 		executionMode: 'foreground',
 		metadata: { agent_id: builderAgentIdFor(agentId), target_agent_id: agentId },
@@ -136,11 +135,12 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 		...(context.tracing?.onMemoryTaskEvent
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
 			: {}),
+		abortSignal: context.abortSignal,
 	};
 }
 
 function builderAgentIdFor(agentId: string): string {
-	return `agent-builder:${agentId}`;
+	return `${BUILDER_SUB_AGENT_ROLE}:${agentId}`;
 }
 
 const buildAgentInputSchema = z.object({
@@ -148,25 +148,46 @@ const buildAgentInputSchema = z.object({
 		.string()
 		.min(1)
 		.describe(
-			'The instruction or user message to forward to the agent builder. The builder cannot ' +
-				'see this chat — include every requirement, decision, and user answer already ' +
-				'gathered in this conversation, not just the latest message.',
+			'A faithful handoff to the agent builder, which cannot see this chat. Include the ' +
+				'user’s explicit requirements, decisions, and relevant prior answers, but never infer ' +
+				'or prescribe implementation details the user did not request.',
+		),
+	agentRef: z
+		.string()
+		.optional()
+		.describe(
+			'Short stable key you choose once for an agent in this conversation and repeat on ' +
+				'every later call for that same agent (like a workflow source filePath). Prefer a ' +
+				'slug of the display name. A repeated key continues that agent; a fresh key creates ' +
+				'a new one only when no agent is bound yet, or alongside `createNew`. Omit on ' +
+				'follow-ups for the current agent when neither switching nor creating — the active ' +
+				'target is used. When omitted on a create/switch call, the key is derived from `name`.',
 		),
 	name: z
 		.string()
 		.optional()
 		.describe(
-			'Agent name. A name matching an agent already built in this conversation switches back ' +
-				'to that agent; a new name creates a new agent and makes it the active target. Omit on ' +
-				'follow-up calls for the current agent.',
+			'Display name for a new agent (required when creating). Also used as the addressing ' +
+				'key when `agentRef` is omitted. Omit on follow-up calls for the current agent.',
 		),
 	agentId: z
 		.string()
 		.optional()
 		.describe(
-			'Existing agent id to edit — use the `agentId` returned by earlier build-agent ' +
-				'results. Pass to start editing that agent or to switch the active build target; ' +
-				'omit on follow-up calls.',
+			'Existing agent id to adopt — use when editing an agent that was not built in this ' +
+				'conversation (e.g. from the project list). Once adopted, omit on retries and prefer ' +
+				'`agentRef`. NEVER pass for a request to build a NEW agent. Agents the request merely ' +
+				'references — as sub-agents, delegation targets, or examples — are not the build ' +
+				'target: mention them in `message` instead.',
+		),
+	createNew: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set to true ONLY when the user explicitly wants an ADDITIONAL agent alongside the one ' +
+				'this conversation is already building. Leave unset otherwise: while a target is ' +
+				'bound, a fresh `agentRef`/`name` continues that agent instead of creating a second ' +
+				'one, so naming the agent for the first time cannot strand it behind a duplicate.',
 		),
 	workflowContext: z
 		.array(z.object({ id: z.string(), name: z.string(), description: z.string().optional() }))
@@ -183,7 +204,13 @@ const buildAgentOutputSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Id of the agent this turn targeted. Record it and pass it as `agentId` when switching back to this agent later.',
+			'Id of the agent this turn targeted. Prefer `agentRef` for follow-ups in this conversation; use `agentId` when the ref is unknown.',
+		),
+	agentRef: z
+		.string()
+		.optional()
+		.describe(
+			'Addressing key for this agent in this conversation. Pass it back as `agentRef` on later calls for the same agent.',
 		),
 	agentName: z.string().optional().describe('Display name of the targeted agent, when known.'),
 	answers: z
@@ -204,7 +231,12 @@ const builderCheckpointRefSchema = z.object({
 	configUpdated: z.boolean(),
 	/** Target the suspended build belongs to; optional for checkpoints persisted before this field existed. */
 	target: z
-		.object({ agentId: z.string(), projectId: z.string(), name: z.string().optional() })
+		.object({
+			agentId: z.string(),
+			projectId: z.string(),
+			name: z.string().optional(),
+			ref: z.string().optional(),
+		})
 		.optional(),
 });
 
@@ -214,12 +246,17 @@ const builderSuspendPayloadSchema = z.union([
 	questionsSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
 	channelSuspendPayloadSchema,
+	APPROVAL_SUSPEND_SCHEMA,
 ]);
 
 const buildAgentSuspendSchema = z.union([
 	questionsSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
 	credentialSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
 	channelSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	APPROVAL_SUSPEND_SCHEMA.extend({
+		requestId: z.string(),
+		builderCheckpoint: builderCheckpointRefSchema,
+	}),
 ]);
 
 /**
@@ -258,9 +295,9 @@ function publishAgentSpawned(
 		agentId: builderAgentId,
 		payload: {
 			parentId: context.orchestratorAgentId,
-			role: 'agent-builder',
+			role: BUILDER_SUB_AGENT_ROLE,
 			tools: [],
-			kind: 'agent-builder',
+			kind: BUILDER_SUB_AGENT_KIND,
 			title: 'Building agent',
 			// name/projectId make the FE render the agent as a conversation artifact
 			// (artifact list + preview both require projectId).
@@ -289,12 +326,54 @@ function publishAgentBuilderFailure(
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
-		payload: { role: 'agent-builder', result: '', error: message },
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error: message },
 	});
 	return message;
 }
 
-/** Publish the terminal `agent-completed` event and map the result to the tool output. */
+/** Publish the terminal `agent-completed` event for a stopped builder turn: no
+ *  `error`, so the tree stays quiet and the run-level stopped indicator speaks. */
+function publishAgentBuilderCancelled(context: OrchestrationContext, builderAgentId: string): void {
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-completed',
+		runId: context.runId,
+		agentId: builderAgentId,
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', status: 'cancelled' },
+	});
+}
+
+/** Emit an `agent-snapshot` for the builder's target. Best-effort at both ends. */
+async function snapshotAgent(
+	context: OrchestrationContext,
+	delegate: InstanceAiBuilderDelegate,
+	target: AgentBuilderTarget,
+	reason: AgentSnapshotReason,
+): Promise<void> {
+	// No trace, no read — the delegate read costs a scope check and two queries.
+	// Matches the service-side call site, which early-returns on `!tracing`.
+	if (!context.tracing) return;
+	let artifact: AgentSnapshotArtifact | null = null;
+	try {
+		// An optional method may be absent, or return a non-promise on a mocked host.
+		artifact = (await delegate.readAgentArtifact?.(target.agentId)) ?? null;
+	} catch (error) {
+		context.logger.debug(
+			`[agent-snapshot] ${reason} read for ${target.agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return;
+	}
+	if (!artifact) return;
+	await emitAgentSnapshotTraceEvent(context.tracing, {
+		agentId: target.agentId,
+		projectId: target.projectId,
+		reason,
+		artifact,
+		logger: context.logger,
+	});
+}
+
+/** Publish the terminal `agent-completed` event and map the result to the tool output.
+ *  A cancelled turn is intercepted by the caller, so that status never arrives here. */
 async function finishTurn(
 	context: OrchestrationContext,
 	builderAgentId: string,
@@ -308,7 +387,7 @@ async function finishTurn(
 			type: 'agent-completed',
 			runId: context.runId,
 			agentId: builderAgentId,
-			payload: { role: 'agent-builder', result: text.slice(0, 200) },
+			payload: { role: BUILDER_SUB_AGENT_ROLE, result: text.slice(0, 200) },
 		});
 		return { ok: true, builderReply: text, configUpdated };
 	}
@@ -319,15 +398,23 @@ async function finishTurn(
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
-		payload: { role: 'agent-builder', result: '', error },
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error },
 	});
 	return { ok: false, error, configUpdated };
 }
 
 /** Target identity stamped on every output of a dispatched builder turn so the
- *  orchestrator learns the agentId and can switch back by id instead of name. */
-function targetIdentity(target: AgentBuilderTarget): { agentId: string; agentName?: string } {
-	return { agentId: target.agentId, ...(target.name ? { agentName: target.name } : {}) };
+ *  orchestrator learns the addressing key (and agentId as a fallback). */
+function targetIdentity(target: AgentBuilderTarget): {
+	agentId: string;
+	agentRef?: string;
+	agentName?: string;
+} {
+	return {
+		agentId: target.agentId,
+		...(target.ref ? { agentRef: target.ref } : {}),
+		...(target.name ? { agentName: target.name } : {}),
+	};
 }
 
 /**
@@ -364,10 +451,19 @@ async function runBuilderConsumeLoop(params: {
 		dedupeBase,
 	} = params;
 
+	// Every settled return goes through here, so the state a pass left behind is
+	// snapshotted on the error returns too — a pass that mutated the config, then
+	// suspended and failed on resume, is exactly the post-state a repair case
+	// grades. A suspend resumes and settles through here; a cancel throws past it.
+	const settle = async (output: BuildAgentOutput): Promise<BuildAgentOutput> => {
+		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
+		return output;
+	};
+
 	const traceRun = await startSubAgentTrace(context, {
 		agentId: builderAgentId,
-		role: 'agent-builder',
-		kind: 'agent-builder',
+		role: BUILDER_SUB_AGENT_ROLE,
+		kind: BUILDER_SUB_AGENT_KIND,
 		metadata: { target_agent_id: target.agentId },
 		...(traceInputs !== undefined ? { inputs: traceInputs } : {}),
 	});
@@ -397,12 +493,12 @@ async function runBuilderConsumeLoop(params: {
 		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
 		const message = publishAgentBuilderFailure(context, builderAgentId, error);
 		if (isFriendlyMappableBuilderError(error)) {
-			return {
+			return await settle({
 				ok: false,
 				error: message,
 				configUpdated: carriedConfigUpdated,
 				...targetIdentity(target),
-			};
+			});
 		}
 		throw error;
 	}
@@ -411,14 +507,22 @@ async function runBuilderConsumeLoop(params: {
 	// the builder agent was constructed — scope check and existence check both
 	// passed — so a deferred agentId-path bind is now safe to persist.
 	await onSettled?.();
-	trackConfigMutations(context, target.agentId, result.workSummary);
+
+	if (result.status === 'cancelled') {
+		const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
+		publishAgentBuilderCancelled(context, builderAgentId);
+		await failTraceRun(context, traceRun, cancelled);
+		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		throw cancelled;
+	}
 
 	// The builder names (and renames) the target agent via its config tools, so
 	// the orchestrator-supplied name can be missing or stale by the time the
 	// turn settles. Refresh it so the tool output (`targetIdentity`), the
 	// republished agent-spawned event, and the thread binding all carry the
 	// agent's real display name. Best-effort: a stale title is cosmetic and
-	// must not fail an otherwise-successful turn.
+	// must not fail an otherwise-successful turn. Skipped on cancel — abort
+	// should not wait on display-name I/O.
 	try {
 		const freshName = await delegate.resolveAgentName(target.agentId);
 		if (freshName && freshName !== target.name) {
@@ -443,7 +547,7 @@ async function runBuilderConsumeLoop(params: {
 			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
 		}
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
-		return { ...output, ...targetIdentity(target) };
+		return await settle({ ...output, ...targetIdentity(target) });
 	}
 
 	const configUpdatedSoFar = carriedConfigUpdated || didUpdateConfig(result.workSummary);
@@ -472,12 +576,12 @@ async function runBuilderConsumeLoop(params: {
 			result.usage?.usage ?? [],
 			'errored',
 		);
-		return {
+		return await settle({
 			ok: false,
 			error: message,
 			configUpdated: configUpdatedSoFar,
 			...targetIdentity(target),
-		};
+		});
 	}
 
 	// The builder-level requestId must not leak up: the FE confirms against the
@@ -499,6 +603,7 @@ async function runBuilderConsumeLoop(params: {
 				agentId: target.agentId,
 				projectId: target.projectId,
 				...(target.name ? { name: target.name } : {}),
+				...(target.ref ? { ref: target.ref } : {}),
 			},
 		},
 	});
@@ -612,23 +717,64 @@ async function handleResume(
 }
 
 type TargetResolution =
-	| { ok: true; target: AgentBuilderTarget; bindAfterTurn: boolean }
+	| {
+			ok: true;
+			target: AgentBuilderTarget;
+			bindAfterTurn: boolean;
+			mode: 'create' | 'edit' | 'continued';
+	  }
 	| { ok: false; error: string };
 
-const NO_TARGET_INPUT_ERROR = 'Pass name to create a new agent or agentId to edit an existing one.';
+const NO_TARGET_INPUT_ERROR =
+	'Pass `name` (and optionally `agentRef`) to create a new agent, `agentId` to adopt an existing one, or omit both to continue the current agent.';
+const UNKNOWN_REF_ERROR =
+	'Unknown `agentRef`. Pass `name` to create a new agent under that key, or `agentId` to adopt an existing agent.';
 const AGENT_ID_NEEDS_PROJECT_ERROR =
 	'Cannot bind to agentId without an active project context. Start this conversation from within a project.';
 
+/** Best-effort display-name lookup so the first agent-spawned event can label the
+ *  artifact; a lookup failure must not fail the turn. */
+async function resolveAgentNameSafely(
+	delegate: InstanceAiBuilderDelegate,
+	agentId: string,
+): Promise<string | undefined> {
+	try {
+		return await delegate.resolveAgentName(agentId);
+	} catch {
+		return undefined;
+	}
+}
+
 /**
- * Resolve which agent this call should build/edit. A bound target stays
- * active by default; passing `name` or `agentId` can create a new target or
- * switch to a different existing one. `agentId` wins when both are given.
+ * The id the frontend minted for an unsaved new-agent artifact on this thread,
+ * so the build persists the agent the user already has open rather than a
+ * second one beside it. Ignored when it belongs to a different project.
+ */
+async function pendingAgentIdFor(context: InstanceAiContext): Promise<string | undefined> {
+	const pending = await readPendingAgentTarget(context);
+	return pending && pending.projectId === context.projectId ? pending.agentId : undefined;
+}
+
+function agentRefConflictError(ref: string, boundAgentId: string, passedAgentId: string): string {
+	return (
+		`\`agentRef\` "${ref}" is already bound to agent ${boundAgentId} in this conversation, ` +
+		`but \`agentId\` ${passedAgentId} was passed. Continue the bound agent (omit \`agentId\`, ` +
+		'or pass its id), or pick a different `agentRef` for a new agent.'
+	);
+}
+
+/**
+ * Resolve which agent this call should build/edit. Identity is keyed by
+ * `slug(agentRef ?? name)` in the session registry — a repeated key continues,
+ * an unknown key adopts (with `agentId`) or, when no target is bound yet,
+ * creates (with `name`). A bound target stays active when neither key nor id
+ * is given, and also when an unknown key arrives without `createNew`: naming
+ * an agent is how the model addresses a new one, so treating that as a create
+ * would strand the agent the user already has open behind a duplicate.
  * agentId-path binds are always deferred (`bindAfterTurn: true`) — persisting
  * before the builder run settles would let a hallucinated/forbidden/missing
- * agentId permanently poison the thread (no unbind path exists). A name-path
- * switch-back to a session-registry agent is deferred for the same reason;
- * a name-path create binds immediately since `delegate.createAgent` already
- * proves the agent exists.
+ * agentId permanently poison the thread (no unbind path exists). A create
+ * binds immediately since `delegate.createAgent` already proves the agent exists.
  */
 async function resolveTargetForCall(
 	domainContext: InstanceAiContext,
@@ -636,86 +782,179 @@ async function resolveTargetForCall(
 	input: z.infer<typeof buildAgentInputSchema>,
 	boundTarget: AgentBuilderTarget | undefined,
 ): Promise<TargetResolution> {
+	const keySource = input.agentRef ?? input.name;
+	const key = keySource ? normalizeAgentRef(keySource) : undefined;
+
+	if (key) {
+		const sessionAgent = await getSessionAgentByRef(domainContext, key);
+		if (sessionAgent) {
+			if (input.agentId && input.agentId !== sessionAgent.agentId) {
+				return {
+					ok: false,
+					error: agentRefConflictError(key, sessionAgent.agentId, input.agentId),
+				};
+			}
+			const target: AgentBuilderTarget = {
+				...sessionAgent,
+				ref: key,
+				...(input.name ? { name: input.name } : {}),
+			};
+			// Same agent as the active binding — no re-persist needed.
+			if (boundTarget && boundTarget.agentId === target.agentId) {
+				return {
+					ok: true,
+					target: { ...boundTarget, ...target },
+					bindAfterTurn: false,
+					mode: 'edit',
+				};
+			}
+			// Switch-back: deferred so a deleted-since-registry agent can't clobber
+			// the current binding on a failed turn.
+			return { ok: true, target, bindAfterTurn: true, mode: 'edit' };
+		}
+
+		// Active target already addresses this key (e.g. just created this turn,
+		// or a handoff whose registry row isn't available) — continue without
+		// creating a duplicate.
+		const boundKey = boundTarget?.ref
+			? normalizeAgentRef(boundTarget.ref)
+			: boundTarget?.name
+				? normalizeAgentRef(boundTarget.name)
+				: undefined;
+		if (boundTarget && boundKey === key) {
+			if (input.agentId && input.agentId !== boundTarget.agentId) {
+				return {
+					ok: false,
+					error: agentRefConflictError(key, boundTarget.agentId, input.agentId),
+				};
+			}
+			return {
+				ok: true,
+				target: { ...boundTarget, ref: key, ...(input.name ? { name: input.name } : {}) },
+				bindAfterTurn: false,
+				mode: 'edit',
+			};
+		}
+
+		if (input.agentId) {
+			if (boundTarget && input.agentId === boundTarget.agentId) {
+				return {
+					ok: true,
+					target: { ...boundTarget, ref: key, ...(input.name ? { name: input.name } : {}) },
+					bindAfterTurn: false,
+					mode: 'edit',
+				};
+			}
+			if (!domainContext.projectId) {
+				return { ok: false, error: AGENT_ID_NEEDS_PROJECT_ERROR };
+			}
+			const name = input.name ?? (await resolveAgentNameSafely(delegate, input.agentId));
+			return {
+				ok: true,
+				target: {
+					agentId: input.agentId,
+					projectId: domainContext.projectId,
+					ref: key,
+					...(name ? { name } : {}),
+				},
+				bindAfterTurn: true,
+				mode: 'edit',
+			};
+		}
+
+		if (input.name) {
+			// Naming an agent is how the model addresses a new one, so on the first
+			// build request of a thread that already has a target — the artifact the
+			// user opened — an unrecognised key would strand that agent behind a
+			// duplicate. Continue the bound agent unless a second one was asked for
+			// explicitly. `name` is not applied here: the builder names the agent as
+			// part of the build, and overwriting would clobber a name the user chose.
+			if (boundTarget && !input.createNew) {
+				// Persisted after the turn so the key we hand back resolves on later
+				// calls — the tool reports this `agentRef`, and without registering it
+				// the model could not address the agent by it again.
+				return {
+					ok: true,
+					target: { ...boundTarget, ref: key },
+					bindAfterTurn: true,
+					mode: 'continued',
+				};
+			}
+			const created = await delegate.createAgent(
+				input.name,
+				await pendingAgentIdFor(domainContext),
+			);
+			const target: AgentBuilderTarget = {
+				agentId: created.agentId,
+				projectId: created.projectId,
+				name: input.name,
+				ref: key,
+			};
+			domainContext.agentBuilderTarget = target;
+			await saveAgentBuilderTarget(domainContext, target);
+			return { ok: true, target, bindAfterTurn: false, mode: 'create' };
+		}
+
+		return { ok: false, error: UNKNOWN_REF_ERROR };
+	}
+
+	// No addressing key (`name` always produces one) — agentId alone adopts,
+	// otherwise continue the bound target.
 	if (input.agentId) {
 		if (boundTarget && input.agentId === boundTarget.agentId) {
-			return { ok: true, target: boundTarget, bindAfterTurn: false };
+			return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
 		}
 		if (!domainContext.projectId) {
 			return { ok: false, error: AGENT_ID_NEEDS_PROJECT_ERROR };
 		}
-		// Best-effort name lookup so the first agent-spawned event already labels
-		// the artifact with the existing agent's display name.
-		let name: string | undefined;
-		try {
-			name = await delegate.resolveAgentName(input.agentId);
-		} catch {
-			name = undefined;
-		}
+		const name = await resolveAgentNameSafely(delegate, input.agentId);
 		return {
 			ok: true,
 			target: {
 				agentId: input.agentId,
 				projectId: domainContext.projectId,
-				...(name ? { name } : {}),
+				...(name ? { name, ref: normalizeAgentRef(name) } : {}),
 			},
 			bindAfterTurn: true,
+			mode: 'edit',
 		};
 	}
 
-	if (input.name) {
-		// Guards against the orchestrator redundantly repeating `name` on a
-		// follow-up call for the agent already being built.
-		if (boundTarget && agentNamesMatch(input.name, boundTarget.name)) {
-			return { ok: true, target: boundTarget, bindAfterTurn: false };
-		}
-		// A name matching an agent already built/targeted this conversation is a
-		// switch-back, not a creation — the duplicate-agent failure mode this
-		// registry exists to prevent. Deferred persist like the agentId path: the
-		// agent may have been deleted since, and a failed turn must not clobber
-		// the current binding.
-		const sessionAgent = await findSessionAgentByName(domainContext, input.name);
-		if (sessionAgent) {
-			return { ok: true, target: sessionAgent, bindAfterTurn: true };
-		}
-		const created = await delegate.createAgent(input.name);
-		const target: AgentBuilderTarget = {
-			agentId: created.agentId,
-			projectId: created.projectId,
-			name: input.name,
-		};
-		domainContext.agentBuilderTarget = target;
-		await saveAgentBuilderTarget(domainContext, target);
-		return { ok: true, target, bindAfterTurn: false };
+	if (boundTarget) {
+		return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
 	}
-
-	if (boundTarget) return { ok: true, target: boundTarget, bindAfterTurn: false };
 	return { ok: false, error: NO_TARGET_INPUT_ERROR };
 }
 
 export function createBuildAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
-			'Delegate agent building to the agents-module builder, running as a sub-agent. ' +
-				'Pass `name` to start a new agent or `agentId` to edit an existing one; calls ' +
-				'without either keep editing the current agent. To build ANOTHER agent in the same ' +
-				'conversation, pass its `name` or `agentId` — a name matching an agent already built ' +
-				'in this conversation switches back to it; an unmatched name creates a new agent and ' +
-				'switches the active target. The builder can also publish or unpublish the target ' +
-				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
-				'forward that intent in `message`; never tell the user to open the agent editor and ' +
-				'click Publish. When the builder needs user input (a choice, a ' +
-				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
-				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
-				'user’s answer and returns the builder’s reply. Returns the builder’s reply, the ' +
-				'target `agentId`, and whether it updated the agent config. Record the returned ' +
-				'`agentId` and prefer passing it as `agentId` when switching back to that agent — ' +
-				'the `name` path is a fallback for when the id is unknown.',
+			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
+				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
+				'builder. Load `agent-builder` via `load_skill` before calling this tool and follow it ' +
+				'for prerequisite creation, faithful handoff, targeting, interactive questions, ' +
+				'testing, and publishing. In `message`, forward only the user’s explicit requirements ' +
+				'and relevant prior decisions; never infer, invent, expand, recommend, or prescribe ' +
+				'implementation details. Do not translate a named outcome or service into an ' +
+				'implementation choice — for example, do not turn “a Slack agent” into a Slack node ' +
+				'tool. This tool is only for Agent artifacts. When the request is workflow-anchored ' +
+				'(via the intent gate / ' +
+				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
+				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
+				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
+				'provide, ask the user or use a placeholder; do not route around that by calling ' +
+				'`build-agent`. Returns the builder’s reply, the target `agentRef`/`agentId`, and ' +
+				'whether it updated the Agent config.',
 		)
 		.input(buildAgentInputSchema)
 		.output(buildAgentOutputSchema)
 		.suspend(buildAgentSuspendSchema)
 		.resume(buildAgentResumeSchema)
 		.handler(async (input: z.infer<typeof buildAgentInputSchema>, ctx: BuildAgentToolContext) => {
+			if (context.abortSignal.aborted) {
+				throw createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
+			}
+
 			const domainContext = context.domainContext;
 			const delegate = domainContext?.builderDelegate;
 			if (!domainContext || !delegate) {
@@ -731,8 +970,21 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const existingTarget = await resolveAgentBuilderTarget(domainContext);
 			const resolution = await resolveTargetForCall(domainContext, delegate, input, existingTarget);
 			if (!resolution.ok) {
+				context.trackTelemetry?.('instance_ai_agent_build_route', {
+					thread_id: context.threadId,
+					run_id: context.runId,
+					user_id: context.userId,
+					mode: 'resolution_failed',
+				});
 				return { ok: false, error: resolution.error };
 			}
+			context.trackTelemetry?.('instance_ai_agent_build_route', {
+				thread_id: context.threadId,
+				run_id: context.runId,
+				user_id: context.userId,
+				mode: resolution.mode,
+				agent_id: resolution.target.agentId,
+			});
 			const boundTarget = resolution.target;
 			const bindAfterTurn = resolution.bindAfterTurn;
 
@@ -741,6 +993,12 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);
+
+			// Before the builder touches it: a repair-shaped eval case seeds from the
+			// state the turn opened on. A new agent has no prior state.
+			if (resolution.mode !== 'create') {
+				await snapshotAgent(context, delegate, boundTarget, 'target-resolved');
+			}
 
 			let turn: BuilderTurnStream;
 			try {

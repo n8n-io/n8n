@@ -76,6 +76,14 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
 	},
 	{
+		find: /^@n8n\/telemetry$/,
+		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src/index.ts'),
+	},
+	{
+		find: /^@n8n\/telemetry(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src$1'),
+	},
+	{
 		find: /^@n8n\/utils(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
 	},
@@ -159,7 +167,7 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
+						.replaceAll('/{{BASE_PATH}}', `//localhost:${process.env.N8N_PORT ?? '5678'}`)
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},

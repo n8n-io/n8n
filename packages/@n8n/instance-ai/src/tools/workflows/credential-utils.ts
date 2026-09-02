@@ -99,3 +99,30 @@ export function assignCredentialToNode(
 	node.credentials ??= {};
 	(node.credentials as unknown as Record<string, SetupNodeCredential>)[credType] = credential;
 }
+
+/**
+ * Hostname of a node's (possibly expression-typed) URL: strips the `=`
+ * expression marker, cuts at the first `{{`, lowercases. Undefined for
+ * anything that doesn't parse as an http(s) URL with a host.
+ */
+export function extractServiceHost(raw: unknown): string | undefined {
+	if (typeof raw !== 'string') return undefined;
+	const plain = (raw.startsWith('=') ? raw.slice(1) : raw).split('{{')[0].trim();
+	if (!/^https?:\/\//i.test(plain)) return undefined;
+	try {
+		const host = new URL(plain).hostname.toLowerCase();
+		return host || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Whether two hosts belong to the same service: equal, or one is a subdomain
+ * of the other (dot-boundary suffix — `queue.fal.run` matches `fal.run`, but
+ * `api.pexels.com` never matches `api.apify.com`). Heuristic without a
+ * public-suffix list; good enough until a real service pair defeats it.
+ */
+export function serviceHostsMatch(a: string, b: string): boolean {
+	return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
+}

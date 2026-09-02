@@ -1,4 +1,8 @@
 name: 'Util: Claude Task Runner'
+# The `task` input is deliberately not in the run name: dispatchers pass large
+# multiline payloads (e.g. a full Linear issue as JSON) that must not appear in
+# the publicly visible run list.
+run-name: 'Util: Claude Task Runner (model=${{ inputs.model }}, ref=${{ inputs.ref }})'
 
 on:
   workflow_dispatch:

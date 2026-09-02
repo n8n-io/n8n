@@ -229,7 +229,8 @@ export async function resolveAutocompleteExpression(
 //        state-based utils
 // ----------------------------------
 
-export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
+export const isCredentialsModalOpen = () =>
+	useUIStore().modalStateById[CREDENTIAL_EDIT_MODAL_KEY].open;
 
 export const isInHttpNodePagination = (
 	workflowDocumentId: WorkflowDocumentId,

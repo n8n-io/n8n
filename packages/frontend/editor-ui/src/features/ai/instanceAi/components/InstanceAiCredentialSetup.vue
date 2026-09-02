@@ -6,19 +6,25 @@ import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/ins
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
+import {
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiCredentialFlow,
+	type InstanceAiCredentialRequest,
+} from '@n8n/api-types';
 import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
+import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
@@ -65,6 +71,8 @@ const isSubmitted = ref(false);
 const isDeferred = ref(false);
 
 const selections = ref<Record<string, string | null>>({});
+/** Credential types the user explicitly skipped via "Later" on their step, distinct from never-visited types. */
+const skippedTypes = ref<Set<string>>(new Set());
 
 // ---------------------------------------------------------------------------
 // Auto-select from existing credentials
@@ -126,13 +134,26 @@ function isStepComplete(credentialType: string): boolean {
 	return selections.value[credentialType] !== null;
 }
 
-const allSelected = computed(() =>
-	props.credentialRequests.every((r) => isStepComplete(r.credentialType)),
+/** A step is handled once it has a selection or the user explicitly skipped it — either way, nothing left to do there. */
+function isStepHandled(credentialType: string): boolean {
+	return isStepComplete(credentialType) || skippedTypes.value.has(credentialType);
+}
+
+const allHandled = computed(() =>
+	props.credentialRequests.every((r) => isStepHandled(r.credentialType)),
 );
 
 const anySelected = computed(() =>
 	props.credentialRequests.some((r) => isStepComplete(r.credentialType)),
 );
+
+/** The submitted-state label: finalize has its own copy; otherwise distinguish a full submit from a mixed skip/select one. */
+const submittedLabelKey = computed(() => {
+	if (isFinalize.value) return 'instanceAi.credential.finalize.applied';
+	return skippedTypes.value.size > 0
+		? 'instanceAi.credential.someSkipped'
+		: 'instanceAi.credential.allSelected';
+});
 
 // ---------------------------------------------------------------------------
 // Auto-advance
@@ -159,7 +180,7 @@ watch(
 			return;
 		}
 		const nextIncomplete = props.credentialRequests.findIndex(
-			(r, idx) => idx > currentStepIndex.value && !isStepComplete(r.credentialType),
+			(r, idx) => idx > currentStepIndex.value && !isStepHandled(r.credentialType),
 		);
 		if (nextIncomplete >= 0) {
 			goToStep(nextIncomplete);
@@ -167,13 +188,15 @@ watch(
 	},
 );
 
-// Auto-continue when all credentials have been selected. Runs immediately
-// so a single existing credential auto-selected on init resolves the card
-// without user input, as the setup tool describes.
+// Auto-continue once every step is handled (selected or skipped) and at
+// least one credential was provided. Runs immediately so a single existing
+// credential auto-selected on init resolves the card without user input, as
+// the setup tool describes. The per-step skip path submits directly instead
+// of relying on this watcher (see handleLater).
 watch(
-	allSelected,
-	async (nowComplete, wasComplete) => {
-		if (nowComplete && !wasComplete) {
+	() => allHandled.value && anySelected.value,
+	async (nowReady, wasReady) => {
+		if (nowReady && !wasReady) {
 			await nextTick();
 			await handleContinue();
 		}
@@ -199,7 +222,7 @@ onMounted(async () => {
 	}
 
 	const firstIncomplete = props.credentialRequests.findIndex(
-		(r) => !isStepComplete(r.credentialType),
+		(r) => !isStepHandled(r.credentialType),
 	);
 	if (firstIncomplete > 0) {
 		goToStep(firstIncomplete);
@@ -210,20 +233,25 @@ onMounted(async () => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getDisplayName(credentialType: string): string {
-	const raw =
-		credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
-	const appName = getAppNameFromCredType(raw);
-	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+function getDisplayName(request: InstanceAiCredentialRequest): string {
+	// An agent-supplied recipe names the credential after the service ("fal.ai
+	// API Key") — a friendlier title than the generic type ("Header Auth"). It's
+	// already human-authored, so it skips the type-name keyword filtering.
+	const name =
+		request.setupHint?.suggestedName ??
+		getAppNameFromCredType(
+			credentialsStore.getCredentialTypeByName(request.credentialType)?.displayName ??
+				request.credentialType,
+		);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name } });
 }
 
 const hasExistingCredentials = computed(() => {
 	if (!currentRequest.value) return false;
 	const credType = currentRequest.value.credentialType;
-	return (
-		(currentRequest.value.existingCredentials?.length ?? 0) > 0 ||
-		(credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0
-	);
+	// Gate on the same source NodeCredentials builds its dropdown from, so the
+	// card renders its own setup button instead of NodeCredentials' empty state.
+	return (credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0;
 });
 
 function hasEasySetup(credentialType: string): boolean {
@@ -255,7 +283,34 @@ const setupChoiceOptions = computed<Array<ActionDropdownItem<CredentialSetupChoi
 	},
 ]);
 
-function openNewCredentialModal() {
+const hasTemplatedHint = computed(
+	() =>
+		currentRequest.value?.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE &&
+		!!currentRequest.value?.setupHint,
+);
+
+// The type-derived selector label would read "Credential for Templated Custom
+// Auth" — name the service from the recipe instead ("fal.ai API Key credentials").
+const credentialsFieldLabel = computed(() => {
+	if (!hasTemplatedHint.value) return undefined;
+	const name = deriveServiceName(currentRequest.value?.setupHint);
+	return name
+		? i18n.baseText('instanceAi.credential.fieldLabel', { interpolate: { name } })
+		: undefined;
+});
+
+// Ask-AI opens a NEW help thread in a new tab: this thread's run is suspended
+// on the setup card, so appending here would derail it.
+const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
+	source: 'credential_edit',
+	projectId: () => props.projectId,
+	serviceName: () => deriveServiceName(currentRequest.value?.setupHint),
+});
+const instanceAiCredentialHelp = computed(() => instanceAiCredentialHelpFactory());
+
+/** Create flow: the regular credential modal, pre-filled from the recipe when
+ *  the request carries a Templated Custom Auth setup hint. */
+function openCreateCredential() {
 	const req = currentRequest.value;
 	if (!req) return;
 	uiStore.openNewCredential(
@@ -268,6 +323,8 @@ function openNewCredentialModal() {
 		undefined,
 		{
 			closeOnSave: true,
+			credentialSetupHint: req.setupHint,
+			instanceAiCredentialHelp: instanceAiCredentialHelp.value,
 		},
 	);
 }
@@ -305,6 +362,7 @@ function onCredentialSelected(
 	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
 	if (credentialId) {
 		selections.value[credentialType] = credentialId;
+		skippedTypes.value.delete(credentialType);
 	} else {
 		selections.value[credentialType] = null;
 	}
@@ -335,6 +393,10 @@ function trackCredentialInput() {
 }
 
 async function handleContinue() {
+	// Guards against a double submit when a per-step skip in handleLater and
+	// the allHandled/anySelected watcher both become ready from the same tick.
+	if (isSubmitted.value) return;
+
 	const credentials: Record<string, string> = {};
 	for (const [type, id] of Object.entries(selections.value)) {
 		if (id) credentials[type] = id;
@@ -355,12 +417,8 @@ async function handleContinue() {
 	}
 }
 
-async function handleLater() {
-	trackCredentialInput();
-	if (showSetupChoice.value) {
-		trackSetupChoiceClicked('skip');
-	}
-
+/** Whole-card deferral: every step is left unresolved and the card resolves as deferred. */
+async function deferWholeCard() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
@@ -374,6 +432,47 @@ async function handleLater() {
 		isSubmitted.value = false;
 		isDeferred.value = false;
 	}
+}
+
+async function handleLater() {
+	// Finalize (workflow-setup) keeps "do it all later" as a single whole-card
+	// deferral — unlike the generic stage, there's no per-step wizard to skip
+	// through individually.
+	if (isFinalize.value) {
+		trackCredentialInput();
+		if (showSetupChoice.value) {
+			trackSetupChoiceClicked('skip');
+		}
+		await deferWholeCard();
+		return;
+	}
+
+	if (showSetupChoice.value) {
+		trackSetupChoiceClicked('skip');
+	}
+
+	const req = currentRequest.value;
+	if (req) {
+		skippedTypes.value.add(req.credentialType);
+		selections.value[req.credentialType] = null;
+	}
+
+	const nextUnhandled = props.credentialRequests.findIndex((r) => !isStepHandled(r.credentialType));
+	if (nextUnhandled >= 0) {
+		userNavigated.value = false;
+		goToStep(nextUnhandled);
+		return;
+	}
+
+	// Every step is now handled: submit the mixed selected/skipped result if
+	// anything was selected, otherwise defer the whole card as before.
+	if (anySelected.value) {
+		await handleContinue();
+		return;
+	}
+
+	trackCredentialInput();
+	await deferWholeCard();
 }
 
 function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip') {
@@ -422,7 +521,7 @@ function onSetupChoiceSelected(choice: CredentialSetupChoice) {
 
 function handleSetupManually() {
 	trackSetupChoiceClicked('manual');
-	openNewCredentialModal();
+	openCreateCredential();
 }
 
 async function submitAutoSetup(credentialType: string) {
@@ -471,7 +570,7 @@ async function handleSetupAutomatically() {
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
 					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
-						{{ getDisplayName(currentRequest.credentialType) }}
+						{{ getDisplayName(currentRequest) }}
 					</N8nText>
 
 					<N8nText
@@ -501,7 +600,12 @@ async function handleSetupAutomatically() {
 							:suggested-credential-name="currentRequest.suggestedName"
 							standalone
 							hide-issues
-							hide-ask-assistant
+							:instance-ai-credential-help="instanceAiCredentialHelp"
+							:skip-auto-select="
+								currentRequest.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+							"
+							:credential-setup-hint="currentRequest.setupHint"
+							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
 						/>
 						<N8nActionDropdown
@@ -528,7 +632,7 @@ async function handleSetupAutomatically() {
 							v-else
 							:label="i18n.baseText('instanceAi.credential.setupButton')"
 							data-test-id="instance-ai-credential-setup-button"
-							@click="openNewCredentialModal"
+							@click="openCreateCredential"
 						/>
 					</div>
 				</div>
@@ -600,13 +704,7 @@ async function handleSetupAutomatically() {
 			</template>
 			<template v-else>
 				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-				<span>{{
-					i18n.baseText(
-						isFinalize
-							? 'instanceAi.credential.finalize.applied'
-							: 'instanceAi.credential.allSelected',
-					)
-				}}</span>
+				<span>{{ i18n.baseText(submittedLabelKey) }}</span>
 			</template>
 		</div>
 	</div>

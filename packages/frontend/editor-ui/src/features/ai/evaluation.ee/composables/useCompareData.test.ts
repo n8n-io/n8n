@@ -97,6 +97,40 @@ describe('useCompareData', () => {
 		expect(compareData.value!.bestVersionIndex).toBe(1);
 	});
 
+	it("threads each run's own metricScales onto its version and normalizes per-run", () => {
+		const source = ref(
+			detail([
+				{
+					testRunId: 'run-a',
+					workflowVersionId: 'v1',
+					status: 'completed',
+					runAt: null,
+					completedAt: null,
+					avgScore: 1,
+					metrics: { Quality: 5 },
+					metricScales: { Quality: 'oneToFive' as const },
+				},
+				{
+					testRunId: 'run-b',
+					workflowVersionId: 'v2',
+					status: 'completed',
+					runAt: null,
+					completedAt: null,
+					avgScore: 0.8,
+					metrics: { Quality: 0.8 },
+					metricScales: { Quality: 'unit' as const },
+				},
+			]),
+		);
+		const { compareData } = useCompareData(source);
+
+		// Each version carries its own run scales...
+		expect(compareData.value!.versions[0].metricScales).toEqual({ Quality: 'oneToFive' });
+		expect(compareData.value!.versions[1].metricScales).toEqual({ Quality: 'unit' });
+		// ...and the chart normalizes each on its own scale: 5/5 = 1, 0.8 = 0.8.
+		expect(compareData.value!.metricGroups[0].values).toEqual([1, 0.8]);
+	});
+
 	it('excludes predefined operational metrics even when they land in [0, 1]', () => {
 		const source = ref(
 			detail([

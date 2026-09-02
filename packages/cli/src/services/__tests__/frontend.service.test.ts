@@ -79,6 +79,8 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		aiAssistant: { baseUrl: '' },
+		aiGateway: { enabled: false },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -155,6 +157,7 @@ describe('FrontendService', () => {
 
 	const securityConfig = mock<SecurityConfig>({
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: '',
 	});
 
 	const pushConfig = mock<PushConfig>({
@@ -228,11 +231,33 @@ describe('FrontendService', () => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.aiAssistant.baseUrl = '';
+		globalConfig.aiGateway.enabled = false;
+		licenseState.isAiGatewayLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
 		process.env = originalEnv;
+	});
+
+	describe('credentials overwrite reload handler', () => {
+		it('registers a reload handler that regenerates types', async () => {
+			const { service } = createMockService();
+
+			expect(credentialsOverwrites.registerReloadHandler).toHaveBeenCalledWith(
+				expect.any(Function),
+			);
+
+			// The registered handler is what CredentialsOverwrites invokes after a
+			// reload; it must regenerate the credential types.
+			const handler = vi.mocked(credentialsOverwrites.registerReloadHandler).mock.calls[0][0];
+			const generateTypesSpy = vi.spyOn(service, 'generateTypes').mockResolvedValue();
+
+			await handler();
+
+			expect(generateTypesSpy).toHaveBeenCalled();
+		});
 	});
 
 	describe('getSettings', () => {
@@ -245,6 +270,44 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should enable the AI Gateway when configured and licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway?.enabled).toBe(true);
+		});
+
+		it('should keep the AI Gateway disabled when configured but not licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toBeUndefined();
+		});
+
+		it('should normalize configured postMessage origins', async () => {
+			securityConfig.postMessageAllowedOrigins =
+				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+			expect(settings.security.postMessageAllowedOrigins).toEqual([
+				'https://example.com',
+				'https://app.example.com',
+				'http://localhost:5678',
+				'not a url',
+				'data:text/html;foo',
+			]);
+
+			securityConfig.postMessageAllowedOrigins = '';
 		});
 
 		it('should refresh the workflow reviews policy on every settings fetch', async () => {
@@ -837,6 +900,50 @@ describe('FrontendService', () => {
 			(service as any).overwriteCredentialsProperties();
 
 			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should not propagate __skipManagedCreation from a skip-listed parent to extending types', () => {
+			// An overwrite keyed at a base type is inherited by extending types
+			// (__overwrittenProperties), but the skip list is exact-name: skipping the
+			// base must not disable managed creation for the extending types.
+			const baseCredential = {
+				name: 'microsoftOAuth2Api',
+				displayName: 'Microsoft OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const childCredential = {
+				name: 'microsoftOutlookOAuth2Api',
+				displayName: 'Microsoft Outlook OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [baseCredential, childCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['microsoftOAuth2Api'] },
+			};
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({
+				microsoftOAuth2Api: { clientId: 'id', clientSecret: 'secret' },
+			});
+			(credentialTypes.getParentTypes as Mock).mockImplementation((name: string) =>
+				name === 'microsoftOutlookOAuth2Api' ? ['microsoftOAuth2Api', 'oAuth2Api'] : ['oAuth2Api'],
+			);
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			// both are marked overwritten (the extending type inherits the base entry)
+			expect(baseCredential.__overwrittenProperties).toEqual(['clientId', 'clientSecret']);
+			expect(childCredential.__overwrittenProperties).toEqual(['clientId', 'clientSecret']);
+			// but only the exact skip-list entry loses managed creation
+			expect(baseCredential.__skipManagedCreation).toBe(true);
+			expect(childCredential.__skipManagedCreation).toBeUndefined();
+
+			// restore shared mock defaults for subsequent tests
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({});
+			(credentialTypes.getParentTypes as Mock).mockReturnValue([]);
 		});
 
 		describe('JWKS URI injection', () => {

@@ -1,4 +1,4 @@
-import { ScheduledTaskStatus } from '@n8n/constants';
+import { ScheduledJobMisfirePolicy, ScheduledTaskStatus } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { mock } from 'vitest-mock-extended';
 
@@ -40,6 +40,7 @@ const makeTracer = () => {
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
 	taskStore.markDispatched.mockResolvedValue(1);
+	taskStore.retireMissedPending.mockResolvedValue(0);
 	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
@@ -345,8 +346,11 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 60,
 		};
 		const tx = mock<MaterializerTransaction>();
+		tx.retireSuperseded.mockResolvedValue(0);
 		tx.claimDueJobs.mockResolvedValue({
 			now: new Date('2026-01-01T00:00:00.000Z'),
 			jobs: [corrupt],
@@ -357,7 +361,14 @@ describe('createScheduler materialize', () => {
 
 		const summary = await scheduler.materialize();
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 0, created: [], deferredJobs: 1 });
+		expect(summary).toEqual({
+			claimedJobs: 1,
+			occurrences: 0,
+			created: [],
+			deferredJobs: 1,
+			misfires: [],
+			retiredOccurrences: 0,
+		});
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
 			message: 'Scheduler could not plan a job schedule; deferred for retry',
@@ -380,8 +391,11 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 60,
 		};
 		const tx = mock<MaterializerTransaction>();
+		tx.retireSuperseded.mockResolvedValue(0);
 		tx.claimDueJobs.mockResolvedValue({
 			now: new Date('2026-01-01T00:00:00.000Z'),
 			jobs: [due],
@@ -411,6 +425,7 @@ describe('createScheduler materialize', () => {
 		// wide enough that the recorded row also reaches the executor before it fires, not
 		// leave it 0.
 		const tx = mock<MaterializerTransaction>();
+		tx.retireSuperseded.mockResolvedValue(0);
 		tx.claimDueJobs.mockResolvedValue(undefined);
 		const materializerTransaction: RunInTransaction = async (work) => await work(tx);
 		const { scheduler } = makeScheduler({ materializerTransaction });
@@ -822,6 +837,7 @@ describe('createScheduler pass timeout and overlap', () => {
 		// The materializer's claim hangs across the shutdown.
 		let resolveClaim!: (claimed: { now: Date; jobs: ScheduledJob[] }) => void;
 		const tx = mock<MaterializerTransaction>();
+		tx.retireSuperseded.mockResolvedValue(0);
 		tx.claimDueJobs.mockImplementation(
 			async () =>
 				await new Promise((resolve) => {
@@ -985,7 +1001,7 @@ describe('createScheduler reap', () => {
 
 		const result = await scheduler.reap();
 
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
 			message: 'Scheduler could not recover an expired task; skipped until the next sweep',
@@ -1002,7 +1018,7 @@ describe('createScheduler reap', () => {
 
 		const result = await scheduler.reap();
 
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1, missed: 0 });
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'warn',
 			message: 'Scheduler dead-lettered a task; its last attempt lost its lease',
@@ -1027,8 +1043,11 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 60,
 		};
 		const tx = mock<MaterializerTransaction>();
+		tx.retireSuperseded.mockResolvedValue(0);
 		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
 		// Distinct counts (claimed 1, occurrences 2, deferred 0) so that recording a
 		// count under the wrong attribute key cannot slip past these assertions.
@@ -1043,7 +1062,14 @@ describe('createScheduler tracing', () => {
 
 		const summary = await scheduler.materialize();
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 2, created: [], deferredJobs: 0 });
+		expect(summary).toEqual({
+			claimedJobs: 1,
+			occurrences: 2,
+			created: [],
+			deferredJobs: 0,
+			misfires: [],
+			retiredOccurrences: 0,
+		});
 		expect(tracer.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Scheduler materialize', op: 'scheduler.materialize' }),
 			expect.any(Function),
@@ -1069,8 +1095,11 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 60,
 		};
 		const tx = mock<MaterializerTransaction>();
+		tx.retireSuperseded.mockResolvedValue(0);
 		tx.claimDueJobs.mockResolvedValue({ now: new Date('2026-01-01T00:00:00.000Z'), jobs: [due] });
 		tx.recordOccurrences.mockResolvedValue({
 			recorded: 1,
@@ -1185,7 +1214,7 @@ describe('createScheduler tracing', () => {
 
 		const result = await scheduler.reap();
 
-		expect(result).toEqual({ reclaimed: 2, deadLettered: 1 });
+		expect(result).toEqual({ reclaimed: 2, deadLettered: 1, missed: 0 });
 		expect(tracer.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Scheduler reap', op: 'scheduler.reap' }),
 			expect.any(Function),
@@ -1292,7 +1321,14 @@ describe('createScheduler tracing', () => {
 		// at the pass boundary and reported as a no-op summary, not rethrown.
 		const summary = await scheduler.materialize(controller.signal);
 
-		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 });
+		expect(summary).toEqual({
+			claimedJobs: 0,
+			occurrences: 0,
+			created: [],
+			deferredJobs: 0,
+			misfires: [],
+			retiredOccurrences: 0,
+		});
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 		expect(span.setStatus).not.toHaveBeenCalledWith(
 			expect.objectContaining({ code: SpanStatus.error }),
@@ -1354,8 +1390,11 @@ describe('createScheduler metrics', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 60,
 		};
 		const tx = mock<MaterializerTransaction>();
+		tx.retireSuperseded.mockResolvedValue(0);
 		tx.claimDueJobs.mockResolvedValue({
 			now: new Date('2026-01-01T00:00:00.000Z'),
 			jobs: [corrupt],
@@ -1380,7 +1419,7 @@ describe('createScheduler metrics', () => {
 
 		await scheduler.reap();
 
-		expect(metrics.recordReaped).toHaveBeenCalledWith(0, 1);
+		expect(metrics.recordReaped).toHaveBeenCalledWith(0, 1, 0);
 	});
 
 	it('records the retention outcome from the pass summary', async () => {

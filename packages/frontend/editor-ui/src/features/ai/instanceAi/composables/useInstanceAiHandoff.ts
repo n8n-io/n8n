@@ -11,7 +11,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import {
@@ -26,11 +26,28 @@ function existingCredentialNote(credential: InstanceAiCredentialContext): string
 }
 
 /**
+ * A recipe-created credential arrives pre-filled, so the visible question only
+ * asks where to find the values — this text renders as the user's own message;
+ * the paste-only steering travels invisibly in the handoff context.
+ */
+function templatedValuesQuestion(credential: InstanceAiCredentialContext): string {
+	const titles = (credential.placeholderTitles ?? []).map((title) => `"${title}"`);
+	const list =
+		titles.length > 1
+			? `${titles.slice(0, -1).join(', ')} and ${titles[titles.length - 1]} values`
+			: titles[0];
+	return `Where do I find the ${list} for my "${credential.displayName}" credential?`;
+}
+
+/**
  * Opening question for a new-tab credential hand-off (credentials list, editor):
  * the new thread carries no workflow, so it names the credential setup modal as
  * the user's context. The node isn't carried into the new tab, so it isn't named.
  */
 export function buildInstanceAiCredentialQuestion(credential: InstanceAiCredentialContext): string {
+	if (credential.placeholderTitles?.length) {
+		return templatedValuesQuestion(credential);
+	}
 	return `How do I set up the credentials for ${credential.displayName}?${existingCredentialNote(credential)} I'm looking at the credential setup modal.`;
 }
 
@@ -43,6 +60,9 @@ export function buildInstanceAiArtifactCredentialQuestion(
 	credential: InstanceAiCredentialContext,
 ): string {
 	const node = credential.nodeName ? ` It's for the "${credential.nodeName}" node.` : '';
+	if (credential.placeholderTitles?.length) {
+		return `${templatedValuesQuestion(credential)}${node}`;
+	}
 	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}`;
 }
 
@@ -69,6 +89,10 @@ export function buildInstanceAiCredentialHandoffContext(
 			...(credential.id ? { id: credential.id } : {}),
 			...(credential.nodeName ? { nodeName: credential.nodeName } : {}),
 			...(credential.nodeType ? { nodeType: credential.nodeType } : {}),
+			...(credential.placeholderTitles?.length
+				? { placeholderTitles: credential.placeholderTitles }
+				: {}),
+			...(credential.docsUrl ? { docsUrl: credential.docsUrl } : {}),
 			...(credential.documentationUrl ? { documentationUrl: credential.documentationUrl } : {}),
 			...(credential.oauthRedirectUrl ? { oauthRedirectUrl: credential.oauthRedirectUrl } : {}),
 		},
@@ -81,6 +105,7 @@ export function buildInstanceAiAgentPreviewHandoffContext(params: {
 	agentName?: string;
 	agentIcon?: string;
 	sessionTitle?: string;
+	executionId?: string;
 }): InstanceAiHandoffContext {
 	return {
 		source: 'agent-preview',
@@ -89,6 +114,7 @@ export function buildInstanceAiAgentPreviewHandoffContext(params: {
 		...(params.agentName ? { agentName: params.agentName } : {}),
 		...(params.agentIcon ? { agentIcon: params.agentIcon } : {}),
 		...(params.sessionTitle ? { sessionTitle: params.sessionTitle } : {}),
+		...(params.executionId ? { executionId: params.executionId } : {}),
 	};
 }
 

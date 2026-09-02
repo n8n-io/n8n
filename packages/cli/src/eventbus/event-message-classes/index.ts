@@ -2,6 +2,7 @@ import type { EventMessageAiNode } from './event-message-ai-node';
 import type { EventMessageAudit } from './event-message-audit';
 import type { EventMessageExecution } from './event-message-execution';
 import type { EventMessageGeneric } from './event-message-generic';
+import type { EventMessageMcp } from './event-message-mcp';
 import type { EventMessageNode } from './event-message-node';
 import type { EventMessageQueue } from './event-message-queue';
 import type { EventMessageRunner } from './event-message-runner';
@@ -140,6 +141,16 @@ export const eventNamesAudit = [
 	'n8n.audit.credentials.authorize.rejected',
 ] as const;
 
+// Instance MCP server events. Kept as their own list and message class because the payload
+// shape differs, but named under `n8n.audit.` so they group with audit events in the UI.
+export const eventNamesMcp = [
+	'n8n.audit.mcp.oauth.completed',
+	'n8n.audit.mcp.tool.called',
+	'n8n.audit.mcp.access.updated',
+] as const;
+
+export type EventNamesMcpType = (typeof eventNamesMcp)[number];
+
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 export type EventNamesNodeType = (typeof eventNamesNode)[number];
@@ -155,6 +166,7 @@ export type EventNamesTypes =
 	| EventNamesAiNodesType
 	| EventNamesRunnerType
 	| EventNamesQueueType
+	| EventNamesMcpType
 	| 'n8n.destination.test';
 
 export const eventNamesAll = [
@@ -165,6 +177,7 @@ export const eventNamesAll = [
 	...eventNamesAiNodes,
 	...eventNamesRunner,
 	...eventNamesQueue,
+	...eventNamesMcp,
 ];
 
 export type EventMessageTypes =
@@ -175,7 +188,8 @@ export type EventMessageTypes =
 	| EventMessageExecution
 	| EventMessageAiNode
 	| EventMessageQueue
-	| EventMessageRunner;
+	| EventMessageRunner
+	| EventMessageMcp;
 
 export const isNodeEventMessage = (message: EventMessageTypes): message is EventMessageNode =>
 	message.eventName.startsWith('n8n.node.');

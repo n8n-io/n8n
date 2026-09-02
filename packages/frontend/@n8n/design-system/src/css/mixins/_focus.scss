@@ -5,6 +5,11 @@
 	outline: var(--focus--border-width) solid var(--focus--outline-color);
 }
 
+@mixin focus-ring-with-border {
+	outline: var(--focus--border-width) solid var(--focus--outline-color);
+	border-color: var(--focus--border-color);
+}
+
 @mixin focus-visible-ring {
 	&:focus-visible {
 		@include focus-ring;

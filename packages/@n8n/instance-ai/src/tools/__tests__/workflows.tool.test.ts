@@ -19,6 +19,7 @@ import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
 vi.mock('../workflows/setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn().mockResolvedValue([]),
+	applyCredentialHints: vi.fn(),
 	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
@@ -1224,6 +1225,98 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('should reject a new plain generic credential on an HTTP Request node', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				error: 'plain_generic_auth',
+				nodes: [{ nodeName: 'Call Replicate', credentialType: 'httpBearerAuth' }],
+			});
+		});
+
+		it('should allow a plain generic credential when explicitly permitted', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1', allowPlainGenericAuth: true }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+		});
+
+		it('should allow a plain generic type when credentials of it already exist', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [{ id: 'cred-1', name: 'Existing bearer' }],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+		});
+
+		it('should not gate plain generic auth on non-HTTP-Request nodes', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'MCP Client', type: 'n8n-nodes-langchain.mcpClientTool' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+		});
+
 		it('should return success when no nodes need setup', async () => {
 			(analyzeWorkflow as Mock).mockResolvedValue([]);
 
@@ -1278,6 +1371,51 @@ describe('workflows tool', () => {
 				{ 'HTTP Request': { url: 'https://example.com/api' } },
 				['HTTP Request'],
 			);
+		});
+
+		it('reports a just-applied credential whose test failed as a failed node', async () => {
+			// A bound credential is settled (needsAction=false) even when its test
+			// fails, so the apply path must re-analyze with includeSettled to keep
+			// the failure reportable instead of silently marking the node complete.
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: false,
+					credentialTestResult: { success: false, message: 'Invalid token' },
+				},
+			]);
+			(applyNodeChanges as Mock).mockResolvedValue({ applied: ['Slack'], failed: [] });
+			(buildCompletedReport as Mock).mockReturnValue([
+				{ nodeName: 'Slack', credentialType: 'slackApi' },
+			]);
+
+			const context = createMockContext();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					credentials: { Slack: { slackApi: 'cred-1' } },
+				},
+			} as never);
+
+			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+				includeSettled: true,
+			});
+			expect(result).toMatchObject({
+				success: true,
+				completedNodes: [],
+				failedNodes: [
+					{
+						nodeName: 'Slack',
+						error: 'Credential test failed for slackApi: Invalid token',
+					},
+				],
+			});
+			// Settled requests never count as pending, so the apply is not partial.
+			expect(result).not.toHaveProperty('partial');
 		});
 	});
 

@@ -35,5 +35,5 @@ disabling memory. Do not load it for ordinary fresh-agent creation.
 
 ### Verify
 
-- Fresh runnable agents have enabled n8n memory unless explicitly disabled.
-- Fresh runnable agents set \`observationalMemory.enabled\` to \`true\` unless explicitly disabled.`;
+- Fresh agents have enabled n8n memory unless explicitly disabled.
+- Fresh agents set \`observationalMemory.enabled\` to \`true\` unless explicitly disabled.`;

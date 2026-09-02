@@ -6,17 +6,23 @@ import { UserError } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
-import { buildMcpClientForServer, mapApprovalToSdk } from '../mcp-client-factory';
+import {
+	buildMcpClientForServer,
+	listMcpServerTools,
+	mapApprovalToSdk,
+} from '../mcp-client-factory';
 
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
 
 const mcpClientCtor = vi.fn();
+const listToolsMock = vi.fn();
+const closeMock = vi.fn();
 vi.mock('@n8n/agents', () => ({
 	McpClient: vi.fn(function (configs: unknown) {
 		mcpClientCtor(configs);
-		return { configs, close: vi.fn() };
+		return { configs, close: closeMock, listTools: listToolsMock };
 	}),
 }));
 
@@ -211,9 +217,10 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		proxyFetchMock.mockReset();
 	});
 
-	it('forwards toolFilter, approval, transport, and connectionTimeoutMs to the SDK config', async () => {
+	it('forwards tool and lifecycle options to the SDK config', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		const oauthService = mock<OauthService>();
+		const onToolCallSettled = vi.fn();
 
 		await buildMcpClientForServer(
 			makeServer({
@@ -222,7 +229,13 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 				approval: { mode: 'selected', tools: ['create'] },
 				connectionTimeoutMs: 5_000,
 			}),
-			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+			{
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+				onToolCallSettled,
+			},
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
@@ -234,6 +247,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 			toolFilter: { mode: 'allow', tools: ['echo'] },
 			requireApproval: ['create'],
 			connectionTimeoutMs: 5_000,
+			onToolCallSettled,
 		});
 		expect(typeof configs[0].fetch).toBe('function');
 	});
@@ -251,6 +265,44 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
 		expect(configs[0]).not.toHaveProperty('connectionTimeoutMs');
+	});
+
+	it('forwards onConnectionFailed to the SDK config when provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+		const onConnectionFailed = vi.fn();
+
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+			onConnectionFailed,
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(typeof configs[0].onConnectionFailed).toBe('function');
+		// Invoking the wired callback forwards to the observer.
+		(configs[0].onConnectionFailed as (event: { server: string; error: string }) => void)({
+			server: 'srv',
+			error: 'boom',
+		});
+		expect(onConnectionFailed).toHaveBeenCalledWith({ server: 'srv', error: 'boom' });
+	});
+
+	it('omits onConnectionFailed from the SDK config when not provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(configs[0]).not.toHaveProperty('onConnectionFailed');
 	});
 });
 
@@ -519,5 +571,56 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 			}),
 		).resolves.toBeDefined();
 		expect(credentialProvider.resolve).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// listMcpServerTools
+// ---------------------------------------------------------------------------
+
+describe('listMcpServerTools', () => {
+	const deps = () => ({
+		credentialProvider: mock<CredentialProvider>(),
+		oauthService: mock<OauthService>(),
+		projectId: 'proj-1',
+		proxyFetch,
+	});
+
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		listToolsMock.mockReset();
+		closeMock.mockReset();
+		closeMock.mockResolvedValue(undefined);
+	});
+
+	it('returns name/description pairs (empty description fallback) and closes the client', async () => {
+		listToolsMock.mockResolvedValue([
+			{ name: 'echo', description: 'Echoes input' },
+			{ name: 'bare', description: undefined },
+		]);
+
+		const tools = await listMcpServerTools(makeServer(), deps());
+
+		expect(tools).toEqual([
+			{ name: 'echo', description: 'Echoes input' },
+			{ name: 'bare', description: '' },
+		]);
+		expect(closeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('still closes the client and propagates the error when listing fails', async () => {
+		listToolsMock.mockRejectedValue(new Error('connection refused'));
+
+		await expect(listMcpServerTools(makeServer(), deps())).rejects.toThrow('connection refused');
+		expect(closeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('swallows close errors', async () => {
+		listToolsMock.mockResolvedValue([{ name: 'echo', description: 'd' }]);
+		closeMock.mockRejectedValue(new Error('already closed'));
+
+		await expect(listMcpServerTools(makeServer(), deps())).resolves.toEqual([
+			{ name: 'echo', description: 'd' },
+		]);
 	});
 });

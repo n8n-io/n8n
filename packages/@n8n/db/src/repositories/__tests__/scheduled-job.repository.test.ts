@@ -27,6 +27,8 @@ const newJob = (name: string): NewScheduledJob => ({
 	fireAt: null,
 	nextRunAt: CLOCK,
 	maxAttempts: 5,
+	misfirePolicy: 'coalesce',
+	misfireGraceSeconds: 60,
 });
 
 /** A chainable insert query-builder mock; `execute` is set per test. */
@@ -36,6 +38,14 @@ const insertQb = () => ({
 	values: vi.fn().mockReturnThis(),
 	orIgnore: vi.fn().mockReturnThis(),
 	returning: vi.fn().mockReturnThis(),
+	execute: vi.fn(),
+});
+
+/** A chainable update query-builder mock; `execute` is set per test. */
+const updateQb = () => ({
+	update: vi.fn().mockReturnThis(),
+	set: vi.fn().mockReturnThis(),
+	where: vi.fn().mockReturnThis(),
 	execute: vi.fn(),
 });
 
@@ -65,6 +75,48 @@ describe('ScheduledJobRepository', () => {
 				nodeId: 'node',
 			});
 			expect(result).toBe(rows);
+		});
+	});
+
+	describe('countByWorkflowNode', () => {
+		it('counts the jobs owned by the workflow node', async () => {
+			entityManager.count.mockResolvedValueOnce(3);
+
+			const result = await repository.countByWorkflowNode('wf', 'node');
+
+			expect(entityManager.count).toHaveBeenCalledWith(ScheduledJob, {
+				where: { workflowId: 'wf', nodeId: 'node' },
+			});
+			expect(result).toBe(3);
+		});
+	});
+
+	describe('backdateNextRunAt', () => {
+		it('sets nextRunAt to secondsAgo in the past for the node jobs', async () => {
+			const qb = updateQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			await repository.backdateNextRunAt('wf', 'node', 120);
+
+			expect(qb.update).toHaveBeenCalledWith(ScheduledJob);
+			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
+			expect(qb.where).toHaveBeenCalledWith('"workflowId" = :workflowId AND "nodeId" = :nodeId', {
+				workflowId: 'wf',
+				nodeId: 'node',
+			});
+			expect(qb.execute).toHaveBeenCalled();
+		});
+
+		it('sets nextRunAt to now when secondsAgo is 0', async () => {
+			const qb = updateQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			await repository.backdateNextRunAt('wf', 'node', 0);
+
+			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
+			expect(qb.execute).toHaveBeenCalled();
 		});
 	});
 
@@ -220,6 +272,8 @@ describe('ScheduledJobRepository', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				misfirePolicy: 'skip',
+				misfireGraceSeconds: 120,
 			};
 
 			await repository.updateDefinition(entityManager, 10, update);

@@ -58,7 +58,7 @@ vi.mock('@ai-sdk/openai', () => ({
 }));
 
 vi.mock('@ai-sdk/google', () => ({
-	createGoogleGenerativeAI: (opts?: ProviderOpts) => (model: string) => ({
+	createGoogle: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'google',
 		modelId: model,
 		apiKey: opts?.apiKey,
@@ -68,12 +68,14 @@ vi.mock('@ai-sdk/google', () => ({
 }));
 
 vi.mock('@ai-sdk/xai', () => ({
-	createXai: (opts?: ProviderOpts) => (model: string) => ({
-		provider: 'xai',
-		modelId: model,
-		apiKey: opts?.apiKey,
-		fetch: opts?.fetch,
-		specificationVersion: 'v3',
+	createXai: (opts?: ProviderOpts) => ({
+		chat: (model: string) => ({
+			provider: 'xai',
+			modelId: model,
+			apiKey: opts?.apiKey,
+			fetch: opts?.fetch,
+			specificationVersion: 'v3',
+		}),
 	}),
 }));
 
@@ -218,6 +220,20 @@ describe('createModel', () => {
 		// Custom endpoints are OpenAI-COMPATIBLE servers: they speak
 		// /chat/completions, not OpenAI's Responses API.
 		expect(model.api).toBe('chat-completions');
+	});
+
+	it('uses the Responses API when a baseURL explicitly serves it', () => {
+		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
+		// serve /responses. /chat/completions rejects reasoning effort once tools
+		// are attached, so the heuristic has to be overridable.
+		const model = createModel({
+			id: 'openai/gpt-5-mini',
+			apiKey: 'gateway-jwt',
+			baseURL: 'https://gw.example/v1/gateway/openai/v1',
+			apiStyle: 'responses',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBe('https://gw.example/v1/gateway/openai/v1');
+		expect(model.api).toBeUndefined();
 	});
 
 	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {

@@ -31,6 +31,7 @@ import type {
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import { safeRegex } from './safe-regex';
 import { isResourceLocatorValue } from './type-guards';
 import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
@@ -376,8 +377,7 @@ export class WorkflowDataProxy {
 
 				if (isResourceLocatorValue(returnValue)) {
 					if (returnValue.__regex && typeof returnValue.value === 'string') {
-						const expr = new RegExp(returnValue.__regex);
-						const extracted = expr.exec(returnValue.value);
+						const extracted = safeRegex.exec(returnValue.__regex, returnValue.value);
 						if (extracted && extracted.length >= 2) {
 							returnValue = extracted[1];
 						} else {

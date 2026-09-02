@@ -40,6 +40,16 @@ export function createNodeTypes() {
 				trigger: vi.fn(),
 			} as never;
 		}
+		// The pseudo triggers under their real type names: they implement `trigger()`
+		// like any in-memory trigger, but it is a no-op (fired externally by the
+		// execution engine), so classification must tell them apart by node type.
+		if (
+			type === 'n8n-nodes-base.manualTrigger' ||
+			type === 'n8n-nodes-base.executeWorkflowTrigger' ||
+			type === 'n8n-nodes-base.errorTrigger'
+		) {
+			return { description: { ...description, name: type }, trigger: vi.fn() } as never;
+		}
 		if (type === 'poll') {
 			return { description: { ...description, name: 'poll' }, poll: vi.fn() } as never;
 		}

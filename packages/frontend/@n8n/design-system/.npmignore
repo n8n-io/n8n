@@ -6,7 +6,9 @@ storybook-static
 .storybook
 
 .browserslistrc
-vite.config.ts
+# Stale as `vite.config.ts` since the rename to .mts, so both build configs were
+# shipping to consumers. Glob covers vite.config.mts and vite.config.styles.mts.
+vite.config.*
 
 *.md
 *.stories.js

@@ -3,10 +3,10 @@
  * Attributes a master→3.x sync conflict to the authors of the breaking commits.
  *
  * Since 3.x = master + breaking commits, the commits that diverged 3.x are exactly
- * `<base>..HEAD` (where <base> is the fetched master SHA). Scoped to the conflicted
- * files, those are the commits responsible for the conflict; their GitHub authors are
- * who to nudge. Must run while the merge is unresolved — HEAD still at the pre-merge
- * 3.x tip and unmerged paths present in the index.
+ * `<base>..<tip>` (where <base> is the fetched master SHA and <tip> the pre-rebase 3.x
+ * tip). Scoped to the conflicted files, those are the commits responsible for the
+ * conflict; their GitHub authors are who to nudge. `conflictedFiles` must run while the
+ * rebase is stopped, i.e. with unmerged paths present in the index.
  *
  * git log gives only the author name/email, and ~2/3 of n8n authors commit with a
  * non-noreply email that carries no GitHub username. So the conflicted files → breaking
@@ -29,17 +29,19 @@ export function runGit(args) {
 	return execFileSync('git', args, { encoding: 'utf8' }).trim();
 }
 
-// Files with unresolved conflicts in the current (in-progress) merge.
+// Files with unresolved conflicts at the current (stopped) rebase step.
 export function conflictedFiles(git = runGit) {
 	const out = git(['diff', '--name-only', '--diff-filter=U']);
 	return out ? out.split('\n').filter(Boolean) : [];
 }
 
-// Unique SHAs of the 3.x-only (breaking) commits that touched the given files.
-export function breakingShas(base, files, git = runGit) {
+// Unique SHAs of the 3.x-only (breaking) commits that touched the given files. `tip`
+// defaults to HEAD but must be the PRE-rebase tip when called after a rebase, since HEAD
+// is by then a replay whose commits carry different SHAs.
+export function breakingShas(base, files, git = runGit, tip = 'HEAD') {
 	const shas = new Set();
 	for (const file of files) {
-		const out = git(['log', `${base}..HEAD`, '--format=%H', '--', file]);
+		const out = git(['log', `${base}..${tip}`, '--format=%H', '--', file]);
 		for (const sha of out.split('\n').filter(Boolean)) shas.add(sha);
 	}
 	return [...shas];
@@ -78,7 +80,7 @@ export async function resolveLogins(repo, shas, token, fetchFn = fetch) {
 }
 
 // Build the conflict-PR body, reviewer CSV, and Slack owner line.
-export function buildOutputs({ syncBranch, files, owners }) {
+export function buildOutputs({ syncBranch, targetBranch = '3.x', files, owners }) {
 	const filesMd = files.map((f) => `- \`${f}\``).join('\n') || '_none detected_';
 	const ownersMd = owners.length
 		? owners.map((o) => `- @${o}`).join('\n')
@@ -87,13 +89,23 @@ export function buildOutputs({ syncBranch, files, owners }) {
 		? `Likely owners (GitHub): ${owners.map((o) => `@${o}`).join(' ')}`
 		: 'Could not auto-attribute owners.';
 	const body = [
-		`Automated \`master\`→\`3.x\` sync hit a merge conflict. Resolve the conflict markers on \`${syncBranch}\`, then merge this PR. **Daily syncs are paused until it is merged.**`,
+		`Automated \`master\`→\`${targetBranch}\` sync hit a conflict.`,
+		'',
+		`**\`${targetBranch}\` was not touched.** This branch is \`master\` merged into \`${targetBranch}\` with the **conflict markers committed**, so you can see exactly what clashed. The required checks stay red until they are resolved, so this PR cannot be merged half-done.`,
+		'',
+		'### How to resolve',
+		`1. \`git fetch origin ${syncBranch} && git switch ${syncBranch}\``,
+		'2. Fix the conflict markers and commit them **in one commit of your own** (rather than amending the merge).',
+		`3. \`git push origin ${syncBranch}\``,
+		`4. **Merge this PR with the normal merge button.** \`master\`'s commits come in as-is and your fix stays its own commit — nothing is squashed.`,
+		'',
+		`**Daily syncs are paused until this PR is merged.** The next sync then replays \`${targetBranch}\` onto master linearly again — which also drops this merge commit and its markers out of \`${targetBranch}\`'s history — and verifies the result is exactly what a merge would produce.`,
 		'',
 		'### Conflicted files',
 		filesMd,
 		'',
 		'### Likely owners',
-		'Authors of the 3.x commits touching the conflicted files, requested as reviewers:',
+		`Authors of the ${targetBranch} commits behind the conflicted files, requested as reviewers:`,
 		ownersMd,
 	].join('\n');
 	return { ownersCsv: owners.join(','), slack, body };
@@ -104,6 +116,7 @@ async function main() {
 		options: {
 			base: { type: 'string' },
 			'sync-branch': { type: 'string', default: 'sync/master-to-3x' },
+			'target-branch': { type: 'string', default: '3.x' },
 		},
 	});
 
@@ -128,7 +141,16 @@ async function main() {
 		console.error(`warning: could not resolve owners: ${error.message}`);
 	}
 
-	process.stdout.write(JSON.stringify(buildOutputs({ syncBranch, files, owners })));
+	process.stdout.write(
+		JSON.stringify(
+			buildOutputs({
+				syncBranch,
+				targetBranch: values['target-branch'],
+				files,
+				owners,
+			}),
+		),
+	);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -4,10 +4,11 @@
 # - Uses docker-tags.mjs for tag generation, this generates the tags for the images
 
 name: 'Docker: Build and Push'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build and Push {0} (push={1}, arm64={2})', github.ref_name, inputs.push_enabled, inputs.include_arm64) || '' }}"
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '24.16.0'
+  NODE_VERSION: '24.18.1'
 
 on:
   schedule:
@@ -47,6 +48,11 @@ on:
         required: false
         type: boolean
         default: true
+      include_arm64:
+        description: 'Also build linux/arm64 (default is amd64-only for manual/branch builds)'
+        required: false
+        type: boolean
+        default: false
       success_url:
         description: 'URL to call after the build is successful'
         required: false
@@ -81,6 +87,7 @@ jobs:
           N8N_VERSION: ${{ inputs.n8n_version }}
           RELEASE_TYPE: ${{ inputs.release_type }}
           PUSH_ENABLED: ${{ inputs.push_enabled }}
+          INCLUDE_ARM64: ${{ inputs.include_arm64 }}
           GITHUB_REF: ${{ github.ref_name }}
         run: |
           node .github/scripts/docker/docker-config.mjs \
@@ -89,7 +96,8 @@ jobs:
             --branch "$GITHUB_REF" \
             --version "$N8N_VERSION" \
             --release-type "$RELEASE_TYPE" \
-            --push-enabled "$PUSH_ENABLED"
+            --push-enabled "$PUSH_ENABLED" \
+            --include-arm64 "$INCLUDE_ARM64"
 
   build-and-push-docker:
     name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
@@ -173,6 +181,22 @@ jobs:
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
+
+      - name: Kafka native binding smoke check
+        # `load: true` isn't an option here: with sbom:true, buildx produces a manifest
+        # list even for a single platform, and the docker exporter (what --load uses)
+        # can't materialize manifest lists locally. Pull the pushed image back instead.
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        env:
+          N8N_TAGS: ${{ steps.determine-tags.outputs.n8n_tags }}
+        run: |
+          IMAGE_TAG=$(echo "$N8N_TAGS" | cut -d',' -f1)
+          docker pull "$IMAGE_TAG"
+          docker run --rm \
+            --entrypoint node \
+            -v "${{ github.workspace }}/.github/scripts/docker/kafka-native-smoke-check.mjs:/tmp/kafka-native-smoke-check.mjs:ro" \
+            "$IMAGE_TAG" \
+            /tmp/kafka-native-smoke-check.mjs
 
       - name: Build and push task runners Docker image (Alpine)
         id: build-runners

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { computed } from 'vue';
@@ -10,6 +10,7 @@ type ChannelAction = 'edit' | 'disconnect';
 
 interface Props {
 	integration: ChatIntegrationDescriptor;
+	configured: boolean;
 	connected: boolean;
 }
 
@@ -23,7 +24,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const connectedActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(() => {
+const configuredActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(() => {
 	const actions: Array<DropdownMenuItemProps<ChannelAction>> = [
 		{
 			id: 'edit',
@@ -42,7 +43,7 @@ function toIconName(icon: string): IconName {
 	return icon as IconName;
 }
 
-function handleConnectedAction(action: ChannelAction) {
+function handleConfiguredAction(action: ChannelAction) {
 	if (action === 'edit') {
 		emit('edit', props.integration.type);
 		return;
@@ -69,19 +70,27 @@ function handleConnectedAction(action: ChannelAction) {
 
 		<div :class="$style.channelActions">
 			<N8nDropdownMenu
-				v-if="connected"
-				:items="connectedActions"
+				v-if="configured"
+				:items="configuredActions"
 				placement="bottom-end"
 				:modal="false"
-				@select="handleConnectedAction"
+				@select="handleConfiguredAction"
 			>
 				<template #trigger>
 					<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
-						<div :class="$style.connectedDotContainer">
+						<div
+							v-if="connected"
+							:class="$style.connectedDotContainer"
+							data-testid="agent-channel-connected-indicator"
+						>
 							<span :class="[$style.connectedDot, $style.ping]" />
 							<span :class="$style.connectedDot" />
 						</div>
-						{{ i18n.baseText('agents.channels.modal.connected') }}
+						{{
+							i18n.baseText(
+								connected ? 'agents.channels.modal.connected' : 'agents.channels.modal.configured',
+							)
+						}}
 					</N8nButton>
 				</template>
 			</N8nDropdownMenu>

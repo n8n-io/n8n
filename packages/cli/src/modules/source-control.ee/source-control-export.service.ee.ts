@@ -520,12 +520,11 @@ export class SourceControlExportService {
 				credentialIds,
 				'credential:owner',
 			);
+
 			let missingIds: string[] = [];
-			if (credentialsToBeExported.length !== credentialIds.length) {
-				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
-				missingIds = credentialIds.filter(
-					(remote) => foundCredentialIds.findIndex((local) => local === remote) === -1,
-				);
+			const foundCredentialIds = new Set(credentialsToBeExported.map((e) => e.credentialsId));
+			if (foundCredentialIds.size !== credentialIds.length) {
+				missingIds = credentialIds.filter((remote) => !foundCredentialIds.has(remote));
 			}
 			await Promise.all(
 				credentialsToBeExported.map(async (sharing) => {

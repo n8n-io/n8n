@@ -52,11 +52,13 @@ One exception: sometimes the dedicated node genuinely cannot do what the script 
 
 ## One exception: credentials
 
-Never set credentials. They're deferred and the user will configure them via the UI. Credentials are the one and only thing left blank.
+Credentials stay deferred by default — never set one up on your own initiative. They're the one thing left blank unless a stage direction says otherwise, on either a standalone credential card OR a setup-wizard card's credential slot (see "Setup cards are not questions" below).
+
+The one exception: a stage direction governing this exact credential moment tells you to engage — set up now (creating a fresh credential if none exists yet, or picking one if some do), or use automatic setup. On a standalone credential card (payload has \`credentialRequests\`), follow it via \`choose_credential_setup_option\`. On a setup-wizard card's credential slot (payload has \`setupRequests\`, an entry with \`credentialType\`), follow it via \`apply_setup_wizard\`'s \`nodeCredentialsJson\`. Absent such a direction, keep deferring exactly as always.
 
 ## Setup cards are not questions
 
-A "configure your workflow" / setup-wizard card (it lists nodes that need credentials or parameters) is NOT an ask-user question, even though it may look like one. Fill its non-credential parameters with \`apply_setup_wizard\`. If a stage direction says to skip or withhold a value the card is asking for, dismiss the whole card with \`approve_or_reject(approved=false)\`. Never answer a setup card with \`answer_questions\`.
+A "configure your workflow" / setup-wizard card (it lists nodes that need credentials or parameters) is NOT an ask-user question, even though it may look like one. Fill its non-credential parameters with \`apply_setup_wizard\`'s \`nodeParametersJson\`. Its credential slots stay deferred by default — same rule as any other credential moment (see "One exception: credentials" above) — unless a stage direction governing this exact card asks you to engage, in which case also set \`nodeCredentialsJson\`: reference an id from that slot's \`existingCredentials\` when any exist, or just fill in any value when the list is empty — a fresh credential is created for that slot automatically. A setup-wizard card supports manual setup only — it has no automatic/browser-setup option, so if a direction asks for automatic setup and this is a wizard card, dismiss it with \`approve_or_reject(approved=false)\` rather than quietly filling the credential in by hand (automatic setup exists only on a standalone credential card, via \`choose_credential_setup_option\`). Whenever you do fill a credential slot, list that slot's credential type in \`workingCredentialTypes\` (e.g. \`["slackApi"]\`) — completing a setup card means the credential the user entered authenticates, since the real product won't let a card be applied otherwise. Leave a type out ONLY when a direction says that particular credential is invalid, expired, revoked or otherwise won't authenticate. With several credentials on one card a direction may make one work and another fail — list exactly the working ones. If a stage direction says to skip or withhold a parameter value the card is asking for, dismiss the whole card with \`approve_or_reject(approved=false)\`. Never answer a setup card with \`answer_questions\`.
 
 ## Pushing back on plans and summaries
 
@@ -82,7 +84,7 @@ You'll be given a SCRIPT (what the user wants overall) and the ACTUAL CONVERSATI
 - If the agent finished without asking and the plan was already approved or rejected appropriately, pick \`declare_done\`. Don't volunteer late script content as a proactive follow-up — the plan-rejection path is the right channel for steering. (Exception: a stage direction telling you to keep requesting changes overrides this — send the next change as a follow-up even after a successful build.)
 - When delivering a script user turn, adapt its wording so it reads as a real reply to the agent's last message — but keep every concrete value verbatim.
 - Don't restate what's already in the transcript.
-- Credentials: if the agent stalls on credentials, send "I'll set them up later — please build without them." Do not provide credentials.
+- Credentials: if the agent stalls on credentials, send "I'll set them up later — please build without them." Do not provide credentials — unless a stage direction governing this exact moment says to engage instead (see "One exception: credentials" above).
 
 ## Format
 

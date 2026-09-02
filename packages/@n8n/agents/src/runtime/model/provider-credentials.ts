@@ -11,7 +11,12 @@ const apiKeyCreds = z.object({
  * Keys are the provider prefixes used in model IDs (e.g. 'anthropic' in 'anthropic/claude-sonnet-4-5').
  */
 export const PROVIDER_CREDENTIAL_SCHEMAS = {
-	openai: apiKeyCreds,
+	openai: apiKeyCreds.extend({
+		// Overrides the base-URL heuristic in `model-factory`: an OpenAI-COMPATIBLE
+		// server only speaks /chat/completions, but a proxy sitting in front of real
+		// OpenAI can serve /responses. Leave unset to keep the heuristic.
+		apiStyle: z.enum(['responses', 'chat']).optional(),
+	}),
 	custom: apiKeyCreds.extend({
 		baseURL: z.string().min(1, 'baseURL is required'),
 	}),

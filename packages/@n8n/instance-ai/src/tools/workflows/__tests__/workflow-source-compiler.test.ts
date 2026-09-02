@@ -187,7 +187,14 @@ describe('compileWorkflowSource', () => {
 		});
 		vi.mocked(validateWorkflow).mockReturnValue({
 			valid: false,
-			errors: [{ code: 'INVALID_PARAMETER', message: 'Bad parameter', nodeName: 'Manual Trigger' }],
+			errors: [
+				{
+					code: 'INVALID_PARAMETER',
+					message: 'Bad parameter',
+					nodeName: 'Manual Trigger',
+					severity: 'error',
+				},
+			],
 			warnings: [],
 		});
 		const context = makeContext();

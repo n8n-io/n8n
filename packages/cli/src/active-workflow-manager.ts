@@ -48,6 +48,7 @@ import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -87,6 +88,7 @@ export class ActiveWorkflowManager {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly eventBus: MessageEventBus,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -146,7 +148,6 @@ export class ActiveWorkflowManager {
 		nodeIds?: Set<string>,
 	) {
 		let webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
-		let path = '';
 
 		if (nodeIds) {
 			webhooks = webhooks.filter((webhookData) =>
@@ -160,26 +161,15 @@ export class ActiveWorkflowManager {
 			const node = workflow.getNode(webhookData.node) as INode;
 			node.name = webhookData.node;
 
-			path = webhookData.path;
-
-			const webhook = this.webhookService.createWebhook({
-				workflowId: webhookData.workflowId,
-				webhookPath: path,
-				node: node.name,
-				method: webhookData.httpMethod,
-			});
-
-			if (webhook.webhookPath.startsWith('/')) {
-				webhook.webhookPath = webhook.webhookPath.slice(1);
-			}
-			if (webhook.webhookPath.endsWith('/')) {
-				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
-			}
-
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-				webhook.webhookId = node.webhookId;
-				webhook.pathLength = webhook.webhookPath.split('/').length;
-			}
+			const webhook = this.webhookService.createWebhook(
+				{
+					workflowId: webhookData.workflowId,
+					webhookPath: webhookData.path,
+					node: node.name,
+					method: webhookData.httpMethod,
+				},
+				node.webhookId,
+			);
 
 			try {
 				// `storeWebhook` registers the webhook atomically on the
@@ -754,10 +744,10 @@ export class ActiveWorkflowManager {
 			const dbWorkflow = await this.workflowRepository.findById(workflowId);
 
 			// Activation may have failed partway with triggers already registered,
-			// in memory and as durable schedule jobs. Tear them down before the
+			// in memory and as durable jobs. Tear them down before the
 			// deactivation below so the active version is still resolvable, or
 			// they keep firing a workflow marked inactive. Each teardown is caught
-			// on its own so a webhook failure never skips the schedule-job cleanup.
+			// on its own so a webhook failure never skips the durable-job cleanup.
 			try {
 				await this.clearWebhooks(workflowId);
 			} catch (cleanupError) {
@@ -936,14 +926,7 @@ export class ActiveWorkflowManager {
 			// Drop the durable jobs here rather than leaving it to the fire-and-forget
 			// command below: they are DB state, so removal is leader-independent, and a
 			// lost command would otherwise leak them, firing an inactive workflow.
-			try {
-				await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
-			} catch (error) {
-				this.errorReporter.error(error);
-				this.logger.error(
-					`Could not remove durable schedule jobs of workflow "${workflowId}" because of error: "${error.message}"`,
-				);
-			}
+			await this.removeDurableJobs(workflowId);
 
 			void this.publisher.publishCommand({
 				command: 'remove-triggers-and-pollers',
@@ -989,8 +972,28 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
+	 * Remove a workflow's durable jobs. The registrars run independently so a
+	 * failure in one cannot skip the other and leak its jobs.
+	 */
+	private async removeDurableJobs(workflowId: WorkflowId) {
+		const results = await Promise.allSettled([
+			this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId),
+			this.pollTriggerJobRegistrar.removeWorkflow(workflowId),
+		]);
+
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				this.errorReporter.error(result.reason);
+				this.logger.error(
+					`Could not remove durable jobs of workflow "${workflowId}" because of error: "${ensureError(result.reason).message}"`,
+				);
+			}
+		}
+	}
+
+	/**
 	 * Stop running active, poll, and schedule triggers for a workflow,
-	 * and drop the durable schedule jobs its activation committed.
+	 * and drop the durable jobs its activation committed.
 	 */
 	async removeNonWebhookTriggers(workflowId: WorkflowId) {
 		// `activeWorkflowTriggers.remove` is idempotent and always deregisters the workflow's
@@ -1000,7 +1003,7 @@ export class ActiveWorkflowManager {
 		// A deactivation through this legacy path must also deprovision the durable
 		// jobs that addNonWebhookTriggers committed, exactly like the publication
 		// path's deregister does. Otherwise the durable scheduler keeps firing the
-		// schedule nodes of a workflow now marked inactive. Keyed by the workflow
+		// trigger nodes of a workflow now marked inactive. Keyed by the workflow
 		// alone, not the node ids registered in memory: those are already gone if
 		// an earlier removal failed here, and a retry must stay idempotent. A no-op
 		// for workflows without durable rows. Leader stepdown/shutdown must NOT
@@ -1013,14 +1016,7 @@ export class ActiveWorkflowManager {
 		// here would also skip the workflowDeactivated broadcast, leaving the UI
 		// showing a torn-down workflow as active. Report and continue, mirroring
 		// how clearWebhooks failures are handled.
-		try {
-			await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
-		} catch (error) {
-			this.errorReporter.error(error);
-			this.logger.error(
-				`Could not remove durable schedule jobs of workflow "${workflowId}" because of error: "${error.message}"`,
-			);
-		}
+		await this.removeDurableJobs(workflowId);
 
 		if (wasRemoved) {
 			this.logger.debug(`Removed non-webhook triggers for workflow "${workflowId}"`, {

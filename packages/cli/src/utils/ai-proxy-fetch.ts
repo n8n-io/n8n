@@ -65,3 +65,20 @@ export function createAiMcpFetch(
 		})
 		.asCustomFetch();
 }
+
+/**
+ * A proxy-aware fetch for web-search providers (e.g. SearXNG) whose base URL
+ * is user-configured, so follow the configured SSRF policy.
+ */
+export function createWebSearchFetch(
+	outboundHttp: OutboundHttp,
+	ssrfConfig: SsrfProtectionConfig,
+	ssrfProtectionService: SsrfProtectionService,
+): CustomFetch {
+	return outboundHttp
+		.transport({
+			proxy: 'env',
+			ssrf: ssrfConfig.enabled ? ssrfProtectionService : 'disabled',
+		})
+		.asCustomFetch();
+}

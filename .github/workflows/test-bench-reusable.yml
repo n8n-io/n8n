@@ -1,4 +1,5 @@
 name: 'Test: Benchmarks'
+run-name: "Test: Benchmarks (${{ inputs.ref || github.ref_name }})"
 
 on:
   workflow_call:

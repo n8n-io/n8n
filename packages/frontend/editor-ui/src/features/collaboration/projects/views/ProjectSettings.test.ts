@@ -16,9 +16,9 @@ import type { Project } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import { createProjectListItem } from '../__tests__/utils';
 import { createUser } from '@/__tests__/data/users';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { FrontendSettings } from '@n8n/api-types';
 
@@ -30,13 +30,13 @@ const { emitters, addEmitter } = useEmitters<
 	'projectMembersTable' | 'n8nUserSelect' | 'n8nIconPicker'
 >();
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTrack,
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
 		showError: mockShowError,

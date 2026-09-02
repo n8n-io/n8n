@@ -61,7 +61,8 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -78,6 +79,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			type: 'slack',
 			credentialId: 'cred-a',
 		});
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(chat.getAdapter).toHaveBeenCalledWith('slack');
 		expect(usersList).toHaveBeenCalledWith({ limit: 10, token: 'xoxb-token' });
 		expect(result).toEqual({

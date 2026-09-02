@@ -12,17 +12,26 @@ import {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiAgentNode,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	RestController,
 	GlobalScope,
@@ -32,12 +41,17 @@ import {
 	Put,
 	Patch,
 	Delete,
+	OnPubSubEvent,
 	Param,
 	Body,
 	Query,
 } from '@n8n/decorators';
 import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
-import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import {
+	buildAgentTreeFromEvents,
+	clearedAgentBuilderTargetMetadata,
+	seedAgentBuilderTargetMetadata,
+} from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -53,6 +67,7 @@ import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.ser
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -61,6 +76,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@/services/url.service';
 
@@ -126,6 +142,7 @@ export class InstanceAiController {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly publisher: Publisher,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -661,26 +678,91 @@ export class InstanceAiController {
 	@Get('/settings')
 	@GlobalScope('instanceAi:manage')
 	async getAdminSettings(_req: AuthenticatedRequest) {
-		return this.settingsService.getAdminSettings();
+		return await this.settingsService.getAdminSettings();
 	}
 
 	@Put('/settings')
 	@GlobalScope('instanceAi:manage')
 	async updateAdminSettings(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
-		const result = await this.settingsService.updateAdminSettings(payload);
-		await this.moduleRegistry.refreshModuleSettings('instance-ai');
+		const result = await this.settingsService.updateAdminSettings(payload, req.user);
+		const [publishResult] = await Promise.allSettled([
+			this.publisher.publishCommand({ command: 'reload-instance-ai-settings' }),
+			this.applyAdminSettingsSideEffects(result),
+		]);
 
-		if (payload.enabled === false || payload.browserUseEnabled === false) {
-			await this.browserSessionService.shutdown();
+		if (publishResult.status === 'rejected') {
+			this.instanceAiErrorReporter.report(publishResult.reason, {
+				component: 'settings-publish',
+				threadId: 'admin-settings',
+			});
 		}
 
-		if (payload.enabled === false || payload.localGatewayDisabled === true) {
-			const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
-			if (disconnectedUserIds.length > 0) {
+		return result;
+	}
+
+	@Post('/settings/verify/model')
+	@GlobalScope('instanceAi:manage')
+	async verifyModel(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifyModelRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifyModel(req.user, payload);
+	}
+
+	@Post('/settings/verify/sandbox')
+	@GlobalScope('instanceAi:manage')
+	async verifySandbox(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySandboxRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySandbox(req.user, payload);
+	}
+
+	@Post('/settings/verify/search')
+	@GlobalScope('instanceAi:manage')
+	async verifySearch(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySearchRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySearch(payload);
+	}
+
+	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
+	async reloadAdminSettings() {
+		await this.settingsService.reloadFromDb();
+		await this.applyAdminSettingsSideEffects({
+			enabled: this.settingsService.isInstanceAiEnabled(),
+			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
+			localGatewayDisabled: this.settingsService.isLocalGatewayDisabled(),
+		});
+	}
+
+	private async applyAdminSettingsSideEffects(
+		settings: Pick<
+			InstanceAiAdminSettingsResponse,
+			'enabled' | 'browserUseEnabled' | 'localGatewayDisabled'
+		>,
+	) {
+		const sideEffects: Array<() => Promise<void> | void> = [
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('instance-ai');
+			},
+		];
+		if (!settings.enabled || !settings.browserUseEnabled) {
+			sideEffects.push(async () => await this.browserSessionService.shutdown());
+		}
+
+		if (!settings.enabled || settings.localGatewayDisabled) {
+			sideEffects.push(() => {
+				const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
+				if (disconnectedUserIds.length === 0) return;
 				this.push.sendToUsers(
 					{
 						type: 'instanceAiGatewayStateChanged',
@@ -693,10 +775,18 @@ export class InstanceAiController {
 					},
 					disconnectedUserIds,
 				);
-			}
+			});
 		}
 
-		return result;
+		const results = await Promise.allSettled(sideEffects.map(async (apply) => await apply()));
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				this.instanceAiErrorReporter.report(result.reason, {
+					component: 'settings-side-effects',
+					threadId: 'admin-settings',
+				});
+			}
+		}
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────
@@ -721,16 +811,16 @@ export class InstanceAiController {
 		return result;
 	}
 
-	@Get('/settings/credentials')
-	@GlobalScope('instanceAi:message')
-	async listModelCredentials(req: AuthenticatedRequest) {
-		return await this.settingsService.listModelCredentials(req.user);
-	}
-
 	@Get('/settings/service-credentials')
 	@GlobalScope('instanceAi:manage')
-	async listServiceCredentials(req: AuthenticatedRequest) {
-		return await this.settingsService.listServiceCredentials(req.user);
+	async listServiceCredentials(_req: AuthenticatedRequest) {
+		return await this.settingsService.listInstanceServiceCredentials();
+	}
+
+	@Get('/settings/model-credentials')
+	@GlobalScope('instanceAi:manage')
+	async listInstanceModelCredentials(_req: AuthenticatedRequest) {
+		return await this.settingsService.listInstanceModelCredentials();
 	}
 
 	@Get('/threads')
@@ -955,16 +1045,20 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, payload.threadId);
-		this.evalCredentialAllowlists.set(payload.threadId, payload.credentialIds);
+		this.evalCredentialAllowlists.set(
+			payload.threadId,
+			payload.credentialIds,
+			payload.bypassCredentialTest,
+		);
 		return { ok: true };
 	}
 
 	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
-	 * recreate the workflow artifacts the history references (node credentials
-	 * stripped — see `EvalThreadRestoreService`), then write the native message
-	 * log verbatim. The thread then continues as if the conversation really
-	 * happened, so an eval can drive the next turn live.
+	 * recreate the artifacts the history references — workflows (node credentials
+	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
+	 * write the native message log verbatim. The thread then continues as if the
+	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
 	@GlobalScope('instanceAi:eval')
@@ -981,6 +1075,21 @@ export class InstanceAiController {
 		}
 
 		const workflows = payload.workflows ?? [];
+		const agents = payload.agents ?? [];
+		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
+		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
+		// dead tool (or binds an unrelated ambient workflow of the same name).
+		const unbacked = findUnbackedSeedWorkflowTools(payload);
+		if (unbacked.length > 0) {
+			throw new BadRequestError(
+				unbacked
+					.map(
+						({ agentId, target }: { agentId: string; target: unknown }) =>
+							`Seed agent ${agentId} has a workflow tool targeting ${JSON.stringify(target)}, which no seeded workflow's name matches`,
+					)
+					.join('; '),
+			);
+		}
 		// Data tables first: the workflows reference them, and their ids are
 		// rewritten to the recreated tables' ids during workflow restore.
 		const idMap = await this.evalThreadRestore.restoreDataTables(
@@ -990,15 +1099,47 @@ export class InstanceAiController {
 		);
 		const dataTableIds = [...idMap.values()];
 		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak workflows/tables into the shared eval project.
+		// restore doesn't leak workflows/tables/agents into the shared eval project.
 		let restored = 0;
 		let createdWorkflowIds: string[] = [];
+		let createdAgentIds: string[] = [];
+		// Captured so the binding write is undoable: the message write happens after
+		// it, and without this a message failure left a binding pointing at agents the
+		// rollback had already deleted.
+		let priorMetadata: Record<string, unknown> | undefined;
+		let bindingWritten = false;
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
 			);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
+			// Built (and validated) BEFORE the message write: a rejected binding — two
+			// agents whose refs collide — must fail while the restore is still fully
+			// rollback-able, not after the messages have committed.
+			const binding =
+				createdAgentIds.length > 0
+					? seedAgentBuilderTargetMetadata(
+							agents.map((agent) => ({
+								agentId: agent.id,
+								projectId,
+								name: agent.config.name,
+								ref: agent.config.name,
+							})),
+							payload.messages,
+						)
+					: undefined;
+			// Bind the thread as the conversation that built these agents would have, or
+			// the live turn's first `build-agent` call is rejected as an unknown agentRef.
+			// BEFORE the messages, and undoable: the catch restores the prior metadata,
+			// so a message failure can't leave a binding pointing at deleted agents, and
+			// a binding failure can't leave messages referencing them.
+			if (binding) {
+				priorMetadata = await this.memoryService.getThreadMetadata(req.user.id, payload.threadId);
+				await this.memoryService.updateThread(payload.threadId, { metadata: binding });
+				bindingWritten = true;
+			}
 			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
 			if (payload.messages.length > 0) {
 				({ restored } = await this.memoryService.restoreThreadMessages(
@@ -1008,6 +1149,19 @@ export class InstanceAiController {
 				));
 			}
 		} catch (error) {
+			if (bindingWritten) {
+				try {
+					// `updateThread` MERGES, so the prior snapshot alone would leave the
+					// binding keys standing — this names them and restores each.
+					await this.memoryService.updateThread(payload.threadId, {
+						metadata: clearedAgentBuilderTargetMetadata(priorMetadata),
+					});
+				} catch {
+					// Best-effort, like the artifact deletes: never throw over the failure
+					// that triggered the rollback.
+				}
+			}
+			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
 			throw error;
@@ -1018,6 +1172,7 @@ export class InstanceAiController {
 			restored,
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
+			agentIds: createdAgentIds,
 		};
 	}
 
@@ -1265,7 +1420,7 @@ export class InstanceAiController {
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	private assertBrowserChannelEnabled(): void {
-		if (!this.settingsService.getAdminSettings().browserUseEnabled) {
+		if (!this.settingsService.isBrowserUseEnabled()) {
 			throw new ForbiddenError('Browser Use is disabled');
 		}
 	}

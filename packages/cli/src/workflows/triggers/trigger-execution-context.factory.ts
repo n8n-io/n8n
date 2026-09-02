@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	ErrorReporter,
@@ -15,6 +16,7 @@ import type {
 	IExecuteResponsePromiseData,
 	INode,
 	INodeExecutionData,
+	IPollFunctions,
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
@@ -28,9 +30,11 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
+import { NodeTypes } from '@/node-types';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -68,8 +72,68 @@ export class TriggerExecutionContextFactory {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly ownershipService: OwnershipService,
+		private readonly nodeTypes: NodeTypes,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
+	}
+
+	/**
+	 * Bridge an in-flight triggered execution to the node's `donePromise`. It
+	 * always settles: with the finished run, with `undefined` when a duplicate
+	 * scheduled execution was skipped, or rejected if the execution never
+	 * started. Nodes that await it (MQTT, RabbitMQ, AMQP, Kafka) would otherwise
+	 * hang forever on failure.
+	 */
+	private settleDonePromise(
+		executePromise: Promise<string | undefined>,
+		donePromise: IDeferredPromise<IRun | undefined>,
+	) {
+		void executePromise
+			.then(async (executionId) =>
+				executionId === undefined
+					? undefined
+					: await this.activeExecutions.getPostExecutePromise(executionId),
+			)
+			.then(donePromise.resolve, (error: unknown) => donePromise.reject(ensureError(error)));
+	}
+
+	/**
+	 * Terminates the emit promise chains. Without it a failed triggered execution
+	 * surfaces as an unhandled rejection instead of a logged error.
+	 */
+	private logTriggerExecutionFailure(error: unknown, workflowData: IWorkflowBase, node: INode) {
+		const failure = ensureError(error);
+		this.logger.error(failure.message, {
+			error: failure,
+			workflowId: workflowData.id,
+			nodeName: node.name,
+		});
+	}
+
+	/**
+	 * Persist a failed trigger execution, then run the error workflow for it.
+	 */
+	private recordTriggerFailure(
+		error: ExecutionError,
+		node: INode,
+		workflowData: IWorkflowBase,
+		workflow: Workflow,
+		mode: WorkflowExecuteMode,
+	) {
+		void this.executionService
+			.createErrorExecution(error, node, workflowData, workflow, mode)
+			.then(() => {
+				this.executeErrorWorkflow(error, workflowData, mode);
+			})
+			.catch((cause: unknown) => {
+				const failure = ensureError(cause);
+				this.errorReporter.error(failure);
+				this.logger.error('Failed to record failed trigger execution', {
+					error: failure,
+					workflowId: workflowData.id,
+					nodeName: node.name,
+				});
+			});
 	}
 
 	/**
@@ -132,40 +196,29 @@ export class TriggerExecutionContextFactory {
 						throw error;
 					});
 
-				void executePromise.then(async (executionId) => {
-					// `executionId` is undefined when the catch above swallowed a
-					// duplicate scheduled execution; nothing ran, so nothing to emit.
-					if (executionId === undefined) return;
-					const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
-						this.ownershipService,
-						workflowData.id,
-					);
-					this.eventService.emit('workflow-executed', {
-						workflowId: workflowData.id,
-						workflowName: workflowData.name,
-						executionId,
-						projectId,
-						projectName,
-						source: 'trigger',
-					});
-				});
+				// Registered ahead of the telemetry chain so the post-execute promise
+				// is attached before that chain's ownership lookup yields.
+				if (donePromise) this.settleDonePromise(executePromise, donePromise);
 
-				if (donePromise) {
-					void executePromise.then((executionId) => {
-						// Same as above: a duplicate scheduled execution was skipped,
-						// so resolve with undefined and don't wait on a non-existent run.
-						if (executionId === undefined) {
-							donePromise.resolve(undefined);
-							return;
-						}
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
-					});
-				} else {
-					executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
-				}
+				void executePromise
+					.then(async (executionId) => {
+						// `executionId` is undefined when the catch above swallowed a
+						// duplicate scheduled execution; nothing ran, so nothing to emit.
+						if (executionId === undefined) return;
+						const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+							this.ownershipService,
+							workflowData.id,
+						);
+						this.eventService.emit('workflow-executed', {
+							workflowId: workflowData.id,
+							workflowName: workflowData.name,
+							executionId,
+							projectId,
+							projectName,
+							source: 'trigger',
+						});
+					})
+					.catch((error: unknown) => this.logTriggerExecutionFailure(error, workflowData, node));
 			};
 
 			const emitError = (error: Error): void => {
@@ -181,11 +234,7 @@ export class TriggerExecutionContextFactory {
 						workflowName: workflowData.name,
 					},
 				);
-				void this.executionService
-					.createErrorExecution(error, node, workflowData, workflow, mode)
-					.then(() => {
-						this.executeErrorWorkflow(error, workflowData, mode);
-					});
+				this.recordTriggerFailure(error, node, workflowData, workflow, mode);
 			};
 
 			const schedulingFunctions = this.scheduleTriggerJobRegistrar.interceptsNode(node)
@@ -211,7 +260,7 @@ export class TriggerExecutionContextFactory {
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecutePollFunctions(
-		workflowData: IWorkflowDb,
+		workflowData: IWorkflowBase,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
@@ -245,28 +294,60 @@ export class TriggerExecutionContextFactory {
 						),
 				);
 
-				if (donePromise) {
-					void executePromise.then((executionId) => {
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
-					});
-				} else {
-					void executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
-				}
+				if (donePromise) this.settleDonePromise(executePromise, donePromise);
+
+				void executePromise.catch((error: unknown) =>
+					this.logTriggerExecutionFailure(error, workflowData, node),
+				);
 			};
 
 			const __emitError = (error: ExecutionError) => {
-				void this.executionService
-					.createErrorExecution(error, node, workflowData, workflow, mode)
-					.then(() => {
-						this.executeErrorWorkflow(error, workflowData, mode);
-					});
+				this.recordTriggerFailure(error, node, workflowData, workflow, mode);
 			};
 
 			return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
 		};
+	}
+
+	/**
+	 * Assemble the poll execution context: the Workflow, additionalData, and
+	 * resolve-at-emit closure needed to run `poll()`. The closure reads fresh
+	 * (non-cached) so the poll cursor in staticData is never stale.
+	 */
+	async createPollExecutionContext(
+		workflowData: IWorkflowBase,
+		node: INode,
+	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
+		const workflow = new Workflow({
+			id: workflowData.id,
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: true,
+			nodeTypes: this.nodeTypes,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflowData.id,
+			workflowSettings: workflowData.settings,
+		});
+
+		const resolveWorkflowData = async () =>
+			await this.loadPublishedWorkflowData(workflowData.id, { bypassCache: true });
+
+		const getPollFunctions = this.getExecutePollFunctions(
+			workflowData,
+			additionalData,
+			'trigger',
+			'update',
+			resolveWorkflowData,
+		);
+		// getPollFunctions already closed over these; its signature still requires them.
+		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');
+
+		return { workflow, pollFunctions };
 	}
 
 	executeErrorWorkflow(
@@ -293,17 +374,24 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the cached
-	 * published data. `pinData` and `meta` are deliberately left out — they are
+	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the
+	 * published data. `pinData` and `meta` are deliberately left out: they are
 	 * irrelevant to a production trigger execution.
+	 *
+	 * Pass `bypassCache` on the poll path: `saveStaticData` writes the poll cursor
+	 * into `staticData` without refreshing the cache, so a cached read would be stale.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	async loadPublishedWorkflowData(workflowId: string): Promise<IWorkflowBase> {
-		const publishedData =
-			await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
-				workflowId,
-			);
+	async loadPublishedWorkflowData(
+		workflowId: string,
+		{ bypassCache = false }: { bypassCache?: boolean } = {},
+	): Promise<IWorkflowBase> {
+		const publishedData = bypassCache
+			? await this.workflowPublishedDataService.getPublishedWorkflowDataForExecution(workflowId)
+			: await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
+					workflowId,
+				);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {

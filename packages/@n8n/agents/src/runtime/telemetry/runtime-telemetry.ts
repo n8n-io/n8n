@@ -1,9 +1,15 @@
-import type { TelemetrySettings } from 'ai';
+import type { TelemetryOptions } from 'ai';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { buildExperimentalTelemetry } from './telemetry-options';
+import { buildAiSdkTelemetry } from './telemetry-options';
 import { Telemetry } from '../../sdk/telemetry';
-import type { AttributeValue, BuiltProviderTool, BuiltTelemetry, BuiltTool } from '../../types';
+import type {
+	AttributeValue,
+	BuiltMemory,
+	BuiltProviderTool,
+	BuiltTelemetry,
+	BuiltTool,
+} from '../../types';
 import type { ExecutionOptions } from '../../types/sdk/agent';
 import type { OpaqueSpanLink } from '../../types/telemetry';
 import type { JSONValue } from '../../types/utils/json';
@@ -123,10 +129,136 @@ function buildGenAiRootAttributes(
 	};
 }
 
+export type MemoryOperation = 'created' | 'deleted' | 'pruned' | 'query_memory';
+export type MemoryScopeType =
+	| 'session'
+	| 'task'
+	| 'action'
+	| 'agent'
+	| 'team'
+	| 'organization'
+	| 'external';
+export type MemoryStoreType =
+	| 'vector_db'
+	| 'kv_store'
+	| 'document_db'
+	| 'graph_db'
+	| 'file_system'
+	| 'in_memory'
+	| 'rdbms';
+
+/**
+ * gen_ai.memory.* attribute bag for withMemorySpan(). All fields are
+ * index-aligned arrays per the draft OTel GenAI memory semantic conventions
+ * (open-telemetry/semantic-conventions-genai#35): position i across every
+ * array describes the same memory item. 'query_memory' in `operations` is a
+ * local extension — the draft only defines write-lifecycle values
+ * (created/deleted/pruned), with no value for a pure read.
+ */
+export interface MemorySpanAttributes {
+	ids?: string[];
+	descriptions?: string[];
+	operations?: MemoryOperation[];
+	types?: MemoryScopeType[];
+	owners?: string[];
+	storeTypes?: MemoryStoreType[];
+	storeNames?: string[];
+}
+
+/**
+ * Best-effort gen_ai.memory.store.* attributes from a BuiltMemory's
+ * descriptor. Only positively identifies `InMemoryMemory`; any other backend
+ * gets `storeNames` from its declared name but no `storeTypes` guess.
+ *
+ * Swallows a throwing `describe()` (e.g. a third-party `BuiltMemory` with a
+ * broken implementation) — this call happens inside `withMemorySpan`'s
+ * `buildInitialAttributes` thunk, outside its try/catch, so an uncaught
+ * throw here would skip the actual memory operation entirely just because
+ * telemetry happened to be on.
+ */
+export function inferMemoryStoreAttributes(
+	memory: BuiltMemory,
+): Pick<MemorySpanAttributes, 'storeTypes' | 'storeNames'> {
+	try {
+		const descriptor = memory.describe();
+		return {
+			...(descriptor.name ? { storeNames: [descriptor.name] } : {}),
+			...(descriptor.constructorName === 'InMemoryMemory' ? { storeTypes: ['in_memory'] } : {}),
+		};
+	} catch {
+		return {};
+	}
+}
+
+function buildMemorySpanAttributes(
+	kind: 'query_memory' | 'save_memory',
+	agentName: string,
+	attrs: MemorySpanAttributes,
+): Record<string, AttributeValue> {
+	return {
+		'gen_ai.operation.name': kind,
+		'gen_ai.agent.name': agentName,
+		...(attrs.ids?.length ? { 'gen_ai.memory.ids': attrs.ids } : {}),
+		...(attrs.descriptions?.length ? { 'gen_ai.memory.descriptions': attrs.descriptions } : {}),
+		...(attrs.operations?.length ? { 'gen_ai.memory.operations': attrs.operations } : {}),
+		...(attrs.types?.length ? { 'gen_ai.memory.types': attrs.types } : {}),
+		...(attrs.owners?.length ? { 'gen_ai.memory.owners': attrs.owners } : {}),
+		...(attrs.storeTypes?.length ? { 'gen_ai.memory.store.types': attrs.storeTypes } : {}),
+		...(attrs.storeNames?.length ? { 'gen_ai.memory.store.names': attrs.storeNames } : {}),
+	};
+}
+
+/**
+ * Wrap a memory query/save with a `query_memory`/`save_memory` span, mirroring
+ * `withRootSpan`/`withToolSpan`'s no-op-when-disabled shape. `fn` returns both
+ * the caller's result and, optionally, attributes only knowable after the
+ * underlying call completes (e.g. which ids were actually fetched/saved) —
+ * those get merged onto the span via `setAttributes`. Because callers pass the
+ * same `telemetry.tracer` already active for the enclosing root/tool span, the
+ * new span nests under it automatically.
+ *
+ * `buildInitialAttributes` is a thunk, not a plain object: callers build it
+ * from `inferMemoryStoreAttributes(memory)`, which calls `memory.describe()` —
+ * a method third-party `BuiltMemory` implementations may not implement (it's
+ * only otherwise used for schema persistence). Deferring it until telemetry
+ * is confirmed active keeps memory access telemetry-free by default.
+ */
+export async function withMemorySpan<T>(
+	kind: 'query_memory' | 'save_memory',
+	agentName: string,
+	telemetry: BuiltTelemetry | undefined,
+	buildInitialAttributes: () => MemorySpanAttributes,
+	fn: () => Promise<{ result: T; attributes?: MemorySpanAttributes }>,
+): Promise<T> {
+	if (!telemetry?.enabled || !isActiveSpanTracer(telemetry.tracer)) {
+		return (await fn()).result;
+	}
+
+	return await telemetry.tracer.startActiveSpan(
+		kind,
+		{ attributes: buildMemorySpanAttributes(kind, agentName, buildInitialAttributes()) },
+		async (span) => {
+			try {
+				const { result, attributes } = await fn();
+				if (attributes) {
+					span.setAttributes?.(buildMemorySpanAttributes(kind, agentName, attributes));
+				}
+				return result;
+			} catch (error) {
+				span.recordException?.(error);
+				span.setStatus?.({ code: 2, message: String(error) });
+				throw error;
+			} finally {
+				span.end();
+			}
+		},
+	);
+}
+
 /**
  * Owns all telemetry concerns for a single agent runtime: resolving the
  * effective telemetry config, mapping it to the AI SDK's
- * `experimental_telemetry` shape, building LangSmith/AI-SDK span attributes,
+ * `telemetry` shape, building LangSmith/AI-SDK span attributes,
  * and wrapping the generate/stream loops and tool calls in active spans.
  *
  * Keeps provider-specific attribute formatting out of the core loop. Holds a
@@ -156,11 +288,11 @@ export class RuntimeTelemetry {
 		await Telemetry.forceFlush(this.resolve(options));
 	}
 
-	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
+	/** Map resolved telemetry to the AI SDK's telemetry shape. */
 	buildTelemetryOptions(options?: ExecutionOptions): {
-		experimental_telemetry?: TelemetrySettings;
+		telemetry?: TelemetryOptions;
 	} {
-		return buildExperimentalTelemetry(this.resolve(options), {
+		return buildAiSdkTelemetry(this.resolve(options), {
 			fallbackFunctionId: this.config.name,
 		});
 	}
@@ -170,8 +302,6 @@ export class RuntimeTelemetry {
 		options: ExecutionOptions | undefined,
 		runId: string,
 		fn: () => Promise<T>,
-		// Seam for TRUST-308 (nesting delegated sub-agent spans under the parent
-		// agent trace) — unused today, every root span is self-contained.
 		links?: OpaqueSpanLink[],
 	): Promise<T> {
 		const t = this.resolve(options);
@@ -183,9 +313,13 @@ export class RuntimeTelemetry {
 		return await t.tracer.startActiveSpan(
 			spanName,
 			{
-				// Self-contained trace regardless of ambient context, so the span
-				// tree's shape is identical no matter how the agent was invoked.
-				root: true,
+				// Self-contained trace regardless of ambient context by default, so
+				// a top-level agent run's span tree is identical no matter how it was
+				// invoked. `rootAnchored: false` (set by `deriveSubAgentTelemetry` for
+				// delegated sub-agent runs) omits `root` instead, so the span nests
+				// under whatever OTel context is already active — the parent's
+				// delegate-tool-call span, when run in-process inside it.
+				...(t.rootAnchored === false ? {} : { root: true }),
 				...(links?.length ? { links } : {}),
 				attributes: this.buildTelemetryRootAttributes(t, spanName, runId),
 			},

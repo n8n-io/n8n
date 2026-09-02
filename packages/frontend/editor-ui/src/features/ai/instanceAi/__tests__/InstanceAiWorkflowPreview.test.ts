@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createRunExecutionData, type IPinData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, nextTick, reactive } from 'vue';
+import { defineComponent, h, inject, nextTick, reactive } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	usePushConnectionStore,
@@ -14,6 +14,7 @@ import {
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -27,6 +28,9 @@ const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
 
 const thread = reactive({
 	messages: [],
+	isStreaming: false,
+	isHydratingThread: false,
+	isSendingMessage: false,
 	consumePendingHandoff: vi.fn(),
 	sendMessage: vi.fn(),
 	rememberManualExecution: (
@@ -54,11 +58,14 @@ const WorkflowCanvasHostStub = defineComponent({
 	emits: ['workflow-loaded'],
 	setup(_, { emit, expose }) {
 		expose({ requestFitView: vi.fn() });
+		// Surfaces the host's read-only override so the editing lock is assertable.
+		const features = inject(EditorEnabledFeaturesKey, null);
 		return () =>
 			h(
 				'button',
 				{
 					'data-test-id': 'workflow-loaded',
+					'data-read-only': String(features?.value.readOnly ?? false),
 					onClick: () => emit('workflow-loaded', 'wf-1'),
 				},
 				'loaded',
@@ -151,9 +158,36 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 describe('InstanceAiWorkflowPreview', () => {
 	beforeEach(() => {
 		thread.messages = [];
+		thread.isStreaming = false;
+		thread.isHydratingThread = false;
+		thread.isSendingMessage = false;
 		thread.consumePendingHandoff.mockReset();
 		thread.sendMessage.mockReset();
 		rememberedManualExecutions.clear();
+	});
+
+	describe('editing lock', () => {
+		const readOnly = (wrapper: Awaited<ReturnType<typeof mountPreview>>['wrapper']) =>
+			wrapper.find('[data-test-id="workflow-loaded"]').attributes('data-read-only');
+
+		it('leaves the canvas editable while the agent is idle', async () => {
+			const { wrapper } = await mountPreview();
+
+			expect(readOnly(wrapper)).toBe('false');
+		});
+
+		it.each([
+			['isStreaming', 'isStreaming'],
+			['isHydratingThread', 'isHydratingThread'],
+			['isSendingMessage', 'isSendingMessage'],
+		] as const)('locks the canvas while %s', async (_label, flag) => {
+			const { wrapper } = await mountPreview();
+
+			thread[flag] = true;
+			await nextTick();
+
+			expect(readOnly(wrapper)).toBe('true');
+		});
 	});
 
 	it('restores the cached agent execution after the artifact workflow reloads', async () => {

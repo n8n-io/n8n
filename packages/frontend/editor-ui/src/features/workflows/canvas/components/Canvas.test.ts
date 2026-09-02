@@ -33,7 +33,7 @@ import {
 	useCanvasNodeGroupView,
 	type CanvasNodeGroupView,
 } from '../composables/useCanvasNodeGroupView';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
@@ -61,7 +61,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ prompt: messagePrompt }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast }),
 }));
 
@@ -78,7 +78,7 @@ vi.mock('@/app/composables/useSelectionValidation', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
 

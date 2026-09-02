@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import type { EvaluationMetric } from '../dto/evaluations/evaluation-config.dto';
+import {
+	evaluationMetricSchema,
+	type EvaluationMetric,
+} from '../dto/evaluations/evaluation-config.dto';
 import { Z } from '../zod-class';
 
 // Mirrors the `TestRunStatus` union in `@n8n/db`. Duplicated here so
@@ -48,6 +51,18 @@ export function metricScalesFromConfig(metrics: EvaluationMetric[]): Record<stri
 		scaleByMetric[metric.name] = metricScaleFromConfig(metric);
 	}
 	return scaleByMetric;
+}
+
+/**
+ * Metric-name → scale map from a run's frozen `evaluationConfigSnapshot` (its
+ * `metrics`). A run's values were produced against that snapshot, so they must
+ * normalize on its scales — not the collection's current config, which may have
+ * changed since. Returns null when the snapshot carries no valid metrics array,
+ * so callers fall back to the live config.
+ */
+export function metricScalesFromSnapshot(snapshot: unknown): Record<string, MetricScale> | null {
+	const parsed = z.object({ metrics: z.array(evaluationMetricSchema) }).safeParse(snapshot);
+	return parsed.success ? metricScalesFromConfig(parsed.data.metrics) : null;
 }
 
 /**
@@ -180,6 +195,12 @@ export type EvaluationCollectionRunSummary = {
 	completedAt: string | null;
 	avgScore: number | null;
 	metrics: Record<string, number> | null;
+	// Per-run metric-name → scale, from this run's frozen config snapshot, so its
+	// values normalize on the scales they were produced with. Always set on the
+	// collection detail (`toRunSummary` falls back to the collection-wide map);
+	// optional only for leaner responses that omit it, where the FE's name-based
+	// fallback applies.
+	metricScales?: Record<string, MetricScale>;
 };
 
 export type EvaluationCollectionDetail = EvaluationCollectionRecord & {

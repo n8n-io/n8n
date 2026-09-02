@@ -1,8 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref } from 'vue';
 
-import { useAgentCapabilitiesActions } from './useAgentCapabilitiesActions';
-import type { AgentJsonConfig, AgentJsonToolConfig, AgentResource, AgentSkill } from '../types';
+import {
+	useAgentCapabilitiesActions,
+	type AgentCapabilitiesTelemetry,
+} from './useAgentCapabilitiesActions';
+import type {
+	AgentJsonConfig,
+	AgentJsonMcpServerConfig,
+	AgentJsonToolConfig,
+	AgentResource,
+	AgentSkill,
+} from '../types';
 
 const { openModalWithData } = vi.hoisted(() => ({ openModalWithData: vi.fn() }));
 
@@ -14,7 +23,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 		getNodeType: () => ({ name: 'n8n-nodes-base.mcpClientTool', version: 1 }),
 	}),
 }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -35,7 +44,10 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	} as AgentJsonConfig;
 }
 
-function makeActions(overrides: Partial<AgentJsonConfig> = {}) {
+function makeActions(
+	overrides: Partial<AgentJsonConfig> = {},
+	telemetry?: AgentCapabilitiesTelemetry,
+) {
 	const scheduleConfigUpdate = vi.fn();
 	const scheduleSkillSave = vi.fn();
 	const agent = ref<AgentResource | null>(null);
@@ -48,6 +60,7 @@ function makeActions(overrides: Partial<AgentJsonConfig> = {}) {
 		connectedTriggers: ref<string[]>([]),
 		scheduleConfigUpdate,
 		scheduleSkillSave,
+		telemetry,
 	});
 	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId };
 }
@@ -158,5 +171,39 @@ describe('useAgentCapabilitiesActions', () => {
 			skillId: 's1',
 			skill: expect.objectContaining({ instructions: 'Edited.' }),
 		});
+	});
+
+	it('drops the tool ref from the config when onRemoveTool removes it', () => {
+		const removedTool = {
+			type: 'node',
+			name: 'get_dates',
+		} as AgentJsonToolConfig;
+		const { actions, scheduleConfigUpdate } = makeActions({ tools: [removedTool] });
+
+		actions.onRemoveTool(0);
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [] });
+	});
+
+	it('drops the MCP server from the config when removed from the tool-config modal', () => {
+		const mcpServer: AgentJsonMcpServerConfig = {
+			name: 'srv',
+			url: 'https://mcp.example.com',
+			authentication: 'none',
+			transport: 'streamableHttp',
+		};
+		const { actions, scheduleConfigUpdate } = makeActions({
+			tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],
+			mcpServers: [mcpServer],
+		});
+
+		actions.onOpenToolFromList(1);
+
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { onRemove?: () => void };
+		};
+		modalData.data.onRemove?.();
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ mcpServers: [] });
 	});
 });

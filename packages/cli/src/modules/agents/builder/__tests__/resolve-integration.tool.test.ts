@@ -13,6 +13,7 @@ const ctx = {
 };
 
 const notionResult: McpRegistrySearchResult = {
+	slug: 'notion',
 	name: 'notion',
 	title: 'Notion',
 	description: 'Connect to the Notion MCP Server',

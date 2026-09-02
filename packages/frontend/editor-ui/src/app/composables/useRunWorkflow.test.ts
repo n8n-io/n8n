@@ -23,10 +23,10 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { captor, mock } from 'vitest-mock-extended';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
@@ -170,16 +170,6 @@ vi.mock('@/app/stores/workflowsList.store', () => {
 	};
 });
 
-vi.mock('@/app/stores/parameterOverrides.store', () => {
-	const storeState: Partial<ReturnType<typeof useAgentRequestStore>> & {} = {
-		agentRequests: {},
-		getAgentRequest: vi.fn(),
-	};
-	return {
-		useAgentRequestStore: vi.fn().mockReturnValue(storeState),
-	};
-});
-
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
@@ -192,7 +182,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
 
@@ -207,7 +197,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		clearAllStickyNotifications: vi.fn(),
 		showMessage: vi.fn(),

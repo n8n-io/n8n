@@ -71,7 +71,6 @@ Complete reference for n8n's `.github/` folder.
 │  │ Schedule │───▶│  Nightly/Weekly Jobs             │    ┌────────────┐   │
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
-│                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
 │                                                                            │
@@ -179,8 +178,9 @@ These only run if specific files changed:
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
-| `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
-| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
+| `packages/cli/src/public-api/**/*.yml`, `packages/cli/src/public-api/**/*.yaml`, `packages/cli/src/public-api/**/*.css`, `packages/cli/src/public-api/v1/openapi-gen/**/*.ts`, `packages/cli/scripts/build.mjs`, `packages/cli/package.json` | `util-publish-api-schema.yml` | master   |
+| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
+| `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
 
 ### On PR Review
 
@@ -297,9 +297,6 @@ release-publish.yml
 test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
 
-test-e2e-vm-expressions-nightly.yml
-    └──────────────────────────▶  test-e2e-reusable.yml
-
 PR Comment Dispatchers (triggered by /command in PR comments):
 test-workflows-pr-comment.yml
     └──────────────────────────▶  test-workflows-callable.yml
@@ -392,8 +389,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.16.0, 26.x)
-│   └─ Coverage only on 24.16.0
+├─ unit-test (matrix: Node 22.23.2, 24.18.1)
+│   └─ Coverage only on 24.18.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -404,6 +401,7 @@ Push to master/1.x
 
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
+| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private, refresh bundle branches |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
@@ -411,9 +409,9 @@ Push to master/1.x
 | Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
-| Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
+| Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
-| Daily 06:00               | `util-sync-master-to-3x.yml`      | Sync master → 3.x (v3)   |
+| Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -424,10 +422,14 @@ Push to master/1.x
 ## v3 development (master + 3.x)
 
 During the v3 release window, `master` carries normal feature work (behind opt-in
-flags) and the long-lived `3.x` branch carries breaking changes. `master` is
-synced into `3.x` daily by `util-sync-master-to-3x.yml` (conflicts open a draft PR
-labeled `automation:v3-sync`, request the breaking-commit authors as reviewers via
-`sync-conflict-owners.mjs`, post to `#alerts-v3-sync`, and pause further syncs).
+flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
+syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
+clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
+exactly the tree a merge of `3.x` and `master` produces, and marker-free. On a real conflict
+`3.x` is left untouched and a draft PR carrying the conflict markers (labeled
+`automation:v3-sync`) is opened on `sync/master-to-3x`, requesting the breaking-commit authors
+as reviewers via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further
+syncs until it is resolved and merged normally.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
 
@@ -448,7 +450,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.16.0'
+  node-version:        # default: '24.18.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -501,6 +503,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|------------------------|
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
+| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-push.yml`|
 
 ### Validation Scripts
 
@@ -694,6 +697,27 @@ cosign verify-attestation --type openvex \
   ]
 }
 ```
+
+### Public ↔ private sync (bundle branches)
+
+Embargoed security work happens in `n8n-io/n8n-private`. `sec-sync-public-to-private.yml`
+runs hourly there (and on `workflow_dispatch` with `force` for conflict recovery),
+mirroring public `master` and `1.x` into private with `reset --hard` +
+`--force-with-lease` — skipping a branch when private is ahead, ignoring `chore: Bundle`
+commits when judging "ahead". Fixes are never committed to private `master`/`1.x`
+directly: `ci-restrict-private-merges.yml` requires PRs into them to come from the
+long-lived integration branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
+backported to `bundle/1.x` by `util-backport-bundle.yml`). The sync creates those
+branches if missing and then **merges `master` into `bundle/2.x` and `1.x` into
+`bundle/1.x`** so they don't drift; on a conflict it aborts the merge, leaves the branch
+untouched, and emits a warning annotation while **keeping the run green** — the other
+bundle branch still syncs, and a human resolves the conflict by hand. Once a bundle
+branch is merged into private `master`/`1.x` as a `chore: Bundle/*` PR,
+`sec-publish-fix.yml` / `sec-publish-fix-1x.yml` cherry-pick that merge commit onto a
+fresh branch in the public repo and open the PR there.
+
+See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that
+keep the vulnerability out of public branch names, commits, and test descriptions.
 
 ---
 

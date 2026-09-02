@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { N8nCallout, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import MacOsIcon from '../../assets/os-icons/macos-icon.svg';
 import WindowsIcon from '../../assets/os-icons/windows-icon.svg';

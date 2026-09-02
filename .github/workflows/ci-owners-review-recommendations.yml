@@ -20,7 +20,7 @@ jobs:
     name: Recommend reviewers
     # Skipped for:
     #  - PRs from forks (no token to comment with)
-    #  - Bot-authored PRs (Dependabot, Renovate, etc. — noise, not useful)
+    #  - Bot-authored PRs (Dependabot, etc. — noise, not useful)
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.type != 'Bot'

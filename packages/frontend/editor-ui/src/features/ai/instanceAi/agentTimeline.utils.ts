@@ -3,7 +3,7 @@ import type {
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { isActiveBuilderAgent } from './builderAgents';
+import { isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
 export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
@@ -17,13 +17,6 @@ const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
 const TAIL_NARRATION_MAX_LENGTH = 200;
 
 type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
-
-/** First sentence of a streamed markdown-ish text, for trace status lines. */
-export function firstSentence(content: string): string {
-	const plain = content.replace(/[*_`#]/g, '').trim();
-	const match = plain.match(/^.*?[.!?](?=\s|$)/s);
-	return (match ? match[0] : plain).trim();
-}
 
 /**
  * The timeline reduced to renderable blocks.
@@ -73,6 +66,13 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	return 'trace';
 }
 
+function hasBuilderChildInResponse(
+	responseId: string | undefined,
+	builderChildResponseIds: Set<string>,
+): boolean {
+	return responseId !== undefined && builderChildResponseIds.has(responseId);
+}
+
 export function buildTimelineBlocks(
 	entries: InstanceAiTimelineEntry[],
 	toolCallsById: Record<string, InstanceAiToolCallState>,
@@ -84,13 +84,33 @@ export function buildTimelineBlocks(
 	// kept working after writing it. Trailing text of a response (and text
 	// without a responseId, from old snapshots) is user-facing.
 	const lastTraceIdxByResponse = new Map<string, number>();
+	const builderChildResponseIds = new Set(
+		entries
+			.filter(
+				(entry): entry is Extract<InstanceAiTimelineEntry, { type: 'child' }> =>
+					entry.type === 'child' &&
+					entry.responseId !== undefined &&
+					!!childrenById[entry.agentId] &&
+					isBuilderAgent(childrenById[entry.agentId]),
+			)
+			.map((entry) => entry.responseId)
+			.filter((responseId): responseId is string => responseId !== undefined),
+	);
+
 	entries.forEach((entry, idx) => {
 		if (entry.responseId === undefined) return;
 		if (entry.type === 'reasoning') {
 			lastTraceIdxByResponse.set(entry.responseId, idx);
 		} else if (entry.type === 'tool-call') {
 			const tc = toolCallsById[entry.toolCallId];
-			if (tc && classifyToolCall(tc) === 'trace') {
+			if (
+				tc &&
+				classifyToolCall(tc) === 'trace' &&
+				!(
+					tc.toolName === 'build-agent' &&
+					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
+				)
+			) {
 				lastTraceIdxByResponse.set(entry.responseId, idx);
 			}
 		}
@@ -156,6 +176,12 @@ export function buildTimelineBlocks(
 
 		const tc = toolCallsById[entry.toolCallId];
 		if (!tc) return;
+		if (
+			tc.toolName === 'build-agent' &&
+			hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
+		) {
+			return;
+		}
 		switch (classifyToolCall(tc)) {
 			case 'tasks':
 				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });

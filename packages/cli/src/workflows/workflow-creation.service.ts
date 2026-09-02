@@ -21,7 +21,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
-import { ExternalHooks } from '@/external-hooks';
+import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
@@ -31,6 +31,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -59,6 +60,7 @@ export class WorkflowCreationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+		private readonly workflowHookContextService: WorkflowHookContextService,
 	) {}
 
 	async createWorkflow(
@@ -172,7 +174,11 @@ export class WorkflowCreationService {
 		}
 
 		// Run external hook after all validation has passed, right before persisting
-		await this.externalHooks.run('workflow.create', [newWorkflow]);
+		await this.externalHooks.run('workflow.create', [
+			newWorkflow,
+			this.workflowHookContextService,
+			toWorkflowLifecycleHookActor(user),
+		]);
 
 		const floor = await this.readActiveRedactionFloor();
 
@@ -256,7 +262,11 @@ export class WorkflowCreationService {
 			});
 		}
 
-		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+		await this.externalHooks.run('workflow.afterCreate', [
+			savedWorkflow,
+			this.workflowHookContextService,
+			toWorkflowLifecycleHookActor(user),
+		]);
 		this.eventService.emit('workflow-created', {
 			user,
 			workflow: newWorkflow,

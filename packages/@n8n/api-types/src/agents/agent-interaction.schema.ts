@@ -37,9 +37,8 @@ export const BUILDER_CHECKPOINT_UNAVAILABLE_CODE = 'BUILDER_CHECKPOINT_UNAVAILAB
 
 /**
  * Agent-builder tools whose success should set `configUpdated` on `build-agent`
- * (refresh the agent artifact preview) and emit "Builder modified agent"
- * telemetry. Includes config writers and publish lifecycle tools. Values must
- * match `BUILDER_TOOLS` in
+ * (refresh the agent artifact preview). Includes config writers and publish
+ * lifecycle tools. Values must match `BUILDER_TOOLS` in
  * `packages/cli/src/modules/agents/builder/builder-tool-names.ts`.
  */
 export const CONFIG_MUTATION_TOOL_NAMES = [

@@ -11,19 +11,19 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nMarkdownEditor,
+	N8nOption,
+	N8nSelect,
 	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
-import N8nOption from '@n8n/design-system/components/N8nOption';
-import N8nSelect from '@n8n/design-system/components/N8nSelect';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import {

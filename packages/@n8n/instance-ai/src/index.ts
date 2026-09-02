@@ -27,6 +27,7 @@ import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
+import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
 import type * as AgentTreeMod from './utils/agent-tree';
@@ -87,6 +88,9 @@ const loadLangsmithTracing = lazyModule(
 );
 const loadTraceReplay = lazyModule(
 	() => require('./tracing/trace-replay') as typeof TraceReplayMod,
+);
+const loadAgentSnapshotEvent = lazyModule(
+	() => require('./tracing/agent-snapshot-event') as typeof AgentSnapshotEventMod,
 );
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
@@ -191,7 +195,12 @@ export {
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
-export { saveAgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export {
+	agentBuilderTargetMetadata,
+	clearedAgentBuilderTargetMetadata,
+	seedAgentBuilderTargetMetadata,
+	saveAgentBuilderTarget,
+} from './tools/orchestration/agent-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -215,6 +224,13 @@ export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAcces
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
 export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
+
+export const emitAgentSnapshotTraceEvent: typeof AgentSnapshotEventMod.emitAgentSnapshotTraceEvent =
+	lazyFunction(() => loadAgentSnapshotEvent().emitAgentSnapshotTraceEvent);
+export type {
+	AgentSnapshotArtifact,
+	AgentSnapshotReason,
+} from './tracing/agent-snapshot-event';
 
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
@@ -431,10 +447,6 @@ export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFu
 export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
 	() => loadSharedSandbox().getPromptWorkspaceRoot,
 );
-export const getPromptSandboxInstructions: typeof SharedSandboxMod.getPromptSandboxInstructions =
-	lazyFunction(() => loadSharedSandbox().getPromptSandboxInstructions);
-export const getPromptFilesystemInstructions: typeof SharedSandboxMod.getPromptFilesystemInstructions =
-	lazyFunction(() => loadSharedSandbox().getPromptFilesystemInstructions);
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
@@ -596,6 +608,8 @@ export type {
 	DataTableColumnInfo,
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
+	InstanceAiMcpService,
+	McpRegistryServerSummary,
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	EvaluationConfigMetricInput,
@@ -650,6 +664,7 @@ export type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	UnavailableLocatorValue,
 	FetchedPage,
 	WebSearchResult,
 	WebSearchResponse,

@@ -13,8 +13,9 @@
  *
  * NOT ignored (deliberately): `docker`/Dockerfiles (define the container the
  * E2E suite runs in), `pnpm-lock.yaml`/`package.json` (dependency changes —
- * handled by the devDep classifier / dep-graph selector), and `patches/**`
- * (edits a dependency's code = a dependency change).
+ * handled by the devDep classifier / dep-graph selector), `patches/**`
+ * (edits a dependency's code = a dependency change), and `tsconfig*.json`
+ * (can carry module-resolution keys — see {@link tsconfigForcesBroad}).
  */
 
 const NON_IMPACTFUL: Array<(f: string) => boolean> = [
@@ -31,9 +32,10 @@ const NON_IMPACTFUL: Array<(f: string) => boolean> = [
 	(f) => /^(docs|assets)\/.*\.(png|jpe?g|gif|svg|webp)$/.test(f),
 	// Repo automation scripts (not shipped, not exercised by E2E)
 	(f) => f.startsWith('scripts/'),
-	// Named build / lint / test-runner config (NOT all json/yaml)
+	// Named build / lint / test-runner config (NOT all json/yaml). `tsconfig*` is
+	// deliberately absent — it's routed through tsconfigForcesBroad instead.
 	(f) =>
-		/(^|\/)(turbo\.json|tsconfig([.\w-]*)\.json|biome\.jsonc?|vitest\.config\.[cm]?[jt]s|\.eslintrc[\w.]*|\.prettierrc[\w.]*)$/.test(
+		/(^|\/)(turbo\.json|biome\.jsonc?|vitest\.config\.[cm]?[jt]s|\.eslintrc[\w.]*|\.prettierrc[\w.]*)$/.test(
 			f,
 		),
 ];
@@ -76,7 +78,7 @@ export function forcesBroad(file: string): boolean {
 }
 
 /** A package.json change classified by which dependency sections moved. */
-export type ManifestChangeKind = 'runtime' | 'devDep-only' | 'none';
+export type ManifestChangeKind = 'runtime' | 'devDep-only' | 'override' | 'none';
 
 type ManifestJson = Record<string, Record<string, string> | undefined>;
 /** package.json sections whose changes can reach the runtime bundle. */
@@ -113,18 +115,83 @@ function sectionChanged(before: ManifestJson, after: ManifestJson, section: stri
 	return changedKeysInSection(before, after, section).length > 0;
 }
 
+/** `pnpm.overrides` selectors changed between two manifests, as written. */
+function changedOverrideSelectors(before: ManifestJson, after: ManifestJson): string[] {
+	const b = (before.pnpm as { overrides?: Record<string, string> } | undefined)?.overrides ?? {};
+	const a = (after.pnpm as { overrides?: Record<string, string> } | undefined)?.overrides ?? {};
+	const changed: string[] = [];
+	for (const key of new Set([...Object.keys(b), ...Object.keys(a)])) {
+		if (b[key] !== a[key]) changed.push(key);
+	}
+	return changed;
+}
+
+const NPM_PACKAGE_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/i;
+
+/**
+ * The package an override selector pins (`node-gyp>undici` → `undici`,
+ * `@vitest/browser@<4.1.10` → `@vitest/browser`), or `null` when the selector
+ * can't be parsed with confidence — callers must then stay broad.
+ */
+export function overrideTargetName(selector: string): string | null {
+	// A range `>` (`pkg@>2`, `pkg@1||>2`) follows `@` or `|`, touches whitespace,
+	// or is `>=` — never a parent>child separator.
+	let child = selector;
+	for (let i = selector.length - 1; i > 0; i--) {
+		if (selector[i] !== '>') continue;
+		const prev = selector[i - 1];
+		const next = selector[i + 1] ?? '';
+		if (
+			prev === '@' ||
+			prev === '|' ||
+			prev === '=' ||
+			next === '=' ||
+			/\s/.test(prev) ||
+			/\s/.test(next)
+		) {
+			continue;
+		}
+		child = selector.slice(i + 1);
+		break;
+	}
+	child = child.trim();
+	// `> 0` keeps a leading scope `@` intact when stripping the version range.
+	const at = child.lastIndexOf('@');
+	const name = at > 0 ? child.slice(0, at) : child;
+	return NPM_PACKAGE_NAME.test(name) ? name : null;
+}
+
+/**
+ * Packages whose `pnpm.overrides` pin was added, removed or changed. `null`
+ * when any changed selector fails to parse — the diff can't be attributed.
+ */
+export function changedOverrideTargets(before: string, after: string): string[] | null {
+	const selectors = changedOverrideSelectors(parseManifest(before), parseManifest(after));
+	const names = new Set<string>();
+	for (const selector of selectors) {
+		const name = overrideTargetName(selector);
+		if (name === null) return null;
+		names.add(name);
+	}
+	return [...names];
+}
+
 /**
  * Classify a package.json change by the dependency sections it touched:
  *  - `runtime`     — a runtime section (dependencies / optional / peer) moved, so
  *                    it can reach the bundle the E2E suite exercises.
+ *  - `override`    — a `pnpm.overrides` pin moved; whether it reaches the
+ *                    runtime bundle takes a closure check (see {@link dropDevDepOnlyDeps}).
  *  - `devDep-only` — only devDependencies moved → cannot reach the runtime bundle.
  *  - `none`        — no dependency section moved (scripts / version / engines / …).
- * Unparseable content is treated as an empty manifest.
+ * Unparseable content is treated as an empty manifest. Checked most-impactful
+ * first: a mixed devDep+override change classifies as `override`.
  */
 export function classifyManifestChange(before: string, after: string): ManifestChangeKind {
 	const b = parseManifest(before);
 	const a = parseManifest(after);
 	if (RUNTIME_SECTIONS.some((s) => sectionChanged(b, a, s))) return 'runtime';
+	if (changedOverrideSelectors(b, a).length > 0) return 'override';
 	return sectionChanged(b, a, 'devDependencies') ? 'devDep-only' : 'none';
 }
 
@@ -158,6 +225,52 @@ export function changedRuntimeDepsFromManifests(
 const isManifest = (f: string): boolean => /(^|\/)package\.json$/.test(f);
 const isLockfile = (f: string): boolean => f === 'pnpm-lock.yaml';
 
+export const isTsconfig = (f: string): boolean => /(^|\/)tsconfig([.\w-]*)\.json$/.test(f);
+
+/** compilerOptions keys that change which module a bare import resolves to. */
+const TSCONFIG_RESOLUTION_KEYS = [
+	'paths',
+	'baseUrl',
+	'moduleResolution',
+	'customConditions',
+] as const;
+
+/** Tolerant parse for tsconfig (allows comments + trailing commas). Null when
+ *  unparseable, which the caller treats as "force broad". */
+function parseTsconfig(raw: string): Record<string, unknown> | null {
+	if (!raw.trim()) return null;
+	try {
+		return JSON.parse(raw) as Record<string, unknown>;
+	} catch {
+		try {
+			const stripped = raw
+				.replace(/\/\*[\s\S]*?\*\//g, '')
+				.replace(/(^|[^:])\/\/.*$/gm, '$1')
+				.replace(/,(\s*[}\]])/g, '$1');
+			return JSON.parse(stripped) as Record<string, unknown>;
+		} catch {
+			return null;
+		}
+	}
+}
+
+/**
+ * True when a tsconfig change touches a resolution key (`paths`/`baseUrl`/
+ * `moduleResolution`/`customConditions`/`extends`), which re-points imports for
+ * every spec and can't be attributed in the coverage map → force the full
+ * suite. A type-check-only edit (`strict`, `target`, …) resolves to the same
+ * modules and is non-impactful.
+ */
+export function tsconfigForcesBroad(before: string, after: string): boolean {
+	const b = parseTsconfig(before);
+	const a = parseTsconfig(after);
+	if (!b || !a) return true;
+	if (JSON.stringify(b.extends) !== JSON.stringify(a.extends)) return true;
+	const bco = (b.compilerOptions ?? {}) as Record<string, unknown>;
+	const aco = (a.compilerOptions ?? {}) as Record<string, unknown>;
+	return TSCONFIG_RESOLUTION_KEYS.some((k) => JSON.stringify(bco[k]) !== JSON.stringify(aco[k]));
+}
+
 /** Remove the lockfile + every package.json from a changed-file set. */
 export function stripDependencyFiles(files: string[]): string[] {
 	return files.filter((f) => !isLockfile(f) && !isManifest(f));
@@ -169,14 +282,21 @@ export function stripDependencyFiles(files: string[]): string[] {
  * bundle, so it must not force broad. `manifests` maps each changed package.json
  * path to its before/after content (the caller reads these from git).
  *
+ * An override pins a TRANSITIVE package, which no declared section mentions —
+ * `fast-uri` (reaches runtime via `ajv`) and `@vitest/browser` (dev-only) look
+ * identical there. Only `runtimeClosure` membership can tell them apart.
+ *
  * Conservative by construction — never drops without positive evidence:
  *  - any runtime-section change → keep everything (real dep change);
  *  - a changed package.json with no supplied diff → treated as runtime;
- *  - a lockfile change with no changed package.json at all (transitive bump) → kept.
+ *  - a lockfile change with no changed package.json at all (transitive bump) → kept;
+ *  - an override change with a missing/empty closure, an unparseable selector,
+ *    or any target inside the closure → kept.
  */
 export function dropDevDepOnlyDeps(
 	files: string[],
 	manifests: Record<string, { before: string; after: string }>,
+	runtimeClosure?: ReadonlySet<string>,
 ): string[] {
 	const changedManifests = files.filter(isManifest);
 	if (changedManifests.length === 0) return files;
@@ -184,6 +304,21 @@ export function dropDevDepOnlyDeps(
 		manifests[f] ? classifyManifestChange(manifests[f].before, manifests[f].after) : 'runtime',
 	);
 	if (kinds.includes('runtime')) return files;
+
+	if (kinds.includes('override')) {
+		// An empty closure is a broken walk, not proof nothing reaches runtime.
+		if (!runtimeClosure || runtimeClosure.size === 0) return files;
+		const targets = new Set<string>();
+		for (const f of changedManifests) {
+			if (!manifests[f]) continue;
+			const names = changedOverrideTargets(manifests[f].before, manifests[f].after);
+			if (names === null) return files;
+			for (const name of names) targets.add(name);
+		}
+		if (targets.size === 0 || [...targets].some((t) => runtimeClosure.has(t))) return files;
+		return stripDependencyFiles(files);
+	}
+
 	if (!kinds.includes('devDep-only')) return files;
 	return stripDependencyFiles(files);
 }

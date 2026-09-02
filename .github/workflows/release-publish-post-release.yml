@@ -80,9 +80,12 @@ jobs:
 
   ensure-correct-latest-version-on-npm:
     name: Ensure correct latest version on npm
+    # Also runs on beta patches: standalone packages pin `latest` to the newest
+    # beta, so every beta publish needs a re-pin, not just stable promotions.
     if: |
       inputs.bump == 'minor' ||
-      (inputs.track == 'stable' && inputs.release_type != 'rc')
+      (inputs.track == 'stable' && inputs.release_type != 'rc') ||
+      (inputs.track == 'beta' && inputs.release_type != 'rc')
     uses: ./.github/workflows/release-set-stable-npm-packages-to-latest.yml
     secrets: inherit
 

@@ -2,7 +2,7 @@ import {
 	useDocumentTitle as useDocumentTitleBase,
 	type WorkflowTitleStatus,
 } from '@n8n/composables/useDocumentTitle';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { Ref } from 'vue';
 
 export type { WorkflowTitleStatus };

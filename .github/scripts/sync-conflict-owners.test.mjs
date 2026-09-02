@@ -19,6 +19,16 @@ test('breakingShas collects unique SHAs across the conflicted files only', () =>
 	assert.deepEqual(calls[0], ['log', 'BASE..HEAD', '--format=%H', '--', 'a.ts']);
 });
 
+test('breakingShas can be scoped to an explicit tip (the pre-rebase 3.x tip)', () => {
+	const calls = [];
+	const git = (args) => {
+		calls.push(args);
+		return 'sha1';
+	};
+	breakingShas('BASE', ['a.ts'], git, 'PREHEAD');
+	assert.deepEqual(calls[0], ['log', 'BASE..PREHEAD', '--format=%H', '--', 'a.ts']);
+});
+
 test('resolveLogins maps SHAs to logins in one call, dropping unlinked/bot authors', async () => {
 	let calls = 0;
 	const fetchFn = async (url, opts) => {
@@ -63,18 +73,27 @@ test('resolveLogins throws on API/GraphQL errors (caller degrades gracefully)', 
 });
 
 test('buildOutputs formats reviewers, slack line, and PR body with owners', () => {
-	const out = buildOutputs({ syncBranch: 'sync/master-to-3x', files: ['packages/cli/x.ts'], owners: ['alice', 'bob'] });
+	const out = buildOutputs({
+		syncBranch: 'sync/master-to-3x',
+		files: ['packages/cli/x.ts'],
+		owners: ['alice', 'bob'],
+	});
 	assert.equal(out.ownersCsv, 'alice,bob');
 	assert.equal(out.slack, 'Likely owners (GitHub): @alice @bob');
 	assert.match(out.body, /### Conflicted files/);
 	assert.match(out.body, /- `packages\/cli\/x\.ts`/);
 	assert.match(out.body, /- @alice/);
 	assert.match(out.body, /- @bob/);
-	assert.match(out.body, /Daily syncs are paused until it is merged/);
+	assert.match(out.body, /Daily syncs are paused until this PR is merged/);
+	// Markers are the review surface; the fix goes in the resolver's own commit.
+	assert.match(out.body, /conflict markers committed/);
+	assert.match(out.body, /in one commit of your own/);
+	assert.match(out.body, /Merge this PR with the normal merge button/);
+	assert.match(out.body, /`3\.x` was not touched/);
 });
 
 test('buildOutputs degrades gracefully when nothing could be attributed', () => {
-	const out = buildOutputs({ syncBranch: 'sync/master-to-3x', files: ['x.ts'], owners: [] });
+	const out = buildOutputs({ syncBranch: 'sync/master-to-3x', syncBase: 'abc1234', files: ['x.ts'], owners: [] });
 	assert.equal(out.ownersCsv, '');
 	assert.equal(out.slack, 'Could not auto-attribute owners.');
 	assert.match(out.body, /Could not auto-attribute/);

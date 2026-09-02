@@ -33,6 +33,25 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		);
 	});
 
+	test('should target the uri when no url is set', async () => {
+		const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+			uri: 'https://example.com/from-uri',
+			method: 'GET',
+		});
+
+		expect(axiosOptions.url).toBe('https://example.com/from-uri');
+	});
+
+	test('should target the url when both url and uri are set', async () => {
+		const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+			uri: 'https://uri.example.com/path',
+			url: 'https://url.example.com/path',
+			method: 'GET',
+		});
+
+		expect(axiosOptions.url).toBe('https://url.example.com/path');
+	});
+
 	test('should set default User-Agent when none provided', async () => {
 		const axiosOptions = await buildAxiosConfigFromLegacyRequest({
 			url: 'https://example.com',

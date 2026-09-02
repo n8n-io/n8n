@@ -22,7 +22,7 @@ const resolveIntegrationInputSchema = z.object({
 export function buildResolveIntegrationTool(deps: ResolveIntegrationDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_INTEGRATION)
 		.description(
-			'Resolve external services to MCP servers or n8n node tools. Searches the MCP registry first and returns kind: "mcp" when a match exists; only searches agent-eligible n8n node tools and returns kind: "node" when no MCP server matches. For kind: "mcp", load agent-builder-mcp. For kind: "node", load agent-builder-node-tools and use the returned node results.',
+			'Resolve external services to MCP servers or n8n node tools. Searches the MCP registry first and returns kind: "mcp" when a match exists; only searches agent-eligible n8n node tools and returns kind: "node" when no MCP server matches. For either kind, load agent-builder-external-services and follow its matching section, using the returned results.',
 		)
 		.input(resolveIntegrationInputSchema)
 		.handler(async ({ queries }: { queries: string[] }) => {

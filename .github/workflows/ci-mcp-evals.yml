@@ -1,4 +1,5 @@
 name: 'CI: MCP Workflow Evals'
+run-name: "CI: MCP Workflow Evals (tier=${{ inputs.tier }}, iterations=${{ inputs.iterations }}, model=${{ inputs['build-model'] }}, filter=${{ inputs.filter || 'all' }})"
 
 # Runs the MCP workflow evals: builds workflows through the instance MCP server
 # with Claude, then scores them. Manual only (Actions tab → "Run workflow"),

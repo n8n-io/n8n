@@ -18,6 +18,13 @@ export function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): str
 				typeVersion: node.typeVersion,
 				...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
 				...(node.onError !== undefined ? { onError: node.onError } : {}),
+				// Node-level behavior flags — preservation-style expectations assert on
+				// these, so omitting them makes the judge read a correct build as a fail.
+				...(node.alwaysOutputData !== undefined ? { alwaysOutputData: node.alwaysOutputData } : {}),
+				...(node.retryOnFail !== undefined ? { retryOnFail: node.retryOnFail } : {}),
+				...(node.maxTries !== undefined ? { maxTries: node.maxTries } : {}),
+				...(node.waitBetweenTries !== undefined ? { waitBetweenTries: node.waitBetweenTries } : {}),
+				...(node.executeOnce !== undefined ? { executeOnce: node.executeOnce } : {}),
 				...(node.credentials !== undefined ? { credentials: node.credentials } : {}),
 				parameters: node.parameters ?? {},
 			})),

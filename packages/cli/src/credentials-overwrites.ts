@@ -28,6 +28,13 @@ export class CredentialsOverwrites {
 		private readonly cipher: Cipher,
 	) {}
 
+	/** Registered by FrontendService to regenerate credential types after overwrites change, without this module depending on it. */
+	private reloadHandler?: () => Promise<void>;
+
+	registerReloadHandler(handler: () => Promise<void>) {
+		this.reloadHandler = handler;
+	}
+
 	async init() {
 		const data = this.globalConfig.credentials.overwrite.data;
 		if (data) {
@@ -126,15 +133,8 @@ export class CredentialsOverwrites {
 		}
 
 		if (reloadFrontend) {
-			await this.reloadFrontendService();
+			await this.reloadHandler?.();
 		}
-	}
-
-	private async reloadFrontendService() {
-		// FrontendService has CredentialOverwrites injected via the constructor
-		// to break the circular dependency we need to use the container to get the instance
-		const { FrontendService } = await import('./services/frontend.service.js');
-		await Container.get(FrontendService)?.generateTypes();
 	}
 
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
@@ -166,8 +166,8 @@ export class CredentialsOverwrites {
 		const returnData = deepCopy(data);
 		// Overwrite only if there is currently no data set
 		for (const key of Object.keys(overwrites)) {
-			// @ts-ignore
-			if ([null, undefined, ''].includes(returnData[key])) {
+			const current = returnData[key];
+			if (current === null || current === undefined || current === '') {
 				returnData[key] = overwrites[key];
 			}
 		}

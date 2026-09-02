@@ -16,10 +16,12 @@
 
 import { spawn } from 'child_process';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { setTimeout as delay } from 'node:timers/promises';
 import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 import { z } from 'zod';
 
+import { isTransientProviderError, providerRetryBackoffMs } from '../harness/transient-error';
 import type { ConversationTurn, WorkflowTestCase } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -166,9 +168,7 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',
 	credentials: 'orchestrator-only',
-	seedFile: 'orchestrator-only',
-	priorConversation: 'orchestrator-only',
-	seedThread: 'orchestrator-only',
+	seed: 'orchestrator-only',
 	datasets: 'supported',
 };
 
@@ -411,11 +411,11 @@ where <id> is the workflowId returned by create_workflow_from_code. Emit it verb
 export interface McpBuildResult {
 	/** The created workflow's id, or null if every attempt failed. */
 	workflowId: string | null;
-	/** Anthropic spend for the last attempt (USD). */
+	/** Anthropic spend summed across every attempt (USD) — failed attempts cost money too. */
 	cost: number;
-	/** Assistant turns in the last attempt. */
+	/** Assistant turns summed across every attempt. */
 	turns: number;
-	/** Wall-clock of the last attempt (ms). */
+	/** `claude` wall-clock summed across every attempt (ms). */
 	durationMs: number;
 	/** Path to the last attempt's captured `claude` output, for post-mortem. */
 	logFile: string | null;
@@ -431,6 +431,16 @@ export interface McpBuildResult {
  * The log lines are surfaced through `log` (defaults to `console.log`) so the
  * standalone builder and the eval CLI can route them to their own sinks.
  */
+
+/** Provider-outage evidence lives in the session's free-text result; keep enough
+ *  of it to classify on without dragging a whole transcript into an error. */
+function truncateForReason(result: unknown): string | undefined {
+	if (typeof result !== 'string') return undefined;
+	const text = result.trim();
+	if (!text) return undefined;
+	return text.length > 300 ? `${text.slice(0, 300)}…` : text;
+}
+
 export async function buildWorkflowViaMcp(opts: {
 	conversation: ConversationTurn[];
 	slug: string;
@@ -446,9 +456,11 @@ export async function buildWorkflowViaMcp(opts: {
 	const userMessage = buildUserMessage(conversation, settings);
 
 	let workflowId: string | null = null;
-	let lastSession: ClaudeSession | undefined;
 	let lastLogFile: string | null = null;
 	let failureReason: string | undefined;
+	let totalCostUsd = 0;
+	let totalTurns = 0;
+	let totalDurationMs = 0;
 
 	for (let attempt = 1; attempt <= settings.maxAttempts; attempt++) {
 		const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -464,7 +476,9 @@ export async function buildWorkflowViaMcp(opts: {
 			allowedTools,
 			logFile,
 		);
-		lastSession = session;
+		totalCostUsd += session?.total_cost_usd ?? 0;
+		totalTurns += session?.num_turns ?? 0;
+		totalDurationMs += session?.duration_ms ?? 0;
 		const id = session?.result ? tailWorkflowId(session.result) : null;
 		if (id) {
 			workflowId = id;
@@ -490,10 +504,28 @@ export async function buildWorkflowViaMcp(opts: {
 			);
 			break;
 		}
-		failureReason = session?.subtype ?? 'no-stdout';
+		// The session's own result text, not just its subtype: a provider outage
+		// inside `claude` (AI_APICallError / overloaded_error / HTTP 529) shows up
+		// ONLY there, and the orchestrator classifies off this string. Without it
+		// `findProviderOutage` has nothing to match and an upstream outage is
+		// filed as a builder failure (TRUST-374). Truncated — it rides in an
+		// error message, and the tail is boilerplate.
+		failureReason = [session?.subtype ?? 'no-stdout', truncateForReason(session?.result)]
+			.filter(Boolean)
+			.join(': ');
 		log(
 			`  [${slug}#${String(iteration)}] attempt ${String(attempt)}: no WORKFLOW_ID (${failureReason}, log: ${logFile})`,
 		);
+		// A provider outage is upstream of every lane and every attempt, so an
+		// instant retry just re-hits it and burns the remaining attempts at the
+		// speed of the failures. Same backoff the non-MCP build path uses.
+		if (isTransientProviderError(failureReason) && attempt < settings.maxAttempts) {
+			const backoffMs = providerRetryBackoffMs(attempt);
+			log(
+				`  [${slug}#${String(iteration)}] provider outage — waiting ${String(Math.round(backoffMs / 1000))}s before attempt ${String(attempt + 1)}`,
+			);
+			await delay(backoffMs);
+		}
 	}
 
 	if (!workflowId) {
@@ -504,9 +536,9 @@ export async function buildWorkflowViaMcp(opts: {
 
 	return {
 		workflowId,
-		cost: lastSession?.total_cost_usd ?? 0,
-		turns: lastSession?.num_turns ?? 0,
-		durationMs: lastSession?.duration_ms ?? 0,
+		cost: totalCostUsd,
+		turns: totalTurns,
+		durationMs: totalDurationMs,
 		logFile: lastLogFile,
 		failureReason: workflowId ? undefined : failureReason,
 	};

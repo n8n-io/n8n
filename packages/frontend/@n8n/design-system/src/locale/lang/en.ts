@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { N8nLocale } from '@n8n/design-system/types';
+import type { N8nLocale } from '../../types';
 
 export default {
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
-	'generic.ignore': 'Ignore',
-	'generic.ignoreAll': 'Ignore all',
+	'generic.close': 'Close',
 	'generic.moreInfo': 'More info',
 	'aiModelSelector.credentialsMissing': 'Credentials missing',
 	'nds.auth.roles.owner': 'Owner',
@@ -34,6 +33,11 @@ export default {
 	'codeDiff.replaceMyCode': 'Replace my code',
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
+	'codeBlock.copy': 'Copy code',
+	'codeBlock.copiedToClipboard': 'Copied to clipboard',
+	'codeBlock.copyFailed': "Couldn't copy code. Try again or copy it manually.",
+	'codeBlock.expand': 'Expand code',
+	'codeBlock.collapse': 'Collapse code',
 	'previewTag.preview': 'Preview',
 	'askAssistantButton.askAssistant': 'n8n AI',
 	'assistantChat.builder.name': 'AI Builder',

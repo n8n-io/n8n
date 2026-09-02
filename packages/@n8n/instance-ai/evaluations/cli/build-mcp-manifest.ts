@@ -14,9 +14,9 @@ import {
 	stageMcpConfigFromClaudeJson,
 	uniqueProjectScopes,
 } from './mcp-builder';
+import { runWithConcurrency } from '../harness/cleanup';
 import { createLogger } from '../harness/logger';
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
-import { runWithConcurrency } from '../harness/runner';
 import { ConversationTurnSchema, DEFAULT_DATASETS } from '../harness/schema';
 import { loadTestCasesFromLangTracer } from '../langtracer/provider';
 
@@ -504,7 +504,7 @@ async function main(): Promise<void> {
 			casesBySlug.set(slug, testCaseSchema.parse(readJson(file, `test case ${slug}`)).conversation);
 		}
 	}
-	// Drop cases with no user turn to build from (e.g. seedThread-only).
+	// Drop cases with no user turn to build from (e.g. `replay`-seeded only).
 	for (const [slug, conv] of [...casesBySlug]) {
 		if (!conv.some((t) => t.role === 'user' && t.text.trim().length > 0)) {
 			console.log(`  [${slug}] skip: no user turn to build from`);

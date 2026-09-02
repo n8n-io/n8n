@@ -79,6 +79,7 @@ const credentialIntegrations = [
 	}),
 	createSimpleIntegrationSchema('slack'),
 	createSimpleIntegrationSchema('linear'),
+	createSimpleIntegrationSchema('discord'),
 ] as const;
 
 const draftCredentialIntegrations = [
@@ -87,6 +88,7 @@ const draftCredentialIntegrations = [
 	}),
 	createDraftSimpleIntegrationSchema('slack'),
 	createDraftSimpleIntegrationSchema('linear'),
+	createDraftSimpleIntegrationSchema('discord'),
 ] as const;
 
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);

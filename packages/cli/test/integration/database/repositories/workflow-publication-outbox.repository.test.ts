@@ -1,23 +1,16 @@
-import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createActiveWorkflow, createWorkflow, newWorkflow, testDb } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import { UNPUBLISH_VERSION_SENTINEL } from '@n8n/db';
-import type { WorkflowPublicationTriggerKind } from '@n8n/db';
-import {
-	WorkflowPublicationOutboxRepository,
-	WorkflowPublicationTriggerStatusRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import { WorkflowPublicationOutboxRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import assert from 'node:assert';
 
 describe('WorkflowPublicationOutboxRepository', () => {
 	let repository: WorkflowPublicationOutboxRepository;
-	let triggerStatusRepository: WorkflowPublicationTriggerStatusRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 		repository = Container.get(WorkflowPublicationOutboxRepository);
-		triggerStatusRepository = Container.get(WorkflowPublicationTriggerStatusRepository);
 	});
 
 	beforeEach(async () => {
@@ -469,134 +462,24 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 			expect(await repository.find({ where: { status: 'pending' } })).toHaveLength(0);
 		});
-	});
 
-	describe('enqueueForLeaderHandoff', () => {
-		beforeEach(async () => {
-			await testDb.truncate([
-				'WorkflowPublicationTriggerStatus',
-				'WorkflowDependency',
-				'WorkflowEntity',
-				'WorkflowHistory',
-				'WorkflowPublishHistory',
-			]);
-		});
+		it('enqueues every workflow in a batch larger than one statement chunk', async () => {
+			// A fresh leader detects every active workflow as missing at once, so
+			// this call sees fleet-sized input. Sqlite binds one placeholder per id
+			// and caps bound variables per statement, so large batches are split
+			// into chunks; a boundary bug here would silently drop workflows.
+			const workflowIds = Array.from({ length: 1100 }, (_, i) => `bulk-wf-${i}`);
+			// Seed in slices: a single multi-row VALUES of this size exceeds sqlite's
+			// expression-tree depth, which is not the limit under test here.
+			for (let i = 0; i < workflowIds.length; i += 250) {
+				await Container.get(WorkflowRepository).insert(
+					workflowIds.slice(i, i + 250).map((id) => newWorkflow({ id })),
+				);
+			}
 
-		// Seed a single trigger-status row of the given kind at the workflow's active
-		// version, appending to any already recorded for the workflow.
-		const recordTrigger = async (
-			workflow: { id: string; activeVersionId: string | null },
-			nodeId: string,
-			triggerKind: WorkflowPublicationTriggerKind,
-			status: 'activated' | 'failed' = 'activated',
-		) => {
-			assert(workflow.activeVersionId);
-			const existing = await triggerStatusRepository.findByWorkflowId(workflow.id);
-			await triggerStatusRepository.replaceForWorkflow(workflow.id, [
-				...existing.map((row) => ({
-					nodeId: row.nodeId,
-					versionId: row.versionId,
-					status: row.status,
-					triggerKind: row.triggerKind,
-					errorMessage: row.errorMessage,
-				})),
-				{
-					nodeId,
-					versionId: workflow.activeVersionId,
-					status,
-					triggerKind,
-					errorMessage: status === 'failed' ? 'boom' : null,
-				},
-			]);
-		};
+			await repository.enqueueByWorkflowIds(workflowIds);
 
-		const pendingWorkflowIds = async () => {
-			const pending = await repository.find({ where: { status: 'pending' } });
-			return pending.map((record) => record.workflowId);
-		};
-
-		it('enqueues a workflow whose recorded triggers include an in-memory trigger', async () => {
-			const workflow = await createActiveWorkflow();
-			await recordTrigger(workflow, 'n1', 'in-memory');
-
-			await repository.enqueueForLeaderHandoff();
-
-			expect(await pendingWorkflowIds()).toEqual([workflow.id]);
-		});
-
-		it('skips a workflow whose recorded triggers are all persisted', async () => {
-			const workflow = await createActiveWorkflow();
-			await recordTrigger(workflow, 'n1', 'persisted');
-			await recordTrigger(workflow, 'n2', 'persisted');
-
-			await repository.enqueueForLeaderHandoff();
-
-			expect(await pendingWorkflowIds()).toEqual([]);
-		});
-
-		it('enqueues a workflow that has no recorded triggers yet', async () => {
-			const workflow = await createActiveWorkflow();
-
-			await repository.enqueueForLeaderHandoff();
-
-			expect(await pendingWorkflowIds()).toEqual([workflow.id]);
-		});
-
-		it('enqueues a workflow with a mix of persisted and in-memory triggers', async () => {
-			const workflow = await createActiveWorkflow();
-			await recordTrigger(workflow, 'n1', 'persisted');
-			await recordTrigger(workflow, 'n2', 'in-memory');
-
-			await repository.enqueueForLeaderHandoff();
-
-			expect(await pendingWorkflowIds()).toEqual([workflow.id]);
-		});
-
-		it('enqueues a workflow whose only in-memory trigger last failed to activate', async () => {
-			const workflow = await createActiveWorkflow();
-			await recordTrigger(workflow, 'n1', 'in-memory', 'failed');
-
-			await repository.enqueueForLeaderHandoff();
-
-			expect(await pendingWorkflowIds()).toEqual([workflow.id]);
-		});
-
-		it('enqueues at the active version', async () => {
-			const workflow = await createActiveWorkflow();
-			await recordTrigger(workflow, 'n1', 'in-memory');
-
-			await repository.enqueueForLeaderHandoff();
-
-			const pending = await repository.find({ where: { status: 'pending' } });
-			expect(pending).toHaveLength(1);
-			expect(pending[0].publishedVersionId).toBe(workflow.activeVersionId);
-		});
-
-		it('skips inactive and archived workflows', async () => {
-			const active = await createActiveWorkflow();
-			await recordTrigger(active, 'n1', 'in-memory');
-			await createWorkflow(); // inactive: no activeVersionId
-			const archived = await createActiveWorkflow();
-			await recordTrigger(archived, 'n1', 'in-memory');
-			await Container.get(WorkflowRepository).update(archived.id, { isArchived: true });
-
-			await repository.enqueueForLeaderHandoff();
-
-			expect(await pendingWorkflowIds()).toEqual([active.id]);
-		});
-
-		it('is idempotent: re-running does not create duplicate pending records', async () => {
-			const workflow = await createActiveWorkflow();
-			await recordTrigger(workflow, 'n1', 'in-memory');
-
-			await repository.enqueueForLeaderHandoff();
-			await repository.enqueueForLeaderHandoff();
-
-			const pending = await repository.find({
-				where: { workflowId: workflow.id, status: 'pending' },
-			});
-			expect(pending).toHaveLength(1);
-			expect(pending[0].publishedVersionId).toBe(workflow.activeVersionId);
+			expect(await repository.countBy({ status: 'pending' })).toBe(1100);
 		});
 	});
 

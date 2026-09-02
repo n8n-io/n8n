@@ -87,7 +87,7 @@ import type {
 	INodeParameters,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { historyBus } from '@/app/models/history';
@@ -96,10 +96,10 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
@@ -156,9 +156,6 @@ const LazyNodeCreation = defineAsyncComponent(
 
 const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/features/ndv/shared/views/NodeDetailsView.vue'),
-);
-const LazyNodeDetailsViewV2 = defineAsyncComponent(
-	async () => await import('@/features/ndv/shared/views/NodeDetailsViewV2.vue'),
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
@@ -298,8 +295,6 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
-const isNDVV2 = computed(() => true);
-
 // Per-editor host overrides (AI features + read-only). The artifact host marks
 // the canvas read-only while a workflow-builder agent mutates the workflow.
 const {
@@ -762,7 +757,7 @@ async function onOpenRenameNodeModal(id: string) {
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
 		}
-	} catch (e) {}
+	} catch {}
 }
 
 async function onRevertRenameNode({
@@ -1940,10 +1935,6 @@ onMounted(async () => {
 	try {
 		initializeRoute();
 
-		// Once view is initialized, pick up all toast notifications
-		// waiting in the store and display them
-		toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
-
 		if (route.query.settings) {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			void router.replace({ query: { settings: undefined } });
@@ -2151,19 +2142,6 @@ onBeforeUnmount(() => {
 			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsView
-					v-if="!isNDVV2"
-					:read-only="isCanvasReadOnly"
-					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
-					:renaming="false"
-					@value-changed="onRenameNode($event.value as string)"
-					@stop-execution="onStopExecution"
-					@switch-selected-node="onSwitchActiveNode"
-					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-				/>
-			</Suspense>
-			<Suspense>
-				<LazyNodeDetailsViewV2
-					v-if="isNDVV2"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
 					@rename-node="onRenameNode"

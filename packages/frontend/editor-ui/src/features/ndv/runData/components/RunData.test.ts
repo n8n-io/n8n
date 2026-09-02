@@ -25,6 +25,7 @@ import {
 	type INodeExecutionData,
 	type ITaskData,
 	type ITaskMetadata,
+	type NodeHint,
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -1367,6 +1368,99 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('node hints', () => {
+		it("should render a location:'ndv' hint only in the output pane", () => {
+			const hints: NodeHint[] = [{ message: 'NDV hint', location: 'ndv' }];
+
+			const inputPane = render({
+				displayMode: 'table',
+				nodeTypeHints: hints,
+				paneType: 'input',
+			});
+
+			expect(inputPane.queryByText('NDV hint')).not.toBeInTheDocument();
+			inputPane.unmount();
+
+			const outputPane = render({
+				displayMode: 'table',
+				nodeTypeHints: hints,
+				paneType: 'output',
+			});
+
+			expect(outputPane.getByText('NDV hint')).toBeInTheDocument();
+		});
+
+		it("should keep displaying a location:'ndv' beforeExecution hint after the node has run", () => {
+			const { getByText } = render({
+				displayMode: 'table',
+				nodeTypeHints: [
+					{ message: 'Config hint', location: 'ndv', whenToDisplay: 'beforeExecution' },
+				],
+				paneType: 'output',
+			});
+
+			expect(getByText('Config hint')).toBeInTheDocument();
+		});
+
+		it('should hide a beforeExecution hint without location after the node has run', () => {
+			const { queryByText } = render({
+				displayMode: 'table',
+				nodeTypeHints: [{ message: 'Before-run hint', whenToDisplay: 'beforeExecution' }],
+				paneType: 'output',
+			});
+
+			expect(queryByText('Before-run hint')).not.toBeInTheDocument();
+		});
+
+		it('should display a beforeExecution hint without location before the node has run', () => {
+			const { getByText } = render({
+				displayMode: 'table',
+				nodeTypeHints: [{ message: 'Before-run hint', whenToDisplay: 'beforeExecution' }],
+				paneType: 'output',
+				withRunData: false,
+			});
+
+			expect(getByText('Before-run hint')).toBeInTheDocument();
+		});
+
+		it("should render location:'inputPane' and location:'outputPane' hints only in their pane", () => {
+			const hints: NodeHint[] = [
+				{ message: 'Input pane hint', location: 'inputPane' },
+				{ message: 'Output pane hint', location: 'outputPane' },
+			];
+
+			const inputPane = render({
+				displayMode: 'table',
+				nodeTypeHints: hints,
+				paneType: 'input',
+			});
+
+			expect(inputPane.getByText('Input pane hint')).toBeInTheDocument();
+			expect(inputPane.queryByText('Output pane hint')).not.toBeInTheDocument();
+			inputPane.unmount();
+
+			const outputPane = render({
+				displayMode: 'table',
+				nodeTypeHints: hints,
+				paneType: 'output',
+			});
+
+			expect(outputPane.getByText('Output pane hint')).toBeInTheDocument();
+			expect(outputPane.queryByText('Input pane hint')).not.toBeInTheDocument();
+		});
+
+		it('should hide an afterExecution hint before the node has run', () => {
+			const { queryByText } = render({
+				displayMode: 'table',
+				nodeTypeHints: [{ message: 'After-run hint', whenToDisplay: 'afterExecution' }],
+				paneType: 'output',
+				withRunData: false,
+			});
+
+			expect(queryByText('After-run hint')).not.toBeInTheDocument();
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -1392,6 +1486,8 @@ describe('RunData', () => {
 		lastSuccessfulExecution,
 		redactionInfo,
 		executionStatus,
+		nodeTypeHints,
+		withRunData = true,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1404,6 +1500,8 @@ describe('RunData', () => {
 		overrideOutputs?: number[];
 		redactionInfo?: { isRedacted: boolean; reason: string; canReveal: boolean };
 		executionStatus?: ExecutionStatus;
+		nodeTypeHints?: NodeHint[];
+		withRunData?: boolean;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1451,7 +1549,15 @@ describe('RunData', () => {
 		workflowsStore.setWorkflowId(testWorkflowId);
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(testWorkflowId));
 
-		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
+		nodeTypesStore.setNodeTypes(
+			nodeTypeHints
+				? defaultNodeDescriptions.map((description) =>
+						description.name === SET_NODE_TYPE
+							? { ...description, hints: nodeTypeHints }
+							: description,
+					)
+				: defaultNodeDescriptions,
+		);
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(workflowNodes[0]);
 
@@ -1467,9 +1573,7 @@ describe('RunData', () => {
 				status: executionStatus ?? 'success',
 				data: createRunExecutionData({
 					resultData: {
-						runData: {
-							'Test Node': runs ?? [defaultRun],
-						},
+						runData: withRunData ? { 'Test Node': runs ?? [defaultRun] } : {},
 					},
 					...(redactionInfo ? { redactionInfo } : {}),
 				}),

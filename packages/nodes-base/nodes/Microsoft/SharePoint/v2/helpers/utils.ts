@@ -1,12 +1,24 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /** v1's Simplify $select list — the exact trimmed fields v2 keeps returning; Get Many reuses it. */
 export const LIST_SIMPLIFY_SELECT =
 	'id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl';
 
-/** v1's item Simplify $select list — the trimmed top-level fields v2 keeps for an item Get. */
+/** v1's item Simplify request shape — the trimmed top-level fields v2 keeps returning. */
 export const ITEM_SIMPLIFY_SELECT = 'id,createdDateTime,lastModifiedDateTime,webUrl';
+// Not v1's `fields(select=Title)`: through this request stack Graph only accepts
+// the nested option $-prefixed, else it rejects the whole query as unparseable.
+export const ITEM_SIMPLIFY_EXPAND = 'fields($select=Title)';
+
+/** Match v1's simplifyItemPostReceive exactly: only these annotation keys are stripped. */
+export function simplifyItem(item: IDataObject): IDataObject {
+	delete item['@odata.context'];
+	delete item['@odata.etag'];
+	delete item['fields@odata.navigationLink'];
+	delete (item.fields as IDataObject | undefined)?.['@odata.etag'];
+	return item;
+}
 
 /**
  * Validates and trims a value used verbatim as a URL path segment. Rejects
@@ -29,6 +41,54 @@ export function assertPathSegment(node: INode, value: string, paramName: string)
 
 /** Shape shared by every Graph collection reply a listSearch method here consumes. */
 export type GraphSearchReply<T> = { '@odata.nextLink'?: string; value?: T[] };
+
+/**
+ * Builds a `fields/{column} eq '{value}'` OData $filter clause. The value is
+ * always compared as a quoted string literal, where the only special character
+ * is the single quote, escaped by doubling; URL encoding is the transport's job.
+ */
+export const odataFieldEqualsClause = (column: string, value: unknown) =>
+	`fields/${column} eq '${String(value ?? '').replaceAll("'", "''")}'`;
+
+/** SharePoint refuses to filter on non-indexed columns without this opt-in. */
+export const NON_INDEXED_QUERY_HEADERS: IDataObject = {
+	Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
+};
+
+/** Graph rejects hyperlink field writes without this (see list/columns.ts). */
+export const HYPERLINK_WRITE_HEADERS: IDataObject = { Prefer: 'apiversion=2.1' };
+
+/**
+ * Translates Graph's list-view-threshold failure (a non-indexed $filter on a
+ * >5,000-item list) into an error naming the filtered column(s); the run must
+ * never return a silent partial result. Returns `undefined` for other errors.
+ */
+export function nonIndexedFilterThresholdError(
+	node: INode,
+	error: unknown,
+	filter: string,
+): NodeOperationError | undefined {
+	if (filter === '' || !(error instanceof NodeApiError) || !/threshold/i.test(error.message)) {
+		return undefined;
+	}
+	const columns = [...filter.matchAll(/fields\/(\w+)/g)].map((match) => match[1]);
+	const subject = columns.length > 0 ? `column(s) '${columns.join("', '")}'` : 'this filter';
+	return new NodeOperationError(
+		node,
+		`SharePoint could not finish filtering on ${subject}: large lists can only be filtered on indexed columns`,
+		{
+			description:
+				'Add an index to the column in SharePoint (List settings → Indexed columns) or filter on an indexed column, then try again.',
+		},
+	);
+}
+
+/** Graph's unique-constraint rejection names no column; point the user at the mapper. */
+export function addUniqueConstraintHint(error: unknown): void {
+	if (error instanceof NodeApiError && error.message.includes('unique constraints')) {
+		error.description = "Double-check the value(s) in 'Columns' and try again";
+	}
+}
 
 /** Characters SharePoint forbids in file names; Graph rejects them with a misleading 400. */
 export const SHAREPOINT_ILLEGAL_FILE_NAME_CHARS = ['"', '*', ':', '<', '>', '?', '/', '\\', '|'];

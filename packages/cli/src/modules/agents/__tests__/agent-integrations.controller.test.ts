@@ -7,9 +7,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
-import type { AgentPublishService } from '../agent-publish.service';
-import { AgentRunnableStateService } from '../agent-runnable-state.service';
-import type { AgentValidationService } from '../agent-validation.service';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
@@ -23,22 +20,18 @@ const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook', 'handleSlackAppOAuthC
 
 function makeController({
 	agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>(),
-	agentPublishService = mock<AgentPublishService>(),
 	credentialsService = mock<CredentialsService>(),
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentRepository = mock<AgentRepository>(),
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	slackAppSetupService = mock<SlackAppSetupService>(),
-	agentValidationService = mock<AgentValidationService>(),
 }: {
 	agentIntegrationPersistenceService?: Mocked<AgentIntegrationPersistenceService>;
-	agentPublishService?: Mocked<AgentPublishService>;
 	credentialsService?: Mocked<CredentialsService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
 	agentRepository?: Mocked<AgentRepository>;
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	slackAppSetupService?: Mocked<SlackAppSetupService>;
-	agentValidationService?: Mocked<AgentValidationService>;
 } = {}) {
 	if (!chatIntegrationRegistry.require.getMockImplementation()) {
 		chatIntegrationRegistry.require.mockImplementation(
@@ -46,36 +39,31 @@ function makeController({
 				({
 					type,
 					displayLabel: type,
-					credentialTypes: type === 'telegram' ? ['telegramApi'] : [`${type}Api`],
+					credentialTypes:
+						type === 'telegram'
+							? ['telegramApi']
+							: type === 'linear'
+								? ['linearOAuth2Api']
+								: [`${type}Api`],
 				}) as never,
 		);
 	}
 
-	const agentRunnableStateService = new AgentRunnableStateService(
-		credentialsService,
-		agentValidationService,
-		agentPublishService,
-	);
-
 	return {
 		controller: new AgentIntegrationsController(
 			agentIntegrationPersistenceService,
-			agentPublishService,
 			credentialsService,
 			chatIntegrationService,
 			agentRepository,
 			chatIntegrationRegistry,
 			slackAppSetupService,
-			agentRunnableStateService,
 		),
 		agentIntegrationPersistenceService,
-		agentPublishService,
 		credentialsService,
 		chatIntegrationService,
 		agentRepository,
 		chatIntegrationRegistry,
 		slackAppSetupService,
-		agentValidationService,
 	};
 }
 
@@ -225,7 +213,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
-	it('persists, publishes, connects, and broadcasts Telegram settings on connect', async () => {
+	it('persists, connects, and broadcasts Telegram settings for a published agent', async () => {
 		const credentialsService = mock<CredentialsService>();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
@@ -256,16 +244,9 @@ describe('AgentIntegrationsController integration credentials', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
-		const agentPublishService = mock<AgentPublishService>();
-		const agentValidationService = mock<AgentValidationService>();
-		agentPublishService.publishAgent.mockResolvedValue({
-			agent,
-			draftValidation: { status: 'valid', issues: [] },
-		} as never);
+		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(agent as never);
 		const { controller } = makeController({
 			agentIntegrationPersistenceService,
-			agentPublishService,
-			agentValidationService,
 			credentialsService,
 			chatIntegrationService,
 			agentRepository,
@@ -289,13 +270,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 				undefined as never,
 				'agent-1',
 			),
-		).resolves.toMatchObject({
-			status: 'connected',
-			agent: {
-				id: 'agent-1',
-				isRunnable: true,
-			},
-		});
+		).resolves.toEqual({ status: 'connected' });
 
 		const integration = {
 			type: 'telegram',
@@ -306,15 +281,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			integration,
 			{
+				user: { id: 'user-1' },
+				modifiedBy: 'user',
 				broadcast: false,
 			},
-		);
-		expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			{ id: 'user-1' },
-			undefined,
-			{ syncIntegrations: false },
 		);
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
@@ -328,22 +298,22 @@ describe('AgentIntegrationsController integration credentials', () => {
 		);
 		expect(
 			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
-		).toBeLessThan(agentPublishService.publishAgent.mock.invocationCallOrder[0]);
-		expect(agentPublishService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
-			chatIntegrationService.connect.mock.invocationCallOrder[0],
-		);
+		).toBeLessThan(chatIntegrationService.connect.mock.invocationCallOrder[0]);
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
 		);
 	});
 
-	it('persists the integration before publishing when connecting an unpublished agent', async () => {
+	it.each([
+		{ type: 'slack', credentialId: 'cred-slack', credentialType: 'slackApi' },
+		{ type: 'linear', credentialId: 'cred-linear', credentialType: 'linearOAuth2Api' },
+	])('persists $type without connecting or publishing an unpublished agent', async (testCase) => {
 		const credentialsService = mock<CredentialsService>();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
-				id: 'cred-slack',
-				name: 'Slack Bot',
-				type: 'slackApi',
+				id: testCase.credentialId,
+				name: 'Channel credential',
+				type: testCase.credentialType,
 				createdAt: '2024-01-01T00:00:00.000Z',
 				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
@@ -360,36 +330,25 @@ describe('AgentIntegrationsController integration credentials', () => {
 		const agent = {
 			id: 'agent-1',
 			projectId: 'project-1',
-			publishedVersion: null,
+			activeVersionId: null,
+			activeVersion: null,
 			integrations: [],
 		};
 		const savedAgent = {
 			...agent,
-			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
-		};
-		const publishedAgent = {
-			...savedAgent,
-			publishedVersion: {},
+			integrations: [{ type: testCase.type, credentialId: testCase.credentialId }],
 		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
 		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
-		const agentPublishService = mock<AgentPublishService>();
-		const agentValidationService = mock<AgentValidationService>();
 		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
 			savedAgent as never,
 		);
-		agentPublishService.publishAgent.mockResolvedValue({
-			agent: publishedAgent,
-			draftValidation: { status: 'valid', issues: [] },
-		} as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockResolvedValue(undefined);
 		chatIntegrationService.broadcastIntegrationChange.mockResolvedValue(undefined);
 		const { controller } = makeController({
 			agentIntegrationPersistenceService,
-			agentPublishService,
-			agentValidationService,
 			credentialsService,
 			chatIntegrationService,
 			agentRepository,
@@ -400,57 +359,28 @@ describe('AgentIntegrationsController integration credentials', () => {
 				{
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
-					body: { type: 'slack', credentialId: 'cred-slack' },
+					body: { type: testCase.type, credentialId: testCase.credentialId },
 				} as never,
 				undefined as never,
 				'agent-1',
 			),
-		).resolves.toMatchObject({
-			status: 'connected',
-			agent: {
-				id: 'agent-1',
-				publishedVersion: {},
-				isRunnable: true,
-			},
-		});
+		).resolves.toEqual({ status: 'configured' });
 
-		const integration = { type: 'slack', credentialId: 'cred-slack' };
+		const integration = { type: testCase.type, credentialId: testCase.credentialId };
 		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 			agent,
 			integration,
 			{
+				user: { id: 'user-1' },
+				modifiedBy: 'user',
 				broadcast: false,
 			},
 		);
-		expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			{ id: 'user-1' },
-			undefined,
-			{ syncIntegrations: false },
-		);
-		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
-			'agent-1',
-			integration,
-			'project-1',
-		);
-		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
-			'agent-1',
-			integration,
-			'connect',
-		);
-		expect(
-			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
-		).toBeLessThan(agentPublishService.publishAgent.mock.invocationCallOrder[0]);
-		expect(agentPublishService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
-			chatIntegrationService.connect.mock.invocationCallOrder[0],
-		);
-		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
-			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
-		);
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 	});
 
-	it('does not report an unpublished agent integration as connected when live connect fails', async () => {
+	it('does not broadcast when connecting a published agent fails', async () => {
 		const credentialsService = mock<CredentialsService>();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
@@ -473,33 +403,24 @@ describe('AgentIntegrationsController integration credentials', () => {
 		const agent = {
 			id: 'agent-1',
 			projectId: 'project-1',
-			publishedVersion: null,
+			activeVersionId: 'v1',
+			activeVersion: {},
 			integrations: [],
 		};
 		const savedAgent = {
 			...agent,
 			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
 		};
-		const publishedAgent = {
-			...savedAgent,
-			publishedVersion: {},
-		};
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 
 		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
-		const agentPublishService = mock<AgentPublishService>();
 		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
 			savedAgent as never,
 		);
-		agentPublishService.publishAgent.mockResolvedValue({
-			agent: publishedAgent,
-			draftValidation: { status: 'valid', issues: [] },
-		} as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockRejectedValue(new Error('Slack connect failed'));
 		const { controller } = makeController({
 			agentIntegrationPersistenceService,
-			agentPublishService,
 			credentialsService,
 			chatIntegrationService,
 			agentRepository,
@@ -520,7 +441,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 	});
 
-	it('returns Telegram integrations from the persisted agent entry even when the live bridge is empty', async () => {
+	it('reports complete persisted integrations as configured for an unpublished agent', async () => {
 		const settings = {
 			accessMode: 'private' as const,
 			allowedUsers: ['123'],
@@ -529,6 +450,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
+			activeVersionId: null,
 			integrations: [
 				{
 					type: 'telegram',
@@ -538,20 +460,36 @@ describe('AgentIntegrationsController integration credentials', () => {
 			],
 		} as never);
 
-		// In-memory chat-service map is transiently empty (boot / reconnect /
-		// leader-takeover race). Status must still surface the integration
-		// from the persisted entry, otherwise the FE trigger chip flickers.
-		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getStatus.mockReturnValue({
-			status: 'disconnected',
-			connections: 0,
-			integrations: [],
-		});
+		const { controller } = makeController({ agentRepository });
 
-		const { controller } = makeController({
-			agentRepository,
-			chatIntegrationService,
+		await expect(
+			controller.integrationStatus(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'agent-1',
+			),
+		).resolves.toEqual({
+			status: 'configured',
+			integrations: [
+				{
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					settings,
+				},
+			],
 		});
+	});
+
+	it('reports complete persisted integrations as connected for a published agent', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			activeVersionId: 'v1',
+			integrations: [{ type: 'linear', credentialId: 'cred-linear' }],
+		} as never);
+
+		const { controller } = makeController({ agentRepository });
 
 		await expect(
 			controller.integrationStatus(
@@ -561,14 +499,28 @@ describe('AgentIntegrationsController integration credentials', () => {
 			),
 		).resolves.toEqual({
 			status: 'connected',
-			integrations: [
-				{
-					type: 'telegram',
-					credentialId: 'cred-telegram',
-					settings,
-				},
-			],
+			integrations: [{ type: 'linear', credentialId: 'cred-linear' }],
 		});
+	});
+
+	it('reports a draft integration (empty credentialId) as disconnected', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			activeVersionId: 'v1',
+			integrations: [{ type: 'slack', credentialId: '' }],
+		} as never);
+
+		const { controller } = makeController({ agentRepository });
+
+		await expect(
+			controller.integrationStatus(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'agent-1',
+			),
+		).resolves.toEqual({ status: 'disconnected', integrations: [] });
 	});
 
 	it('disconnects the channel before removing the persisted integration', async () => {
@@ -609,10 +561,52 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			'slack',
 			'cred-slack',
-			{ broadcast: false },
+			{ user: { id: 'user-1' }, modifiedBy: 'user', broadcast: false },
 		);
 		expect(chatIntegrationService.disconnectChannel.mock.invocationCallOrder[0]).toBeLessThan(
 			agentIntegrationPersistenceService.removeCredentialIntegration.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('disconnects a draft integration entry with an empty credentialId', async () => {
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			integrations: [{ type: 'slack', credentialId: '' }],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const { controller } = makeController({
+			agentRepository,
+			chatIntegrationService,
+			agentIntegrationPersistenceService,
+		});
+
+		await expect(
+			controller.disconnectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: '' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ type: 'slack', credentialId: '' },
+			),
+		).resolves.toEqual({ status: 'disconnected' });
+
+		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', {
+			type: 'slack',
+			credentialId: '',
+		});
+		expect(agentIntegrationPersistenceService.removeCredentialIntegration).toHaveBeenCalledWith(
+			agent,
+			'slack',
+			'',
+			{ user: { id: 'user-1' }, modifiedBy: 'user', broadcast: false },
 		);
 	});
 
@@ -749,6 +743,135 @@ describe('AgentIntegrationsController integration credentials', () => {
 				message: 'access_denied',
 				reason: 'User denied install',
 			},
+		});
+	});
+
+	it('returns a platform webhook rejection without looking up a handler', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({
+				type: 'reject',
+				response: { status: 404, body: { error: 'Not found' } },
+			}),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { 'x-discord-gateway-token': 'some-token' },
+			} as never,
+			res as never,
+		);
+
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({ error: 'Not found' });
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+	});
+
+	it('passes the platform connection selector to getWebhookHandler', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const handler = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+		chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'select', connectionSelector: 'app-b' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			setHeader: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { host: 'localhost', 'content-type': 'application/json' },
+				method: 'POST',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
+				body: { application_id: 'app-b', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'discord',
+			'app-b',
+		);
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('does not look up a handler when the platform reports no match', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'no_match' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: {},
+				body: { type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({
+			error: 'No active discord integration for agent "agent-1"',
+		});
+	});
+
+	it('returns 404 when the selected connection has no handler', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getWebhookHandler.mockReturnValue(undefined);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({
+				type: 'select',
+				connectionSelector: 'app-unknown',
+			}),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: {},
+				body: { application_id: 'app-unknown', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'discord',
+			'app-unknown',
+		);
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({
+			error: 'No active discord integration for agent "agent-1"',
 		});
 	});
 });

@@ -1,4 +1,8 @@
-import type { GenerateResult, Agent as RuntimeAgent } from '@n8n/agents';
+import {
+	sanitizeToolName as sanitizeMcpToolName,
+	type Agent as RuntimeAgent,
+	type GenerateResult,
+} from '@n8n/agents';
 import {
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
@@ -35,9 +39,14 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
-import { createMcpMockFetch, type McpMockCanonicalTool } from './mcp-mock-fetch';
+import { snapshotLedgerBody } from './ledger-snapshot';
+import {
+	createMcpMockFetch,
+	type McpMockCanonicalTool,
+	type McpMockToolCall,
+} from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
-import { truncateForLlm } from './request-sanitizer';
+import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 import { createWebSearchMock } from './web-search-mock';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +66,10 @@ import { createWebSearchMock } from './web-search-mock';
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TIMEOUT_MS = 600_000;
+// Case input is used verbatim as the opening message, but as a prompt *signal*
+// for seed + mock generation it is bounded — matching the request schema's cap
+// on `scenarioHints` so a large Data Table cell can't blow up those prompts.
+const MAX_SCENARIO_HINT_CHARS = 2_000;
 const DEFAULT_MAX_ITERATIONS = 25;
 const MAX_ITERATIONS_CAP = 40;
 const MAX_AUTO_APPROVALS = 20;
@@ -93,6 +106,11 @@ export class EvalAgentExecutionService {
 		agentId: string,
 		user: User,
 		options: InstanceAiEvalAgentExecutionRequest,
+		// When set, the run uses this exact text as the opening message instead of
+		// a generated scenario. The seed is still generated (its shared context +
+		// per-tool hints keep the tool mocks coherent), but the message the agent
+		// receives is this input verbatim — how a fixed eval case is executed.
+		caseInput?: string,
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool
@@ -138,13 +156,25 @@ export class EvalAgentExecutionService {
 
 		const toolSummaries = summarizeTools(config, agentEntity.tools ?? {}, sanitizeToolName);
 
+		// The scenario signal steers seed + mock generation. A fixed case input
+		// doubles as that signal (bounded) so the generated context, per-tool
+		// hints, and mock responses all stay coherent with the message sent.
+		// Secret-value shapes pasted into a case are scrubbed before reaching these
+		// auxiliary LLM calls (which never need the real value); the opening
+		// message the agent actually runs stays verbatim.
+		const scenarioSignal =
+			options.scenarioHints ??
+			(caseInput !== undefined
+				? truncateForLlm(redactSecretValuePatterns(caseInput), MAX_SCENARIO_HINT_CHARS)
+				: undefined);
+
 		let seed: InstanceAiEvalAgentScenarioSeed;
 		try {
 			seed = await generateAgentScenarioSeed({
 				agentName: config.name,
 				instructions: config.instructions,
 				tools: toolSummaries,
-				scenarioHints: options.scenarioHints,
+				scenarioHints: scenarioSignal,
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -153,8 +183,15 @@ export class EvalAgentExecutionService {
 			);
 		}
 
+		// A fixed eval case overrides the generated opening message: keep the
+		// seed's context/hints (they steer the tool mocks) but send the case's
+		// input verbatim.
+		if (caseInput !== undefined) {
+			seed = { ...seed, openingMessage: caseInput };
+		}
+
 		const mockHandler = createLlmMockHandler({
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
 		});
@@ -166,9 +203,11 @@ export class EvalAgentExecutionService {
 			this.logger,
 		);
 
-		// Mock MCP server; ledger keys use the client-side `<server>_<tool>`
-		// names so entries merge with GenerateResult's tool calls. Always
-		// created — delegated sub-agents may bring their own servers.
+		const pendingMcpCalls = new Map<string, McpMockToolCall[]>();
+		const mcpCallIdentity = (serverName: string, toolName: string) =>
+			JSON.stringify([serverName, toolName]);
+
+		// Always created — delegated sub-agents may bring their own servers.
 		const mcpServers = config.mcpServers ?? [];
 		const knownToolsByServer = await this.resolveCanonicalMcpCatalogs(mcpServers);
 		const mcpFetch = createMcpMockFetch({
@@ -178,33 +217,47 @@ export class EvalAgentExecutionService {
 				description: server.description,
 			})),
 			agentInstructions: config.instructions,
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			serverHints: seed.toolHints,
 			knownToolsByServer,
 			logger: this.logger,
 			onToolCall: (call) => {
-				const key = `${call.serverName}_${call.toolName}`;
-				let entries = toolLedger.get(key);
-				if (!entries) {
-					entries = [];
-					toolLedger.set(key, entries);
-				}
-				entries.push({
-					url: mcpServers.find((server) => server.name === call.serverName)?.url ?? call.serverName,
-					method: 'POST',
-					nodeType: `mcp:${call.serverName}`,
-					requestBody: call.args,
-					mockResponse: call.result,
-				});
+				const identity = mcpCallIdentity(call.serverName, call.toolName);
+				const calls = pendingMcpCalls.get(identity) ?? [];
+				calls.push(call);
+				pendingMcpCalls.set(identity, calls);
 			},
 		});
+
+		const recordSettledMcpCall = (serverName: string, toolName: string, modelToolName?: string) => {
+			const identity = mcpCallIdentity(serverName, toolName);
+			const calls = pendingMcpCalls.get(identity);
+			if (!calls) return;
+			const call = calls.shift();
+			if (!call) return;
+			if (calls.length === 0) pendingMcpCalls.delete(identity);
+
+			const key = modelToolName ?? sanitizeMcpToolName(`${serverName}_${toolName}`);
+			let entries = toolLedger.get(key);
+			if (!entries) {
+				entries = [];
+				toolLedger.set(key, entries);
+			}
+			entries.push({
+				url: mcpServers.find((server) => server.name === serverName)?.url ?? serverName,
+				method: 'POST',
+				nodeType: `mcp:${serverName}`,
+				requestBody: call.args,
+				mockResponse: call.result,
+			});
+		};
 
 		// Fallback web_search mock — always created (sub-agents may enable web
 		// search); with native search the tool is never built and this goes unused.
 		const webSearchMock = createWebSearchMock({
 			agentInstructions: config.instructions,
-			scenarioHints: options.scenarioHints,
+			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			searchHint: seed.toolHints?.web_search,
 			logger: this.logger,
@@ -236,11 +289,15 @@ export class EvalAgentExecutionService {
 			({ agent } = await reconstruction.reconstructFromAgentEntity(
 				agentEntity,
 				credentialProvider,
+				'test',
 				undefined,
 				user,
 				{
 					modelFetch: recorder.fetch,
 					mcpFetch,
+					onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
+						recordSettledMcpCall(serverName, toolName, modelToolName);
+					},
 					webSearch: webSearchMock,
 					// Delegated (configured) sub-agents inherit every seam above; their
 					// configs get the same pruning, reported under the child's id.
@@ -294,9 +351,12 @@ export class EvalAgentExecutionService {
 				if (!segmentToolCalls.includes(entry)) segmentToolCalls.push(entry);
 			}
 		};
+		const budgetSignal = AbortSignal.timeout(timeoutMs);
 		try {
-			const abortSignal = AbortSignal.timeout(timeoutMs);
-			result = await agent.generate(seed.openingMessage, { abortSignal, maxIterations });
+			result = await agent.generate(seed.openingMessage, {
+				abortSignal: budgetSignal,
+				maxIterations,
+			});
 			collectToolCalls(result);
 
 			// Approval-gated tools suspend the run. In real usage the user
@@ -311,7 +371,7 @@ export class EvalAgentExecutionService {
 				result = await agent.approve('generate', {
 					runId: pending.runId,
 					toolCallId: pending.toolCallId,
-					abortSignal,
+					abortSignal: budgetSignal,
 					maxIterations,
 				});
 				collectToolCalls(result);
@@ -323,6 +383,20 @@ export class EvalAgentExecutionService {
 			const message = error instanceof Error ? error.message : String(error);
 			// Flush so the failure result carries the recorded response bodies too.
 			await recorder.flush();
+			// A budget abort is the harness killing the run for time, NOT the builder
+			// failing. Say so in the words the WORKFLOW path already uses, so the one
+			// classifier (`isServerBudgetStop`) covers both — wrapping it as a plain
+			// `Agent run failed:` let a timed-out agent run score as a builder verdict,
+			// which is the misattribution this whole path exists to prevent.
+			if (budgetSignal.aborted) {
+				const seconds = Math.round(timeoutMs / 1000);
+				return this.errorResult(
+					`Agent run exceeded its ${seconds}s eval budget and was stopped`,
+					seed,
+					skippedFeatures,
+					{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
+				);
+			}
 			return this.errorResult(`Agent run failed: ${message}`, seed, skippedFeatures, {
 				modelTurns: recorder.turns,
 				toolLedger,
@@ -351,7 +425,7 @@ export class EvalAgentExecutionService {
 		// this agent's summaries — their ledger entries carry an `mcp:` nodeType.
 		const kindForTool = (tool: string): InstanceAiEvalAgentToolCallRecord['kind'] =>
 			kindByToolName.get(tool) ??
-			(mcpServers.some((server) => tool.startsWith(`${server.name}_`)) ||
+			(mcpServers.some((server) => tool.startsWith(sanitizeMcpToolName(`${server.name}_`))) ||
 			(toolLedger.get(tool) ?? []).some((request) => request.nodeType?.startsWith('mcp:'))
 				? 'mcp'
 				: 'other');
@@ -478,7 +552,7 @@ export class EvalAgentExecutionService {
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
-				mockResponse: response?.body,
+				mockResponse: snapshotLedgerBody(response?.body),
 			});
 			this.logger.debug(
 				`[EvalAgentMock] Intercepted ${requestOptions.method ?? 'GET'} ${requestOptions.url} from tool "${toolName}" (${node.type})`,

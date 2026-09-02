@@ -92,6 +92,10 @@ test.describe(
 
 			await n8n.instanceAi.waitForPreviewCanvasNode('run button visibility test');
 
+			// The preview canvas is locked (read-only, run button hidden) while the
+			// agent is working, so wait for the run to finish before asserting.
+			await n8n.instanceAi.waitForRunComplete(120_000);
+
 			// The run workflow button should be visible inside the preview iframe
 			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
 				timeout: 10_000,

@@ -78,6 +78,11 @@ describe('OidcService', () => {
 		logger = mockLogger();
 		jwtService = mock<JwtService>();
 		provisioningService = mock<ProvisioningService>();
+		// loginUser reads the provisioning config to extract the instance role claim
+		provisioningService.getConfig = vi.fn().mockResolvedValue({
+			scopesInstanceRoleClaimName: 'n8n_instance_role',
+			scopesProjectsRolesClaimName: 'n8n_projects',
+		});
 		userRepository = mock<UserRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
 		customFetch = vi.fn();
@@ -206,6 +211,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -226,6 +232,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -321,6 +328,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
@@ -345,6 +353,24 @@ describe('OidcService', () => {
 			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
 				command: 'reload-oidc-config',
 			});
+		});
+
+		it('should persist emailVerifiedRequired through updateConfig', async () => {
+			settingsRepository.save = vi.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
+
+			await oidcService.updateConfig({
+				...mockOidcConfig,
+				emailVerifiedRequired: true,
+			} as any as OidcConfigDto);
+
+			expect(settingsRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					key: OIDC_PREFERENCES_DB_KEY,
+					value: expect.stringContaining('"emailVerifiedRequired":true'),
+				}),
+			);
 		});
 
 		it('should not publish in single main setup', async () => {
@@ -552,7 +578,7 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
@@ -590,7 +616,7 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
@@ -630,9 +656,86 @@ describe('OidcService', () => {
 			const storedState = oidcService.generateState().signed;
 			const storedNonce = oidcService.generateNonce().signed;
 
-			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			const { user } = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
+		});
+
+		it('should deny the login without creating an account when role mapping blocks access', async () => {
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			provisioningService.assertSsoLoginAllowed = vi
+				.fn()
+				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue(null);
+			userRepository.findOne = vi.fn().mockResolvedValue(null);
+			userRepository.manager.transaction = vi.fn();
+
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject', n8n_instance_role: 'global:unknown' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(provisioningService.assertSsoLoginAllowed).toHaveBeenCalledWith(
+				expect.objectContaining({ $provider: 'oidc' }),
+				'global:unknown',
+			);
+			// No account creation, no provisioning
+			expect(userRepository.manager.transaction).not.toHaveBeenCalled();
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+		});
+
+		it('should deny an existing user without touching their account when role mapping blocks access', async () => {
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			provisioningService.assertSsoLoginAllowed = vi
+				.fn()
+				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			authIdentityRepository.findOne = vi
+				.fn()
+				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			// The account is left untouched — no role changes, no deactivation
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
+			expect(userRepository.save).not.toHaveBeenCalled();
 		});
 	});
 
@@ -810,5 +913,157 @@ describe('OidcService', () => {
 			expect(idpServer.captured).toEqual(['/userinfo']);
 			expect(body).toEqual({ ok: true, path: '/userinfo' });
 		});
+	});
+
+	describe('generateEndSessionUrl', () => {
+		const idToken = 'stored-id-token';
+
+		const setRpInitiatedLogoutEnabled = (enabled: boolean) => {
+			// Replace (not mutate) the runtime config so the shared default object
+			// isn't polluted across tests. updateConfig would require live discovery.
+			const service = oidcService as unknown as { oidcConfig: Record<string, unknown> };
+			service.oidcConfig = { ...service.oidcConfig, rpInitiatedLogoutEnabled: enabled };
+		};
+
+		it('returns undefined and does not contact the provider when RP-initiated logout is disabled', async () => {
+			setRpInitiatedLogoutEnabled(false);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn();
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toBeUndefined();
+			// @ts-expect-error - getOidcConfiguration is private
+			expect(oidcService.getOidcConfiguration).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when the provider does not advertise an end_session_endpoint', async () => {
+			setRpInitiatedLogoutEnabled(true);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({
+				serverMetadata: () => ({}),
+			} as unknown as client.Configuration);
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toBeUndefined();
+		});
+
+		it('builds the RP-initiated logout URL with the id_token_hint when enabled', async () => {
+			setRpInitiatedLogoutEnabled(true);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({
+				serverMetadata: () => ({ end_session_endpoint: 'https://example.com/logout' }),
+			} as unknown as client.Configuration);
+			const expectedUrl = new URL('https://example.com/logout?id_token_hint=stored-id-token');
+			const buildEndSessionUrl = vi
+				.spyOn(client, 'buildEndSessionUrl')
+				.mockReturnValue(expectedUrl);
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toEqual(expectedUrl);
+			expect(buildEndSessionUrl).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					id_token_hint: idToken,
+					post_logout_redirect_uri: expect.stringMatching(/\/signin$/),
+				}),
+			);
+		});
+	});
+
+	const mockAuthCallbackWith = (userInfo: Record<string, unknown>) => {
+		oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+		oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+		// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+		oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+		// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+		oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
+		vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+			access_token: 'valid-access-token',
+			token_type: 'bearer',
+			claims: () => ({ sub: 'valid-subject' }),
+		} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+		vi.spyOn(client, 'fetchUserInfo').mockResolvedValue(userInfo as any);
+	};
+
+	const setEmailVerifiedRequired = () => {
+		// Replace (not mutate) the config so the shared default constant is untouched.
+		// @ts-expect-error - oidcConfig is private and only accessible within class 'OidcService'
+		oidcService.oidcConfig = { ...oidcService.oidcConfig, emailVerifiedRequired: true };
+	};
+
+	const login = async () => {
+		const callbackUrl = new URL('https://example.com/callback');
+		return await oidcService.loginUser(
+			callbackUrl,
+			oidcService.generateState().signed,
+			oidcService.generateNonce().signed,
+		);
+	};
+
+	it('should reject linking to an existing user when email is not verified', async () => {
+		mockAuthCallbackWith({ email_verified: false, email: 'john.doe@test.com' });
+		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+
+		await expect(login()).rejects.toThrow(BadRequestError);
+		await expect(login()).rejects.toThrow('Email address is not verified by the identity provider');
+		expect(authIdentityRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('should reject when email_verified is the string "false" (no boolean coercion bypass)', async () => {
+		mockAuthCallbackWith({ email_verified: 'false', email: 'john.doe@test.com' });
+		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+
+		await expect(login()).rejects.toThrow(BadRequestError);
+		expect(authIdentityRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('should link to an existing user when email_verified is absent (default, permissive)', async () => {
+		mockAuthCallbackWith({ email: 'john.doe@test.com' });
+		userRepository.findOne = vi
+			.fn()
+			.mockResolvedValue({ id: 'user-1', email: 'john.doe@test.com' } as any);
+
+		const user = await login();
+
+		expect(user.user.email).toEqual('john.doe@test.com');
+		expect(authIdentityRepository.save).toHaveBeenCalled();
+	});
+
+	it('should reject when email_verified is absent and enforcement is enabled', async () => {
+		setEmailVerifiedRequired();
+		mockAuthCallbackWith({ email: 'john.doe@test.com' });
+		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+
+		await expect(login()).rejects.toThrow(BadRequestError);
+		expect(authIdentityRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('should link when email_verified is true and enforcement is enabled', async () => {
+		setEmailVerifiedRequired();
+		mockAuthCallbackWith({ email_verified: true, email: 'john.doe@test.com' });
+		userRepository.findOne = vi
+			.fn()
+			.mockResolvedValue({ id: 'user-1', email: 'john.doe@test.com' } as any);
+
+		const user = await login();
+
+		expect(user.user.email).toEqual('john.doe@test.com');
+		expect(authIdentityRepository.save).toHaveBeenCalled();
+	});
+
+	it('should not re-check email_verified for an already-linked identity', async () => {
+		// Enforcement on + unverified email, but the identity is already bound by `sub`.
+		setEmailVerifiedRequired();
+		mockAuthCallbackWith({ email_verified: false, email: 'john.doe@test.com' });
+		authIdentityRepository.findOne = vi
+			.fn()
+			.mockResolvedValue({ user: { email: 'john.doe@test.com' } } as any);
+
+		const user = await login();
+
+		expect(user.user.email).toEqual('john.doe@test.com');
 	});
 });

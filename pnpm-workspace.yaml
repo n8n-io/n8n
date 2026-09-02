@@ -6,21 +6,26 @@ packages:
   - packages/testing/**
 
 catalog:
-  '@ai-sdk/amazon-bedrock': ^4.0.113
-  '@ai-sdk/anthropic': ^3.0.81
-  '@ai-sdk/azure': ^3.0.70
-  '@ai-sdk/cohere': ^3.0.36
-  '@ai-sdk/deepseek': ^2.0.35
-  '@ai-sdk/gateway': ^3.0.125
-  '@ai-sdk/google': ^3.0.80
-  '@ai-sdk/groq': ^3.0.39
-  '@ai-sdk/mistral': ^3.0.37
-  '@ai-sdk/openai': ^3.0.68
-  '@ai-sdk/openai-compatible': ^2.0.48
-  '@ai-sdk/provider-utils': ^4.0.27
-  '@ai-sdk/xai': ^3.0.93
+  '@ai-sdk/amazon-bedrock': ^5.0.31
+  '@ai-sdk/anthropic': ^4.0.27
+  '@ai-sdk/azure': ^4.0.21
+  '@ai-sdk/cohere': ^4.0.12
+  '@ai-sdk/deepseek': ^3.0.13
+  '@ai-sdk/gateway': ^4.0.37
+  '@ai-sdk/google': ^4.0.24
+  '@ai-sdk/groq': ^4.0.13
+  '@ai-sdk/mistral': ^4.0.14
+  '@ai-sdk/openai': ^4.0.20
+  '@ai-sdk/openai-compatible': ^3.0.14
+  '@ai-sdk/otel': ^1.0.48
+  '@ai-sdk/provider-utils': ^5.0.18
+  '@ai-sdk/xai': ^4.0.18
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
+  # Exact pin: the adapters share an internal protocol with `chat`, and a range
+  # that resolves higher than the locked `chat` pulls a second copy of it into
+  # the tree. Bump this together with `chat` and the other adapters below.
+  '@chat-adapter/discord': 4.28.1
   '@chat-adapter/linear': ^4.28.1
   '@chat-adapter/slack': ^4.28.1
   '@chat-adapter/state-memory': ^4.28.1
@@ -36,9 +41,12 @@ catalog:
   '@codemirror/search': 6.5.11
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
+  '@confluentinc/kafka-javascript': 1.9.1
   '@daytona/sdk': 0.187.0
+  '@e965/xlsx': 0.20.3
   '@iconify-json/lucide': ^1.2.112
   '@iconify-json/mdi': ^1.1.63
+  '@iconify/json': ^2.2.488
   '@joplin/turndown-plugin-gfm': 1.0.64
   '@langchain/anthropic': 1.3.27
   '@langchain/community': 1.1.27
@@ -54,10 +62,13 @@ catalog:
   '@lezer/javascript': 1.5.4
   '@lezer/lr': 1.4.5
   '@modelcontextprotocol/ext-apps': 1.3.2
+  '@modelcontextprotocol/node': 2.0.0
   '@modelcontextprotocol/sdk': 1.26.0
+  '@modelcontextprotocol/server': 2.0.0
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.25.0
-  '@openrouter/ai-sdk-provider': ^2.8.0
+  '@openrouter/ai-sdk-provider': ^3.0.0
+  '@opentelemetry/api': 1.9.1
   '@pinecone-database/pinecone': ^5.0.2
   '@qdrant/js-client-rest': ^1.16.2
   '@rudderstack/rudder-sdk-node': 3.0.5
@@ -71,7 +82,6 @@ catalog:
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
   '@tiptap/core': 3.27.0
-  '@tiptap/pm': 3.27.0
   '@tiptap/extension-link': 3.27.0
   '@tiptap/extension-placeholder': 3.27.0
   '@tiptap/extension-strike': 3.27.0
@@ -82,6 +92,7 @@ catalog:
   '@tiptap/extension-task-item': 3.27.0
   '@tiptap/extension-task-list': 3.27.0
   '@tiptap/markdown': 3.27.0
+  '@tiptap/pm': 3.27.0
   '@tiptap/starter-kit': 3.27.0
   '@tiptap/vue-3': 3.27.0
   '@types/basic-auth': ^1.1.3
@@ -111,9 +122,8 @@ catalog:
   '@types/xml2js': ^0.4.14
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
-  '@e965/xlsx': 0.20.3
   agent-browser: 0.26.0
-  ai: ^6.0.197
+  ai: ^7.0.48
   axios: 1.18.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
@@ -127,11 +137,11 @@ catalog:
   cross-env: ^7.0.3
   csv-parse: 6.2.1
   dotenv: 17.2.3
-  electron: 41.9.1
+  electron: 41.10.3
   esbuild: ^0.28.1
   eslint: 9.29.0
-  eslint-plugin-oxlint: ^1.61.0
   eslint-plugin-n8n-nodes-base: ^1.16.7
+  eslint-plugin-oxlint: ^1.61.0
   express: 5.1.0
   fast-check: ^3.23.2
   fast-glob: 3.3.3
@@ -165,7 +175,7 @@ catalog:
   moment-timezone: 0.5.48
   mqtt-packet: 9.0.0
   ms: 2.1.3
-  mysql2: 3.17.0
+  mysql2: 3.23.1
   nanoid: 3.3.8
   nock: 14.0.14
   nodemailer: 8.0.10
@@ -192,7 +202,7 @@ catalog:
   ssh2: 1.15.0
   stream-json: 1.9.1
   stylelint: ^16.23.0
-  tar: 7.5.19
+  tar: 7.5.21
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
@@ -209,22 +219,12 @@ catalog:
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3
-  zod: 3.25.67
+  zod: 3.25.76
   zod-to-json-schema: 3.23.3
 
 catalogMode: strict
 
 catalogs:
-  typescript:
-    typescript: 7.0.2
-    tsdown: ^0.22.8
-  # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
-  # (as `typescript`) for tooling that needs the programmatic compiler API —
-  # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
-  # See scripts/typescript-migration/README.md "Choosing the TypeScript catalog".
-  typescript-tooling:
-    '@typescript/native': 'npm:typescript@7.0.2'
-    typescript: 'npm:@typescript/typescript6@6.0.2'
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
@@ -235,8 +235,8 @@ catalogs:
   frontend:
     '@internationalized/date': ^3.9.0
     '@sentry/vue': ^10.36.0
-    '@testing-library/jest-dom': ^6.6.3
     '@testing-library/dom': ^10.4.0
+    '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
     '@vitejs/plugin-vue': ^5.2.4
@@ -262,16 +262,25 @@ catalogs:
     '@chromatic-com/storybook': ^4.1.3
     '@storybook/addon-a11y': ^10.1.11
     '@storybook/addon-docs': ^10.1.11
-    '@storybook/addon-themes': ^10.1.11
     '@storybook/addon-vitest': ^10.1.11
     '@storybook/vue3': ^10.1.11
     '@storybook/vue3-vite': ^10.1.11
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
+  typescript:
+    tsdown: ^0.22.8
+    typescript: 7.0.2
+  # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
+  # (as `typescript`) for tooling that needs the programmatic compiler API —
+  # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
+  # See scripts/typescript-migration/README.md "Choosing the TypeScript catalog".
+  typescript-tooling:
+    '@typescript/native': 'npm:typescript@7.0.2'
+    typescript: 'npm:@typescript/typescript6@6.0.2'
   undici-v6:
     undici: ^6.27.0
   undici-v7:
-    undici: ^7.28.0
+    undici: ^7.29.0
 
 minimumReleaseAge: 4320
 

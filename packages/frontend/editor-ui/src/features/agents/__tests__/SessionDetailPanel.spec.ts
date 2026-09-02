@@ -14,6 +14,10 @@ vi.mock('../components/ToolIoView.vue', () => ({
 vi.mock('vue-markdown-render', () => ({
 	default: { template: '<div data-test-id="markdown"><slot /></div>' },
 }));
+// Reads useRootStore for download URLs — irrelevant to panel behavior.
+vi.mock('../components/AgentChatMessageAttachments.vue', () => ({
+	default: { template: '<div data-test-id="user-attachments"></div>' },
+}));
 
 function makeRouter(): Router {
 	return createRouter({
@@ -28,12 +32,40 @@ function makeRouter(): Router {
 	});
 }
 
-function mountIt(item: TimelineItem | null) {
+function mountIt(
+	item: TimelineItem | null,
+	extraProps: { projectId?: string; agentId?: string } = {},
+) {
 	return mount(SessionDetailPanel, {
-		props: { item },
+		props: { item, ...extraProps },
 		global: { plugins: [makeRouter()] },
 	});
 }
+
+describe('SessionDetailPanel — user attachments', () => {
+	const userItem: TimelineItem = {
+		kind: 'user',
+		executionId: 'e1',
+		timestamp: 0,
+		content: 'look at this',
+		attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
+	};
+
+	it('renders the attachments block for a user item with files', () => {
+		const w = mountIt(userItem, { projectId: 'p1', agentId: 'a1' });
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(true);
+	});
+
+	it('skips the attachments block without the project/agent scope for download URLs', () => {
+		const w = mountIt(userItem);
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(false);
+	});
+
+	it('skips the attachments block for user items without files', () => {
+		const w = mountIt({ ...userItem, attachments: undefined }, { projectId: 'p1', agentId: 'a1' });
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(false);
+	});
+});
 
 describe('SessionDetailPanel — integration action cards', () => {
 	const cardInput = {

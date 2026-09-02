@@ -1,4 +1,5 @@
 name: 'Release: Attach SBOM'
+run-name: 'Release: Attach SBOM for n8n@${{ inputs.n8n_version }}'
 
 on:
   workflow_call:

@@ -147,11 +147,11 @@ export class DbConnectionMonitor {
 	}
 
 	private async ping() {
-		if (this.stopped || !this.dataSource.isInitialized) {
+		if (this.stopped) {
 			return;
 		}
 
-		if (this.recovering) {
+		if (!this.dataSource.isInitialized || this.recovering) {
 			this.scheduleNextPing();
 			return;
 		}

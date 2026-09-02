@@ -1,4 +1,8 @@
-import { AiGatewayConfigDto, type AiGatewayUsageResponse } from '@n8n/api-types';
+import {
+	AiGatewayConfigDto,
+	getAgentModelProviderCredentialTypes,
+	type AiGatewayUsageResponse,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
@@ -11,6 +15,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -62,6 +67,23 @@ export class AiGatewayService {
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
 	) {}
+
+	/**
+	 * Whether this instance is licensed and configured for n8n Connect.
+	 */
+	isEnabled(): boolean {
+		return (
+			this.licenseState.isAiGatewayLicensed() &&
+			this.globalConfig.aiGateway.enabled &&
+			!!this.globalConfig.aiAssistant.baseUrl
+		);
+	}
+
+	assertEnabled(): void {
+		if (!this.isEnabled()) {
+			throw new BadRequestError('n8n Connect is not enabled on this instance');
+		}
+	}
 
 	/**
 	 * Performs a request against the AI Gateway and returns the parsed body.
@@ -145,6 +167,9 @@ export class AiGatewayService {
 	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
+		}
+		if (!this.isEnabled()) {
+			throw new UserError('n8n Connect is not enabled on this instance.');
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -298,12 +323,12 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Returns `{ available: true, config }` when the AI Gateway is both licensed
-	 * AND its config fetches successfully; `{ available: false }` otherwise.
+	 * Returns `{ available: true, config }` when n8n Connect is enabled, licensed,
+	 * and its config fetches successfully; `{ available: false }` otherwise.
 	 * Never propagates gateway or config errors.
 	 */
 	async isAvailable(): Promise<AiGatewayAvailability> {
-		if (!this.licenseState.isAiGatewayLicensed()) return { available: false };
+		if (!this.isEnabled()) return { available: false };
 		try {
 			const config = await this.getGatewayConfig();
 			return { available: true, config };
@@ -346,6 +371,56 @@ export class AiGatewayService {
 			this.configFetchFailedAt = Date.now();
 			throw error;
 		}
+	}
+
+	/**
+	 * Resolves the n8n credential type the gateway serves for a model-provider
+	 * prefix (e.g. `openai` → `openAiApi`). Returns `undefined` when n8n Connect
+	 * is unlicensed or the gateway does not serve that provider. This is the
+	 * authoritative n8n Connect provider → credential-type support gate.
+	 */
+	async getCredentialTypeForProvider(provider: string): Promise<string | undefined> {
+		if (!this.isEnabled()) return undefined;
+		const config = await this.getGatewayConfig();
+		return AiGatewayService.matchCredentialTypeForProvider(config, provider);
+	}
+
+	/**
+	 * Cache-only counterpart to {@link getCredentialTypeForProvider}, for the
+	 * static agent validator which must never trigger a network fetch. Returns:
+	 *  - the credential type when the cached config serves the provider,
+	 *  - `null` when support is definitively unavailable (unlicensed, or the
+	 *    cached config does not serve the provider) — a real "gateway says no",
+	 *  - `undefined` when it can't be determined (no config cached yet) — a
+	 *    "could not ask", so callers must not fail closed on it.
+	 *
+	 * Uses the last cached config even if past its refresh TTL: a slightly stale
+	 * answer is preferable to a network call here.
+	 */
+	getCredentialTypeForProviderCached(provider: string): string | null | undefined {
+		if (!this.isEnabled()) return null;
+		if (!this.gatewayConfig) return undefined;
+		return AiGatewayService.matchCredentialTypeForProvider(this.gatewayConfig, provider) ?? null;
+	}
+
+	/**
+	 * Matches a model-provider prefix (e.g. `openai`) to the n8n credential type
+	 * the gateway serves it under: the provider's credential types, in preference
+	 * order, filtered to those the gateway holds a `providerConfig` entry for (the
+	 * same entry `getSyntheticCredential` needs to mint a credential). Returns
+	 * `undefined` when the gateway does not serve it.
+	 *
+	 * Deliberately not derived from `gatewayPath`: that made the mapping depend on
+	 * the gateway's URL slugs happening to equal n8n's own provider ids, which
+	 * they need not (e.g. Moonshot serves Kimi under the `moonshot` slug).
+	 */
+	private static matchCredentialTypeForProvider(
+		config: AiGatewayConfigDto,
+		provider: string,
+	): string | undefined {
+		return getAgentModelProviderCredentialTypes(provider).find(
+			(credentialType) => config.providerConfig[credentialType] !== undefined,
+		);
 	}
 
 	/**

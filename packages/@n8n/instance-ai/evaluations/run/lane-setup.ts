@@ -14,7 +14,7 @@ import { cleanupCredentials } from '../credentials/seeder';
 import type { EvalLogger } from '../harness/logger';
 import { cleanupPrebuiltWorkflows } from '../harness/prebuilt-workflows';
 import { seedMcpRegistry } from '../mcp-registry/seeder';
-import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
+import { snapshotDataTableIds, snapshotWorkflowIds } from '../outcome/workflow-discovery';
 
 export interface LaneSetup {
 	lanes: Lane[];
@@ -80,6 +80,7 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 			}
 
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
+			const preRunDataTableIds = await snapshotDataTableIds(client);
 			const claimedWorkflowIds = new Set<string>();
 			const createdCredentialIds = new Set<string>();
 			const workflowIdsToDelete = new Set<string>();
@@ -87,6 +88,7 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				client,
 				baseUrl,
 				preRunWorkflowIds,
+				preRunDataTableIds,
 				claimedWorkflowIds,
 				createdCredentialIds,
 				workflowIdsToDelete,

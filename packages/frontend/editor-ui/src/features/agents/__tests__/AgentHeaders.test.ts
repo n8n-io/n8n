@@ -5,14 +5,8 @@ import { mount, type VueWrapper } from '@vue/test-utils';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
 
-const routerPush = vi.fn();
-
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
-}));
-
-vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: routerPush }),
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -72,14 +66,15 @@ const breadcrumbItems = [
 const sessionOptions = [{ id: 'thread-1', label: 'Support session' }];
 
 describe('AgentBuilderPreviewHeader', () => {
-	function mountHeader() {
+	function mountHeader(overrides: Partial<{ traceOpen: boolean }> = {}) {
 		return mount(AgentBuilderPreviewHeader, {
 			props: {
 				breadcrumbItems,
 				sessionTitle: 'Support session',
-				sessionId: 'thread-1',
 				hasSession: true,
 				sessionOptions,
+				traceOpen: false,
+				...overrides,
 			},
 		});
 	}
@@ -112,16 +107,26 @@ describe('AgentBuilderPreviewHeader', () => {
 		expect(wrapper.emitted('close-preview')).toEqual([[]]);
 	});
 
-	it('routes to the current session', async () => {
-		routerPush.mockReset();
+	it('emits toggle-trace when the session toggle button is clicked', async () => {
 		const wrapper = mountHeader();
 
 		await wrapper.find('[data-testid="agent-preview-view-session-btn"]').trigger('click');
 
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		});
+		expect(wrapper.emitted('toggle-trace')).toEqual([[]]);
+	});
+
+	it('shows the view-session affordance when the trace is closed', () => {
+		const wrapper = mountHeader({ traceOpen: false });
+		const button = wrapper.find('[data-testid="agent-preview-view-session-btn"]');
+
+		expect(button.attributes('label')).toBe('agents.builder.preview.viewSession');
+	});
+
+	it('shows the back-to-chat affordance when the trace is open', () => {
+		const wrapper = mountHeader({ traceOpen: true });
+		const button = wrapper.find('[data-testid="agent-preview-view-session-btn"]');
+
+		expect(button.attributes('label')).toBe('agents.builder.preview.backToChat');
 	});
 
 	it('hides the view session button when the current chat has no persisted session', () => {
@@ -129,9 +134,9 @@ describe('AgentBuilderPreviewHeader', () => {
 			props: {
 				breadcrumbItems,
 				sessionTitle: 'New chat',
-				sessionId: 'empty-thread-id',
 				hasSession: false,
 				sessionOptions,
+				traceOpen: false,
 			},
 		});
 

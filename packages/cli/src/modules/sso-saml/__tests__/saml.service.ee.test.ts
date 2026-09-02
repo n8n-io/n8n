@@ -13,6 +13,7 @@ import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { CacheService } from '@/services/cache/cache.service';
@@ -419,6 +420,40 @@ describe('SamlService', () => {
 	});
 
 	describe('handleSamlLogin', () => {
+		it('should deny the login without creating an account when role mapping blocks access', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+				n8nInstanceRole: 'global:unknown',
+			};
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: { groups: ['contractors'] },
+			});
+			provisioningService.assertSsoLoginAllowed = vi
+				.fn()
+				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			const createUserSpy = vi.spyOn(samlHelpers, 'createUserFromSamlAttributes');
+
+			await expect(samlService.handleSamlLogin(mock<express.Request>(), 'post')).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(provisioningService.assertSsoLoginAllowed).toHaveBeenCalledWith(
+				expect.objectContaining({
+					$provider: 'saml',
+					$claims: { groups: ['contractors'] },
+				}),
+				'global:unknown',
+			);
+			// Denied before any account lookup, creation, or provisioning
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(createUserSpy).not.toHaveBeenCalled();
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+		});
+
 		it('throws error for invalid email', async () => {
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: { email: 'invalid', firstName: '', lastName: '', userPrincipalName: '' },

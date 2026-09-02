@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowDependencyResolver } from '../workflow-dependency-resolver';
-import { WorkflowRequirementsExtractor } from '../workflow-requirements.extractor';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -37,7 +36,7 @@ function makeResolver(workflows: WorkflowEntity[]) {
 	);
 
 	return {
-		resolver: new WorkflowDependencyResolver(workflowFinder, new WorkflowRequirementsExtractor()),
+		resolver: new WorkflowDependencyResolver(workflowFinder),
 		workflowFinder,
 	};
 }
@@ -126,5 +125,45 @@ describe('WorkflowDependencyResolver', () => {
 			user,
 			['workflow:export'],
 		);
+	});
+
+	describe('direct traversal', () => {
+		it('extracts only the references of the requested workflows without fetching the referenced ones', async () => {
+			const { resolver, workflowFinder } = makeResolver([
+				makeWorkflow('workflow-a', 'workflow-b'),
+				makeWorkflow('workflow-b', 'workflow-c'),
+				makeWorkflow('workflow-c'),
+			]);
+
+			const requirements = await resolver.resolve({
+				user,
+				workflowIds: ['workflow-a'],
+				traversal: 'direct',
+			});
+
+			expect(requirements).toEqual([
+				{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
+			]);
+			expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledTimes(1);
+		});
+
+		it('extracts the references of every requested workflow, including ones between them', async () => {
+			const { resolver, workflowFinder } = makeResolver([
+				makeWorkflow('workflow-a', 'workflow-b'),
+				makeWorkflow('workflow-b', 'workflow-c'),
+			]);
+
+			const requirements = await resolver.resolve({
+				user,
+				workflowIds: ['workflow-a', 'workflow-b'],
+				traversal: 'direct',
+			});
+
+			expect(requirements).toEqual([
+				{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
+				{ workflowId: 'workflow-b', referencedWorkflowId: 'workflow-c' },
+			]);
+			expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledTimes(1);
+		});
 	});
 });

@@ -10,6 +10,7 @@ import type {
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentCatalogModel,
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
@@ -35,6 +36,7 @@ export type ListAgentsOptions = {
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
+		availableInMCP?: boolean;
 	};
 };
 
@@ -97,12 +99,15 @@ export const createAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	name: string,
+	/** Creates the agent under an already-minted id, so a surface that referenced
+	 *  it while unsaved keeps pointing at the same agent. */
+	options: { id?: string } = {},
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2`,
-		{ name },
+		{ name, ...(options.id ? { id: options.id } : {}) },
 	);
 };
 
@@ -177,8 +182,8 @@ export const connectIntegration = async (
 	type: string,
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
-): Promise<{ status: string; agent?: AgentResource }> => {
-	return await makeRestApiRequest(
+): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> => {
+	return await makeRestApiRequest<Pick<AgentIntegrationStatusResponse, 'status'>>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
@@ -323,13 +328,7 @@ export const getSlackAgentAppManifest = async (
 	);
 };
 
-export interface ModelInfo {
-	id: string;
-	name: string;
-	releaseDate?: string;
-	reasoning: boolean;
-	toolCall: boolean;
-}
+export type ModelInfo = AgentCatalogModel;
 
 export interface ProviderInfo {
 	id: string;
@@ -549,6 +548,19 @@ export const clearTestChatMessages = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const cancelAgentChatRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+): Promise<{ cancelled: boolean }> => {
+	return await makeRestApiRequest<{ cancelled: boolean }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
 	);
 };
 

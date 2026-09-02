@@ -24,4 +24,14 @@ describe('serializedVariableSchema', () => {
 
 		expect(() => serializedVariableSchema.parse(variable)).toThrow();
 	});
+
+	it('defaults a missing type, so a hand-written package need not declare it', () => {
+		const variable = { name: 'API_URL', value: 'v' };
+
+		expect(serializedVariableSchema.parse(variable)).toEqual({
+			name: 'API_URL',
+			type: 'string',
+			value: 'v',
+		});
+	});
 });

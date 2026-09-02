@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { KeyboardShortcut } from '@/Interface';
-import type { N8nTooltipProps } from '@n8n/design-system/components/N8nTooltip';
+import type { N8nTooltipProps } from '@n8n/design-system';
 
 import { N8nKeyboardShortcut, N8nTooltip } from '@n8n/design-system';
 interface Props {

@@ -2,7 +2,6 @@ export {
 	RUNTIME_SKILL_FILE_NAME,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	LIST_SKILLS_TOOL_NAME,
 	SKILL_LOAD_TOOL_NAME,
 } from './types';
 export type {
@@ -46,7 +45,6 @@ export {
 	type RenderSkillCatalogOptions,
 } from './prompt';
 export {
-	createListSkillsTool,
 	createSkillLoadTool,
 	createRuntimeSkillTools,
 	RUNTIME_SKILL_TOOL_NAMES,

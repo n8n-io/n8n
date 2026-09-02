@@ -39,7 +39,6 @@ describe('AgentChannelSlackSetup', () => {
 	it('hides manual configuration in simple setup mode', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
-				mode: 'setup',
 				setupMode: 'simple',
 			},
 		});
@@ -50,7 +49,6 @@ describe('AgentChannelSlackSetup', () => {
 	it('shows manual configuration in advanced setup mode', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				mode: 'setup',
 				setupMode: 'advanced',
 			},
 		});

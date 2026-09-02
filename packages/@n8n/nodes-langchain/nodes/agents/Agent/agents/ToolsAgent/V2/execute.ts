@@ -7,14 +7,15 @@ import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
+import type { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import type { StreamEvent } from '@langchain/core/types/stream';
 import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import { ChatOpenAI } from '@langchain/openai';
 import omit from 'lodash/omit';
-import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -144,54 +145,60 @@ async function processEventStream(
 		agentResult.intermediateSteps = [];
 	}
 
+	// Every model turn runs inside this one stream, so text is held until its turn ends and
+	// released only if the turn requested no tools. Keyed by run because runs interleave,
+	// and dropped when a run never ends — LangChain reports no error event for chat models,
+	// so a missing end event is the only sign a run produced nothing usable.
+	const pendingChunksByRun = new Map<string, string[]>();
+
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
-			case 'on_chat_model_stream':
+			case 'on_chat_model_stream': {
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content) {
-					const chunkContent = chunk.content;
-					let chunkText = '';
-					if (Array.isArray(chunkContent)) {
-						for (const message of chunkContent) {
-							if (message?.type === 'text') {
-								chunkText += (message as MessageContentText)?.text;
-							}
-						}
-					} else if (typeof chunkContent === 'string') {
-						chunkText = chunkContent;
-					}
-					ctx.sendChunk('item', itemIndex, chunkText);
-
-					agentResult.output += chunkText;
+					const pending = pendingChunksByRun.get(event.run_id) ?? [];
+					pending.push(chunk.text);
+					pendingChunksByRun.set(event.run_id, pending);
 				}
 				break;
-			case 'on_chat_model_end':
+			}
+			case 'on_chat_model_end': {
+				const output = event.data?.output as AIMessage | undefined;
+				const toolCalls = output?.tool_calls ?? [];
+
+				const pending = pendingChunksByRun.get(event.run_id) ?? [];
+				pendingChunksByRun.delete(event.run_id);
+
+				// Only a turn that produced no tool calls is the actual answer
+				if (toolCalls.length === 0) {
+					for (const chunkText of pending) {
+						ctx.sendChunk('item', itemIndex, chunkText);
+
+						agentResult.output += chunkText;
+					}
+				}
+
 				// Capture full LLM response with tool calls for intermediate steps
-				if (returnIntermediateSteps && event.data) {
-					const chatModelData = event.data as any;
-					const output = chatModelData.output;
-
-					// Check if this LLM response contains tool calls
-					if (output?.tool_calls && output.tool_calls.length > 0) {
-						for (const toolCall of output.tool_calls) {
-							agentResult.intermediateSteps!.push({
-								action: {
-									tool: toolCall.name,
-									toolInput: toolCall.args,
-									log:
-										output.content ||
-										`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
-									messageLog: [output], // Include the full LLM response
-									toolCallId: toolCall.id,
-									type: toolCall.type,
-								},
-							});
-						}
+				if (returnIntermediateSteps) {
+					for (const toolCall of toolCalls) {
+						agentResult.intermediateSteps!.push({
+							action: {
+								tool: toolCall.name,
+								toolInput: toolCall.args,
+								log:
+									output?.text ||
+									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+								messageLog: [output], // Include the full LLM response
+								toolCallId: toolCall.id,
+								type: toolCall.type,
+							},
+						});
 					}
 				}
 				break;
+			}
 			case 'on_tool_end':
 				// Capture tool execution results and match with action
 				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {

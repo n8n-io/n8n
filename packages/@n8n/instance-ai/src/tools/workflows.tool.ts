@@ -11,10 +11,17 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import {
+	findSetupHintProblems,
+	INVALID_SETUP_HINT_MESSAGE,
+	setupHintField,
+	TEMPLATABLE_PLAIN_AUTH_TYPES,
+} from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
+	applyCredentialHints,
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
@@ -105,6 +112,27 @@ const setupAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	credentialHints: z
+		.array(
+			setupHintField.extend({
+				nodeName: z
+					.string()
+					.optional()
+					.describe(
+						'Restrict the recipe to one node — needed when several nodes use Simplified Custom Auth for different services.',
+					),
+			}),
+		)
+		.optional()
+		.describe(
+			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the card pre-fills the template and asks only for the placeholder values. Provide one per templated credential. REQUIRED before composing: load the `credential-recipe-research` skill and execute its lookup procedure — the template and testUrl must come from provider pages fetched there, never from memory.',
+		),
+	allowPlainGenericAuth: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
+		),
 });
 
 const validateAction = z.object({
@@ -604,6 +632,7 @@ async function handleSetupTestTrigger(
 	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
 		[testTriggerNode]: triggerTestResult,
 	});
+	applyCredentialHints(refreshedRequests, input.credentialHints);
 
 	// Generate a new requestId so the frontend doesn't filter it
 	// as already-resolved from the previous suspend cycle
@@ -654,8 +683,12 @@ async function handleSetupApply(
 
 		// Re-analyze to determine if any nodes still need setup.
 		// Filter by needsAction to distinguish "render this card" from
-		// "this still requires user intervention".
-		const remainingRequests = await analyzeWorkflow(context, input.workflowId);
+		// "this still requires user intervention". Settled requests are kept so
+		// a just-applied credential whose test failed stays reportable below —
+		// a bound credential is settled for routing even when its test fails.
+		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
+			includeSettled: true,
+		});
 		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
@@ -675,9 +708,16 @@ async function handleSetupApply(
 		const mergedFailedNodes = allFailedNodes.length > 0 ? allFailedNodes : undefined;
 
 		if (pendingRequests.length > 0) {
+			// Carry the parameter issues, not just the node name: a value the connected
+			// credential can't reach (e.g. a model outside the free-credits allowlist) is
+			// only actionable if the caller learns which value was wrong, so it can replace
+			// it and say what it changed.
 			const skippedNodes = pendingRequests.map((r) => ({
 				nodeName: r.node.name,
 				credentialType: r.credentialType,
+				...(r.parameterIssues && Object.keys(r.parameterIssues).length > 0
+					? { parameterIssues: r.parameterIssues }
+					: {}),
 			}));
 			return {
 				success: true,
@@ -724,6 +764,48 @@ async function handleSetup(
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
 		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+
+		// Validated against the workflow's node URLs so a recipe can't set one of
+		// the workflow's own (action) endpoints as its probe testUrl.
+		const nodeUrls = setupRequests.map((request) => request.node.parameters?.url);
+		const hintProblems = (input.credentialHints ?? []).flatMap((hint) =>
+			findSetupHintProblems(hint, { nodeUrls }).map((problem) =>
+				hint.nodeName ? `${hint.nodeName}: ${problem}` : problem,
+			),
+		);
+		if (hintProblems.length > 0) {
+			return {
+				error: 'invalid_credential_hints',
+				message: INVALID_SETUP_HINT_MESSAGE,
+				problems: hintProblems,
+			};
+		}
+
+		applyCredentialHints(setupRequests, input.credentialHints);
+
+		// A provider documenting `Authorization: Bearer <token>` reliably lures the
+		// model into httpBearerAuth despite the skill guidance, so new plain generic
+		// credentials on HTTP Request nodes are rejected at the tool boundary.
+		if (!input.allowPlainGenericAuth) {
+			const plainAuthNodes = setupRequests.filter(
+				(request) =>
+					request.node.type === 'n8n-nodes-base.httpRequest' &&
+					request.credentialType !== undefined &&
+					TEMPLATABLE_PLAIN_AUTH_TYPES.has(request.credentialType) &&
+					(request.existingCredentials ?? []).length === 0,
+			);
+			if (plainAuthNodes.length > 0) {
+				return {
+					error: 'plain_generic_auth',
+					message:
+						'These HTTP Request nodes use a plain generic auth type for a credential that does not exist yet. Change each node\'s genericAuthType to "httpTemplatedCustomAuth" and re-run setup with a credentialHints recipe — even when the provider documents `Authorization: Bearer <token>`, express it as a template ({"headers":{"Authorization":"Bearer {{api_key}}"}}). Only if the user explicitly asked for the plain type (or the workflow pre-existed with it), re-call setup with allowPlainGenericAuth: true.',
+					nodes: plainAuthNodes.map((request) => ({
+						nodeName: request.node.name,
+						credentialType: request.credentialType,
+					})),
+				};
+			}
+		}
 
 		if (setupRequests.length === 0) {
 			return { success: true, reason: 'No nodes require setup.' };

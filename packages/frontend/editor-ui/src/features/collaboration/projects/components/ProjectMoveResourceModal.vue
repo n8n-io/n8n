@@ -2,8 +2,8 @@
 import Modal from '@/app/components/Modal.vue';
 import ProjectMoveResourceModalCredentialsList from './ProjectMoveResourceModalCredentialsList.vue';
 import ProjectSharing from './ProjectSharing.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useMoveResourceToProjectToast } from '../composables/useMoveResourceToProjectToast';
 import type {
 	ICredentialsResponse,

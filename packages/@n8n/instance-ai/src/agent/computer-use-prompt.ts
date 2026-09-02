@@ -19,8 +19,8 @@ export function getComputerUsePrompt({
 				localGateway.status === 'disconnected'
 					? 'click the "..." button next to "Computer Use", click "Connect"'
 					: 'click on "Setup computer use"';
-			return `
-## Computer Use
+			return `## Computer Use
+
 This instance supports "Computer Use": connecting to the user's computer with the capabilities *filesystem* (read/write local files), *shell* (run local commands), *browser* (automate the user's real browser session; requires the "n8n Browser Use" Chrome extension: ${BROWSER_USE_EXTENSION_URL}), and *screenshot*/*mouse-keyboard* (never advertise or use unless explicitly requested). Users choose which capabilities to enable and can reconnect with a different set.
 
 Computer Use is NOT currently connected — do NOT attempt to use Computer Use tools. Proactively suggest connecting when the user needs: credential/OAuth/API-key setup through a service's web portal (*browser*); a local file (PDF, CSV, spec) as context, or docs/exports written to files (*filesystem*); authenticated web research or form/frontend testing (*browser*); local commands or debugging (*shell*); or migration from Make/Zapier or similar (*browser* + *filesystem*).

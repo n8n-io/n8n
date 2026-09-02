@@ -135,6 +135,18 @@
         "date_modified_gmt": {
             "type": "string"
         },
+        "date_on_sale_from": {
+            "type": "null"
+        },
+        "date_on_sale_from_gmt": {
+            "type": "null"
+        },
+        "date_on_sale_to": {
+            "type": "null"
+        },
+        "date_on_sale_to_gmt": {
+            "type": "null"
+        },
         "default_attributes": {
             "type": "array",
             "items": {
@@ -236,11 +248,23 @@
                     "name": {
                         "type": "string"
                     },
+                    "sizes": {
+                        "type": "string"
+                    },
                     "src": {
+                        "type": "string"
+                    },
+                    "srcset": {
+                        "type": "string"
+                    },
+                    "thumbnail": {
                         "type": "string"
                     }
                 }
             }
+        },
+        "low_stock_amount": {
+            "type": "null"
         },
         "manage_stock": {
             "type": "boolean"
@@ -376,5 +400,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

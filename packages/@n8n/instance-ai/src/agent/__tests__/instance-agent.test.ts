@@ -12,6 +12,7 @@ const mockAgentInstances: Array<{
 	telemetry: Mock;
 	workspace: Mock;
 	thinking: Mock;
+	mcpConnectionFailures: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
@@ -34,6 +35,7 @@ vi.mock('@n8n/agents', () => ({
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
+		this.mcpConnectionFailures = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -64,6 +66,7 @@ vi.mock('../../tools', () => ({
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
 				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
+				['n8n-docs', mockBuiltTool(`n8n-docs-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
 				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
@@ -107,9 +110,10 @@ const getSystemPrompt = getSystemPromptImport as unknown as Mock;
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
+	connectionFailures: Array<{ server: { name: string }; error: string }> = [],
 ) {
 	return {
-		getRegularTools: vi.fn().mockResolvedValue(regularTools),
+		getRegularTools: vi.fn().mockResolvedValue({ tools: regularTools, connectionFailures }),
 		disconnect: vi.fn().mockResolvedValue(undefined),
 	};
 }
@@ -287,6 +291,39 @@ describe('createInstanceAgent', () => {
 		}
 	});
 
+	// INS-749: `research` (web-search) is always loaded while `n8n-docs` used to be
+	// deferred, so answering an n8n question from n8n's own docs cost a search_tools +
+	// load_tool round trip that web search did not. That price gap pushed the agent to
+	// web-search things the docs already answer.
+	it('keeps n8n-docs always loaded so it is no costlier to reach than web search', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'docs-parity-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'docs-parity-run',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
+
+		expect(attachedTools['n8n-docs-docs-parity-run']).toMatchObject({
+			name: 'n8n-docs-docs-parity-run',
+		});
+		expect(deferredTools['n8n-docs-docs-parity-run']).toBeUndefined();
+		// Parity is the point: both routes must be one call away.
+		expect(attachedTools['research-docs-parity-run']).toMatchObject({
+			name: 'research-docs-parity-run',
+		});
+	});
+
 	it('attaches the orchestration workspace when provided', async () => {
 		const memoryConfig = {} as never;
 		const fakeWorkspace = { id: 'thread-runtime-workspace' } as never;
@@ -459,6 +496,34 @@ describe('createInstanceAgent', () => {
 				toolSearchEnabled: true,
 				mcpToolSearchEnabled: true,
 			}),
+		);
+	});
+
+	it('enables the MCP registry prompt section only when the host wired mcpService', async () => {
+		const baseOptions = {
+			modelId: 'test-model',
+			orchestrationContext: { runId: 'mcp-registry-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		};
+		const baseContext = {
+			runLabel: 'mcp-registry-prompt',
+			localGatewayStatus: undefined,
+			licenseHints: undefined,
+			localMcpServer: undefined,
+		};
+
+		await createInstanceAgent({ ...baseOptions, context: baseContext } as never);
+		expect(getSystemPrompt).toHaveBeenLastCalledWith(
+			expect.objectContaining({ mcpRegistrySearchEnabled: false }),
+		);
+
+		await createInstanceAgent({
+			...baseOptions,
+			context: { ...baseContext, mcpService: { search: vi.fn() } },
+		} as never);
+		expect(getSystemPrompt).toHaveBeenLastCalledWith(
+			expect.objectContaining({ mcpRegistrySearchEnabled: true }),
 		);
 	});
 
@@ -637,6 +702,7 @@ describe('createInstanceAgent', () => {
 
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
+			effort: 'medium',
 		});
 	});
 
@@ -658,5 +724,47 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
+	it('reports MCP connection failures to the SDK agent so the runtime can inject a model note', async () => {
+		const failures = [
+			{ server: { name: 'dead' }, error: 'fetch failed' },
+			{ server: { name: 'also_dead' }, error: 'boom' },
+		];
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'mcp-failure-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'mcp-failure-run' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map(), failures),
+		} as never);
+
+		expect(mockAgentInstances[0]?.mcpConnectionFailures).toHaveBeenCalledWith([
+			{ server: 'dead', error: 'fetch failed' },
+			{ server: 'also_dead', error: 'boom' },
+		]);
+	});
+
+	it('does not report MCP connection failures when the manager has none', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'no-mcp-failure-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'no-mcp-failure-run' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.mcpConnectionFailures).not.toHaveBeenCalled();
 	});
 });

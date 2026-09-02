@@ -4,6 +4,8 @@ export type {
 	OutputParserContext,
 	NodeSchemaContext,
 	PinDataGenerationInstructions,
+	DataTableColumnInfo,
+	DeclaredFieldContract,
 } from './types';
 export {
 	AGENT_NODE_TYPE,
@@ -25,3 +27,8 @@ export {
 	type BuildPinDataUserPromptOptions,
 } from './prompt';
 export { parsePinDataResponse, repairStructuredOutput } from './parse';
+export {
+	collectPinFieldViolations,
+	buildFieldViolationRetryMessage,
+	type PinFieldViolation,
+} from './validate';

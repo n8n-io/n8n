@@ -10,6 +10,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
@@ -23,6 +24,8 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const AGENT_ID = 'agent-1';
+const PROJECT_ID = 'project-1';
+const telemetryContext = { user: { id: 'user-1' } as User, modifiedBy: 'user' as const };
 
 const agentTaskGroup = (id = AGENT_ID) => ({ type: 'agent-task', id });
 
@@ -138,6 +141,7 @@ describe('AgentTaskService', () => {
 	let agentExecutionOrchestratorService: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
 	let agentTaskScheduler: ReturnType<typeof mock<ScheduledTaskManager>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
+	let modificationTelemetry: ReturnType<typeof mock<AgentModificationTelemetryService>>;
 	let txManager: { save: Mock; remove: Mock };
 	let service: AgentTaskService;
 
@@ -158,6 +162,7 @@ describe('AgentTaskService', () => {
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
 			publisher,
+			modificationTelemetry,
 		);
 	}
 
@@ -193,6 +198,7 @@ describe('AgentTaskService', () => {
 		agentTaskScheduler.hasTarget.mockReturnValue(false);
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
+		modificationTelemetry = mock<AgentModificationTelemetryService>();
 		// Default to the leader so existing registration assertions hold.
 		service = buildService(true);
 	});
@@ -202,14 +208,19 @@ describe('AgentTaskService', () => {
 			const agent = makeAgent({
 				schema: { name: 'a', model: 'm', instructions: 'i', tasks: [] },
 			} as Partial<Agent>);
-			(agentRepository.findOne as Mock).mockResolvedValue(agent);
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
 
-			const dto = await service.create(AGENT_ID, {
-				name: 'Daily',
-				objective: 'Do X',
-				cronExpression: '0 9 * * *',
-				enabled: true,
-			});
+			const dto = await service.create(
+				AGENT_ID,
+				PROJECT_ID,
+				{
+					name: 'Daily',
+					objective: 'Do X',
+					cronExpression: '0 9 * * *',
+					enabled: true,
+				},
+				telemetryContext,
+			);
 
 			expect(dto.id).toMatch(/^task_/);
 			expect(dto.name).toBe('Daily');
@@ -230,37 +241,45 @@ describe('AgentTaskService', () => {
 
 		it('rejects an invalid cron without creating', async () => {
 			await expect(
-				service.create(AGENT_ID, {
-					name: 'x',
-					objective: 'y',
-					cronExpression: 'not-a-cron',
-					enabled: true,
-				}),
+				service.create(
+					AGENT_ID,
+					PROJECT_ID,
+					{
+						name: 'x',
+						objective: 'y',
+						cronExpression: 'not-a-cron',
+						enabled: true,
+					},
+					telemetryContext,
+				),
 			).rejects.toThrow(BadRequestError);
 			expect(taskRepository.create).not.toHaveBeenCalled();
 		});
 
 		it('does not register a cron job on create (scheduling follows publish)', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(
 				makeAgent({
 					schema: { name: 'a', model: 'm', instructions: 'i', tasks: [] },
 				} as Partial<Agent>),
 			);
 
-			await service.create(AGENT_ID, {
-				name: 'x',
-				objective: 'y',
-				cronExpression: '0 9 * * *',
-				enabled: true,
-			});
+			await service.create(
+				AGENT_ID,
+				PROJECT_ID,
+				{
+					name: 'x',
+					objective: 'y',
+					cronExpression: '0 9 * * *',
+					enabled: true,
+				},
+				telemetryContext,
+			);
 
 			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('createTasks', () => {
-		const PROJECT_ID = 'project-1';
-
 		const taskOneDto = {
 			name: 'Daily summary',
 			objective: 'Do X',
@@ -280,7 +299,12 @@ describe('AgentTaskService', () => {
 			} as Partial<Agent>);
 			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
 
-			const dtos = await service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto, taskTwoDto]);
+			const dtos = await service.createTasks(
+				AGENT_ID,
+				PROJECT_ID,
+				[taskOneDto, taskTwoDto],
+				telemetryContext,
+			);
 
 			expect(dtos).toHaveLength(2);
 			expect(dtos[0].name).toBe('Daily summary');
@@ -298,7 +322,9 @@ describe('AgentTaskService', () => {
 		});
 
 		it('rejects an empty batch before loading or writing anything', async () => {
-			await expect(service.createTasks(AGENT_ID, PROJECT_ID, [])).rejects.toThrow(BadRequestError);
+			await expect(service.createTasks(AGENT_ID, PROJECT_ID, [], telemetryContext)).rejects.toThrow(
+				BadRequestError,
+			);
 
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			expect(taskRepository.create).not.toHaveBeenCalled();
@@ -307,10 +333,12 @@ describe('AgentTaskService', () => {
 
 		it('rejects the whole batch without writing when any cron is invalid', async () => {
 			await expect(
-				service.createTasks(AGENT_ID, PROJECT_ID, [
-					taskOneDto,
-					{ ...taskTwoDto, cronExpression: 'not-a-cron' },
-				]),
+				service.createTasks(
+					AGENT_ID,
+					PROJECT_ID,
+					[taskOneDto, { ...taskTwoDto, cronExpression: 'not-a-cron' }],
+					telemetryContext,
+				),
 			).rejects.toThrow(BadRequestError);
 
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
@@ -321,9 +349,9 @@ describe('AgentTaskService', () => {
 		it('rejects when the agent is not found in the project', async () => {
 			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(null);
 
-			await expect(service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto])).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto], telemetryContext),
+			).rejects.toThrow(NotFoundError);
 
 			expect(taskRepository.create).not.toHaveBeenCalled();
 			expect(txManager.save).not.toHaveBeenCalled();
@@ -334,9 +362,9 @@ describe('AgentTaskService', () => {
 				makeAgent({ schema: null } as Partial<Agent>),
 			);
 
-			await expect(service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto])).rejects.toThrow(
-				BadRequestError,
-			);
+			await expect(
+				service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto], telemetryContext),
+			).rejects.toThrow(BadRequestError);
 
 			expect(taskRepository.create).not.toHaveBeenCalled();
 			expect(txManager.save).not.toHaveBeenCalled();
@@ -369,9 +397,15 @@ describe('AgentTaskService', () => {
 		it('updates body fields without registering a cron (publish-driven)', async () => {
 			const task = makeTask();
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
-			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent());
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(makeAgent());
 
-			const dto = await service.update(AGENT_ID, 'task-1', { cronExpression: '0 10 * * *' });
+			const dto = await service.update(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ cronExpression: '0 10 * * *' },
+				telemetryContext,
+			);
 
 			expect(dto.cronExpression).toBe('0 10 * * *');
 			expect(task.cronExpression).toBe('0 10 * * *');
@@ -383,29 +417,37 @@ describe('AgentTaskService', () => {
 			const task = makeTask();
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
 
-			const dto = await service.update(AGENT_ID, 'task-1', {
-				name: task.name,
-				objective: task.objective,
-				cronExpression: task.cronExpression,
-			});
+			const dto = await service.update(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{
+					name: task.name,
+					objective: task.objective,
+					cronExpression: task.cronExpression,
+				},
+				telemetryContext,
+			);
 
 			expect(dto.cronExpression).toBe(task.cronExpression);
-			expect(agentRepository.findOne).not.toHaveBeenCalled();
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			expect(txManager.save).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when updating a missing task', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
-			await expect(service.update(AGENT_ID, 'missing', { name: 'x' })).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.update(AGENT_ID, PROJECT_ID, 'missing', { name: 'x' }, telemetryContext),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 
 	describe('delete', () => {
 		it('throws NotFoundError when the task is missing', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
-			await expect(service.delete(AGENT_ID, 'missing')).rejects.toThrow(NotFoundError);
+			await expect(
+				service.delete(AGENT_ID, PROJECT_ID, 'missing', telemetryContext),
+			).rejects.toThrow(NotFoundError);
 			expect(txManager.remove).not.toHaveBeenCalled();
 		});
 
@@ -420,9 +462,9 @@ describe('AgentTaskService', () => {
 					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 				},
 			} as Partial<Agent>);
-			(agentRepository.findOne as Mock).mockResolvedValue(agent);
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
 
-			await service.delete(AGENT_ID, 'task-1');
+			await service.delete(AGENT_ID, PROJECT_ID, 'task-1', telemetryContext);
 
 			expect(txManager.remove).toHaveBeenCalledWith(task);
 			expect(agent.schema?.tasks).toEqual([]);
@@ -431,12 +473,47 @@ describe('AgentTaskService', () => {
 		it('does not stop a live cron job until the next publish reconcile', async () => {
 			const task = makeTask();
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
-			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent());
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(makeAgent());
 
-			await service.delete(AGENT_ID, 'task-1');
+			await service.delete(AGENT_ID, PROJECT_ID, 'task-1', telemetryContext);
 
 			expect(agentTaskScheduler.deregisterTarget).not.toHaveBeenCalled();
 		});
+	});
+
+	it('reports task body changes through lifecycle telemetry and stays silent on a no-op', async () => {
+		const task = makeTask();
+		(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+		(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(
+			makeAgent({ integrations: [] }),
+		);
+
+		await service.update(
+			AGENT_ID,
+			PROJECT_ID,
+			'task-1',
+			{ objective: 'Updated objective' },
+			telemetryContext,
+		);
+
+		expect(modificationTelemetry.record).toHaveBeenCalledWith(
+			expect.objectContaining({
+				by: 'user',
+				changedParts: ['tasks'],
+				wasUnconfigured: false,
+			}),
+		);
+
+		vi.clearAllMocks();
+		(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+		await service.update(
+			AGENT_ID,
+			PROJECT_ID,
+			'task-1',
+			{ objective: task.objective },
+			telemetryContext,
+		);
+		expect(modificationTelemetry.record).not.toHaveBeenCalled();
 	});
 
 	describe('registerEnabledForAgent', () => {

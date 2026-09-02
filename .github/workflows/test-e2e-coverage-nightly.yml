@@ -269,13 +269,23 @@ jobs:
 
   # Refresh the committed impact map PRs read for E2E selection. Without this the
   # map only updates on manual commits and drifts, so newly-covered source→spec
-  # couplings get declared uncovered and their E2E specs skipped. Gated on ALL
-  # shards passing (complete map) + aggregate having built it — a partial shard
-  # set yields a degraded map, worse than a stale one.
+  # couplings get declared uncovered and their E2E specs skipped.
+  #
+  # A partial shard set yields a degraded map, worse than a stale one — but that's
+  # about specs that never RAN, not tests that failed. A failing test still emits
+  # coverage for its spec, so `failure` is allowed through and completeness is
+  # enforced on the map itself (see the spec-count guard below). `cancelled` is not:
+  # a timed-out shard means its specs never reported.
+  #
+  # `!cancelled()` is load-bearing for the job-level skip: a failing unit-coverage
+  # leg (which feeds the combined lcov, not the impact map) would otherwise
+  # transitively skip this job even with e2e + aggregate green.
+  # Default-branch-only: a dispatch from a feature branch would cut the refresh
+  # branch from that branch's HEAD and automerge it.
   commit-impact-map:
     name: Commit refreshed impact map
     needs: [e2e, aggregate]
-    if: needs.e2e.result == 'success' && needs.aggregate.result == 'success'
+    if: ${{ !cancelled() && github.ref_name == github.event.repository.default_branch && needs.e2e.result != 'cancelled' && needs.e2e.result != 'skipped' && needs.aggregate.result == 'success' }}
     runs-on: ubuntu-latest
     # Least-privilege GITHUB_TOKEN: checkout + download-artifact only need read;
     # the branch push + PR are done with the scoped app token below, not this token.
@@ -312,15 +322,23 @@ jobs:
       - name: Copy impact map into place
         run: |
           MAP=/tmp/coverage-report/impact-map.json
-          # Guard: a missing/empty map is a build hiccup — keep the committed map
-          # rather than clobber it with a degraded one.
+          # Completeness guard. This, not the job's e2e result, is what keeps a
+          # degraded map out: a lost shard shows up as a drop in spec count against
+          # the map we already trust. 5% absorbs legitimately deleted specs while
+          # still catching a missing shard (16 shards, so ~6% of specs each).
           node -e '
             const fs = require("fs");
             const m = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
             const n = Array.isArray(m.specs) ? m.specs.length : 0;
             if (!n) { console.error("impact map has no specs — refusing to commit"); process.exit(1); }
+            const current = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+            const floor = Math.floor((Array.isArray(current.specs) ? current.specs.length : 0) * 0.95);
+            if (n < floor) {
+              console.error("impact map has " + n + " specs, expected at least " + floor + " — refusing to commit a degraded map");
+              process.exit(1);
+            }
             console.log("impact map ok: " + n + " specs");
-          ' "$MAP"
+          ' "$MAP" .github/test-metrics/e2e-impact-map.json
           # Raw copy: the map is intentionally minified and biome-ignored
           # (.github/test-metrics/**). Do NOT format it.
           cp "$MAP" .github/test-metrics/e2e-impact-map.json
@@ -362,7 +380,9 @@ jobs:
 
   approve-and-automerge:
     needs: [commit-impact-map]
-    if: needs.commit-impact-map.outputs.pull-request-number != ''
+    # `!cancelled()` for the same reason as commit-impact-map, or the refresh PR
+    # opens and never merges.
+    if: ${{ !cancelled() && needs.commit-impact-map.outputs.pull-request-number != '' }}
     uses: ./.github/workflows/util-approve-and-set-automerge.yml
     secrets: inherit
     with:

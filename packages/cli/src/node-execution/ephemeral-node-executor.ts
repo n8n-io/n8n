@@ -100,8 +100,11 @@ function stripAgentToolSuffix(nodeType: string): string {
  * marked `usableAsTool`. They expose the full provider API (image generation,
  * audio, files, embeddings, etc.) — not just chat completion — and are
  * designed to back LangChain agents rather than be called as agent tools, so
- * they ship without the flag. Surfacing them here lets the agent builder use
- * e.g. OpenAI image generation as a tool.
+ * they ship without the flag. This is a backward-compatibility allowance:
+ * agents that already have a provider node attached keep executing. Discovery
+ * deliberately excludes provider nodes via
+ * `AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES`, so no new agent can pick
+ * one up.
  *
  * Scope this list to *provider* nodes only. Don't add the agent node itself,
  * the LM Chat sub-models (`lmChatOpenAi`, etc.), or generic LangChain helpers
@@ -202,6 +205,13 @@ export class EphemeralNodeExecutor {
 		const verified: Record<string, INodeCredentialsDetails> = {};
 
 		for (const [credType, d] of Object.entries(details)) {
+			// Managed credentials have no stored row — the gateway mints them per
+			// execution (CredentialsHelper.getDecrypted) — so skip the project lookup.
+			if (d.__aiGatewayManaged) {
+				verified[credType] = { id: null, name: d.name, __aiGatewayManaged: true };
+				continue;
+			}
+
 			if (!d.id) {
 				throw new UserError(
 					`Credential reference for "${credType}" is missing an id (required for execution).`,

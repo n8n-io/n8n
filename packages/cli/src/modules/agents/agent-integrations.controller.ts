@@ -1,6 +1,7 @@
 import {
 	AgentDisconnectIntegrationDto,
 	AgentIntegrationSchema,
+	isDraftIntegration,
 	type AgentIntegrationStatusResponse,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
@@ -15,8 +16,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
-import { AgentPublishService } from './agent-publish.service';
-import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
@@ -27,13 +26,11 @@ import { AgentRepository } from './repositories/agent.repository';
 export class AgentIntegrationsController {
 	constructor(
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly agentPublishService: AgentPublishService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly slackAppSetupService: SlackAppSetupService,
-		private readonly agentRunnableStateService: AgentRunnableStateService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
@@ -74,28 +71,17 @@ export class AgentIntegrationsController {
 			);
 		}
 
-		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
-			broadcast: false,
-		});
-		const { agent: publishedAgent, draftValidation } = await this.agentPublishService.publishAgent(
-			agentId,
-			agent.projectId,
-			req.user,
-			undefined,
-			{ syncIntegrations: false },
+		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
+			agent,
+			integration,
+			{ user: req.user, modifiedBy: 'user', broadcast: false },
 		);
+		if (savedAgent.activeVersionId === null) return { status: 'configured' };
+
 		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
-		return {
-			status: 'connected',
-			agent: await this.agentRunnableStateService.addRunnableState(
-				publishedAgent,
-				agent.projectId,
-				req.user,
-				draftValidation,
-			),
-		};
+		return { status: 'connected' };
 	}
 
 	@Post('/:agentId/integrations/slack/app')
@@ -199,7 +185,7 @@ export class AgentIntegrationsController {
 			agent,
 			type,
 			credentialId,
-			{ broadcast: false },
+			{ user: req.user, modifiedBy: 'user', broadcast: false },
 		);
 
 		return { status: 'disconnected' };
@@ -215,13 +201,24 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const chatIntegrations = (agent.integrations ?? []).map((i) => ({
-			type: i.type,
-			credentialId: i.credentialId,
-			...('settings' in i ? { settings: i.settings } : {}),
-		}));
+		// Draft entries (`credentialId: ''`) written during the initial build so
+		// the panel can show a needs-setup chip aren't a real connection — report
+		// them as disconnected so channel-setup UIs don't render an already-
+		// connected state and hide their own setup form.
+		const chatIntegrations = (agent.integrations ?? [])
+			.filter((i) => !isDraftIntegration(i))
+			.map((i) => ({
+				type: i.type,
+				credentialId: i.credentialId,
+				...('settings' in i ? { settings: i.settings } : {}),
+			}));
 		return {
-			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
+			status:
+				chatIntegrations.length === 0
+					? 'disconnected'
+					: agent.activeVersionId === null
+						? 'configured'
+						: 'connected',
 			integrations: chatIntegrations,
 		};
 	}
@@ -234,14 +231,30 @@ export class AgentIntegrationsController {
 		res: Response,
 	) {
 		const { agentId, platform } = req.params;
-		const webhookHandler = this.chatIntegrationService.getWebhookHandler(agentId, platform);
+		const integration = this.chatIntegrationRegistry.get(platform);
+		const resolution = integration?.resolveWebhookRequest?.({
+			headers: req.headers,
+			body: req.body,
+		});
+		if (resolution?.type === 'reject') {
+			res.status(resolution.response.status).json(resolution.response.body);
+			return;
+		}
+
+		const webhookHandler =
+			resolution?.type === 'no_match'
+				? undefined
+				: this.chatIntegrationService.getWebhookHandler(
+						agentId,
+						platform,
+						resolution?.type === 'select' ? resolution.connectionSelector : undefined,
+					);
 
 		if (!webhookHandler) {
 			// Allow platforms to respond to setup-time webhooks (e.g. Slack's
 			// `url_verification` challenge) before credentials are configured,
 			// so the user doesn't have to come back and re-verify URLs after
 			// connecting the credential.
-			const integration = this.chatIntegrationRegistry.get(platform);
 			const earlyResponse = integration?.handleUnauthenticatedWebhook?.(req.body);
 			if (earlyResponse) {
 				res.status(earlyResponse.status).json(earlyResponse.body);

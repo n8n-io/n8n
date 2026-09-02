@@ -17,11 +17,18 @@ export {
 	dropDevDepOnlyDeps,
 	changedRuntimeDeps,
 	changedRuntimeDepsFromManifests,
+	changedOverrideTargets,
 	stripDependencyFiles,
 	RUNTIME_SECTIONS,
 	type ManifestChangeKind,
 } from './changes.js';
-export { dependentDirs, type WorkspaceImporters } from './dep-graph.js';
+export {
+	dependentDirs,
+	runtimeClosure,
+	type WorkspaceImporters,
+	type LockfileImporters,
+	type LockfileSnapshots,
+} from './dep-graph.js';
 export type { DiscoveredSpec } from './types.js';
 
 // Strategy + Pipeline selection layer.

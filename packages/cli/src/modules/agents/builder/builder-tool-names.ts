@@ -2,6 +2,10 @@
  * Tool names used by the agent builder. Centralised so tool implementations,
  * prompts, and tests can't drift on string typos.
  *
+ * Keep registered tool IDs stable — they are part of the model/tool contract
+ * and may appear in checkpoints. Prefer clearer descriptions and UI i18n
+ * labels over renaming existing IDs.
+ *
  * The interactive tools (`ask_credential`, `ask_embedding_credential`,
  * `ask_questions`, `configure_channel`) are NOT listed here — their names live
  * in `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
@@ -17,9 +21,12 @@ export const BUILDER_TOOLS = {
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILLS: 'create_skills',
 	CREATE_TASKS: 'create_tasks',
+	FINISH_SETUP: 'finish_setup',
 	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
+	LIST_WORKFLOWS: 'list_workflows',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',
+	CALL_AGENT: 'call_agent',
 	PUBLISH_AGENT: 'publish_agent',
 	UNPUBLISH_AGENT: 'unpublish_agent',
 	RESOLVE_INTEGRATION: 'resolve_integration',

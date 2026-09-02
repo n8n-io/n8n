@@ -35,7 +35,7 @@ import { useEnvironmentsStore } from '@/features/settings/environments.ee/enviro
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/app/utils/typesUtils';
 import type { INodeUi, TargetNodeParameterContext } from '@/Interface';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
