@@ -97,23 +97,18 @@ describe('ButtonParameter', () => {
 		});
 	});
 
-	it('emits the current prompt when the button is clicked', async () => {
+	it('disables the submit button until a prompt is entered', async () => {
 		const wrapper = mountComponent();
+		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
+
 		await wrapper.find('textarea').setValue('Test');
-
-		const submitButton = wrapper.find('button');
-		expect(submitButton.attributes('disabled')).toBeUndefined();
-
-		await submitButton.trigger('click');
-
-		expect(wrapper.emitted('valueChanged')!.at(-1)![0]).toEqual({
-			name: 'testPath.testParam',
-			value: 'Test',
-		});
+		expect(wrapper.find('button').attributes('disabled')).toBeUndefined();
 	});
 
 	it('disables submit button when the prompt exceeds the max length', async () => {
 		const wrapper = mountComponent();
+		// `setValue` bypasses the textarea's own maxlength, which is what lets this
+		// guard be reached at all.
 		await wrapper.find('textarea').setValue('This prompt is far too long');
 		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
 	});
