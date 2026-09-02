@@ -1,0 +1,34 @@
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_4c18656e778e6e::t_4a432232287f71 6-7
+  s_4c18656e778e6e::t_eedaca42ed1f07 59-60
+  s_4c18656e778e6e::t_50559500702a20 16-17
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_4c18656e778e6e::t_730700622c70a9 32
+packages/cli/src/modules/n8n-packages/__tests__/export-stable-targets.integration.test.ts
+  s_4c18656e778e6e::t_88f073c8362116 311-312
+  s_4c18656e778e6e::t_86f20ef3969206 291-292
+  s_4c18656e778e6e::t_65094481f1af7c 67-68
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_4c18656e778e6e::t_b8a26ea1bba802 169
+  s_4c18656e778e6e::t_9475fbe5f423e5 51
+  s_4c18656e778e6e::t_f63fbf45047e98 129-130
+  s_4c18656e778e6e::t_976ba1df968588 43
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_4c18656e778e6e::t_2c9c5eb0053dcb 189-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "125d688011280be4b6f4cb1668dc5c6856648a9c",
+  "prompts": {},
+  "sessions": {
+    "s_4c18656e778e6e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8903f280-582a-4faa-85a8-dec07e3136f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}
