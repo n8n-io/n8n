@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.limit.workflow.json
+  s_ebd7b9f2821ae5::t_b5c9391400acac 1-103
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.test.ts
+  s_ebd7b9f2821ae5::t_b5c9391400acac 44-73,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5dbdd12438d9d41ddd6f7c672923931de184cb16",
+  "prompts": {},
+  "sessions": {
+    "s_ebd7b9f2821ae5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74f2c17b-04a6-4afc-bf2c-d5405449b36a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
