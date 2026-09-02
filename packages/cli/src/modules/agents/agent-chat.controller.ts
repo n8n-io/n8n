@@ -294,12 +294,21 @@ export class AgentChatController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const messages = await this.agentTestChatService.getTestChatMessages(agentId, req.user.id);
+		const threadId = chatThreadId(agentId, req.user.id);
+		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
+			threadId,
+			projectId,
+			agentId,
+		});
+		// Execution history includes failed turns; memory is a fallback for legacy chats.
+		const messages =
+			history ??
+			messagesToDto(await this.agentTestChatService.getTestChatMessages(agentId, req.user.id));
 		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 			agentId,
-			chatThreadId(agentId, req.user.id),
+			threadId,
 		);
-		return withOpenSuspensions(messagesToDto(messages), checkpoint);
+		return withOpenSuspensions(messages, checkpoint);
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')
@@ -368,7 +377,7 @@ export class AgentChatController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.agentTestChatService.clearTestChatMessages(agentId, req.user.id);
+		await this.agentTestChatService.clearTestChatMessages(agentId, req.user.id, projectId);
 		return { ok: true };
 	}
 }
