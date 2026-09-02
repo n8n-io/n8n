@@ -1,7 +1,7 @@
 import { ChatTriggerConfig } from '@n8n/config/src';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
-import type { INode, IWebhookFunctions } from 'n8n-workflow';
+import type { CredentialCheckResult, INode, IWebhookFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatTrigger } from '../ChatTrigger.node';
@@ -39,9 +39,20 @@ describe('ChatTrigger Node', () => {
 
 		mockResponse.status.mockReturnValue(mockResponse);
 		mockResponse.send.mockReturnValue(mockResponse);
+		mockResponse.json.mockReturnValue(mockResponse);
 		mockResponse.end.mockReturnValue(mockResponse);
 		mockResponse.writeHead.mockReturnValue(mockResponse);
 		mockResponse.flushHeaders.mockImplementation(() => mockResponse);
+
+		// No identity established / dynamic credentials disabled by default - the gate
+		// is a no-op unless a test opts in with a readiness result.
+		mockContext.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+		mockContext.logger = {
+			warn: vi.fn(),
+			error: vi.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+		} as unknown as IWebhookFunctions['logger'];
 
 		// Provide socket methods required by the streaming keepalive configuration
 		mockRequest.socket = {
@@ -415,6 +426,99 @@ describe('ChatTrigger Node', () => {
 				'www-authenticate': 'Basic realm="Webhook"',
 			});
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
+
+	describe('message-send credential readiness gate', () => {
+		const notReady: CredentialCheckResult = {
+			readyToExecute: false,
+			credentials: [
+				{
+					credentialId: 'cred-missing',
+					credentialName: 'My Gmail',
+					credentialType: 'gmailOAuth2',
+					resolverId: 'resolver-1',
+					status: 'missing',
+					authorizationUrl: 'https://example.com/authorize',
+					revokeUrl: 'https://example.com/revoke',
+				},
+			],
+		};
+
+		it('rejects the message and creates no execution when a required credential is missing', async () => {
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReady);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).toHaveBeenCalledWith(428);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				status: 'credential_connections_required',
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-missing',
+						credentialName: 'My Gmail',
+						credentialType: 'gmailOAuth2',
+						credentialStatus: 'missing',
+					},
+				],
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('enqueues the execution when the check reports ready', async () => {
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue({
+				readyToExecute: true,
+				credentials: [],
+			});
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).not.toHaveBeenCalledWith(428);
+			expect(result).toMatchObject({
+				webhookResponse: { status: 200 },
+				workflowData: expect.any(Array),
+			});
+		});
+
+		it('enqueues the execution when no check applies (no identity established)', async () => {
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				webhookResponse: { status: 200 },
+				workflowData: expect.any(Array),
+			});
+		});
+
+		it('fails closed with 503 when the check throws', async () => {
+			const error = new Error('could not decrypt credential context');
+			mockContext.checkTriggerCredentialStatus.mockRejectedValue(error);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).toHaveBeenCalledWith(503);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				status: 'credential_readiness_check_failed',
+			});
+			expect(mockContext.logger.error).toHaveBeenCalledWith(
+				'Chat trigger credential readiness check failed',
+				{ error },
+			);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('excludes loadPreviousSession requests from the gate', async () => {
+			mockContext.getBodyData.mockReturnValue({ action: 'loadPreviousSession' });
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReady);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.checkTriggerCredentialStatus).not.toHaveBeenCalled();
+			expect(mockResponse.status).not.toHaveBeenCalledWith(428);
+			expect(result).toEqual({ webhookResponse: { data: [] } });
 		});
 	});
 

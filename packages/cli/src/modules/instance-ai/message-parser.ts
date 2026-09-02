@@ -85,6 +85,7 @@ function isRenderableTree(tree: InstanceAiAgentNode): boolean {
 		tree.reasoning.length > 0 ||
 		(tree.planItems?.length ?? 0) > 0 ||
 		!!tree.tasks ||
+		!!tree.setupItemsByWorkflowId ||
 		!!tree.statusMessage ||
 		!!tree.result ||
 		!!tree.error

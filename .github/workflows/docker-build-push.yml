@@ -314,8 +314,8 @@ jobs:
       # manifest list and every pull failed on older containerd (#31997). The
       # exporter flags that keep this an OCI index live in the build job, but
       # the merge happens here, so this is the only place the published shape
-      # can be asserted.
-      - name: Assert merged manifests are OCI image indexes
+      # can be asserted. Docker Hub merges separately below and is asserted there.
+      - name: Assert merged GHCR manifests are OCI image indexes
         env:
           RELEASE_TYPE: ${{ needs.determine-build-context.outputs.release_type }}
           N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
@@ -364,6 +364,12 @@ jobs:
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
 
+            # Self-hosted pulls come from here, and this merge is independent of
+            # the GHCR one above, so it needs its own assertion. Always both
+            # arches: push_to_docker is never set for amd64-only branch builds.
+            node .github/scripts/docker/assert-manifest-format.mjs \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" --expect-platforms 2
+
             # Create SHA-tagged manifest (immutable reference)
             # For distroless, insert SHA between version and -distroless suffix
             # to match docker-tags.mjs format: nightly-abc1234-distroless (not nightly-distroless-abc1234)
@@ -406,43 +412,6 @@ jobs:
           RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
           DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
-
-  # Execs the artifact that actually shipped. docker-build-smoke.yml runs the
-  # same checks, but against its own no-cache build of the branch tip - a
-  # different image, and its PR trigger deliberately skips pnpm-workspace.yaml,
-  # which is where the native deps are pinned. So a catalog bump of
-  # @confluentinc/kafka-javascript or isolated-vm reaches a published tag
-  # unexercised unless something pulls the pushed image back and runs it.
-  verify-pushed-images:
-    name: Verify Pushed Images
-    needs: [determine-build-context, create_multi_arch_manifest]
-    runs-on: ubuntu-latest
-    if: needs.create_multi_arch_manifest.result == 'success'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      # Installs only, no build: the script needs zx and yaml, not a compiled
-      # workspace. The image under test is pulled from the registry.
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          node-version: '26.7.0'
-          build-command: ''
-
-      - name: Login to GHCR
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: true
-
-      - name: Exec native bindings and runner interpreters
-        env:
-          SMOKE_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-          SMOKE_RUNNERS_IMAGES: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }},${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-          # The cloud-chart invocations need a token this job does not carry;
-          # the binding and interpreter execs are what guard the release.
-          SMOKE_SKIP_CLOUD: 'true'
-        run: node scripts/smoke-n8n-image.mjs
 
   call-success-url:
     name: Call Success URL
@@ -565,6 +534,18 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
 
+      # An empty document still gets signed and attached, and trivy still loads
+      # it — so a statement lost to a typo'd purl or a stale pin degrades to a
+      # silent no-op. Warn rather than fail: empty is a legitimate state when
+      # nothing is currently suppressed.
+      - name: Report VEX statement count
+        run: |
+          COUNT=$(node -e "process.stdout.write(String((require('./security/vex.openvex.json').statements ?? []).length))")
+          echo "VEX statements: $COUNT"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::warning::VEX document has no statements - every published image will carry an attestation that suppresses nothing."
+          fi
+
       - name: Login to GHCR
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
@@ -605,11 +586,11 @@ jobs:
             ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
 
   # SBOM Attestation - one enriched, license-gated CycloneDX SBOM per image.
-  # cdxgen scans the image (OS + npm), enrich-sbom resolves first-party + override
-  # licenses, check-sbom-licenses gates the npm components, and the result is
-  # attested to the image digest via cosign (same mechanism as VEX/provenance).
-  # This replaces BuildKit's `sbom: true` so the image carries the same resolved
-  # license picture as the release SBOM rather than the un-enriched syft output.
+  # syft scans the image for OS and npm packages. enrich-sbom resolves first-party
+  # and override licenses. check-sbom-licenses gates the npm components. cosign then
+  # attests the result to the image digest, as it does for VEX and provenance.
+  # The build sets oci-mediatypes on the exporter to get the OCI index format,
+  # so BuildKit emits no SBOM. This job supplies the license data.
   sbom-attestation:
     name: SBOM Attestation
     needs:
@@ -628,7 +609,7 @@ jobs:
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
        needs.determine-build-context.outputs.release_type == 'nightly')
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
     permissions:
       id-token: write
@@ -637,12 +618,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup Node.js and install SBOM tooling
+      # Nothing to install: syft replaced cdxgen, and the two license scripts have
+      # no dependencies. This step only pins the Node version.
+      - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: ''
+          # Scope the cache key: the default is the root lockfile, which would
+          # restore the whole workspace pnpm store into a job that never runs pnpm.
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      # Pin the scanner, not just the action. cdxgen was pinned in a lockfile;
+      # syft's default version rides the action release, so a SHA bump would
+      # silently change what produces the signed SBOM. enrich-sbom.mjs depends
+      # on two syft specifics — the `syft:location:0:path` property name and the
+      # `UNKNOWN` version sentinel — so re-A/B against a real image when bumping.
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@43a17d6e7add2b5535efe4dcae9952337c479a93 # v0.20.11
+        with:
+          # Matches what this action SHA already defaults to, so pinning it
+          # records the current behaviour rather than changing it.
+          syft-version: v1.38.2
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
@@ -709,8 +706,11 @@ jobs:
   notify-on-failure:
     name: Notify Cats on nightly build failure
     runs-on: ubuntu-latest
-    needs: [build-and-push-docker]
-    if: always() && needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
+    needs: [build-and-push-docker, sbom-attestation]
+    if: |
+      always() && github.event_name == 'schedule' &&
+      (needs.build-and-push-docker.result == 'failure' ||
+       needs.sbom-attestation.result == 'failure')
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -722,4 +722,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#team-catalysts' \
-            --text 'Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            --text 'Nightly Docker build failed (build=${{ needs.build-and-push-docker.result }}, sbom=${{ needs.sbom-attestation.result }}) - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

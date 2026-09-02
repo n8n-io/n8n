@@ -17,6 +17,7 @@
  * and left these runner-side ones in place).
  */
 import { createHttpsProxyAgent, resolveProxyUrl } from '@n8n/backend-network/proxy'; // `@n8n/backend-network/proxy` is a DI-free subpath: it pulls in only the proxy-agent libs
+import { lookup as defaultLookup } from 'node:dns';
 import type { AgentOptions } from 'node:https';
 import type { LookupFunction } from 'node:net';
 /* eslint-disable n8n-local-rules/no-uncentralized-http -- raw dispatchers for AI SDK `fetchOptions`; see block comment above */
@@ -44,29 +45,32 @@ const DEFAULT_TIMEOUT = parseInt(process.env.N8N_AI_TIMEOUT_MAX ?? '3600000', 10
 const PROXY_FALLBACK_TARGET = 'https://example.nonexistent/';
 
 /**
+ * Agent shared by every caller that needs no proxy, no timeout overrides and the
+ * plain system DNS lookup, so those callers keep a single connection pool instead
+ * of building an agent (and a pool) per request.
+ */
+let sharedAgent: Agent | undefined;
+
+/**
  * Returns an undici Agent or ProxyAgent with configured timeouts based on the environment variables and target URL.
  * When target URL is not provided, NO_PROXY environment variable is not respected.
  *
  * @param targetUrl - The target URL to check proxy configuration for (optional)
- * @param timeoutOptions - Optional timeout configuration to override defaults. When provided,
- *                         always returns an Agent/ProxyAgent (even without proxy) to ensure timeouts are applied.
- * @param lookup - Optional DNS lookup to pin the resolved address at connect time (e.g. an egress
- *                 filter's secure lookup). When provided (without a proxy) an Agent is always returned.
- * @returns An Agent (no proxy with timeout options, a lookup, or `N8N_AI_TIMEOUT_MAX` set) or ProxyAgent
- *          (with proxy) configured with timeouts, or undefined if no proxy, timeout options, lookup, nor
- *          `N8N_AI_TIMEOUT_MAX` are provided/set (backward compatible behavior).
+ * @param timeoutOptions - Optional timeout configuration to override defaults.
+ * @param lookup - Connect-time DNS lookup, applied to every Agent this builds.
+ *                 Defaults to the plain system lookup.
+ * @returns A ProxyAgent when a proxy applies to the target, otherwise an Agent. Callers using the
+ *          defaults (no timeout options, no `N8N_AI_TIMEOUT_MAX`, plain lookup) share one Agent.
  *
  * @remarks
- * When timeoutOptions are provided, this function always returns an agent to ensure timeouts are properly configured.
- * The default undici timeouts (5 minutes) are too short for many AI operations.
- * When timeoutOptions are NOT provided, this still returns an agent if `N8N_AI_TIMEOUT_MAX` is set,
- * so the env override isn't silently ignored just because no proxy is configured. Otherwise, returns
- * undefined if no proxy is configured (backward compatible).
+ * The default undici timeouts (5 minutes) are too short for many AI operations, so an agent is
+ * always returned rather than falling back to undici's global dispatcher. `N8N_AI_TIMEOUT_MAX`
+ * is honoured even when no proxy and no explicit timeout options are configured.
  */
 export function getProxyAgent(
 	targetUrl?: string,
 	timeoutOptions?: AgentTimeoutOptions,
-	lookup?: LookupFunction,
+	lookup: LookupFunction = defaultLookup,
 ) {
 	const proxyUrl = resolveProxyUrl(targetUrl, PROXY_FALLBACK_TARGET);
 
@@ -78,37 +82,45 @@ export function getProxyAgent(
 		}),
 	};
 
-	if (!proxyUrl) {
-		if (lookup) {
-			return new Agent({ ...agentOptions, connect: { lookup } });
-		}
-		if (timeoutOptions) {
-			return new Agent(agentOptions);
-		}
-		if (process.env.N8N_AI_TIMEOUT_MAX) {
-			return new Agent(agentOptions);
-		}
-		return undefined;
+	if (proxyUrl) {
+		return new ProxyAgent({ uri: proxyUrl, ...agentOptions });
 	}
 
-	return new ProxyAgent({ uri: proxyUrl, ...agentOptions });
+	const isDefaultCase =
+		!timeoutOptions && !process.env.N8N_AI_TIMEOUT_MAX && lookup === defaultLookup;
+
+	if (isDefaultCase) {
+		sharedAgent ??= new Agent({ ...agentOptions, connect: { lookup } });
+		return sharedAgent;
+	}
+
+	return new Agent({ ...agentOptions, connect: { lookup } });
+}
+
+/**
+ * Options for {@link proxyFetch}.
+ */
+export interface ProxyFetchOptions {
+	/** The URL to fetch */
+	input: RequestInfo | URL;
+	/** Standard fetch RequestInit options */
+	init?: RequestInit;
+	/** Optional timeout configuration to override defaults */
+	timeoutOptions?: AgentTimeoutOptions;
+	/** Connect-time DNS lookup, e.g. an egress filter's secure lookup */
+	lookup: LookupFunction;
 }
 
 /**
  * Make a fetch() request with an Agent/ProxyAgent that has configured timeouts.
  * If proxy environment variables are set, uses ProxyAgent; otherwise uses Agent.
- *
- * @param input - The URL to fetch
- * @param init - Standard fetch RequestInit options
- * @param timeoutOptions - Optional timeout configuration to override defaults
- * @param lookup - Optional connect-time DNS lookup (e.g. an egress filter's secure lookup)
  */
-export async function proxyFetch(
-	input: RequestInfo | URL,
-	init?: RequestInit,
-	timeoutOptions?: AgentTimeoutOptions,
-	lookup?: LookupFunction,
-): Promise<Response> {
+export async function proxyFetch({
+	input,
+	init,
+	timeoutOptions,
+	lookup,
+}: ProxyFetchOptions): Promise<Response> {
 	const targetUrl = input instanceof Request ? input.url : input.toString();
 	const dispatcher = getProxyAgent(targetUrl, timeoutOptions, lookup);
 

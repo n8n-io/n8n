@@ -23,6 +23,7 @@ import {
 function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiContext {
 	return {
 		userId: 'test-user',
+		threadId: 'thread-1',
 		workflowService: {
 			list: vi.fn(),
 			get: vi.fn(),
@@ -1426,6 +1427,8 @@ describe('applyNodeChanges', () => {
 			credential_type: 'slackApi',
 			node_type: 'n8n-nodes-base.slack',
 			workflow_id: 'wf-1',
+			credential_id: 'cred-1',
+			thread_id: 'thread-1',
 			credential_kind: 'own',
 			source: 'instance-ai-confirmed',
 		});
@@ -1459,6 +1462,8 @@ describe('applyNodeChanges', () => {
 			credential_type: 'httpBearerAuth',
 			node_type: 'n8n-nodes-base.httpRequest',
 			workflow_id: 'wf-1',
+			credential_id: 'cred-bearer',
+			thread_id: 'thread-1',
 			credential_kind: 'own',
 			source: 'instance-ai-confirmed',
 		});
@@ -1481,6 +1486,8 @@ describe('applyNodeChanges', () => {
 			credential_type: 'slackApi',
 			node_type: 'n8n-nodes-base.slack',
 			workflow_id: 'wf-1',
+			credential_id: 'cred-1',
+			thread_id: 'thread-1',
 			credential_kind: 'own',
 			source: 'instance-ai-auto',
 		});
@@ -1505,7 +1512,7 @@ describe('applyNodeChanges', () => {
 
 		expect(track).toHaveBeenCalledWith(
 			'Node credential assigned',
-			expect.objectContaining({ source: 'instance-ai-confirmed' }),
+			expect.objectContaining({ source: 'instance-ai-confirmed', credential_id: 'cred-1' }),
 		);
 		expect(context.credentialService.list).not.toHaveBeenCalled();
 	});
@@ -1527,6 +1534,8 @@ describe('applyNodeChanges', () => {
 			'Node credential assigned',
 			expect.objectContaining({
 				credential_type: 'slackApi',
+				credential_id: null,
+				thread_id: 'thread-1',
 				credential_kind: 'n8n_connect',
 				source: 'instance-ai-auto',
 			}),
@@ -1551,6 +1560,7 @@ describe('applyNodeChanges', () => {
 		expect(track).toHaveBeenCalledWith(
 			'Node credential assigned',
 			expect.objectContaining({
+				credential_id: null,
 				credential_kind: 'n8n_connect',
 				source: 'instance-ai-confirmed',
 			}),
@@ -2149,6 +2159,7 @@ describe('applyCredentialHints', () => {
 		applyCredentialHints(requests, [hint()]);
 
 		expect(requests[0].setupHint?.serviceHost).toBe('queue.fal.run');
+		expect(requests[0].setupHint?.serviceOrigin).toBe('https://queue.fal.run');
 	});
 
 	it('stamps each request with its own node host from a shared type-wide hint', () => {
@@ -2165,16 +2176,20 @@ describe('applyCredentialHints', () => {
 		expect(requests[0].setupHint?.serviceHost).toBe('api.pexels.com');
 		expect(requests[1].setupHint?.serviceHost).toBe('api.apify.com');
 		expect(shared).not.toHaveProperty('serviceHost');
+		expect(requests[0].setupHint?.serviceOrigin).toBe('https://api.pexels.com');
+		expect(requests[1].setupHint?.serviceOrigin).toBe('https://api.apify.com');
+		expect(shared).not.toHaveProperty('serviceOrigin');
 	});
 
-	it('omits serviceHost when the node URL is not derivable', () => {
+	it('omits service identity when the node URL is not derivable', () => {
 		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
 		requests[0].node.parameters = { url: '={{ $json.url }}' };
 
-		applyCredentialHints(requests, [hint()]);
+		applyCredentialHints(requests, [hint({ testUrl: 'https://fal.run/v1/models' })]);
 
 		expect(requests[0].setupHint).toBeDefined();
 		expect(requests[0].setupHint).not.toHaveProperty('serviceHost');
+		expect(requests[0].setupHint).not.toHaveProperty('serviceOrigin');
 	});
 });
 

@@ -1,3 +1,4 @@
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
@@ -44,6 +45,8 @@ const StartExecutionBody = z.object({
 	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
 	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
 	mode: z.enum(['production', 'manual']).optional(),
+	/** The caller mints the id. v7 only, so ids stay time-ordered. */
+	executionId: z.string().regex(UUID_V7_PATTERN),
 });
 
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {

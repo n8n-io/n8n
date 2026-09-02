@@ -574,7 +574,7 @@ export function extendOptional(
 	};
 }
 
-const EXTENDED_SYNTAX_CACHE: Record<string, string> = {};
+const EXTENDED_SYNTAX_CACHE = new Map<string, string>();
 
 export function extendSyntax(bracketedExpression: string, forceExtend = false): string {
 	const chunks = splitExpression(bracketedExpression);
@@ -591,8 +591,9 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 	}
 
 	// If we've seen this expression before grab it from the cache
-	if (bracketedExpression in EXTENDED_SYNTAX_CACHE) {
-		return EXTENDED_SYNTAX_CACHE[bracketedExpression];
+	const cachedExpression = EXTENDED_SYNTAX_CACHE.get(bracketedExpression);
+	if (cachedExpression !== undefined) {
+		return cachedExpression;
 	}
 
 	const extendedChunks = chunks.map((chunk): ExpressionChunk => {
@@ -628,6 +629,6 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 
 	const expression = joinExpression(extendedChunks);
 	// Cache the expression so we don't have to do this transform again
-	EXTENDED_SYNTAX_CACHE[bracketedExpression] = expression;
+	EXTENDED_SYNTAX_CACHE.set(bracketedExpression, expression);
 	return expression;
 }

@@ -19,6 +19,15 @@ function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: Mock
 	};
 }
 
+/**
+ * A live list that contains the provider's maintained default, i.e. the happy
+ * path where the credential can actually reach it.
+ */
+function makeModelLookupServingDefault(credentialType: string) {
+	const { defaultModel } = LLM_PROVIDER_DEFAULTS[credentialType];
+	return makeModelLookup(async () => [{ name: defaultModel, value: defaultModel }]);
+}
+
 function makeFreeCredits(
 	isEligibleImpl?: FreeCreditsProvisioner['isEligible'],
 	claimImpl?: FreeCreditsProvisioner['claim'],
@@ -40,7 +49,7 @@ describe('resolve_llm tool', () => {
 			{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
 			{ id: 'c2', name: 'My Slack', type: 'slackApi' },
 		]);
-		const modelLookup = makeModelLookup();
+		const modelLookup = makeModelLookupServingDefault('openAiApi');
 		const tool = buildResolveLlmTool({
 			credentialProvider,
 			modelLookup,
@@ -55,7 +64,8 @@ describe('resolve_llm tool', () => {
 			credentialId: 'c1',
 			credentialName: 'My OpenAI',
 		});
-		expect(modelLookup.list).not.toHaveBeenCalled();
+		// The default is verified against the credential's live list, not trusted.
+		expect(modelLookup.list).toHaveBeenCalledWith('c1', 'openAiApi', 'openai');
 	});
 
 	it('auto-resolves the requested provider when multiple LLM-provider credentials exist', async () => {
@@ -63,7 +73,7 @@ describe('resolve_llm tool', () => {
 			{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
 			{ id: 'c2', name: 'My OpenRouter', type: 'openRouterApi' },
 		]);
-		const modelLookup = makeModelLookup();
+		const modelLookup = makeModelLookupServingDefault('openRouterApi');
 		const tool = buildResolveLlmTool({
 			credentialProvider,
 			modelLookup,
@@ -300,7 +310,7 @@ describe('resolve_llm tool', () => {
 				{ id: 'c1', name: 'Personal OpenRouter', type: 'openRouterApi' },
 				{ id: 'c2', name: 'Work OpenRouter', type: 'openRouterApi' },
 			]);
-			const modelLookup = makeModelLookup();
+			const modelLookup = makeModelLookupServingDefault('openRouterApi');
 			const tool = buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
@@ -344,7 +354,7 @@ describe('resolve_llm tool', () => {
 				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
 				{ id: 'c2', name: 'My Anthropic', type: 'anthropicApi' },
 			]);
-			const modelLookup = makeModelLookup();
+			const modelLookup = makeModelLookupServingDefault('anthropicApi');
 			const tool = buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
@@ -369,12 +379,121 @@ describe('resolve_llm tool', () => {
 		});
 	});
 
+	// INS-1263: resolve_llm returned the maintained default without checking it
+	// against the credential, so a model the provider does not serve shipped into
+	// the agent config and every call then failed with `404 Not Found`.
+	describe('provider default verification for own credentials', () => {
+		const googleCredential = { id: 'g1', name: 'My Gemini', type: 'googlePalmApi' };
+
+		it('reports unknown_model instead of a default the credential cannot reach', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'models/gemini-3.5-flash', value: 'models/gemini-3.5-flash' },
+				{ name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'unknown_model',
+				provider: 'google',
+				requestedModel: LLM_PROVIDER_DEFAULTS.googlePalmApi.defaultModel,
+			});
+		});
+
+		it('never falls back to an arbitrary model from a provider catalog', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'models/gemini-1.0-pro-vision', value: 'models/gemini-1.0-pro-vision' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			// Unlike the short curated gateway allowlist, the first entry of a
+			// provider's own catalog is arbitrary — the agent must choose.
+			expect(result).toMatchObject({ ok: false, reason: 'unknown_model' });
+		});
+
+		it('surfaces available models as callable ids so the agent can retry', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'models/gemini-3.5-flash', value: 'models/gemini-3.5-flash' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			// The `models/` prefix must be stripped: it passes config validation and
+			// then fails at run time.
+			expect(result).toMatchObject({
+				availableModels: [{ name: 'gemini-3.5-flash', value: 'gemini-3.5-flash' }],
+			});
+		});
+
+		it('resolves the default from a models/-prefixed google list', async () => {
+			const { defaultModel } = LLM_PROVIDER_DEFAULTS.googlePalmApi;
+			const modelLookup = makeModelLookup(async () => [
+				{ name: `models/${defaultModel}`, value: `models/${defaultModel}` },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			expect(result).toMatchObject({ ok: true, provider: 'google', model: defaultModel });
+		});
+
+		it('returns a requested google model as a callable id', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'models/gemini-3.5-flash', value: 'models/gemini-3.5-flash' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google', model: 'gemini-3.5-flash' }, {});
+
+			expect(result).toMatchObject({ ok: true, model: 'gemini-3.5-flash' });
+		});
+
+		it('returns model_lookup_failed rather than an unverified default', async () => {
+			const modelLookup = makeModelLookup(async () => {
+				throw new Error('credentials invalid');
+			});
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([googleCredential]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'google' }, {});
+
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'model_lookup_failed',
+				provider: 'google',
+				error: 'credentials invalid',
+			});
+		});
+	});
+
 	describe('model validation against modelLookup', () => {
-		it('skips lookup when no model is requested', async () => {
+		it('verifies the provider default against the lookup when no model is requested', async () => {
 			const credentialProvider = makeProvider([
 				{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
 			]);
-			const modelLookup = makeModelLookup();
+			const modelLookup = makeModelLookupServingDefault('anthropicApi');
 			const tool = buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
@@ -389,7 +508,7 @@ describe('resolve_llm tool', () => {
 				credentialId: 'c1',
 				credentialName: 'My Anthropic',
 			});
-			expect(modelLookup.list).not.toHaveBeenCalled();
+			expect(modelLookup.list).toHaveBeenCalledWith('c1', 'anthropicApi', 'anthropic');
 		});
 
 		it('validates the requested model against the lookup for Cohere', async () => {

@@ -44,6 +44,11 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 				approved: true,
 				autoSetup: { credentialType: request.credentialType, attemptId: request.attemptId },
 			};
+		case 'credentialDestination':
+			return {
+				approved: request.approved,
+				credentialDestination: { origin: request.origin },
+			};
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
 		case 'mcpConnect':
@@ -88,6 +93,7 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		...(data.scope ? { scope: data.scope } : {}),
 		...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
+		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
 		...(data.denied ? { denied: true } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 	};
