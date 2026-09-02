@@ -17,6 +17,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
+import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
@@ -663,9 +664,7 @@ async function readConsistentWorkflowSnapshot(
 			return { json, saved: { versionId: after.versionId, checksum: after.checksum } };
 		}
 	}
-	throw new Error(
-		`Workflow ${workflowId} changed while its source was being read. Call get-as-code again.`,
-	);
+	throw new WorkflowSnapshotChangedError(workflowId);
 }
 
 async function handleGetAsCode(

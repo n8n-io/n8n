@@ -94,7 +94,7 @@ describe('indexSourceNodes', () => {
 		]);
 	});
 
-	it('falls back to the shallowest name match when the id is not emitted', () => {
+	it('falls back to the node head that declares the name when the id is not emitted', () => {
 		const json: WorkflowJSON = {
 			name: 'W',
 			nodes: [
@@ -109,20 +109,53 @@ describe('indexSourceNodes', () => {
 			],
 			connections: {},
 		};
-		// A parameter key named like the node appears deeper than the node head.
+		// An earlier root node carries the same text as a parameter key, on its
+		// single-line config — shallower than the nested subnode declared later.
 		const code = [
 			'const other = node({',
-			"  config: { id: 'x', name: 'Other', parameters: {",
-			"      assignments: [{ name: 'carrier', value: 'dhl' }]",
-			'  } }',
+			"  config: { id: 'x', name: 'Other', parameters: { assignments: [{ name: 'carrier', value: 'dhl' }] } }",
 			'});',
-			'const carrier = node({',
-			"  config: { name: 'carrier' }",
+			'const agent = node({',
+			'  config: {',
+			"    id: 'a',",
+			"    name: 'Agent',",
+			"    subnodes: { tools: [tool({ type: 't', version: 1, config: { name: 'carrier', parameters: { x: 1 } } })] }",
+			'  }',
 			'});',
 		].join('\n');
 
 		expect(indexSourceNodes(json, code)).toEqual([
-			{ name: 'carrier', type: 'n8n-nodes-base.set', line: 7 },
+			{ name: 'carrier', type: 'n8n-nodes-base.set', line: 8 },
+		]);
+	});
+
+	it('finds a multi-line config head with the name after the id line', () => {
+		const json: WorkflowJSON = {
+			name: 'W',
+			nodes: [
+				{
+					id: 'dup',
+					name: 'Send',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const code = [
+			'const send = node({',
+			'  config: {',
+			"    id: 'other-id',",
+			"    name: 'Send',",
+			'    parameters: { jsonBody: expr(`{\n  "name": "Send"\n}`) }',
+			'  }',
+			'});',
+		].join('\n');
+
+		expect(indexSourceNodes(json, code)).toEqual([
+			{ name: 'Send', type: 'n8n-nodes-base.httpRequest', line: 4 },
 		]);
 	});
 });

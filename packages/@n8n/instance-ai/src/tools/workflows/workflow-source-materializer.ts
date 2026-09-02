@@ -65,38 +65,64 @@ export function workflowSourceFileSlug(name: string, workflowId: string): string
 /**
  * Line of each node's declaration, so the agent can jump to a node with a ranged
  * read instead of scanning the whole file. Nodes are located by their emitted id;
- * a node without one falls back to its name.
+ * a node without one (a duplicate id is emitted only for its first claimant) falls
+ * back to its unique name, matched only where a node head declares it.
  */
 export function indexSourceNodes(json: WorkflowJSON, code: string): SourceNodeIndexEntry[] {
 	const lines = code.split('\n');
 	const findLine = (needle: string): number => lines.findIndex((line) => line.includes(needle)) + 1;
-	// A node's own `name:` sits at the node head, shallower than any `name:` key inside
-	// its parameters, so among several matches the least indented one is the node.
-	const findShallowestLine = (needle: string): number => {
-		let best = 0;
-		let bestIndent = Number.POSITIVE_INFINITY;
-		lines.forEach((line, index) => {
-			if (!line.includes(needle)) return;
-			const indent = line.length - line.trimStart().length;
-			if (indent < bestIndent) {
-				bestIndent = indent;
-				best = index + 1;
-			}
-		});
-		return best;
-	};
 	return (json.nodes ?? []).map((node) => {
 		const name = node.name ?? '';
-		// Codegen emits an id only for the first node that claims it, so an id match is
-		// unique; duplicates fall back to the (unique) node name.
 		const byId = node.id ? findLine(`id: '${escapeSingleQuotes(node.id)}'`) : 0;
-		const line = byId > 0 ? byId : findShallowestLine(`name: '${escapeSingleQuotes(name)}'`);
+		const line = byId > 0 ? byId : findNodeHeadLine(lines, `name: '${escapeSingleQuotes(name)}'`);
 		return { name, type: node.type, line };
 	});
 }
 
-function escapeSingleQuotes(value: string): string {
-	return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+const CONFIG_OPEN = 'config: {';
+const ID_LINE = /^\s*id: '(?:[^'\\]|\\.)*',?$/;
+
+/**
+ * A node's own `name:` is a direct key of its `config: {` object: on the same
+ * line when the config is single-line, or on the first line after it (past an
+ * optional `id:` line) when it spans lines. A `name:` inside `parameters` sits
+ * deeper, so it never qualifies — even on a one-line config that also holds the
+ * parameters — and cannot shadow a node declared further down.
+ */
+function findNodeHeadLine(lines: string[], needle: string): number {
+	for (let i = 0; i < lines.length; i++) {
+		const at = lines[i].indexOf(needle);
+		if (at < 0) continue;
+		const configAt = lines[i].lastIndexOf(CONFIG_OPEN, at);
+		if (configAt >= 0) {
+			if (braceDepthBetween(lines[i], configAt + CONFIG_OPEN.length, at) === 0) return i + 1;
+			continue;
+		}
+		const previous = lines[i - 1]?.trim() ?? '';
+		if (previous.endsWith(CONFIG_OPEN)) return i + 1;
+		if (ID_LINE.test(lines[i - 1] ?? '') && (lines[i - 2]?.trim() ?? '').endsWith(CONFIG_OPEN)) {
+			return i + 1;
+		}
+	}
+	return 0;
+}
+
+/** Net `{`/`[` nesting between two offsets of one line, ignoring string contents. */
+function braceDepthBetween(line: string, from: number, to: number): number {
+	let depth = 0;
+	let quote: string | undefined;
+	for (let i = from; i < to; i++) {
+		const ch = line[i];
+		if (quote) {
+			if (ch === '\\') i++;
+			else if (ch === quote) quote = undefined;
+			continue;
+		}
+		if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+		else if (ch === '{' || ch === '[') depth++;
+		else if (ch === '}' || ch === ']') depth--;
+	}
+	return depth;
 }
 
 async function resolveSourceFilePath(
