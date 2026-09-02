@@ -1,4 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -9,6 +10,7 @@ import * as utils from '@test-integration/utils';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['type-availability-policies'],
+	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
 });
 
 let owner: User;
@@ -102,6 +104,20 @@ describe('node type availability policy instance controller RBAC', () => {
 		const response = await testServer.authAgentFor(owner).get('/node-type-policies/instance');
 
 		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('node type availability policy instance controller license gating', () => {
+	afterEach(() => {
+		testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+	});
+
+	test('rejects an owner with 403 when the license feature is disabled', async () => {
+		testServer.license.disable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+
+		const response = await testServer.authAgentFor(owner).get('/node-type-policies/instance');
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 

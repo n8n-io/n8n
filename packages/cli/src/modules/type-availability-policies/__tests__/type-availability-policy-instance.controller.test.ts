@@ -1,3 +1,4 @@
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
@@ -6,7 +7,9 @@ import { TypeAvailabilityPolicyInstanceController } from '../type-availability-p
 /**
  * Every route on this controller must be owner-only (`@GlobalScope`), never
  * `@ProjectScope` and never left ungated — node type availability policy is an
- * instance-wide setting, per IAM-1327's `nodeTypePolicy:manage` scope.
+ * instance-wide setting, per IAM-1327's `nodeTypePolicy:manage` scope. Every route
+ * must also require the node type policies license feature (IAM-1141's licensing
+ * decision — see IAM-1332 for the pending flag/SKU rename).
  */
 describe('TypeAvailabilityPolicyInstanceController route access scopes', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
@@ -30,9 +33,9 @@ describe('TypeAvailabilityPolicyInstanceController route access scopes', () => {
 		},
 	);
 
-	it('is not gated by a license flag (licensing decision left open by IAM-1141)', () => {
+	it('is gated by the node type policies license feature', () => {
 		for (const { route } of routeCases) {
-			expect(route.licenseFeature).toBeUndefined();
+			expect(route.licenseFeature).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
 		}
 	});
 });

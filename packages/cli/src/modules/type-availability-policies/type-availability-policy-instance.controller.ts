@@ -1,9 +1,11 @@
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
 	Delete,
 	Get,
 	GlobalScope,
+	Licensed,
 	Param,
 	Patch,
 	Post,
@@ -27,16 +29,17 @@ import { TypeAvailabilityPolicyService } from './type-availability-policy.servic
 const NODE_TYPES_KIND = 'node-types';
 
 /**
- * Instance-scope REST surface for node type availability policies. Every route is
- * `@GlobalScope('nodeTypePolicy:manage')` — owner-only, per IAM-1327 — and deliberately not
- * `@Licensed(...)`: the parent ticket (IAM-1141) leaves the licensing decision open, so this
- * ships ungated on license for now.
+ * Instance-scope REST surface for node type availability policies. Every route requires
+ * `LICENSE_FEATURES.NODE_TYPE_POLICIES` and `nodeTypePolicy:manage` (owner-only, per IAM-1327).
+ * The flag name is a placeholder pending a final SKU decision (see IAM-1332); renaming it later
+ * is a one-line change here.
  */
 @RestController('/node-type-policies')
 export class TypeAvailabilityPolicyInstanceController {
 	constructor(private readonly service: TypeAvailabilityPolicyService) {}
 
 	@Get('/instance')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getInstancePolicy() {
 		const effective = await this.service.getEffectivePolicy(NODE_TYPES_KIND, null);
@@ -50,6 +53,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	}
 
 	@Put('/instance')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async putInstancePolicy(
 		req: AuthenticatedRequest,
@@ -74,6 +78,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	}
 
 	@Post('/policies')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async createPolicy(
 		req: AuthenticatedRequest,
@@ -90,12 +95,14 @@ export class TypeAvailabilityPolicyInstanceController {
 	}
 
 	@Get('/policies')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async listPolicies() {
 		return await this.service.listPolicyDocuments(NODE_TYPES_KIND);
 	}
 
 	@Get('/policies/:policyId')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getPolicy(_req: AuthenticatedRequest, _res: Response, @Param('policyId') policyId: string) {
 		const policy = await this.service.getPolicyDocument(policyId);
@@ -107,6 +114,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	}
 
 	@Patch('/policies/:policyId')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async updatePolicy(
 		req: AuthenticatedRequest,
@@ -124,6 +132,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	}
 
 	@Delete('/policies/:policyId')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async deletePolicy(
 		req: AuthenticatedRequest,
@@ -136,6 +145,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	}
 
 	@Put('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async replaceAttachments(
 		req: AuthenticatedRequest,
