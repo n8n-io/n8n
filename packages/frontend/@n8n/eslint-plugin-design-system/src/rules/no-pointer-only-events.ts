@@ -21,13 +21,21 @@ function getStaticEventName(attribute: VAttribute | VDirective): string | undefi
 	return attribute.key.argument.name.toLowerCase();
 }
 
+function isPropagationOnlyHandler(attribute: VAttribute | VDirective): boolean {
+	if (!attribute.directive || attribute.key.name.name !== 'on') return false;
+	const hasStopModifier = attribute.key.modifiers.some(function isStopModifier(modifier) {
+		return modifier.name === 'stop';
+	});
+	return hasStopModifier && !attribute.value?.expression;
+}
+
 function findEventHandler(
 	node: VElement,
 	events: ReadonlySet<string>,
 ): VAttribute | VDirective | undefined {
 	return node.startTag.attributes.find(function matchesEvent(attribute) {
 		const eventName = getStaticEventName(attribute);
-		return eventName !== undefined && events.has(eventName);
+		return eventName !== undefined && events.has(eventName) && !isPropagationOnlyHandler(attribute);
 	});
 }
 

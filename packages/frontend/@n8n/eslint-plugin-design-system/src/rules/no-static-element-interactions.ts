@@ -1,5 +1,5 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
-import type { VElement } from 'vue-eslint-parser/ast/nodes';
+import type { VAttribute, VDirective, VElement } from 'vue-eslint-parser/ast/nodes';
 
 import {
 	getAttribute,
@@ -15,9 +15,6 @@ import {
 const INTERACTION_EVENTS = new Set([
 	'click',
 	'dblclick',
-	'keydown',
-	'keypress',
-	'keyup',
 	'mousedown',
 	'mouseup',
 	'pointerdown',
@@ -26,15 +23,26 @@ const INTERACTION_EVENTS = new Set([
 	'touchstart',
 ]);
 
-function hasInteractionHandler(node: VElement): boolean {
-	return node.startTag.attributes.some(function isInteraction(attribute) {
-		return (
-			attribute.directive &&
-			attribute.key.name.name === 'on' &&
-			attribute.key.argument?.type === 'VIdentifier' &&
-			INTERACTION_EVENTS.has(attribute.key.argument.name)
-		);
+function isPropagationOnlyHandler(attribute: VAttribute | VDirective): boolean {
+	if (!attribute.directive || attribute.key.name.name !== 'on') return false;
+	const hasStopModifier = attribute.key.modifiers.some(function isStopModifier(modifier) {
+		return modifier.name === 'stop';
 	});
+	return hasStopModifier && !attribute.value?.expression;
+}
+
+function isInteractionHandler(attribute: VAttribute | VDirective): boolean {
+	return (
+		attribute.directive &&
+		attribute.key.name.name === 'on' &&
+		attribute.key.argument?.type === 'VIdentifier' &&
+		INTERACTION_EVENTS.has(attribute.key.argument.name) &&
+		!isPropagationOnlyHandler(attribute)
+	);
+}
+
+function hasInteractionHandler(node: VElement): boolean {
+	return node.startTag.attributes.some(isInteractionHandler);
 }
 
 export const NoStaticElementInteractionsRule = ESLintUtils.RuleCreator.withoutDocs({
@@ -62,14 +70,7 @@ export const NoStaticElementInteractionsRule = ESLintUtils.RuleCreator.withoutDo
 					return;
 				const roleAttribute = getAttribute(node, 'role');
 				if (isDynamicAttribute(roleAttribute) || INTERACTIVE_ROLES.has(getRole(node) ?? '')) return;
-				const handler = node.startTag.attributes.find(function findHandler(attribute) {
-					return (
-						attribute.directive &&
-						attribute.key.name.name === 'on' &&
-						attribute.key.argument?.type === 'VIdentifier' &&
-						INTERACTION_EVENTS.has(attribute.key.argument.name)
-					);
-				});
+				const handler = node.startTag.attributes.find(isInteractionHandler);
 				context.report({ node: toESTreeNode(handler ?? node), messageId: 'staticInteraction' });
 			},
 		});

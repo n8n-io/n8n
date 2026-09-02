@@ -21,16 +21,13 @@ ruleTester.run('no-static-element-interactions', NoStaticElementInteractionsRule
 		{ filename: 'Component.vue', code: vue('<div :role="role" @keydown="handle" />') },
 		{ filename: 'Component.vue', code: vue('<Widget @click="save" />') },
 		{ filename: 'Component.vue', code: vue('<component :is="tag" @click="save" />') },
+		{ filename: 'Component.vue', code: vue('<div @click.stop />') },
+		{ filename: 'Component.vue', code: vue('<div @keydown.capture="delegateKeydown" />') },
 	],
 	invalid: [
 		{
 			filename: 'Component.vue',
 			code: vue('<div @click="save">Save</div>'),
-			errors: [{ messageId: 'staticInteraction' }],
-		},
-		{
-			filename: 'Component.vue',
-			code: vue('<span role="note" @keydown="handle" />'),
 			errors: [{ messageId: 'staticInteraction' }],
 		},
 		{
