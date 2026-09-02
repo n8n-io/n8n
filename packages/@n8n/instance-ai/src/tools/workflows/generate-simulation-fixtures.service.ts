@@ -145,15 +145,28 @@ function buildUpstreamContext(
 }
 
 /**
- * Nodes whose real output is their INPUT passed through unchanged. They have
- * no output schema of their own, so their floor has to be borrowed from
- * upstream — pinning `{}` on a Wait wipes the fields every node below it
+ * Nodes that emit their INPUT, either unchanged or with a few fields of their
+ * own added. Their output shape lives upstream, so a synthesized item has to
+ * borrow it — pinning `{}` on a Wait wipes the fields every node below it
  * reads. (The classifier already lets short waits execute for exactly this
  * reason; a long wait has to be simulated, so it needs the borrowed shape.)
+ *
+ * The list is short because it only has to cover node types that can BE
+ * simulated. Transform/control nodes that also pass data through — noOp, set,
+ * if, filter, merge, splitInBatches — are in the classifier's
+ * `SAFE_NODE_TYPES` floor, so they always execute and never get a fixture at
+ * all. They still show up in the upstream walk below, where no entry is
+ * needed: a node with no shape of its own contributes nothing and the walk
+ * simply continues to its own parents.
  */
 const PASS_THROUGH_NODE_TYPES = new Set([
 	'n8n-nodes-base.wait',
+	// Both are AI roots, so a credentialless language-model sub-node can flip
+	// them to `simulate` (see withSimulatedCredentiallessAiRootVerdicts).
+	// textClassifier routes its input onward untouched; sentimentAnalysis adds
+	// a `sentimentAnalysis` object to it.
 	'@n8n/n8n-nodes-langchain.textClassifier',
+	'@n8n/n8n-nodes-langchain.sentimentAnalysis',
 ]);
 
 /** Hops to walk up before giving up on finding an upstream shape. */
@@ -192,12 +205,18 @@ function createSchemaContextResolver(
 }
 
 /**
- * Give every pass-through node that still has no fields the shape of its
- * nearest upstream ancestor: that ancestor's own fixture when one exists,
- * otherwise the ancestor's schema placeholder.
+ * Layer the nearest upstream ancestor's shape under every SYNTHESIZED
+ * pass-through fixture: that ancestor's own fixture when it has one,
+ * otherwise the ancestor's schema placeholder. The node's own synthesized
+ * fields stay on top, so a partial pass-through such as sentimentAnalysis
+ * keeps its marker object and still carries the input fields.
+ *
+ * Only synthesized entries are touched. Items the model actually produced are
+ * left alone even when they look thin — the model saw the upstream context.
  */
 function withPassThroughFloor(
 	fixtures: SimulationFixtures,
+	synthesized: ReadonlySet<string>,
 	workflow: WorkflowJSON,
 	connectionsByDestination: IConnections,
 	resolveContext: (nodeName: string) => NodeSchemaContext | undefined,
@@ -211,9 +230,9 @@ function withPassThroughFloor(
 	const result = { ...fixtures };
 
 	for (const nodeName of Object.keys(fixtures)) {
+		if (!synthesized.has(nodeName)) continue;
 		const nodeType = typeByName.get(nodeName);
 		if (!nodeType || !PASS_THROUGH_NODE_TYPES.has(nodeType)) continue;
-		if (hasFields(result[nodeName])) continue;
 		const borrowed = findUpstreamShape(
 			nodeName,
 			result,
@@ -221,7 +240,9 @@ function withPassThroughFloor(
 			resolveContext,
 			now,
 		);
-		if (borrowed) result[nodeName] = borrowed;
+		if (!borrowed) continue;
+		const ownFields = result[nodeName]?.[0] ?? {};
+		result[nodeName] = borrowed.map((item) => ({ ...item, ...ownFields }));
 	}
 
 	return result;
@@ -288,6 +309,7 @@ export function buildPlaceholderFixtures(
 	);
 	return withPassThroughFloor(
 		placeholderFixtures(nodeNames, schemaContextByName, now),
+		new Set(nodeNames),
 		workflow,
 		mapConnectionsByDestination(toEngineConnections(workflow.connections)),
 		resolveContext,
@@ -370,6 +392,7 @@ export async function generateSimulationFixtures(
 		);
 		return withPassThroughFloor(
 			placeholderFixtures(nodeNames, schemaContextByName, now),
+			new Set(nodeNames),
 			input.workflow,
 			connectionsByDestination,
 			resolveContext,
@@ -386,6 +409,7 @@ export async function generateSimulationFixtures(
 	pinData = repairStructuredOutput(pinData, input.workflow, schemaContexts);
 
 	const fixtures: SimulationFixtures = {};
+	const synthesized = new Set<string>();
 	for (const name of nodeNames) {
 		// An omitted node, an empty array, or items that unwrap to nothing all
 		// leave the branch below this node unreached, so each falls back to the
@@ -393,12 +417,16 @@ export async function generateSimulationFixtures(
 		const items = (pinData[name] ?? [])
 			.map((item) => (isRecord(item.json) ? item.json : {}))
 			.filter((item) => Object.keys(item).length > 0);
-		fixtures[name] = items.length
-			? items
-			: [buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })];
+		if (items.length) {
+			fixtures[name] = items;
+			continue;
+		}
+		fixtures[name] = [buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })];
+		synthesized.add(name);
 	}
 	return withPassThroughFloor(
 		fixtures,
+		synthesized,
 		input.workflow,
 		connectionsByDestination,
 		resolveContext,

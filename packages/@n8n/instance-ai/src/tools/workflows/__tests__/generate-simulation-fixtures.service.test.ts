@@ -435,6 +435,77 @@ describe('generateSimulationFixtures', () => {
 		expect(result['Wait 2 Days']).toEqual([{ email: 'sample' }]);
 	});
 
+	it('layers the upstream shape under a partial pass-through, keeping its own marker', async () => {
+		// sentimentAnalysis emits the input item PLUS a sentimentAnalysis object,
+		// so its own placeholder is not empty and must not replace the input.
+		setupAgentMock('not json');
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Score Mood', type: '@n8n/n8n-nodes-langchain.sentimentAnalysis' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Score Mood', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Get Contact'), simulateVerdict('Score Mood')],
+			outputSchemaLookup: (node) =>
+				node.type === 'n8n-nodes-base.brevo'
+					? { type: 'object', properties: { email: { type: 'string' } } }
+					: undefined,
+		});
+
+		expect(result['Score Mood']).toEqual([
+			{ email: 'sample', sentimentAnalysis: { category: 'sample' } },
+		]);
+	});
+
+	it('leaves a thin model-produced pass-through item alone', async () => {
+		// The model saw the upstream context, so its answer stands even when it
+		// carries fewer fields than the borrowed shape would.
+		setupAgentMock(JSON.stringify({ 'Wait 2 Days': [{ json: { onlyField: 'kept' } }] }));
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Wait 2 Days')],
+			outputSchemaLookup: () => ({ type: 'object', properties: { email: { type: 'string' } } }),
+		});
+
+		expect(result['Wait 2 Days']).toEqual([{ onlyField: 'kept' }]);
+	});
+
+	it('does not borrow upstream data for a node that has its own output shape', async () => {
+		// A Slack post emits an API response, not its input. Borrowing would
+		// fabricate fields the real node never returns.
+		setupAgentMock('not json');
+		const workflow = wf([
+			{ name: 'Get Contact', type: 'n8n-nodes-base.brevo' },
+			{ name: 'Send Slack', type: 'n8n-nodes-base.slack' },
+		]);
+		workflow.connections = {
+			'Get Contact': { main: [[{ node: 'Send Slack', type: 'main', index: 0 }]] },
+		} as unknown as WorkflowJSON['connections'];
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Get Contact'), simulateVerdict('Send Slack')],
+			outputSchemaLookup: (node) =>
+				node.type === 'n8n-nodes-base.brevo'
+					? { type: 'object', properties: { email: { type: 'string' } } }
+					: { type: 'object', properties: { ok: { type: 'boolean' } } },
+		});
+
+		expect(result['Send Slack']).toEqual([{ ok: true }]);
+	});
+
 	it('keeps the items the LLM produced for a Wait', async () => {
 		setupAgentMock(JSON.stringify({ 'Wait 2 Days': [{ json: { email: 'real@example.com' } }] }));
 		const workflow = wf([
