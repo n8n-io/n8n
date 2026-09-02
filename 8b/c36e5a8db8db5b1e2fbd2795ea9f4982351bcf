@@ -1,0 +1,11 @@
+packages/@n8n/config/test/config.test.ts
+  ai_agent 486-491
+packages/@n8n/config/src/configs/scheduler.config.ts
+  ai_agent 349-406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8bc36e5a8db8db5b1e2fbd2795ea9f4982351bcf",
+  "prompts": {}
+}

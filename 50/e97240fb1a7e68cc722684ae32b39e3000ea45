@@ -1,0 +1,25 @@
+packages/cli/src/chat/chat-execution-manager.ts
+  s_532d66a3340d61::t_763b5eace5882b 115-129
+  s_532d66a3340d61::t_48e87d258711c0 138
+  s_532d66a3340d61::t_585310a9e09dfb 162
+packages/cli/src/chat/__tests__/chat-execution-manager.test.ts
+  ai_agent 163-165
+  s_532d66a3340d61::t_6f7877060673ae 799-807
+  s_532d66a3340d61::t_e9f1204cfe0edd 149-162,166-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50e97240fb1a7e68cc722684ae32b39e3000ea45",
+  "prompts": {},
+  "sessions": {
+    "s_532d66a3340d61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0cdb269-a35c-46f6-ba93-76bbd855b705",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

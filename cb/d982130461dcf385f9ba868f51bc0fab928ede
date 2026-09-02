@@ -1,0 +1,11 @@
+packages/@n8n/decorators/src/system-task/system-task.ts
+  ai_agent 58-59,98-99,107
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  ai_agent 66,71-72,75-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cbd982130461dcf385f9ba868f51bc0fab928ede",
+  "prompts": {}
+}

@@ -1,0 +1,125 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/sp-sharepoint-sp-manifest-template.md
+  s_a629361e78c175::t_d4607354637aae 2-6,8-10,13,25-26,34,37-43
+  s_7ad2830d8566df::t_409d6e74dc4531 1,7,11-12,14-24,27-33,35-36,44-49
+packages/nodes-base/nodes/Microsoft/SharePoint/sp-sharepoint-sp-manifest.json
+  s_7ad2830d8566df::t_e6e7bd44bcd28e 3,5-16
+  s_7ad2830d8566df::t_a3de9ca49b1582 2
+  s_a629361e78c175::t_2a1230669e78f9 1,4,17
+docs/ms365-entra-scope-mapping.md
+  s_9fc8be0aa06faa::t_0c452a92ef8a08 1-327
+packages/nodes-base/nodes/Microsoft/SharePoint/spike-sharepoint-setup.md
+  s_a629361e78c175::t_a83d3925c1e8de 1-16,18-36,39,41-54,56,58,60,62,64,66-67,70-86,89-143,145
+  s_7ad2830d8566df::t_5cd8ef41fe8646 37-38,40
+  s_7ad2830d8566df::t_974d960113b43a 17
+  s_7ad2830d8566df::t_462ac514ff8c43 144
+  s_7ad2830d8566df::t_963496518adce2 55,57,59,61,63,65,68-69
+  s_7ad2830d8566df::t_5523265635bd28 87-88
+docs/superpowers/plans/2026-08-12-signal-to-draft-issue.md
+  s_9fc8be0aa06faa::t_0c452a92ef8a08 1-736
+docs/ent-node-guardrails-findings.md
+  s_9fc8be0aa06faa::t_0c452a92ef8a08 1-193
+a365-first-contact-spike.workflow.json
+  s_6e549b005215cc::t_84edb146915b84 1-225
+a365-proactive-send-spike.workflow.json
+  s_6e549b005215cc::t_7aff66c91bb29f 1-187
+docs/change-stories/assets/ent-283-sharepoint-v2-file-picker-always-fails-with-operation-not/tests-file-v2.txt
+  s_ea2407369bb216::t_e3f83bb3912dc6 1-15
+docs/change-stories/assets/ent-283-sharepoint-v2-file-picker-always-fails-with-operation-not/tests-sharepoint-v2-all.txt
+  s_ea2407369bb216::t_272b276184eb41 1-35
+obi-demo-main.workflow.json
+  s_6e549b005215cc::t_97fb7f3bf7c509 1-403
+obi-demo-send-as-agent.workflow.json
+  s_6e549b005215cc::t_a9fd1c8633af3b 1-343
+.agent-screens/ent282-snap-dropdown.txt
+  s_33e0d33f0a107a::t_4544af4abaaa21 1-54
+automated-eng-updates/AUTO-570-subscriptions.json
+  s_77ca057314d962::t_b1faa6bced1377 1-589
+automated-eng-updates/AUTO-571-572-digest-pipeline.json
+  s_77ca057314d962::t_706cea30705d53 1-911
+automated-eng-updates/AUTO-571-weekly-digest.superseded.json
+  s_77ca057314d962::t_266ccd371d2ce4 1-271
+automated-eng-updates/AUTO-573-thread-chatbot.json
+  s_77ca057314d962::t_13d0b71765154f 1-393
+automated-eng-updates/channel-cleanup-delete-bot-posts.json
+  s_77ca057314d962::t_7c7d88ef9f8e0d 1-362
+automated-eng-updates/weekly-digest-sample.md
+  s_77ca057314d962::t_f3f00be4afac97 1-169
+docs/change-stories/2026-08-03-ent-283-sharepoint-v2-file-picker-always-fails-with-operation-not.md
+  s_ea2407369bb216::t_2183ef6f8f541f 1-50
+docs/kafka-double-trigger-customer-brief.md
+  s_e373eae854758f::t_db3b678945d7a0 1-100
+docs/kafka-double-trigger-eng-ticket.md
+  s_e373eae854758f::t_12c0d04fb1c6f3 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "aadf5605da5756d8a39b13dc2d69a9e12ee1be68",
+  "prompts": {},
+  "sessions": {
+    "s_33e0d33f0a107a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca95b283-9aed-4a7c-b19a-895e18ef27e4",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_6e549b005215cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46e960da-eec7-46a4-9e64-0c89b04e4f71",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_77ca057314d962": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96e4f5d8-8155-4a19-b759-184323c35be7",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_7ad2830d8566df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a0c536b-6219-48c0-96a9-99d0d4775764",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_9fc8be0aa06faa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f94f504-960b-4cfe-94a8-ec5cab89ea33",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_a629361e78c175": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_04d8c45f0ffeoqwwGDo3Jl6i44",
+        "model": "qwen3.6:35b-a3b-coding-mxfp8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_e373eae854758f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85f07bd2-6b6a-4133-8f43-a61a65ebd8f6",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_ea2407369bb216": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c982710c-ca19-4f34-8ece-70a6ca84c3f2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

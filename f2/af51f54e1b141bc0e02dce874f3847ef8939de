@@ -1,0 +1,30 @@
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  s_1e44d77fe168f0::t_971730f5f095ef 10
+  s_1e44d77fe168f0::t_a11fe2881b227b 184-207
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_1e44d77fe168f0::t_9cf951f3859fe7 223-227,229
+  s_1e44d77fe168f0::t_14c58db6f1bd30 277
+  s_1e44d77fe168f0::t_0b2f223c5c8f05 222
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_1e44d77fe168f0::t_cf6b5f7c03fb99 118
+  s_1e44d77fe168f0::t_dd95ef3e8a63b6 749-780
+  s_1e44d77fe168f0::t_3125488b4bf746 66-71
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  s_1e44d77fe168f0::t_ae8cbf76565141 161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f2af51f54e1b141bc0e02dce874f3847ef8939de",
+  "prompts": {},
+  "sessions": {
+    "s_1e44d77fe168f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c70f990a-548d-4ed0-b087-cd7370e2cd0e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
