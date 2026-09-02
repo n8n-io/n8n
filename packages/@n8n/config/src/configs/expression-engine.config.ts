@@ -75,4 +75,13 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_ALLOW_WEBHOOK_ISOLATE_SKIP')
 	allowWebhookIsolateSkip: boolean = true;
+
+	/**
+	 * Lazy isolate acquisition (experimental): acquire calls only open a scope,
+	 * and an isolate is created on the first expression that actually needs the
+	 * engine. Scopes that evaluate nothing (or only expressions the native fast
+	 * path handles) never consume an isolate.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_LAZY_ACQUIRE')
+	lazyAcquire: boolean = false;
 }

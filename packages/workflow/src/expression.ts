@@ -249,6 +249,7 @@ export class Expression {
 		maxCodeCacheSize: number;
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
+		lazyAcquire?: boolean;
 	}): Promise<void> {
 		if ((options.engine !== 'vm' && options.engine !== 'quickjs') || IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
@@ -275,6 +276,7 @@ export class Expression {
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				idleTimeoutMs: options.idleTimeoutMs,
+				lazyAcquire: options.lazyAcquire,
 				hooks: expressionSandboxHooks,
 				logger: LoggerProxy,
 				observability: options.observability,

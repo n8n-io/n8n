@@ -239,8 +239,15 @@ export abstract class BaseCommand<F = never> {
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
 		if (this.needsExpressionEngine) {
-			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
-				this.globalConfig.expressionEngine;
+			const {
+				engine,
+				poolSize,
+				maxCodeCacheSize,
+				bridgeTimeout,
+				bridgeMemoryLimit,
+				idleTimeout,
+				lazyAcquire,
+			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
 			try {
 				await Expression.initExpressionEngine({
@@ -250,6 +257,7 @@ export abstract class BaseCommand<F = never> {
 					bridgeTimeout,
 					bridgeMemoryLimit,
 					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+					lazyAcquire,
 					observability,
 				});
 			} catch (error) {

@@ -1,4 +1,5 @@
 import type ivm from 'isolated-vm';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
@@ -25,6 +26,26 @@ const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
 const safeStringify = JSON.stringify;
+
+/**
+ * The E() error handler injected into every isolate; see injectErrorHandler()
+ * for the two exception-handling layers it participates in.
+ */
+const ERROR_HANDLER_SOURCE = `
+	if (typeof E === 'undefined') {
+		globalThis.E = function(error, _context) {
+			// Re-throw ExpressionError / ExpressionExtensionError to match
+			// the legacy handler in expression.ts. Errors from host callbacks
+			// arrive as sentinels (not class instances), so check by name.
+			const name = error?.name;
+			if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
+				throw error;
+			}
+			// Swallow everything else (TypeErrors, generic Errors, etc.)
+			return undefined;
+		};
+	}
+`;
 
 /** Check if a value is an error sentinel returned by serializeError. */
 function isErrorSentinel(value: unknown): value is ErrorSentinel {
@@ -67,11 +88,30 @@ function serializeError(err: unknown): ErrorSentinel {
  *   - `src/bridge/`               (vitest running against source)
  *   - `dist/cjs/bridge/`          (CJS build)
  */
+let _runtimeBundle: string | null = null;
+
 async function readRuntimeBundle(): Promise<string> {
+	if (_runtimeBundle !== null) return _runtimeBundle;
 	let dir = __dirname;
 	while (dir !== path.dirname(dir)) {
 		try {
-			return await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+			_runtimeBundle = await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+			return _runtimeBundle;
+		} catch {}
+		dir = path.dirname(dir);
+	}
+	throw new Error(
+		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
+	);
+}
+
+function readRuntimeBundleSync(): string {
+	if (_runtimeBundle !== null) return _runtimeBundle;
+	let dir = __dirname;
+	while (dir !== path.dirname(dir)) {
+		try {
+			_runtimeBundle = readFileSync(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+			return _runtimeBundle;
 		} catch {}
 		dir = path.dirname(dir);
 	}
@@ -261,23 +301,41 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			throw new Error('Context not initialized');
 		}
 
-		await this.context.eval(`
-			if (typeof E === 'undefined') {
-				globalThis.E = function(error, _context) {
-					// Re-throw ExpressionError / ExpressionExtensionError to match
-					// the legacy handler in expression.ts. Errors from host callbacks
-					// arrive as sentinels (not class instances), so check by name.
-					const name = error?.name;
-					if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
-						throw error;
-					}
-					// Swallow everything else (TypeErrors, generic Errors, etc.)
-					return undefined;
-				};
-			}
-		`);
+		await this.context.eval(ERROR_HANDLER_SOURCE);
 
 		this.logger.debug('[IsolatedVmBridge] Error handler injected successfully');
+	}
+
+	/**
+	 * Synchronous variant of initialize(): the same steps through isolated-vm's
+	 * sync APIs, for on-demand creation inside the synchronous evaluate() path
+	 * (lazy acquisition with an exhausted pool). Blocks the event loop for the
+	 * duration of one isolate setup — pool warmup should stay on the async
+	 * initialize().
+	 */
+	initializeSync(): void {
+		if (this.initialized) return;
+
+		this.context = this.isolate.createContextSync();
+		const jail = this.context.global;
+		jail.setSync('global', jail.derefInto());
+
+		this.context.evalSync(readRuntimeBundleSync());
+
+		// Same checks as loadVendorLibraries() + verifyProxySystem(), condensed.
+		const verified = this.context.evalSync(
+			`typeof DateTime !== 'undefined' && typeof extend !== 'undefined' &&
+			 typeof createDeepLazyProxy !== 'undefined' && typeof SafeObject !== 'undefined' &&
+			 typeof SafeError !== 'undefined' && typeof buildContext !== 'undefined'`,
+		);
+		if (verified !== true) {
+			throw new Error('Runtime bundle verification failed during synchronous initialization');
+		}
+
+		this.context.evalSync(ERROR_HANDLER_SOURCE);
+
+		this.initialized = true;
+		this.logger.debug('[IsolatedVmBridge] Initialized synchronously');
 	}
 
 	/**

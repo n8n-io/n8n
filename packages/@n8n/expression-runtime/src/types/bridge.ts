@@ -24,6 +24,18 @@ export interface RuntimeBridge {
 	initialize(): Promise<void>;
 
 	/**
+	 * Synchronous variant of initialize(), for creating a bridge on demand
+	 * from inside the synchronous evaluate() path (lazy acquisition with an
+	 * exhausted pool). Optional: a bridge whose setup is inherently async can
+	 * omit it, but then it can only enter service through pool warmup.
+	 *
+	 * May require one-time async preparation to have happened earlier in the
+	 * process (e.g. QuickJS's WASM module load); implementations must throw a
+	 * clear error when that preparation is missing.
+	 */
+	initializeSync?(): void;
+
+	/**
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * @param code - Transformed JavaScript code to execute
