@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, ref } from 'vue';
 import { ElSwitch } from 'element-plus';
-import { N8nAlertDialog, N8nPreviewTag, N8nText } from '@n8n/design-system';
+import { N8nAlertDialog, N8nPreviewTag, N8nSettingsRow, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
@@ -13,7 +13,6 @@ const props = defineProps<{
 	managedByEnv: boolean;
 }>();
 
-const $style = useCssModule();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
@@ -69,71 +68,42 @@ function confirmDisable() {
 </script>
 
 <template>
-	<div>
-		<div :class="$style.settingsContainer">
-			<div :class="$style.settingsContainerInfo">
-				<div :class="$style.titleRow">
-					<N8nText :bold="true">
-						{{ i18n.baseText('settings.security.workflowReviews.enable.title') }}
-					</N8nText>
-					<N8nPreviewTag size="small" data-test-id="security-workflow-reviews-preview-tag" />
-				</div>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.security.workflowReviews.enable.description') }}
+	<N8nSettingsRow>
+		<template #info>
+			<div :class="$style.titleRow">
+				<N8nText :bold="true">
+					{{ i18n.baseText('settings.security.workflowReviews.enable.title') }}
 				</N8nText>
+				<N8nPreviewTag size="small" data-test-id="security-workflow-reviews-preview-tag" />
 			</div>
-			<div :class="$style.settingsContainerAction">
-				<ElSwitch
-					v-model="toggleValue"
-					size="large"
-					:disabled="managedByEnv || isSaving"
-					data-test-id="security-workflow-reviews-toggle"
-				/>
-			</div>
-		</div>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('settings.security.workflowReviews.enable.description') }}
+			</N8nText>
+		</template>
+		<template #action>
+			<ElSwitch
+				v-model="toggleValue"
+				size="large"
+				:disabled="managedByEnv || isSaving"
+				data-test-id="security-workflow-reviews-toggle"
+			/>
 
-		<N8nAlertDialog
-			:open="showDisableDialog"
-			:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
-			:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
-			@action="confirmDisable"
-			@cancel="showDisableDialog = false"
-			@update:open="showDisableDialog = $event"
-		/>
-	</div>
+			<N8nAlertDialog
+				:open="showDisableDialog"
+				:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
+				:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
+				@action="confirmDisable"
+				@cancel="showDisableDialog = false"
+				@update:open="showDisableDialog = $event"
+			/>
+		</template>
+	</N8nSettingsRow>
 </template>
 
 <style module>
-.settingsContainer {
-	display: flex;
-	align-items: center;
-	padding-left: var(--spacing--sm);
-	justify-content: space-between;
-	flex-shrink: 0;
-}
-
-.settingsContainerInfo {
-	display: flex;
-	padding: var(--spacing--2xs) 0;
-	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .titleRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.settingsContainerAction {
-	display: flex;
-	padding: var(--spacing--md) var(--spacing--sm);
-	justify-content: flex-end;
-	align-items: center;
-	flex-shrink: 0;
 }
 </style>
