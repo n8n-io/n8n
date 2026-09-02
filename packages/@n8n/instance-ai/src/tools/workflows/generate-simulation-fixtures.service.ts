@@ -83,7 +83,8 @@ Dates and timestamps MUST be derived from the "## Date anchors" block at the end
 Special node types:
 - Trigger nodes (marked as the workflow's simulated event source): emit the EVENT PAYLOAD the trigger delivers into the workflow — the received email/message/record object itself — never an API response envelope, acknowledgement, or request metadata.
 - Form nodes (a mid-workflow form page): emit the submitted field values — one key per field defined in the node's formFields, with plausible values, plus "submittedAt".
-- Pass-through nodes (Wait, Text Classifier, Sentiment Analysis): their real output IS their input. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving — Wait and Text Classifier pass it through unchanged; Sentiment Analysis passes it through and adds a "sentimentAnalysis" object.
+- Pass-through nodes (a timer Wait, Text Classifier, Sentiment Analysis): their real output IS their input. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving — a timer Wait and Text Classifier pass it through unchanged; Sentiment Analysis passes it through and adds a "sentimentAnalysis" object.
+- A Wait set to resume on a webhook call or a form submission does NOT pass its input through: emit what resumes it — the received request body, or one key per field in the node's own formFields plus "submittedAt".
 
 Output: a single JSON object whose keys are node names and whose values are arrays of n8n pin-data items in the form { "json": { ... } }. One item per node is enough.
 
@@ -161,17 +162,33 @@ function buildUpstreamContext(
  * needed: a node with no shape of its own contributes nothing and the walk
  * simply continues to its own parents.
  */
-const PASS_THROUGH_NODE_TYPES = new Map<string, readonly string[]>([
+const PASS_THROUGH_AI_ROOTS = new Map<string, readonly string[]>([
 	// Value = the keys the node adds ON TOP of its input. Empty means a pure
-	// pass-through, whose output is the input and nothing else.
-	['n8n-nodes-base.wait', []],
-	// Both AI roots below can be flipped to `simulate` by a credentialless
-	// language-model sub-node (see withSimulatedCredentiallessAiRootVerdicts).
-	// textClassifier routes its input onward untouched; sentimentAnalysis adds
-	// a `sentimentAnalysis` object to it.
+	// pass-through, whose output is the input and nothing else. Both roots can
+	// be flipped to `simulate` by a credentialless language-model sub-node
+	// (see withSimulatedCredentiallessAiRootVerdicts).
 	['@n8n/n8n-nodes-langchain.textClassifier', []],
 	['@n8n/n8n-nodes-langchain.sentimentAnalysis', ['sentimentAnalysis']],
 ]);
+
+const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
+
+/**
+ * The keys a pass-through node adds on top of its input, or `undefined` when
+ * the node is not a pass-through at all.
+ *
+ * Only a TIMER wait passes its input on. A webhook- or form-resume wait emits
+ * whatever resumed it — the request body, or the values submitted to the form
+ * fields declared on the node itself — and those are the two modes the
+ * classifier always simulates, so treating every wait as pass-through would
+ * throw away the only output they really have.
+ */
+function passThroughAddedKeys(node: NamedNode): readonly string[] | undefined {
+	if (node.type !== WAIT_NODE_TYPE) return PASS_THROUGH_AI_ROOTS.get(node.type);
+	const params = isRecord(node.parameters) ? node.parameters : {};
+	const resume = typeof params.resume === 'string' ? params.resume : 'timeInterval';
+	return resume === 'timeInterval' || resume === 'specificTime' ? [] : undefined;
+}
 
 /** Hops to walk up before giving up on finding an upstream shape. */
 const MAX_UPSTREAM_HOPS = 5;
@@ -242,13 +259,22 @@ function createSchemaContextResolver(
 export function withPassThroughFloor(
 	fixtures: SimulationFixtures,
 	workflow: WorkflowJSON,
-	outputSchemaLookup?: OutputSchemaLookup,
-	now: Date = new Date(),
+	options: {
+		outputSchemaLookup?: OutputSchemaLookup;
+		/**
+		 * Nodes whose items the workflow source declared. That is explicit author
+		 * intent — a scenario the run is meant to exercise — so it is never
+		 * rebuilt, unlike a generated or synthesized fixture.
+		 */
+		declaredNodeNames?: ReadonlySet<string>;
+		now?: Date;
+	} = {},
 ): SimulationFixtures {
-	const typeByName = new Map(
+	const { outputSchemaLookup, declaredNodeNames, now = new Date() } = options;
+	const nodeByName = new Map(
 		(workflow.nodes ?? [])
 			.filter((node): node is NamedNode => typeof node.name === 'string')
-			.map((node) => [node.name, node.type] as const),
+			.map((node) => [node.name, node] as const),
 	);
 	const resolveContext = createSchemaContextResolver(workflow, outputSchemaLookup);
 	const connectionsByDestination = mapConnectionsByDestination(
@@ -257,8 +283,9 @@ export function withPassThroughFloor(
 	const result = { ...fixtures };
 
 	for (const nodeName of Object.keys(fixtures)) {
-		const nodeType = typeByName.get(nodeName);
-		const addedKeys = nodeType ? PASS_THROUGH_NODE_TYPES.get(nodeType) : undefined;
+		if (declaredNodeNames?.has(nodeName)) continue;
+		const node = nodeByName.get(nodeName);
+		const addedKeys = node ? passThroughAddedKeys(node) : undefined;
 		if (!addedKeys) continue;
 		const upstream = findUpstreamShape(
 			nodeName,
@@ -395,7 +422,7 @@ export async function generateSimulationFixtures(
 					n,
 					reasonByName.get(n.name) ?? '',
 					schemaContextByName.get(n.name),
-					USER_ACTION_NODE_TYPES.has(n.type) || PASS_THROUGH_NODE_TYPES.has(n.type)
+					USER_ACTION_NODE_TYPES.has(n.type) || passThroughAddedKeys(n) !== undefined
 						? buildUpstreamContext(input.workflow, n.name, connectionsByDestination)
 						: undefined,
 				),

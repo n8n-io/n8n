@@ -534,6 +534,29 @@ describe('planVerificationSimulation — fixture floor', () => {
 		]);
 	});
 
+	it('keeps a declared fixture on a pass-through node through the floor', async () => {
+		mockClassify.mockResolvedValue([]);
+
+		const workflow = wf(
+			[
+				{ name: 'Post to #alerts', type: 'n8n-nodes-base.slack' },
+				{ name: 'Wait 2 Days', type: 'n8n-nodes-base.wait' },
+			],
+			{ 'Post to #alerts': { main: [[{ node: 'Wait 2 Days', type: 'main', index: 0 }]] } },
+		);
+
+		const { simulationFixtures } = await planVerificationSimulation({
+			workflow,
+			declaredOutputFixtures: {
+				'Post to #alerts': [{ ok: true, channel: 'C01234567' }],
+				'Wait 2 Days': [{ approved: true }],
+			},
+			workflowId: 'wf-1',
+		});
+
+		expect(simulationFixtures?.['Wait 2 Days']).toEqual([{ approved: true }]);
+	});
+
 	it('leaves a generated fixture alone', async () => {
 		mockClassify.mockResolvedValue([simulateVerdict('Send Slack')]);
 		mockGenerateFixtures.mockResolvedValue({ 'Send Slack': [{ ts: 'real' }] });

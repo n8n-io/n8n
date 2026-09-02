@@ -569,14 +569,69 @@ describe('withPassThroughFloor', () => {
 				Hold: [{ invented: 'wrong' }],
 			},
 			chain(),
-			lookupBrevoOnly,
+			{ outputSchemaLookup: lookupBrevoOnly },
 		);
 
 		expect(result.Hold).toEqual([{ email: 'ada@example.com', id: 7 }]);
 	});
 
+	it('leaves a declared fixture on a pass-through node exactly as the source wrote it', () => {
+		// A declared fixture is explicit author intent — the scenario the run is
+		// meant to exercise — so it outranks anything derived from upstream.
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				Hold: [{ approved: true, decidedBy: 'ops' }],
+			},
+			chain(),
+			{ outputSchemaLookup: lookupBrevoOnly, declaredNodeNames: new Set(['Hold']) },
+		);
+
+		expect(result.Hold).toEqual([{ approved: true, decidedBy: 'ops' }]);
+	});
+
+	it.each([
+		['webhook', 'a webhook call'],
+		['form', 'a form submission'],
+	])('does not rebuild a wait that resumes on %s', (resume) => {
+		// Such a wait emits whatever resumed it — the request body, or the values
+		// submitted to its own formFields — never its input. Both modes are
+		// always simulated, so rebuilding would destroy their only real output.
+		const workflow = chain();
+		workflow.nodes[1].parameters = { resume };
+
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				Hold: [{ submittedAt: '2026-09-01T10:30:00.000Z', decision: 'approve' }],
+			},
+			workflow,
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([{ submittedAt: '2026-09-01T10:30:00.000Z', decision: 'approve' }]);
+	});
+
+	it.each(['timeInterval', 'specificTime', undefined])(
+		'still rebuilds a timer wait (resume=%s)',
+		(resume) => {
+			const workflow = chain();
+			workflow.nodes[1].parameters = resume ? { resume } : {};
+
+			const result = withPassThroughFloor(
+				{ 'Get Contact': [{ email: 'ada@example.com' }], Hold: [{ invented: 'wrong' }] },
+				workflow,
+				{ outputSchemaLookup: lookupBrevoOnly },
+			);
+
+			expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
+		},
+	);
+
 	it("falls back to the parent's schema placeholder when the node has nothing", () => {
-		const result = withPassThroughFloor({ Hold: [{}] }, chain(), lookupBrevoOnly);
+		const result = withPassThroughFloor({ Hold: [{}] }, chain(), {
+			outputSchemaLookup: lookupBrevoOnly,
+		});
 
 		expect(result.Hold).toEqual([{ email: 'sample' }]);
 	});
@@ -584,11 +639,9 @@ describe('withPassThroughFloor', () => {
 	it("keeps the node's own items rather than downgrading to a placeholder", () => {
 		// A placeholder is neither realistic nor consistent, so swapping a
 		// model-written fixture for one would make the run worse.
-		const result = withPassThroughFloor(
-			{ Hold: [{ email: 'ada@example.com' }] },
-			chain(),
-			lookupBrevoOnly,
-		);
+		const result = withPassThroughFloor({ Hold: [{ email: 'ada@example.com' }] }, chain(), {
+			outputSchemaLookup: lookupBrevoOnly,
+		});
 
 		expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
 	});
@@ -603,7 +656,9 @@ describe('withPassThroughFloor', () => {
 			{ 'Get Contact': 'Edit Fields', 'Edit Fields': 'Hold' },
 		);
 
-		const result = withPassThroughFloor({ Hold: [{}] }, workflow, lookupBrevoOnly);
+		const result = withPassThroughFloor({ Hold: [{}] }, workflow, {
+			outputSchemaLookup: lookupBrevoOnly,
+		});
 
 		expect(result.Hold).toEqual([{ email: 'sample' }]);
 	});
@@ -617,7 +672,7 @@ describe('withPassThroughFloor', () => {
 				Hold: [{ category: 'billing' }],
 			},
 			chain('@n8n/n8n-nodes-langchain.textClassifier'),
-			lookupBrevoOnly,
+			{ outputSchemaLookup: lookupBrevoOnly },
 		);
 
 		expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
@@ -630,7 +685,7 @@ describe('withPassThroughFloor', () => {
 				Hold: [{ sentimentAnalysis: { category: 'positive' }, channel: 'invented' }],
 			},
 			chain('@n8n/n8n-nodes-langchain.sentimentAnalysis'),
-			lookupBrevoOnly,
+			{ outputSchemaLookup: lookupBrevoOnly },
 		);
 
 		expect(result.Hold).toEqual([
@@ -642,7 +697,7 @@ describe('withPassThroughFloor', () => {
 		const result = withPassThroughFloor(
 			{ 'Get Contact': [{ email: 'ada@example.com' }], Hold: [{}] },
 			chain('@n8n/n8n-nodes-langchain.sentimentAnalysis'),
-			lookupBrevoOnly,
+			{ outputSchemaLookup: lookupBrevoOnly },
 		);
 
 		expect(result.Hold).toEqual([
@@ -657,7 +712,7 @@ describe('withPassThroughFloor', () => {
 				Hold: [{}],
 			},
 			chain(),
-			lookupBrevoOnly,
+			{ outputSchemaLookup: lookupBrevoOnly },
 		);
 
 		expect(result.Hold).toEqual([{ email: 'a@example.com' }, { email: 'b@example.com' }]);
@@ -691,7 +746,7 @@ describe('withPassThroughFloor', () => {
 				],
 				{ 'Get Contact': 'Send Slack' },
 			),
-			lookupBrevoOnly,
+			{ outputSchemaLookup: lookupBrevoOnly },
 		);
 
 		expect(result['Send Slack']).toEqual([{ ok: true }]);

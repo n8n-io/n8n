@@ -315,6 +315,7 @@ function withFixtureFloor(
 	fixtures: SimulationFixtures,
 	plan: NodeSimulationVerdict[],
 	workflow: WorkflowJSON,
+	declaredFixtures: SimulationFixtures | undefined,
 	outputSchemaLookup?: OutputSchemaLookup,
 ): SimulationFixtures {
 	const missing = plan
@@ -329,7 +330,10 @@ function withFixtureFloor(
 		missing.length > 0
 			? { ...buildPlaceholderFixtures(workflow, missing, outputSchemaLookup), ...fixtures }
 			: fixtures;
-	return withPassThroughFloor(floored, workflow, outputSchemaLookup);
+	return withPassThroughFloor(floored, workflow, {
+		outputSchemaLookup,
+		declaredNodeNames: new Set(Object.keys(declaredFixtures ?? {})),
+	});
 }
 
 export async function planVerificationSimulation({
@@ -382,6 +386,7 @@ export async function planVerificationSimulation({
 				{ ...generatedFixtures, ...declaredFixtures },
 				nodeSimulationPlan,
 				workflow,
+				declaredFixtures,
 				outputSchemaLookup,
 			);
 			simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;
@@ -421,6 +426,7 @@ export async function planVerificationSimulation({
 				simulationFixtures ?? {},
 				nodeSimulationPlan,
 				workflow,
+				declaredFixtures,
 				outputSchemaLookup,
 			);
 			simulationFixtures = Object.keys(floored).length > 0 ? floored : undefined;
