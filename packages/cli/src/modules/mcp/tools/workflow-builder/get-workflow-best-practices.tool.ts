@@ -16,9 +16,6 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 const LIST_SENTINEL = 'list';
 
-// One flat enum instead of a union of enum + literal: a failed union reports only
-// "Invalid input", but a failed enum reports the accepted values, so a caller that
-// passes a wrong technique can correct itself.
 const TECHNIQUE_CHOICES = [LIST_SENTINEL, ...Object.values(WorkflowTechnique)] as const;
 
 const inputSchema = {
