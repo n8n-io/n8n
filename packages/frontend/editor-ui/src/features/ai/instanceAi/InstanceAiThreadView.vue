@@ -32,6 +32,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
@@ -86,6 +88,8 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
@@ -744,6 +748,8 @@ function reconnectThreadAfterHydration(): void {
 				rootStore.pushRef,
 				pending.context,
 			);
+			// Experiment cleanup: remove with openWorkflowInAssistant.
+			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
 		}
 	});
 }
@@ -1324,7 +1330,6 @@ async function dismissComposerContextChip() {
 					:supported-directions="['left']"
 					:is-resizing-enabled="!isPreviewExpanded"
 					:grid-size="8"
-					:outset="true"
 					@resize="handlePreviewResize"
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
@@ -1382,6 +1387,8 @@ async function dismissComposerContextChip() {
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
 </template>
 
@@ -1430,31 +1437,6 @@ async function dismissComposerContextChip() {
 	flex-shrink: 0;
 	min-width: 0;
 	border-left: var(--border);
-
-	// Widen the resize handle hit area for easier grabbing
-	:global([data-test-id='resize-handle']) {
-		width: 12px !important;
-		left: -6px !important;
-
-		// Visible drag indicator line
-		&::after {
-			content: '';
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			width: 2px;
-			height: 32px;
-			border-radius: 1px;
-			background: var(--color--foreground);
-			opacity: 0;
-			transition: opacity 0.15s ease;
-		}
-
-		&:hover::after {
-			opacity: 1;
-		}
-	}
 }
 
 .canvasAreaExpanded {
