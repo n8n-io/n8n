@@ -218,12 +218,10 @@ describe('ExecutionService', () => {
 			executionPersistence.findWithUnflattenedData.mockResolvedValue(
 				mock<IExecutionResponse>({ data: { executionData: undefined } }),
 			);
-			const req = mock<ExecutionRequest.Retry>();
-
 			/**
 			 * Act
 			 */
-			const retry = executionService.retry(req, []);
+			const retry = executionService.retry(mock<User>(), 'original-123', []);
 
 			/**
 			 * Assert
@@ -295,17 +293,12 @@ describe('ExecutionService', () => {
 
 			localExecutionRedactionProxy.processExecution.mockImplementation(async (exec) => exec);
 
-			const req = mock<ExecutionRequest.Retry>({
-				params: { id: 'original-123' },
-				user: mockUser,
-				body: { loadWorkflow: false },
-				query: {},
-			});
-
 			/**
 			 * Act
 			 */
-			await localExecutionService.retry(req, ['workflow-1']);
+			await localExecutionService.retry(mockUser, 'original-123', ['workflow-1'], {
+				loadWorkflow: false,
+			});
 
 			/**
 			 * Assert
@@ -363,13 +356,12 @@ describe('ExecutionService', () => {
 			return { service, workflowRunner };
 		};
 
-		const buildRetryRequest = () =>
-			mock<ExecutionRequest.Retry>({
-				params: { id: 'original-123' },
-				user: mock<User>({ id: 'user-1' }),
-				body: { loadWorkflow: false },
-				query: {},
-			});
+		const retryArgs = (): Parameters<ExecutionService['retry']> => [
+			mock<User>({ id: 'user-1' }),
+			'original-123',
+			['workflow-1'],
+			{ loadWorkflow: false },
+		];
 
 		/**
 		 * Builds a crashed (status 'error') source execution to retry. The data is a real
@@ -407,7 +399,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: undefined }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
 
@@ -421,7 +413,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Missing Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			// No entry is created for the missing node, and unrelated run data is left intact.
 			expect(runData['Missing Node']).toBeUndefined();
@@ -436,7 +428,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Crash Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Crash Node']).toHaveLength(0);
 		});
@@ -449,7 +441,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Last Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Last Node']).toHaveLength(1);
 		});
@@ -462,7 +454,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Empty Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(...retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Empty Node']).toHaveLength(0);
 		});

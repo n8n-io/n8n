@@ -54,7 +54,6 @@ export declare namespace ExecutionRequest {
 		}
 	>;
 
-	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
 	type Stop = AuthenticatedRequest<{ id: string }>;
 	type StopMany = AuthenticatedRequest<
 		{},

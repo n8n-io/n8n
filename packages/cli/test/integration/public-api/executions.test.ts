@@ -7,7 +7,7 @@ import {
 	shareWorkflowWithUsers,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { ExecutionEntity, User } from '@n8n/db';
+import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { type ExecutionStatus } from 'n8n-workflow';
@@ -337,6 +337,41 @@ describe('DELETE /executions/:id', () => {
 });
 
 describe('POST /executions/:id/retry', () => {
+	/** What the service resolves to: dates are still `Date` at this point. */
+	const retryServiceResponse = (overrides: Record<string, unknown> = {}) =>
+		({
+			id: '1001',
+			mode: 'retry',
+			startedAt: new Date('2026-01-01T00:00:00.000Z'),
+			workflowId: 'workflow-1',
+			finished: false,
+			retryOf: '1000',
+			status: 'waiting',
+			waitTill: new Date('2026-01-01T00:05:00.000Z'),
+			data: { resultData: { runData: {} } },
+			workflowData: { id: 'workflow-1', name: 'My workflow', nodes: [], connections: {} },
+			customData: { key: 'value' },
+			annotation: { id: 1, vote: 'up', tags: [{ id: 'tag-1', name: 'important' }] },
+			storedAt: 'db',
+			...overrides,
+		}) as unknown as Omit<IExecutionResponse, 'createdAt'>;
+
+	const retryResponseBody = {
+		id: '1001',
+		mode: 'retry',
+		startedAt: '2026-01-01T00:00:00.000Z',
+		workflowId: 'workflow-1',
+		finished: false,
+		retryOf: '1000',
+		status: 'waiting',
+		waitTill: '2026-01-01T00:05:00.000Z',
+		data: { resultData: { runData: {} } },
+		workflowData: { id: 'workflow-1', name: 'My workflow', nodes: [], connections: {} },
+		customData: { key: 'value' },
+		annotation: { id: 1, vote: 'up', tags: [{ id: 'tag-1', name: 'important' }] },
+		storedAt: 'db',
+	};
+
 	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/retry', null));
 
 	test(
@@ -344,11 +379,19 @@ describe('POST /executions/:id/retry', () => {
 		testWithAPIKey('post', '/executions/1/retry', 'abcXYZ'),
 	);
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authUser1Agent.post(`/executions/${executionId}/retry`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should retry an execution', async () => {
-		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockResolvedValue(mockedExecutionResponse);
+			.mockResolvedValue(retryServiceResponse());
 
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
@@ -356,7 +399,47 @@ describe('POST /executions/:id/retry', () => {
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(mockedExecutionResponse);
+		expect(response.body).toEqual(retryResponseBody);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should omit waitTill when the retried execution has none', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(retryServiceResponse({ waitTill: undefined, annotation: undefined }));
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('waitTill');
+		expect(response.body).not.toHaveProperty('annotation');
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should pass loadWorkflow from the request body to the service', async () => {
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(retryServiceResponse());
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent
+			.post(`/executions/${execution.id}/retry`)
+			.send({ loadWorkflow: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(executionServiceSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ id: user1.id }),
+			execution.id,
+			expect.arrayContaining([workflow.id]),
+			{ loadWorkflow: true },
+		);
 
 		executionServiceSpy.mockRestore();
 	});
@@ -436,10 +519,9 @@ describe('POST /executions/:id/retry', () => {
 	test('should retry an execution when user has execute access via project editor role', async () => {
 		testServer.license.enable('feat:sharing');
 
-		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockResolvedValue(mockedExecutionResponse);
+			.mockResolvedValue(retryServiceResponse());
 
 		const project = await createTeamProject('project with editor', owner);
 		await linkUserToProject(user1, project, 'project:editor');
@@ -450,7 +532,7 @@ describe('POST /executions/:id/retry', () => {
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(mockedExecutionResponse);
+		expect(response.body).toEqual(retryResponseBody);
 
 		executionServiceSpy.mockRestore();
 	});

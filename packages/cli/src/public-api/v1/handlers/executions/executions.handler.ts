@@ -3,10 +3,7 @@ import { ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
@@ -20,9 +17,6 @@ import { publicApiScope, validCursor } from '../../shared/middlewares/global.mid
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
-	if (error instanceof QueuedExecutionRetryError || error instanceof AbortedExecutionRetryError) {
-		throw new ConflictError(error.message);
-	}
 	if (error instanceof MissingExecutionStopError) {
 		throw new NotFoundError(error.message);
 	}
@@ -32,7 +26,6 @@ const handleError = (error: unknown) => {
 
 type ExecutionHandlers = {
 	getExecutions: PublicAPIEndpoint<ExecutionRequest.GetAll>;
-	retryExecution: PublicAPIEndpoint<ExecutionRequest.Retry>;
 	stopExecution: PublicAPIEndpoint<ExecutionRequest.Stop>;
 	stopManyExecutions: PublicAPIEndpoint<ExecutionRequest.StopMany>;
 };
@@ -113,34 +106,6 @@ const executionHandlers: ExecutionHandlers = {
 					numberOfNextRecords: count,
 				}),
 			});
-		},
-	],
-	retryExecution: [
-		publicApiScope('execution:retry'),
-		async (req, res) => {
-			const sharedWorkflowsIds = await Container.get(
-				WorkflowSharingService,
-			).getSharedWorkflowIdsForScopes(req.user, ['workflow:execute']);
-
-			if (!sharedWorkflowsIds.length) {
-				throw new NotFoundError('Not Found');
-			}
-
-			try {
-				const retriedExecution = await Container.get(ExecutionService).retry(
-					req,
-					sharedWorkflowsIds,
-				);
-
-				Container.get(EventService).emit('user-retried-execution', {
-					userId: req.user.id,
-					publicApi: true,
-				});
-
-				return res.json(replaceCircularReferences(retriedExecution));
-			} catch (error) {
-				return handleError(error);
-			}
 		},
 	],
 	stopExecution: [

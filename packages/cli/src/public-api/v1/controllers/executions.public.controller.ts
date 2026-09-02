@@ -3,6 +3,8 @@ import {
 	ExecutionPublicDto,
 	ExecutionTagsPublicDto,
 	GetExecutionQueryDto,
+	RetriedExecutionPublicDto,
+	RetryExecutionPublicDto,
 	TagIdsPublicDto,
 } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
@@ -18,6 +20,7 @@ import {
 	Delete,
 	Get,
 	Param,
+	Post,
 	PublicApiController,
 	Put,
 	Query,
@@ -25,7 +28,10 @@ import {
 import type { Response } from 'express';
 import { replaceCircularReferences } from 'n8n-workflow';
 
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
@@ -203,6 +209,58 @@ export class ExecutionsPublicController {
 
 		return tags.map(toPublicTag);
 	}
+
+	@Post('/:executionId/retry')
+	@ApiKeyScope('execution:retry')
+	@ApiSummary('Retry an execution')
+	@ApiDescription('Retry an execution from your instance.')
+	@ApiTags(['Execution'])
+	@ApiResponse(200, RetriedExecutionPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async retryExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('executionId') executionId: string,
+		@Body body: RetryExecutionPublicDto,
+	): Promise<RetriedExecutionPublicDto> {
+		assertNumericExecutionId(executionId);
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:execute'],
+		);
+
+		if (!sharedWorkflowsIds.length) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			// This route documents no query parameter, so redaction follows the workflow policy.
+			const retriedExecution = await this.executionService.retry(
+				req.user,
+				executionId,
+				sharedWorkflowsIds,
+				{ loadWorkflow: body.loadWorkflow },
+			);
+
+			this.eventService.emit('user-retried-execution', {
+				userId: req.user.id,
+				publicApi: true,
+			});
+
+			return toRetriedExecutionPublicDto(retriedExecution);
+		} catch (error) {
+			if (
+				error instanceof QueuedExecutionRetryError ||
+				error instanceof AbortedExecutionRetryError
+			) {
+				throw new ConflictError(error.message);
+			}
+
+			throw error;
+		}
+	}
 }
 
 function toBaseFields(execution: PublicExecution) {
@@ -262,4 +320,30 @@ function toPublicTag(tag: { id: string; name: string; createdAt: Date; updatedAt
 		createdAt: tag.createdAt.toISOString(),
 		updatedAt: tag.updatedAt.toISOString(),
 	};
+}
+
+function toRetriedExecutionPublicDto(
+	retried: Omit<IExecutionResponse, 'createdAt'>,
+): RetriedExecutionPublicDto {
+	/**
+	 * The retry runs the stored run data back through the engine, so `data` and `workflowData` can
+	 * carry cycles that `res.json` would throw on.
+	 */
+	return replaceCircularReferences({
+		id: retried.id,
+		mode: retried.mode,
+		startedAt: retried.startedAt.toISOString(),
+		workflowId: retried.workflowId,
+		finished: retried.finished,
+		retryOf: retried.retryOf ?? null,
+		status: retried.status,
+		// `waitTill` is `Date | null | undefined`, and the response drops the key when it is
+		// undefined rather than sending null.
+		waitTill: retried.waitTill instanceof Date ? retried.waitTill.toISOString() : retried.waitTill,
+		data: retried.data,
+		workflowData: retried.workflowData,
+		customData: retried.customData,
+		annotation: retried.annotation,
+		storedAt: retried.storedAt,
+	}) as unknown as RetriedExecutionPublicDto;
 }

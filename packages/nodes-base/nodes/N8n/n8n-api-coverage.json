@@ -119,7 +119,7 @@
 			"status": "covered",
 			"nodeOperation": "execution:delete"
 		},
-		"POST /executions/{id}/retry": {
+		"POST /executions/{executionId}/retry": {
 			"status": "gap"
 		},
 		"POST /executions/{id}/stop": {

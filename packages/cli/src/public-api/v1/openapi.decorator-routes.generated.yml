@@ -13,6 +13,9 @@ paths:
       $ref: ./handlers/executions/spec/paths/getExecutionTags.generated.yml
     put:
       $ref: ./handlers/executions/spec/paths/updateExecutionTags.generated.yml
+  /executions/{executionId}/retry:
+    post:
+      $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
   /git-connections:
     post:
       $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml
