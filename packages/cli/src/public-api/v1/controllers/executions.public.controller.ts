@@ -295,10 +295,6 @@ function toExecutionListPublicDto(
 	executions: PublicExecution[],
 	nextCursor: string | null,
 ): ExecutionListPublicDto {
-	/**
-	 * Run data is stored with `flatted`, whose `parse` rebuilds circular references, so `data` and
-	 * `workflowData` can carry cycles that `res.json` would throw on.
-	 */
 	return replaceCircularReferences({
 		data: executions.map(toExecutionListItem),
 		nextCursor,
