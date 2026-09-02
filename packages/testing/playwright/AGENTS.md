@@ -228,6 +228,27 @@ Unset (the default), empty or malformed all mean "no budget", so the violations
 that already exist can't turn CI red. The budget is not applied to a test that
 already failed for another reason.
 
+### Per-bucket scores
+
+The reporter also scores each bucket the run exercised and writes one line for
+each of them, worst first:
+
+```
+[a11y] score bucket=canvas scans=2 rules=3 elements=7 score=31 critical=1 serious=3 moderate=1 minor=2
+```
+
+`elements` counts the distinct violating elements, so a bucket that was scanned
+twice reports each element once. `score` weights those elements by impact
+(critical 10, serious 5, moderate 3, minor 1), so it goes to zero as the bucket
+gets fixed. The same numbers go into the GitHub job summary as a bucket table.
+
+When `QA_METRICS_WEBHOOK_*` is set - CI sets it for the e2e workflow - the
+reporter sends the scores to the QA metrics webhook the perf metrics use. Each
+bucket writes three `qa_performance_metrics` rows (`a11y-score`,
+`a11y-violated-rules`, `a11y-violating-elements`) under the `a11y-buckets`
+benchmark, with the bucket in `dimensions`. The send is best-effort: a failure
+warns and the run carries on. See [.github/CI-TELEMETRY.md](../../../.github/CI-TELEMETRY.md).
+
 ## Test Isolation
 
 Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
