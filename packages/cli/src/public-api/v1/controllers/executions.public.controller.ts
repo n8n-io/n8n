@@ -207,12 +207,15 @@ export class ExecutionsPublicController {
 	@ApiDescription('Stop an execution by id.')
 	@ApiTags(['Execution'])
 	@ApiResponse(200, StoppedExecutionPublicDto)
+	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async stopExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('executionId') executionId: string,
 	): Promise<StoppedExecutionPublicDto> {
+		assertNumericExecutionId(executionId);
+
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:execute'],

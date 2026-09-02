@@ -1091,6 +1091,15 @@ describe('POST /executions/:id/stop', () => {
 		testWithAPIKey('post', '/executions/1/stop', 'abcXYZ'),
 	);
 
+	test.each(['abc', '1.5', '-1', '0', '000'])(
+		'should reject an execution id that cannot exist with 400: %s',
+		async (executionId) => {
+			const response = await authUser1Agent.post(`/executions/${executionId}/stop`);
+
+			expect(response.statusCode).toBe(400);
+		},
+	);
+
 	test('should stop a running execution', async () => {
 		const mockedStopResponse = {
 			mode: 'manual',
