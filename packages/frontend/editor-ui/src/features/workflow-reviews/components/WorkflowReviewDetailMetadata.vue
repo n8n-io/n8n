@@ -24,8 +24,8 @@ const otherAuthors = computed(() =>
 	props.review.authors.filter((author) => author.id !== props.review.requester?.id),
 );
 
-const statusSummary = computed(
-	() => getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision).label,
+const statusSummary = computed(() =>
+	getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision),
 );
 </script>
 
@@ -39,7 +39,11 @@ const statusSummary = computed(
 			</template>
 			<div :class="$style.status">
 				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" decorative />
-				<N8nText size="medium">{{ statusSummary }}</N8nText>
+				<N8nText size="medium">
+					{{ statusSummary.stateLabel }}
+					<span aria-hidden="true" :class="$style.statusSeparator">|</span>
+					{{ statusSummary.decisionLabel }}
+				</N8nText>
 			</div>
 		</N8nCard>
 
@@ -169,6 +173,11 @@ const statusSummary = computed(
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.statusSeparator {
+	margin-inline: var(--spacing--3xs);
+	color: var(--text-color--subtler);
 }
 
 .peopleCard {

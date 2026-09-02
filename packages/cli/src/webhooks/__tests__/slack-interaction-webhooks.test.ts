@@ -78,8 +78,12 @@ describe('SlackInteractionWebhooks', () => {
 		return { res: mock<express.Response>({ status, send }), status, send };
 	};
 
-	/** A waiting execution whose workflow contains a single node with the given id. */
-	const waitingExecutionWithNode = (nodeId: string, lastNodeExecuted = 'SlackNode') =>
+	/** A waiting execution whose workflow contains a single node with the given id and type. */
+	const waitingExecutionWithNode = (
+		nodeId: string,
+		lastNodeExecuted = 'SlackNode',
+		nodeType = 'n8n-nodes-base.slack',
+	) =>
 		mock<IExecutionResponse>({
 			status: 'waiting',
 			finished: false,
@@ -90,7 +94,7 @@ describe('SlackInteractionWebhooks', () => {
 				nodes: [
 					{
 						name: 'SlackNode',
-						type: 'n8n-nodes-base.slack',
+						type: nodeType,
 						typeVersion: 1,
 						parameters: {},
 						id: nodeId,
@@ -229,6 +233,21 @@ describe('SlackInteractionWebhooks', () => {
 		const { res, status } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(
 			waitingExecutionWithNode('node-1', 'Missing Node'),
+		);
+
+		const result = await slackInteractionWebhooks.executeWebhook(req, res);
+
+		expect(status).toHaveBeenCalledWith(404);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
+	});
+
+	it('responds 404 without resuming when the resumed node is not a Slack node', async () => {
+		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const req = createRequest(reference);
+		const { res, status } = createResponse();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			waitingExecutionWithNode('node-1', 'SlackNode', 'n8n-nodes-base.telegram'),
 		);
 
 		const result = await slackInteractionWebhooks.executeWebhook(req, res);

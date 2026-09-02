@@ -24,7 +24,7 @@ import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
 } from '../run-trace-metadata';
-import type { DbSnapshotStorage } from '../storage/db-snapshot-storage';
+import type { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 import { TraceReplayState } from '../trace-replay-state';
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
@@ -58,10 +58,9 @@ export type OrchestratorResumeReason =
 // The slice of each collaborator the tracing service actually uses. Anchored to
 // the concrete types via `Pick` so the signatures stay in sync with the source.
 /**
- * Flag-resolved run-event read: the durable log with `instanceAi.durableLog` on,
- * the in-memory bus store with it off. Async because the durable read flushes
- * the thread's open coalesce buffers and then queries — which is what makes the
- * streamed text of a run visible to `first_visible_state` at all.
+ * Run-event read from the durable log. Async because it flushes the thread's
+ * open coalesce buffers and then queries — which is what makes the streamed
+ * text of a run visible to `first_visible_state` at all.
  */
 export type InstanceAiTracingEventReader = {
 	getEventsForRun: (threadId: string, runId: string) => Promise<InstanceAiEvent[]>;
@@ -69,7 +68,7 @@ export type InstanceAiTracingEventReader = {
 
 export type InstanceAiTracingRunState = Pick<RunStateRegistry<User>, 'attachTracing'>;
 
-export type InstanceAiTracingSnapshotStorage = Pick<DbSnapshotStorage, 'findLangsmithAnchor'>;
+export type InstanceAiTracingEventLog = Pick<InstanceAiEventLogRepository, 'findLangsmithAnchor'>;
 
 export type InstanceAiTracingAiService = Pick<AiService, 'isProxyEnabled' | 'getClient'>;
 
@@ -77,7 +76,7 @@ export type InstanceAiTracingServiceOptions = {
 	logger: Logger;
 	eventReader: InstanceAiTracingEventReader;
 	runState: InstanceAiTracingRunState;
-	dbSnapshotStorage: InstanceAiTracingSnapshotStorage;
+	eventLog: InstanceAiTracingEventLog;
 	aiService: InstanceAiTracingAiService;
 };
 
@@ -88,7 +87,7 @@ export type InstanceAiTracingServiceOptions = {
  * ID that started an orchestration turn) and the test-only trace replay state.
  * Responsible for creating resume trace contexts, finalizing message- and
  * run-level trace roots, releasing trace clients, and submitting LangSmith user
- * feedback. Collaborators (run state, event bus, snapshot storage, AI service)
+ * feedback. Collaborators (run state, event bus, event log, AI service)
  * are supplied via the options bag because the run-context registry it manages
  * is process-local and not suitable for dependency injection.
  */
@@ -113,7 +112,7 @@ export class InstanceAiTracingService {
 
 	private readonly runState: InstanceAiTracingRunState;
 
-	private readonly dbSnapshotStorage: InstanceAiTracingSnapshotStorage;
+	private readonly eventLog: InstanceAiTracingEventLog;
 
 	private readonly aiService: InstanceAiTracingAiService;
 
@@ -121,7 +120,7 @@ export class InstanceAiTracingService {
 		this.logger = options.logger;
 		this.eventReader = options.eventReader;
 		this.runState = options.runState;
-		this.dbSnapshotStorage = options.dbSnapshotStorage;
+		this.eventLog = options.eventLog;
 		this.aiService = options.aiService;
 	}
 
@@ -491,7 +490,7 @@ export class InstanceAiTracingService {
 		responseId: string,
 		payload: { rating: 'up' | 'down'; comment?: string },
 	): Promise<void> {
-		const anchor = await this.dbSnapshotStorage.findLangsmithAnchor(threadId, responseId);
+		const anchor = await this.eventLog.findLangsmithAnchor(threadId, responseId);
 		if (!anchor) {
 			this.logger.debug('No LangSmith anchor for feedback; skipping annotation', {
 				threadId,

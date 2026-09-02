@@ -301,6 +301,9 @@
         "post_password": {
             "type": "string"
         },
+        "price": {
+            "type": "string"
+        },
         "price_html": {
             "type": "string"
         },
@@ -312,6 +315,9 @@
         },
         "rating_count": {
             "type": "integer"
+        },
+        "regular_price": {
+            "type": "string"
         },
         "related_ids": {
             "type": "array",
@@ -400,5 +406,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

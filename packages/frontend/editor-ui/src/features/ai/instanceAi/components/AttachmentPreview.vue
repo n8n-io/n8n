@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, InstanceAiNodesAttachment } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { N8nIcon } from '@n8n/design-system';
 import { computed, onBeforeUnmount, ref } from 'vue';
+import NodesAttachmentChips from './NodesAttachmentChips.vue';
 
 const props = defineProps<{
 	file?: File;
@@ -12,10 +13,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	remove: [file: File];
+	'remove-resource': [];
+	'update:attachment': [attachment: InstanceAiNodesAttachment];
 }>();
 
 const loading = ref(true);
 
+const nodesAttachment = computed(() =>
+	props.attachment?.type === 'nodes' ? props.attachment : undefined,
+);
 // A workflow attachment is a resource reference (no bytes) — rendered as a
 // chip; everything below handles the binary file case.
 const workflowAttachment = computed(() =>
@@ -73,8 +79,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+	<NodesAttachmentChips
+		v-if="nodesAttachment"
+		:attachment="nodesAttachment"
+		:is-removable="isRemovable ?? false"
+		@update:attachment="emit('update:attachment', $event)"
+		@remove-all="emit('remove-resource')"
+	/>
 	<div
-		v-if="workflowAttachment"
+		v-else-if="workflowAttachment"
 		:class="$style.resourceChip"
 		data-test-id="attachment-preview-resource"
 	>
@@ -105,7 +118,7 @@ onBeforeUnmount(() => {
 		</button>
 	</div>
 	<ChatFile
-		v-else
+		v-else-if="props.file || fileAttachment"
 		:file="fallbackFile"
 		:is-removable="isRemovable ?? false"
 		@remove="emit('remove', $event)"

@@ -157,13 +157,11 @@ describe('OauthService', () => {
 	});
 
 	describe('constructor', () => {
-		it('builds its HTTP client with the injected SSRF protection service and a default timeout', () => {
-			// Guards the intent that outbound OAuth calls run with SSRF protection
-			// enabled per the configured env vars, rather than relying on the implicit
-			// `requests()` default, and that the shared request timeout is applied once
-			// on the client instead of being repeated per call.
+		it('builds its HTTP client with the default safe mode and a default timeout', () => {
+			// Guards the intent that outbound OAuth calls run through the default safe
+			// client, and that the shared request timeout is applied once on the
+			// client instead of being repeated per call.
 			expect(outboundHttp.requests).toHaveBeenCalledWith({
-				ssrf: ssrfProtectionService,
 				timeout: expect.any(Number),
 			});
 		});

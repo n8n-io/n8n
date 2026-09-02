@@ -277,15 +277,6 @@ export class ApiHelpers {
 		return { consecutiveErrors: data.consecutiveErrors, backoffUntil: data.backoffUntil };
 	}
 
-	async countTaskRunners(): Promise<number> {
-		const response = await this.request.get('/rest/e2e/task-runners/count');
-		if (!response.ok()) {
-			throw new TestError(`Failed to count task runners: ${await response.text()}`);
-		}
-		const { data } = (await response.json()) as { data: { count: number } };
-		return data.count;
-	}
-
 	async clearWorkflowStaticData(workflowId: string): Promise<void> {
 		const response = await this.request.post('/rest/e2e/workflow-static-data/clear', {
 			data: { workflowId },
@@ -350,6 +341,23 @@ export class ApiHelpers {
 	}> {
 		const response = await this.request.get('/rest/e2e/env-feature-flags');
 		return await response.json();
+	}
+
+	/**
+	 * The backend modules this instance started with. A module the license did not
+	 * cover at boot is missing here, and `enableFeature` cannot add it later.
+	 */
+	async getActiveModules(): Promise<string[]> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.activeModules ?? [];
 	}
 
 	// ===== CONVENIENCE METHODS =====

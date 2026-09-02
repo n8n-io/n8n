@@ -1,16 +1,24 @@
 import { ChatTriggerConfig } from '@n8n/config/src';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
-import type { INode, IWebhookFunctions } from 'n8n-workflow';
+import type { CredentialCheckResult, INode, IWebhookFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatTrigger } from '../ChatTrigger.node';
 import { ChatTriggerAuthorizationError } from '../error';
-import { validateAuth } from '../GenericFunctions';
+import {
+	establishChatSessionIdentity,
+	handleChatTokenRefresh,
+	resolveInnerFrameIdentity,
+	validateAuth,
+} from '../GenericFunctions';
 import type { LoadPreviousSessionChatOption } from '../types';
 
 vi.mock('../GenericFunctions', () => ({
 	validateAuth: vi.fn(),
+	establishChatSessionIdentity: vi.fn(),
+	handleChatTokenRefresh: vi.fn(),
+	resolveInnerFrameIdentity: vi.fn(),
 }));
 
 const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
@@ -33,9 +41,20 @@ describe('ChatTrigger Node', () => {
 
 		mockResponse.status.mockReturnValue(mockResponse);
 		mockResponse.send.mockReturnValue(mockResponse);
+		mockResponse.json.mockReturnValue(mockResponse);
 		mockResponse.end.mockReturnValue(mockResponse);
 		mockResponse.writeHead.mockReturnValue(mockResponse);
 		mockResponse.flushHeaders.mockImplementation(() => mockResponse);
+
+		// No identity established / dynamic credentials disabled by default - the gate
+		// is a no-op unless a test opts in with a readiness result.
+		mockContext.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+		mockContext.logger = {
+			warn: vi.fn(),
+			error: vi.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+		} as unknown as IWebhookFunctions['logger'];
 
 		// Provide socket methods required by the streaming keepalive configuration
 		mockRequest.socket = {
@@ -159,6 +178,22 @@ describe('ChatTrigger Node', () => {
 				default: 'none',
 				builderHint: {
 					propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				},
+			});
+		});
+	});
+
+	describe('requireExecuteAccess property', () => {
+		it('exposes the toggle, off by default and scoped to n8nUserAuth hosted chat', () => {
+			const requireExecuteParam = chatTrigger.description.properties.find(
+				(property) => property.name === 'requireExecuteAccess',
+			);
+
+			expect(requireExecuteParam).toMatchObject({
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: { authentication: ['n8nUserAuth'], mode: ['hostedChat'], public: [true] },
 				},
 			});
 		});
@@ -299,8 +334,15 @@ describe('ChatTrigger Node', () => {
 			});
 		});
 
-		it('skips auth validation for manual (test) executions', async () => {
+		it('enforces auth for manual executions outside the canvas chat session route', async () => {
 			mockContext.getMode.mockReturnValue('manual');
+			mockContext.isChatSessionTest.mockReturnValue(false);
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+				webhookId: 'abc123',
+			} as INode);
 			mockContext.getNodeParameter.mockImplementation(
 				(
 					paramName: string,
@@ -314,15 +356,15 @@ describe('ChatTrigger Node', () => {
 					return defaultValue;
 				},
 			);
+			vi.mocked(validateAuth).mockRejectedValueOnce(new ChatTriggerAuthorizationError(401));
 
 			const result = await chatTrigger.webhook(mockContext);
 
-			expect(validateAuth).not.toHaveBeenCalled();
-			expect(mockResponse.writeHead).not.toHaveBeenCalledWith(401, expect.anything());
-			expect(result).toEqual({
-				webhookResponse: { status: 200 },
-				workflowData: expect.any(Array),
+			expect(validateAuth).toHaveBeenCalledWith(mockContext);
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(401, {
+				'www-authenticate': 'Basic realm="Webhook abc123"',
 			});
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
 		it('still enforces auth validation for production executions', async () => {
@@ -389,6 +431,99 @@ describe('ChatTrigger Node', () => {
 		});
 	});
 
+	describe('message-send credential readiness gate', () => {
+		const notReady: CredentialCheckResult = {
+			readyToExecute: false,
+			credentials: [
+				{
+					credentialId: 'cred-missing',
+					credentialName: 'My Gmail',
+					credentialType: 'gmailOAuth2',
+					resolverId: 'resolver-1',
+					status: 'missing',
+					authorizationUrl: 'https://example.com/authorize',
+					revokeUrl: 'https://example.com/revoke',
+				},
+			],
+		};
+
+		it('rejects the message and creates no execution when a required credential is missing', async () => {
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReady);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).toHaveBeenCalledWith(428);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				status: 'credential_connections_required',
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-missing',
+						credentialName: 'My Gmail',
+						credentialType: 'gmailOAuth2',
+						credentialStatus: 'missing',
+					},
+				],
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('enqueues the execution when the check reports ready', async () => {
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue({
+				readyToExecute: true,
+				credentials: [],
+			});
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).not.toHaveBeenCalledWith(428);
+			expect(result).toMatchObject({
+				webhookResponse: { status: 200 },
+				workflowData: expect.any(Array),
+			});
+		});
+
+		it('enqueues the execution when no check applies (no identity established)', async () => {
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				webhookResponse: { status: 200 },
+				workflowData: expect.any(Array),
+			});
+		});
+
+		it('fails closed with 503 when the check throws', async () => {
+			const error = new Error('could not decrypt credential context');
+			mockContext.checkTriggerCredentialStatus.mockRejectedValue(error);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).toHaveBeenCalledWith(503);
+			expect(mockResponse.json).toHaveBeenCalledWith({
+				status: 'credential_readiness_check_failed',
+			});
+			expect(mockContext.logger.error).toHaveBeenCalledWith(
+				'Chat trigger credential readiness check failed',
+				{ error },
+			);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('excludes loadPreviousSession requests from the gate', async () => {
+			mockContext.getBodyData.mockReturnValue({ action: 'loadPreviousSession' });
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReady);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockContext.checkTriggerCredentialStatus).not.toHaveBeenCalled();
+			expect(mockResponse.status).not.toHaveBeenCalledWith(428);
+			expect(result).toEqual({ webhookResponse: { data: [] } });
+		});
+	});
+
 	describe('hosted chat shell', () => {
 		const visitor = {
 			id: 'user-1',
@@ -417,18 +552,20 @@ describe('ChatTrigger Node', () => {
 
 		const renderedPage = () => vi.mocked(mockResponse.send).mock.calls.at(-1)?.[0] as string;
 
-		beforeEach(() => {
-			// `generateChatUserAuthToken` needs the instance's hmac secret; everything
-			// else in the node still wants the chat config.
-			vi.mocked(Container.get).mockImplementation(((token: unknown) =>
-				token === ChatTriggerConfig
-					? chatTriggerConfig
-					: { hmacSignatureSecret: 'test-secret' }) as never);
+		// Every body and header this request produced, so a `/signin` anywhere in the
+		// response — a redirect Location as much as a rendered page — shows up.
+		const everySentResponse = () =>
+			JSON.stringify([
+				vi.mocked(mockResponse.send).mock.calls,
+				vi.mocked(mockResponse.writeHead).mock.calls,
+				vi.mocked(mockResponse.setHeader).mock.calls,
+			]);
 
+		beforeEach(() => {
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getNodeWebhookUrl.mockReturnValue('http://localhost:5678/webhook/abc/chat');
+			mockContext.getWebhookResourceUrl.mockReturnValue('http://localhost:5678/webhook/abc/chat');
 			mockContext.getInstanceId.mockReturnValue('instance-1');
-			mockContext.validateCookieAuth.mockResolvedValue(visitor);
 			mockContext.getNode.mockReturnValue({
 				id: 'node-1',
 				name: 'Chat Trigger',
@@ -436,11 +573,15 @@ describe('ChatTrigger Node', () => {
 				typeVersion: 1.4,
 				webhookId: 'webhook-1',
 			} as never);
+			vi.mocked(establishChatSessionIdentity).mockResolvedValue({ expiresIn: 3600 });
+			vi.mocked(resolveInnerFrameIdentity).mockResolvedValue({
+				visitor,
+				authToken: 'as-token',
+			});
 
 			mockRequest.headers = {
 				'x-forwarded-proto': 'http',
 				host: 'localhost:5678',
-				cookie: 'n8n-auth=session-token',
 			};
 			mockRequest.query = {};
 			mockRequest.originalUrl = '/webhook/abc/chat';
@@ -473,7 +614,6 @@ describe('ChatTrigger Node', () => {
 			mockRequest.headers = {
 				'x-forwarded-proto': 'http',
 				host: 'localhost:5678',
-				cookie: 'n8n-auth=session-token',
 				'sec-fetch-dest': 'iframe',
 			};
 
@@ -489,6 +629,35 @@ describe('ChatTrigger Node', () => {
 			expect(renderedPage()).toContain("'x-auth-token'");
 		});
 
+		// The AS handshake must run on the outer, top-level document (real cookies) and
+		// never on the sandboxed frame's own request — a redirect to sign-in/consent from
+		// inside that opaque-origin frame would render editor-ui inside it and crash.
+		it('does not render the shell while the outer AS handshake is still in flight', async () => {
+			vi.mocked(establishChatSessionIdentity).mockResolvedValue(null);
+
+			const result = await renderSetupPage();
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponse.send).not.toHaveBeenCalled();
+			expect(resolveInnerFrameIdentity).not.toHaveBeenCalled();
+		});
+
+		it("fails the frame's own request instead of starting a new OAuth flow when the one-hop cookie is missing", async () => {
+			mockRequest.query = { n8nShellInner: '1' };
+			mockRequest.headers = {
+				'x-forwarded-proto': 'http',
+				host: 'localhost:5678',
+				'sec-fetch-dest': 'iframe',
+			};
+			vi.mocked(resolveInnerFrameIdentity).mockResolvedValue(null);
+
+			const result = await renderSetupPage();
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponse.status).toHaveBeenCalledWith(401);
+			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
+		});
+
 		// Honouring the flag on a top-level navigation would let a visitor skip the
 		// trusted document, and with it the connect UI that lives there.
 		it('still renders the shell for a hand-typed inner URL', async () => {
@@ -496,7 +665,6 @@ describe('ChatTrigger Node', () => {
 			mockRequest.headers = {
 				'x-forwarded-proto': 'http',
 				host: 'localhost:5678',
-				cookie: 'n8n-auth=session-token',
 				'sec-fetch-dest': 'document',
 			};
 
@@ -506,17 +674,21 @@ describe('ChatTrigger Node', () => {
 			expect(renderedPage()).not.toContain('createChat');
 		});
 
-		it('sends an unauthenticated visitor to sign in', async () => {
+		// The page used to bounce a visitor with no editor session to `/signin` before the
+		// AS ever saw them, which defeated the whole point of end-user credentials for
+		// external visitors. The flow authenticates them instead.
+		it('begins the OAuth2 flow for a visitor with no session', async () => {
 			mockRequest.headers = { 'x-forwarded-proto': 'http', host: 'localhost:5678' };
-			mockContext.validateCookieAuth.mockRejectedValue(new Error('nope'));
 
 			const result = await renderSetupPage();
 
 			expect(result).toEqual({ noWebhookResponse: true });
-			expect(mockResponse.writeHead).toHaveBeenCalledWith(302, {
-				Location: '/signin?redirect=http%3A%2F%2Flocalhost%3A5678%2Fwebhook%2Fabc%2Fchat',
-			});
-			expect(mockResponse.send).not.toHaveBeenCalled();
+			expect(establishChatSessionIdentity).toHaveBeenCalledWith(
+				mockContext,
+				'http://localhost:5678/webhook/abc/chat',
+			);
+			expect(mockContext.validateCookieAuth).not.toHaveBeenCalled();
+			expect(everySentResponse()).not.toContain('/signin');
 		});
 
 		it('renders the page unsplit when the flag is off', async () => {
@@ -525,8 +697,10 @@ describe('ChatTrigger Node', () => {
 			await renderSetupPage();
 
 			expect(mockResponse.setHeader).not.toHaveBeenCalled();
+			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 			expect(renderedPage()).toContain('createChat');
 			expect(renderedPage()).not.toContain('n8nShellInner');
+			expect(renderedPage()).not.toContain('n8nChatRefresh');
 		});
 
 		it.each(['none', 'basicAuth'])(
@@ -535,10 +709,56 @@ describe('ChatTrigger Node', () => {
 				await renderSetupPage(authentication);
 
 				expect(mockResponse.setHeader).not.toHaveBeenCalled();
+				expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 				expect(renderedPage()).toContain('createChat');
 				expect(renderedPage()).not.toContain('n8nShellInner');
+				expect(renderedPage()).not.toContain('n8nChatRefresh');
 			},
 		);
+
+		it('carries the refresh endpoint and schedule into the shell', async () => {
+			await renderSetupPage();
+
+			expect(renderedPage()).toContain('/webhook/abc/chat?n8nChatRefresh=1');
+			expect(renderedPage()).toContain("'x-n8n-chat-refresh': '1'");
+			// The session's duration, passed straight through — no timestamp of ours
+			// for the page's clock to disagree with.
+			expect(renderedPage()).toContain('planFor(3600)');
+		});
+
+		// The leg answers with JSON, not a page, and authenticates from its own httpOnly
+		// cookie — so it must be handled before either render branch decides anything.
+		it('routes the refresh leg ahead of the shell render', async () => {
+			mockRequest.query = { n8nChatRefresh: '1' };
+			mockRequest.headers = {
+				'x-forwarded-proto': 'http',
+				host: 'localhost:5678',
+				'x-n8n-chat-refresh': '1',
+				'sec-fetch-site': 'same-origin',
+			};
+
+			const result = await renderSetupPage();
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(handleChatTokenRefresh).toHaveBeenCalledWith(
+				mockContext,
+				'http://localhost:5678/webhook/abc/chat',
+			);
+			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
+			expect(resolveInnerFrameIdentity).not.toHaveBeenCalled();
+			expect(mockResponse.send).not.toHaveBeenCalled();
+		});
+
+		// Without the custom header the request is forgeable by shape alone, so it must
+		// fall through to the ordinary shell render rather than reach the leg.
+		it('does not route the refresh leg without the custom header', async () => {
+			mockRequest.query = { n8nChatRefresh: '1' };
+
+			await renderSetupPage();
+
+			expect(handleChatTokenRefresh).not.toHaveBeenCalled();
+			expect(establishChatSessionIdentity).toHaveBeenCalled();
+		});
 
 		// The builder opens the test URL from the canvas, so it must split exactly as
 		// production does for the flow to be testable end to end.

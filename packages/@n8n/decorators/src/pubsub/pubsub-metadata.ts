@@ -44,6 +44,7 @@ export type PubSubEventName =
 	| 'agent-chat-leader-channel-request'
 	| 'agent-chat-leader-channel-result'
 	| 'agent-config-changed'
+	| 'cancel-agent-background-job'
 	| 'agent-tasks-changed'
 	| 'redaction-floor-changed';
 
