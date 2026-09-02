@@ -280,8 +280,10 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * One page of the distinct owners of a kind, keyset paginated on `ownerId` so
 	 * a long sweep stays on the `(ownerType, ownerId, ownerMemberId)` index.
 	 *
-	 * Only owners with a job older than `settledBefore`: a job inserted moments
-	 * ago may belong to an owner whose own row is not committed yet.
+	 * Only owners with a job older than `settledBefore`. A module may provision
+	 * before the transaction that creates the owner commits, and the resolver
+	 * would read that brand-new job as orphaned. The bound is on `createdAt`
+	 * because the poller rewrites `updatedAt` on every fire.
 	 *
 	 * @param after exclusive lower bound on `ownerId`; omit for the first page.
 	 * @returns at most `limit` owner ids, ascending.
@@ -436,6 +438,10 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	/**
 	 * Lift the quarantine on every quarantined job of this owner member, leaving
 	 * their clocks to the caller. Must run inside a transaction.
+	 *
+	 * A lifted job keeps its `createdAt`, so the settle window of
+	 * {@link findOwnerIds} does not shield it again. Call this only once the
+	 * owner is visible to its resolver, or the next sweep quarantines it anew.
 	 *
 	 * @returns how many quarantines were lifted (0 when the driver can't report it).
 	 */
