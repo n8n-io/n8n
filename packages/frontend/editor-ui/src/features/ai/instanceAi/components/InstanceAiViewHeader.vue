@@ -52,7 +52,7 @@ function openNewThread() {
 			side="bottom"
 			align="start"
 			:side-offset="4"
-			width="calc(var(--spacing--5xl) + var(--spacing--4xl))"
+			width="calc(var(--spacing--5xl) + var(--spacing--3xl) + var(--spacing--xl))"
 			:enable-scrolling="false"
 		>
 			<template #trigger>

@@ -229,7 +229,7 @@ const instanceAi = computed<IMenuItem>(() => ({
 	preview: true,
 }));
 
-const recentInstanceAiThreads = computed(() => instanceAiStore.threads.slice(0, 3));
+const recentInstanceAiThreads = computed(() => instanceAiStore.threads.slice(0, 5));
 const isInstanceAiThreadView = computed(() => route.name === INSTANCE_AI_THREAD_VIEW);
 const sidebarActiveTabId = computed(() =>
 	isInstanceAiThreadView.value ? undefined : activeTabId.value,
@@ -457,6 +457,7 @@ onBeforeUnmount(() => {
 						v-for="thread in recentInstanceAiThreads"
 						:key="thread.id"
 						:item="getInstanceAiThreadMenuItem(thread)"
+						scroll-label-on-overflow
 					/>
 				</div>
 			</template>
