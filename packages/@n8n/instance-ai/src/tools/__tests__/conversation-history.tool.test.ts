@@ -1,15 +1,15 @@
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { executeTool } from '../__tests__/tool-test-utils';
-import type { Logger } from '../logger';
+import { executeTool } from '../../__tests__/tool-test-utils';
+import type { Logger } from '../../logger';
 import type {
 	ConversationHistoryMessagesResult,
 	ConversationHistorySearchResult,
 	InstanceAiContext,
 	InstanceAiConversationHistoryReader,
-} from '../types';
-import { createConversationHistoryTool } from './conversation-history.tool';
+} from '../../types';
+import { createConversationHistoryTool } from '../conversation-history.tool';
 
 const UNAVAILABLE_ERROR = 'Conversation history is not available on this instance.';
 

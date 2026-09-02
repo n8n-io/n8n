@@ -18,8 +18,8 @@ const CONVERSATION_ROLES = ['user', 'assistant'];
 /**
  * Rows that pass the SQL pre-filter can still be invisible to the reader
  * (internal auto-follow-ups, unreadable content), so each side of a window
- * fetches a multiple of what it needs. A stretch of more than factor×limit
- * consecutive invisible rows still under-fills the window, and `hasMore` then
+ * fetches a multiple of what it needs. The window under-fills only when fewer
+ * than `limit` of the fetched rows are visible, and `hasMore` then
  * over-reports (one wasted follow-up read) — it never under-reports.
  */
 const WINDOW_OVERFETCH_FACTOR = 4;
