@@ -38,6 +38,7 @@ const MockedClient = Client as MockedClass<typeof Client>;
 const createTestEgressFilter = (): NodeEgressFilter => ({
 	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
 	createSecureLookup: vi.fn(),
+	validateRedirectSync: vi.fn(),
 });
 
 describe('utils', () => {
@@ -682,6 +683,7 @@ describe('utils', () => {
 
 				await connectMcpClient({
 					serverTransport: transport,
+					secureEgressFilter: createTestEgressFilter(),
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer my-token' },
 					name: 'test-client',
@@ -692,8 +694,9 @@ describe('utils', () => {
 				await opts.fetch('https://example.com/mcp', {});
 
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
-				const [, secondCallOpts] = mockedProxyFetch.mock.calls[1];
-				expect(secondCallOpts?.headers).not.toHaveProperty('Authorization');
+				const [secondCallOptions] = mockedProxyFetch.mock.calls[1];
+				expect(secondCallOptions.input.toString()).toBe('https://other.example.com/moved');
+				expect(new Headers(secondCallOptions.init?.headers).get('authorization')).toBeNull();
 			});
 
 			it('should preserve SDK headers passed as Headers instance', async () => {
