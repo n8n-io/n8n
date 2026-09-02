@@ -209,8 +209,15 @@ describe('GROUPING_GUIDANCE', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/one or two nodes each, the boundaries are too fine/i);
 		});
 
-		it('breaks ties toward fewer groups', () => {
-			expect(GROUPING_GUIDANCE).toMatch(/in doubt, fewer groups/i);
+		it('breaks ties toward fewer, larger groups', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/in doubt, fewer and larger groups/i);
+		});
+
+		it('does not let the ceiling justify an invalid or absurd split', () => {
+			// A trigger-level fan-out cannot share a group, so some graphs land over the
+			// ceiling and chasing the number would produce groups the save path drops.
+			expect(GROUPING_GUIDANCE).toMatch(/never invent a group that breaks the validity rules/i);
+			expect(GROUPING_GUIDANCE).toMatch(/an item or two over is fine/i);
 		});
 
 		it('gives a group count for a medium workflow', () => {
@@ -259,8 +266,15 @@ describe('GROUPING_GUIDANCE', () => {
 			expect(GROUPING_GUIDANCE).toMatch(/write one for every group/i);
 		});
 
-		it('forbids restating the title', () => {
+		it('forbids restating the title, including as an opening clause', () => {
+			// An agent restated the title and appended a detail, and the collapsed group
+			// clipped the description before the detail was visible.
 			expect(GROUPING_GUIDANCE).toMatch(/add to the title, never restate it/i);
+			expect(GROUPING_GUIDANCE).toMatch(/must not open by repeating it/i);
+		});
+
+		it('tells agents to lead with the detail because collapsed text is clipped', () => {
+			expect(GROUPING_GUIDANCE).toMatch(/collapsed group clips the description/i);
 		});
 
 		it('interpolates the length cap instead of hardcoding it', () => {

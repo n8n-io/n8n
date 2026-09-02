@@ -120,7 +120,7 @@ Node groups are named visual frames drawn on the canvas, so a workflow reads cor
 Every workflow you build needs an explicit grouping decision, taken while you write the code: declare the groups, or conclude this workflow does not warrant any. Skipping the decision is not an option; deciding against groups often is.
 
 - **When to group:** count the top-level items the workflow would have with no groups — the trigger plus every node or existing group. More than 7 means you must group. The workflow being one straight line is not an exemption: stages run in sequence (e.g. ingest → transform → deliver), so a linear pipeline is the normal case for grouping, not the exception. At 7 items or fewer, serving a single objective, leave it ungrouped.
-- **How many:** one group per distinct stage or high-level objective — typically 3 to 5. After grouping, the top level must be at most 7 items, counting the trigger (always ungrouped), every group, and every node left outside one. When in doubt, fewer groups.
+- **How many:** one group per distinct stage or high-level objective — typically 3 to 5. After grouping, aim for at most 7 items at the top level, counting the trigger (always ungrouped), every group, and every node left outside one. Some graphs cannot reach it — branches fanning straight out of the trigger cannot share a group — and landing an item or two over is fine there. Never invent a group that breaks the validity rules, or split a stage that reads as one objective, just to hit the number. When in doubt, fewer and larger groups.
 - **What belongs together:** a group is one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Put the boundary where the objective changes, and merge two groups that serve the same outcome. If the stages you find come out at one or two nodes each, the boundaries are too fine: widen them until each group is a real objective.
 - **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is a separately-executed, reusable unit. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
 
@@ -136,7 +136,8 @@ Groups are created collapsed, so the title is the first and often the only thing
 ### Descriptions
 
 - Write one for every group, at most ${GROUP_DESCRIPTION_MAX_LENGTH} characters.
-- It must add to the title, never restate it. For "Fetch new recordings", "Fetches new recordings from Gong" is wasted space.
+- It must add to the title, never restate it, and it must not open by repeating it. "Validates the shipping address against the Google API and reduces it to a verdict" under the title "Validate via Google" wastes the words the user actually reads.
+- Lead with the detail that earns its place. A collapsed group clips the description, so the first few words are often all the user sees — spend them on the trigger, the destination, or the scope, never on the title again.
 - The detail worth adding is the trigger or input, the destination or output, or the scope boundary.
 - Plain language a non-technical reader follows — no node types or parameter values.
 
