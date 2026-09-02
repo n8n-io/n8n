@@ -23,10 +23,8 @@ const { t } = useI18n();
 
 <style lang="scss" module>
 .preview {
-	--n8n-badge--background: var(--color--secondary--tint-2);
 	--n8n-badge--border-color: transparent;
 	--n8n-badge--height: auto;
-	--n8n-badge--text-color: var(--color--secondary);
 
 	border: 0;
 
