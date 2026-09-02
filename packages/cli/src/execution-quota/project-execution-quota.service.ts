@@ -3,6 +3,7 @@ import type { ExecutionQuotaPeriodUnit } from '@n8n/db';
 import {
 	ProjectExecutionCounterRepository,
 	ProjectExecutionQuotaRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -30,6 +31,7 @@ export class ProjectExecutionQuotaService {
 		private readonly counterRepository: ProjectExecutionCounterRepository,
 		private readonly license: License,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	async resolveLimit(
@@ -65,6 +67,25 @@ export class ProjectExecutionQuotaService {
 			remaining: limit === UNLIMITED_LICENSE_QUOTA ? null : Math.max(limit - consumed, 0),
 			resetsAt: computePeriodEnd(periodUnit, now).toISO(),
 		};
+	}
+
+	/**
+	 * Every project in the instance with its resolved quota and current
+	 * consumption — the data source for the instance-admin cross-project
+	 * view. A loop over `getConsumption` is the right shape at realistic
+	 * self-hosted instance scale (see spec addendum); a single aggregate
+	 * query is a later optimization, not required here.
+	 */
+	async getAllProjectsConsumption() {
+		const projects = await this.projectRepository.find();
+
+		return await Promise.all(
+			projects.map(async (project) => ({
+				projectId: project.id,
+				projectName: project.name,
+				...(await this.getConsumption(project.id)),
+			})),
+		);
 	}
 
 	/**

@@ -2,6 +2,7 @@ import type {
 	Project,
 	ProjectExecutionCounterRepository,
 	ProjectExecutionQuotaRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -30,6 +31,7 @@ describe('ProjectExecutionQuotaService.assertWithinQuotaAndIncrement', () => {
 		counterRepository,
 		license,
 		insightsByPeriodRepository,
+		mock(),
 	);
 
 	beforeEach(() => {
@@ -182,6 +184,7 @@ describe('ProjectExecutionQuotaService.getSpikes', () => {
 			counterRepository,
 			mock(),
 			insightsByPeriodRepository,
+			mock(),
 		);
 
 		const spikes = await service.getSpikes('project-1');
@@ -216,6 +219,7 @@ describe('ProjectExecutionQuotaService.getSpikes', () => {
 			counterRepository,
 			mock(),
 			insightsByPeriodRepository,
+			mock(),
 		);
 
 		const spikes = await service.getSpikes('project-1');
@@ -268,6 +272,7 @@ describe('ProjectExecutionQuotaService.getSpikes', () => {
 			counterRepository,
 			mock(),
 			insightsByPeriodRepository,
+			mock(),
 		);
 
 		const spikes = await service.getSpikes('project-1');
@@ -302,6 +307,7 @@ describe('ProjectExecutionQuotaService.getConsumption', () => {
 			counterRepository,
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		const consumption = await service.getConsumption('project-1');
@@ -328,10 +334,58 @@ describe('ProjectExecutionQuotaService.getConsumption', () => {
 			counterRepository,
 			mock(),
 			mock(),
+			mock(),
 		);
 
 		const consumption = await service.getConsumption('project-1');
 
 		expect(consumption.resetsAt).toBe('2026-10-01T00:00:00.000Z');
+	});
+});
+
+describe('ProjectExecutionQuotaService.getAllProjectsConsumption', () => {
+	it('returns one row per project with its resolved quota and consumption', async () => {
+		const projectRepository = mock<ProjectRepository>();
+		const quotaRepository = mock<ProjectExecutionQuotaRepository>();
+		const counterRepository = mock<ProjectExecutionCounterRepository>();
+		const license = mock<License>();
+
+		projectRepository.find.mockResolvedValue([
+			{ id: 'project-1', name: 'Marketing' } as Project,
+			{ id: 'project-2', name: 'Engineering' } as Project,
+		]);
+		quotaRepository.findOneBy.mockImplementation(async ({ projectId }: never) =>
+			projectId === 'project-1'
+				? ({ projectId: 'project-1', limit: 10, periodUnit: 'day' } as never)
+				: null,
+		);
+		counterRepository.getProjectPeriodTotal.mockResolvedValue(3);
+		license.getValue.mockReturnValue(undefined);
+		license.getPlanName.mockReturnValue('Community');
+
+		const service = new ProjectExecutionQuotaService(
+			mock(),
+			quotaRepository,
+			counterRepository,
+			license,
+			mock(),
+			projectRepository,
+		);
+
+		const rows = await service.getAllProjectsConsumption();
+
+		expect(rows).toHaveLength(2);
+		expect(rows).toContainEqual(
+			expect.objectContaining({
+				projectId: 'project-1',
+				projectName: 'Marketing',
+				limit: 10,
+				periodUnit: 'day',
+				consumed: 3,
+			}),
+		);
+		expect(rows).toContainEqual(
+			expect.objectContaining({ projectId: 'project-2', projectName: 'Engineering' }),
+		);
 	});
 });
