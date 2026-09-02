@@ -221,7 +221,10 @@ export class WorkflowFinderService {
 		return workflows;
 	}
 
-	async findWorkflowIdsByFolder(folderIds: string[]): Promise<Map<string, string[]>> {
+	async findWorkflowIdsByFolder(
+		folderIds: string[],
+		options: { includeArchived?: boolean } = {},
+	): Promise<Map<string, string[]>> {
 		if (folderIds.length === 0) return new Map();
 
 		const byFolder = new Map<string, string[]>();
@@ -229,7 +232,12 @@ export class WorkflowFinderService {
 
 		for (const chunk of chunkIds(folderIds)) {
 			const rows = await this.sharedWorkflowRepository.find({
-				where: { workflow: { parentFolder: In(chunk) } },
+				where: {
+					workflow: {
+						parentFolder: In(chunk),
+						...(options.includeArchived ? {} : { isArchived: false }),
+					},
+				},
 				relations: { workflow: { parentFolder: true } },
 				select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
 			});
@@ -288,12 +296,18 @@ export class WorkflowFinderService {
 	/**
 	 * List root workflows of a project only.
 	 */
-	async findRootWorkflowIdsInProject(projectId: string): Promise<string[]> {
+	async findRootWorkflowIdsInProject(
+		projectId: string,
+		options: { includeArchived?: boolean } = {},
+	): Promise<string[]> {
 		const rows = await this.sharedWorkflowRepository.find({
 			where: {
 				project: { id: projectId },
 				role: 'workflow:owner',
-				workflow: { parentFolder: IsNull() },
+				workflow: {
+					parentFolder: IsNull(),
+					...(options.includeArchived ? {} : { isArchived: false }),
+				},
 			},
 			relations: { workflow: { parentFolder: true } },
 			select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
