@@ -1,0 +1,30 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_f132370d90443c::t_a92382197dd60a 437,449,453-454,461,464,466,473
+  s_f132370d90443c::t_d9a344b3ef4aff 370,379,383-384,388,391,393,397
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_f132370d90443c::t_c093ea38d971cb 200,207-210,216-219
+packages/cli/src/events/maps/relay.event-map.ts
+  s_f132370d90443c::t_cba42afb6d8138 688
+  s_f132370d90443c::t_0fbc42e7a52331 708
+packages/cli/src/modules/source-control.ee/__tests__/source-control-status.service.test.ts
+  s_f132370d90443c::t_66916aba28eea5 895,904,908,918,922,932,936,945,949,959
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_f132370d90443c::t_89e897926b763f 376,385
+  s_f132370d90443c::t_a4f02bf87ca9a3 338,345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "76bc02f8c3905e0af33eb3fd61bec635c0af4420",
+  "prompts": {},
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
