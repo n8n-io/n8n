@@ -2,7 +2,7 @@
 // logical names, `{ name, value }` option shapes) — not node display-name params.
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
 
-import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -125,6 +125,22 @@ describe('Microsoft Dataverse loadOptions', () => {
 			await expect(getEntitySets.call(ctx)).rejects.toThrow(/Insufficient privileges/);
 		});
 
+		it('applies the crafted message when the failure is already a NodeApiError', async () => {
+			// Production shape: httpRequestWithAuthentication pre-wraps the axios
+			// failure in a NodeApiError, which lifts the body text onto `.description`.
+			const cause = Object.assign(new Error('Forbidden - perhaps check your credentials?'), {
+				statusCode: 403,
+				response: { data: { error: { code: '0x80072560', message: 'Insufficient privileges' } } },
+			});
+			request.mockRejectedValue(new NodeApiError(node, cause as unknown as JsonObject));
+
+			const error = await getEntitySets.call(ctx).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect((error as Error).message).toContain('Insufficient privileges');
+			expect((error as Error).message).not.toContain('perhaps check your credentials');
+		});
+
 		it('parses a raw JSON string error body', async () => {
 			request.mockRejectedValue({
 				statusCode: 400,
@@ -241,11 +257,66 @@ describe('Microsoft Dataverse loadOptions', () => {
 			expect(metadataRequest.qs.$filter).toBe("EntitySetName eq 'accounts'");
 			const [, rowsRequest] = request.mock.calls[1];
 			expect(rowsRequest.url).toContain('/accounts');
-			expect(rowsRequest.qs).toMatchObject({
+			expect(rowsRequest.qs).toEqual({
 				$select: 'accountid,name',
 				$filter: "contains(name,'Ac''me')",
-				$top: 100,
 			});
+			// Server-driven paging, not a `$top` cap.
+			expect(rowsRequest.qs.$top).toBeUndefined();
+			expect(rowsRequest.headers.Prefer).toBe('odata.maxpagesize=100');
+		});
+
+		it('returns the @odata.nextLink as the pagination token', async () => {
+			ctx.getCurrentNodeParameter.mockReturnValue({ mode: 'list', value: 'accounts' });
+			const nextLink = `${BASE_URL}/api/data/v9.2/accounts?$select=accountid,name&$skiptoken=x`;
+			request
+				.mockResolvedValueOnce({
+					value: [{ PrimaryIdAttribute: 'accountid', PrimaryNameAttribute: 'name' }],
+				})
+				.mockResolvedValueOnce({
+					value: [{ accountid: 'row-1', name: 'Acme' }],
+					'@odata.nextLink': nextLink,
+				});
+
+			expect(await searchRows.call(ctx)).toEqual({
+				results: [{ name: 'Acme (row-1)', value: 'row-1' }],
+				paginationToken: nextLink,
+			});
+		});
+
+		it('follows the pagination token as the request URL without resending the query', async () => {
+			ctx.getCurrentNodeParameter.mockReturnValue({ mode: 'list', value: 'accounts' });
+			const token = `${BASE_URL}/api/data/v9.2/accounts?$select=accountid,name&$skiptoken=x`;
+			request
+				.mockResolvedValueOnce({
+					value: [{ PrimaryIdAttribute: 'accountid', PrimaryNameAttribute: 'name' }],
+				})
+				.mockResolvedValueOnce({
+					value: [{ accountid: 'row-2', name: 'Beta' }],
+				});
+
+			expect(await searchRows.call(ctx, undefined, token)).toEqual({
+				results: [{ name: 'Beta (row-2)', value: 'row-2' }],
+			});
+			const [, pageRequest] = request.mock.calls[1];
+			expect(pageRequest.url).toBe(token);
+			// The nextLink already encodes the query; don't resend it.
+			expect(pageRequest.qs).toEqual({});
+			expect(pageRequest.headers.Prefer).toBe('odata.maxpagesize=100');
+		});
+
+		it('rejects a pagination token pointing outside the environment URL', async () => {
+			ctx.getCurrentNodeParameter.mockReturnValue({ mode: 'list', value: 'accounts' });
+			const evilToken = 'https://evil.example.com/api/data/v9.2/accounts?$skiptoken=x';
+			request.mockResolvedValueOnce({
+				value: [{ PrimaryIdAttribute: 'accountid', PrimaryNameAttribute: 'name' }],
+			});
+
+			await expect(searchRows.call(ctx, undefined, evilToken)).rejects.toThrow(
+				/outside the configured Environment URL/,
+			);
+			// Only the metadata call ran; the cross-host page request was never dispatched.
+			expect(request).toHaveBeenCalledTimes(1);
 		});
 	});
 });

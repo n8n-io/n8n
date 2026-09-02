@@ -31,18 +31,6 @@ export const OPERATION_BY_VALUE: Record<string, OperationDefinition> = RECORD_OP
 	{} as Record<string, OperationDefinition>,
 );
 
-/**
- * Backwards-compat alias map — keys are deprecated operation values that
- * existing workflows may still hold; values are the current op id.
- *
- *   `query` → `getAll`   (legacy value from an earlier iteration)
- *   `list`  → `getAll`   (earlier id before the rename to Get Many)
- */
-export const OPERATION_ALIASES: Record<string, string> = {
-	query: 'getAll',
-	list: 'getAll',
-};
-
 export function resolveOperation(value: string): OperationDefinition | undefined {
-	return OPERATION_BY_VALUE[value] ?? OPERATION_BY_VALUE[OPERATION_ALIASES[value] ?? ''];
+	return OPERATION_BY_VALUE[value];
 }

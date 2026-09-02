@@ -102,6 +102,16 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			expect(options.url).toBe(`${BASE_URL}${API_PATH}/accounts`);
 		});
 
+		it('strips multiple trailing slashes from the environment URL', async () => {
+			ctx.getCredentials.mockResolvedValue({ environmentUrl: `${BASE_URL}//` });
+			request.mockResolvedValue({});
+
+			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+
+			const [, options] = request.mock.calls[0];
+			expect(options.url).toBe(`${BASE_URL}${API_PATH}/accounts`);
+		});
+
 		it('wraps a failure in NodeApiError', async () => {
 			request.mockRejectedValue({ statusCode: 400, message: 'Bad Request' });
 
@@ -143,8 +153,8 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 		it('honors the Retry-After header over computed back-off', async () => {
 			request
 				.mockRejectedValueOnce({
-					statusCode: 429,
-					response: { headers: { 'retry-after': '2' } },
+					httpCode: '429',
+					cause: { response: { headers: { 'retry-after': '2' } } },
 				})
 				.mockResolvedValueOnce({});
 
@@ -156,8 +166,8 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 		it('honors a capitalized Retry-After header', async () => {
 			request
 				.mockRejectedValueOnce({
-					statusCode: 429,
-					response: { headers: { 'Retry-After': '3' } },
+					httpCode: '429',
+					cause: { response: { headers: { 'Retry-After': '3' } } },
 				})
 				.mockResolvedValueOnce({});
 
@@ -170,8 +180,8 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const twoSecondsFromNow = new Date(Date.now() + 2000).toUTCString();
 			request
 				.mockRejectedValueOnce({
-					statusCode: 429,
-					response: { headers: { 'retry-after': twoSecondsFromNow } },
+					httpCode: '429',
+					cause: { response: { headers: { 'retry-after': twoSecondsFromNow } } },
 				})
 				.mockResolvedValueOnce({});
 
@@ -182,6 +192,19 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			// Allow a little slack for the clock advancing between throw and read.
 			expect(delay).toBeGreaterThan(0);
 			expect(delay).toBeLessThanOrEqual(2000);
+		});
+
+		it('caps a large Retry-After at the maximum honored delay', async () => {
+			request
+				.mockRejectedValueOnce({
+					httpCode: '429',
+					cause: { response: { headers: { 'retry-after': '600' } } },
+				})
+				.mockResolvedValueOnce({});
+
+			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+
+			expect(sleep).toHaveBeenCalledWith(120_000);
 		});
 
 		it('retries a transient network error (ECONNRESET) then succeeds', async () => {
@@ -256,6 +279,23 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			expect(request).toHaveBeenCalledTimes(2);
 		});
 
+		it('retries a client-side request timeout (ECONNABORTED) then succeeds', async () => {
+			request.mockRejectedValueOnce({ code: 'ECONNABORTED' }).mockResolvedValueOnce({ value: 1 });
+
+			const result = await dataverseApiRequest(
+				ctx,
+				'GET',
+				'/accounts',
+				{},
+				{},
+				{},
+				CREDENTIAL_TYPE,
+			);
+
+			expect(result).toEqual({ value: 1 });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+
 		it('gives up after the maximum number of retries on a persistent 503', async () => {
 			request.mockRejectedValue({ statusCode: 503 });
 
@@ -292,6 +332,17 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 
 		it('does not retry a POST after an ambiguous socket error (ECONNRESET)', async () => {
 			request.mockRejectedValue({ code: 'ECONNRESET' });
+
+			await expect(
+				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),
+			).rejects.toThrow(NodeApiError);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('does not retry a POST after a client-side timeout (may have reached the server)', async () => {
+			request.mockRejectedValue({ code: 'ECONNABORTED' });
 
 			await expect(
 				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),

@@ -43,6 +43,18 @@ const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 // `entityset(<key>)` — a full navigation reference the user can paste verbatim.
 const ENTITYSET_PATH_PATTERN = /^\/?[a-z][a-z0-9_]*\([^)]+\)$/i;
 
+/**
+ * Abstract lookup targets Dataverse reports in relationship metadata but that
+ * can't be bound directly. `ownerid` reports the abstract `owner` entity, yet
+ * the Web API assigns it via `/systemusers(<id>)` or `/teams(<id>)`. Expanding
+ * to the concrete members (sharing the one navigation property) lets both
+ * documented forms validate and makes a bare GUID ambiguous — the same
+ * disambiguation the Customer lookup already produces.
+ */
+const ABSTRACT_LOOKUP_TARGETS: Record<string, string[]> = {
+	owner: ['systemuser', 'team'],
+};
+
 // Per-execution cache so a Return All / multi-item write resolves the metadata
 // for a given table once, not once per item. Keyed by the execution context so
 // it clears automatically when the execution is garbage-collected.
@@ -57,11 +69,12 @@ const cache = new WeakMap<object, Map<string, Promise<LookupFieldMap>>>();
  * The per-execution {@link cache} collapses this to one resolution per table, so
  * a Return All / multi-item write pays it once, not once per item.
  *
- * Failure contract: an *empty result* (the table isn't found, or it has no
- * lookup columns) yields an empty map — callers then send the body unchanged and
- * a genuinely wrong table surfaces its real error at write time. A *failed
- * request* (network / auth / server error) propagates so the item fails loudly
- * instead of silently skipping lookup translation.
+ * Failure contract: metadata read is best-effort. An *empty result* (the table
+ * isn't found, has no lookup columns, or the app lacks metadata-read permission
+ * — a 401/403) yields an empty map; callers then send the body unchanged and
+ * Dataverse surfaces its own error at write time. Any *other failed request*
+ * (network / 5xx) propagates so the item fails loudly instead of silently
+ * skipping lookup translation.
  */
 export async function resolveLookupFields(
 	ctx: IExecuteFunctions,
@@ -93,6 +106,46 @@ async function buildLookupFieldMap(
 	credentialType: string,
 	entitySet: string,
 ): Promise<LookupFieldMap> {
+	try {
+		return await collectLookupFieldMap(ctx, credentialType, entitySet);
+	} catch (error) {
+		// Metadata read is best-effort: a 401/403 (no metadata-read permission) falls
+		// back to sending the body unchanged so Dataverse surfaces its own error.
+		// Other failures (network / 5xx) propagate.
+		if (isMetadataPermissionError(error)) return new Map();
+		throw error;
+	}
+}
+
+/**
+ * Whether a failed metadata request was purely a permission problem (401/403).
+ * `dataverseApiRequest` wraps failures in `NodeApiError` (status on `httpCode`)
+ * and keeps the original axios error under `cause`; check both.
+ */
+function isMetadataPermissionError(error: unknown): boolean {
+	const sources = [
+		error as { httpCode?: unknown; statusCode?: unknown } | null,
+		(error as { cause?: unknown } | null)?.cause,
+	];
+	for (const src of sources) {
+		if (!src) continue;
+		const candidates = [
+			(src as { httpCode?: unknown }).httpCode,
+			(src as { statusCode?: unknown }).statusCode,
+			(src as { response?: { status?: unknown } }).response?.status,
+		];
+		if (candidates.some((c) => c === 401 || c === 403 || c === '401' || c === '403')) {
+			return true;
+		}
+	}
+	return false;
+}
+
+async function collectLookupFieldMap(
+	ctx: IExecuteFunctions,
+	credentialType: string,
+	entitySet: string,
+): Promise<LookupFieldMap> {
 	const map: LookupFieldMap = new Map();
 
 	// 1. entity-set (plural) → table LogicalName. An unknown entity set yields no
@@ -116,8 +169,15 @@ async function buildLookupFieldMap(
 	if (rows.length === 0) return map;
 
 	// 3. Referenced table logical names → entity-set names, in one batched call.
+	// Abstract targets (e.g. `owner`) aren't bindable themselves; resolve their
+	// concrete members instead so the documented bind paths validate.
 	const referenced = [
-		...new Set(rows.map((row) => row.ReferencedEntity).filter((name): name is string => !!name)),
+		...new Set(
+			rows
+				.map((row) => row.ReferencedEntity)
+				.filter((name): name is string => !!name)
+				.flatMap((name) => ABSTRACT_LOOKUP_TARGETS[name.toLowerCase()] ?? [name]),
+		),
 	];
 	const entitySetByLogical = await resolveEntitySets(ctx, credentialType, referenced);
 
@@ -126,11 +186,16 @@ async function buildLookupFieldMap(
 		const navigationProperty = row.ReferencingEntityNavigationPropertyName;
 		const referencedEntity = row.ReferencedEntity;
 		if (!attribute || !navigationProperty || !referencedEntity) continue;
-		const targetEntitySet = entitySetByLogical.get(referencedEntity);
-		if (!targetEntitySet) continue;
+		// Expand an abstract target (owner) into its concrete members (systemuser,
+		// team), all sharing the single navigation property.
+		const targets = ABSTRACT_LOOKUP_TARGETS[referencedEntity.toLowerCase()] ?? [referencedEntity];
 		const candidates = map.get(attribute) ?? [];
-		candidates.push({ navigationProperty, referencedEntity, targetEntitySet });
-		map.set(attribute, candidates);
+		for (const target of targets) {
+			const targetEntitySet = entitySetByLogical.get(target);
+			if (!targetEntitySet) continue;
+			candidates.push({ navigationProperty, referencedEntity: target, targetEntitySet });
+		}
+		if (candidates.length > 0) map.set(attribute, candidates);
 	}
 	return map;
 }
@@ -184,32 +249,26 @@ async function resolveEntitySets(
 }
 
 /**
- * Cheap pre-check: does `body` contain any value that {@link applyLookupBindings}
- * could need relationship metadata to translate? A candidate is a bare GUID, a
- * value starting with `/` or matching an `entityset(id)` reference, or `null`
- * (a disassociation). Plain scalars (names, numbers, booleans, dates) never are,
- * and keys already carrying `@odata.bind` are handled without metadata.
+ * Cheap pre-check: could `body` contain a value {@link applyLookupBindings} may
+ * need relationship metadata to translate or validate? Returns true for any
+ * non-`@odata.bind` key whose value is `null` (a possible disassociation) or a
+ * non-empty string (which could be a lookup reference — or a *mistyped* one, a
+ * plain name, that must still be validated). Numbers, booleans, empty strings,
+ * and keys already carrying `@odata.bind` are never candidates.
  *
- * This lets a write op skip {@link resolveLookupFields} — and its up-to-three
- * metadata GETs — for the common case of a body with no lookup-style values,
- * so a plain create/update no longer requires the connected app to have
- * metadata-read permission.
- *
- * The check is a deliberately broad over-approximation: it uses `startsWith('/')`
- * so even a malformed reference (e.g. `/contacts` with no key) still resolves
- * metadata and reaches {@link applyLookupBindings}'s node-side validation, rather
- * than silently passing through as a plain field. False positives only cost a
- * metadata lookup; a false negative would drop validation.
+ * This lets a write op skip {@link resolveLookupFields} for a body with no such
+ * values (numbers/booleans only, or `@odata.bind`-only). It errs toward
+ * resolving: a false positive costs only a per-table cached metadata lookup,
+ * whereas a false negative would forward a bad lookup value as a raw field and
+ * surface Dataverse's opaque 400. Metadata read is best-effort
+ * ({@link resolveLookupFields}), so this no longer forces metadata-read
+ * permission on a plain write.
  */
 export function bodyHasLookupCandidates(body: IDataObject): boolean {
 	for (const [key, value] of Object.entries(body)) {
 		if (key.includes('@odata.bind')) continue;
 		if (value === null) return true;
-		if (typeof value !== 'string') continue;
-		const raw = value.trim();
-		if (GUID_PATTERN.test(raw) || raw.startsWith('/') || ENTITYSET_PATH_PATTERN.test(raw)) {
-			return true;
-		}
+		if (typeof value === 'string' && value.trim() !== '') return true;
 	}
 	return false;
 }

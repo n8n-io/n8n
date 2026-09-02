@@ -1,7 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
 import type { OperationDefinition } from './types';
 import {
-	assertNonEmptyRecordId,
+	assertValidRecordId,
 	buildODataQs,
 	buildRecordPath,
 	executeRequest,
@@ -40,7 +40,7 @@ export const getRow: OperationDefinition = {
 	],
 	async execute(ctx, i, credentialType) {
 		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
-		const recordId = assertNonEmptyRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
+		const recordId = assertValidRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
 		const options = ctx.getNodeParameter('getOptions', i, {}) as IDataObject;
 		return await executeRequest(ctx, credentialType, {
 			method: 'GET',

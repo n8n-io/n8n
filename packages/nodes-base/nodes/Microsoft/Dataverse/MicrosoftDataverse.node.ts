@@ -8,12 +8,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getColumns, getEntitySets, searchEntitySets, searchRows } from './loadOptions';
-import {
-	OPERATION_ALIASES,
-	RECORD_OPERATIONS,
-	resolveOperation,
-	toDropdownOption,
-} from './operations';
+import { RECORD_OPERATIONS, resolveOperation, toDropdownOption } from './operations';
 
 export class MicrosoftDataverse implements INodeType {
 	description: INodeTypeDescription = {
@@ -79,7 +74,6 @@ export class MicrosoftDataverse implements INodeType {
 		const items = this.getInputData();
 		let out: INodeExecutionData[] = [];
 		const liveOps = RECORD_OPERATIONS.map((o) => o.value);
-		const aliases = Object.keys(OPERATION_ALIASES);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -88,7 +82,7 @@ export class MicrosoftDataverse implements INodeType {
 				if (!op) {
 					throw new NodeOperationError(
 						this.getNode(),
-						`Unsupported operation "${operation}". Expected one of: ${[...liveOps, ...aliases].join(', ')}`,
+						`Unsupported operation "${operation}". Expected one of: ${liveOps.join(', ')}`,
 						{ itemIndex: i },
 					);
 				}

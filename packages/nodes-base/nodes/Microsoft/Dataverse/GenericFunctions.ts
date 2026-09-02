@@ -56,12 +56,15 @@ const RETRYABLE_STATUS_CODES: ReadonlySet<number> = new Set([429, 503, 504]);
  * no `statusCode` (the request never got an HTTP response), so without this set
  * they would bypass the back-off logic and fail on the first attempt. Covers
  * the connection drops / DNS / timeout failures that internet-facing Dataverse
- * calls hit most often. A bare "socket hang up" (no `code`) is handled
- * separately in {@link getNetworkErrorCode}.
+ * calls hit most often. `ECONNABORTED` is axios' own client-side request
+ * timeout (from the `timeout` option), distinct from the socket-level
+ * `ETIMEDOUT`. A bare "socket hang up" (no `code`) is handled separately in
+ * {@link getNetworkErrorCode}.
  */
 const RETRYABLE_NETWORK_CODES: ReadonlySet<string> = new Set([
 	'ECONNRESET',
 	'ETIMEDOUT',
+	'ECONNABORTED',
 	'ECONNREFUSED',
 	'EPIPE',
 	'EAI_AGAIN',
@@ -109,19 +112,25 @@ const PRE_DELIVERY_NETWORK_CODES: ReadonlySet<string> = new Set([
 /**
  * Retry policy: up to `MAX_RETRIES` extra attempts (so 1 + 3 = 4 total
  * dispatches in the worst case). Back-off is exponential starting from
- * `BASE_DELAY_MS` with full jitter, capped at `MAX_DELAY_MS`. The upstream
- * `Retry-After` header (seconds or HTTP-date) overrides the computed delay.
+ * `BASE_DELAY_MS` with full jitter, capped at `MAX_DELAY_MS`. A server-sent
+ * `Retry-After` header (seconds or HTTP-date) overrides the computed delay,
+ * clamped to `MAX_RETRY_AFTER_MS` so a large server-dictated wait can't stall
+ * an executor across every attempt.
  */
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 30_000;
+const MAX_RETRY_AFTER_MS = 120_000;
 
 interface TransientErrorShape {
 	statusCode?: number;
 	httpCode?: number | string;
 	code?: string;
 	message?: string;
-	cause?: { code?: string };
+	cause?: {
+		code?: string;
+		response?: { headers?: Record<string, string | string[] | undefined> };
+	};
 	response?: { headers?: Record<string, string | string[] | undefined> };
 }
 
@@ -175,17 +184,26 @@ function isRetryable(error: unknown, method: IHttpRequestMethods): boolean {
 	return PRE_DELIVERY_NETWORK_CODES.has(networkCode);
 }
 
+/**
+ * Read a `Retry-After` delay (ms) from a failed request. Checks `error.response`
+ * directly, then falls back to `error.cause.response` — `httpRequestWithAuthentication`
+ * wraps the axios failure in `NodeApiError` and keeps the original (with its
+ * `response.headers`) under `cause`, mirroring {@link getNetworkErrorCode}. The
+ * result is clamped to `MAX_RETRY_AFTER_MS`.
+ */
 function parseRetryAfter(error: unknown): number | undefined {
-	const headers = (error as TransientErrorShape | null | undefined)?.response?.headers;
+	const e = error as TransientErrorShape | null | undefined;
+	const headers = e?.response?.headers ?? e?.cause?.response?.headers;
 	if (!headers) return undefined;
 	const raw = headers['retry-after'] ?? headers['Retry-After'];
 	if (!raw) return undefined;
 	const value = Array.isArray(raw) ? raw[0] : raw;
 	if (value === undefined) return undefined;
 	const seconds = Number(value);
-	if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+	if (Number.isFinite(seconds)) return Math.min(MAX_RETRY_AFTER_MS, Math.max(0, seconds * 1000));
 	const dateMs = Date.parse(String(value));
-	if (Number.isFinite(dateMs)) return Math.max(0, dateMs - Date.now());
+	if (Number.isFinite(dateMs))
+		return Math.min(MAX_RETRY_AFTER_MS, Math.max(0, dateMs - Date.now()));
 	return undefined;
 }
 
@@ -233,16 +251,17 @@ async function dispatchWithRetry(
 
 /**
  * Resolve the Dataverse environment base URL from the n8n-stored credential,
- * stripping a trailing slash so `${baseUrl}${DATAVERSE_API_PATH}…` always has
- * exactly one slash between segments. Throws early with an actionable message
- * when the credential has no Environment URL, rather than letting a malformed
- * request fail obscurely at the HTTP layer.
+ * stripping trailing slashes so `${baseUrl}${DATAVERSE_API_PATH}…` always has
+ * exactly one slash between segments. Matches the credential's scope and
+ * baseURL normalization (`/\/+$/`) so all three agree. Throws early with an
+ * actionable message when the credential has no Environment URL, rather than
+ * letting a malformed request fail obscurely at the HTTP layer.
  */
 async function resolveBaseUrl(ctx: DataverseContext, credentialType: string): Promise<string> {
 	const credentials = await ctx.getCredentials(credentialType);
 	const url = String(credentials.environmentUrl ?? '')
 		.trim()
-		.replace(/\/$/, '');
+		.replace(/\/+$/, '');
 	if (!url) {
 		throw new NodeApiError(ctx.getNode(), {
 			message: 'Dataverse credential is missing "Environment URL"',
@@ -271,12 +290,27 @@ export async function dataverseApiRequestRaw(
 	credentialType: string,
 ): Promise<IDataObject> {
 	const baseUrl = await resolveBaseUrl(ctx, credentialType);
+	let url: string;
+	if (/^https?:\/\//i.test(resource)) {
+		// An absolute resource is a server-issued `@odata.nextLink` (server-driven
+		// paging). Require it to stay within the configured environment so a tampered
+		// saved token can't redirect the authenticated request to another host.
+		if (!resource.toLowerCase().startsWith(`${baseUrl.toLowerCase()}/`)) {
+			throw new NodeApiError(ctx.getNode(), {
+				message:
+					'Refusing to follow a Dataverse pagination link outside the configured Environment URL',
+			} as JsonObject);
+		}
+		url = resource;
+	} else {
+		url = `${baseUrl}${DATAVERSE_API_PATH}${resource}`;
+	}
 
 	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs,
-		url: `${baseUrl}${DATAVERSE_API_PATH}${resource}`,
+		url,
 		headers: {
 			...ODATA_DEFAULT_HEADERS,
 			'User-Agent': buildUserAgent(ctx.getNode().typeVersion),

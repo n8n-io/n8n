@@ -151,7 +151,9 @@ export function normalizeEntitySet(value: unknown): string {
  *
  * `recordId` is forwarded as-is — Dataverse parses both shapes natively, so we
  * don't need to wrap quotes ourselves (callers must supply them when using
- * alt-keys with string values).
+ * alt-keys with string values). Callers validate the identifier first
+ * ({@link assertValidRecordId} for the GUID Row ID path, {@link assertValidAlternateKey}
+ * for the predicate), so URL-breaking input never reaches here.
  */
 export function buildRecordPath(entitySet: string, recordId: string): string {
 	const safeSet = normalizeEntitySet(entitySet);
@@ -182,6 +184,59 @@ export function assertNonEmptyRecordId(
 		);
 	}
 	return trimmed;
+}
+
+const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Chars that would truncate or redirect the request URL if interpolated raw.
+const URL_BREAKING_CHARS = /[?#/]/;
+
+/**
+ * Validate a Row ID before interpolating it into the request path. The field is
+ * a GUID by definition, so require that shape — a value carrying `?`/`#`/`/`
+ * (from a mapped field or expression) would otherwise silently truncate the URL
+ * and hit a different record than intended.
+ *
+ * @throws NodeOperationError naming the parameter.
+ */
+export function assertValidRecordId(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	recordId: unknown,
+	paramName = 'recordId',
+): string {
+	const id = assertNonEmptyRecordId(ctx, itemIndex, recordId, paramName);
+	if (!GUID_PATTERN.test(id)) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Parameter "${paramName}" must be a record GUID (e.g. 00000000-0000-0000-0000-000000000000)`,
+			{ itemIndex },
+		);
+	}
+	return id;
+}
+
+/**
+ * Validate an alternate-key predicate before interpolating it into the path. The
+ * predicate legitimately uses quotes and commas, so we don't constrain the
+ * syntax — but `?`/`#`/`/` would break the URL, so reject those.
+ *
+ * @throws NodeOperationError naming the parameter.
+ */
+export function assertValidAlternateKey(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	alternateKey: unknown,
+	paramName = 'alternateKey',
+): string {
+	const predicate = assertNonEmptyRecordId(ctx, itemIndex, alternateKey, paramName);
+	if (URL_BREAKING_CHARS.test(predicate)) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Parameter "${paramName}" must not contain "?", "#", or "/"`,
+			{ itemIndex },
+		);
+	}
+	return predicate;
 }
 
 /**

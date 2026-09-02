@@ -24,9 +24,10 @@ import type { OperationDefinition } from './types';
  * Two paging modes:
  *   - **Return All**: follows `@odata.nextLink` for OData queries until exhausted.
  *     FetchXML queries cannot use Return All.
- *   - **Limit**: stops after N rows (default 50). For one-shot `$top`
- *     semantics the user can either rely on this limit or set `$top`
- *     explicitly via Options → Row Count.
+ *   - **Limit**: stops after N rows (default 50). On the OData path, when the user
+ *     hasn't set their own Row Count, this also caps the server page via
+ *     `$top: N` so the environment isn't billed for rows we'd discard. FetchXML
+ *     uses client-side capping only.
  */
 export const getManyRows: OperationDefinition = {
 	displayName: 'Get Many',
@@ -132,14 +133,19 @@ export const getManyRows: OperationDefinition = {
 			? `${orderbyColumn} ${orderbyDirection}`
 			: ((options.orderby as string) ?? '');
 
-		const fetchXml = (options.fetchXml as string) ?? '';
-		if (returnAll && fetchXml.trim()) {
+		const fetchXml = ((options.fetchXml as string) ?? '').trim();
+		if (returnAll && fetchXml) {
 			throw new NodeOperationError(
 				ctx.getNode(),
 				'FetchXML Query cannot be used with Return All because FetchXML pagination is not supported. Disable Return All and set a Limit instead.',
 				{ itemIndex: i },
 			);
 		}
+		const userTop = typeof options.top === 'number' && options.top > 0 ? options.top : undefined;
+		// Map a client-side Limit to a server-side `$top` so we don't fetch (and
+		// discard) a full page. The user's explicit Row Count takes precedence, and
+		// FetchXML has no equivalent knob so it's OData-only.
+		const effectiveTop = userTop ?? (limit > 0 ? limit : undefined);
 		const qs: DataverseQuery = fetchXml
 			? { fetchXml }
 			: buildODataQs({
@@ -147,7 +153,7 @@ export const getManyRows: OperationDefinition = {
 					filter: options.filter,
 					orderby,
 					expand: options.expand,
-					top: typeof options.top === 'number' && options.top > 0 ? options.top : undefined,
+					top: effectiveTop,
 				});
 
 		return await executeRequest(ctx, credentialType, {

@@ -8,7 +8,7 @@ import {
 } from './lookups';
 import {
 	assertNonEmptyBody,
-	assertNonEmptyRecordId,
+	assertValidRecordId,
 	buildRecordPath,
 	executeRequest,
 	normalizeEntitySet,
@@ -17,6 +17,7 @@ import {
 import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
+	commonPartitionIdOption,
 	commonRecordIdProperty,
 	commonReturnFullMetadataOption,
 	commonRowItemProperties,
@@ -39,15 +40,11 @@ export const updateRow: OperationDefinition = {
 		commonEntitySetProperty(['update']),
 		commonRecordIdProperty(['update']),
 		...commonRowItemProperties(['update']),
-		// n8n-nodes-base style rule requires the option collection on `update`
-		// to be named "Update Fields". Keeps RFM + partitionId options together.
-		buildOptionsCollection('update', [commonReturnFullMetadataOption()], {
-			displayName: 'Update Fields',
-		}),
+		buildOptionsCollection('update', [commonPartitionIdOption(), commonReturnFullMetadataOption()]),
 	],
 	async execute(ctx, i, credentialType) {
 		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
-		const recordId = assertNonEmptyRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
+		const recordId = assertValidRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
 		// Validate before resolving lookup metadata so an empty Row Item fails fast
 		// without spending metadata requests. Lookup metadata is only resolved when the
 		// body actually carries a lookup-style value, so a plain write stays a single

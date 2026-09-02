@@ -107,12 +107,6 @@ export class MicrosoftDataverseOAuth2Api implements ICredentialType {
 				'={{ $self["environmentUrl"].trim().replace(/\\/+$/, "") + "/.default" + ($self["grantType"] === "clientCredentials" ? "" : " offline_access") }}',
 		},
 		{
-			displayName: 'Auth URI Query Parameters',
-			name: 'authQueryParameters',
-			type: 'hidden',
-			default: '',
-		},
-		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden',

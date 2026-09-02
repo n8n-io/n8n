@@ -7,7 +7,11 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import { DATAVERSE_API_PATH } from './constants';
-import { dataverseApiRequestRaw, type DataverseQuery } from './GenericFunctions';
+import {
+	dataverseApiRequestRaw,
+	type DataverseHeaders,
+	type DataverseQuery,
+} from './GenericFunctions';
 
 /**
  * `loadOptions` handlers for the Dataverse node. These power the in-editor
@@ -72,28 +76,29 @@ async function dataverseGet<T>(
 	ctx: ILoadOptionsFunctions,
 	path: string,
 	qs: DataverseQuery = {},
+	headers: DataverseHeaders = {},
 ): Promise<T> {
 	try {
 		// Delegate base-URL resolution, OData headers, User-Agent, and
-		// transient-failure retries to the shared request helper. We use the
-		// `Raw` variant so the original upstream error reaches our own
-		// extraction below instead of being pre-wrapped in a NodeApiError.
+		// transient-failure retries to the shared request helper. The `Raw` variant
+		// skips the extra NodeApiError wrap that `dataverseApiRequest` adds, but
+		// `httpRequestWithAuthentication` still pre-wraps the failure in one; we
+		// unwrap it below so our extracted message survives.
 		return (await dataverseApiRequestRaw(
 			ctx,
 			'GET',
 			path,
 			{},
 			qs,
-			{},
+			headers,
 			'microsoftDataverseOAuth2Api',
 		)) as T;
 	} catch (error) {
-		// n8n's `requestWithAuthentication` wraps the upstream HTTP failure in
-		// its own envelope. The real Dataverse text can live in any of:
+		// `httpRequestWithAuthentication` wraps the upstream HTTP failure in a
+		// NodeApiError. The real Dataverse text can live in any of:
 		//   - `error.description` — n8n's own NodeApiError text field, which
 		//     usually holds the parsed upstream error message.
-		//   - `error.cause.response.body` — axios envelope when the wrapper is
-		//     the wrapping NodeApiError thrown by request-helper-functions.
+		//   - `error.cause.response.body` — axios envelope under the wrapper.
 		//   - `error.response.body` — older n8n shape.
 		// Crucially, n8n sets `error.message = "Bad request - please check your
 		// parameters"` for any 4xx, which is useless on its own. And Dataverse
@@ -102,10 +107,16 @@ async function dataverseGet<T>(
 		const { status, dvCode, dvMessage } = extractDataverseError(error);
 		const prefix = `Failed to load options from Dataverse${status ? ` (HTTP ${status})` : ''}`;
 		const codePart = dvCode ? ` [${dvCode}]` : '';
-		throw new NodeApiError(ctx.getNode(), error as JsonObject, {
-			message: `${prefix}${codePart}: ${dvMessage}`,
-			description: `GET ${DATAVERSE_API_PATH}${path}`,
-		});
+		const message = `${prefix}${codePart}: ${dvMessage}`;
+		const description = `GET ${DATAVERSE_API_PATH}${path}`;
+		// The failure is already a NodeApiError; its constructor short-circuits when
+		// re-wrapped (ignoring message/description), so mutate it in place instead.
+		if (error instanceof NodeApiError) {
+			error.message = message;
+			error.description = description;
+			throw error;
+		}
+		throw new NodeApiError(ctx.getNode(), error as JsonObject, { message, description });
 	}
 }
 
@@ -258,10 +269,14 @@ export async function searchEntitySets(
 export async function searchRows(
 	this: ILoadOptionsFunctions,
 	filter?: string,
+	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const entitySet = parameterValue(this.getCurrentNodeParameter('entitySet'));
 	if (!entitySet) return { results: [] };
 
+	// Resolve the primary id/name attributes used to map rows. Runs on every
+	// invocation, including each pagination page: the nextLink is opaque to us, so
+	// we can't thread these through it — one extra metadata GET per page.
 	const metadata = await dataverseGet<ODataCollection<EntityDefinition>>(
 		this,
 		'/EntityDefinitions',
@@ -274,26 +289,36 @@ export async function searchRows(
 		metadata.value?.[0] ?? {};
 	if (!idAttribute) return { results: [] };
 
-	const qs: DataverseQuery = {
-		$select: nameAttribute ? `${idAttribute},${nameAttribute}` : idAttribute,
-		$top: 100,
-	};
-	const trimmedFilter = filter?.trim();
-	if (trimmedFilter && nameAttribute) {
-		qs.$filter = `contains(${nameAttribute},'${trimmedFilter.replace(/'/g, "''")}')`;
+	// `Prefer: odata.maxpagesize` gives server-driven paging with an
+	// `@odata.nextLink`, unlike `$top`, which hard-caps the result set with no
+	// continuation and silently hides rows past the cap.
+	const pageHeaders: DataverseHeaders = { Prefer: 'odata.maxpagesize=100' };
+	type RowPage = ODataCollection<Record<string, unknown>> & { '@odata.nextLink'?: string };
+	let response: RowPage;
+	if (paginationToken) {
+		// The nextLink already encodes `$select`/`$filter` and the page cursor.
+		response = await dataverseGet<RowPage>(this, paginationToken, {}, pageHeaders);
+	} else {
+		const qs: DataverseQuery = {
+			$select: nameAttribute ? `${idAttribute},${nameAttribute}` : idAttribute,
+		};
+		const trimmedFilter = filter?.trim();
+		if (trimmedFilter && nameAttribute) {
+			qs.$filter = `contains(${nameAttribute},'${trimmedFilter.replace(/'/g, "''")}')`;
+		}
+		response = await dataverseGet<RowPage>(this, `/${entitySet}`, qs, pageHeaders);
 	}
-	const response = await dataverseGet<ODataCollection<Record<string, unknown>>>(
-		this,
-		`/${entitySet}`,
-		qs,
-	);
+
 	const results = (response.value ?? []).flatMap((row) => {
 		const id = row[idAttribute];
 		if (typeof id !== 'string' || !id) return [];
 		const name = nameAttribute ? row[nameAttribute] : undefined;
 		return [{ name: typeof name === 'string' && name ? `${name} (${id})` : id, value: id }];
 	});
-	return { results };
+	const nextLink = response['@odata.nextLink'];
+	return typeof nextLink === 'string' && nextLink
+		? { results, paginationToken: nextLink }
+		: { results };
 }
 
 /**

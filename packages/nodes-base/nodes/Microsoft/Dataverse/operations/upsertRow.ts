@@ -9,7 +9,8 @@ import {
 } from './lookups';
 import {
 	assertNonEmptyBody,
-	assertNonEmptyRecordId,
+	assertValidAlternateKey,
+	assertValidRecordId,
 	buildRecordPath,
 	executeRequest,
 	normalizeEntitySet,
@@ -18,6 +19,7 @@ import {
 import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
+	commonPartitionIdOption,
 	commonRecordIdProperty,
 	commonReturnFullMetadataOption,
 	commonRowItemProperties,
@@ -110,6 +112,7 @@ export const upsertRow: OperationDefinition = {
 					},
 				],
 			},
+			commonPartitionIdOption(),
 			commonReturnFullMetadataOption(),
 		]),
 	],
@@ -118,8 +121,8 @@ export const upsertRow: OperationDefinition = {
 		const identifierType = ctx.getNodeParameter('identifierType', i, 'guid') as string;
 		const identifier =
 			identifierType === 'alternateKey'
-				? assertNonEmptyRecordId(ctx, i, ctx.getNodeParameter('alternateKey', i), 'alternateKey')
-				: assertNonEmptyRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
+				? assertValidAlternateKey(ctx, i, ctx.getNodeParameter('alternateKey', i), 'alternateKey')
+				: assertValidRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
 
 		const rawBody = parseItemInput(ctx, i);
 		// Validate before resolving lookup metadata so an empty Row Item fails fast

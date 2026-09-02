@@ -88,3 +88,4 @@ lefthook-local.yml
 IMPROVEMENTS.md
 .playwright-mcp
 stryker.log
+.pnpm-store/

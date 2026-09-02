@@ -103,6 +103,41 @@ describe('Microsoft Dataverse lookups', () => {
 			expect(dataverseApiRequest).toHaveBeenCalledTimes(3);
 		});
 
+		it('expands the abstract owner target into systemuser and team candidates', async () => {
+			vi.mocked(dataverseApiRequest)
+				.mockResolvedValueOnce({ value: [{ LogicalName: 'account' }] })
+				.mockResolvedValueOnce({
+					value: [
+						{
+							ReferencingAttribute: 'ownerid',
+							ReferencingEntityNavigationPropertyName: 'ownerid',
+							ReferencedEntity: 'owner',
+						},
+					],
+				})
+				.mockResolvedValueOnce({
+					value: [
+						{ LogicalName: 'systemuser', EntitySetName: 'systemusers' },
+						{ LogicalName: 'team', EntitySetName: 'teams' },
+					],
+				});
+
+			const map = await resolveLookupFields(ctx, CREDENTIAL_TYPE, 'accounts');
+
+			expect(map.get('ownerid')).toEqual([
+				{
+					navigationProperty: 'ownerid',
+					referencedEntity: 'systemuser',
+					targetEntitySet: 'systemusers',
+				},
+				{
+					navigationProperty: 'ownerid',
+					referencedEntity: 'team',
+					targetEntitySet: 'teams',
+				},
+			]);
+		});
+
 		it('returns an empty map when the table has no lookups', async () => {
 			vi.mocked(dataverseApiRequest)
 				.mockResolvedValueOnce({ value: [{ LogicalName: 'account' }] })
@@ -128,6 +163,42 @@ describe('Microsoft Dataverse lookups', () => {
 			vi.mocked(dataverseApiRequest).mockRejectedValueOnce(new Error('boom'));
 
 			await expect(resolveLookupFields(ctx, CREDENTIAL_TYPE, 'accounts')).rejects.toThrow('boom');
+		});
+
+		it('degrades to an empty map when metadata read is forbidden (403)', async () => {
+			vi.mocked(dataverseApiRequest).mockRejectedValue({ httpCode: '403' });
+
+			const map = await resolveLookupFields(ctx, CREDENTIAL_TYPE, 'accounts');
+
+			expect(map.size).toBe(0);
+		});
+
+		it('degrades to an empty map when metadata read is unauthorized (401)', async () => {
+			vi.mocked(dataverseApiRequest).mockRejectedValue({ httpCode: '401' });
+
+			const map = await resolveLookupFields(ctx, CREDENTIAL_TYPE, 'accounts');
+
+			expect(map.size).toBe(0);
+		});
+
+		it('detects a permission error nested under error.cause', async () => {
+			vi.mocked(dataverseApiRequest).mockRejectedValue({
+				cause: { response: { status: 403 } },
+			});
+
+			const map = await resolveLookupFields(ctx, CREDENTIAL_TYPE, 'accounts');
+
+			expect(map.size).toBe(0);
+		});
+
+		it('caches the best-effort empty map so a later item does not re-request', async () => {
+			vi.mocked(dataverseApiRequest).mockRejectedValue({ httpCode: '403' });
+
+			await resolveLookupFields(ctx, CREDENTIAL_TYPE, 'accounts');
+			await resolveLookupFields(ctx, CREDENTIAL_TYPE, 'accounts');
+
+			// The forbidden metadata endpoint is hit once, not once per item.
+			expect(dataverseApiRequest).toHaveBeenCalledTimes(1);
 		});
 
 		it('does not cache a failed resolution so a later item can retry', async () => {
@@ -173,6 +244,44 @@ describe('Microsoft Dataverse lookups', () => {
 			],
 		]);
 		const guid = '00000000-0000-0000-0000-000000000001';
+
+		// `ownerid` reports the abstract `owner` entity, expanded into its two
+		// concrete members sharing the one navigation property.
+		const owner: LookupFieldMap = new Map([
+			[
+				'ownerid',
+				[
+					{
+						navigationProperty: 'ownerid',
+						referencedEntity: 'systemuser',
+						targetEntitySet: 'systemusers',
+					},
+					{
+						navigationProperty: 'ownerid',
+						referencedEntity: 'team',
+						targetEntitySet: 'teams',
+					},
+				],
+			],
+		]);
+
+		it('binds a systemusers reference for the owner lookup', () => {
+			const out = applyLookupBindings(ctx, 0, { ownerid: `/systemusers(${guid})` }, owner);
+
+			expect(out).toEqual({ 'ownerid@odata.bind': `/systemusers(${guid})` });
+		});
+
+		it('binds a teams reference for the owner lookup', () => {
+			const out = applyLookupBindings(ctx, 0, { ownerid: `/teams(${guid})` }, owner);
+
+			expect(out).toEqual({ 'ownerid@odata.bind': `/teams(${guid})` });
+		});
+
+		it('rejects a bare GUID for the owner lookup', () => {
+			expect(() => applyLookupBindings(ctx, 0, { ownerid: guid }, owner)).toThrow(
+				/multiple tables/,
+			);
+		});
 
 		it('binds a bare GUID for a single-target lookup', () => {
 			const out = applyLookupBindings(ctx, 0, { primarycontactid: guid }, singleTarget);
@@ -266,10 +375,20 @@ describe('Microsoft Dataverse lookups', () => {
 	describe('bodyHasLookupCandidates', () => {
 		const guid = '00000000-0000-0000-0000-000000000001';
 
-		it('returns false for plain scalar values', () => {
-			expect(
-				bodyHasLookupCandidates({ name: 'Acme', revenue: 100, active: true, when: '2024-01-01' }),
-			).toBe(false);
+		it('returns false for a body of only non-string scalars', () => {
+			expect(bodyHasLookupCandidates({ revenue: 100, active: true })).toBe(false);
+		});
+
+		it('returns true for any non-empty string value (may be a mistyped lookup)', () => {
+			// A plain name on a lookup column must still trigger resolution so it is
+			// validated node-side rather than forwarded as a raw field.
+			expect(bodyHasLookupCandidates({ name: 'Acme' })).toBe(true);
+			expect(bodyHasLookupCandidates({ primarycontactid: 'John Smith' })).toBe(true);
+		});
+
+		it('returns false for an empty or whitespace-only string', () => {
+			expect(bodyHasLookupCandidates({ name: '' })).toBe(false);
+			expect(bodyHasLookupCandidates({ name: '   ' })).toBe(false);
 		});
 
 		it('returns true for a bare GUID value', () => {
@@ -281,10 +400,6 @@ describe('Microsoft Dataverse lookups', () => {
 			expect(bodyHasLookupCandidates({ customerid: `accounts(${guid})` })).toBe(true);
 		});
 
-		it('returns true for a malformed slash-prefixed value so validation still runs', () => {
-			expect(bodyHasLookupCandidates({ primarycontactid: '/contacts' })).toBe(true);
-		});
-
 		it('returns true for a null value (potential disassociation)', () => {
 			expect(bodyHasLookupCandidates({ primarycontactid: null })).toBe(true);
 		});
@@ -293,10 +408,6 @@ describe('Microsoft Dataverse lookups', () => {
 			expect(bodyHasLookupCandidates({ 'primarycontactid@odata.bind': `/contacts(${guid})` })).toBe(
 				false,
 			);
-		});
-
-		it('trims whitespace before matching a GUID', () => {
-			expect(bodyHasLookupCandidates({ primarycontactid: `  ${guid}  ` })).toBe(true);
 		});
 	});
 });

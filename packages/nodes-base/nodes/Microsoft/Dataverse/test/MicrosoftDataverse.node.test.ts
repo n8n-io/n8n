@@ -112,26 +112,6 @@ describe('MicrosoftDataverse Node', () => {
 		expect(result[0].map((r) => r.json)).toEqual([{ id: 'a' }, { id: 'b' }]);
 	});
 
-	it('resolves the deprecated "query" alias to the Get Many operation', async () => {
-		ctx.getInputData.mockReturnValue([{ json: {} }]);
-		ctx.getNodeParameter.mockReturnValue('query');
-		const listSpy = vi.spyOn(getManyRows, 'execute').mockResolvedValue([]);
-
-		await MicrosoftDataverse.prototype.execute.call(ctx);
-
-		expect(listSpy).toHaveBeenCalledWith(ctx, 0, CREDENTIAL_TYPE);
-	});
-
-	it('resolves the deprecated "list" alias to the Get Many operation', async () => {
-		ctx.getInputData.mockReturnValue([{ json: {} }]);
-		ctx.getNodeParameter.mockReturnValue('list');
-		const listSpy = vi.spyOn(getManyRows, 'execute').mockResolvedValue([]);
-
-		await MicrosoftDataverse.prototype.execute.call(ctx);
-
-		expect(listSpy).toHaveBeenCalledWith(ctx, 0, CREDENTIAL_TYPE);
-	});
-
 	it('throws NodeOperationError for an unsupported operation', async () => {
 		ctx.getInputData.mockReturnValue([{ json: {} }]);
 		ctx.getNodeParameter.mockReturnValue('does-not-exist');

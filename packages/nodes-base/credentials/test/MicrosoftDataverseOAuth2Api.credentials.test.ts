@@ -69,10 +69,10 @@ describe('MicrosoftDataverseOAuth2Api Credential', () => {
 			expect(graphApiBaseUrl?.type).toBe('hidden');
 		});
 
-		it('has empty auth URI query parameters', () => {
-			const authQueryParameters = propertyNamed('authQueryParameters');
-			expect(authQueryParameters?.type).toBe('hidden');
-			expect(authQueryParameters?.default).toBe('');
+		it('does not override the inherited account-picker auth query parameters', () => {
+			// Leaving it unset keeps the parent's `prompt=select_account`, which forces
+			// the account picker and avoids silent wrong-tenant sign-in.
+			expect(propertyNamed('authQueryParameters')).toBeUndefined();
 		});
 	});
 

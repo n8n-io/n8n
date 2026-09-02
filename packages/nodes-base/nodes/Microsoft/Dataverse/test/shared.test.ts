@@ -10,6 +10,8 @@ import {
 	applyPartitionId,
 	assertNonEmptyBody,
 	assertNonEmptyRecordId,
+	assertValidAlternateKey,
+	assertValidRecordId,
 	buildODataQs,
 	buildPreferHeader,
 	buildRecordPath,
@@ -234,6 +236,42 @@ describe('Microsoft Dataverse operations/shared', () => {
 
 		it('uses the provided parameter name in the message', () => {
 			expect(() => assertNonEmptyRecordId(ctx, 0, '', 'rowId')).toThrow(/"rowId"/);
+		});
+	});
+
+	describe('assertValidRecordId', () => {
+		const guid = '00000000-0000-0000-0000-000000000001';
+
+		it('returns a valid GUID (trimmed, from a resource locator)', () => {
+			expect(assertValidRecordId(ctx, 0, `  ${guid}  `)).toBe(guid);
+			expect(assertValidRecordId(ctx, 0, { mode: 'list', value: guid })).toBe(guid);
+		});
+
+		it('rejects a non-GUID value, naming the parameter', () => {
+			expect(() => assertValidRecordId(ctx, 0, 'abc-123')).toThrow(/must be a record GUID/);
+			expect(() => assertValidRecordId(ctx, 0, 'abc-123', 'rowId')).toThrow(/"rowId"/);
+		});
+
+		it('rejects a GUID carrying URL-breaking characters', () => {
+			expect(() => assertValidRecordId(ctx, 0, `${guid}?$select=x`)).toThrow(
+				/must be a record GUID/,
+			);
+			expect(() => assertValidRecordId(ctx, 0, `${guid}#frag`)).toThrow(/must be a record GUID/);
+		});
+	});
+
+	describe('assertValidAlternateKey', () => {
+		it('returns a predicate with quotes and commas untouched', () => {
+			expect(assertValidAlternateKey(ctx, 0, "  accountnumber='ACC-001'  ")).toBe(
+				"accountnumber='ACC-001'",
+			);
+			expect(assertValidAlternateKey(ctx, 0, "key1='a',key2=123")).toBe("key1='a',key2=123");
+		});
+
+		it('rejects a predicate containing ?, #, or /, naming the parameter', () => {
+			expect(() => assertValidAlternateKey(ctx, 0, "name='a?b'")).toThrow(/"alternateKey"/);
+			expect(() => assertValidAlternateKey(ctx, 0, "name='a#b'")).toThrow(/must not contain/);
+			expect(() => assertValidAlternateKey(ctx, 0, "name='a/b'")).toThrow(/must not contain/);
 		});
 	});
 

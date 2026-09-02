@@ -30,6 +30,7 @@ vi.mock('../operations/lookups', async (importActual) => {
 });
 
 const CREDENTIAL_TYPE = 'microsoftDataverseOAuth2Api';
+const ROW_ID = '00000000-0000-0000-0000-000000000001';
 
 const node: INode = {
 	id: 'test-node',
@@ -102,20 +103,35 @@ describe('Microsoft Dataverse operations', () => {
 			expect(applyLookupBindings).toHaveBeenCalled();
 		});
 
-		it('skips lookup metadata for a body with no lookup-style values', async () => {
+		it('skips lookup metadata for a body with only non-string scalars', async () => {
 			withParams({
 				entitySet: 'accounts',
 				inputMode: 'json',
-				fieldsJson: '{"name":"Acme","revenue":100}',
+				fieldsJson: '{"revenue":100,"active":true}',
 				createOptions: {},
 			});
 
 			await createRow.execute(ctx, 0, CREDENTIAL_TYPE);
 
-			// No GUID / reference / null in the body → no metadata GETs, but the body
+			// No string / null value in the body → no metadata GETs, but the body
 			// still passes through applyLookupBindings (prototype-pollution sanitizing).
 			expect(resolveLookupFields).not.toHaveBeenCalled();
 			expect(applyLookupBindings).toHaveBeenCalled();
+		});
+
+		it('resolves lookup metadata for a body with a plain string value', async () => {
+			withParams({
+				entitySet: 'accounts',
+				inputMode: 'json',
+				fieldsJson: '{"name":"Acme"}',
+				createOptions: {},
+			});
+
+			await createRow.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			// A plain string could be a mistyped lookup value; metadata read is
+			// best-effort, so resolving it is safe even without permission.
+			expect(resolveLookupFields).toHaveBeenCalledWith(ctx, CREDENTIAL_TYPE, 'accounts');
 		});
 
 		it('throws when the body is empty', async () => {
@@ -134,7 +150,7 @@ describe('Microsoft Dataverse operations', () => {
 		it('GETs the record path and maps select/expand into the query string', async () => {
 			withParams({
 				entitySet: 'accounts',
-				recordId: 'abc-123',
+				recordId: ROW_ID,
 				getOptions: { select: 'name', expand: 'primarycontactid' },
 			});
 
@@ -142,7 +158,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, method, path, , qs, , credType] = singleCall();
 			expect(method).toBe('GET');
-			expect(path).toBe('/accounts(abc-123)');
+			expect(path).toBe(`/accounts(${ROW_ID})`);
 			expect(qs).toMatchObject({ $select: 'name', $expand: 'primarycontactid' });
 			expect(credType).toBe(CREDENTIAL_TYPE);
 		});
@@ -157,13 +173,13 @@ describe('Microsoft Dataverse operations', () => {
 		it('resolves table and row resource locator values', async () => {
 			withParams({
 				entitySet: { mode: 'list', value: 'accounts' },
-				recordId: { mode: 'list', value: 'abc-123' },
+				recordId: { mode: 'list', value: ROW_ID },
 				getOptions: {},
 			});
 
 			await getRow.execute(ctx, 0, CREDENTIAL_TYPE);
 
-			expect(singleCall()[2]).toBe('/accounts(abc-123)');
+			expect(singleCall()[2]).toBe(`/accounts(${ROW_ID})`);
 		});
 	});
 
@@ -193,8 +209,25 @@ describe('Microsoft Dataverse operations', () => {
 			expect(method).toBe('GET');
 			expect(path).toBe('/accounts');
 			expect(qs).toMatchObject({ $orderby: 'name desc', $filter: 'statecode eq 0' });
+			// Limit is mapped to a server-side $top so a full page isn't fetched.
+			expect(qs).toMatchObject({ $top: 25 });
 			expect(limit).toBe(25);
 			expect(credType).toBe(CREDENTIAL_TYPE);
+		});
+
+		it('lets an explicit Row Count override the limit-derived $top', async () => {
+			withParams({
+				entitySet: 'accounts',
+				returnAll: false,
+				limit: 25,
+				getAllOptions: { top: 10 },
+			});
+
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, , , qs, limit] = pagedCall();
+			expect(qs).toMatchObject({ $top: 10 });
+			expect(limit).toBe(25);
 		});
 
 		it('uses limit 0 (unbounded) when returnAll is true', async () => {
@@ -202,8 +235,10 @@ describe('Microsoft Dataverse operations', () => {
 
 			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
 
-			const [, , , , limit] = pagedCall();
+			const [, , , qs, limit] = pagedCall();
 			expect(limit).toBe(0);
+			// Return All must not cap the server page.
+			expect(qs).not.toHaveProperty('$top');
 		});
 
 		it('forwards Row Count as $top', async () => {
@@ -265,13 +300,28 @@ describe('Microsoft Dataverse operations', () => {
 			expect(qs).toEqual({ fetchXml: '<fetch>x</fetch>' });
 			expect(limit).toBe(25);
 		});
+
+		it('treats a whitespace-only FetchXML as unset and uses OData options', async () => {
+			withParams({
+				entitySet: 'accounts',
+				returnAll: false,
+				limit: 25,
+				getAllOptions: { fetchXml: '   ', filter: 'statecode eq 0' },
+			});
+
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, , , qs] = pagedCall();
+			expect(qs).not.toHaveProperty('fetchXml');
+			expect(qs).toMatchObject({ $filter: 'statecode eq 0', $top: 25 });
+		});
 	});
 
 	describe('updateRow', () => {
 		it('PATCHes with If-Match: * and return=representation', async () => {
 			withParams({
 				entitySet: 'accounts',
-				recordId: 'abc-123',
+				recordId: ROW_ID,
 				inputMode: 'json',
 				fieldsJson: '{"name":"New"}',
 				updateOptions: {},
@@ -281,7 +331,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, method, path, body, , headers, credType] = singleCall();
 			expect(method).toBe('PATCH');
-			expect(path).toBe('/accounts(abc-123)');
+			expect(path).toBe(`/accounts(${ROW_ID})`);
 			expect(body).toEqual({ name: 'New' });
 			expect(headers?.['If-Match']).toBe('*');
 			expect(headers?.Prefer).toBe('return=representation');
@@ -291,7 +341,7 @@ describe('Microsoft Dataverse operations', () => {
 		it('throws with the update-specific message when the body is empty', async () => {
 			withParams({
 				entitySet: 'accounts',
-				recordId: 'abc-123',
+				recordId: ROW_ID,
 				inputMode: 'json',
 				fieldsJson: '{}',
 				updateOptions: {},
@@ -311,7 +361,7 @@ describe('Microsoft Dataverse operations', () => {
 			withParams({
 				entitySet: 'accounts',
 				identifierType: 'guid',
-				recordId: 'abc-123',
+				recordId: ROW_ID,
 				inputMode: 'json',
 				fieldsJson: '{"name":"Acme"}',
 				upsertOptions: {},
@@ -321,7 +371,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, method, path, , , headers, credType] = singleCall();
 			expect(method).toBe('PATCH');
-			expect(path).toBe('/accounts(abc-123)');
+			expect(path).toBe(`/accounts(${ROW_ID})`);
 			expect(headers?.['If-Match']).toBeUndefined();
 			expect(headers?.['If-None-Match']).toBeUndefined();
 			expect(credType).toBe(CREDENTIAL_TYPE);
@@ -331,7 +381,7 @@ describe('Microsoft Dataverse operations', () => {
 			withParams({
 				entitySet: 'accounts',
 				identifierType: 'guid',
-				recordId: 'abc-123',
+				recordId: ROW_ID,
 				inputMode: 'json',
 				fieldsJson: '{"name":"Acme"}',
 				upsertOptions: { behavior: 'updateOnly' },
@@ -347,7 +397,7 @@ describe('Microsoft Dataverse operations', () => {
 			withParams({
 				entitySet: 'accounts',
 				identifierType: 'guid',
-				recordId: 'abc-123',
+				recordId: ROW_ID,
 				inputMode: 'json',
 				fieldsJson: '{"name":"Acme"}',
 				upsertOptions: { behavior: 'createOnly' },
@@ -379,7 +429,7 @@ describe('Microsoft Dataverse operations', () => {
 			withParams({
 				entitySet: 'accounts',
 				identifierType: 'guid',
-				recordId: 'abc-123',
+				recordId: ROW_ID,
 				inputMode: 'json',
 				fieldsJson: '{}',
 				upsertOptions: {},
@@ -410,24 +460,24 @@ describe('Microsoft Dataverse operations', () => {
 
 	describe('deleteRow', () => {
 		it('DELETEs the record path and returns a synthetic success payload', async () => {
-			withParams({ entitySet: 'accounts', recordId: 'abc-123', deleteOptions: {} });
+			withParams({ entitySet: 'accounts', recordId: ROW_ID, deleteOptions: {} });
 
 			const result = (await deleteRow.execute(ctx, 0, CREDENTIAL_TYPE)) as IDataObject;
 
-			expect(result).toEqual({ success: true, id: 'abc-123' });
+			expect(result).toEqual({ success: true, id: ROW_ID });
 			const [, method, path, , , , credType] = singleCall();
 			expect(method).toBe('DELETE');
-			expect(path).toBe('/accounts(abc-123)');
+			expect(path).toBe(`/accounts(${ROW_ID})`);
 			expect(credType).toBe(CREDENTIAL_TYPE);
 		});
 
 		it('returns the synthetic payload regardless of the request response', async () => {
 			vi.mocked(dataverseApiRequest).mockResolvedValue({ unexpected: 'body' });
-			withParams({ entitySet: 'accounts', recordId: 'abc-123', deleteOptions: {} });
+			withParams({ entitySet: 'accounts', recordId: ROW_ID, deleteOptions: {} });
 
 			const result = (await deleteRow.execute(ctx, 0, CREDENTIAL_TYPE)) as IDataObject;
 
-			expect(result).toEqual({ success: true, id: 'abc-123' });
+			expect(result).toEqual({ success: true, id: ROW_ID });
 		});
 	});
 });
