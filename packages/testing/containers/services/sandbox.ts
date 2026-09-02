@@ -22,8 +22,13 @@ const SANDBOX_READY_TIMEOUT_MS = 120_000;
 /** Preflight only — placing a sandbox on a runner is the slow part, and a create
  *  that cannot finish in time is not usable for the specs either. */
 const HOSTED_CREATE_TIMEOUT_MS = 30_000;
-/** Bounds the probe's cleanup so a wedged deployment cannot stall startup. */
+/** Bounds each cleanup attempt so a wedged deployment cannot stall startup. */
 const HOSTED_CLEANUP_TIMEOUT_MS = 10_000;
+const HOSTED_CLEANUP_ATTEMPTS = 2;
+/** Outer bound on the create request itself. Well past the point where the run
+ *  has already fallen back, so it only stops a black-holed connection from
+ *  holding the process open — it is not the health deadline. */
+const HOSTED_CREATE_ABANDON_MS = 120_000;
 const SANDBOX_READY_POLL_INTERVAL_MS = 1_000;
 const DOCKER_COMMAND_MAX_BUFFER = 10 * 1024 * 1024;
 
@@ -155,13 +160,46 @@ function hostedSandboxConfig(): SandboxMeta | undefined {
 	return { apiUrl, apiKey };
 }
 
-async function deleteHostedSandbox(meta: SandboxMeta, id: string): Promise<void> {
-	await fetch(`${meta.apiUrl}/sandboxes/${id}`, {
-		method: 'DELETE',
-		headers: { 'X-Api-Key': meta.apiKey },
-		signal: AbortSignal.timeout(HOSTED_CLEANUP_TIMEOUT_MS),
-	}).catch(() => {});
+/** GitHub surfaces `::warning::` in the run summary, so a downgrade or a leak
+ *  doesn't hide behind thousands of lines of test output. */
+function warnLoudly(message: string): void {
+	console.warn(process.env.GITHUB_ACTIONS === 'true' ? `::warning::${message}` : `⚠ ${message}`);
 }
+
+/**
+ * Removes the probe's sandbox. Retried once, because a leak occupies a slot in
+ * the tenant's quota until the deployment expires it. `404` means it is already
+ * gone, which is the outcome we want.
+ *
+ * Deliberately does not affect the health verdict: the create is what the probe
+ * tests, so failing a deployment that just proved it works would send the run to
+ * the local stack for the one reason that doesn't matter to the specs. The leak
+ * is reported instead of hidden.
+ */
+async function deleteHostedSandbox(meta: SandboxMeta, id: string): Promise<void> {
+	let lastError = 'unknown error';
+
+	for (let attempt = 1; attempt <= HOSTED_CLEANUP_ATTEMPTS; attempt++) {
+		try {
+			const response = await fetch(`${meta.apiUrl}/sandboxes/${id}`, {
+				method: 'DELETE',
+				headers: { 'X-Api-Key': meta.apiKey },
+				signal: AbortSignal.timeout(HOSTED_CLEANUP_TIMEOUT_MS),
+			});
+			if (response.ok || response.status === 404) return;
+			lastError = `HTTP ${response.status}`;
+		} catch (error) {
+			lastError = error instanceof Error ? error.message : String(error);
+		}
+	}
+
+	warnLoudly(
+		`Could not delete probe sandbox ${id} (${lastError}) — it holds a slot in the tenant quota until the deployment expires it`,
+	);
+}
+
+/** Distinguishes "the timer won the race" from a resolved sandbox id. */
+const CREATE_TIMED_OUT = Symbol('create-timed-out');
 
 /**
  * Creates and deletes one sandbox, the same probe the local stack waits on. A
@@ -174,26 +212,56 @@ async function deleteHostedSandbox(meta: SandboxMeta, id: string): Promise<void>
  * Returns `true` when healthy, otherwise the reason to report.
  */
 async function checkHostedSandbox(meta: SandboxMeta): Promise<true | string> {
-	let id: string | undefined;
-	try {
-		const response = await fetch(`${meta.apiUrl}/sandboxes`, {
-			method: 'POST',
-			headers: { 'X-Api-Key': meta.apiKey },
-			signal: AbortSignal.timeout(HOSTED_CREATE_TIMEOUT_MS),
-		});
+	// Raced against a timer rather than cut off at the health deadline. Aborting a
+	// create the deployment has already accepted strands the sandbox: the id arrives
+	// only in the response nobody is reading any more, so cleanup has nothing to
+	// delete. Letting the request run on keeps the id reachable for a late delete.
+	const create = fetch(`${meta.apiUrl}/sandboxes`, {
+		method: 'POST',
+		headers: { 'X-Api-Key': meta.apiKey },
+		signal: AbortSignal.timeout(HOSTED_CREATE_ABANDON_MS),
+	}).then(async (response) => {
 		if (!response.ok) {
-			return `HTTP ${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim();
+			const body = (await response.text().catch(() => '')).slice(0, 200);
+			throw new Error(`HTTP ${response.status} ${body}`.trim());
 		}
+		const { id } = (await response.json().catch(() => ({}))) as { id?: string };
+		if (!id) throw new Error('create returned no sandbox id');
+		return id;
+	});
 
-		id = ((await response.json().catch(() => ({}))) as { id?: string }).id;
-		if (!id) return 'create returned no sandbox id';
+	let timer: NodeJS.Timeout | undefined;
+	const timedOut = new Promise<typeof CREATE_TIMED_OUT>((resolve) => {
+		timer = setTimeout(() => resolve(CREATE_TIMED_OUT), HOSTED_CREATE_TIMEOUT_MS);
+	});
+
+	try {
+		// The `catch` keeps a rejection inside the race instead of throwing out of it,
+		// so a late failure can never surface as an unhandled rejection.
+		const outcome = await Promise.race([create.catch((error: Error) => error), timedOut]);
+
+		if (outcome === CREATE_TIMED_OUT) {
+			// The run has already fallen back by the time this settles. It exists only to
+			// clean up a sandbox the deployment produced too late to be useful.
+			void create
+				.then(async (id) => await deleteHostedSandbox(meta, id))
+				.catch((error: Error) => {
+					// Only an abandoned request can have left a sandbox nobody can address.
+					// A rejected create produced nothing, so there is nothing to report.
+					if (error.name === 'TimeoutError') {
+						warnLoudly(
+							`Gave up on the probe sandbox create after ${HOSTED_CREATE_ABANDON_MS} ms — if the deployment accepted it, it holds a slot in the tenant quota until it expires`,
+						);
+					}
+				});
+			return `create did not finish within ${HOSTED_CREATE_TIMEOUT_MS} ms`;
+		}
+		if (outcome instanceof Error) return outcome.message;
+
+		await deleteHostedSandbox(meta, outcome);
 		return true;
-	} catch (error) {
-		return error instanceof Error ? error.message : String(error);
 	} finally {
-		// Runs on the healthy path too — the probe must not leave a sandbox behind,
-		// and a leak counts against the tenant's capacity for the rest of the run.
-		if (id) await deleteHostedSandbox(meta, id);
+		clearTimeout(timer);
 	}
 }
 
@@ -209,11 +277,8 @@ export const sandbox: Service<SandboxResult> = {
 			// An outage in the deployment must not turn every instance-ai spec red, so
 			// hand the run back to the local stack. Warn rather than log: the run stays
 			// green but slower, and someone still has to go look at the deployment.
-			const message = `Hosted sandbox service is not usable (${health}) — falling back to the local sandbox stack`;
-			// GitHub surfaces `::warning::` in the run summary, so the downgrade doesn't
-			// hide behind thousands of lines of test output.
-			console.warn(
-				process.env.GITHUB_ACTIONS === 'true' ? `::warning::${message}` : `⚠ ${message}`,
+			warnLoudly(
+				`Hosted sandbox service is not usable (${health}) — falling back to the local sandbox stack`,
 			);
 			return undefined;
 		}
