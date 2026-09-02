@@ -10,7 +10,7 @@ volumes:
 
 services:
   sandbox-certs:
-    image: ghcr.io/n8n-io/n8n-sandbox-service-api:latest
+    image: ghcr.io/n8n-io/n8n-sandbox-service-api:1.2.0
     user: '0:0'
     entrypoint: ['sh', '-c']
     command:
@@ -24,7 +24,7 @@ services:
       - sandbox-tls:/tls
 
   sandbox-api:
-    image: ghcr.io/n8n-io/n8n-sandbox-service-api:latest
+    image: ghcr.io/n8n-io/n8n-sandbox-service-api:1.2.0
     depends_on:
       sandbox-certs:
         condition: service_completed_successfully
@@ -49,7 +49,7 @@ services:
     # n8n reaches this container by service name, over the default Compose network.
 
   sandbox-runner-1:
-    image: ghcr.io/n8n-io/n8n-sandbox-service-runner-dind:latest
+    image: ghcr.io/n8n-io/n8n-sandbox-service-runner-dind:1.2.0
     privileged: true
     depends_on:
       sandbox-api:

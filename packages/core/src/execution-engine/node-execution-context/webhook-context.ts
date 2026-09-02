@@ -20,6 +20,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	N8nOAuth2FlowResult,
+	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -205,6 +206,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('OAuth2 flow is not available');
 		}
 		return await this.additionalData.completeN8nOAuth2Flow(code, state);
+	}
+
+	async refreshN8nOAuth2Flow(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		if (!this.additionalData.refreshN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.refreshN8nOAuth2Flow(refreshToken, resourceUrl);
 	}
 
 	async validateN8nOAuth2Token(

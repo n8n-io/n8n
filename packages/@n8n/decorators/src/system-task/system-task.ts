@@ -4,10 +4,8 @@ import {
 	type OneOffDefinition,
 	type ScheduleDefinition,
 } from '@n8n/constants';
-import { Container, Service, type Constructable } from '@n8n/di';
+import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
-
-import { SystemTaskMetadata } from './system-task-metadata';
 
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
@@ -153,8 +151,9 @@ function assertInRange(taskName: string, field: string, value: number, min: numb
 export type SystemTaskClass = Constructable<SystemTask>;
 
 /**
- * Class decorator that registers a system task in {@link SystemTaskMetadata}
- * and makes the class injectable.
+ * Class decorator that makes a system task class injectable. Registration is
+ * explicit: a backend module returns the class from its `systemTasks()` hook,
+ * and anything else hands it to `SystemTaskMetadata` directly.
  *
  * @example
  *
@@ -168,10 +167,7 @@ export type SystemTaskClass = Constructable<SystemTask>;
 export const SystemTask =
 	() =>
 	<T extends SystemTaskClass>(target: T): T => {
-		// Injectable first: a subscribed listener resolves the class while this
-		// decorator is still running.
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		Service()(target);
-		Container.get(SystemTaskMetadata).register(target);
 		return target;
 	};
