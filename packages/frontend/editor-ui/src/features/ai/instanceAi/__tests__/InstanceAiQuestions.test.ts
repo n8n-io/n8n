@@ -68,7 +68,7 @@ describe('InstanceAiQuestions', () => {
 		await fireEvent.update(textarea, longText);
 
 		await waitFor(() => {
-			expect(textarea).toHaveStyle({ height: '160px', overflow: 'auto' });
+		expect(textarea).toHaveStyle({ height: '160px', overflowY: 'auto' });
 		});
 
 		const editedText = longText.replace('Line 5', 'Edited line 5');
