@@ -221,7 +221,7 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
-	it('openrouter: maps reasoningEffort to providerOptions.openrouter', () => {
+	it("openrouter: maps reasoningEffort to OpenRouter's unified reasoning.effort", () => {
 		expect(
 			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
 				{
@@ -230,8 +230,30 @@ describe('thinkingToProviderOptions', () => {
 				'openrouter/z-ai/glm-5.3-flash:nitro',
 			),
 		).toEqual({
-			openrouter: { reasoningEffort: 'medium' },
+			openrouter: { reasoning: { effort: 'medium' } },
 		});
+	});
+
+	it('openrouter: forwards max effort for models that accept it', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'max',
+				},
+				'openrouter/anthropic/claude-fable-5.1',
+			),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'max' } },
+		});
+	});
+
+	it('openrouter: omits reasoning when effort is unset', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{},
+				'openrouter/anthropic/claude-fable-5.1',
+			),
+		).toEqual({});
 	});
 });
 

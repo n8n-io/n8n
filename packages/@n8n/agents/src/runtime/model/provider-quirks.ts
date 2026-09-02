@@ -169,7 +169,18 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	// custom/*: only forward an explicit effort — no provider-level default.
 	custom: reasoningEffortQuirk('custom'),
 	moonshotai: reasoningEffortQuirk('moonshotai'),
-	openrouter: reasoningEffortQuirk('openrouter'),
+	openrouter: {
+		// QUIRK(openrouter): `@openrouter/ai-sdk-provider` spreads
+		// `providerOptions.openrouter` verbatim into the request body — it does
+		// not translate `reasoningEffort` the way `@ai-sdk/openai-compatible`
+		// does — so the effort has to use OpenRouter's unified `reasoning.effort`
+		// parameter or it is silently dropped upstream.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			if (cfg.reasoningEffort === undefined) return {};
+			return { openrouter: { reasoning: { effort: cfg.reasoningEffort } } };
+		},
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
