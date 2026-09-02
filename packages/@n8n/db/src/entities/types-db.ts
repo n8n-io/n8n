@@ -67,6 +67,7 @@ export interface IExecutionBase {
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
 	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
 	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
