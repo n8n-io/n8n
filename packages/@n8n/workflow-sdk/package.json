@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.30.1",
+  "version": "0.30.2",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
