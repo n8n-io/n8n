@@ -4,6 +4,7 @@ import type { VElement } from 'vue-eslint-parser/ast/nodes';
 import {
 	getAttribute,
 	getStaticAttributeValue,
+	isCustomElement,
 	isFocusableElement,
 	toESTreeNode,
 	type VueParserServices,
@@ -13,26 +14,66 @@ const FOCUS_PSEUDO_CLASS = /:focus(?:-visible)?(?![-\w])/;
 
 function getFocusSelectors(source: string): string[] {
 	const styles = Array.from(source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi));
-	const selectors: string[] = [];
+	const focusSelectors: string[] = [];
 	for (const style of styles) {
 		const content = style[1] ?? '';
-		for (const nested of content.matchAll(/([^{}]+)\{[^{}]*?(&[^{}]+)\{/g)) {
-			const parents = nested[1]?.split(',') ?? [];
-			const children = nested[2]?.split(',') ?? [];
-			for (const parent of parents) {
-				for (const child of children) {
-					const selector = child.replaceAll('&', parent.trim()).trim();
-					if (FOCUS_PSEUDO_CLASS.test(selector)) selectors.push(selector);
-				}
+		const selectorStack: string[][] = [];
+		let statementStart = 0;
+		for (let index = 0; index < content.length; index++) {
+			const character = content[index];
+			if (character === ';') {
+				statementStart = index + 1;
+				continue;
 			}
-		}
-		for (const match of content.matchAll(/([^{}]+)\{/g)) {
-			for (const selector of match[1]?.split(',') ?? []) {
-				if (FOCUS_PSEUDO_CLASS.test(selector)) selectors.push(selector.trim());
+			if (character === '}') {
+				selectorStack.pop();
+				statementStart = index + 1;
+				continue;
 			}
+			if (character !== '{') continue;
+
+			const selectors = content
+				.slice(statementStart, index)
+				.trim()
+				.split(',')
+				.map(function trimSelector(selector) {
+					return selector.trim();
+				});
+			const parents = selectorStack.at(-1) ?? [];
+			const resolvedSelectors = selectors.flatMap(function resolveSelector(selector) {
+				if (!selector.includes('&') || parents.length === 0) return [selector];
+				return parents.map(function resolveParent(parent) {
+					return selector.replaceAll('&', parent);
+				});
+			});
+			for (const selector of resolvedSelectors) {
+				if (FOCUS_PSEUDO_CLASS.test(selector)) focusSelectors.push(selector);
+			}
+			selectorStack.push(resolvedSelectors);
+			statementStart = index + 1;
 		}
 	}
-	return selectors;
+	return focusSelectors;
+}
+
+function getElementClasses(node: VElement): Set<string> {
+	const classes = new Set(getStaticAttributeValue(getAttribute(node, 'class'))?.split(/\s+/) ?? []);
+	const classAttribute = getAttribute(node, 'class');
+	if (!classAttribute?.directive) return classes;
+
+	const expression = classAttribute.value?.expression;
+	if (
+		expression?.type === 'MemberExpression' &&
+		expression.object.type === 'Identifier' &&
+		expression.object.name === '$style'
+	) {
+		if (!expression.computed && expression.property.type === 'Identifier') {
+			classes.add(expression.property.name);
+		} else if (expression.computed && expression.property.type === 'Literal') {
+			classes.add(String(expression.property.value));
+		}
+	}
+	return classes;
 }
 
 function selectorMatchesElement(selector: string, node: VElement): boolean {
@@ -49,7 +90,7 @@ function selectorMatchesElement(selector: string, node: VElement): boolean {
 	for (const match of subject.matchAll(/#([\w-]+)/g)) {
 		if (match[1] !== id) return false;
 	}
-	const classes = new Set(getStaticAttributeValue(getAttribute(node, 'class'))?.split(/\s+/) ?? []);
+	const classes = getElementClasses(node);
 	for (const match of subject.matchAll(/\.([\w-]+)/g)) {
 		if (!match[1] || !classes.has(match[1])) return false;
 	}
@@ -78,7 +119,9 @@ export const FocusVisibleStyleRule = ESLintUtils.RuleCreator.withoutDocs({
 		if (!parserServices.defineTemplateBodyVisitor) return {};
 		return parserServices.defineTemplateBodyVisitor({
 			VElement(node) {
-				if (!isFocusableElement(node)) return;
+				if (isCustomElement(node) || !isFocusableElement(node)) return;
+				const tabIndex = getStaticAttributeValue(getAttribute(node, 'tabindex'))?.trim();
+				if (tabIndex !== undefined && Number(tabIndex) < 0) return;
 				if (
 					selectors.some(function matches(selector) {
 						return selectorMatchesElement(selector, node);
