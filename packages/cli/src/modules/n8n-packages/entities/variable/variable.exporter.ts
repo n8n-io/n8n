@@ -12,7 +12,7 @@ import type {
 	VariableExportResult,
 	WorkflowVariableRequirement,
 } from './variable.types';
-import { createManifestEntry, packageDirectory } from '../../io/manifest-entry';
+import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
@@ -78,21 +78,15 @@ export class VariableExporter {
 				if (bundledVariableIds.has(variable.id)) continue;
 				bundledVariableIds.add(variable.id);
 
-				const baseDir = this.resolveBaseDir(variable, request.projectTargetsById);
-				const entry = createManifestEntry('variables', baseDir, {
-					id: variable.id,
-					name: variable.key,
-				});
-				await request.writer.writeDirectory(entry.target);
-				await request.writer.writeFile(
-					`${entry.target}/variable.json`,
-					JSON.stringify(
+				entries.push(
+					await writeManifestEntry(
+						request.writer,
+						'variables',
+						projectScopedDirectory('variables', variable.project?.id, request.projectTargetsById),
+						{ id: variable.id, name: variable.key },
 						this.serializeOrBlock(variable, request.includeVariableValues),
-						null,
-						'\t',
 					),
 				);
-				entries.push(entry);
 			}
 
 			requirements.push({ name, usedByWorkflows });
@@ -160,12 +154,6 @@ export class VariableExporter {
 		}));
 	}
 
-	private resolveBaseDir(variable: Variables, projectTargetsById?: Map<string, string>): string {
-		if (!projectTargetsById || projectTargetsById.size === 0) return packageDirectory('variables');
-		const prefix = variable.project ? projectTargetsById.get(variable.project.id) : undefined;
-		return packageDirectory('variables', prefix);
-	}
-
 	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {
 		const owners = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
 		return new Map(owners.map((owner) => [owner.workflowId, owner.project.id]));
@@ -211,7 +199,7 @@ export class VariableExporter {
 		const idByDir = new Map<string, string>();
 		for (const variable of variables) {
 			if (!isBundleableVariable(variable)) continue;
-			const dir = this.resolveBaseDir(variable, projectTargetsById);
+			const dir = projectScopedDirectory('variables', variable.project?.id, projectTargetsById);
 			const previousId = idByDir.get(dir);
 			if (previousId !== undefined && previousId !== variable.id) return true;
 			idByDir.set(dir, variable.id);

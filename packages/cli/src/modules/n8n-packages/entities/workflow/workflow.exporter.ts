@@ -5,7 +5,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
-import { createManifestEntry, packageDirectory } from '../../io/manifest-entry';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
@@ -28,7 +28,10 @@ export interface WorkflowExportRequest {
 	includeTags: boolean;
 	workflowVersionPolicy: WorkflowVersionPolicy;
 
-	// Directory the workflow is written under. e.g. folders/{folderId}/
+	/**
+	 * Target of the folder or project holding the workflows, which are written
+	 * under `<basePrefix>/workflows/`. Empty for a top-level workflow export.
+	 */
 	basePrefix?: string;
 }
 
@@ -80,18 +83,15 @@ export class WorkflowExporter {
 		const workflowsDir = packageDirectory('workflows', request.basePrefix);
 
 		for (const workflow of workflowsForExport) {
-			const entry = createManifestEntry('workflows', workflowsDir, workflow);
-			const serialized = this.workflowSerializer.serialize(workflow, {
-				includeTags: request.includeTags,
-			});
-
-			await request.writer.writeDirectory(entry.target);
-			await request.writer.writeFile(
-				`${entry.target}/workflow.json`,
-				JSON.stringify(serialized, null, '\t'),
+			entries.push(
+				await writeManifestEntry(
+					request.writer,
+					'workflows',
+					workflowsDir,
+					workflow,
+					this.workflowSerializer.serialize(workflow, { includeTags: request.includeTags }),
+				),
 			);
-
-			entries.push(entry);
 
 			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));

@@ -64,8 +64,8 @@ const importPolicy: Omit<ImportRequest, 'user'> = {
 	tagConflictPolicy: 'rename',
 };
 
-// One project holding every entity type a package can carry, with names that
-// collide where the old numeric suffix used to decide the file.
+// One project holding every entity type a package can carry, with deliberate
+// name collisions between siblings.
 let sharedFolder: Folder;
 let siblingFolder: Folder;
 let nestedFolder: Folder;
@@ -288,8 +288,8 @@ describe('stable export targets', () => {
 				`projects/payments-emea-${project.id}/folders/q4-reports-${sharedFolder.id}`,
 			);
 
-			// What must not move is the identity: every entity, including the ones
-			// only dragged along by a renamed ancestor, still resolves to its own id.
+			// Identity must not move, including for entities only dragged along by a
+			// renamed ancestor.
 			for (const [id, target] of targets) {
 				expect(idFromTarget(target)).toBe(id);
 			}
@@ -308,8 +308,8 @@ describe('stable export targets', () => {
 		);
 
 		expect(result.projects).toHaveLength(1);
-		// A workflow's parent folder is derived from its path, so a broken layout
-		// would silently land these at the project root instead.
+		// Import derives the parent folder from the path, so a broken layout would
+		// silently land these at the project root.
 		expect(await parentFolderIdOf(nestedWorkflow.id)).toBe(nestedFolder.id);
 		expect(await parentFolderIdOf(tableWorkflow.id)).toBe(siblingFolder.id);
 		expect(await parentFolderIdOf(rootWorkflow.id)).toBeNull();

@@ -602,7 +602,6 @@ describe('folder package export — with contained workflows', () => {
 		const subfolderTarget = manifest.folders!.find((f) => f.id === subfolder.id)!.target;
 		const workflowTarget = manifest.workflows!.find((w) => w.id === workflow.id)!.target;
 
-		// The subfolder carries its id; the workflow stays under the parent's container.
 		expect(subfolderTarget).toMatch(new RegExp(`/workflows-${subfolder.id}$`));
 		expect(workflowTarget.startsWith(`${subfolderTarget}/`)).toBe(false);
 	});

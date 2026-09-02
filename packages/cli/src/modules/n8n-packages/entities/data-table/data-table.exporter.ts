@@ -3,13 +3,12 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 
 import { DataTableSerializer } from './data-table.serializer';
 import type { WorkflowDataTableRequirement } from './data-table.types';
+import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { createManifestEntry, packageDirectory } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 
@@ -59,31 +58,23 @@ export class DataTableExporter {
 		const requirements: PackageDataTableRequirement[] = [];
 
 		for (const dataTable of dataTables) {
-			const usedByWorkflows = usedByWorkflowsById.get(dataTable.id) ?? [];
-			const baseDir = this.resolveBaseDir(dataTable, request.projectTargetsById);
-			const entry = createManifestEntry('dataTables', baseDir, dataTable);
-
-			await request.writer.writeDirectory(entry.target);
-			await request.writer.writeFile(
-				`${entry.target}/data-table.json`,
-				JSON.stringify(this.dataTableSerializer.serialize(dataTable), null, '\t'),
+			entries.push(
+				await writeManifestEntry(
+					request.writer,
+					'dataTables',
+					projectScopedDirectory('dataTables', dataTable.projectId, request.projectTargetsById),
+					dataTable,
+					this.dataTableSerializer.serialize(dataTable),
+				),
 			);
-
-			entries.push(entry);
 			requirements.push({
 				id: dataTable.id,
 				name: dataTable.name,
-				usedByWorkflows,
+				usedByWorkflows: usedByWorkflowsById.get(dataTable.id) ?? [],
 			});
 		}
 
 		return { entries, requirements };
-	}
-
-	private resolveBaseDir(dataTable: DataTable, projectTargetsById?: Map<string, string>): string {
-		if (!projectTargetsById || projectTargetsById.size === 0) return packageDirectory('dataTables');
-		const prefix = projectTargetsById.get(dataTable.projectId);
-		return packageDirectory('dataTables', prefix);
 	}
 
 	private groupByDataTableId(requirements: WorkflowDataTableRequirement[]): Map<string, string[]> {

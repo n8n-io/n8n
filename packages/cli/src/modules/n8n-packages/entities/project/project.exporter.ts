@@ -6,8 +6,8 @@ import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ProjectSerializer } from './project.serializer';
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { createManifestEntry, packageDirectory } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
@@ -63,8 +63,7 @@ export class ProjectExporter {
 		const results: ProjectExportResult[] = [];
 
 		for (const project of projects) {
-			const entry = createManifestEntry('projects', projectsDir, project);
-			results.push(await this.exportProject(project, entry, request));
+			results.push(await this.exportProject(project, projectsDir, request));
 		}
 
 		return this.mergeProjectExportResults(results);
@@ -72,31 +71,26 @@ export class ProjectExporter {
 
 	private async exportProject(
 		project: Project,
-		entry: ManifestEntry,
+		projectsDir: string,
 		request: ProjectExportRequest,
 	): Promise<ProjectExportResult> {
-		const { target } = entry;
-		await this.exportProjectShell(project, target, request.writer);
-		const folders = await this.exportProjectFolders(project.id, target, request);
-		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, target, request);
+		const entry = await writeManifestEntry(
+			request.writer,
+			'projects',
+			projectsDir,
+			project,
+			this.projectSerializer.serialize(project),
+		);
+		const folders = await this.exportProjectFolders(project.id, entry.target, request);
+		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, entry.target, request);
 
 		return {
 			entries: [entry],
 			folderEntries: folders.entries,
 			workflowEntries: [...folders.workflowEntries, ...rootWorkflows.entries],
 			requirements: mergeRequirements(folders.requirements, rootWorkflows.requirements),
-			projectTargetsById: new Map([[project.id, target]]),
+			projectTargetsById: new Map([[project.id, entry.target]]),
 		};
-	}
-
-	private async exportProjectShell(
-		project: Project,
-		target: string,
-		writer: PackageWriter,
-	): Promise<void> {
-		const serialized = this.projectSerializer.serialize(project);
-		await writer.writeDirectory(target);
-		await writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
 	}
 
 	private async exportProjectFolders(

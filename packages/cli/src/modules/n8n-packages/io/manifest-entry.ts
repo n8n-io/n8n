@@ -1,9 +1,10 @@
+import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 
 /**
- * The manifest keys that hold entity entries, read off the manifest itself so a
- * new collection cannot ship without a directory and a fallback slug below.
+ * Derived from the manifest so a new collection cannot ship without a
+ * directory, a file name, and a fallback slug below.
  */
 export type ManifestEntityCollection = {
 	[K in keyof PackageManifest]-?: NonNullable<PackageManifest[K]> extends ManifestEntry[]
@@ -12,9 +13,8 @@ export type ManifestEntityCollection = {
 }[keyof PackageManifest];
 
 /**
- * The directory each collection is written into. Import derives a project's
- * scope and a workflow's parent folder from these segments, so they are part of
- * the package contract and cannot be flattened away.
+ * Import derives a project's scope and a workflow's parent folder from these
+ * path segments, so they are part of the package contract.
  */
 const DIRECTORIES = {
 	projects: 'projects',
@@ -24,6 +24,16 @@ const DIRECTORIES = {
 	dataTables: 'data-tables',
 	variables: 'variables',
 	tags: 'tags',
+} as const satisfies Record<ManifestEntityCollection, string>;
+
+const FILE_NAMES = {
+	projects: 'project.json',
+	folders: 'folder.json',
+	workflows: 'workflow.json',
+	credentials: 'credential.json',
+	dataTables: 'data-table.json',
+	variables: 'variable.json',
+	tags: 'tag.json',
 } as const satisfies Record<ManifestEntityCollection, string>;
 
 /** Keeps the leaf from starting with a hyphen when a name slugifies to nothing. */
@@ -46,14 +56,22 @@ export function packageDirectory(
 }
 
 /**
- * Builds a manifest entry targeting `<baseDir>/<name-slug>-<id>`. The id is what
- * makes the target independent of the rest of the export and of the order it was
- * processed in, so two exports of the same project can be compared, and a rename
- * moves the file without losing which entity it belongs to.
- *
- * Entity ids contain no hyphen, so the id is always the final hyphen-separated
- * segment of the leaf. A future entity keyed by UUID would break that.
+ * Inside the owner project's target when that project is part of the export,
+ * otherwise the top-level collection directory.
  */
+export function projectScopedDirectory(
+	collection: ManifestEntityCollection,
+	ownerProjectId: string | undefined,
+	projectTargetsById: Map<string, string> | undefined,
+): string {
+	const prefix = ownerProjectId ? projectTargetsById?.get(ownerProjectId) : undefined;
+	return packageDirectory(collection, prefix);
+}
+
+export function entityFilePath(collection: ManifestEntityCollection, target: string): string {
+	return `${target}/${FILE_NAMES[collection]}`;
+}
+
 export function createManifestEntry(
 	collection: ManifestEntityCollection,
 	baseDir: string,
@@ -61,4 +79,20 @@ export function createManifestEntry(
 ): ManifestEntry {
 	const slug = generateSlug(entity.name, FALLBACK_SLUGS[collection]);
 	return { id: entity.id, name: entity.name, target: `${baseDir}/${slug}-${entity.id}` };
+}
+
+export async function writeManifestEntry(
+	writer: PackageWriter,
+	collection: ManifestEntityCollection,
+	baseDir: string,
+	entity: { id: string; name: string },
+	serialized: unknown,
+): Promise<ManifestEntry> {
+	const entry = createManifestEntry(collection, baseDir, entity);
+	await writer.writeDirectory(entry.target);
+	await writer.writeFile(
+		entityFilePath(collection, entry.target),
+		JSON.stringify(serialized, null, '\t'),
+	);
+	return entry;
 }
