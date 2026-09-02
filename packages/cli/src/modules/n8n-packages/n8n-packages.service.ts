@@ -51,6 +51,7 @@ import {
 	type ImportPackageRequest,
 	type ImportRequest,
 	type ImportResult,
+	type PackageImportSource,
 	type ResolvedImportPackageRequest,
 	createBindings,
 } from './n8n-packages.types';
@@ -358,7 +359,12 @@ export class N8nPackagesService {
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
-		const { result, scopes } = await this.dispatchImport(request, reader, manifest);
+		const { result, scopes } = await this.dispatchImport(
+			request,
+			reader,
+			manifest,
+			'package-import',
+		);
 
 		const resolvedRequest: ResolvedImportPackageRequest = {
 			...request,
@@ -379,8 +385,13 @@ export class N8nPackagesService {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
-		if (!isProjectPackage(manifest)) return emptyImportResult(manifest);
-		const { result } = await this.dispatchImport(request, reader, manifest);
+		if (!isProjectPackage(manifest)) {
+			if (hasContentWithoutProjects(manifest)) {
+				throw new BadRequestError('Directory packages must contain projects');
+			}
+			return emptyImportResult(manifest);
+		}
+		const { result } = await this.dispatchImport(request, reader, manifest, 'git-pull');
 		return result;
 	}
 
@@ -388,6 +399,7 @@ export class N8nPackagesService {
 		request: ImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
+		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
 		if (isProjectPackage(manifest)) {
 			if (request.variableParentPolicy !== undefined) {
@@ -401,6 +413,7 @@ export class N8nPackagesService {
 				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
 				reader,
 				manifest,
+				importSource,
 			);
 		}
 
@@ -452,6 +465,19 @@ export class N8nPackagesService {
 
 function isProjectPackage(manifest: PackageManifest): boolean {
 	return (manifest.projects?.length ?? 0) > 0;
+}
+
+function hasContentWithoutProjects(manifest: PackageManifest): boolean {
+	return (
+		[
+			manifest.workflows,
+			manifest.folders,
+			manifest.credentials,
+			manifest.dataTables,
+			manifest.variables,
+			manifest.tags,
+		].some((entries) => (entries?.length ?? 0) > 0) || manifest.requirements !== undefined
+	);
 }
 
 function emptyImportResult(manifest: PackageManifest): ImportResult {

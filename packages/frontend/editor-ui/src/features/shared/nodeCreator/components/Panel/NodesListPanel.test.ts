@@ -44,6 +44,13 @@ function getWrapperComponent(setup: () => void) {
 }
 
 describe('NodesListPanel', () => {
+	// Every panel mount schedules a keyboard-navigation refresh via setTimeout.
+	// Drain it while the document still exists — a timer surviving the last test
+	// fires after jsdom teardown and fails the run with an unhandled error.
+	afterEach(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+
 	describe('should render nodes', () => {
 		it('should render trigger items', async () => {
 			const mockedTriggerNodes = [...Array(2).keys()].map((n) =>

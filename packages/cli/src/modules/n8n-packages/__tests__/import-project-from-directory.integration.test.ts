@@ -7,7 +7,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -15,6 +15,7 @@ import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { EventService } from '@/events/event.service';
+import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 
@@ -42,7 +43,7 @@ const importPolicy: Omit<ImportRequest, 'user'> = {
 	overwriteDeletionPolicy: 'hard-delete',
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: 'create',
-	dataTableSchemaConflictPolicy: 'keep-existing',
+	dataTableSchemaConflictPolicy: 'fail',
 	variableMissingMode: 'create-with-value',
 	variableConflictPolicy: 'overwrite',
 	tagMissingMode: 'create',
@@ -103,12 +104,23 @@ describe('importPackageFromDirectory', () => {
 		expect(result.workflows.map((w) => w.name)).toEqual(['WF One']);
 	});
 
-	it('overwrites an existing project and workflow to match the directory', async () => {
+	it('overwrites an existing project and removes target-only content', async () => {
 		const project = await createTeamProject('Alpha Project', owner);
 		const workflow = await createWorkflow({ name: 'WF One', nodes: [], connections: {} }, project);
 		await service.exportPackageToDirectory(
 			{ user: owner, projectIds: [project.id] },
 			{ targetDir: sourceDir },
+		);
+
+		const targetOnlyFolder = await createFolder(project, { name: 'Legacy' });
+		const targetOnlyWorkflow = await createWorkflow(
+			{
+				name: 'Old Workflow',
+				nodes: [],
+				connections: {},
+				parentFolder: targetOnlyFolder,
+			},
+			project,
 		);
 
 		// Drift existing rows to exercise overwrite.
@@ -132,6 +144,23 @@ describe('importPackageFromDirectory', () => {
 			name: 'WF One',
 			status: 'updated',
 		});
+		expect(result.removedWorkflows).toEqual([
+			{
+				workflowId: targetOnlyWorkflow.id,
+				name: 'Old Workflow',
+				projectId: project.id,
+				parentFolderId: targetOnlyFolder.id,
+				deletion: 'deleted',
+			},
+		]);
+		expect(result.removedFolders).toEqual([
+			{
+				folderId: targetOnlyFolder.id,
+				name: 'Legacy',
+				projectId: project.id,
+				parentFolderId: null,
+			},
+		]);
 
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
 		expect((await Container.get(ProjectRepository).findOneBy({ id: project.id }))?.name).toBe(
@@ -141,6 +170,10 @@ describe('importPackageFromDirectory', () => {
 		expect((await Container.get(WorkflowRepository).findOneBy({ id: workflow.id }))?.name).toBe(
 			'WF One',
 		);
+		expect(
+			await Container.get(WorkflowRepository).findOneBy({ id: targetOnlyWorkflow.id }),
+		).toBeNull();
+		expect(await Container.get(FolderRepository).findOneBy({ id: targetOnlyFolder.id })).toBeNull();
 	});
 
 	it('does not emit the user package-import event', async () => {
@@ -179,6 +212,19 @@ describe('importPackageFromDirectory', () => {
 		} finally {
 			config.maxEntries = originalMaxEntries;
 		}
+	});
+
+	it('rejects directory packages that do not contain projects', async () => {
+		const project = await createTeamProject('Alpha Project', owner);
+		const workflow = await createWorkflow({ name: 'WF One', nodes: [], connections: {} }, project);
+		await service.exportPackageToDirectory(
+			{ user: owner, workflowIds: [workflow.id] },
+			{ targetDir: sourceDir },
+		);
+
+		await expect(
+			service.importPackageFromDirectory({ user: owner, ...importPolicy }, { sourceDir }),
+		).rejects.toThrow('Directory packages must contain projects');
 	});
 
 	it('is a no-op for a working copy with no projects', async () => {

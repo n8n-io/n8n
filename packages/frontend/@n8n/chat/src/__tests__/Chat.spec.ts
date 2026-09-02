@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
 import Chat from '../components/Chat.vue';
+import type { CredentialStatus } from '../types/credentialStatus';
 import type { ChatMessage } from '../types/messages';
 
 // Mock child components
@@ -27,7 +28,7 @@ vi.mock('../components/Input.vue', () => ({
 vi.mock('../components/Layout.vue', () => ({
 	default: {
 		name: 'Layout',
-		template: '<div><slot /><slot name="footer" /></div>',
+		template: '<div><slot /><slot name="statusStrip" /><slot name="footer" /></div>',
 	},
 }));
 
@@ -47,6 +48,7 @@ const mockChatStore = {
 	initialize: vi.fn().mockResolvedValue(undefined),
 	startNewSession: vi.fn(),
 	messages: [] as ChatMessage[],
+	credentialStatus: { value: null as CredentialStatus | null },
 };
 
 const mockOptions = {
@@ -64,6 +66,7 @@ vi.mock('@n8n/chat/composables', () => ({
 		initialize: mockChatStore.initialize,
 		startNewSession: mockChatStore.startNewSession,
 		currentSessionId: { value: 'test-session' },
+		credentialStatus: mockChatStore.credentialStatus,
 	}),
 	useOptions: () => ({ options: mockOptions }),
 }));
@@ -81,6 +84,7 @@ describe('Chat', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockChatStore.messages = [];
+		mockChatStore.credentialStatus.value = null;
 	});
 
 	afterEach(() => {
@@ -294,6 +298,35 @@ describe('Chat', () => {
 			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('blurInput');
 			// Should focus after setting value
 			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('focusInput');
+		});
+	});
+
+	describe('credential status strip', () => {
+		it('does not render the strip when no host has ever signaled credential status', () => {
+			wrapper = mount(Chat);
+
+			expect(wrapper.find('[data-test-id="chat-credential-status-strip"]').exists()).toBe(false);
+		});
+
+		it('renders the strip while required accounts are still missing', () => {
+			mockChatStore.credentialStatus.value = { ready: false, missingCount: 2, testMode: false };
+			wrapper = mount(Chat);
+
+			expect(wrapper.find('[data-test-id="chat-credential-status-strip"]').exists()).toBe(true);
+		});
+
+		it('hides the strip once the host reports readiness outside test mode', () => {
+			mockChatStore.credentialStatus.value = { ready: true, missingCount: 0, testMode: false };
+			wrapper = mount(Chat);
+
+			expect(wrapper.find('[data-test-id="chat-credential-status-strip"]').exists()).toBe(false);
+		});
+
+		it('keeps the strip visible in test mode even when credentials are ready', () => {
+			mockChatStore.credentialStatus.value = { ready: true, missingCount: 0, testMode: true };
+			wrapper = mount(Chat);
+
+			expect(wrapper.find('[data-test-id="chat-credential-status-strip"]').exists()).toBe(true);
 		});
 	});
 });
