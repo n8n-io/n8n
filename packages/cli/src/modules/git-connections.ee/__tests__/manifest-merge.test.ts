@@ -1,0 +1,367 @@
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+
+import { entryRelocations, mergeManifests, staleTargets } from '../manifest-merge';
+
+const baseMetadata = {
+	packageFormatVersion: '1' as const,
+	exportedAt: '2026-01-01T00:00:00.000Z',
+	sourceN8nVersion: '1.0.0',
+	sourceId: 'instance-1',
+};
+
+function makeManifest(overrides: Partial<PackageManifest> = {}): PackageManifest {
+	return { ...baseMetadata, ...overrides };
+}
+
+function entry(id: string, name = `name-${id}`, target = `target/${id}`) {
+	return { id, name, target };
+}
+
+function credReq(id: string, usedByWorkflows: string[]) {
+	return { id, name: `cred-${id}`, type: 'api', usedByWorkflows };
+}
+
+const noDeletes = new Set<string>();
+const P = 'projects/acme';
+
+describe('mergeManifests', () => {
+	it('adds, replaces and deletes workflows in one merge', () => {
+		const existing = makeManifest({ workflows: [entry('w1'), entry('w2'), entry('w3')] });
+		const staging = makeManifest({ workflows: [entry('w2', 'updated-w2'), entry('w4')] });
+
+		const result = mergeManifests(existing, staging, new Set(['w3']));
+
+		expect(result.workflows!.map((w) => w.id)).toEqual(['w1', 'w2', 'w4']);
+		expect(result.workflows!.find((w) => w.id === 'w2')!.name).toBe('updated-w2');
+	});
+
+	describe('renamed containers', () => {
+		it('moves everything under a renamed project, including dependencies', () => {
+			const existing = makeManifest({
+				projects: [entry('p1', 'Acme', 'projects/acme')],
+				folders: [entry('f1', 'Sales', 'projects/acme/folders/sales')],
+				workflows: [
+					entry('w1', 'W1', 'projects/acme/workflows/w1'),
+					entry('w2', 'W2', 'projects/acme/folders/sales/workflows/w2'),
+				],
+				credentials: [entry('c1', 'Cred', 'projects/acme/credentials/cred')],
+				requirements: { credentials: [credReq('c1', ['w2'])] },
+			});
+			const staging = makeManifest({
+				projects: [entry('p1', 'Acme Corp', 'projects/acme-corp')],
+				workflows: [entry('w1', 'W1', 'projects/acme-corp/workflows/w1')],
+			});
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.folders).toEqual([entry('f1', 'Sales', 'projects/acme-corp/folders/sales')]);
+			expect(result.workflows).toEqual([
+				entry('w2', 'W2', 'projects/acme-corp/folders/sales/workflows/w2'),
+				entry('w1', 'W1', 'projects/acme-corp/workflows/w1'),
+			]);
+			expect(result.credentials).toEqual([
+				entry('c1', 'Cred', 'projects/acme-corp/credentials/cred'),
+			]);
+		});
+
+		it('applies the deepest matching move when a parent and a child are both renamed', () => {
+			const existing = makeManifest({
+				folders: [
+					entry('f1', 'A', `${P}/folders/a`),
+					entry('f2', 'C', `${P}/folders/a/c`),
+					entry('f3', 'E', `${P}/folders/a/e`),
+				],
+				workflows: [
+					entry('w1', 'W1', `${P}/folders/a/c/workflows/w1`),
+					entry('w2', 'W2', `${P}/folders/a/c/workflows/w2`),
+					entry('w3', 'W3', `${P}/folders/a/e/workflows/w3`),
+				],
+			});
+			const staging = makeManifest({
+				folders: [entry('f1', 'B', `${P}/folders/b`), entry('f2', 'D', `${P}/folders/b/d`)],
+				workflows: [entry('w1', 'W1', `${P}/folders/b/d/workflows/w1`)],
+			});
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.folders!.map((f) => f.target)).toEqual([
+				`${P}/folders/b`,
+				`${P}/folders/b/d`,
+				`${P}/folders/b/e`,
+			]);
+			expect(result.workflows!.map((w) => w.target)).toEqual([
+				`${P}/folders/b/d/workflows/w2`,
+				`${P}/folders/b/e/workflows/w3`,
+				`${P}/folders/b/d/workflows/w1`,
+			]);
+		});
+
+		it('lists relocations for moved entries that staging did not write', () => {
+			const existing = makeManifest({
+				folders: [entry('f1', 'A', `${P}/folders/a`), entry('f2', 'E', `${P}/folders/a/e`)],
+				workflows: [
+					entry('w1', 'W1', `${P}/folders/a/workflows/w1`),
+					entry('w2', 'W2', `${P}/folders/a/workflows/w2`),
+					entry('w3', 'W3', `${P}/folders/a/e/workflows/w3`),
+				],
+			});
+			const staging = makeManifest({
+				folders: [entry('f1', 'B', `${P}/folders/b`)],
+				workflows: [entry('w1', 'W1', `${P}/folders/b/workflows/w1`)],
+			});
+			const merged = mergeManifests(existing, staging, noDeletes);
+
+			expect(entryRelocations(existing, staging, merged)).toEqual([
+				{ from: `${P}/folders/a/e`, to: `${P}/folders/b/e`, kind: 'container' },
+				{ from: `${P}/folders/a/workflows/w2`, to: `${P}/folders/b/workflows/w2`, kind: 'leaf' },
+				{
+					from: `${P}/folders/a/e/workflows/w3`,
+					to: `${P}/folders/b/e/workflows/w3`,
+					kind: 'leaf',
+				},
+			]);
+		});
+
+		it('rejects a merge that puts two entries in one directory', () => {
+			const existing = makeManifest({
+				workflows: [
+					entry('w-old', 'Report', `${P}/workflows/report`),
+					entry('w2', 'Report', `${P}/workflows/report-2`),
+				],
+			});
+			// w-old was deleted, so the exporter allocated w2 -> report, w-new -> report-2.
+			const staging = makeManifest({
+				workflows: [entry('w-new', 'Report', `${P}/workflows/report-2`)],
+			});
+
+			expect(() => mergeManifests(existing, staging, new Set(['w-old']))).toThrow(
+				/same directory .*workflows\/report-2.*Select both/,
+			);
+		});
+	});
+
+	describe('dependencies', () => {
+		it('keeps a branch dependency that only unselected workflows use', () => {
+			const existing = makeManifest({
+				workflows: [entry('w1')],
+				credentials: [entry('c1')],
+				requirements: { credentials: [credReq('c1', ['w1'])] },
+			});
+			const staging = makeManifest({
+				workflows: [entry('w2')],
+				credentials: [entry('c2')],
+				requirements: { credentials: [credReq('c2', ['w2'])] },
+			});
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.credentials!.map((c) => c.id)).toEqual(['c1', 'c2']);
+			expect(result.requirements!.credentials).toEqual([
+				credReq('c1', ['w1']),
+				credReq('c2', ['w2']),
+			]);
+		});
+
+		it('drops a dependency when the replaced workflow no longer uses it', () => {
+			const existing = makeManifest({
+				workflows: [entry('w1'), entry('w2')],
+				credentials: [entry('c1'), entry('c2')],
+				requirements: { credentials: [credReq('c1', ['w1']), credReq('c2', ['w1', 'w2'])] },
+			});
+			// w1 is pushed again and now uses neither credential.
+			const staging = makeManifest({ workflows: [entry('w1')] });
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.credentials).toEqual([entry('c2')]);
+			expect(result.requirements!.credentials).toEqual([credReq('c2', ['w2'])]);
+		});
+
+		it('prunes variable entries by name and merges their requirements by name', () => {
+			const existing = makeManifest({
+				workflows: [entry('w1')],
+				variables: [entry('v1', 'API_KEY'), entry('v2', 'OLD_URL')],
+				requirements: {
+					variables: [
+						{ name: 'API_KEY', usedByWorkflows: ['w1'] },
+						{ name: 'OLD_URL', usedByWorkflows: ['w1'] },
+					],
+				},
+			});
+			const staging = makeManifest({
+				workflows: [entry('w1')],
+				variables: [entry('v1', 'API_KEY'), entry('v3', 'BASE_URL')],
+				requirements: {
+					variables: [
+						{ name: 'API_KEY', usedByWorkflows: ['w1'] },
+						{ name: 'BASE_URL', usedByWorkflows: ['w1'] },
+					],
+				},
+			});
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.variables!.map((v) => v.name)).toEqual(['API_KEY', 'BASE_URL']);
+			expect(result.requirements!.variables!.map((v) => v.name)).toEqual(['API_KEY', 'BASE_URL']);
+		});
+
+		it('replaces a recreated variable that has a new id but the same name in the same directory', () => {
+			const existing = makeManifest({
+				workflows: [entry('w1')],
+				variables: [entry('v1', 'API_KEY', `${P}/variables/api-key`)],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1'] }] },
+			});
+			const staging = makeManifest({
+				workflows: [entry('w1')],
+				variables: [entry('v2', 'API_KEY', `${P}/variables/api-key`)],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1'] }] },
+			});
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.variables).toEqual([entry('v2', 'API_KEY', `${P}/variables/api-key`)]);
+			// The old directory is cleared before the overlay writes the new file.
+			expect(staleTargets(existing, result, staging)).toContain(`${P}/variables/api-key`);
+		});
+
+		it('keeps a same-named variable that lives in another directory', () => {
+			const existing = makeManifest({
+				workflows: [entry('w1'), entry('w2')],
+				variables: [entry('v1', 'API_KEY', 'variables/api-key')],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1', 'w2'] }] },
+			});
+			const staging = makeManifest({
+				workflows: [entry('w1')],
+				variables: [entry('v2', 'API_KEY', `${P}/variables/api-key`)],
+				requirements: { variables: [{ name: 'API_KEY', usedByWorkflows: ['w1'] }] },
+			});
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.variables).toEqual([
+				entry('v1', 'API_KEY', 'variables/api-key'),
+				entry('v2', 'API_KEY', `${P}/variables/api-key`),
+			]);
+		});
+
+		it('keeps the old key of a renamed variable as a reference-only requirement for unselected users', () => {
+			// The variable was renamed on the instance, so no value exists under the
+			// old key anymore. The unselected workflow keeps its reference; only the
+			// bundled entry follows the rename.
+			const existing = makeManifest({
+				workflows: [entry('w1'), entry('w2')],
+				variables: [entry('v1', 'OLD_KEY', 'variables/old_key')],
+				requirements: { variables: [{ name: 'OLD_KEY', usedByWorkflows: ['w1', 'w2'] }] },
+			});
+			const staging = makeManifest({
+				workflows: [entry('w1')],
+				variables: [entry('v1', 'NEW_KEY', 'variables/new_key')],
+				requirements: { variables: [{ name: 'NEW_KEY', usedByWorkflows: ['w1'] }] },
+			});
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.variables).toEqual([entry('v1', 'NEW_KEY', 'variables/new_key')]);
+			expect(result.requirements!.variables).toEqual([
+				{ name: 'OLD_KEY', usedByWorkflows: ['w2'] },
+				{ name: 'NEW_KEY', usedByWorkflows: ['w1'] },
+			]);
+		});
+
+		it('merges nodeType requirements by type@version', () => {
+			const http = { type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2 };
+			const existing = makeManifest({
+				workflows: [entry('w1')],
+				requirements: { nodeTypes: [{ ...http, usedByWorkflows: ['w1'] }] },
+			});
+			const staging = makeManifest({
+				workflows: [entry('w2')],
+				requirements: {
+					nodeTypes: [
+						{ ...http, usedByWorkflows: ['w2'] },
+						{ type: 'n8n-nodes-base.slack', typeVersion: 2.1, usedByWorkflows: ['w2'] },
+					],
+				},
+			});
+
+			const result = mergeManifests(existing, staging, noDeletes);
+
+			expect(result.requirements!.nodeTypes).toEqual([
+				{ ...http, usedByWorkflows: ['w1', 'w2'] },
+				{ type: 'n8n-nodes-base.slack', typeVersion: 2.1, usedByWorkflows: ['w2'] },
+			]);
+		});
+
+		it('keeps reference-only sub-workflow requirements', () => {
+			const staging = makeManifest({
+				workflows: [entry('w1')],
+				requirements: { workflows: [{ id: 'w-sub', usedByWorkflows: ['w1'] }] },
+			});
+
+			const result = mergeManifests(makeManifest(), staging, noDeletes);
+
+			expect(result.requirements!.workflows).toEqual([{ id: 'w-sub', usedByWorkflows: ['w1'] }]);
+		});
+	});
+});
+
+describe('staleTargets', () => {
+	it('reports removed, moved and re-exported leaf entries, not untouched ones', () => {
+		const before = makeManifest({
+			workflows: [
+				entry('w1', 'kept', 'projects/p/workflows/kept'),
+				entry('w2', 'gone', 'projects/p/workflows/gone'),
+				entry('w3', 'moved', 'projects/p/workflows/old-name'),
+				entry('w4', 'rewritten', 'projects/p/workflows/rewritten'),
+			],
+			credentials: [entry('c1', 'cred', 'projects/p/credentials/cred')],
+		});
+		const staging = makeManifest({
+			workflows: [
+				entry('w3', 'moved', 'projects/p/workflows/new-name'),
+				entry('w4', 'rewritten', 'projects/p/workflows/rewritten'),
+			],
+		});
+		const after = mergeManifests(before, staging, new Set(['w2']));
+
+		expect(staleTargets(before, after, staging).sort()).toEqual([
+			'projects/p/credentials/cred',
+			'projects/p/workflows/gone',
+			'projects/p/workflows/old-name',
+			'projects/p/workflows/rewritten',
+		]);
+	});
+
+	it('removes the old directory of a renamed folder once its entries have moved', () => {
+		const before = makeManifest({
+			folders: [entry('f1', 'sales', 'projects/p/folders/sales')],
+			workflows: [
+				entry('w1', 'W1', 'projects/p/folders/sales/workflows/w1'),
+				entry('w2', 'W2', 'projects/p/folders/sales/workflows/w2'),
+			],
+		});
+		const staging = makeManifest({
+			folders: [entry('f1', 'revenue', 'projects/p/folders/revenue')],
+			workflows: [entry('w1', 'W1', 'projects/p/folders/revenue/workflows/w1')],
+		});
+		const after = mergeManifests(before, staging, noDeletes);
+
+		expect(staleTargets(before, after, staging).sort()).toEqual([
+			'projects/p/folders/sales',
+			'projects/p/folders/sales/workflows/w1',
+			'projects/p/folders/sales/workflows/w2',
+		]);
+	});
+
+	it('keeps a container that still holds a live entry', () => {
+		const before = makeManifest({
+			folders: [entry('f1', 'sales', 'projects/p/folders/sales')],
+			workflows: [entry('w1', 'W1', 'projects/p/folders/sales/workflows/w1')],
+		});
+		const after = makeManifest({
+			workflows: [entry('w1', 'W1', 'projects/p/folders/sales/workflows/w1')],
+		});
+
+		expect(staleTargets(before, after, makeManifest())).toEqual([]);
+	});
+});
