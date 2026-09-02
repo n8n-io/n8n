@@ -3150,11 +3150,6 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
-	$getPairedItem: (
-		destinationNodeName: string,
-		incomingSourceData: ISourceData | null,
-		pairedItem: IPairedItemData,
-	) => INodeExecutionData | null;
 	constructor: any;
 }
 

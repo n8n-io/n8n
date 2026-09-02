@@ -288,7 +288,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * Function-typed values are returned as `undefined` — every callable on
 	 * the host data surface (`$('Foo').first()`, `$items()`, `$fromAI()`,
-	 * `$evaluateExpression()`, `$getPairedItem()`) is wired in-isolate via
+	 * `$evaluateExpression()`) is wired in-isolate via
 	 * the typed-RPC dispatcher (`callHost`). No expression form should
 	 * reach a function through this path.
 	 *
@@ -504,8 +504,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleGetNodeItem(msg, data);
 					case 'evaluateExpression':
 						return this.handleEvaluateExpression(msg, data);
-					case 'getPairedItem':
-						return this.handleGetPairedItem(msg, data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -675,31 +673,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		data: WorkflowData,
 	): unknown {
 		return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
-	}
-
-	/**
-	 * Handler for `$getPairedItem(destinationNodeName, incomingSourceData,
-	 * initialPairedItem)`. Forwards directly to the host binding, which
-	 * walks the paired-item ancestry chain back to the named upstream node
-	 * and returns the matching execution item.
-	 *
-	 * The two trailing host parameters — `usedMethodName` and
-	 * `nodeBeforeLast` — are deliberately not part of the wire protocol:
-	 * the host's default for `usedMethodName` is already `$getPairedItem`,
-	 * and `nodeBeforeLast` is an internal recursion argument the host sets
-	 * during traversal.
-	 *
-	 * @private
-	 */
-	private handleGetPairedItem(
-		msg: Extract<BridgeMessage, { type: 'getPairedItem' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$getPairedItem?.(
-			msg.destinationNodeName,
-			msg.incomingSourceData,
-			msg.initialPairedItem,
-		);
 	}
 
 	/**
