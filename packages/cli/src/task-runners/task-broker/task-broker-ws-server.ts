@@ -116,8 +116,7 @@ export class TaskBrokerWsServer {
 	capTaskTimeoutsForShutdown() {
 		const deadline =
 			Date.now() +
-			Math.floor(this.globalConfig.generic.gracefulShutdownTimeout * 0.8) *
-				Time.seconds.toMilliseconds;
+			this.globalConfig.generic.gracefulShutdownTimeout * 0.8 * Time.seconds.toMilliseconds;
 
 		this.taskBroker.capTaskTimeoutsForShutdown(deadline);
 	}

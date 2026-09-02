@@ -10,6 +10,7 @@ import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifec
 import { TaskRejectError } from '../errors/task-reject.error';
 import { TaskRequesterAcceptTimeoutError } from '../errors/task-requester-accept-timeout.error';
 import { TaskRunnerExecutionTimeoutError } from '../errors/task-runner-execution-timeout.error';
+import { TaskRunnerShutdownTimeoutError } from '../errors/task-runner-shutdown-timeout.error';
 import { TaskRunnerUnreachableError } from '../errors/task-runner-unreachable.error';
 import { TaskBroker } from '../task-broker.service';
 import type {
@@ -1294,7 +1295,7 @@ describe('TaskBroker', () => {
 			expect(requesterCallback).toHaveBeenCalledWith({
 				type: 'broker:taskerror',
 				taskId,
-				error: expect.any(TaskRunnerExecutionTimeoutError),
+				error: expect.any(TaskRunnerShutdownTimeoutError),
 			});
 			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
 		});
@@ -1341,7 +1342,7 @@ describe('TaskBroker', () => {
 			expect(requesterCallback).toHaveBeenCalledWith({
 				type: 'broker:taskerror',
 				taskId,
-				error: expect.any(TaskRunnerExecutionTimeoutError),
+				error: expect.any(TaskRunnerShutdownTimeoutError),
 			});
 		});
 
@@ -1366,7 +1367,7 @@ describe('TaskBroker', () => {
 			expect(requesterCallback).toHaveBeenCalledWith({
 				type: 'broker:taskerror',
 				taskId,
-				error: expect.any(TaskRunnerExecutionTimeoutError),
+				error: expect.any(TaskRunnerShutdownTimeoutError),
 			});
 		});
 

@@ -16,6 +16,7 @@ import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.e
 import { TaskRequesterAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-requester-accept-timeout.error';
 import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
 import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error';
+import { TaskRunnerShutdownTimeoutError } from '@/task-runners/task-broker/errors/task-runner-shutdown-timeout.error';
 import { TaskRunnerUnreachableError } from '@/task-runners/task-broker/errors/task-runner-unreachable.error';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
@@ -620,6 +621,11 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
+		// A capped timer fires at the shutdown deadline, not because the task exceeded
+		// its configured timeout, so it must not report a regular execution timeout.
+		const isCappedByShutdown =
+			this.shutdownDeadline !== undefined && task.timesOutAt === this.shutdownDeadline;
+
 		if (this.taskRunnersConfig.mode === 'internal') {
 			// During shutdown, restarting the runner would respawn a process that the
 			// runner module is about to stop again; failing the task below is enough.
@@ -632,7 +638,9 @@ export class TaskBroker {
 			await this.messageRunner(task.runnerId, {
 				type: 'broker:taskcancel',
 				taskId,
-				reason: 'Task execution timed out',
+				reason: isCappedByShutdown
+					? 'Task aborted because the instance is shutting down'
+					: 'Task execution timed out',
 			});
 		}
 
@@ -640,11 +648,13 @@ export class TaskBroker {
 
 		await this.taskErrorHandler(
 			taskId,
-			new TaskRunnerExecutionTimeoutError({
-				taskTimeout,
-				isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
-				mode,
-			}),
+			isCappedByShutdown
+				? new TaskRunnerShutdownTimeoutError()
+				: new TaskRunnerExecutionTimeoutError({
+						taskTimeout,
+						isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
+						mode,
+					}),
 		);
 	}
 
