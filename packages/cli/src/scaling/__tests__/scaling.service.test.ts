@@ -259,6 +259,34 @@ describe('ScalingService', () => {
 				expect(stopQueueRecoverySpy).not.toHaveBeenCalled();
 			});
 
+			afterEach(() => {
+				globalConfig.queue.suspendExecutionsOnShutdown = false;
+			});
+
+			it('should suspend running jobs when suspension is enabled', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+				globalConfig.queue.suspendExecutionsOnShutdown = true;
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				await scalingService.stop();
+
+				expect(jobProcessor.suspendRunningJobs).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not suspend running jobs when suspension is disabled', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+				globalConfig.queue.suspendExecutionsOnShutdown = false;
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				await scalingService.stop();
+
+				expect(jobProcessor.suspendRunningJobs).not.toHaveBeenCalled();
+			});
+
 			it('should log the execution IDs it is waiting for while draining', async () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';

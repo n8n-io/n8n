@@ -182,6 +182,10 @@ export class ScalingService {
 	private async stopWorker() {
 		await this.pauseQueue();
 
+		if (this.globalConfig.queue.suspendExecutionsOnShutdown) {
+			this.jobProcessor.suspendRunningJobs();
+		}
+
 		let count = 0;
 
 		while (this.getRunningJobsCount() !== 0) {
