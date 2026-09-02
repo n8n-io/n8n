@@ -1,15 +1,18 @@
 export * from './api';
 export * from './browser';
 export * from './community-nodes';
+export * from './csp';
 export * from './instance';
 export * from './execution';
 export * from './logstreaming';
 export * from './nodes';
 export * from './scheduler';
+export * from './uuid';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
 	LDAP: 'feat:ldap',
+	NODE_TYPE_POLICIES: 'feat:nodeTypePolicies',
 	SAML: 'feat:saml',
 	OIDC: 'feat:oidc',
 	MFA_ENFORCEMENT: 'feat:mfaEnforcement',

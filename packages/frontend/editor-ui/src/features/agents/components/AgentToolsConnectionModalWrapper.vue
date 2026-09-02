@@ -820,7 +820,27 @@ function handleRowActivate(item: ToolConnectionItem) {
 		if (item.id.startsWith('tool:')) {
 			const localId = item.id.slice('tool:'.length);
 			const entry = workingToolEntries.value.find((e) => e.localId === localId);
-			if (entry) openConfigForToolEntry(entry);
+			if (!entry) return;
+			// Adding another instance of the same service: editing happens via the
+			// capabilities chips, so activating a connected node-tool row adds a
+			// new instance instead of overwriting the existing tool. A connected
+			// n8n Connect managed tool must keep its managed-credential
+			// preselection, so route it through the same managed add path.
+			const { ref } = entry;
+			if (ref.type === 'node') {
+				const nodeType =
+					[...availableToolTypes.value, ...communitySearchToolTypes.value].find(
+						(nt) => nt.name === ref.node.nodeType,
+					) ?? nodeTypesStore.getNodeType(ref.node.nodeType);
+				if (nodeType) {
+					const isManaged = Object.values(ref.node.credentials ?? {}).some(
+						(credential) => '__aiGatewayManaged' in credential && credential.__aiGatewayManaged,
+					);
+					void (isManaged ? addManagedNodeTool(nodeType) : handleAddTool(nodeType));
+				}
+				return;
+			}
+			openConfigForToolEntry(entry);
 		}
 		return;
 	}

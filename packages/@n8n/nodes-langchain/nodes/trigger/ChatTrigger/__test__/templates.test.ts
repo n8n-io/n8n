@@ -1,7 +1,5 @@
 import {
 	createPage,
-	createShellPage,
-	escapeForHtmlAttribute,
 	escapeForScriptContext,
 	getSanitizedCustomCss,
 	getSanitizedInitialMessages,
@@ -612,53 +610,6 @@ describe('ChatTrigger Templates Security', () => {
 	});
 });
 
-describe('escapeForHtmlAttribute', () => {
-	it('escapes what would break out of a double-quoted attribute', () => {
-		expect(escapeForHtmlAttribute('/chat?a="><script>&\'')).toBe(
-			'/chat?a=&quot;&gt;&lt;script&gt;&amp;&#39;',
-		);
-	});
-});
-
-describe('createShellPage', () => {
-	const shell = createShellPage({ iframeSrc: '/webhook/abc/chat?n8nShellInner=1' });
-
-	it('renders nothing but the frame the chat lives in', () => {
-		expect(shell).toContain('<iframe');
-		expect(shell).toContain('data-src="/webhook/abc/chat?n8nShellInner=1"');
-		// The widget, its stylesheet and the author's CSS all belong to the frame.
-		expect(shell).not.toContain('cdn.jsdelivr.net');
-		expect(shell).not.toContain('createChat');
-	});
-
-	it('gives the frame no origin of its own', () => {
-		expect(shell).toContain('sandbox="allow-scripts allow-forms allow-modals allow-popups"');
-		expect(shell).not.toContain('allow-same-origin');
-	});
-
-	// Links in bot replies are `target="_blank"`, so the frame needs `allow-popups`
-	// to open them at all — but not `allow-popups-to-escape-sandbox`, which would let
-	// author script put a real-origin document in front of the visitor.
-	it('lets the frame open popups without letting them escape the sandbox', () => {
-		expect(shell).toContain('allow-popups');
-		expect(shell).not.toContain('allow-popups-to-escape-sandbox');
-	});
-
-	// The src comes from the request URL, so it must not be able to close the
-	// attribute and add markup of its own.
-	it('escapes the frame src', () => {
-		const escaped = createShellPage({ iframeSrc: '/chat?x="><img src=x onerror=alert(1)>' });
-
-		expect(escaped).not.toContain('<img');
-		expect(escaped).toContain('&quot;&gt;&lt;img');
-	});
-
-	it('owns the session id so a frame reload continues the conversation', () => {
-		expect(shell).toContain("'n8n-chat-shell/sessionId' + window.location.pathname");
-		expect(shell).toContain("'#sessionId=' + encodeURIComponent(sessionId)");
-	});
-});
-
 describe('createPage inside the shell frame', () => {
 	const params = {
 		instanceId: 'test-instance',
@@ -683,9 +634,12 @@ describe('createPage inside the shell frame', () => {
 
 	const inner = createPage({
 		...params,
-		shellInner: true,
-		authToken: 'signed.jwt.token',
-		visitor,
+		frameIdentity: { visitor, authToken: 'signed.jwt.token' },
+	});
+
+	it('loads the widget from the published CDN bundle', () => {
+		expect(inner).toContain('cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js');
+		expect(inner).not.toContain('/chat-widget/');
 	});
 
 	it('stands in for localStorage before the widget loads', () => {
@@ -704,15 +658,56 @@ describe('createPage inside the shell frame', () => {
 	});
 
 	it('authenticates messages by request header', () => {
-		expect(inner).toContain('\'x-auth-token\': "signed.jwt.token",');
+		expect(inner).toContain('headers[\'x-auth-token\'] = "signed.jwt.token"');
 	});
 
-	it('takes the visitor from the server instead of fetching the login endpoint', () => {
-		expect(inner).toContain('const injectedVisitor = {"id":"user-1"');
-		expect(inner).toContain('if (injectedVisitor) {');
-		expect(inner.indexOf('if (injectedVisitor) {')).toBeLessThan(
-			inner.indexOf("fetch('/rest/login'"),
+	// `createChat` keeps this object by reference and the widget reads it on every
+	// send, so a later in-place write is what makes a refreshed token take effect.
+	it('hands the widget a header object it can keep mutating', () => {
+		expect(inner).toContain('const headers = window.__n8nChatAuthHeaders || {};');
+		expect(inner).toContain('headers: headers');
+		expect(inner).toContain("headers['X-Instance-Id'] = 'test-instance';");
+		// Guards the race where a refresh lands before this module script runs.
+		expect(inner).toContain("if (!headers['x-auth-token'])");
+	});
+
+	// Not a window listener: a port belongs to this document's realm, so it dies with
+	// this document. A replacement loaded by author script cannot obtain it, which is
+	// what keeps the shell's next token away from it.
+	it('opens a private channel to the shell instead of listening on window', () => {
+		expect(inner).toContain('window.__n8nChatAuthHeaders = {};');
+		expect(inner).toContain('var channel = new MessageChannel();');
+		expect(inner).toContain('channel.port1.onmessage = function (event) {');
+		expect(inner).toContain(
+			"window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*', [channel.port2]);",
 		);
+		expect(inner).toContain("data.type !== 'n8n-chat-auth-token'");
+		expect(inner).toContain("window.__n8nChatAuthHeaders['x-auth-token'] = data.token;");
+		expect(inner).not.toContain("addEventListener('message'");
+	});
+
+	// Announcing with no port still closes the shell's latch, so a document loaded here
+	// later cannot claim the channel this one failed to open.
+	it('announces readiness without a port when the browser has no channel', () => {
+		expect(inner).toContain(
+			"try { window.parent.postMessage({ type: 'n8n-chat-frame-ready' }, '*'); } catch (postError) {}",
+		);
+	});
+
+	// The refresh token lives only in an httpOnly cookie; it must appear in neither
+	// document.
+	it('carries no refresh token', () => {
+		expect(inner).not.toContain('refreshToken');
+		expect(inner).not.toContain('n8n-chat-oauth-refresh');
+	});
+
+	// Not merely skipped at runtime: the bootstrap is never emitted, so there is no
+	// path from this document to a login endpoint it couldn't reach or a sign-in page it
+	// couldn't render.
+	it('takes the visitor from the server instead of fetching the login endpoint', () => {
+		expect(inner).toContain('const metadata = { user: {"id":"user-1"');
+		expect(inner).not.toContain("fetch('/rest/login'");
+		expect(inner).not.toContain("'/signin?redirect='");
 	});
 
 	it('still renders the author own styling', () => {
@@ -729,12 +724,33 @@ describe('createPage inside the shell frame', () => {
 			expect(plain).toContain('const injectedVisitor = null;');
 		});
 
-		// The token and the visitor only ever belong to the sandboxed render.
-		it('ignores a token or visitor passed without the inner flag', () => {
-			const stray = createPage({ ...params, authToken: 'signed.jwt.token', visitor });
-
-			expect(stray).toContain('const injectedVisitor = null;');
-			expect(stray).not.toContain('x-auth-token');
+		// Nothing refreshes this render, so it keeps the inline header literal rather
+		// than the mutable object the frame render needs.
+		it('keeps the header literal inline', () => {
+			expect(plain).toContain("'X-Instance-Id': 'test-instance',");
+			expect(plain).not.toContain('window.__n8nChatAuthHeaders');
+			expect(plain).not.toContain('headers: headers');
 		});
+
+		// The client-side bootstrap is what the flag-off n8nUserAuth render still relies on.
+		it('keeps the login bootstrap the flag-off render depends on', () => {
+			expect(plain).toContain("fetch('/rest/login'");
+			expect(plain).toContain("'/signin?redirect='");
+		});
+	});
+
+	// A frame render holding half an identity would silently serve an anonymous chat where
+	// the single-document path redirects to sign-in, and the frame can resolve neither half
+	// for itself. Both fields are required together, so that state can't be expressed —
+	// this fails the build rather than the run if the shape ever loosens.
+	it('cannot represent a frame render missing half its identity', () => {
+		type FrameIdentity = Parameters<typeof createPage>[0]['frameIdentity'];
+
+		// @ts-expect-error the visitor and their token only ever travel together
+		const withoutVisitor: FrameIdentity = { authToken: 'signed.jwt.token' };
+		// @ts-expect-error ...in both directions
+		const withoutToken: FrameIdentity = { visitor };
+
+		expect([withoutVisitor, withoutToken]).toHaveLength(2);
 	});
 });

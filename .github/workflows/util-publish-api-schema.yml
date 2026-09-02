@@ -6,12 +6,12 @@ on:
     branches:
       - master
     paths:
-      - 'packages/cli/src/public-api/**/*.yml'               # Public API specs, incl. generated fragments
+      - 'packages/cli/src/public-api/**/*.yml' # Public API specs, incl. generated fragments
       - 'packages/cli/src/public-api/**/*.yaml'
       - 'packages/cli/src/public-api/**/*.css'
       - 'packages/cli/src/public-api/v1/openapi-gen/**/*.ts' # changes to the OpenAPI generator
-      - 'packages/cli/scripts/build.mjs'                     # changes to the build script that generates the OpenAPI spec
-      - 'packages/cli/package.json'                          # changes to Redocly or @asteasolutions/zod-to-openapi versions
+      - 'packages/cli/scripts/build.mjs' # changes to the build script that generates the OpenAPI spec
+      - 'packages/cli/package.json' # changes to Redocly or @asteasolutions/zod-to-openapi versions
 
   # Allow manual re-publish
   workflow_dispatch:

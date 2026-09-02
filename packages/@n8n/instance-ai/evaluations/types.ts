@@ -216,6 +216,20 @@ export interface TestCaseCredential {
 	 *  a credential set up on a card mid-conversation (UserProxyLlm), which always
 	 *  passes. */
 	valid?: boolean;
+	/** Defaults to false. true models a credential the user saved without filling
+	 *  anything in — seeded with no field values, and kept off the connection-test
+	 *  bypass so nothing resolves it as working. The shape behind a re-offered
+	 *  empty generic-auth credential.
+	 *
+	 *  DOES NOT SURVIVE A LANG-TRACER PUSH yet. Its case-write schema validates
+	 *  each credential against a non-strict `z.object({ type, name, valid })`
+	 *  (lang-tracer `packages/server/src/lib/case-writes.ts`), so this key is
+	 *  silently stripped and the suite copy seeds a FILLED credential instead —
+	 *  a case relying on it then fails in CI for a reason unrelated to the
+	 *  product. `eval:langtracer-push` catches it (`did not store credentials`,
+	 *  non-zero exit); until lang-tracer declares the field, a case using it
+	 *  lives on disk. */
+	blank?: boolean;
 }
 
 export interface WorkflowTestCase {

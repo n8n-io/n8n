@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import type {
-	CredentialsEntity,
 	CredentialUsedByWorkflow,
 	User,
 	WorkflowEntity,
@@ -154,12 +153,14 @@ export class EnterpriseWorkflowService {
 
 	validateCredentialPermissionsToUser(
 		workflow: IWorkflowBase,
-		allowedCredentials: CredentialsEntity[],
+		allowedCredentials: Array<{ id: string }> | ReadonlySet<string>,
 	) {
 		// Reuse the shared collector so inline sub-workflow credentials (Execute
 		// Sub-workflow, Workflow Tool, Workflow Retriever) and unresolved name-only
 		// references are inspected too, keeping this check aligned with the update path.
-		const allowedCredentialIds = allowedCredentials.map(({ id }) => id);
+		const allowedCredentialIds: ReadonlySet<string> = Array.isArray(allowedCredentials)
+			? new Set(allowedCredentials.map(({ id }) => id))
+			: allowedCredentials;
 		const inaccessibleNodes = this.getNodesWithInaccessibleCreds(workflow, allowedCredentialIds);
 		if (inaccessibleNodes.length > 0) {
 			throw new UserError('The workflow contains credentials that you do not have access to');
@@ -265,14 +266,31 @@ export class EnterpriseWorkflowService {
 	 * non-managed reference (id null/empty) that could resolve by name to a
 	 * credential the user does not own. Inline sub-workflow credentials are included.
 	 */
-	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: string[]) {
+	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: Iterable<string>) {
 		if (!workflow.nodes) {
 			return [];
 		}
+		const allowedCredentialIds = userCredIds instanceof Set ? userCredIds : new Set(userCredIds);
 		return workflow.nodes.filter((node) => {
 			const { ids, hasUnresolved } = this.getNodeCredentialRefs(node);
-			return hasUnresolved || ids.some((credId) => !userCredIds.includes(credId));
+			return hasUnresolved || ids.some((credId) => !allowedCredentialIds.has(credId));
 		});
+	}
+
+	collectCredentialReferences(workflow: IWorkflowBase): {
+		ids: Set<string>;
+		hasUnresolved: boolean;
+	} {
+		const ids = new Set<string>();
+		let hasUnresolved = false;
+
+		for (const node of workflow.nodes ?? []) {
+			const references = this.getNodeCredentialRefs(node);
+			for (const id of references.ids) ids.add(id);
+			hasUnresolved ||= references.hasUnresolved;
+		}
+
+		return { ids, hasUnresolved };
 	}
 
 	/**

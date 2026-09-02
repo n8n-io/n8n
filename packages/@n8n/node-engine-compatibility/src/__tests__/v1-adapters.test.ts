@@ -1,3 +1,4 @@
+import type { WorkflowGraph } from '@n8n/engine';
 import { describe, expect, it } from 'vitest';
 
 import { toV1Execution, toV1Sources } from '../v1-adapters';
@@ -33,7 +34,7 @@ const graph = converter.convert(
 );
 
 describe('toV1Execution', () => {
-	it('rebuilds v1 nodes, including a stub for the trigger', () => {
+	it('rebuilds v1 nodes, including the trigger', () => {
 		const execution = toV1Execution(graph, {}, 'a', 0);
 
 		expect(execution.nodes.map((node) => node.name).sort()).toEqual([
@@ -51,6 +52,49 @@ describe('toV1Execution', () => {
 			typeVersion: 1,
 			continueOnFail: false,
 		});
+	});
+
+	it('rebuilds the trigger with its own v1 identity, so expressions can read it', () => {
+		const production = converter.convert(
+			v1Workflow([
+				{
+					id: 't',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: { path: 'abc' },
+				},
+			]),
+		);
+
+		const execution = toV1Execution(production, {}, 't', 0);
+
+		expect(execution.nodes).toEqual([
+			expect.objectContaining({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				parameters: { path: 'abc' },
+			}),
+		]);
+	});
+
+	it('falls back to a manual trigger stub for a graph converted before the config existed', () => {
+		const legacy: WorkflowGraph = {
+			nodes: [{ id: 't', name: 'Webhook', type: 'trigger' }],
+			edges: [],
+		};
+
+		const execution = toV1Execution(legacy, {}, 't', 0);
+
+		expect(execution.nodes).toEqual([
+			expect.objectContaining({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				parameters: {},
+			}),
+		]);
 	});
 
 	it('rebuilds name-keyed connections preserving slots', () => {

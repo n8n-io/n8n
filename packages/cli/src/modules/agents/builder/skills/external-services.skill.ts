@@ -215,8 +215,8 @@ Follow these steps for the selected MCP result:
    \`selectedResult.credentialType\` as \`credentialType\`. Never invent
    credential IDs.
 2. Verify: call \`verify_mcp_server\` with the selected result's \`name\`, \`url\`,
-   \`transport\`, and \`authentication\`, plus the returned \`credentialId\` as
-   \`credential\` when authentication is required.
+   \`transport\`, \`authentication\`, and optional \`metadata\`, plus the returned
+   \`credentialId\` as \`credential\` when authentication is required.
 3. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
 4. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
@@ -270,8 +270,8 @@ ${mcpServerSchemaText}
 ### Testing the connection
 
 Before writing to config, call \`verify_mcp_server\` with server \`name\`,
-\`url\`, \`transport\`, and (if applicable) the credential id from
-\`ask_credential\`.
+\`url\`, \`transport\`, optional registry \`metadata\`, and (if applicable) the
+credential id from \`ask_credential\`.
 
 - Success returns \`{ ok: true, tools: [{ name, description }] }\`, and when a
   matching \`mcpServers\` entry exists, also \`credentialApplied: true,

@@ -11,7 +11,9 @@ import {
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
+import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
+import { noopLifecycleEventPublisher } from '../../lifecycle-events';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
@@ -60,8 +62,19 @@ describe('execution start (integration)', () => {
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
+			new ExecutionStartHandler(
+				executionStore,
+				stepStore,
+				orchestrationQueue,
+				noopLifecycleEventPublisher,
+			),
+			new StepSettledHandler(
+				executionStore,
+				stepStore,
+				stepQueue,
+				orchestrationQueue,
+				noopLifecycleEventPublisher,
+			),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(
@@ -85,6 +98,7 @@ describe('execution start (integration)', () => {
 			workflowId: 'wf-1',
 			graph,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			executionId: generateId(),
 		});
 		await ready;
 
@@ -115,9 +129,16 @@ describe('execution start (integration)', () => {
 		const { executionStore, stepStore } = stores();
 		const publish = vi.fn();
 		const queue: WorkQueue<OrchestrationMessage> = { publish, start: vi.fn(), stop: vi.fn() };
-		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
+		const handler = new ExecutionStartHandler(
+			executionStore,
+			stepStore,
+			queue,
+			noopLifecycleEventPublisher,
+		);
 
-		const { id: executionId } = await executionStore.createExecution({
+		const executionId = generateId();
+		await executionStore.createExecution({
+			id: executionId,
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',

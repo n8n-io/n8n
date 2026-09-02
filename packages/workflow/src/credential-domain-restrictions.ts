@@ -105,14 +105,7 @@ export function isDomainAllowed(options: { url: string; allowedDomains: string }
 		return true;
 	}
 
-	let url: URL;
-	try {
-		url = new URL(urlString);
-	} catch {
-		return false;
-	}
-
-	const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+	const hostname = toHostname(urlString);
 	if (!hostname) return false;
 
 	const allowedDomainsList = allowedDomains
@@ -148,6 +141,16 @@ function toDisplayHost(url: string): string {
 	}
 }
 
+/** Hostname of an absolute URL, normalised for matching. `undefined` when there is none. */
+function toHostname(url: string | undefined): string | undefined {
+	if (!url) return undefined;
+	try {
+		return new URL(url).hostname.toLowerCase().replace(/\.$/, '') || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 /** Throws `UserError` when `node` is omitted, so callers without an `INode` (axios helper) get a wrappable error. */
 export function assertUrlAllowed(options: {
 	url: string;
@@ -162,31 +165,61 @@ export function assertUrlAllowed(options: {
 	throw node ? new NodeOperationError(node, message) : new UserError(message);
 }
 
-/** Returns the allowlist for forwarding to per-hop redirect checks; `undefined` means allow-all. */
+/**
+ * Returns the allowlist for forwarding to per-hop redirect checks; `undefined` means allow-all.
+ *
+ * `'none'` blocks the caller outright, unless `credentialOwnedSurface` says the URL comes from
+ * a node definition rather than from the user — set that only for such callers, never for a
+ * URL that arrives as request input.
+ *
+ * On such a surface, pass `nodeEndpointUrl` and its host joins the `'domains'` allowlist, so a
+ * list the user wrote with the HTTP Request node in mind does not stop the credential working in
+ * the node it belongs to. A node that decides its endpoint later — in `preSend`, or in the
+ * credential's own `authenticate` — has no host to offer here and stays subject to the list.
+ */
 export function getCredentialAllowedDomains(options: {
 	node: INode;
 	credentialData: ICredentialDataDecryptedObject;
 	surface?: string;
+	credentialOwnedSurface?: boolean;
+	nodeEndpointUrl?: string;
 }): string | undefined {
-	const { node, credentialData, surface = DEFAULT_SURFACE } = options;
+	const {
+		node,
+		credentialData,
+		surface = DEFAULT_SURFACE,
+		credentialOwnedSurface,
+		nodeEndpointUrl,
+	} = options;
 	const mode = readMode(credentialData);
+	// Guarded on the flag: a surface where the user picks the URL must never widen its allowlist.
+	const endpointHost = credentialOwnedSurface ? toHostname(nodeEndpointUrl) : undefined;
+	// A comma is a legal host character and would split into extra allowlist entries.
+	const ownHost = endpointHost?.includes(',') ? undefined : endpointHost;
 
 	if (mode === 'none') {
-		throw new NodeOperationError(
-			node,
-			`This credential is configured to prevent use within an ${surface} node`,
-		);
+		if (!credentialOwnedSurface) {
+			throw new NodeOperationError(
+				node,
+				`This credential is configured to prevent use within an ${surface} node`,
+			);
+		}
+		return undefined;
 	}
 
 	if (mode === 'domains') {
 		const allowedDomains = readAllowedDomainsField(credentialData);
 		if (!allowedDomains) {
+			if (ownHost) return ownHost;
 			throw new NodeOperationError(
 				node,
 				'No allowed domains specified. Configure allowed domains or change restriction setting.',
 			);
 		}
-		return allowedDomains;
+		if (!ownHost || isDomainAllowed({ url: `https://${ownHost}`, allowedDomains })) {
+			return allowedDomains;
+		}
+		return `${ownHost}, ${allowedDomains}`;
 	}
 
 	return undefined;

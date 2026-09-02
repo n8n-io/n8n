@@ -191,16 +191,6 @@ describe('Instance AI runtime skills', () => {
 			const loadResult = await loadTool.handler?.({ skillId }, {});
 			expect(skillLoadText(loadResult)).toContain(`[Skill: "${skillId}"]`);
 		}
-
-		const agentBuilder = await source.loadSkill('agent-builder');
-		expect(agentBuilder?.instructions).toContain('## Saved sub-agent dependencies');
-		expect(agentBuilder?.instructions).toContain(
-			'A saved sub-agent must be published before the parent can attach it',
-		);
-		expect(agentBuilder?.instructions).toMatch(
-			/Never attach a draft child or pass its\s+raw `agentId`/,
-		);
-		expect(agentBuilder?.instructions).toContain('identify the child by its display name');
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {

@@ -1,5 +1,6 @@
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
@@ -204,6 +205,53 @@ function resolveDisplayedDefaults(
 		desc,
 	);
 	return resolved ?? (parameters as INodeParameters);
+}
+
+/**
+ * A credential type's own properties plus every property it inherits, with
+ * hidden ones dropped and a child's override winning over its parent's.
+ */
+function collectCredentialProperties(
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+	credentialType: string,
+): INodeProperties[] {
+	// `allTypes` grows while it is iterated, which walks the whole extends chain.
+	const allTypes = [credentialType];
+	const { knownCredentials } = loadNodesAndCredentials;
+	for (const typeName of allTypes) {
+		allTypes.push(...(knownCredentials[typeName]?.extends ?? []));
+	}
+
+	const properties: INodeProperties[] = [];
+	const seen = new Set<string>();
+	for (const typeName of allTypes) {
+		try {
+			for (const prop of loadNodesAndCredentials.getCredential(typeName).type.properties) {
+				if (prop.type === 'hidden' || seen.has(prop.name)) continue;
+				seen.add(prop.name);
+				properties.push(prop);
+			}
+		} catch {
+			// Type not loadable — skip
+		}
+	}
+	return properties;
+}
+
+/**
+ * Whether a decrypted credential field holds anything the service could
+ * authenticate with. Structured fields count as empty while they hold no
+ * entries, so a credential the user never filled in reads as blank.
+ */
+function hasCredentialValue(value: unknown): boolean {
+	if (value === undefined || value === null) return false;
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		return trimmed !== '' && trimmed !== '{}' && trimmed !== '[]';
+	}
+	if (Array.isArray(value)) return value.length > 0;
+	if (typeof value === 'object') return Object.keys(value).length > 0;
+	return true;
 }
 
 // Credential types are loaded once at boot, so the derived host index is
@@ -868,10 +916,7 @@ export class InstanceAiAdapterService {
 				return execution?.data?.resultData?.runData ?? null;
 			},
 
-			async createFromWorkflowJSON(
-				json: WorkflowJSON,
-				options?: { projectId?: string; markAsAiTemporary?: boolean },
-			) {
+			async createFromWorkflowJSON(json: WorkflowJSON, options?: { markAsAiTemporary?: boolean }) {
 				assertNotReadOnly();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
@@ -989,7 +1034,7 @@ export class InstanceAiAdapterService {
 			async updateFromWorkflowJSON(
 				workflowId: string,
 				json: WorkflowJSON,
-				options?: { projectId?: string; expectedChecksum?: string },
+				options?: { expectedChecksum?: string },
 			) {
 				assertNotReadOnly();
 				await assertNotLockedByEditor(workflowId);
@@ -1281,9 +1326,12 @@ export class InstanceAiAdapterService {
 
 				// Use the explicitly requested trigger node when provided — the only way to
 				// pick a branch in a multi-trigger workflow — otherwise auto-detect.
-				const triggerNode = options?.triggerNodeName
-					? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
-					: findTriggerNode(nodes);
+				// Checked against undefined, not truthiness: an empty name is a caller
+				// mistake, and auto-detecting there would run a branch nobody asked for.
+				const triggerNode =
+					options?.triggerNodeName !== undefined
+						? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
+						: findTriggerNode(nodes);
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
@@ -1824,46 +1872,43 @@ export class InstanceAiAdapterService {
 
 			getCredentialFields(credentialType: string) {
 				try {
-					// Walk the extends chain to collect all properties
-					const allTypes = [credentialType];
-					const known = loadNodesAndCredentials.knownCredentials;
-					for (const typeName of allTypes) {
-						const extendsArr = known[typeName]?.extends ?? [];
-						allTypes.push(...extendsArr);
-					}
-
-					const fields: Array<{
-						name: string;
-						displayName: string;
-						type: string;
-						required: boolean;
-						description?: string;
-					}> = [];
-					const seen = new Set<string>();
-
-					for (const typeName of allTypes) {
-						try {
-							const credClass = loadNodesAndCredentials.getCredential(typeName);
-							for (const prop of credClass.type.properties) {
-								// Skip hidden fields and already-seen fields (child overrides parent)
-								if (prop.type === 'hidden' || seen.has(prop.name)) continue;
-								seen.add(prop.name);
-								fields.push({
-									name: prop.name,
-									displayName: prop.displayName,
-									type: prop.type,
-									required: prop.required ?? false,
-									description: prop.description,
-								});
-							}
-						} catch {
-							// Type not loadable — skip
-						}
-					}
-
-					return fields;
+					return collectCredentialProperties(loadNodesAndCredentials, credentialType).map(
+						(prop) => ({
+							name: prop.name,
+							displayName: prop.displayName,
+							type: prop.type,
+							required: prop.required ?? false,
+							description: prop.description,
+						}),
+					);
 				} catch {
 					return [];
+				}
+			},
+
+			async getCredentialFillState(credentialId: string) {
+				try {
+					const credential = await credentialsFinderService.findCredentialForUser(
+						credentialId,
+						user,
+						['credential:read'],
+					);
+					if (!credential) return 'unknown' as const;
+
+					// Notices render copy and hold no credential data, so they can never
+					// make a credential "filled".
+					const valueFields = collectCredentialProperties(
+						loadNodesAndCredentials,
+						credential.type,
+					).filter((prop) => prop.type !== 'notice');
+					if (valueFields.length === 0) return 'unknown' as const;
+
+					// Decryption stays on this side of the boundary — only the verdict crosses.
+					const data = await credentialsService.decrypt(credential, true);
+					const filled = valueFields.some((prop) => hasCredentialValue(data[prop.name]));
+					return filled ? ('filled' as const) : ('blank' as const);
+				} catch {
+					return 'unknown' as const;
 				}
 			},
 
@@ -2618,7 +2663,7 @@ export class InstanceAiAdapterService {
 			async listAvailable(options) {
 				const [nodes, gatewayConfig] = await Promise.all([
 					getNodes(),
-					options?.n8nConnectOnly ? getGatewayConfig() : Promise.resolve(null),
+					options?.gatewayCreditsOnly ? getGatewayConfig() : Promise.resolve(null),
 				]);
 				let filtered = nodes;
 
@@ -2645,9 +2690,9 @@ export class InstanceAiAdapterService {
 					return summary;
 				});
 
-				// n8nConnectOnly answers "which nodes support n8n Connect?" — keep only
+				// gatewayCreditsOnly answers "which nodes support Gateway credits?" — keep only
 				// nodes the gateway covers (meta present).
-				return options?.n8nConnectOnly ? summaries.filter((s) => s.aiGateway) : summaries;
+				return options?.gatewayCreditsOnly ? summaries.filter((s) => s.aiGateway) : summaries;
 			},
 
 			async listSearchable() {
@@ -3972,20 +4017,42 @@ function hasCredentialId(value: unknown): boolean {
 	return typeof id === 'string' && id.trim() !== '';
 }
 
+/**
+ * Convert the n8n credits managed tag, when written as a credential id, to the
+ * runtime sentinel. Build-time resolve already does this; normalizing at save
+ * also covers direct saves (e.g. workflows update) so the tag never persists as
+ * a real id the runtime would fail to resolve.
+ */
+function normalizeManagedCredentialForSave(value: unknown): unknown {
+	if (typeof value !== 'object' || value === null) return value;
+	if (Reflect.get(value, 'id') !== AI_GATEWAY_MANAGED_TAG) return value;
+	const name = Reflect.get(value, 'name');
+	return {
+		id: null,
+		name: typeof name === 'string' && name !== '' ? name : 'Gateway credits',
+		__aiGatewayManaged: true,
+	};
+}
+
 function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): WorkflowJSON['nodes'] {
 	return nodes.map((node) => {
 		if (!node.credentials) return node;
 
+		let changed = false;
 		const credentials = Object.entries(node.credentials).reduce<
 			NonNullable<typeof node.credentials>
-		>((acc, [type, value]) => {
+		>((acc, [type, rawValue]) => {
+			const value = normalizeManagedCredentialForSave(rawValue);
+			if (value !== rawValue) changed = true;
 			if (hasCredentialId(value)) {
-				acc[type] = value;
+				acc[type] = value as NonNullable<typeof node.credentials>[string];
+			} else {
+				changed = true;
 			}
 			return acc;
 		}, {});
 
-		if (Object.keys(credentials).length === Object.keys(node.credentials).length) return node;
+		if (!changed) return node;
 
 		const sanitized = { ...node };
 		if (Object.keys(credentials).length > 0) {

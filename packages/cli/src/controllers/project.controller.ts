@@ -6,7 +6,7 @@ import {
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
 } from '@n8n/api-types';
-import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Get,
 	Post,
@@ -20,15 +20,12 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/permissions';
-import type { Scope } from '@n8n/permissions';
-import { In, Not } from '@n8n/typeorm';
+import { combineScopes, getAuthPrincipalScopes } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
 import {
@@ -36,15 +33,11 @@ import {
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
 } from '@/services/project.service.ee';
-import { UserManagementMailer } from '@/user-management/email';
 
 @RestController('/projects')
 export class ProjectController {
 	constructor(
 		private readonly projectsService: ProjectService,
-		private readonly projectRepository: ProjectRepository,
-		private readonly eventService: EventService,
-		private readonly userManagementMailer: UserManagementMailer,
 		private readonly provisioningService: ProvisioningService,
 	) {}
 
@@ -54,7 +47,7 @@ export class ProjectController {
 		res: Response,
 		@Query payload: ListProjectsQueryDto,
 	) {
-		const [data, count] = await this.projectsService.getAccessibleProjectsAndCount(
+		const { projects, count } = await this.projectsService.getAccessibleProjectsAndCount(
 			req.user,
 			payload,
 		);
@@ -63,10 +56,10 @@ export class ProjectController {
 		// with role and scopes enriched per project.
 		// Otherwise return a bare array for backward compatibility with existing callers.
 		if (payload.take !== undefined || payload.skip !== undefined) {
-			const enriched = await this.projectsService.addUserScopes(req.user, data);
+			const enriched = await this.projectsService.addUserScopes(req.user, projects);
 			return res.json({ count, data: enriched });
 		}
-		return data;
+		return projects;
 	}
 
 	@Get('/count')
@@ -86,11 +79,11 @@ export class ProjectController {
 		res: Response,
 		@Query payload: ListProjectsQueryDto,
 	) {
-		const [data, count] = await this.projectsService.getShareableProjectsAndCount(
+		const { projects, count } = await this.projectsService.getShareableProjectsAndCount(
 			req.user,
 			payload,
 		);
-		const enriched = await this.projectsService.addUserScopes(req.user, data);
+		const enriched = await this.projectsService.addUserScopes(req.user, projects);
 		return res.json({ count, data: enriched });
 	}
 
@@ -102,26 +95,10 @@ export class ProjectController {
 		try {
 			const project = await this.projectsService.createTeamProject(req.user, payload);
 
-			this.eventService.emit('team-project-created', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				uiContext: payload.uiContext,
-			});
-
-			const relation = await this.projectsService.getProjectRelationForUserAndProject(
-				req.user.id,
-				project.id,
-			);
-
 			return {
 				...project,
 				role: 'project:admin',
-				scopes: [
-					...combineScopes({
-						global: getAuthPrincipalScopes(req.user),
-						project: relation?.role.scopes.map((scope) => scope.slug) ?? [],
-					}),
-				],
+				scopes: await this.projectsService.getProjectScopesForUser(req.user, project.id),
 			};
 		} catch (e) {
 			if (e instanceof TeamProjectOverQuotaError) {
@@ -136,61 +113,7 @@ export class ProjectController {
 		req: AuthenticatedRequest,
 		_res: Response,
 	): Promise<ProjectRequest.GetMyProjectsResponse> {
-		const relations = await this.projectsService.getProjectRelationsForUser(req.user);
-		const otherTeamProject = hasGlobalScope(req.user, 'project:read')
-			? await this.projectRepository.findBy({
-					type: 'team',
-					id: Not(In(relations.map((pr) => pr.projectId))),
-				})
-			: [];
-
-		const results: ProjectRequest.GetMyProjectsResponse = [];
-
-		for (const pr of relations) {
-			const result: ProjectRequest.GetMyProjectsResponse[number] = Object.assign(
-				this.projectRepository.create(pr.project),
-				{ role: pr.role.slug, scopes: [] },
-			);
-
-			if (result.scopes) {
-				result.scopes.push(
-					...combineScopes({
-						global: getAuthPrincipalScopes(req.user),
-						project: pr.role.scopes.map((scope) => scope.slug),
-					}),
-				);
-			}
-
-			results.push(result);
-		}
-
-		for (const project of otherTeamProject) {
-			const result: ProjectRequest.GetMyProjectsResponse[number] = Object.assign(
-				this.projectRepository.create(project),
-				{
-					// If the user has the global `project:read` scope then they may not
-					// own this relationship in that case we use the global user role
-					// instead of the relation role, which is for another user.
-					role: req.user.role.slug,
-					scopes: [],
-				},
-			);
-
-			if (result.scopes) {
-				result.scopes.push(...combineScopes({ global: getAuthPrincipalScopes(req.user) }));
-			}
-
-			results.push(result);
-		}
-
-		// Deduplicate and sort scopes
-		for (const result of results) {
-			if (result.scopes) {
-				result.scopes = [...new Set(result.scopes)].sort();
-			}
-		}
-
-		return results;
+		return await this.projectsService.getMyProjects(req.user);
 	}
 
 	@Get('/personal')
@@ -200,16 +123,7 @@ export class ProjectController {
 			throw new NotFoundError('Could not find a personal project for this user');
 		}
 
-		const relation = await this.projectsService.getProjectRelationForUserAndProject(
-			req.user.id,
-			project.id,
-		);
-		const scopes: Scope[] = [
-			...combineScopes({
-				global: getAuthPrincipalScopes(req.user),
-				project: relation?.role.scopes.map((scope) => scope.slug) ?? [],
-			}),
-		];
+		const scopes = await this.projectsService.getProjectScopesForUser(req.user, project.id);
 		return {
 			...project,
 			scopes,
@@ -265,15 +179,7 @@ export class ProjectController {
 		@Body payload: UpdateProjectDto,
 		@Param('projectId') projectId: string,
 	) {
-		await this.projectsService.updateProject(projectId, payload);
-		this.eventService.emit('team-project-updated', {
-			userId: req.user.id,
-			role: req.user.role.slug,
-			projectId,
-			...(payload.customTelemetryTags !== undefined
-				? { otelProjectCustomTagsCount: payload.customTelemetryTags.length }
-				: {}),
-		});
+		await this.projectsService.updateProject(req.user, projectId, payload);
 	}
 
 	/** Throws when project roles are provisioned automatically, so manual membership changes are disallowed. */
@@ -295,24 +201,11 @@ export class ProjectController {
 	) {
 		await this.assertProjectRolesNotManaged();
 		try {
-			const { added, conflicts, project } =
-				await this.projectsService.addUsersWithConflictSemantics(projectId, payload.relations);
-
-			if (added.length > 0) {
-				await this.userManagementMailer.notifyProjectShared({
-					sharer: req.user,
-					newSharees: added,
-					project: { id: project.id, name: project.name },
-				});
-			}
-
-			const relations = await this.projectsService.getProjectRelations(projectId);
-			this.eventService.emit('team-project-updated', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
+			const { added, conflicts } = await this.projectsService.addUsersWithConflictSemantics(
+				req.user,
 				projectId,
-			});
+				payload.relations,
+			);
 
 			// Response semantics:
 			// - If at least one user was added, return 201. When there are also conflicts, include them in the body.
@@ -342,14 +235,7 @@ export class ProjectController {
 		await this.assertProjectRolesNotManaged();
 
 		try {
-			await this.projectsService.changeUserRoleInProject(projectId, userId, body.role);
-			const relations = await this.projectsService.getProjectRelations(projectId);
-			this.eventService.emit('team-project-updated', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
-				projectId,
-			});
+			await this.projectsService.changeUserRoleInProject(req.user, projectId, userId, body.role);
 			return res.status(204).send();
 		} catch (e) {
 			if (e instanceof UnlicensedProjectRoleError) {
@@ -368,14 +254,7 @@ export class ProjectController {
 		@Param('userId') userId: string,
 	) {
 		await this.assertProjectRolesNotManaged();
-		await this.projectsService.deleteUserFromProject(projectId, userId);
-		const relations = await this.projectsService.getProjectRelations(projectId);
-		this.eventService.emit('team-project-updated', {
-			userId: req.user.id,
-			role: req.user.role.slug,
-			members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
-			projectId,
-		});
+		await this.projectsService.deleteUserFromProject(req.user, projectId, userId);
 		return res.status(204).send();
 	}
 
@@ -389,14 +268,6 @@ export class ProjectController {
 	) {
 		await this.projectsService.deleteProject(req.user, projectId, {
 			migrateToProject: query.transferId,
-		});
-
-		this.eventService.emit('team-project-deleted', {
-			userId: req.user.id,
-			role: req.user.role.slug,
-			projectId,
-			removalType: query.transferId !== undefined ? 'transfer' : 'delete',
-			targetProjectId: query.transferId,
 		});
 	}
 }

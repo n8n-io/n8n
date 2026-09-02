@@ -1,7 +1,10 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import {
+	WorkflowCreationService,
+	type WorkflowCreateBatchContext,
+} from '@/workflows/workflow-creation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { workflowReferences } from './references/workflow-references';
@@ -29,6 +32,7 @@ import type {
 	PackageImportBindings,
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
+import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
 
 export interface WorkflowImportResult {
 	outcomes: PersistedWorkflowOutcome[];
@@ -148,10 +152,24 @@ export class WorkflowImporter {
 			...collectPlannedWorkflowBindings(plan.items),
 		]);
 		const resolvedBindings: PackageImportBindings = { ...bindings, workflows: workflowBindings };
+		const createItems = plan.items.filter((item) => item.action === 'create');
+		const batchContext =
+			createItems.length === 0
+				? undefined
+				: await this.workflowCreationService.prepareBatchContext(
+						context.user,
+						context.projectId,
+						createItems.flatMap((item) => {
+							const folderId = item.parentFolderId ?? context.folderId;
+							return folderId ? [folderId] : [];
+						}),
+						createItems.map(({ entity }) => entity),
+						resolvedBindings.credentials,
+					);
 
 		const outcomes: PersistedWorkflowOutcome[] = [];
 		for (const item of plan.items) {
-			outcomes.push(await this.applyItem(context, item, resolvedBindings));
+			outcomes.push(await this.applyItem(context, item, resolvedBindings, batchContext));
 		}
 
 		return { outcomes, bindings: resolvedBindings };
@@ -161,6 +179,7 @@ export class WorkflowImporter {
 		context: WorkflowImportContext,
 		item: WorkflowPlanItem,
 		bindings: PackageImportBindings,
+		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<PersistedWorkflowOutcome> {
 		if (item.action === 'skip') {
 			return {
@@ -172,7 +191,7 @@ export class WorkflowImporter {
 
 		return {
 			status: item.action === 'create' ? 'created' : 'updated',
-			workflow: await this.persistWorkflow(context, item, bindings),
+			workflow: await this.persistWorkflow(context, item, bindings, batchContext),
 			sourceWorkflowId: item.sourceWorkflowId,
 			item,
 		};
@@ -182,6 +201,7 @@ export class WorkflowImporter {
 		context: WorkflowImportContext,
 		item: PersistedWorkflowPlanItem,
 		bindings: PackageImportBindings,
+		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<WorkflowEntity> {
 		const tagIds =
 			item.tagIds && [...new Set(item.tagIds)].filter((id) => !context.droppedTagIds.has(id));
@@ -194,6 +214,7 @@ export class WorkflowImporter {
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
+				...(batchContext ? { batchContext } : {}),
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 		}
@@ -236,16 +257,15 @@ function applyCredentialBindingsInPlace(
 	entity: WorkflowEntity,
 	credentialBindings: ImportBindingMap,
 ): void {
-	for (const node of entity.nodes) {
-		for (const details of Object.values(node.credentials ?? {})) {
-			if (!details.id) continue;
+	visitWorkflowCredentials(entity.nodes, (_credentialType, details) => {
+		if (!details.id) return false;
 
-			const targetId = credentialBindings.get(details.id);
-			if (targetId) {
-				details.id = targetId;
-			}
-		}
-	}
+		const targetId = credentialBindings.get(details.id);
+		if (!targetId || targetId === details.id) return false;
+
+		details.id = targetId;
+		return true;
+	});
 }
 
 function toPlanItem(

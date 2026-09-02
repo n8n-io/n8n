@@ -42,6 +42,7 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -148,9 +149,16 @@ export type WorkflowToolExecutionMode = Extract<WorkflowExecuteMode, 'manual' | 
 export interface WorkflowToolContext {
 	workflowLoader: WorkflowToolWorkflowLoader;
 	workflowRunner: WorkflowRunner;
+	subworkflowPolicyChecker: SubworkflowPolicyChecker;
 	activeExecutions: ActiveExecutions;
 	projectId: string;
 	executionMode: WorkflowToolExecutionMode;
+	/**
+	 * Run the published workflow version instead of the draft. Set for
+	 * production agent runs, matching how sub-workflows resolve referenced
+	 * workflows (draft for test runs, published version for production).
+	 */
+	usePublishedWorkflowVersion?: boolean;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
 	agentId?: string;
@@ -476,7 +484,9 @@ export async function executeWorkflow(
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
 ): Promise<WorkflowToolExecutionResult> {
-	const { workflowRunner, activeExecutions } = context;
+	const { workflowRunner, subworkflowPolicyChecker, activeExecutions } = context;
+
+	await subworkflowPolicyChecker.checkForProject(workflow, context.projectId);
 
 	// Build pin data for the trigger
 	const triggerPinData = normalizeTriggerInput(
@@ -883,7 +893,9 @@ async function buildWorkflowTool(
 		workflowName,
 		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
 	};
-	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, initialReference);
+	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, initialReference, {
+		usePublishedVersion: context.usePublishedWorkflowVersion === true,
+	});
 	if (!workflow) {
 		throw new Error(`Workflow "${workflowName}" not found`);
 	}
@@ -1056,7 +1068,9 @@ async function loadCurrentWorkflow(
 	reference: WorkflowToolWorkflowReference,
 	expectedTriggerType: string,
 ) {
-	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, reference);
+	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, reference, {
+		usePublishedVersion: context.usePublishedWorkflowVersion === true,
+	});
 	if (!workflow) {
 		throw new Error(`Workflow "${reference.workflowName}" is no longer accessible`);
 	}

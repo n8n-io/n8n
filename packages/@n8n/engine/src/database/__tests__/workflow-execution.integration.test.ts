@@ -7,6 +7,7 @@ import { ExecutionNotFoundError } from '../../execution/execution-store';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
+import { generateId } from '../generate-id';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 
 describe('workflow_execution table (integration)', () => {
@@ -29,6 +30,7 @@ describe('workflow_execution table (integration)', () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 
 		const created = repo.create({
+			id: generateId(),
 			workflowId: 'wf-1',
 			status: 'running',
 			mode: 'production',
@@ -57,6 +59,7 @@ describe('workflow_execution table (integration)', () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const finishedAt = new Date();
 		const created = repo.create({
+			id: generateId(),
 			workflowId: 'wf-3',
 			status: 'completed',
 			mode: 'manual',
@@ -100,6 +103,7 @@ describe('workflow_execution table (integration)', () => {
 
 		await repo.save(
 			repo.create({
+				id: generateId(),
 				workflowId: 'wf-2',
 				status: 'running',
 				mode: 'production',
@@ -110,6 +114,7 @@ describe('workflow_execution table (integration)', () => {
 		);
 		await repo.save(
 			repo.create({
+				id: generateId(),
 				workflowId: 'wf-2',
 				status: 'completed',
 				mode: 'production',
