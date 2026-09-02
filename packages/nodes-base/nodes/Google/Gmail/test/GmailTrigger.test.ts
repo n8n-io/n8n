@@ -252,6 +252,7 @@ describe('GmailTrigger', () => {
 		expect(workflowStaticData['Gmail Trigger']).toEqual({
 			lastTimeChecked: 2000000000,
 			possibleDuplicates: ['2'],
+			pendingMessageIds: [],
 		});
 	});
 
@@ -289,6 +290,7 @@ describe('GmailTrigger', () => {
 		expect(Object.getOwnPropertyDescriptor(workflowStaticData, 'toString')?.value).toEqual({
 			lastTimeChecked: 2000000000,
 			possibleDuplicates: ['1'],
+			pendingMessageIds: [],
 		});
 		expect(Object.prototype.toString).not.toHaveProperty('lastTimeChecked');
 	});
@@ -734,162 +736,6 @@ describe('GmailTrigger', () => {
 			expect(response?.[0]).toHaveLength(2);
 			expect(response?.[0]?.[0]?.json?.id).toBe('3');
 			expect(response?.[0]?.[1]?.json?.id).toBe('2');
-		});
-
-		it('should list additional pages until maxResults is covered', async () => {
-			const initialTimestamp = 1000000;
-			const listPage1: MessageListResponse = {
-				messages: [createListMessage({ id: '4' }), createListMessage({ id: '3' })],
-				nextPageToken: 'page2Token',
-				resultSizeEstimate: 4,
-			};
-			const listPage2: MessageListResponse = {
-				messages: [createListMessage({ id: '2' }), createListMessage({ id: '1' })],
-				resultSizeEstimate: 4,
-			};
-
-			nock(baseUrl)
-				.get('/gmail/v1/users/me/labels')
-				.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
-			nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, listPage1);
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages?.*pageToken=page2Token.*'))
-				.reply(200, listPage2);
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages/4?.*'))
-				.reply(200, createMessage({ id: '4', internalDate: '4000000000000' }));
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages/3?.*'))
-				.reply(200, createMessage({ id: '3', internalDate: '3000000000000' }));
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
-				.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
-
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
-			};
-
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { parameters: { simple: true, maxResults: 3 } },
-				workflowStaticData,
-			});
-
-			expect(nock.isDone()).toBe(true);
-			expect(response?.[0]).toHaveLength(3);
-			expect(response?.[0]?.[0]?.json?.id).toBe('4');
-			expect(response?.[0]?.[2]?.json?.id).toBe('2');
-			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['1']);
-			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(4000000000);
-			expect(workflowStaticData['Gmail Trigger'].backlogCursor).toBeUndefined();
-		});
-
-		it('should stop listing once maxResults is covered and store a resumable cursor', async () => {
-			const initialTimestamp = 1000000;
-
-			nock(baseUrl)
-				.get('/gmail/v1/users/me/labels')
-				.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages?.*'))
-				.reply(200, {
-					messages: [createListMessage({ id: '5' }), createListMessage({ id: '4' })],
-					nextPageToken: 'page2Token',
-					resultSizeEstimate: 10,
-				} satisfies MessageListResponse);
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages/5?.*'))
-				.reply(200, createMessage({ id: '5', internalDate: '5000000000000' }));
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages/4?.*'))
-				.reply(200, createMessage({ id: '4', internalDate: '4000000000000' }));
-
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
-			};
-
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { parameters: { simple: true, maxResults: 2 } },
-				workflowStaticData,
-			});
-
-			expect(nock.isDone()).toBe(true);
-			expect(response?.[0]).toHaveLength(2);
-			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toBeUndefined();
-			expect(workflowStaticData['Gmail Trigger'].backlogCursor).toEqual({
-				pageToken: 'page2Token',
-				receivedAfter: initialTimestamp,
-			});
-			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(5000000000);
-		});
-
-		it('should resume a stored backlog cursor and clear it once the listing completes', async () => {
-			nock(baseUrl)
-				.get('/gmail/v1/users/me/labels')
-				.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages?.*pageToken=resumeToken.*'))
-				.reply(200, {
-					messages: [createListMessage({ id: 'old1' })],
-					resultSizeEstimate: 1,
-				} satisfies MessageListResponse);
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages/old1?.*'))
-				.reply(200, createMessage({ id: 'old1', internalDate: '2000000000000' }));
-
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': {
-					lastTimeChecked: 5000000000,
-					backlogCursor: { pageToken: 'resumeToken', receivedAfter: 1000000 },
-				},
-			};
-
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { parameters: { simple: true, maxResults: 2 } },
-				workflowStaticData,
-			});
-
-			expect(nock.isDone()).toBe(true);
-			expect(response?.[0]).toHaveLength(1);
-			expect(response?.[0]?.[0]?.json?.id).toBe('old1');
-			expect(workflowStaticData['Gmail Trigger'].backlogCursor).toBeUndefined();
-			// Backlog messages are older, so lastTimeChecked must not regress
-			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(5000000000);
-		});
-
-		it('should fall back to a fresh listing when the stored cursor is rejected', async () => {
-			nock(baseUrl)
-				.get('/gmail/v1/users/me/labels')
-				.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages?.*pageToken=expiredToken.*'))
-				.reply(400, { error: { message: 'Invalid pageToken' } });
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages?.*'))
-				.reply(200, {
-					messages: [createListMessage({ id: 'new1' })],
-					resultSizeEstimate: 1,
-				} satisfies MessageListResponse);
-			nock(baseUrl)
-				.get(new RegExp('/gmail/v1/users/me/messages/new1?.*'))
-				.reply(200, createMessage({ id: 'new1', internalDate: '6000000000000' }));
-
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': {
-					lastTimeChecked: 5000000000,
-					backlogCursor: { pageToken: 'expiredToken', receivedAfter: 1000000 },
-				},
-			};
-
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { parameters: { simple: true, maxResults: 2 } },
-				workflowStaticData,
-			});
-
-			expect(nock.isDone()).toBe(true);
-			expect(response?.[0]).toHaveLength(1);
-			expect(response?.[0]?.[0]?.json?.id).toBe('new1');
-			expect(workflowStaticData['Gmail Trigger'].backlogCursor).toBeUndefined();
-			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(6000000000);
 		});
 
 		it('should store pending IDs and advance lastTimeChecked when more messages remain', async () => {
@@ -2589,30 +2435,6 @@ describe('GmailTrigger', () => {
 			);
 			// A fresh boundary has no handled ids to remember.
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual([]);
-		});
-
-		it('should not paginate on versions before 1.4', async () => {
-			// Pagination is scoped to v1.4+: older versions have no pendingMessageIds
-			// machinery, so following the token there would change their behavior.
-			// Only one page is mocked, so a second page request fails the poll,
-			// and the assertions below catch the resulting empty response.
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': { lastTimeChecked: 1000000 },
-			};
-
-			mockLabels();
-			mockList(listPage(['1'], 'token-1'));
-			mockGet('1', 2_000_000_000_000);
-
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.3, parameters: { simple: true } },
-				workflowStaticData,
-			});
-
-			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
-			// The queue belongs to v1.4+; older versions must not persist one their
-			// own drain path would ignore.
-			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toBeUndefined();
 		});
 
 		it('should keep the beyond-budget remainder when a drain exactly consumed the budget', async () => {

@@ -5,19 +5,13 @@ import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-<<<<<<< HEAD
 import {
 	jsonParse,
 	UnexpectedError,
-	CHAT_NODE_TYPE,
-	CHAT_TOOL_NODE_TYPE,
 	ChatNodeMessageType,
 	type ChatNodeMessageRegular,
 	type ChatNodeMessageWithButtons,
 } from 'n8n-workflow';
-=======
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
->>>>>>> 6586dbe05efae090f1b0b2ff0bd8860edb4e966e
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 
@@ -289,19 +283,12 @@ export class ChatService {
 				}
 
 				const executionId = session.executionId;
-<<<<<<< HEAD
-				if (await this.shouldResumeOnMessage(executionId)) {
-					await this.resumeExecution(executionId, this.parseChatMessage(parsed), sessionKey);
-					session.nodeWaitingForChatResponse = undefined;
-				}
-=======
 				const resumed = await this.resumeExecution(
 					executionId,
-					this.parseChatMessage(message),
+					this.parseChatMessage(parsed),
 					sessionKey,
 				);
 				if (resumed) session.nodeWaitingForChatResponse = undefined;
->>>>>>> 6586dbe05efae090f1b0b2ff0bd8860edb4e966e
 			} catch (e) {
 				const error = ensureError(e);
 				this.errorReporter.error(error);

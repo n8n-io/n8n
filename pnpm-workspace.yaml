@@ -346,6 +346,9 @@ catalogs:
     undici: ^7.29.0
 
 overrides:
+  # eslint-plugin-storybook pulls a newer @typescript-eslint/utils; two copies make
+  # eslint-plugin-import-x and typescript-eslint configs type-incompatible
+  '@typescript-eslint/utils': 8.35.0
   libphonenumber-js: npm:empty-npm-package@1.0.0
   '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
   sharp: npm:empty-npm-package@1.0.0
