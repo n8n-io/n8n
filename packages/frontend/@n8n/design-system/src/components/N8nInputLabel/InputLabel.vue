@@ -51,6 +51,7 @@ const onLabelClick = (event: MouseEvent) => {
 			<label
 				v-if="label || $slots.options"
 				:for="inputName"
+				:role="inputName ? undefined : 'presentation'"
 				:class="{
 					'n8n-input-label': true,
 					[$style.inputLabel]: true,
@@ -288,6 +289,17 @@ const onLabelClick = (event: MouseEvent) => {
 		background: var(--color--background--shade-1);
 		padding: var(--spacing--5xs);
 		border-radius: var(--radius);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.container:hover .options,
+	.inputLabel:hover .options,
+	.container:hover .overlay,
+	.inputLabel:hover .overlay,
+	.options,
+	.overlay {
+		transition: none;
 	}
 }
 </style>

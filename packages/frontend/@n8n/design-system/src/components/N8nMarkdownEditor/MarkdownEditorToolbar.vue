@@ -634,4 +634,10 @@ const setTextStyle = (value: string | number) => {
 .addLinkForm {
 	padding: var(--spacing--sm);
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.toolbarInner {
+		transition: none;
+	}
+}
 </style>

@@ -98,7 +98,11 @@ const handleActionClick = (action: SuggestedAction) => {
 					]"
 					data-test-id="suggested-action-item"
 					:data-action-id="action.id"
+					:role="action.completed ? undefined : 'button'"
+					:tabindex="action.completed ? undefined : 0"
 					@click.prevent.stop="() => handleActionClick(action)"
+					@keydown.enter.prevent.stop="() => handleActionClick(action)"
+					@keydown.space.prevent.stop="() => handleActionClick(action)"
 				>
 					<div :class="$style.checkboxContainer">
 						<N8nIcon v-if="action.completed" icon="circle-check" color="success" />

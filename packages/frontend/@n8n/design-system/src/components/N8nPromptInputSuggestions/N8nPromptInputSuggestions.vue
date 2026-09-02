@@ -108,4 +108,10 @@ function onSuggestionClick(suggestion: WorkflowSuggestion) {
 		opacity: 0.6;
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.suggestionPill {
+		transition: none;
+	}
+}
 </style>

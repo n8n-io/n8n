@@ -27,6 +27,7 @@ import type {
 	AccessorFn,
 	Cell,
 	CellContext,
+	Column,
 	ColumnDef,
 	CoreColumn,
 	CoreOptions,
@@ -90,7 +91,7 @@ const emit = defineEmits<{
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'update:options': [payload: TableOptions];
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'click:row': [event: MouseEvent, payload: { item: T }];
+	'click:row': [event: MouseEvent | KeyboardEvent, payload: { item: T }];
 }>();
 
 const data = shallowRef<T[]>(props.items.concat());
@@ -144,6 +145,9 @@ function getRowProps(row: T, index: number) {
 }
 
 const MIN_COLUMN_WIDTH = 75;
+const resizeHandleRole = 'separator';
+const interactiveRowRole = 'row';
+const tableHeaderRole = 'columnheader';
 
 function getValueAccessor(column: Required<TableHeader<T>>) {
 	if (isAccessorColumn(column)) {
@@ -392,6 +396,20 @@ const table = useVueTable({
 	},
 	onRowSelectionChange: handleRowSelectionChange,
 });
+
+function resizeColumnWithKeyboard(column: Column<T, unknown>, event: KeyboardEvent) {
+	const delta = event.key === 'ArrowRight' ? 10 : event.key === 'ArrowLeft' ? -10 : 0;
+	if (delta === 0) return;
+
+	event.preventDefault();
+	event.stopPropagation();
+	const minSize = column.columnDef.minSize ?? MIN_COLUMN_WIDTH;
+	const maxSize = column.columnDef.maxSize ?? Number.POSITIVE_INFINITY;
+	table.setColumnSizing((sizing) => ({
+		...sizing,
+		[column.id]: Math.min(maxSize, Math.max(minSize, column.getSize() + delta)),
+	}));
+}
 </script>
 
 <template>
@@ -419,24 +437,36 @@ const table = useVueTable({
 									:class="{
 										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,
 									}"
-									@mousedown="header.column.getToggleSortingHandler()?.($event)"
+									:role="tableHeaderRole"
+									@click="header.column.getToggleSortingHandler()?.($event)"
 								>
+									<button
+										v-if="!header.isPlaceholder && header.column.getCanSort()"
+										type="button"
+										class="sort-button"
+										@click.stop="header.column.getToggleSortingHandler()?.($event)"
+									>
+										<FlexRender
+											:render="header.column.columnDef.header"
+											:props="header.getContext()"
+										/>
+										{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
+									</button>
 									<FlexRender
-										v-if="!header.isPlaceholder"
+										v-else-if="!header.isPlaceholder"
 										:render="header.column.columnDef.header"
 										:props="header.getContext()"
 									/>
 
-									<template v-if="header.column.getCanSort()">
-										{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-									</template>
-
 									<div
 										v-if="header.column.getCanResize()"
 										:class="{ resizer: true, ['is-resizing']: header.column.getIsResizing() }"
+										:role="resizeHandleRole"
+										tabindex="0"
 										@mousedown.stop="header.getResizeHandler()?.($event)"
 										@touchstart="header.getResizeHandler()?.($event)"
 										@dblclick="header.column.resetSize()"
+										@keydown="resizeColumnWithKeyboard(header.column, $event)"
 									></div>
 								</th>
 							</template>
@@ -473,7 +503,11 @@ const table = useVueTable({
 								<slot name="item" v-bind="{ item: row.original, cells: row.getVisibleCells() }">
 									<tr
 										v-bind="getRowProps(row.original, row.index)"
+										:role="interactiveRowRole"
+										tabindex="0"
 										@click="emit('click:row', $event, { item: row.original })"
+										@keydown.enter="emit('click:row', $event, { item: row.original })"
+										@keydown.space.prevent="emit('click:row', $event, { item: row.original })"
 									>
 										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
 											<td
@@ -687,6 +721,17 @@ th.loading-row {
 	}
 }
 
+.sort-button {
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: inherit;
+	cursor: pointer;
+}
+
 .resizer {
 	position: absolute;
 	top: 0;
@@ -723,6 +768,12 @@ th:hover:not(:last-child) > .resizer {
 
 	&--center {
 		text-align: center;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.progress-bar-value {
+		animation: none;
 	}
 }
 </style>

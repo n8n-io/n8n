@@ -7,6 +7,7 @@ import Icon from '../N8nIcon/Icon.vue';
 
 defineOptions({ name: 'N8nInput', inheritAttrs: false });
 
+const inputWrapperRole = 'presentation';
 const $style = useCssModule();
 const slots = defineSlots<InputSlots>();
 
@@ -195,7 +196,7 @@ defineExpose({ focus, blur, select });
 		</span>
 
 		<!-- Input wrapper (holds border, contains prefix/input/suffix) -->
-		<div :class="inputWrapperClasses" @click="focus">
+		<div :class="inputWrapperClasses" :role="inputWrapperRole" @click="focus">
 			<!-- Prefix slot -->
 			<span v-if="$slots.prefix" :class="$style.prefix">
 				<slot name="prefix" />
@@ -493,5 +494,11 @@ defineExpose({ focus, blur, select });
 .append {
 	border-left: var(--border);
 	margin-right: calc(-1 * var(--spacing--xs));
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.clearButton {
+		transition: none;
+	}
 }
 </style>

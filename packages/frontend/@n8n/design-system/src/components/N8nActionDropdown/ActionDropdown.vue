@@ -156,7 +156,13 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					<span
 						v-if="slotProps.item.data?.badge"
 						:class="{ [$style.clickableBadge]: !!slotProps.item.data?.disabled }"
+						:role="slotProps.item.data?.disabled ? 'button' : undefined"
+						:tabindex="slotProps.item.data?.disabled ? 0 : undefined"
 						@click.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
+						@keydown.enter.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
+						@keydown.space.prevent.stop="
+							slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)
+						"
 					>
 						<N8nBadge theme="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
 							{{ slotProps.item.data.badge }}
